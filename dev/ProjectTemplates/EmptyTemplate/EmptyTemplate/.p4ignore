@@ -1,0 +1,13 @@
+# Ignore compiled assets
+*.dds
+*.caf
+*.$animsettings
+
+# Ignore Editor's backup files
+*.bak*
+
+# Pak files are exported from level files in the editor.
+# These should eventually be served from a build machine,
+# for now we should avoid checking them in because it is
+# really easy for them to get out of sync with changes to the level.
+*.pak

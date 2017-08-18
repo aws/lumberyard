@@ -1,0 +1,728 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "BannedPlayerTableReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "BannedPlayerTableWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "LeaderboardInfoReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "LeaderboardInfoWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "LeaderboardTableReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "LeaderboardTableWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "MainTableReadCapacityUnits": {
+            "Default": "3",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "MainTableWriteCapacityUnits": {
+            "Default": "3",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ScoreStreamStatusReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "ScoreStreamStatusWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "StatsSettingsReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "StatsSettingsWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "UserIdentityMapReadCapacityUnits": {
+            "Default": "3",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "UserIdentityMapWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "ServiceApi",
+                "ServiceLambda",
+                "MainTable",
+                "BannedPlayerTable",
+                "StatsSettings",
+                "RecordSetProcessor"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "BannedPlayerTable": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "user",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "user",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "BannedPlayerTableReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "BannedPlayerTableWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "LeaderboardInfo": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:GetItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PutItem"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "RecordSetProcessor",
+                            "Action": [
+                                "dynamodb:Query",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:DeleteItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "stat",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "type",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "stat",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "type",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "LeaderboardInfoReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "LeaderboardInfoWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "LeaderboardTable": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:Query",
+                                "dynamodb:DeleteItem"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "RecordSetProcessor",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:DeleteItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "type",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "user",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "type",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "user",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "LeaderboardTableReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "LeaderboardTableWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "MainTable": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:PutItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:UpdateItem"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "RecordSetProcessor",
+                            "Action": [
+                                "dynamodb:DescribeStreams",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:ListStreams",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:GetRecords"
+                            ],
+                            "ResourceSuffix": "/stream/*"
+                        },
+                        {
+                            "AbstractRole": "RecordSetProcessor",
+                            "Action": [
+                                "dynamodb:DescribeTable"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "user",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "user",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "MainTableReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "MainTableWriteCapacityUnits"
+                    }
+                },
+                "StreamSpecification": {
+                    "StreamViewType": "NEW_AND_OLD_IMAGES"
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "RecordSetProcessor": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions":[
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "RecordSetProcessorConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "RecordSetProcessorConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "record_set_processor.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "RecordSetProcessorConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "RecordSetProcessorConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 60
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "RecordSetProcessorConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "RecordSetProcessor",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "MainTable": {
+                        "Ref": "MainTable"
+                    },
+                    "LeaderboardInfo": {
+                        "Ref": "LeaderboardInfo"
+                    },
+                    "LeaderboardTable": {
+                        "Ref": "LeaderboardTable"
+                    },
+                    "ScoreStreamStatus": {
+                        "Ref": "ScoreStreamStatus"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "RecordSetProcessorInvokePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "RecordSetProcessor",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "RecordSetProcessorSchedulerRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "RecordSetProcessorSchedulerRule": {
+            "Properties": {
+                "ScheduleExpression": "rate(5 minutes)",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "RecordSetProcessor",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "RecordSetProcessorScheduler"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+        "ScoreStreamStatus": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "RecordSetProcessor",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:DeleteItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "shard_id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "shard_id",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "ScoreStreamStatusReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "ScoreStreamStatusWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/POST/score",
+                            "/api/GET/score/*",
+                            "/api/GET/scores/*",
+                            "/api/GET/leaderboard/*",
+                            "/api/POST/leaderboard/*"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "BannedPlayerTable": {
+                        "Ref": "BannedPlayerTable"
+                    },
+                    "LeaderboardInfo": {
+                        "Ref": "LeaderboardInfo"
+                    },
+                    "LeaderboardTable": {
+                        "Ref": "LeaderboardTable"
+                    },
+                    "MainTable": {
+                        "Ref": "MainTable"
+                    },
+                    "StatsSettingsTable": {
+                        "Ref": "StatsSettings"
+                    },
+                    "UserIdentityMap": {
+                        "Ref": "UserIdentityMap"
+                    },
+                    "RecordSetProcessor": {
+                        "Ref": "RecordSetProcessor"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "StatsSettings": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:PutItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "name",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "name",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "StatsSettingsReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "StatsSettingsWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "UserIdentityMap": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "user",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "user",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "UserIdentityMapReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "UserIdentityMapWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        }
+    }
+}

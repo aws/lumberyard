@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TerrainLighting</class>
+ <widget class="QWidget" name="TerrainLighting">
+  <property name="geometry">
+   <rect>
+	<x>0</x>
+	<y>0</y>
+	<width>900</width>
+	<height>400</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+	<widget class="QWidget" name="TOP_LEVEL_WIDGET" native="true">
+	 <layout class="QHBoxLayout" name="TERRAIN_LIGHTING_TOP_LEVEL_LAYOUT" stretch="2,1">
+	  <property name="spacing">
+	   <number>10</number>
+	  </property>
+	  <property name="sizeConstraint">
+	   <enum>QLayout::SetDefaultConstraint</enum>
+	  </property>
+	  <item>
+	   <layout class="QVBoxLayout" name="TERRAIN_LIGHTING_LEFT" stretch="5,1,1">
+		<item>
+		 <widget class="QGroupBox" name="HEIGHTMAP_BORDER">
+		  <property name="title">
+		   <string>Terrain Preview with Sun Path</string>
+		  </property>
+		  <layout class="QVBoxLayout" name="verticalLayout">
+		   <item>
+			<widget class="PixmapLabelPreview" name="SUN_PATH_PREVIEW_LABEL">
+			 <property name="text">
+			  <string>TextLabel</string>
+			 </property>
+			 <property name="alignment">
+			  <set>Qt::AlignCenter</set>
+			 </property>
+			</widget>
+		   </item>
+		  </layout>
+		 </widget>
+		</item>
+		<item>
+		 <widget class="QCheckBox" name="FORCE_SKY_UPDATE">
+		  <property name="text">
+		   <string>Force Sky Update</string>
+		  </property>
+		 </widget>
+		</item>
+		<item>
+		 <layout class="QHBoxLayout" name="IMPORT_EXPORT_LAYOUT" stretch="0,0">
+		  <item>
+		   <widget class="QPushButton" name="LIGHTING_IMPORT_BTN">
+			<property name="text">
+			 <string>Import</string>
+			</property>
+		   </widget>
+		  </item>
+		  <item>
+		   <widget class="QPushButton" name="LIGHTING_EXPORT_BTN">
+			<property name="text">
+			 <string>Export</string>
+			</property>
+		   </widget>
+		  </item>
+		  <item>
+		   <spacer name="IMPORT_EXPORT_SPACER">
+		    <property name="orientation">
+			 <enum>Qt::Horizontal</enum>
+			</property>
+			<property name="sizeHint" stdset="0">
+			 <size>
+				<width>40</width>
+				<height>20</height>
+			 </size>
+			</property>
+		   </spacer>
+		  </item>
+		 </layout>
+		</item>
+	   </layout>
+	  </item>
+	  <item>
+	   <layout class="QVBoxLayout" name="TERRAIN_LIGHTING_RIGHT" stretch="0,0,0,0">
+		<item>
+		 <layout class="QHBoxLayout" name="TERRAIN_LIGHTING_TOP_RIGHT_LAYOUT">
+		  <item>
+		   <widget class="QGroupBox" name="LIGHTTYPEGPBOX">
+			<property name="title">
+			 <string>Light Type</string>
+			</property>
+			<layout class="QHBoxLayout" name="LIGHT_TYPE_LAYOUT">
+			 <item>
+			  <widget class="QRadioButton" name="LIGHTING_TYPE_PRECISE">
+			   <property name="text">
+				<string>Precise</string>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QRadioButton" name="LIGHTING_TYPE_DYNAMIC_SUN">
+			   <property name="text">
+				<string>Dynamic Sun</string>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </widget>
+		  </item>
+		  <item>
+		   <widget class="QGroupBox" name="TIMEOFDAYGPBOX">
+			<property name="title">
+			 <string>Time of Day</string>
+			</property>
+			<layout class="QHBoxLayout" name="TIME_OF_DAY_LAYOUT" stretch="1,5,1">
+			 <item>
+			  <widget class="QLabel" name="TIMEOFDAYTIMELABEL">
+			   <property name="text">
+				<string>Time:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="LIGHTING_TIME_OF_DAY">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLineEdit" name="TIME_OF_DAY_EDIT">
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </widget>
+		  </item>
+		 </layout>
+		</item>
+		<item>
+		 <widget class="QGroupBox" name="SUNSETTINGSGPBOX">
+		  <property name="title">
+		   <string>Sun Settings</string>
+		  </property>
+		  <layout class="QVBoxLayout" name="SUN_SETTINGS_LAYOUT">
+		   <item>
+			<layout class="QHBoxLayout" name="SUN_DIRECTION_LAYOUT" stretch="1,5,1">
+			 <property name="spacing">
+			  <number>16</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="SUNDIRECTIONLABEL">
+			   <property name="text">
+				<string>Sun Direction (map orientation):</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="SUN_DIRECTION">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSpinBox" name="LIGHTING_SUNDIR_EDIT">
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<layout class="QHBoxLayout" name="SUN_LONGITUDE_LAYOUT" stretch="0,5,1">
+			 <property name="spacing">
+			  <number>6</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="LONGITUDELABEL">
+			   <property name="text">
+				<string>NorthPole .. Equator .. SouthPole:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="SUN_MAP_LONGITUDE">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSpinBox" name="LIGHTING_POLE_EDIT">
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		  </layout>
+		 </widget>
+		</item>
+		<item>
+		 <widget class="QGroupBox" name="MOONSUNSHADOWTRANSITIONGPBOX">
+		  <property name="title">
+		   <string>Moon/Sun Shadow Transition</string>
+		  </property>
+		  <layout class="QVBoxLayout" name="MOON_SUN_TRANSITION_LAYOUT">
+		   <item>
+			<layout class="QHBoxLayout" name="DAWN_TIME_LAYOUT" stretch="1,1,5,1,1">
+			 <property name="spacing">
+			  <number>10</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="DAWNTIMELABEL">
+			   <property name="text">
+				<string>Dawn Time:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DAWNTIMEMIDNIGHTLABEL">
+			   <property name="text">
+				<string>Midnight</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="DAWN_SLIDER">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DANWTIMENOONLABEL">
+			   <property name="text">
+				<string>Noon</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLineEdit" name="DAWN_INFO">
+			   <property name="alignment">
+				<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<layout class="QHBoxLayout" name="DAWN_DURATION_LAYOUT" stretch="1,1,6,1,1">
+			 <property name="spacing">
+			  <number>2</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="DAWNDURATIONLABEL">
+			   <property name="text">
+				<string>Dawn Duration:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DAWNDURATION0LABEL">
+			   <property name="text">
+				<string>0 min</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="DAWN_DUR_SLIDER">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DAWNDURATION60LABEL">
+			   <property name="text">
+				<string>60 min</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSpinBox" name="DAWN_DUR_INFO">
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<layout class="QHBoxLayout" name="DUSK_TIME_LAYOUT" stretch="1,1,5,1,1">
+			 <property name="spacing">
+			  <number>14</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="DUSKTIMERLABEL">
+			   <property name="text">
+				<string>Dusk Time:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DUSKTIMENOONLABEL">
+			   <property name="text">
+				<string>Noon</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="DUSK_SLIDER">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DUSKTIMEMIDNIGHTLABEL">
+			   <property name="text">
+				<string>Midnight</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLineEdit" name="DUSK_INFO">
+			   <property name="alignment">
+				<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<layout class="QHBoxLayout" name="DUSK_DURATION_LAYOUT" stretch="1,1,6,1,1">
+			 <property name="spacing">
+			  <number>4</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="DUSKDURATIONLABEL">
+			   <property name="text">
+				<string>Dusk Duration:</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DUSKDURATION0LABEL">
+			   <property name="text">
+				<string>0 min</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="DUSK_DUR_SLIDER">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="DUSKDURATION60LABEL">
+			   <property name="text">
+				<string>60 min</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSpinBox" name="DUSK_DUR_INFO">
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<widget class="PixmapLabelPreview" name="MOON_SUN_TRANSITION_PREVIEW_LABEL">
+			 <property name="text">
+			  <string>Moon Sun Transition Preview</string>
+			 </property>
+			</widget>
+		   </item>
+		   <item>
+			<layout class="QHBoxLayout" name="MOON_SUN_PREVIEW_LABELS_LAYOUT" stretch="1,1,1,1,1">
+			 <property name="spacing">
+			  <number>110</number>
+			 </property>
+			 <item>
+			  <widget class="QLabel" name="MOON_SUN_LABEL_0">
+			   <property name="text">
+				<string>0</string>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="MOON_SUN_LABEL_6">
+			   <property name="text">
+				<string>6</string>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="MOON_SUN_LABEL_12">
+			   <property name="text">
+				<string>12</string>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="MOON_SUN_LABEL_18">
+			   <property name="text">
+				<string>18</string>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QLabel" name="MOON_SUN_LABEL_24">
+			   <property name="text">
+				<string>24</string>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		  </layout>
+		 </widget>
+		</item>
+		<item>
+		 <widget class="QGroupBox" name="TERRAINOCCLUSIONGPBOX">
+		  <property name="title">
+		   <string>Terrain Occlusion</string>
+		  </property>
+		  <layout class="QVBoxLayout" name="verticalLayout_2">
+		   <item>
+			<layout class="QHBoxLayout" name="SKY_TERRAIN_OCCLUSION_LAYOUT">
+			 <item>
+			  <widget class="QLabel" name="SKYTERRAINOCCLUSIONQUALITYLABEL">
+			   <property name="text">
+				<string>Sky Terrain Occlusion Quality (low .. high):</string>
+			   </property>
+			   <property name="alignment">
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+			   </property>
+			  </widget>
+			 </item>
+			 <item>
+			  <widget class="QSlider" name="SKY_QUALITY">
+			   <property name="orientation">
+				<enum>Qt::Horizontal</enum>
+			   </property>
+			   <property name="tickPosition">
+				<enum>QSlider::NoTicks</enum>
+			   </property>
+			  </widget>
+			 </item>
+			</layout>
+		   </item>
+		   <item>
+			<widget class="QCheckBox" name="TERRAIN_OBJECT_OCCLUSION">
+			 <property name="text">
+			  <string>Super Sampling (Terrain Object Occlusion - Only with Indirect Lighting)</string>
+			 </property>
+			</widget>
+		   </item>
+		  </layout>
+		 </widget>
+		</item>
+	   </layout>
+	  </item>
+	 </layout>
+	</widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PixmapLabelPreview</class>
+   <extends>QLabel</extends>
+   <header location="global">QtUI/PixmapLabelPreview.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

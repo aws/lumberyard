@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "LinkType": "NoCode",
+    "Name": "Clouds",
+    "DisplayName": "Sky Clouds",
+    "Summary": "Provides the cloud entity weather effect.",
+    "Tags": ["Environment", "Sky"],
+    "Uuid": "4f293a6f11ab4cd7b9db3017d12b5eda",
+    "Version": "0.1.0",
+    "IconPath": "preview.png"
+}

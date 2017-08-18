@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "0b9e04f1482b4e088f1ca07816930c04",
+    "Name": "AssetImporterConfig",
+    "DisplayName": "FBX Importer Config [PREVIEW]",
+    "Version": "0.1.0",
+    "LinkType": "NoCode",
+    "Summary": "Enable this Gem to add configuration options to the FBX Importer. Options can be altered via the configuration files in this Gem's asset folder.",
+    "Tags": ["Asset Importer", "FBX"],
+    "IconPath": "preview.png"
+}

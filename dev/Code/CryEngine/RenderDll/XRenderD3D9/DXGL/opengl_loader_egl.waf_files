@@ -1,0 +1,10 @@
+{
+	"none":
+	{
+		"DXGL/Specification":
+		[
+			"Specification/glad_egl.c",
+			"Specification/glad_egl.h"
+		]
+	}
+}

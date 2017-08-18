@@ -1,0 +1,17 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/test_Main.cpp"
+        ],
+		"PathHelpers/UnitTests":
+        [
+           "../../CryCommonTools/UnitTests/PathHelpersUnitTests.cpp"
+        ],
+		"StringHelpers/UnitTests":
+        [
+           "../../CryCommonTools/UnitTests/StringHelpersUnitTests.cpp"
+        ]
+    }
+}

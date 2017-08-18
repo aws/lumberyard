@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RopePanel</class>
+ <widget class="QWidget" name="RopePanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>144</width>
+    <height>119</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="numberOfPointsLabel">
+     <property name="text">
+      <string>Num Points: 23</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QEditorToolButton" name="editButton">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>30</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Edit Rope</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="useTransformGizmoCheck">
+     <property name="text">
+      <string>Use Transform Gizmo</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QEditorToolButton" name="splitButton">
+     <property name="text">
+      <string>Split</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QEditorToolButton</class>
+   <extends>QPushButton</extends>
+   <header>Controls/ToolButton.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

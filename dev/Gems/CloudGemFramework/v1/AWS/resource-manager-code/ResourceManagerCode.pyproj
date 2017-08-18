@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{34ace887-d4eb-4729-9d6f-ad77bf9864da}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>cloud_gem_portal.py</StartupFile>
+    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\ResourceManager\;lib\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+    <Name>ResourceManagerCode</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="cloud_gem_portal.py" />
+    <Compile Include="command.py" />
+    <Compile Include="component_gen_utils.py" />
+    <Compile Include=".README">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="resource_management.py" />
+    <Compile Include="swagger_json_navigator.py" />
+    <Compile Include="swagger_processor.py" />
+    <Compile Include="test\test_unit_component_code_gen.py" />
+    <Compile Include="test\test_unit_swagger_processor.py" />
+    <Compile Include="test\__init__.py" />
+    <Compile Include="update.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="templates\" />
+    <Folder Include="templates\component-client\" />
+    <Folder Include="test" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="templates\component-client\component_template.h" />
+    <Content Include="templates\component-client\test.h" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

@@ -1,0 +1,5 @@
+<p4config>
+	<connection username="" workspace="" server="" port="" />
+	<game root="//data/Games/Crysis3/dev/C3" />
+</p4config>
+

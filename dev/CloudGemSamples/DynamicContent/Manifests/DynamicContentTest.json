@@ -1,0 +1,51 @@
+{
+    "Files": [
+        {
+            "bucketPrefix": "", 
+            "cacheRoot": "@assets@", 
+            "hash": "434eb6018ef13840266714add3119465", 
+            "isManifest": false, 
+            "keyName": "gameproperties.csv", 
+            "localFolder": "staticdata/csv", 
+            "outputRoot": "@user@", 
+            "pakFile": "DynamicContent/Paks/DynamicContentTestData.shared.pak", 
+            "platformType": "pc"
+        }, 
+        {
+            "bucketPrefix": "", 
+            "cacheRoot": "@assets@", 
+            "hash": "046f139d9038dcc5f913509faed6b69a", 
+            "isManifest": false, 
+            "keyName": "userrequest.csv", 
+            "localFolder": "staticdata/csv", 
+            "outputRoot": "@user@", 
+            "pakFile": "DynamicContent/Paks/UserRequestedData.shared.pak", 
+            "platformType": "pc"
+        }
+    ], 
+    "Paks": [
+        {
+            "bucketPrefix": "", 
+            "cacheRoot": "./", 
+            "hash": "af0f76a74af71b74ad58d6a69c6b3aa4", 
+            "isManifest": false, 
+            "keyName": "DynamicContentTestData.shared.pak", 
+            "localFolder": "DynamicContent/Paks", 
+            "outputRoot": "@user@", 
+            "pakFile": "DynamicContent/Paks/DynamicContentTestData.shared.pak", 
+            "platformType": "shared"
+        }, 
+        {
+            "bucketPrefix": "", 
+            "cacheRoot": "./", 
+            "hash": "424f1f7bfafcc7896a314f2a39f48ac6", 
+            "isManifest": false, 
+            "keyName": "UserRequestedData.shared.pak", 
+            "localFolder": "DynamicContent/Paks", 
+            "outputRoot": "@user@", 
+            "pakFile": "DynamicContent/Paks/UserRequestedData.shared.pak", 
+            "platformType": "shared", 
+            "userRequested": true
+        }
+    ]
+}

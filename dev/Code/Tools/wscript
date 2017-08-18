@@ -1,0 +1,96 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+import os
+
+SUBFOLDERS = [
+    '3rdParty',
+    'DBAPI',
+    'AssetProcessor',
+    'AssetTagging',
+    'CryXML',
+    'MaxCryExport',
+    'MayaCryExport2',
+    'SphericalHarmonics',
+    'CryTIFPlugin',
+    'ShaderCacheGen',
+    'CrySCompileServer',
+    'HLSLCrossCompiler',
+    'HLSLCrossCompilerMetal',
+    
+    'SceneAPI',
+    'AzTestScanner',
+    'Woodpecker',
+    'GridHub',
+    'News',
+    'SDLExtension',
+    'AzCodeGenerator',
+]
+
+def build(bld):
+
+    bld.CryEngineModule(
+        target              = 'SDL2_Android',
+        vs_filter           = 'Tools',
+        file_list           = [ 'sdl_empty.waf_files' ],
+        disable_pch         = True,
+        platforms           = ['android'],
+        configurations      = ['all'],
+
+        android_file_list           = [ 'sdl.waf_files', 'sdl_android.waf_files' ],
+        android_includes            = [ bld.Path('Code/SDKs/SDL2/src/include') ],
+        android_export_includes     = [ bld.Path('Code/SDKs/SDL2/src/include') ],
+        android_defines             = [ 'GL_GLEXT_PROTOTYPES' ],
+        android_lib                 = [ 'm', 'GLESv2', 'GLESv1_CM' ],
+        android_cflags              = [ '-fvisibility=default' ],
+
+        android_armv7_clang_cflags  = [ '-Wno-incompatible-pointer-types', 
+                                        '-Wno-pointer-bool-conversion', 
+                                        '-Wno-sometimes-uninitialized'
+                                      ],
+    )
+
+    # dedicated server uses a special build of RC to generate compressed data, etc.
+    bld.recurse(['RC'])
+    bld.recurse(['GemRegistry'])
+
+    check_project_configurator_wscript = bld.Path('Code/Tools/ProjectConfigurator/wscript')
+    if os.path.exists(check_project_configurator_wscript):
+        bld.recurse(['ProjectConfigurator'])
+    else:
+        bld.mark_module_exempt('ProjectConfigurator')
+
+    if not bld.is_building_dedicated_server():
+
+        if os.path.exists(bld.Path('Code/Tools/LyIdentity/wscript')):
+            bld.recurse(['LyIdentity'])
+        else:
+            bld.register_ly_identity_as_external()
+
+        if os.path.exists(bld.Path('Code/Tools/LyMetrics/wscript')):
+            bld.recurse(['LyMetrics'])
+        else:
+            bld.register_ly_metrics_as_external()
+
+            bld.mark_module_exempt('LyMetricsProducer_python')
+            bld.mark_module_exempt('LyMetricsConsumer')
+            bld.mark_module_exempt('LyInstallerMetrics')
+
+        if hasattr(bld,'register_internal_telemetry'):
+            bld.register_internal_telemetry()
+
+
+    for subfolder in SUBFOLDERS:
+        bld.recurse([subfolder], mandatory = False)

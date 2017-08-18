@@ -1,0 +1,13 @@
+{
+    "none":{
+        "Header Files":[
+            "StdAfx.h"
+        ],
+        "Source Files":[
+            "StdAfx.cpp",
+            "Main.cpp",
+            "../../SDKs/SDL2/src/src/main/android/SDL_android_main.c",
+            "../../Tools/SDLExtension/src/jni/SDLExt_android_init.c"
+        ]
+    }
+}

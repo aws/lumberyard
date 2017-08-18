@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+***********************************************************************************************
+    All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+    a third party where indicated.
+
+    For complete copyright and license terms please see the LICENSE at the root of this
+    distribution (the "License"). All use of this software is governed by the License,
+    or, if provided, by the license below or the license accompanying this file. Do not
+    remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+
+
+    WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+              created a backup copy.  Incorrect changes to this file will make it
+              impossible to load or build your projects from the command-line or the IDE.
+
+    DESCRIPTION: This file defines the WAF property sheet for project containing CLCompile
+
+***********************************************************************************************
+-->
+
+<ProjectSchemaDefinitions xmlns="http://schemas.microsoft.com/build/2009/properties" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <Rule Name="WAF_Options" PageTemplate="generic" DisplayName="WAF" SwitchPrefix="--" >
+        <Rule.DataSource>
+            <DataSource Persistence="ProjectFile" ItemType="ClCompile" />
+        </Rule.DataSource>
+        <Rule.Categories>
+            <Category Name="WAF_BuildOptionsCategory" DisplayName="Build" />
+            <Category Name="WAF_GeneralCategory" DisplayName="General" />
+            <Category Name="WAF_LinkerOptionsCategory"  DisplayName="Link" />
+        </Rule.Categories>
+
+        <!-- Project specific -->
+        <EnumProperty   Name="WAF_SingleCompilationMode"
+                  DisplayName="Single File Compilation Mode"
+                  Description=""
+                  Category="WAF_BuildOptionsCategory">
+    <EnumValue Name="Code" DisplayName="Compile" Description="" />
+        <EnumValue Name="Disassembly" DisplayName="Show Disassembly" Description="" />
+        <EnumValue Name="Preprocess" DisplayName="Show Preprocessed File" Description="" />
+    <EnumValue Name="Header" DisplayName="Show Included Headers" Description="" />
+  </EnumProperty>
+
+        <!-- General -->
+        <StringListProperty Name="WAF_TargetConfig" DisplayName="Target Configuration" Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringListProperty Name="WAF_TargetSpec" DisplayName="Target Spec" Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringProperty Name="WAF_TargetName" DisplayName="Target Name"	Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringProperty Name="WAF_TargetFile" DisplayName="Output File Path"	Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringProperty Name="WAF_TargetSolution" DisplayName="Solution Path"	Category="WAF_GeneralCategory" ReadOnly="true" />
+
+        <StringListProperty Name="WAF_IncludeDirectories" DisplayName="Include Directories" Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringListProperty Name="WAF_AdditionalIncludeDirectories" DisplayName="Additional Include Directories(*)"	Category="WAF_GeneralCategory" Description="';' separated list of absolute/relative include paths. (*) Value reset during project recreation." />
+
+        <StringListProperty Name="WAF_PreprocessorDefinitions" DisplayName="Preprocessor Definitions" Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringListProperty Name="WAF_AdditionalPreprocessorDefinitions" DisplayName="Additional Preprocessor Definitions(*)"	Category="WAF_GeneralCategory" Description="';' separated list of preprocessor definitions. (*) Value reset during project recreation." />
+
+        <StringProperty Name="WAF_BuildCommandLine" DisplayName="Build Command Line"	Category="WAF_GeneralCategory" ReadOnly="true" />
+        <StringProperty Name="WAF_RebuildCommandLine" DisplayName="Rebuild Command Line"	Category="WAF_GeneralCategory" ReadOnly="true"/>
+        <StringProperty Name="WAF_CleanCommandLine" DisplayName="Clean Command Line"	Category="WAF_GeneralCategory" ReadOnly="true"/>
+
+        <!-- Build -->
+        <BoolProperty Name="WAF_DisableCompilerOptimization" DisplayName="Disable Compiler Optimization(*)" Category="WAF_BuildOptionsCategory" Description="Disable compiler optimizations. (*)Value reset during project recreation." />
+        <BoolProperty Name="WAF_ExcludeFromUberFile" DisplayName="Exclude From Uber File(s)(*)" Category="WAF_BuildOptionsCategory" Description="Force exclude file from uber file compilation. (*)Value reset during project recreation." />
+
+        <StringListProperty Name="WAF_CompilerOptions_C" DisplayName="C Options" Category="WAF_BuildOptionsCategory" ReadOnly="true" />
+        <StringListProperty Name="WAF_AdditionalCompilerOptions_C" DisplayName="Additional C Options(*)" Category="WAF_BuildOptionsCategory" Description="'Whitespace' separated list of additional compiler options. (*) Value reset during project recreation." />
+
+        <StringListProperty Name="WAF_CompilerOptions_CXX" DisplayName="C++ Options" Category="WAF_BuildOptionsCategory" ReadOnly="true"/>
+        <StringListProperty Name="WAF_AdditionalCompilerOptions_CXX" DisplayName="Additional C++ Options(*)" Category="WAF_BuildOptionsCategory" Description="'Whitespace' separated list of additional compiler options. (*) Value reset during project recreation." />
+
+        <!-- Link -->
+        <StringListProperty Name="WAF_LinkerOptions" DisplayName="Linker Options" Default="'$(WAF_LinkerProjectFlags)'"	Category="WAF_LinkerOptionsCategory" ReadOnly="true" />
+        <StringListProperty Name="WAF_AdditionalLinkerOptions" DisplayName="Additional Linker Options(*)"	Category="WAF_LinkerOptionsCategory" Description="'Whitespace' separated list of additional linker options. (*) Value reset during project recreation." />
+    </Rule>
+</ProjectSchemaDefinitions>

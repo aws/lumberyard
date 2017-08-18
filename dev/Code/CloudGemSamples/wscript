@@ -1,0 +1,10 @@
+
+
+SUBFOLDERS = [
+    'Game'
+    ]
+
+def build(bld):
+    # Recursive into all sub projects
+    bld.recurse(SUBFOLDERS)
+

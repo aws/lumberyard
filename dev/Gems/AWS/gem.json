@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3, 
+    "LinkType": "Dynamic", 
+    "Name": "AWS", 
+    "DisplayName": "Cloud Canvas (AWS)",
+    "Summary": "Visual scripting capabilities for powering your game back-end with AWS services. AWS services accessed via Cloud Canvas may be subject to separate charges and additional terms. Learn more at amzn.to/1PO3Aq8",
+    "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+    "Version": "0.1.0",
+    "IconPath": "preview.png",
+    "Tags": ["Cloud Canvas", "AWS", "Amazon Web Services", "Flow Graph"]
+}

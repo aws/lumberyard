@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Source": [
+            "Source/EditorVRPreviewComponent.h",
+            "Source/EditorVRPreviewComponent.cpp"
+        ]
+    }
+}

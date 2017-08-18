@@ -1,0 +1,14 @@
+{
+    "none":
+    {
+        "Flow System/Nodes":
+        [
+            "FlowSystem/Nodes/FlowKinectNodesDurango.cpp"
+        ],
+        "Player Profiles":
+        [
+            "PlayerProfiles/PlayerProfileImplDurango.h",
+            "PlayerProfiles/PlayerProfileImplDurango.cpp"
+        ]
+    }
+}

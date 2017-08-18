@@ -1,0 +1,10 @@
+{
+    "auto": {
+        "Nodes": [
+            "Nodes/FlowNode_GetStaticData.h",
+            "Nodes/FlowNode_GetStaticData.cpp",
+            "Nodes/FlowNode_LoadStaticData.h",
+            "Nodes/FlowNode_LoadStaticData.cpp"
+        ]
+    }
+}

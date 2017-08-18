@@ -1,0 +1,387 @@
+NEW IN WAF 1.7.13
+-----------------
+* Fix for library installation on OpenBSD #1355
+* Intel compiler detection fix when using Python3 #1356
+
+NEW IN WAF 1.7.12
+-----------------
+* Fix for systems without threading #1323
+* Fix for library installation on OpenBSD
+* Propagate the max_depth argument in ant_glob #1328
+* wsdk detection fix #1335
+
+NEW IN WAF 1.7.11
+-----------------
+* Node.delete remove empty folders #1278
+* Detection of 'convert' in parallel_debug #1300
+* Bibtopic support #1299
+* Safer encoding in ConfigSet dump files #1297
+* Missing Qt defines on Windows #1272
+* QtDesigner library detection #1315
+* Redundant 'check_dir' call causing random uninstall failures #1313
+* Append to moc flags instead of replacing #1317
+* Share moc tasks in the Qt processing #1318
+* Disable a source of unnecessary rebuilds in the Qt processing
+* Use LIB/INCLUDE environment variables in boost library detection on windows #1310
+* Reduce the amount of paths in the unit test execution #1319
+* Enabled export_defines/export_includes attribute on read_shlib/read_stlib
+
+NEW IN WAF 1.7.10
+-----------------
+* Enhancements in the LaTeX support #1248
+* Codelite plugin by Christian Klein
+* Validate the versioned library number #1180
+* New export_defines keyword for C/C++/Fortran libraries
+* Python config tests enhancements #1231 #1261
+* Enable the distribution of non-python data files #1265
+* Improved the boost configuration output #1266
+* Exclude intltoolcache from waf dist # 1267
+* Use Utils.readf/Utils.writef to prevent build cache loss on windows platforms
+
+NEW IN WAF 1.7.9
+----------------
+* Improved the patch submitted in #1237 as it caused regressions
+* Reverted the patch submitted in #1212 as it caused regressions
+* Added a cache to waflib/extras/gccdeps.py #1244
+* Unit test ut_exec was not obtained properly #1245
+
+NEW IN WAF 1.7.8
+----------------
+* Fixed a configuration issue in the visual studio compiler (regression #1239)
+
+NEW IN WAF 1.7.7
+----------------
+* XLC and XLF detection fixes #1230
+* Fixed the multiple gcc/msvc builds #1237
+* Better gdc detection on Ubuntu #1222
+* Relative symlinks in symlink_as #1234
+* Various improvements in the doxygen tool #1232 #1233
+* Fixed windows filehandle issues on Python #1235
+* Visual Studio 2012 detection improvements
+* OSX soname installation fix
+
+NEW IN WAF 1.7.6
+----------------
+* Better encapsulation of conf.check_cfg(uselib_store=...) defines #1212
+* Support for python modules in fortran
+* Extension files of D binaries on Mac
+* Raise an error when a tex manually-provided dependency is not found #1209
+* Enforce a stable name in bld(rule=..., name=undefined) to prevent rebuilds
+* Enhanced support for flex on win32 and msys #1207 #1211
+* Fixed a regression on configuration tests running with -Werror/-Wall #1220
+
+NEW IN WAF 1.7.5
+----------------
+* Fixed the kde4 library detection on Fedora
+* New tool for protocol buffers (protoc.py) #1184
+* Fixed a syntax error affecting Python < 2.6
+
+NEW IN WAF 1.7.4
+----------------
+* Fixed a regression in the Node,Task and Context classes
+
+NEW IN WAF 1.7.3
+-----------------
+* Fixed the LD_LIBRARY_PATH race condition in waf_unit_test #1200
+* Library detection fixes in boost.py #1199
+* Various waf_unit_test enhancements #1194
+* Use the same function signature main(int, char**) in all configuration tests #1192
+* Fixed the Clang version number detection #1191
+* Let the feature 'includes' propagate INCLUDES and FRAMEWORKPATH variables
+* Fix for incorrect installation paths #1202
+* Cabal script (haskell)
+
+NEW IN WAF 1.7.2
+----------------
+* Install bld.subst() targets
+* New scanner for winrc processing #1186
+
+NEW IN WAF 1.7.1
+----------------
+* Updated the exclusion regexps for "waf dist"
+* Added an example in playground/nasm
+* Enabled compatibility with pkgconf
+* Response files for c# #1182
+* Minor docstring updates #1188
+* New tool for compiling .net resource files (waflib/extras/resx.py) #1183
+* New tool for compiling .midl files (waflib/extras/midl.py) #1185
+
+NEW IN WAF 1.7.0
+----------------
+* The compat15 tool is disabled by default (the README file explains how to enable it)
+* Python >= 2.4 is now required
+* Python >= 2.6 is required for creating the Waf file in the source tree
+* Added Utils.writef (similar to Utils.readf)
+* Added Node.evict() to provide more control over invalid references
+* Do not raise exception on --help when running on python 2.4
+* Node.search -> Node.search_node (consistent with make_node and find_node)
+* Errors are reported on configuration test failures with execute=True #1111
+* Added header prefixing (autoconf-like) #1117
+* Removed the warnings on "waf install" #1120
+* Extended bld.subst() to perform simple copies to the build directory
+* Removed the default DLL_EXPORT define on gcc/g++ shared libraries
+* Calling ctx.root.ant_glob(abspath) will now return results #1135
+* New case-insentive option for ant_glob #1148
+* Ported demos/asm to 64-bit, forcing gcc over as
+* Updated the gccdeps tool #1162
+* Improved the C# processing #1154, #1153
+* Removed the empty flags from LIB/INCLUDE in the msvc configuration #1159
+* Added an 'encoding' parameter to bld.subst()
+* Detect Visual Studio 2011 beta
+* Detect cython dependencies of the form "from module import x" #1044
+* Use the cython includes in the dependency scanner #1166
+* Improved the behaviour of Utils.readf/Utils.writef on Win32
+* Made Task.__repr__ more robust #1174
+* Fixed the gcc builds on hp-ux
+* Let gccdeps work with other compilers #1179
+
+NEW IN WAF 1.6.11
+-----------------
+* Enable custom variables for the boost detection #1089
+* Disable the config test execution when detecting boost #1090
+* Process moc classes in .cpp files by default #1095
+* Apply the chmod attribute to the versioned libraries (vnum) #1097
+* Fixed the python detection on OSX #1098
+* Changed the win32 color settings for Windows 7 #1099
+* Set the default fortran linker for ifort to xiar #1104
+
+NEW IN WAF 1.6.10
+-----------------
+* Fixed the 'remove' attribute propagation in ant_glob #1086
+* Fixed the behavior of recurse(name=xyz) when looking in existing folders
+* Fixed a problem with include paths in the relocation tool #1078
+* Improved the pgicc compiler detection #1080
+* Fixed the behavior of 'waf options' #1076
+* Process larger java projects #1074
+* Remove the ':' from the drives when dealing with foreign files and folders on Win32
+* Let the 'subst' feature process a chmod attribute
+* Added a hook for distutils variable query #1083
+
+NEW IN WAF 1.6.9
+----------------
+* Fixed the duplicate moc file creation in slow_qt4 #1047
+* Fixed the Visual Studio 2008 projects creation #1033
+* Added a workaround to avoid creating include folders not under the build directory #1049
+* Added a default virtual folder structure for out-of-tree build files #1053
+* Added a way to set variants containing /, for example linux/debug
+* Added a more intuitive behaviour for conf.setenv() #1062
+* Fixed the multiple bibliography processing for tex #1040
+* Windows CE detection improvements #1065
+* Fixed the library installation on OSX
+* Fixed the Powerpc/IPhone platform detection
+* Added an Xcode project generator
+
+NEW IN WAF 1.6.8
+----------------
+* Fixed a typo in Utils.py affecting Win32 platforms (copystat) #1029
+* Fixed a minor bug in the Eclipse project generator
+* Fixed a typo that prevented Waf from running on Pypy-trunk
+* Make the xlc/xlc++ compiler detection more accurate by looking at the version number #1022
+* Minor perl, python and ruby tool improvements
+* Better logs for the boost detection #1036
+* Fixed a performance issue in Runner.py #1039
+* Changed the position of the linker flags #1025
+
+NEW IN WAF 1.6.7
+----------------
+
+* Provide more diagnostic for invalid build groups #914
+* Various enhancements to msvs.py
+* Read MSVC_VERSIONS and MSVC_TARGETS from the command-line
+* Minor cross-compiler detection fix on msvc.py
+* Fix the redirections with pipes (waf configure > log)
+* Do not display runnable_status exceptions when running with -k
+* Let -k stop at the first runnable_status error and -kk run even further
+* Merge the add_object extension in the main line (source='file.o')
+* Make update_outputs more robust with changes in the task definition #1017
+* Qt4 detection on Win32
+
+NEW IN WAF 1.6.6
+----------------
+
+* Fix the performance regression related to #974
+
+NEW IN WAF 1.6.5
+----------------
+
+* More documentation
+* Re-enable the colors for msys
+* Add the .ui files for the qt4 translations
+* Fix the conf.check_large_file() test
+* Fix the conf.check_library() in C++ mode #955
+* Improve the latex scanner to avoid depending on generated files #943
+* Remove the @file processing from the winrc tasks
+* Fix the python detection using python-config
+* Add the missing default includes and defines to the moc command
+* Improve support for hierarchical go-lang packages #953
+* Fix the gfortran verbose flag detection on Windows
+* Fix the support of fortran import libraries #950
+* Added a fix for running with Python 2.4 on Windows #949
+* Limited support for IronPython
+* Support for older Visual Studio versions (VC6) #952
+* New waf.bat file #964
+* New method ConfigSet.keys
+* New Visual Studio and Eclipse CTD project generators (waflib/extras)
+* New lru_cache tool for use with WAFCACHE (waflib/extras)
+
+NEW IN WAF 1.6.4
+----------------
+
+* Fix the Python detection on win32 #883
+* Optimize the Python file installation #892
+* Force +x permissions on installed fortran programs #893
+* Qt library detection fixes #895
+* Ensure that unit tests are executed only after the symlinks are created
+* Fix the precedence constraints for classes ending in _task #896
+* Support the install_path attribute with add_pcfile #913
+* Make the goprograms executable when installed #928
+* Allow non-python data files in the waf executable #927
+* Enforce a build order based on the scanner results #777, #922
+* Multiple msvc detection fixes #907 #910 #923 #924 #926
+* Fix the -of flag append with dmd #917
+* Boost detection fixes #920
+* Support newer javac compilers #921
+* Fix the execution on python 2.3 for: "waf update", msvc.py, fc.py
+* Improve the support for mac applications (demos/mac_app)
+* Better default regexps in "waf step"
+* New error check for tasks creating the same nodes or having the same identifiers (waf -v)
+* New variables conf.env.NO_LOCK_IN_TOP/OUT/RUN for special projects (top='..')
+* New example on avoiding rebuilds when moving a project (playground/relocate)
+* Improve go-lang support for cgo-packages (fixes #932)
+* Fix the progress bar on cmd and msys
+
+NEW IN WAF 1.6.3
+----------------
+
+* Fixed the interaction of Fortran configuration tests and WAFCACHE #842
+* Various documentation fixes
+* Set the PYTHONARCHDIR variable for installing python extensions
+* Fixed the Waf file creation with --zip-type=gz (bunzip2 was not replaced by gzip -d)
+* Fixed multiple problems in the call to TaskGen.declare_chain(...) #850
+* Fixed the task attribute 'vars' which might cause unnecessary rebuilds #852
+* Return the value of post_check(...) in conf.check(...) #857
+* Rewrite the boost tool (waflib/extras/boost.py) #814, #454, #424
+* More fortran file extensions: .for, .FOR #867
+* Searching above the root nodes no longer raise exceptions #868
+* Msvc detection fixes for non-utf8 encodings #873
+* Fixed the destdir processing on Windows #874
+* Stop changing the flags on waf -v (make the errors more visible) #875
+* Fixed the resource file compilation on Windows #876
+* Fixed the vala file installation #881
+* New system of plugins for C/C++/Fortran compilers (files named c_* in waflib/extras/)
+* New examples of interaction between Waf and existing makefiles (playground/)
+* New names for @before/@after: @before_method/@after_method
+
+NEW IN WAF 1.6.2
+----------------
+
+* Support for C# debugging files #797
+* Add -relocation-model=pic for shared libraries on ldc
+* Fixed 'waf dist' for tar files on python 3 #799
+* Make the latex scanner recursive #798
+* Enable the packing of non-python files in the waf file #802
+* Improve the feature sniffing for hybrid programs/libraries #800
+* New apidocs + tutorial in Sphinx format
+* Add the CPPFLAGS from os.environ #803
+* Create the java output directory anywhere #806
+* Enable the .luac file installation
+* Process Qt translation files
+* Detect when the folders were copied and prompt for "waf configure"
+* Parse_flags for the *-config outputs on windows (backslashes) #811
+* Fix the doxygen task build order + improve the dependency scanner #821
+* Various msvc fixes #819, #826, #825
+* Ported the batch executor to waf 1.6 (batched_cc)
+* New tools: erlang, scala
+* Moved conf.multicheck(..) from playground to the library
+* New parameter to avoid reading the same scripts: bld.recurse(dir, once=True)
+* Detect invalid method calls in 'waf -v' such as env.append/env.add/env.prepend
+* New manifest option for jar targets #832
+
+NEW IN WAF 1.6.1
+----------------
+
+* Fixed the method check_waf_version  #764
+* Fixed the name in ctx.recurse(name) #769
+* Stop caching the install tasks and tasks that have no outputs #770
+* Fix the log in Context.cmd_and_log() when calling with "quiet" #778
+* c_preproc exception when a file has the same name as a directory #777
+* 'intltool_po' does not install the .mo files #782
+* 'intltool_in' was broken #792
+* Bind stderr and stdout to the exception in Context.cmd_and_log #779
+* Tasks not rebuilding properly when the 'run' method changes #786
+* Print the progress bar information as late as possible #787
+* Fix for the FRAMEWORK value processing
+* Verbose mode should not require the compat15 tools #790
+* Let static libraries use other static libraries as in 1.5 #768
+* Fix for the boost tool #776
+* boost tool update (in playground) #780
+* Updated the java tool and examples
+* New gcj tool in playground
+* Update the c# tool and examples (playground) #796
+* Read external c# libraries #774
+* Xelatex support #785
+* Rebuild fortran files when .mod files change #766
+* docs #781
+* Improve the ant_glob behaviour on ctx.root + absolute paths
+* Fix for glib_mkenums and dbus-binding-tool #795
+* New feature 'subst' (see demos/subst)
+
+NEW IN WAF 1.6.0
+----------------
+
+General:
+* Python 3 syntax by default (runs unmodified for 2.6, 2.7, 3.0 and 3.1)
+* Environment -> ConfigSet
+* only lists are allowed in ConfigSet
+* Better Node apis
+* Utils.load_tool -> Context.load_tool
+* set_options becomes options
+* only the build-related commands require a configured project
+* new variant system + build context commands
+* removed the pseudo glob in installation methods
+* eliminate find_sources_in_dirs
+* node.__class__.bld → node.ctx
+* bld.new_task_gen(...) disappears, use bld(...)
+* network updates for waf tools
+* accept node objects in the source and includes attributes
+* remove task_gen.allnodes: modify self.source directly
+* merge the include system for c, c++, d, gas and nasm
+* allow top == out (no build directory)
+* merge the Tool/wscript system (detect->configure, set_options->options)
+* new command "waf list" to list the x for "waf build --targets=x"
+* rename apply_core -> process_source
+* rename apply_rule -> process_rule
+* rename Task.TaskBase.classes -> Task.classes
+* the modules Utils.py and Logs.py are now independent from the rest of waf (imports)
+* remove Task.TaskManager and Build.BuildContext.all_task_gen to improve the build group handling
+* remove program_USELIB, shlib_USELIB staticlib_USELIB support
+* use tasks for target installation
+* improve the exception handling (WscriptError was removed, use WafError)
+* let the commands access node objects
+* infer the build directory from the lock filename
+* waf step --file=main.c
+* post task generators in a lazy manner
+
+preview 3:
+* remove the /W3 flag from msvc default flags
+* opt.tool_options -> opt.load (now all commands inherit the 'tool' method)
+* conf.check_tool -> conf.load
+* do not copy files when creating tar files in 'waf dist'
+* add zip files in 'waf dist'
+* fix the behaviour of 'waf distcheck'
+* preprocessor optimizations
+* python 2 fixes
+
+release candidate:
+* cache fixes
+* fortran fixes
+* python 2 and 3 fixes
+* docs and docstrings
+* support for custom waf files and preludes
+* fix in waflib.Context for overriding command classes
+* port the doxygen tool
+* Utils.to_hashtable -> Utils.str2dict
+* change the thread pool to enable thread pool sharing
+* fixed a regression on win32 + ansiterm.py + python 3 -> thanks to kesselhaus :-)
+* various msvc fixes (thanks to Nicolas Mercier)
+

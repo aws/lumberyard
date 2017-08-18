@@ -1,0 +1,118 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    # Defines not only the Gem build, but a static library build as well. Gems that use
+    # this Gem must use = ['CloudGemFrameworkStaticLibrary'] in their wscript files.
+
+    import lumberyard_sdks
+
+        
+    static_lib_file_list = []
+    static_lib_use = ['rapidjson', 'AzCore', 'AzTest']
+    static_lib_features = []
+    static_lib_uselib = []
+    static_lib_darwin_lib = []
+    static_lib_linux_lib = []
+    static_lib_ios_lib = []
+    static_lib_appletv_lib = []
+    static_lib_ios_framework = []
+    static_lib_appletv_framework = []
+    static_lib_durango_lib = []
+    static_lib_shared = []
+
+    gem_file_list = []
+    if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+        gem_file_list.append('gem.waf_files')
+    else:
+        gem_file_list.append('lmbraws_unsupported.waf_files')
+        
+    gem_test_all_file_list = []
+    gem_test_uselib = []
+    gem_darwin_lib = []
+    gem_linux_lib = []
+    gem_ios_lib = []
+    gem_appletv_lib = []
+    gem_ios_framework = []
+    gem_appletv_framework = []
+    gem_durango_lib = []
+
+    if lumberyard_sdks.should_project_include_aws_native_sdk(bld):
+        static_lib_file_list += ['static_library.waf_files']
+        gem_test_all_file_list += ['gem_test_all.waf_files']
+    else:
+        static_lib_file_list += ['static_library_empty.waf_files']
+
+    if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+        static_lib_uselib += ['AWS_CPP_SDK_ALL']
+        static_lib_shared += ['awsgem.json']
+
+        gem_test_uselib += ['AWS_CPP_SDK_LAMBDA']
+        gem_darwin_lib += ['curl']
+        gem_linux_lib += ['curl']
+        gem_ios_lib += ['curl']
+        gem_appletv_lib += ['curl']
+        gem_ios_framework += [ 'security' ]
+        gem_appletv_framework += [ 'security' ]
+        gem_durango_lib += ['msxml6']
+
+    bld.CryEngineStaticLibrary(
+
+        target = 'CloudGemFrameworkStaticLibrary',
+
+        platforms = ['all'],
+        configurations = ['all'],
+
+        file_list = static_lib_file_list,
+
+        includes = ['Include', 'Source', bld.Path('Code/SDKs/AWSNativeSDK/include')],
+        use = static_lib_use,
+        features = static_lib_features,
+        uselib = static_lib_uselib,
+        darwin_lib = static_lib_darwin_lib,
+        linux_lib = static_lib_linux_lib,
+        ios_lib = static_lib_ios_lib,
+        appletv_lib = static_lib_appletv_lib,
+        ios_framework = static_lib_ios_framework,
+        appletv_framework = static_lib_appletv_framework,
+       
+        shared_settings = static_lib_shared,
+
+        vs_filter       = 'Gems',
+        disable_pch     = True,
+
+        export_includes = ['Include'] # the gem's includes
+
+    )
+
+    bld.DefineGem(
+
+        file_list = gem_file_list,
+        test_all_file_list = gem_test_all_file_list,
+        platforms = ['all'],
+        includes = [bld.Path('Code/SDKs/AWSNativeSDK/include'), bld.Path('Code/CryEngine/LmbrAWS')],
+
+        use = ['CloudGemFrameworkStaticLibrary', 'LmbrAWS'],
+        uselib = ['AWS_CPP_SDK_CORE'],
+        test_all_uselib = gem_test_uselib,
+
+        darwin_lib = gem_darwin_lib,
+        linux_lib = gem_linux_lib,
+        ios_lib = gem_ios_lib,
+        appletv_lib = gem_appletv_lib,
+        ios_framework = gem_ios_framework,
+        appletv_framework = gem_appletv_framework,
+       
+        android_armv7_clang_uselib= ["AWS_CPP_SDK_ANDROID_DEPENDENCIES"],
+        android_armv7_clang_features= ["find_android_api_libs"],
+    )

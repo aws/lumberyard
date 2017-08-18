@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "std/parallel/internal":
+        [
+            "parallel/internal/conditional_variable_win.h",
+            "parallel/internal/mutex_win.h",
+            "parallel/internal/semaphore_win.h",
+            "parallel/internal/thread_win.cpp",
+            "parallel/internal/thread_win.h"
+        ]
+    }
+}

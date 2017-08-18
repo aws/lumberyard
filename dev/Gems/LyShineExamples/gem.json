@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "c7935ecf5e8047fe8ca947b34b11cadb",
+    "Name": "LyShineExamples",
+    "DisplayName": "LyShineExamples",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides example code for using LyShine.",
+    "Tags": ["UI", "LyShine", "Example"],
+    "IconPath": "preview.png"
+}

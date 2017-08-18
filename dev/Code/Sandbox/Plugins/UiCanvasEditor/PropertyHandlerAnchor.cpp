@@ -1,0 +1,341 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include "stdafx.h"
+#include "EditorCommon.h"
+
+#include "PropertyHandlerAnchor.h"
+
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
+#include <QtWidgets/QWidget>
+
+#include "AnchorPresets.h"
+#include "AnchorPresetsWidget.h"
+
+PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
+    : QWidget(parent)
+    , m_common(4, 1)
+    , m_propertyVectorCtrl(m_common.ConstructGUI(this))
+    , m_anchorPresetsWidget(nullptr)
+    , m_disabledLabel(nullptr)
+    , m_isReadOnly(false)
+{
+    QHBoxLayout* layout = new QHBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    // Add Preset buttons.
+    {
+        AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
+        AZ::Vector4 controlValue(elements[0]->GetValue(), elements[1]->GetValue(), elements[2]->GetValue(), elements[3]->GetValue());
+
+        m_anchorPresetsWidget = new AnchorPresetsWidget(AnchorPresets::AnchorToPresetIndex(controlValue),
+                [this](int presetIndex)
+                {
+                    AZ::Vector4 presetValues = AnchorPresets::PresetIndexToAnchor(presetIndex) * 100.0f;
+                    m_propertyVectorCtrl->setValuebyIndex(presetValues.GetX(), 0);
+                    m_propertyVectorCtrl->setValuebyIndex(presetValues.GetY(), 1);
+                    m_propertyVectorCtrl->setValuebyIndex(presetValues.GetZ(), 2);
+                    m_propertyVectorCtrl->setValuebyIndex(presetValues.GetW(), 3);
+
+                    EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
+                },
+                this);
+
+        layout->addWidget(m_anchorPresetsWidget);
+    }
+
+    // Vector ctrl.
+    {
+        m_propertyVectorCtrl->setLabel(0, "Left");
+        m_propertyVectorCtrl->setLabel(1, "Top");
+        m_propertyVectorCtrl->setLabel(2, "Right");
+        m_propertyVectorCtrl->setLabel(3, "Bottom");
+
+        QObject::connect(m_propertyVectorCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]()
+            {
+                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
+            });
+
+        m_propertyVectorCtrl->setMinimum(-std::numeric_limits<float>::max());
+        m_propertyVectorCtrl->setMaximum(std::numeric_limits<float>::max());
+
+        layout->addWidget(m_propertyVectorCtrl);
+    }
+
+    // Disabled label (used when the property is read-only)
+    // This is a special feature of the anchor property - it is used to display a message
+    // when the transform is disabled.
+    {
+        m_disabledLabel = new QLabel(this);
+        m_disabledLabel->setText("Anchors and Offsets are\ncontrolled by parent");
+        m_disabledLabel->setVisible(false);
+        layout->addWidget(m_disabledLabel);
+    }
+}
+
+void PropertyAnchorCtrl::ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+{
+    m_common.ConsumeAttributes(GetPropertyVectorCtrl(), attrib, attrValue, debugName);
+
+    if (attrib == AZ_CRC("ReadOnly", 0x3c5ecbf8))
+    {
+        bool value;
+        if (attrValue->Read<bool>(value))
+        {
+            if (value)
+            {
+                // the property is disabled so hide the normal widgets and show the disabled widget
+                m_anchorPresetsWidget->setVisible(false);
+                m_propertyVectorCtrl->setVisible(false);
+                m_disabledLabel->setVisible(true);
+                m_isReadOnly = true;
+            }
+        }
+        else
+        {
+            // emit a warning!
+            AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into string box", debugName);
+        }
+        return;
+    }
+}
+
+AnchorPresetsWidget* PropertyAnchorCtrl::GetAnchorPresetsWidget()
+{
+    return m_anchorPresetsWidget;
+}
+
+AzToolsFramework::PropertyVectorCtrl* PropertyAnchorCtrl::GetPropertyVectorCtrl()
+{
+    return m_propertyVectorCtrl;
+}
+
+//-------------------------------------------------------------------------------
+
+QWidget* PropertyHandlerAnchor::CreateGUI(QWidget* pParent)
+{
+    return aznew PropertyAnchorCtrl(pParent);
+}
+
+void PropertyHandlerAnchor::ConsumeAttribute(PropertyAnchorCtrl* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+{
+    GUI->ConsumeAttribute(attrib, attrValue, debugName);
+}
+
+void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnchorCtrl* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
+{
+    AzToolsFramework::VectorElement** elements = GUI->GetPropertyVectorCtrl()->getElements();
+
+    AZ::EntityId entityId = GetParentEntityId(node, index);
+
+    // Check if this element is being controlled by its parent
+    bool isControlledByParent = false;
+    AZ::Entity* parentElement = nullptr;
+    EBUS_EVENT_ID_RESULT(parentElement, entityId, UiElementBus, GetParent);
+    if (parentElement)
+    {
+        EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, entityId);
+    }
+
+    if (isControlledByParent)
+    {
+        return;
+    }
+
+    // Check if an anchor preset has been selected
+    bool presetSelected = true;
+    for (int idx = 0; idx < GUI->GetPropertyVectorCtrl()->getSize(); ++idx)
+    {
+        if (elements[idx]->WasValueEditedByUser())
+        {
+            presetSelected = false;
+            break;
+        }
+    }
+
+    // IMPORTANT: This will indirectly update "instance".
+
+    if (presetSelected)
+    {
+        // Update anchors and adjust pivot and offsets based on the selected preset
+
+        UiTransform2dInterface::Anchors newAnchors(elements[0]->GetValue() / 100.0f,
+            elements[1]->GetValue() / 100.0f,
+            elements[2]->GetValue() / 100.0f,
+            elements[3]->GetValue() / 100.0f);
+
+        // Old width is preserved if new anchor left equals right, old height is preserved if new anchor top equals bottom
+        float width = -1.0f;
+        float height = -1.0f;
+        if ((newAnchors.m_left == newAnchors.m_right) || (newAnchors.m_top == newAnchors.m_bottom))
+        {
+            bool bNeedWidth = (newAnchors.m_left == newAnchors.m_right);
+            bool bNeedHeight = (newAnchors.m_top == newAnchors.m_bottom);
+
+            UiTransform2dInterface::Anchors oldAnchors;
+            EBUS_EVENT_ID_RESULT(oldAnchors, entityId, UiTransform2dBus, GetAnchors);
+
+            UiTransform2dInterface::Offsets oldOffsets;
+            EBUS_EVENT_ID_RESULT(oldOffsets, entityId, UiTransform2dBus, GetOffsets);
+
+            // Calculate width/height from offsets if anchors are the same
+            if (bNeedWidth && (oldAnchors.m_left == oldAnchors.m_right))
+            {
+                width = oldOffsets.m_right - oldOffsets.m_left;
+            }
+            if (bNeedHeight && (oldAnchors.m_top == oldAnchors.m_bottom))
+            {
+                height = oldOffsets.m_bottom - oldOffsets.m_top;
+            }
+
+            if ((bNeedWidth && width < 0.0f) || (bNeedHeight && height < 0.0f))
+            {
+                // Calculate width/height from element rect in canvas space
+                UiTransformInterface::RectPoints elemRect;
+                EBUS_EVENT_ID(entityId, UiTransformBus, GetCanvasSpacePointsNoScaleRotate, elemRect);
+                AZ::Vector2 size = elemRect.GetAxisAlignedSize();
+                if (width < 0.0f)
+                {
+                    width = size.GetX();
+                }
+                if (height < 0.0f)
+                {
+                    height = size.GetY();
+                }
+            }
+        }
+
+        // Set anchors to the selected preset values
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetAnchors, newAnchors, false, false);
+
+        // Adjust pivot
+        AZ::Vector2 currentPivot;
+        currentPivot.SetX((newAnchors.m_left == newAnchors.m_right) ? newAnchors.m_left : 0.5f);
+        currentPivot.SetY((newAnchors.m_top == newAnchors.m_bottom) ? newAnchors.m_top : 0.5f);
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetPivotAndAdjustOffsets, currentPivot);
+
+        // Adjust offsets
+        UiTransform2dInterface::Offsets newOffsets;
+        if (newAnchors.m_left == newAnchors.m_right)
+        {
+            newOffsets.m_left = -currentPivot.GetX() * width;
+            newOffsets.m_right = newOffsets.m_left + width;
+        }
+        else
+        {
+            newOffsets.m_left = 0.0f;
+            newOffsets.m_right = 0.0f;
+        }
+
+        if (newAnchors.m_top == newAnchors.m_bottom)
+        {
+            newOffsets.m_top = -currentPivot.GetY() * height;
+            newOffsets.m_bottom = newOffsets.m_top + height;
+        }
+        else
+        {
+            newOffsets.m_top = 0.0f;
+            newOffsets.m_bottom = 0.0f;
+        }
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetOffsets, newOffsets);
+    }
+    else
+    {
+        UiTransform2dInterface::Anchors newAnchors = instance;
+
+        if (elements[0]->WasValueEditedByUser())
+        {
+            newAnchors.m_left = elements[0]->GetValue() / 100.0f;
+        }
+        if (elements[1]->WasValueEditedByUser())
+        {
+            newAnchors.m_top = elements[1]->GetValue() / 100.0;
+        }
+        if (elements[2]->WasValueEditedByUser())
+        {
+            newAnchors.m_right = elements[2]->GetValue() / 100.0;
+        }
+        if (elements[3]->WasValueEditedByUser())
+        {
+            newAnchors.m_bottom = elements[3]->GetValue() / 100.0;
+        }
+
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetAnchors, newAnchors, false, true);
+    }
+}
+
+bool PropertyHandlerAnchor::ReadValuesIntoGUI(size_t index, PropertyAnchorCtrl* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
+{
+    (int)index;
+
+    AzToolsFramework::PropertyVectorCtrl* ctrl = GUI->GetPropertyVectorCtrl();
+
+    ctrl->blockSignals(true);
+    {
+        ctrl->setValuebyIndex(instance.m_left * 100.0f, 0);
+        ctrl->setValuebyIndex(instance.m_top * 100.0f, 1);
+        ctrl->setValuebyIndex(instance.m_right * 100.0f, 2);
+        ctrl->setValuebyIndex(instance.m_bottom * 100.0f, 3);
+    }
+    ctrl->blockSignals(false);
+
+    GUI->GetAnchorPresetsWidget()->SetPresetSelection(AnchorPresets::AnchorToPresetIndex(AZ::Vector4(instance.m_left, instance.m_top, instance.m_right, instance.m_bottom)));
+
+    return false;
+}
+
+bool PropertyHandlerAnchor::ModifyTooltip(QWidget* widget, QString& toolTipString)
+{
+    // We are using the Anchor property handler as a way to display a message when
+    // the transform for an element is disabled. In this case we also want to change the
+    // tooltip so that it is not specifically about anchors but is about why the
+    // transform component properties are hidden.
+    PropertyAnchorCtrl* propertyControl = qobject_cast<PropertyAnchorCtrl*>(widget);
+    AZ_Assert(propertyControl, "Invalid class cast - this is not the right kind of widget!");
+    if (propertyControl)
+    {
+        if (propertyControl->IsReadOnly())
+        {
+            toolTipString = "Anchor and Offset properties are not shown because the parent element\n"
+                "has a component that is controlling this element's transform.";
+        }
+        return true;
+    }
+    return false;
+}
+
+AZ::EntityId PropertyHandlerAnchor::GetParentEntityId(AzToolsFramework::InstanceDataNode* node, size_t index)
+{
+    while (node)
+    {
+        if ((node->GetClassMetadata()) && (node->GetClassMetadata()->m_azRtti))
+        {
+            if (node->GetClassMetadata()->m_azRtti->IsTypeOf(AZ::Component::RTTI_Type()))
+            {
+                return static_cast<AZ::Component*>(node->GetInstance(index))->GetEntityId();
+            }
+        }
+
+        node = node->GetParent();
+    }
+
+    return AZ::EntityId();
+}
+
+void PropertyHandlerAnchor::Register()
+{
+    EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew PropertyHandlerAnchor());
+}
+
+#include <PropertyHandlerAnchor.moc>

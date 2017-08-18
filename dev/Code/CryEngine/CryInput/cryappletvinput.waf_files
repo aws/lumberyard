@@ -1,0 +1,10 @@
+{
+    "none":
+    {
+        "AppleTV":
+        [
+            "AppleTVInput.cpp",
+            "AppleTVInput.h"
+        ]
+    }
+}

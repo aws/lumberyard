@@ -1,0 +1,41 @@
+{
+    "name": "osvr_static",
+    "source": "@ROOT@/Code/SDKs/OSVR",
+    "description": "Open Source VR SDK that supports a variety of VR headsets from Razer, Sensics and Vuzix",
+    "aliases": {
+        "lib_names": [
+            "osvrClient",
+            "osvrClientKit",
+            "osvrCommon",
+            "osvrConnection",
+            "osvrJointClientKit",
+            "osvrUtil",
+            "osvrRenderManager"
+        ]
+    },
+    "includes": [
+        "include"
+    ],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "importlibpath": [
+                "lib"
+            ],
+            "sharedlibpath": [
+                "bin"
+            ],
+            "import": [
+                "${lib_names}.lib"
+            ],
+            "shared": [
+                "${lib_names}.dll",
+                "glew32.dll",
+                "SDL2.dll",
+                "msvcp120.dll",
+                "msvcr120.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013"
+    }
+}

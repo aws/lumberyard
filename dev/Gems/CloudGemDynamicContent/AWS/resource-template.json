@@ -1,0 +1,252 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+
+    "Parameters": {
+    
+        "CloudCanvasStack": {
+            "Type": "String",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Default": "ResourceGroup"
+        },
+        
+        "DeploymentStackArn": {
+            "Type": "String",
+            "Description": "ARN of the deployment stack that owns this resource group stack."
+        },
+        
+        "DeploymentName": {
+            "Type": "String",
+            "Description": "Name of the resource group's deployment."
+        },
+        
+        "ResourceGroupName": {
+            "Type": "String",
+            "Description": "Name of the resource group."
+        },
+        
+        "ProjectResourceHandler": {
+            "Type": "String",
+            "Description": "Service token of the custom resource handler."
+        },
+
+        "ConfigurationBucket": {
+            "Type": "String",
+            "Description": "Bucket that contains configuration data."
+        },
+
+        "ConfigurationKey": {
+            "Type": "String",
+            "Description": "Location in the configuration bucket of configuration data."
+        },
+
+        "ReadCapacityUnits": {
+            "Description": "Provisioned read throughput",
+            "Type": "Number",
+            "Default": "5",
+            "MinValue": "1",
+            "MaxValue": "10000",
+            "ConstraintDescription": "must be between 1 and 10000"
+        },
+
+        "WriteCapacityUnits": {
+            "Description": "Provisioned write throughput",
+            "Type": "Number",
+            "Default": "2",
+            "MinValue": "1",
+            "MaxValue": "10000",
+            "ConstraintDescription": "must be between 1 and 10000"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5", 
+            "Type": "String", 
+            "Description": "Indicates whether cache clustering is enabled for the service API."
+        }, 
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false", 
+            "Type": "String", 
+            "Description": "Indicates whether cache clustering is enabled for the service API."
+        }
+    },
+
+    "Resources": {
+        "AccessControl": {
+            "Type": "Custom::AccessControl",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" }
+            },
+            "DependsOn": [ "ServiceLambda", "ServiceApi", "ContentBucket", "StagingSettingsTable" ]
+        },
+        "ServiceLambda": {
+            "Type": "AWS::Lambda::Function", 
+            "Properties": {
+                "Handler": "service.dispatch", 
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 15
+            }, 
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "ServiceApi",
+                        "Action": "lambda:InvokeFunction"
+                    }
+                }
+            }
+        },
+        "ContentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": { },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["s3:GetObject", "s3:DeleteObject"],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["s3:ListBucket"],
+                            "ResourceSuffix": ""
+                        }                      
+                    ]
+                }
+            }
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/POST/client/content"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                }, 
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "MethodSettings": {}, 
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda", 
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "StagingSettingsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "FileName",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "FileName",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": { "Ref": "ReadCapacityUnits" },
+                    "WriteCapacityUnits": { "Ref": "WriteCapacityUnits" }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["dynamodb:GetItem", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem"]
+                        } 
+                    ]
+                }
+            }
+        },
+        "ServiceLambdaConfiguration": {
+            "Type": "Custom::LambdaConfiguration", 
+            "Properties": {
+                "FunctionName": "ServiceLambda", 
+                "Settings": {}, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "Runtime": "python2.7",                
+                "Settings": {
+                    "StagingTable": { "Ref": "StagingSettingsTable" },
+                    "StagingBucket": { "Ref": "ContentBucket" }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi", 
+                    "Url"
+                ]
+            }
+        }
+    } 
+}

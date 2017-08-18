@@ -1,0 +1,14 @@
+{
+    "description"           : "Configuration to build host tools",
+    "visual_studio_name"    : "Host Tools",
+    "comment"               : "This is meant to only compile tools on host development platforms.",
+    "disable_game_projects" : true,
+    "platforms" : ["win","darwin","linux"],
+    "configurations" : ["debug", "profile"],
+
+    "modules" :
+    [
+        "AzCodeGenerator",
+        "crcfix"
+    ]
+}

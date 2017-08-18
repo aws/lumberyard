@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/Panels/Vegetation">
+        <file alias="row1-column0.png">res/panel_vegetation_2-00.png</file>
+        <file alias="row1-column1.png">res/panel_vegetation_2-01.png</file>
+        <file alias="row1-column2.png">res/panel_vegetation_2-02.png</file>
+        <file alias="row1-column3.png">res/panel_vegetation_2-03.png</file>
+        <file alias="row1-column4.png">res/panel_vegetation_2-04.png</file>
+        <file alias="row1-column5.png">res/panel_vegetation_2-05.png</file>
+        <file alias="row0-column0.png">res/panel_vegetation-00.png</file>
+        <file alias="row0-column1.png">res/panel_vegetation-01.png</file>
+        <file alias="row0-column2.png">res/panel_vegetation-02.png</file>
+        <file alias="row0-column3.png">res/panel_vegetation-03.png</file>
+        <file alias="row0-column4.png">res/panel_vegetation-04.png</file>
+        <file alias="row0-column5.png">res/panel_vegetation-05.png</file>
+    </qresource>
+</RCC>

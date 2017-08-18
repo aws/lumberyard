@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Source/Tests/CloudGemSamplesTests.cpp"
+        ]
+    }
+}

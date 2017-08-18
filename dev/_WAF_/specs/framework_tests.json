@@ -1,0 +1,19 @@
+{
+    "description"           : "Configuration to build AZ Core and Framework Tests",
+    "visual_studio_name"    : "FrameworkTests",
+    "disable_game_projects" : true,
+    "platforms" : ["win", "darwin", "linux"],
+    "configurations" :
+    [
+        "debug_test",
+        "profile_test"
+    ],
+    "modules" :
+    [
+        "AzCoreTests",
+        "AzCoreTestDLL",
+        "GridMateTests",
+        "FrameworkTests",
+        "AzTestRunner"
+    ]
+}

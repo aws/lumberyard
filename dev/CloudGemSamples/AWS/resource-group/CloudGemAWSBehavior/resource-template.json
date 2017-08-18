@@ -1,0 +1,138 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AWSBehaviorLambdaExample": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "lambda:InvokeFunction"
+                    }
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AWSBehaviorLambdaExampleConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AWSBehaviorLambdaExampleConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "main.AWSBehaviorLambdaExample",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AWSBehaviorLambdaExampleConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AWSBehaviorLambdaExampleConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 10
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "AWSBehaviorLambdaExampleConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "AWSBehaviorLambdaExample",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "AccessControl": {
+            "DependsOn": [
+                "s3nodeexamples",
+                "AWSBehaviorLambdaExampleConfiguration",
+                "AWSBehaviorLambdaExample"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "s3nodeexamples": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+            },
+            "Type": "AWS::S3::Bucket"
+        }
+    }
+}

@@ -1,0 +1,50 @@
+WHAT YOU WILL FIND HERE
+-----------------------
+
+Waf (1.7)
+
+For the manual: http://docs.waf.googlecode.com/git/book_16/single.html
+For the api docs: http://docs.waf.googlecode.com/git/apidocs_16/index.html
+For the examples: see the folder demos/
+
+HOW TO CREATE THE WAF SCRIPT
+----------------------------
+
+Python 2.6, 2.7, 3.0, 3.1 or 3.2 is required to generate the waf script. Execute:
+$ ./waf-light configure build
+Or, if you have several python versions installed:
+$ python3 ./waf-light configure build
+
+The Waf tools in waflib/extras are not added to the waf script. To add
+some of them, use the --tools switch:
+$ ./waf-light --tools=compat15,swig
+
+To add a tool that does not exist in the folder extras, pass an absolute path, and
+to customize the initialization, pass the parameter 'prelude'. Here is for example
+how to create a waf file using the compat15 module:
+$ ./waf-light --tools=compat15 --prelude=$'\tfrom waflib.extras import compat15\n'
+
+Any kind of initialization is possible, though one may prefer the build system kit (folder build_system_kit):
+$ ./waf-light --make-waf --tools=compat15,/comp/waf/aba.py --prelude=$'\tfrom waflib.extras import compat15\n\tprint("ok")'
+
+HOW TO TRY THE EXAMPLES
+-----------------------
+
+Try this:
+$ cp waf demos/c/
+$ cd demos/c/
+$ ./waf configure build
+
+USING GIT
+---------
+
+$ git clone https://code.google.com/p/waf/
+set $HOME/.netrc to read:
+machine code.google.com login user@gmail.com password pass
+$ git remote add code https://code.google.com/p/waf.docs/
+... make a few changes
+$ git push code
+
+---------------------------
+Thomas Nagy, 2013 (ita)
+

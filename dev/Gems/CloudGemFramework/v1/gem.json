@@ -1,0 +1,20 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "6fc787a982184217a5a553ca24676cfa",
+    "Name": "CloudGemFramework",
+    "DisplayName": "Cloud Gem Framework",
+    "Version": "1.0.0",
+    "LinkType": "Dynamic",
+    "Summary": "Tools and APIs for building AWS connected Gems.",
+    "Tags": ["AWS", "API", "Cloud", "Canvas", "CloudCanvas", "Connected", "Tool"],
+    "IconPath": "CloudGemFramework.png",
+    "Dependencies": [
+        {
+            "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ]
+}

@@ -1,0 +1,12 @@
+{
+   "ResourceCompilerSlice_uber_0.cpp":
+   {
+        "Source Files":
+        [
+            "ResourceCompilerSlice.cpp",
+            "../ResourceCompiler/IConfig.cpp",
+  
+            "stdafx.h"
+        ]
+    }
+}

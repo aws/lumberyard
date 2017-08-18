@@ -1,0 +1,11 @@
+{
+    "none": {
+        "Include": [
+            "Include/GameLift/GameLiftBus.h"
+        ],
+        "Source": [
+            "Source/GameLiftModule.h",
+            "Source/GameLiftModule.cpp"
+        ]
+    }
+}

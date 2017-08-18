@@ -1,0 +1,23 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"main.cpp",
+			"StdAfx.cpp",
+			"StdAfx.h"
+		]
+	},
+	"EditorModularBehaviorTree_Uber.cpp":
+	{
+		"Editor":
+		[
+			"MainWindow.h",
+			"MainWindow.cpp",
+			"TreePanel.h",
+			"TreePanel.cpp",
+			"BehaviorTreeDocument.h",
+			"BehaviorTreeDocument.cpp"
+		]
+	}
+}

@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CTransitionBrowser</class>
+ <widget class="QWidget" name="CTransitionBrowser">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>343</width>
+    <height>512</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="STATIC">
+       <property name="text">
+        <string>Context:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="CONTEXT">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Transition from:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3" colspan="2">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Transition to:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLineEdit" name="FILTER_FRAGMENTS_FROM">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_LHS">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/mann_folder.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QToolButton" name="SWAP_FRAGMENT_FILTER">
+       <property name="toolTip">
+        <string>Swap Fragment Filters</string>
+       </property>
+       <property name="text">
+        <string>&lt;-&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_RHS">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/mann_folder.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
+      <widget class="QLineEdit" name="FILTER_FRAGMENTS_TO">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLineEdit" name="FILTER_TAGS_FROM">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_LHS_2">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/mann_tag.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QToolButton" name="SWAP_TAG_FILTER">
+       <property name="toolTip">
+        <string>Swap Tag Filters</string>
+       </property>
+       <property name="text">
+        <string>&lt;-&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_RHS_2">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/mann_tag.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="4">
+      <widget class="QLineEdit" name="FILTER_TAGS_TO">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLineEdit" name="FILTER_ANIM_CLIP_FROM">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_LHS_3">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/animation.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QToolButton" name="SWAP_ANIM_CLIP_FILTER">
+       <property name="toolTip">
+        <string>Swap Anim Clip Filters</string>
+       </property>
+       <property name="text">
+        <string>&lt;-&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="3">
+      <widget class="QLabel" name="FRAGMENT_FILTER_ICON_RHS_3">
+       <property name="pixmap">
+        <pixmap resource="../mannequindialog.qrc">:/FragmentBrowser/Controls/animation.png</pixmap>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="4">
+      <widget class="QLineEdit" name="FILTER_ANIM_CLIP_TO">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="CTransitionBrowserTreeCtrl" name="treeWidget">
+     <property name="columnCount">
+      <number>2</number>
+     </property>
+     <attribute name="headerVisible">
+      <bool>false</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string notr="true">1</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string notr="true">2</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="NEW">
+       <property name="toolTip">
+        <string>New Transition</string>
+       </property>
+       <property name="text">
+        <string>New...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../mannequindialog.qrc">
+         <normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_05.png</normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_05.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="BLEND_OPEN">
+       <property name="toolTip">
+        <string>Open Transition in Transition Editor</string>
+       </property>
+       <property name="text">
+        <string>Open</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="EDIT">
+       <property name="toolTip">
+        <string>Edit Transition</string>
+       </property>
+       <property name="text">
+        <string>Edit...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../mannequindialog.qrc">
+         <normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_06.png</normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_06.png</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QPushButton" name="COPY">
+       <property name="toolTip">
+        <string>Copy Transition</string>
+       </property>
+       <property name="text">
+        <string>Copy</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="DELETEBTN">
+       <property name="toolTip">
+        <string>Delete Transition</string>
+       </property>
+       <property name="text">
+        <string>Delete...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../mannequindialog.qrc">
+         <normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_07.png</normaloff>:/FragmentBrowser/Controls/mann_tagdef_toolbar_07.png</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CTransitionBrowserTreeCtrl</class>
+   <extends>QTreeWidget</extends>
+   <header>Mannequin/Controls/TransitionBrowser.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../mannequindialog.qrc"/>
+ </resources>
+ <connections/>
+</ui>

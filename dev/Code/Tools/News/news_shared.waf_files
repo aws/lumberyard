@@ -1,0 +1,47 @@
+{
+    "none": {
+        "Root": [
+            "NewsShared/LogType.h",
+            "NewsShared/ErrorCodes.h"
+        ],
+        "Qt": [
+            "NewsShared/Qt/ArticleErrorView.cpp",
+            "NewsShared/Qt/ArticleErrorView.h",
+            "NewsShared/Qt/ArticleErrorView.ui",
+            "NewsShared/Qt/ArticleView.cpp",
+            "NewsShared/Qt/ArticleView.h",
+            "NewsShared/Qt/ArticleView.ui",
+            "NewsShared/Qt/PinnedArticleView.ui",
+            "NewsShared/Qt/ArticleViewContainer.cpp",
+            "NewsShared/Qt/ArticleViewContainer.h",
+            "NewsShared/Qt/ArticleViewContainer.ui",
+            "NewsShared/Qt/QBetterLabel.cpp",
+            "NewsShared/Qt/QBetterLabel.h",
+            "NewsShared/Qt/QBetterScrollArea.cpp",
+            "NewsShared/Qt/QBetterScrollArea.h",
+            "NewsShared/Qt/KeepInTouchView.cpp",
+            "NewsShared/Qt/KeepInTouchView.h",
+            "NewsShared/Qt/KeepInTouchView.ui",
+            "NewsShared/Qt/NewsShared.qrc"
+        ],
+        "ResourceManagement": [
+            "NewsShared/ResourceManagement/ArticleDescriptor.cpp",
+            "NewsShared/ResourceManagement/ArticleDescriptor.h",
+            "NewsShared/ResourceManagement/Descriptor.cpp",
+            "NewsShared/ResourceManagement/Descriptor.h",
+            "NewsShared/ResourceManagement/JsonDescriptor.cpp",
+            "NewsShared/ResourceManagement/JsonDescriptor.h",
+            "NewsShared/ResourceManagement/QtDownloader.cpp",
+            "NewsShared/ResourceManagement/QtDownloader.h",
+            "NewsShared/ResourceManagement/QtDownloadManager.cpp",
+            "NewsShared/ResourceManagement/QtDownloadManager.h",
+            "NewsShared/ResourceManagement/Resource.cpp",
+            "NewsShared/ResourceManagement/Resource.h",
+            "NewsShared/ResourceManagement/ResourceManifest.cpp",
+            "NewsShared/ResourceManagement/ResourceManifest.h"
+        ],
+        "Resources": [
+            "NewsShared/Resources/ErrorImage.jpg"
+        ]
+    }
+}

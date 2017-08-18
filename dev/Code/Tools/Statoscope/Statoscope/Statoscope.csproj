@@ -1,0 +1,616 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{F88E847E-001C-4FAF-8E52-6392CE99D1FA}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Statoscope</RootNamespace>
+    <AssemblyName>Statoscope</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>
+    </SccProvider>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <ApplicationIcon>Resources\Statoscope.ico</ApplicationIcon>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateSerializationAssemblies>On</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>..\..\..\..\Tools\Statoscope\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateSerializationAssemblies>On</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="csgl-opengl, Version=1.0.0.0, Culture=neutral, PublicKeyToken=acf932b7322eec2d">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>.\csgl-opengl.dll</HintPath>
+    </Reference>
+    <Reference Include="Dia2Lib, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>.\Dia2Lib.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.ORTMAPILib, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>.\Interop.ORTMAPILib.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="PresentationFramework">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Runtime.Serialization">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.ServiceModel">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UIAutomationProvider">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsFormsIntegration">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AAOpenGLControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="BarVertex.cs" />
+    <Compile Include="BinaryLogDataStream.cs" />
+    <Compile Include="BinaryLogParser.cs" />
+    <Compile Include="BucketListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Buckets.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CanvasControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Confluence.cs" />
+    <Compile Include="ConfluenceLoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConfluenceLoginForm.Designer.cs">
+      <DependentUpon>ConfluenceLoginForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ConfluenceUploadForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConfluenceUploadForm.Designer.cs">
+      <DependentUpon>ConfluenceUploadForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ConnectionErrorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConnectionErrorDialog.Designer.cs">
+      <DependentUpon>ConnectionErrorDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ConnectMessageBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConnectMessageBox.designer.cs">
+      <DependentUpon>ConnectMessageBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="COpenGLGraphingControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CTVControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CTVControl.Designer.cs">
+      <DependentUpon>CTVControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CTVControlPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CTVControlPanel.Designer.cs">
+      <DependentUpon>CTVControlPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EditableRDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="NumericUpDownEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ImageProcessor.cs" />
+    <Compile Include="RDIInfoControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SignedDifferenceThresholdZRDI.cs" />
+    <Compile Include="StdThresholdZRDI.cs" />
+    <Compile Include="ThresholdZRDI.cs" />
+    <Compile Include="UserMarkerZRDI.cs" />
+    <Compile Include="ZoneHighlighterCTVControlPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ZoneHighlighterCTVControlPanel.Designer.cs">
+      <DependentUpon>ZoneHighlighterCTVControlPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ZoneHighlighterInstance.cs" />
+    <Compile Include="ZoneHighlighterRecordDisplayInfo.cs" />
+    <Compile Include="DisplayInfo.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="EndianBitConverter.cs" />
+    <Compile Include="EventReader.cs" />
+    <Compile Include="FileLogBinaryDataStream.cs" />
+    <Compile Include="FileLogDataStream.cs" />
+    <Compile Include="FileLogProcessor.cs" />
+    <Compile Include="FrameRecord.cs">
+    </Compile>
+    <Compile Include="FrameRecordPathCollection.cs" />
+    <Compile Include="FrameRecordValues.cs" />
+    <Compile Include="FRElementBarsDrawBuffer.cs" />
+    <Compile Include="GDI.cs" />
+    <Compile Include="GLBuffer.cs" />
+    <Compile Include="GLFont.cs" />
+    <Compile Include="GLTexture.cs" />
+    <Compile Include="IBinaryLogDataStream.cs" />
+    <Compile Include="IIntervalGroupStyle.cs" />
+    <Compile Include="IIntervalSink.cs" />
+    <Compile Include="ILogDataStream.cs" />
+    <Compile Include="IntervalControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="IntervalTree.cs" />
+    <Compile Include="ItemInfoControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="KeyValuePair_SecondComparer.cs" />
+    <Compile Include="ListExtensions.cs" />
+    <Compile Include="LogControlDragDrop.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="LogDownload.cs" />
+    <Compile Include="LogListItem.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="LogListItem.Designer.cs">
+      <DependentUpon>LogListItem.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LogParser.cs" />
+    <Compile Include="LogControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="LogControl.Designer.cs">
+      <DependentUpon>LogControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LogView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Misc.cs" />
+    <Compile Include="ORDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="OverviewItemInfoControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="OverviewItemInfoControl.Designer.cs">
+      <DependentUpon>OverviewItemInfoControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="OverviewRecordDisplayInfo.cs" />
+    <Compile Include="P4FileFetcher.cs" />
+    <Compile Include="PointD.cs" />
+    <Compile Include="PRDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Profile.cs">
+    </Compile>
+    <Compile Include="ProfilerItemInfoControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ProfilerItemInfoControl.Designer.cs">
+      <DependentUpon>ProfilerItemInfoControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ProfilerRecordDisplayInfo.cs" />
+    <Compile Include="ProfilerTreemapControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Profile_Form.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Profile_LogControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="BucketListView.resx">
+      <DependentUpon>BucketListView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConfluenceLoginForm.resx">
+      <DependentUpon>ConfluenceLoginForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConfluenceUploadForm.resx">
+      <DependentUpon>ConfluenceUploadForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConnectionErrorDialog.resx">
+      <DependentUpon>ConnectionErrorDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConnectMessageBox.resx">
+      <DependentUpon>ConnectMessageBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CTVControl.resx">
+      <DependentUpon>CTVControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CTVControlPanel.resx">
+      <DependentUpon>CTVControlPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="LogControl.resx">
+      <DependentUpon>LogControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="LogListItem.resx">
+      <DependentUpon>LogListItem.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OverviewItemInfoControl.resx">
+      <DependentUpon>OverviewItemInfoControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ProfilerItemInfoControl.resx">
+      <DependentUpon>ProfilerItemInfoControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SpikeFinder.resx">
+      <DependentUpon>SpikeFinder.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="StatoscopeForm.resx">
+      <DependentUpon>StatoscopeForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="StdThresholdZoneHighlighterControl.resx">
+      <DependentUpon>StdThresholdZoneHighlighterControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TargetLineCTVControlPanel.resx">
+      <DependentUpon>TargetLineCTVControlPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TargetLineItemInfoControl.resx">
+      <DependentUpon>TargetLineItemInfoControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ZoneHighlighterCTVControlPanel.resx">
+      <DependentUpon>ZoneHighlighterCTVControlPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="app.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\confluenceservice-v1.wsdl" />
+    <None Include="Web References\ConfluenceSOAP\Reference.map">
+      <Generator>MSDiscoCodeGenerator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteAttachment.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteBlogEntry.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteBlogEntrySummary.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteClusterInformation.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteComment.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteContentPermissionSet.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteLabel.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteNodeStatus.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemotePage.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemotePageHistory.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemotePageSummary.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemotePermission.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteSearchResult.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteServerInfo.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteSpace.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteSpaceGroup.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteSpaceSummary.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteUser.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <None Include="Web References\ConfluenceSOAP\RemoteUserInformation.datasource">
+      <DependentUpon>Reference.map</DependentUpon>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="Ps3TmApi.cs" />
+    <Compile Include="RDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="RecordDisplayInfo.cs" />
+    <Compile Include="Report.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RectD.cs" />
+    <Compile Include="SessionInfo.cs" />
+    <Compile Include="SessionInfoView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SocketLogBinaryDataStream.cs" />
+    <Compile Include="SocketLogDataStream.cs" />
+    <Compile Include="SocketLogProcessor.cs" />
+    <Compile Include="SpanD.cs" />
+    <Compile Include="SpikeFinder.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SpikeFinder.Designer.cs">
+      <DependentUpon>SpikeFinder.cs</DependentUpon>
+    </Compile>
+    <Compile Include="StatoscopeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="StatoscopeForm.designer.cs">
+      <DependentUpon>StatoscopeForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="StatsListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="StdThresholdZoneHighlighterControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="StdThresholdZoneHighlighterControl.Designer.cs">
+      <DependentUpon>StdThresholdZoneHighlighterControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="StreamingBucket.cs" />
+    <Compile Include="StreamingIntervalJobGroupStyle.cs" />
+    <Compile Include="StreamingIntervalThreadGroupStyle.cs" />
+    <Compile Include="StreamingIntervalSink.cs" />
+    <Compile Include="StreamingObjectIntervalGroupStyle.cs" />
+    <Compile Include="StreamingObjectSink.cs" />
+    <Compile Include="StreamingTextureIntervalGroupStyle.cs" />
+    <Compile Include="StreamingTextureSink.cs" />
+    <Compile Include="SymbolResolver.cs" />
+    <Compile Include="TargetLineCTVControlPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TargetLineCTVControlPanel.Designer.cs">
+      <DependentUpon>TargetLineCTVControlPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TargetLineItemInfoControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TargetLineItemInfoControl.Designer.cs">
+      <DependentUpon>TargetLineItemInfoControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TargetLineRecordDisplayInfo.cs" />
+    <Compile Include="TRDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="TreemapControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="URDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UserMarker.cs" />
+    <Compile Include="UserMarkerRecordDisplayInfo.cs" />
+    <Compile Include="WCF.cs" />
+    <Compile Include="Web References\ConfluenceSOAP\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.map</DependentUpon>
+    </Compile>
+    <Compile Include="WGL.cs">
+    </Compile>
+    <Compile Include="WM.cs" />
+    <Compile Include="ZoneHighlighter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ZoneHighlighterControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ZRDICheckboxTreeView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="Microsoft.Office.Core">
+      <Guid>{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}</Guid>
+      <VersionMajor>2</VersionMajor>
+      <VersionMinor>4</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+    <COMReference Include="Microsoft.Office.Interop.Excel">
+      <Guid>{00020813-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>6</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+    <COMReference Include="Microsoft.Office.Interop.Word">
+      <Guid>{00020905-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>8</VersionMajor>
+      <VersionMinor>4</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+    <COMReference Include="VBIDE">
+      <Guid>{0002E157-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>5</VersionMajor>
+      <VersionMinor>3</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WebReferences Include="Web References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WebReferenceUrl Include="http://confluence/rpc/soap-axis/confluenceservice-v1%3fwsdl">
+      <UrlBehavior>Dynamic</UrlBehavior>
+      <RelPath>Web References\ConfluenceSOAP\</RelPath>
+      <UpdateFromURL>http://confluence/rpc/soap-axis/confluenceservice-v1%3fwsdl</UpdateFromURL>
+      <ServiceLocationURL>
+      </ServiceLocationURL>
+      <CachedDynamicPropName>
+      </CachedDynamicPropName>
+      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
+      <CachedSettingsPropName>Statoscope_ConfluenceSOAP_ConfluenceSoapServiceService</CachedSettingsPropName>
+    </WebReferenceUrl>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="csgl-notice.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="csgl-opengl-native.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\icon_localhost.ico" />
+    <Content Include="Resources\lumberyard_icon.png" />
+    <Content Include="Resources\Statoscope.ico" />
+    <Content Include="TextureP4Config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

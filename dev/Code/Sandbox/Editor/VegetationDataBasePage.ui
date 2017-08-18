@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CVegetationDataBasePage</class>
+ <widget class="QMainWindow" name="CVegetationDataBasePage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1127</width>
+    <height>840</height>
+   </rect>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QScrollArea" name="m_wndTaskPanel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>150</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOff</enum>
+      </property>
+      <property name="sizeAdjustPolicy">
+       <enum>QAbstractScrollArea::AdjustToContents</enum>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="scrollAreaWidgetContents">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>150</width>
+         <height>822</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <property name="leftMargin">
+         <number>1</number>
+        </property>
+        <property name="topMargin">
+         <number>3</number>
+        </property>
+        <property name="rightMargin">
+         <number>1</number>
+        </property>
+        <property name="bottomMargin">
+         <number>3</number>
+        </property>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="groupBox">
+          <property name="title">
+           <string>Groups</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_ADD">
+             <property name="toolTip">
+              <string>Add new vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Add</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_CLONE">
+             <property name="toolTip">
+              <string>Duplicate selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Duplicate</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_REPLACE">
+             <property name="toolTip">
+              <string>Replace cgf file of the selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Replace</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_REMOVE">
+             <property name="toolTip">
+              <string>Remove selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Remove</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_HIDE">
+             <property name="toolTip">
+              <string>Hide selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Hide</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_UNHIDE">
+             <property name="toolTip">
+              <string>Unhide selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Unhide</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_HIDEALL">
+             <property name="toolTip">
+              <string>Hide all vegetation Groups</string>
+             </property>
+             <property name="text">
+              <string>Hide All</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_UNHIDEALL">
+             <property name="toolTip">
+              <string>Unhide all vegetation groups</string>
+             </property>
+             <property name="text">
+              <string>Unhide All</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>Instances</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_DISTRIBUTE">
+             <property name="toolTip">
+              <string>Distribute instances of the selected groups on map</string>
+             </property>
+             <property name="text">
+              <string>Distribute</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_CLEAR">
+             <property name="toolTip">
+              <string>Clear instances of the selected groups from map</string>
+             </property>
+             <property name="text">
+              <string>Clear</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_SCALE">
+             <property name="toolTip">
+              <string>Scale instances of the selected groups</string>
+             </property>
+             <property name="text">
+              <string>Scale</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="groupBox_3">
+          <property name="title">
+           <string>Manage</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_ADDCATEGORY">
+             <property name="toolTip">
+              <string>Change the category of the selected vegetation group(s)</string>
+             </property>
+             <property name="text">
+              <string>Change Category</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_CREATE_SEL">
+             <property name="toolTip">
+              <string>Move selected instances to category</string>
+             </property>
+             <property name="text">
+              <string>Instances to Category</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_MERGE">
+             <property name="toolTip">
+              <string>Merge vegetation instances</string>
+             </property>
+             <property name="text">
+              <string>Merge</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_IMPORT">
+             <property name="toolTip">
+              <string>Import vegetation groups and instances</string>
+             </property>
+             <property name="text">
+              <string>Import</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="PANEL_VEG_EXPORT">
+             <property name="toolTip">
+              <string>Export selected vegetation groups and their instances</string>
+             </property>
+             <property name="text">
+              <string>Export</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="groupBox_4">
+          <property name="title">
+           <string>Info</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="INFO">
+             <property name="text">
+              <string>Info on vegetation</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="groupBox_5">
+          <property name="title">
+           <string>Preview</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <item>
+            <widget class="CPreviewModelCtrl" name="m_previewCtrl" native="true">
+             <property name="minimumSize">
+              <size>
+               <width>120</width>
+               <height>120</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>120</width>
+               <height>120</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>303</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <widget class="QSplitter" name="m_splitWnd">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="ColumnGroupTreeView" name="m_wndReport">
+       <property name="contextMenuPolicy">
+        <enum>Qt::CustomContextMenu</enum>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::ExtendedSelection</enum>
+       </property>
+       <property name="indentation">
+        <number>0</number>
+       </property>
+      </widget>
+      <widget class="ReflectedPropertyControl" name="m_propertyCtrl" native="true"/>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ReflectedPropertyControl</class>
+   <extends>QWidget</extends>
+   <header location="global">Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header location="global">QtUI/QCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ClickableLabel</class>
+   <extends>QLabel</extends>
+   <header location="global">QtUI/ClickableLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>CPreviewModelCtrl</class>
+   <extends>QWidget</extends>
+   <header>Controls/PreviewModelCtrl.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ColumnGroupTreeView</class>
+   <extends>QTreeView</extends>
+   <header>Util/ColumnGroupTreeView.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

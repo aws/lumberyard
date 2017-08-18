@@ -1,0 +1,10 @@
+<Params>
+	<AnimationList>
+		<Animation name="#filepath" path="Animations\animals\amphibians\toad"/>
+
+		<Animation name="walk_loop" path="toad_leap.caf"/>
+		<Animation name="idle01_loop" path="toad_idle01.caf"/>
+		<Animation name="pickup" path="toad_pickup.caf"/>
+		<Animation name="swim_loop" path="toad_swim_loop.caf"/>
+	</AnimationList>
+</Params>

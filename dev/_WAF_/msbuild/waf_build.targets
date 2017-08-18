@@ -1,0 +1,133 @@
+<!--
+***********************************************************************************************
+    All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+    a third party where indicated.
+
+    For complete copyright and license terms please see the LICENSE at the root of this
+    distribution (the "License"). All use of this software is governed by the License,
+    or, if provided, by the license below or the license accompanying this file. Do not
+    remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+
+
+DESCRIPTION: This file defines the steps/targets required to build WAF based projects
+
+***********************************************************************************************
+-->
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">	
+
+    <!-- *******************************************************************************************
+        Globals
+       ******************************************************************************************* -->	
+    <!-- Needed for single compile -->
+    <ItemGroup>
+    <AvailableItemName Include="ClCompile">
+      <Targets>ClCompile</Targets>
+    </AvailableItemName>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <WAF_MSBuildDirectory>$(MSBuildProjectDirectory)\..\..\_WAF_\msbuild</WAF_MSBuildDirectory>
+    </PropertyGroup>
+
+    <!-- *******************************************************************************************
+        Property pages 
+       ******************************************************************************************* -->	
+    <ItemGroup>
+        <PropertyPageSchema Include="$(WAF_MSBuildDirectory)\waf_property_sheet.xml" Condition="Exists('$(WAF_MSBuildDirectory)\waf_property_sheet.xml')" />
+    </ItemGroup>
+
+    <!-- *******************************************************************************************
+       Platform specific targets
+       ******************************************************************************************* -->	
+    <Import Project="$(WAF_MSBuildDirectory)\$(Platform)\$(Platform)_specific.targets" Condition="Exists('$(WAF_MSBuildDirectory)\$(Platform)\$(Platform)_specific.targets')" />
+
+    <!-- *******************************************************************************************
+        Selective Build (reduce to selected CLCompile
+       ******************************************************************************************* -->
+
+  <Target Name="_SelectedFiles">		
+    <ItemGroup>
+      <SelectedFiles Include="$(SelectedFiles)"/>
+    </ItemGroup>
+    <PropertyGroup>
+      <BuildType Condition="'$(BuildType)' == ''">Build</BuildType>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="SelectClCompile"  BeforeTargets="ClCompile" DependsOnTargets="_SelectedFiles;">
+    <ItemGroup Condition="'@(SelectedFiles)'!=''">
+      <ClCompile Remove="@(ClCompile)" Condition="'%(Identity)'!='@(SelectedFiles)'"/>
+    </ItemGroup>
+  </Target>
+
+        <!-- *******************************************************************************************
+        Build (WAF)
+       ******************************************************************************************* -->
+    <Target Name="WAF_BuildCore">
+        <Message Text="Exec Command: %(ClCompile.WAF_BuildCommandLine)" />
+        <Exec Command="%(ClCompile.WAF_BuildCommandLine)"  Condition="'%(ClCompile.WAF_BuildCommandLine)'!=''"/>
+    </Target>
+
+    <Target Name="WAF_RebuildCore">
+        <Message Text="Exec Command: %(ClCompile.WAF_RebuildCommandLine)" />
+        <Exec Command="%(ClCompile.WAF_RebuildCommandLine)" Condition="'%(ClCompile.WAF_RebuildCommandLine)'!=''"/>
+    </Target>
+
+    <Target Name="WAF_CleanCore">
+        <Message Text="Exec Command: %(ClCompile.WAF_CleanCommandLine)" />
+        <Exec Command="%(ClCompile.WAF_CleanCommandLine)"  Condition="'%(ClCompile.WAF_CleanCommandLine)'!=''"/>
+    </Target>
+
+    <Target Name="WAF_ClCompileCore" DependsOnTargets="SelectClCompile;" >
+
+        <PropertyGroup>
+            <_waf_single_compile_command Condition="'%(ClCompile.WAF_SingleCompilationMode)' == 'Code'"></_waf_single_compile_command>
+            <_waf_single_compile_command Condition="'%(ClCompile.WAF_SingleCompilationMode)' == 'Disassembly'">--show-disassembly=True</_waf_single_compile_command>
+            <_waf_single_compile_command Condition="'%(ClCompile.WAF_SingleCompilationMode)' == 'Preprocess'">--show-preprocessed-file=True</_waf_single_compile_command>
+            <_waf_single_compile_command Condition="'%(ClCompile.WAF_SingleCompilationMode)' == 'Header'">--show-includes=True</_waf_single_compile_command>
+        </PropertyGroup>
+
+        <!-- Execute compile selection of files-->
+        <Message Text='Exec Command: %(ClCompile.WAF_BuildCommandLine) $(_waf_single_compile_command) --file-filter="@(ClCompile)"' Condition="'%(ClCompile.WAF_BuildCommandLine)'!='' and '@(ClCompile)'!='' and '%(ClCompile.WAF_CommandOverride)' == ''"/>
+        <Exec Command='%(ClCompile.WAF_BuildCommandLine) $(_waf_single_compile_command) --file-filter="@(ClCompile)"' Condition="'%(ClCompile.WAF_BuildCommandLine)'!='' and '@(ClCompile)'!='' and '%(ClCompile.WAF_CommandOverride)' == ''"/>
+
+        <!-- Execute override for WAF command files-->
+        <Message Text="Exec Command: '%(ClCompile.WAF_ExecPath)' '%(ClCompile.WAF_CommandOverride)'" Condition="'%(ClCompile.WAF_CommandOverride)' != ''"/>
+        <Exec Command="%(ClCompile.WAF_ExecPath) %(ClCompile.WAF_CommandOverride)" Condition="'%(ClCompile.WAF_CommandOverride)' != ''"/>
+
+    </Target>
+
+    <!-- *******************************************************************************************
+        Build
+       ******************************************************************************************* -->
+
+    <Target Name="Build" DependsOnTargets="WAF_BuildCore" >
+    </Target>
+
+    <Target Name="Rebuild" DependsOnTargets="WAF_RebuildCore" >
+    </Target>
+
+    <Target Name="Clean" DependsOnTargets="WAF_CleanCore" >
+    </Target>
+
+    <Target Name="ClCompile" DependsOnTargets="WAF_ClCompileCore" >
+    </Target>
+
+    <!-- *******************************************************************************************
+             !!! HACK !!!
+             As a last thing set ConfigurationType -> Application
+             This is after we loaded all MSBUILD common targets with the ConfigurationType specified by the project.
+             Reason: Visual Studio appears to take the last ConfigurationType to enable/disable some features
+                     e.g. "Single file compilation" and "Durango deploy and start debugging"
+             ******************************************************************************************* -->
+    <PropertyGroup>
+        <ConfigurationType>Application</ConfigurationType>
+    </PropertyGroup>
+
+</Project>

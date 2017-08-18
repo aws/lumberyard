@@ -1,0 +1,14 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/test_Main.cpp"
+        ],
+        "Tests/Configuration":
+        [
+            "Tests/Configuration/ClientManagerImplTests.cpp",
+            "Tests/Configuration/MaglevConfigImplTest.cpp"
+        ]
+    }
+}

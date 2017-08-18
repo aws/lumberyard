@@ -1,0 +1,35 @@
+{
+    "ChatPlayGem_win_uber.cpp":
+    {
+        "Source/Broadcast":
+        [
+            "Source/Broadcast/BroadcastAPI.cpp",
+            "Source/Broadcast/BroadcastAPI.h",
+            "Source/Broadcast/BroadcastCVars.cpp",
+            "Source/Broadcast/BroadcastCVars.h"
+        ],
+        "Source/ChatPlay":
+        [
+            "Source/ChatPlay/ChatPlay.cpp",
+            "Source/ChatPlay/LibDyad.cpp",
+            "Source/ChatPlay/LibDyad.h",
+            "Source/ChatPlay/IStreamHandler.h",
+            "Source/ChatPlay/WebSocketStream.cpp",
+            "Source/ChatPlay/WebSocketStream.h",
+            "Source/ChatPlay/IRCStream.cpp",
+            "Source/ChatPlay/IRCStream.h"
+        ],
+        "Source/JoinIn": 
+        [
+            "Source/JoinIn/JoinInCVars.h",
+            "Source/JoinIn/JoinInCVars.cpp"
+        ],
+        "Source/FlowGraph":
+        [
+            "Source/FlowGraph/FlowChatPlayNodes.cpp",
+            "Source/FlowGraph/FlowChatPlayVoteNodes.cpp",
+            "Source/FlowGraph/FlowTwitchAPINodes.cpp",
+            "Source/FlowGraph/FlowURICreate.cpp"
+        ]
+    }
+}

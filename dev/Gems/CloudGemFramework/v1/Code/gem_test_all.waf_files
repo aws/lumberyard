@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/CloudGemFrameworkTest.cpp",
+            "Tests/ServiceApi.h"
+        ]
+    }
+}

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QColorWidget</class>
+ <widget class="QWidget" name="QColorWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>217</width>
+    <height>23</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0">
+   <property name="spacing">
+    <number>4</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item alignment="Qt::AlignLeft">
+    <widget class="QPushButton" name="colorButton">
+     <property name="minimumSize">
+      <size>
+       <width>32</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>64</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="flat">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDoubleSpinBox" name="multiplierBox"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="colorButton1">
+      <property name="minimumSize">
+        <size>
+          <width>32</width>
+          <height>0</height>
+        </size>
+      </property>
+      <property name="maximumSize">
+        <size>
+          <width>64</width>
+          <height>16777215</height>
+        </size>
+      </property>
+      <property name="text">
+        <string/>
+      </property>
+      <property name="iconSize">
+        <size>
+          <width>0</width>
+          <height>0</height>
+        </size>
+      </property>
+      <property name="flat">
+        <bool>true</bool>
+      </property>
+    </widget>
+    </item>
+    <item>
+      <widget class="QDoubleSpinBox" name="multiplierBox1"/>
+    </item>
+    
+    
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

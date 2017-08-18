@@ -1,0 +1,29 @@
+{
+    "win_lib": [
+        "shlwapi"
+    ], 
+    "darwin_lib": [
+        "curl"
+    ], 
+    "linux_lib": [
+        "curl"
+    ], 
+    "ios_lib": [
+        "curl"
+    ], 
+    "appletv_lib": [
+        "curl"
+    ], 
+    "android_armv7_clang_uselib": [
+        "AWS_CPP_SDK_ANDROID_DEPENDENCIES"
+    ], 
+    "android_armv7_clang_features": [
+        "find_android_api_libs"
+    ], 
+    "ios_framework": [
+        "security"
+    ], 
+    "appletv_framework": [
+        "security"
+    ]
+}

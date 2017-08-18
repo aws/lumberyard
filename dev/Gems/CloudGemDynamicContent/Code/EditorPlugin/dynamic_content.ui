@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QDynamicContentEditorMainWindow</class>
+ <widget class="QMainWindow" name="QDynamicContentEditorMainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1032</width>
+    <height>750</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dynamic Content Manager</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QGroupBox" name="grpFileWatcher">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>80</y>
+      <width>471</width>
+      <height>621</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>    Local Dynamic Content Files</string>
+    </property>
+    <widget class="QTableView" name="tableFileWatcher">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>451</width>
+       <height>551</height>
+      </rect>
+     </property>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+    </widget>
+    <widget class="QPushButton" name="btnAddFile">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>590</y>
+       <width>111</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Add Files...</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="btnRemoveFile">
+     <property name="geometry">
+      <rect>
+       <x>360</x>
+       <y>590</y>
+       <width>101</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Files</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="btnDeleteManifest">
+     <property name="geometry">
+      <rect>
+       <x>580</x>
+       <y>160</y>
+       <width>30</width>
+       <height>29</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="openExternalLinks">
+      <bool>false</bool>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="btnAddFolder">
+     <property name="geometry">
+      <rect>
+       <x>130</x>
+       <y>590</y>
+       <width>111</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Add Folder...</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="grpPackages">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>80</y>
+      <width>531</width>
+      <height>621</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>    Packages</string>
+    </property>
+    <widget class="QTreeView" name="treePackages">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>511</width>
+       <height>551</height>
+      </rect>
+     </property>
+     <attribute name="headerVisible">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="headerDefaultSectionSize">
+      <number>240</number>
+     </attribute>
+     <attribute name="headerStretchLastSection">
+      <bool>false</bool>
+     </attribute>
+    </widget>
+    <widget class="QPushButton" name="btnRemoveFromPack">
+     <property name="geometry">
+      <rect>
+       <x>330</x>
+       <y>590</y>
+       <width>191</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove File From Package</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="btnRemovePackage">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>590</y>
+       <width>131</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Delete Package</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="btnAddPackage">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>590</y>
+       <width>121</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>New Package</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label">
+     <property name="geometry">
+      <rect>
+       <x>80</x>
+       <y>0</y>
+       <width>441</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>(Drag and drop files from the left column to add them in to a package)</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QComboBox" name="cbManifestSelection">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>10</y>
+      <width>461</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="maxVisibleItems">
+     <number>25</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnUpload">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>42</y>
+      <width>191</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Upload Packages</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="widgetDeleteManifest" native="true">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>40</y>
+      <width>791</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <widget class="QWidget" name="horizontalLayoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>-1</y>
+       <width>461</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetFixedSize</enum>
+      </property>
+      <item>
+       <widget class="QLabel" name="manifestName">
+        <property name="maximumSize">
+         <size>
+          <width>316</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Manifest Name</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="activatedPlatforms">
+        <item>
+         <widget class="QLabel" name="es3">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ios">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="osx_gl">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="pc">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ps4">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="xboxone">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="settings">
+        <property name="font">
+         <font>
+          <pointsize>6</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QLabel" name="lblNoStackError">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>10</y>
+      <width>1001</width>
+      <height>91</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>16</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>There is currently no Cloud Canvas resource stack set up that supports Dynamic Content. Please go to the the Cloud Canvas resource manager control panel and configure the stack to support Dynamic Content.</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+    </property>
+    <property name="wordWrap">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <zorder>widgetDeleteManifest</zorder>
+   <zorder>grpFileWatcher</zorder>
+   <zorder>grpPackages</zorder>
+   <zorder>cbManifestSelection</zorder>
+   <zorder>btnUpload</zorder>
+   <zorder>lblNoStackError</zorder>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1032</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionCreateNewManifest"/>
+    <addaction name="actionUploadAllFiles"/>
+   </widget>
+   <widget class="QMenu" name="menuSecurity">
+    <property name="title">
+     <string>Security</string>
+    </property>
+    <addaction name="actionGenerateNewKeys"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionDynamicContentDocumentation"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuSecurity"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="status"/>
+  <action name="actionCreateNewManifest">
+   <property name="text">
+    <string>Create New Manifest</string>
+   </property>
+  </action>
+  <action name="actionUploadAllFiles">
+   <property name="text">
+    <string>Upload All Files</string>
+   </property>
+  </action>
+  <action name="actionGenerateNewKeys">
+   <property name="text">
+    <string>Generate New Keys</string>
+   </property>
+  </action>
+  <action name="actionDynamicContentDocumentation">
+   <property name="text">
+    <string>Dynamic Content Documentation</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

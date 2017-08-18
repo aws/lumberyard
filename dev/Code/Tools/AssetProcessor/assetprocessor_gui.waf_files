@@ -1,0 +1,31 @@
+{
+    "none": {
+        "Root": [
+            "qml.qrc"
+        ],
+
+        "FileServer": [
+            "native/FileServer/fileServer.cpp",
+            "native/FileServer/fileServer.h"
+        ],
+        
+        
+        "ui": [
+            "native/ui/MainWindow.h",
+            "native/ui/MainWindow.cpp",
+            "native/ui/MainWindow.ui"
+        ],
+
+        "utilities": [
+            "native/utilities/GUIApplicationManager.cpp",
+            "native/utilities/GUIApplicationManager.h",
+            "native/utilities/windowscreen.cpp",
+            "native/utilities/windowscreen.h",
+            "native/utilities/assetUtilEBusHelper.h",
+            "native/utilities/LogPanel.h",
+            "native/utilities/LogPanel.cpp"
+        ]
+
+    }
+    
+}

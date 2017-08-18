@@ -1,0 +1,26 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/DynamicContent/DynamicContentBus.h",
+            "Include/PresignedURL/PresignedURLBus.h"
+        ],
+        "Implementation": [
+            "Source/DynamicContentGem.h",
+            "Source/DynamicContentGem.cpp",
+            "Source/DynamicContentTransferManager.h",
+            "Source/DynamicContentTransferManager.cpp",
+            "Source/DynamicContentFileInfo.h",
+            "Source/DynamicContentFileInfo.cpp",
+            "Source/FileTransferSupport/FileTransferSupport.h",
+            "Source/FileTransferSupport/FileTransferSupport.cpp",
+            "Source/PresignedURL/PresignedURL.h",
+            "Source/PresignedURL/PresignedURL.cpp"
+        ]
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "none": {
+        "Source": [
+            "Source/OSVRDevice.h",
+            "Source/OSVRDevice.cpp"
+        ]
+    }
+}

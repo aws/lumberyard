@@ -1,0 +1,30 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "eeea32a28cba4992a3aad86812a71477",
+    "Name": "CloudGemAWSScriptBehaviors",
+    "DisplayName": "Cloud Gem AWS Script Behaviors",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Exposes some commonly used AWS API features to scripts via the behavior context. Includes functions to invoke lambdas, transfer files to and from S3 and communicate with the API gateway.",
+    "Tags": ["AWS", "Cloud Canvas"],
+    "IconPath": "preview.png",
+    "Dependencies": [
+        {
+            "Uuid" : "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [
+                "~>1.0"
+            ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ],
+
+    "Tags": ["AWS", "Cloud Canvas", "script"],
+    "IconPath": "preview.png"
+}

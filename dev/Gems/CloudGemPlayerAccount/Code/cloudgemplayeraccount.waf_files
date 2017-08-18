@@ -1,0 +1,35 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h",
+            "Source/AccountResultInfo.cpp",
+            "Source/AccountResultInfo.h",
+            "Source/AuthTokenGroup.cpp",
+            "Source/AuthTokenGroup.h",
+            "Source/BasicResultInfo.cpp",
+            "Source/BasicResultInfo.h",
+            "Source/DeliveryDetails.cpp",
+            "Source/DeliveryDetails.h",
+            "Source/PlayerAccount.cpp",
+            "Source/PlayerAccount.h",
+            "Source/UserAttributeList.cpp",
+            "Source/UserAttributeList.h",
+            "Source/UserAttributeValues.cpp",
+            "Source/UserAttributeValues.h",
+            "Source/UserPoolTokenRetrievalStrategy.cpp",
+            "Source/UserPoolTokenRetrievalStrategy.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/AWS/ServiceAPI/CloudGemPlayerAccountClientComponent.h",
+            "Include/CloudGemPlayerAccount/CloudGemPlayerAccountBus.h"
+        ],
+        "Source": [
+            "Source/CloudGemPlayerAccountModule.cpp",
+            "Source/CloudGemPlayerAccountSystemComponent.cpp",
+            "Source/CloudGemPlayerAccountSystemComponent.h"
+        ]
+    }
+}

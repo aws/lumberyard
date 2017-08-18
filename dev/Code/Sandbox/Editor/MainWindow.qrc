@@ -1,0 +1,178 @@
+<RCC>
+  <qresource prefix="/MainWindow/toolbars">
+    <file alias="ObjSelection.png">MainWindow/ObjSelection.png</file>
+    <file alias="edit_mode_toolbar-00.png">MainWindow/edit_mode_toolbar-00.png</file>
+    <file alias="edit_mode_toolbar-01.png">MainWindow/edit_mode_toolbar-01.png</file>
+    <file alias="edit_mode_toolbar-02.png">MainWindow/edit_mode_toolbar-02.png</file>
+    <file alias="edit_mode_toolbar-03.png">MainWindow/edit_mode_toolbar-03.png</file>
+    <file alias="edit_mode_toolbar-05.png">MainWindow/edit_mode_toolbar-05.png</file>
+    <file alias="edit_mode_toolbar-06.png">MainWindow/edit_mode_toolbar-06.png</file>
+    <file alias="edit_mode_toolbar-07.png">MainWindow/edit_mode_toolbar-07.png</file>
+    <file alias="edit_mode_toolbar-08.png">MainWindow/edit_mode_toolbar-08.png</file>
+    <file alias="edit_mode_toolbar-09.png">MainWindow/edit_mode_toolbar-09.png</file>
+    <file alias="edit_mode_toolbar-10.png">MainWindow/edit_mode_toolbar-10.png</file>
+    <file alias="edit_mode_toolbar-11.png">MainWindow/edit_mode_toolbar-11.png</file>
+    <file alias="edit_mode_toolbar-12.png">MainWindow/edit_mode_toolbar-12.png</file>
+    <file alias="edit_mode_toolbar-13.png">MainWindow/edit_mode_toolbar-13.png</file>
+    <file alias="edit_mode_toolbar-14.png">MainWindow/edit_mode_toolbar-14.png</file>
+    <file alias="edit_mode_toolbar-15.png">MainWindow/edit_mode_toolbar-15.png</file>
+    <file alias="edit_mode_toolbar-16.png">MainWindow/edit_mode_toolbar-16.png</file>
+    <file alias="edit_mode_toolbar-17.png">MainWindow/edit_mode_toolbar-17.png</file>
+    <file alias="edit_mode_toolbar-18.png">MainWindow/edit_mode_toolbar-18.png</file>
+    <file alias="edit_mode_toolbar-19.png">MainWindow/edit_mode_toolbar-19.png</file>
+    <file alias="edit_mode_toolbar-20.png">MainWindow/edit_mode_toolbar-20.png</file>
+    <file alias="edit_mode_toolbar-22.png">MainWindow/edit_mode_toolbar-22.png</file>
+    <file alias="edit_mode_toolbar-23.png">MainWindow/edit_mode_toolbar-23.png</file>
+    <file alias="edit_mode_toolbar-24.png">MainWindow/edit_mode_toolbar-24.png</file>
+    <file alias="edit_mode_toolbar-25.png">MainWindow/edit_mode_toolbar-25.png</file>
+    <file alias="standard_views_toolbar-00.png">MainWindow/standard_views_toolbar-00.png</file>
+    <file alias="standard_views_toolbar-01.png">MainWindow/standard_views_toolbar-01.png</file>
+    <file alias="standard_views_toolbar-02.png">MainWindow/standard_views_toolbar-02.png</file>
+    <file alias="standard_views_toolbar-03.png">MainWindow/standard_views_toolbar-03.png</file>
+    <file alias="standard_views_toolbar-04.png">MainWindow/standard_views_toolbar-04.png</file>
+    <file alias="standard_views_toolbar-05.png">MainWindow/standard_views_toolbar-05.png</file>
+    <file alias="standard_views_toolbar-06.png">MainWindow/standard_views_toolbar-06.png</file>
+    <file alias="standard_views_toolbar-07.png">MainWindow/standard_views_toolbar-07.png</file>
+    <file alias="standard_views_toolbar-08.png">MainWindow/standard_views_toolbar-08.png</file>
+    <file alias="standard_views_toolbar-09.png">MainWindow/standard_views_toolbar-09.png</file>
+    <file alias="standard_views_toolbar-10.png">MainWindow/standard_views_toolbar-10.png</file>
+    <file alias="standard_views_toolbar-11.png">MainWindow/standard_views_toolbar-11.png</file>
+    <file alias="standard_views_toolbar-12.png">MainWindow/standard_views_toolbar-12.png</file>
+    <file alias="standard_views_toolbar-13.png">MainWindow/standard_views_toolbar-13.png</file>
+    <file alias="standard_views_toolbar-14.png">MainWindow/standard_views_toolbar-14.png</file>
+    <file alias="standard_views_toolbar-15.png">MainWindow/standard_views_toolbar-15.png</file>
+    <file alias="standard_views_toolbar-16.png">MainWindow/standard_views_toolbar-16.png</file>
+    <file alias="standard_views_toolbar-17.png">MainWindow/standard_views_toolbar-17.png</file>
+    <file alias="standard_views_toolbar-18.png">MainWindow/standard_views_toolbar-18.png</file>
+    <file alias="object_toolbar-00.png">MainWindow/object_toolbar-00.png</file>
+    <file alias="object_toolbar-01.png">MainWindow/object_toolbar-01.png</file>
+    <file alias="object_toolbar-02.png">MainWindow/object_toolbar-02.png</file>
+    <file alias="object_toolbar-03.png">MainWindow/object_toolbar-03.png</file>
+    <file alias="object_toolbar-04.png">MainWindow/object_toolbar-04.png</file>
+    <file alias="object_toolbar-05.png">MainWindow/object_toolbar-05.png</file>
+    <file alias="object_toolbar-06.png">MainWindow/object_toolbar-06.png</file>
+    <file alias="object_toolbar-07.png">MainWindow/object_toolbar-07.png</file>
+    <file alias="object_toolbar-08.png">MainWindow/object_toolbar-08.png</file>
+    <file alias="object_toolbar-09.png">MainWindow/object_toolbar-09.png</file>
+    <file alias="object_toolbar-10.png">MainWindow/object_toolbar-10.png</file>
+    <file alias="misc_toolbar-00.png">MainWindow/misc_toolbar-00.png</file>
+    <file alias="proceduralmaterial_toolbar.png">MainWindow/proceduralmaterial_toolbar.png</file>
+  </qresource>
+  <qresource prefix="/macros">
+    <file>btn_listedit_00.png</file>
+    <file>btn_listedit_01.png</file>
+    <file>btn_listedit_02.png</file>
+    <file>btn_listedit_03.png</file>
+  </qresource>
+  <qresource prefix="/viewpanes">
+    <file alias="editwithbutton_dark.png">MainWindow/editwithbutton_dark.png</file>
+    <file alias="hide_helpers.png">MainWindow/hide_helpers.png</file>
+    <file alias="display_info.png">MainWindow/display_info.png</file>
+    <file alias="maximize.png">MainWindow/maximize.png</file>
+  </qresource>
+  <qresource prefix="/statusbar">
+    <file>res/ball_disabled.ico</file>
+    <file>res/ball_offline.ico</file>
+    <file>res/ball_online.ico</file>
+    <file>res/ball_pending.ico</file>
+    <file>res/source_control.ico</file>
+  </qresource>
+  <qresource prefix="/Application">
+    <file>res/editor_icon.ico</file>
+  </qresource>
+  <qresource prefix="/Icons">
+      <file alias="Entity_Icon.tif">res/Entity_Icon.tif</file>
+      <file alias="Slice_Entity_Icon.tif">res/Slice_Entity_Icon.tif</file>
+      <file alias="Slice_Handle_Icon.tif">res/Slice_Handle_Icon.tif</file>
+      <file alias="Broken_Slice_Handle_Icon.tif">res/Broken_Slice_Handle_Icon.tif</file>
+      <file alias="Padlock.svg">res/Padlock.svg</file>
+      <file alias="Padlock_Disabled.tif">res/Padlock_Disabled.tif</file>
+      <file alias="Padlock_Disabled_Hover.tif">res/Padlock_Disabled_Hover.tif</file>
+      <file alias="Padlock_Enabled.tif">res/Padlock_Enabled.tif</file>
+      <file alias="Padlock_Enabled_Hover.tif">res/Padlock_Enabled_Hover.tif</file>
+      <file alias="Eye.svg">res/Eye.svg</file>
+      <file alias="Eye_Open.tif">res/Eye_Open.tif</file>
+      <file alias="Eye_Open_Hidden">res/Eye_Open_Hidden.tif</file>
+      <file alias="Eye_Open_Hover.tif">res/Eye_Open_Hover.tif</file>
+      <file alias="Eye_Slash_Hidden.tif">res/Eye_Slash_Hidden.tif</file>
+      <file alias="Eye_Slash_Hover.tif">res/Eye_Slash_Hover.tif</file>
+      <file alias="Eye_Slash.tif">res/Eye_Slash.tif</file>
+  </qresource>
+  <qresource>
+    <file>res/Preferences_00.png</file>
+    <file>res/Preferences_01.png</file>
+    <file>res/Preferences_02.png</file>
+    <file>res/Preferences_03.png</file>
+    <file>error_report_00.png</file>
+    <file>error_report_01.png</file>
+    <file>error_report_02.png</file>
+    <file>prefabs_tree_00.png</file>
+    <file>prefabs_tree_01.png</file>
+    <file>prefabs_tree_02.png</file>
+    <file>prefabs_tree_03.png</file>
+    <file>particles_tree_00.png</file>
+    <file>particles_tree_01.png</file>
+    <file>particles_tree_02.png</file>
+    <file>particles_tree_03.png</file>
+    <file>particles_tree_04.png</file>
+    <file>particles_tree_05.png</file>
+    <file>particles_tree_06.png</file>
+    <file>particles_tree_07.png</file>
+    <file>arhitype_tree_00.png</file>
+    <file>arhitype_tree_01.png</file>
+    <file>arhitype_tree_02.png</file>
+    <file>arhitype_tree_03.png</file>
+    <file>water.png</file>
+    <file>bmp00005_00.png</file>
+    <file>bmp00005_01.png</file>
+    <file>bmp00005_02.png</file>
+    <file>bmp00005_03.png</file>
+    <file>bmp00005_04.png</file>
+    <file>bmp00005_05.png</file>
+    <file>bmp00005_06.png</file>
+    <file>bmp00005_07.png</file>
+    <file>bmp00005_08.png</file>
+    <file>bmp00005_09.png</file>
+    <file>bmp00006_00.png</file>
+    <file>bmp00006_01.png</file>
+    <file>bmp00006_02.png</file>
+    <file>bmp00006_03.png</file>
+    <file>bmp00006_04.png</file>
+    <file>bmp00006_05.png</file>
+    <file>bmp00006_06.png</file>
+    <file>bmp00006_07.png</file>
+ </qresource>
+  <qresource prefix="/cursors">
+    <file>res/arr_addkey.cur</file>
+    <file>res/arrow_down.cur</file>
+    <file>res/arrow_downright.cur</file>
+    <file>res/arrow_up.cur</file>
+    <file>res/arrow_upright.cur</file>
+    <file>res/cur00001.cur</file>
+    <file>res/cur00002.cur</file>
+    <file>res/cur00003.cur</file>
+    <file>res/cur00004.cur</file>
+    <file>res/cur00005.cur</file>
+    <file>res/cursor1.cur</file>
+    <file>res/cursor2.cur</file>
+    <file>res/handDrag.cur</file>
+    <file>res/hit.cur</file>
+    <file>res/leftright.cur</file>
+    <file>res/object_move.cur</file>
+    <file>res/object_rotate.cur</file>
+    <file>res/object_scale.cur</file>
+    <file>res/pick_cursor.cur</file>
+    <file>res/pointer_.cur</file>
+    <file>res/pointer_flatten.cur</file>
+    <file>res/pointer_getheight.cur</file>
+    <file>res/pointer_link.cur</file>
+    <file>res/pointer_linknow.cur</file>
+    <file>res/pointer_minus.cur</file>
+    <file>res/pointer_plus.cur</file>
+    <file>res/pointer_smooth.cur</file>
+    <file>res/pointer_so_sel_plus.cur</file>
+    <file>res/pointer_so_select.cur</file>
+    <file>res/pointerDragItem.cur</file>
+    <file>res/pointerHit.cur</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,20 @@
+<RCC>
+  <qresource prefix="/">
+    <file>AssetProcessor_checkbox_blue_checked.png</file>
+    <file>AssetProcessor_checkbox_blue_unchecked.png</file>
+    <file>AssetProcessor_arrow_left.png</file>
+    <file>AssetProcessor_arrow_right.png</file>
+    <file>AssetProcessor_plus.png</file>
+    <file>AssetProcessor_arrow_down.png</file>
+    <file>AssetProcessor_arrow_up.png</file>
+    <file>qml/main.qml</file>
+    <file>qml/ConnectionTab.qml</file>
+    <file>qml/ConnectionsTabView.qml</file>
+    <file>AssetProcessor.png</file>
+    <file>i18n/qml_en_us.qm</file>
+    <file>i18n/qml_ww_ww.qm</file>
+    <file>qml/RCListView.qml</file>
+    <file>qml/FileServerView.qml</file>
+    <file>qml/ShaderCompilerView.qml</file>
+  </qresource>
+</RCC>

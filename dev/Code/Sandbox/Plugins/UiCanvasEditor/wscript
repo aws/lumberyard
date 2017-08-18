@@ -1,0 +1,48 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.CryStandAlonePlugin(
+        # Settings
+        target                      = 'UiCanvasEditor',
+        vs_filter                   = 'Sandbox/Plugins',
+        file_list                   = 'uicanvaseditor.waf_files',
+        platforms                   = ['win'],
+        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        pch                         = 'stdafx.cpp',
+        use                         = ['AzToolsFramework',
+                                       'EditorCommon',
+                                       'Editor'],
+        uselib                      = ['QT5CORE',
+                                       'QT5GUI',
+                                       'QT5QML',
+                                       'QT5QUICK',
+                                       'QT5WIDGETS',
+                                       'QT5WINEXTRAS',
+                                       'XTP'],
+        use_required_gems           = True,
+        features                    = ['qt5'],
+        defines                     = [ 'QT_QML_DEBUG',
+                                        'EDITOR_COMMON_IMPORTS'],
+
+        # Platform Specific
+        win_features            = ['ExternalLyMetrics'],
+        win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
+        win_defines     = ['KDAB_MAC_PORT'],
+
+        # Testing
+        test_all_file_list      = ['uicanvaseditor_test.waf_files'],
+    )

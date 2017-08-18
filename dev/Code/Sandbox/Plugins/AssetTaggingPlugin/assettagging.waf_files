@@ -1,0 +1,23 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "stdafx.h",
+            "stdafx.cpp",
+            "main.cpp"
+        ]
+    },
+    "auto":
+    {
+        "Source Files":
+        [
+            "AssetTaggingImpl.cpp",
+            "AssetTaggingPlugin.cpp"
+        ],
+        "Header Files":
+        [
+            "AssetTaggingImpl.h"
+        ]
+    }
+}

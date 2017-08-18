@@ -1,0 +1,20 @@
+{
+   "none":{
+      "Header Files":[
+         "stdafx.h",
+         "AudioUnitTestData.h"
+      ],
+      "Source Files":[
+         "stdafx.cpp",
+         "AudioEnvironmentUnitTests.cpp",
+         "AudioEventUnitTests.cpp",
+         "AudioObjectUnitTests.cpp",
+         "AudioOtherUnitTests.cpp",
+         "AudioUnitTestData.cpp",
+         "CryAudioUnitTests.cpp"
+      ]
+   }
+}
+
+
+

@@ -1,0 +1,37 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+########################################################################################
+
+def build(bld):
+
+    bld.CryConsoleApplication(
+    
+        #==============================
+        # Common Settings
+        #==============================
+        target = 'HLSLcc_Metal',
+        vs_filter = 'Tools',
+        file_list = 'hlslcc_metal.waf_files',
+        platforms       = ['win'],
+        configurations  = ['debug', 'profile'],
+        disable_pch = True,
+
+        includes = [bld.Path('Code/Tools/HLSLCrossCompilerMetal/include'),
+                    bld.Path('Code/Tools/HLSLCrossCompilerMetal/src'),
+                    bld.Path('Code/Tools/HLSLCrossCompilerMetal/src/cbstring'),
+                    bld.Path('Code/Tools/HLSLCrossCompilerMetal/offline/cjson')],
+
+        output_folder = 'Tools/CrySCompileServer/Compiler/PCGMETAL/HLSLcc',
+	output_file_name = 'HLSLcc',
+
+        win_defines = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE', 'WIN32'],
+        win_lib = ['gdi32'],
+    )
+

@@ -1,0 +1,18 @@
+{
+    "description"           : "Configuration to build GraphCanvas Tests",
+    "visual_studio_name"    : "GraphCanvas Tests",
+    "comment"               : "This is meant to build the GraphCanvas DLLs faster, but you still need to build the 'all' spec at least once to run/debug from this solution.",
+    "disable_game_projects" : true,
+    "platforms" : ["win"],
+    "configurations" : ["debug_test"],
+
+    "modules" :
+    [
+        "AzCore",
+        "AzFramework",
+        "AzToolsFramework",
+        "AzTest",
+        "AzTestRunner",
+        "GraphCanvas"
+    ]
+}

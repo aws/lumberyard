@@ -1,0 +1,476 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision$"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "PlayerAccountReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "PlayerAccountWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "PlayerAccountPlayerNameIndexReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second for the name index.",
+            "Type": "Number"
+        },
+        "PlayerAccountPlayerNameIndexWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second for the name index.",
+            "Type": "Number"
+        },
+        "PlayerAccountCognitoIdentityIdIndexReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second for the Cognito identity id index.",
+            "Type": "Number"
+        },
+        "PlayerAccountCognitoIdentityIdIndexWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second for the Cognito identity id index.",
+            "Type": "Number"
+        },
+        "PlayerAccountCognitoUsernameIndexReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second for the username index.",
+            "Type": "Number"
+        },
+        "PlayerAccountCognitoUsernameIndexWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second for the username index.",
+            "Type": "Number"
+        },
+        "PlayerAccountNameSortKeyCount": {
+            "Default": "5",
+            "Description": "The sorted player names will be split among a number of keys to balance load across the name index partitions",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "CustomAuthFlowLambda",
+                "PlayerAccounts",
+                "PlayerUserPool",
+                "ServiceApi",
+                "ServiceLambda"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "PlayerAccounts": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem"],
+                            "ResourceSuffix": [ "", "/*" ]
+                        },
+                        {
+                            "AbstractRole": "CustomAuthFlowLambda",
+                            "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem"],
+                            "ResourceSuffix": [ "", "/*" ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "AccountId",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "IndexedPlayerName",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "PlayerNameSortKey",
+                        "AttributeType": "N"
+                    },
+                    {
+                        "AttributeName": "CognitoIdentityId",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "CognitoUsername",
+                        "AttributeType": "S"
+                    }
+                ],
+                "GlobalSecondaryIndexes": [
+                    {
+                        "IndexName": "PlayerNameIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "PlayerNameSortKey",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "IndexedPlayerName",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "NonKeyAttributes": [ "AccountId", "AccountBlacklisted", "PlayerName", "CognitoIdentityId", "CognitoUsername" ],
+                            "ProjectionType": "INCLUDE"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "PlayerAccountPlayerNameIndexReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "PlayerAccountPlayerNameIndexWriteCapacityUnits" }
+                        }
+                    },
+                    {
+                        "IndexName": "CognitoIdentityIdIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "CognitoIdentityId",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "AccountId",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "NonKeyAttributes": [ "AccountBlacklisted", "PlayerName", "CognitoUsername" ],
+                            "ProjectionType": "INCLUDE"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "PlayerAccountCognitoIdentityIdIndexReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "PlayerAccountCognitoIdentityIdIndexWriteCapacityUnits" }
+                        }
+                    },
+                    {
+                        "IndexName": "CognitoUsernameIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "CognitoUsername",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "AccountId",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "NonKeyAttributes": [ "AccountBlacklisted", "CognitoIdentityId", "PlayerName" ],
+                            "ProjectionType": "INCLUDE"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "PlayerAccountCognitoUsernameIndexReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "PlayerAccountCognitoUsernameIndexWriteCapacityUnits" }
+                        }
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "AccountId",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "PlayerAccountReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "PlayerAccountWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "PlayerUserPool": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "CustomAuthFlowLambda",
+                            "Action": [ "cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge" ]
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "cognito-idp:AdminConfirmSignUp",
+                                "cognito-idp:AdminCreateUser",
+                                "cognito-idp:AdminGetUser",
+                                "cognito-idp:AdminResetUserPassword",
+                                "cognito-idp:AdminUpdateUserAttributes",
+                                "cognito-idp:DescribeUserPool",
+                                "cognito-idp:ListUsers",
+                                "cognito-idp:AdminUserGlobalSignOut"
+                            ]
+                        }
+                    ],
+                    "Identities": [
+                        {
+                            "IdentityPoolLogicalName": "PlayerAccessIdentityPool",
+                            "ClientApp": "DefaultClientApp"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ClientApps": [
+                    "DefaultClientApp"
+                ],
+                "ExplicitAuthFlows": ["ADMIN_NO_SRP_AUTH"],
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "LambdaConfig": {
+                    "CreateAuthChallenge": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "CustomAuthFlowLambda" } ] ] },
+                    "DefineAuthChallenge": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "CustomAuthFlowLambda" } ] ] },
+                    "VerifyAuthChallengeResponse": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "CustomAuthFlowLambda" } ] ] }
+                },
+                "PoolName": "PlayerAccess",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::CognitoUserPool"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/account",
+                            "/api/PUT/account",
+                            "/api/GET/service/status"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 6
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "PlayerAccountNameSortKeyCount": {
+                        "Ref": "PlayerAccountNameSortKeyCount"
+                    },
+                    "PlayerAccounts": {
+                        "Ref": "PlayerAccounts"
+                    },
+                    "UserPool": {
+                        "Ref": "PlayerUserPool"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "CustomAuthFlowLambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "CustomAuthFlowLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "CustomAuthFlowLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "custom_auth_flow.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "CustomAuthFlowLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "CustomAuthFlowLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 6
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "CustomAuthFlowLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "CustomAuthFlowLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "PlayerAccounts": {
+                        "Ref": "PlayerAccounts"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "CustomAuthFlowLambdaPermissions": {
+          "Type" : "AWS::Lambda::Permission",
+            "Properties" : {
+                "Action" : "lambda:InvokeFunction",
+                "FunctionName": { "Ref":  "CustomAuthFlowLambda" },
+                "Principal" : "cognito-idp.amazonaws.com",
+                "SourceArn" : { "Fn::Join": [ "", [ "arn:aws:cognito-idp:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":userpool/", { "Ref": "PlayerUserPool" } ] ] }
+            }
+        }
+    }
+}

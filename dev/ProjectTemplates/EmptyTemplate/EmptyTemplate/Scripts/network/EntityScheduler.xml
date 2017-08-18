@@ -1,0 +1,144 @@
+<EntityScheduler>
+	<!-- test entities -->
+	<Class name="NetworkTestExtension" policy="rule"/>
+  <Class name="NetworkGameTargetExtension" policy="rule"/>
+  <Class name="NetworkGameSpawner" policy="rule"/>
+  <Class name="NetworkGameTest" polciy="rule"/>
+  
+	<!-- game rules -->
+	<Class name="InstantAction" policy="rule"/>
+	<Class name="TeamInstantAction" policy="rule"/>
+	<Class name="Assault" policy="rule"/>
+	<Class name="CaptureTheFlag" policy="rule"/>
+	<Class name="CrashSite" policy="rule"/>
+	<Class name="Extraction" policy="rule"/>
+	<Class name="PowerStruggle" policy="rule"/>
+	<Class name="Gladiator" policy="rule"/>
+
+	<!-- actors -->
+	<Class name="Player" policy="dude" own="own"/>
+	<Class name="Human" policy="dude"/>
+
+	<!-- weapons -->
+	<Class name="FragGrenades" policy="gun" />
+	<Class name="HMG" policy="gun" />
+	<Class name="NoWeapon" policy="gun" />
+	<Class name="PickAndThrowWeapon" policy="gun"/>
+	<Class name="Pistol" policy="gun" />
+	<Class name="Rifle" policy="gun" />
+	<Class name="RocketLauncher" policy="gun" />
+	<Class name="Shotgun" policy="gun" />
+	<Class name="SmokeGrenades" policy="gun" />
+	<Class name="TurretGun" policy="gun" />
+	<Class name="CoaxialGun" policy="gun" />
+	<Class name="TankCannon" policy="gun" />
+
+	<!-- accessories -->
+	<Class name="AssaultScope" policy="gun" />
+	<Class name="ExtendedClip" policy="gun" />
+	<Class name="Flashlight" policy="gun" />
+	<Class name="Ironsight" policy="gun" />
+	<Class name="IronsightRifle" policy="gun" />
+	<Class name="NoAttachmentBarrel" policy="gun" />
+	<Class name="NoAttachmentBottom" policy="gun" />
+	<Class name="PistolBulletAmmo" policy="gun" />
+	<Class name="PistolIncendiaryAmmo" policy="gun" />
+	<Class name="ShotgunAmmo" policy="gun" />
+	<Class name="ShotgunSolidAmmo" policy="gun" />
+	<Class name="Silencer" policy="gun" />
+	<Class name="SniperScope" policy="gun" />
+
+	<!-- projectiles -->
+	<Class name="ExplosiveGrenade" policy="proj"/>
+	<Class name="MGbullet" policy="proj"/>
+	<Class name="PistolBullet" policy="proj"/>
+	<Class name="PistolBulletIncendiary" policy="proj"/>
+	<Class name="RifleBullet" policy="proj"/>
+	<Class name="Rocket" policy="proj"/>
+	<Class name="ShotgunShell" policy="proj"/>
+	<Class name="ShotgunShellSolid" policy="proj"/>
+	<Class name="SmokeGrenade" policy="proj"/>
+	<Class name="Tank125" policy="proj"/>
+
+	<!-- vehicles -->
+	<Class name="VehicleSeatSerializer" policy="cart" own="own"/>
+	<Class name="HMMWV" policy="car" own="own"/>
+	<Class name="MH60_Blackhawk" policy="car" own="own"/>
+	<Class name="Abrams" policy="car" own="own"/>
+	<Class name="SpeedBoat" policy="car" own="own"/>
+
+	<!-- basic physicalized objects -->
+	<Class name="Default" policy="phys"/>
+	<Class name="BasicEntity" policy="phys"/>
+	<Class name="DestroyableObject" policy="phys"/>
+	<Class name="PressurizedObject" policy="phys"/>
+	<Class name="RigidBodyEx" policy="phys"/>
+	<Class name="RopeEntity" policy="phys"/>
+	<Class name="InteractiveEntity" policy="phys"/>
+	<Class name="Tornado" policy="phys"/>
+	<Class name="Constraint" policy="phys"/>
+	<Class name="GeomEntity" policy="phys"/>
+	<Class name="DangerousRigidBody" policy="phys"/>
+
+	<!-- misc -->
+	<Class name="SpawnPoint" policy="obj"/>
+	<Class name="SpawnGroup" policy="capt"/>
+	<Class name="Door" policy="door"/>
+	<Class name="Elevator" policy="door"/>
+	<Class name="ElevatorSwitch" policy="door"/>
+	<Class name="Hazard" policy="obj"/>
+	<Class name="AreaShape" policy="obj"/>
+	<Class name="AnimObject" policy="obj"/>
+	<Class name="TeamRandomSoundVolume" policy="obj"/>
+	<Class name="MusicMoodSelector" policy="obj"/>
+	<Class name="AreaBox" policy="obj"/>
+	<Class name="LightShape" policy="obj"/>
+	<Class name="AreaSphere" policy="obj"/>
+	<Class name="ProximityTrigger" policy="obj"/>
+	<Class name="MusicThemeSelector" policy="obj"/>
+	<Class name="MusicEndTheme" policy="obj"/>
+	<Class name="WindArea" policy="obj"/>
+	<Class name="TagPoint" policy="obj"/>
+	<Class name="Lightning" policy="obj"/>
+	<Class name="GravityBox" policy="obj"/>
+	<Class name="SpectatorPoint" policy="obj"/>
+	<Class name="FogVolume" policy="obj"/>
+	<Class name="AreaTrigger" policy="obj"/>
+	<Class name="MusicPlayPattern" policy="obj"/>
+	<Class name="ForbiddenArea" policy="capt"/>
+
+	<Class name="AIAnchor" policy="obj"/>
+	<Class name="CameraSource" policy="obj"/>
+	<Class name="Fog" policy="obj"/>
+	<Class name="MusicStinger" policy="obj"/>
+	<Class name="ParticleEffect" policy="obj"/>
+	<Class name="SmartObject" policy="obj"/>
+
+	<Class name="CTFFlag" policy="capt"/>
+	<Class name="CTFBase" policy="capt"/>
+
+	<Class name="BTBBombSite" policy="obj"/>
+	<Class name="BTBBombBase" policy="obj"/>
+
+	<Class name="ExtractionPoint" policy="capt"/>
+	<Class name="ExtractionWeaponSpawn" policy="obj"/>
+
+	<Class name="AssaultIntel" policy="obj"/>
+	<Class name="AmmoCrateMP" policy="obj"/>
+
+	<Class name="VTOLSpawnPoint" policy="obj"/>
+	<Class name="DestroyableLight" policy="obj"/>
+	<Class name="RigidBody" policy="obj"/>
+	<Class name="Cloth" policy="obj"/>
+	<Class name="InteractiveObjectEx" policy="obj"/>
+	<Class name="Breakage" policy="obj"/>
+	<Class name="DeployableBarrier" policy="obj"/>
+	<Class name="RigidBodyLight" policy="obj"/>
+	<Class name="Rain" policy="obj"/>
+	<Class name="HealthPack" policy="obj"/>
+	<Class name="Ladder" policy="obj"/>
+	<Class name="LedgeObject" policy="obj"/>
+
+	<!-- fallback -->
+	<Default policy="obj"/>
+</EntityScheduler>

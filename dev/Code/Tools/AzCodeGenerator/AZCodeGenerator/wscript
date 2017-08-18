@@ -1,0 +1,151 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+import os
+
+
+def build(bld):
+
+    win_x64_cxxflags = ['/wd4267','/wd4244','/wd4800','/wd4146']
+    win_x64_defines = ['_CRT_SECURE_NO_WARNINGS', '_SCL_SECURE_NO_WARNINGS', 'AZCG_COMPILER_MSVC',
+                       'AZCG_PLATFORM_WINDOWS']
+
+    darwin_x64_cxxflags = ['-w', '-std=c++11', '-pthread']
+    darwin_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_COMPILER_CLANG',
+                          'AZCG_PLATFORM_DARWIN']
+    darwin_x64_lib = ['python2.7', 'z', 'ncurses']
+
+    linux_x64_cxxflags = ['-w', '-std=c++11', '-stdlib=libstdc++', '-pthread']
+    linux_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_PLATFORM_LINUX']
+    linux_x64_lib = ['python2.7', 'z', 'util', 'ncurses', 'dl']
+    linux_x64_linkflags = list(linux_x64_cxxflags) # ['-pthread', '-stdlib=libstdc++']
+    linux_x64_rpath = bld.Path('Tools/Python/2.7.12/linux_x64/lib')
+    
+    llvm_libs = ['clangFrontend', 'clangSerialization', 'clangDriver', 'clangTooling', 'clangParse',
+                 'clangSema', 'clangAnalysis', 'clangRewriteFrontend', 'clangRewrite', 'clangEdit',
+                 'clangAST', 'clangLex', 'clangBasic', 'LLVMMC', 'LLVMSupport', 'LLVMOption', 'LLVMBitReader',
+                 'LLVMMCParser']
+
+    platform, configuration = bld.get_platform_and_configuration()
+    pydll = None
+    if platform.startswith('win_') or platform == 'project_generator':
+        pydll = 'Tools/Python/2.7.12/windows/python27.dll'
+    elif platform.startswith('linux_'):
+        pydll = 'Tools/Python/2.7.12/linux_x64/lib/libpython2.7.so'
+
+    source_artifacts = [ pydll ] if pydll else []
+    source_artifacts += [
+        'Code/Tools/AzCodeGenerator/Scripts/az_code_gen',
+        'Code/Tools/AzCodeGenerator/Scripts/jinja_extensions',
+        'Code/Tools/AzCodeGenerator/Scripts/launcher.py',
+        'Code/Tools/AzCodeGenerator/Scripts/debug.py'
+    ]
+
+    output_folder_vs2013 = ['Tools/AzCodeGenerator/bin/vc120/']
+    output_folder_vs2015 = ['Tools/AzCodeGenerator/bin/vc140/']
+    output_folder_darwin = ['Tools/AzCodeGenerator/bin/osx/']
+    output_folder_linux = ['Tools/AzCodeGenerator/bin/linux/']
+
+
+    win_x64_vs2013_debug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2013/debug/include')]
+    win_x64_vs2013_debug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2013/debug/lib')]
+    win_x64_vs2013_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2013/release/include')]
+    win_x64_vs2013_ndebug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2013/release/lib')]
+    win_x64_vs2015_debug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2015/debug/include')]
+    win_x64_vs2015_debug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2015/debug/lib')]
+    win_x64_vs2015_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2015/release/include')]
+    win_x64_vs2015_ndebug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2015/release/lib')]
+    
+    darwin_x64_debug_includes  = [bld.Path('Code/Tools/SDKs/Clang/xcode/debug/include')]
+    darwin_x64_debug_libpath   = [bld.Path('Code/Tools/SDKs/Clang/xcode/debug/lib')]
+    darwin_x64_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/xcode/release/include')]
+    darwin_x64_ndebug_libpath  = [bld.Path('Code/Tools/SDKs/Clang/xcode/release/lib')]
+
+    linux_x64_debug_includes  = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/debug/include')]
+    linux_x64_debug_libpath   = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/debug/lib'), bld.Path('Tools/Python/2.7.12/linux_x64/lib')]
+    linux_x64_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/release/include')]
+    linux_x64_ndebug_libpath  = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/release/lib'), bld.Path('Tools/Python/2.7.12/linux_x64/lib')]
+
+    bld.CryBuildUtility(
+
+        target              = 'AzCodeGenerator',
+        platforms           = ['win', 'darwin_x64', 'linux_x64'],
+        configurations      = ['debug', 'profile'],
+        vs_filter           = 'Tools',
+        file_list           = 'azcodegenerator.waf_files',
+        pch                 = 'precompiled.cpp',
+
+        use                 = ['RAPIDJSON'],
+        features            = ['EmbeddedPython'],
+
+        source_artifacts_include = source_artifacts,
+
+        win_cxxflags=win_x64_cxxflags,
+        darwin_x64_cxxflags = darwin_x64_cxxflags,
+        linux_x64_cxxflags  = linux_x64_cxxflags,
+
+        win_defines=win_x64_defines,
+        darwin_x64_defines  = darwin_x64_defines,
+        linux_x64_defines   = linux_x64_defines,
+
+        includes = [bld.Path('Code/Tools/SDKs/Clang/llvm/include')],
+
+        win_x64_vs2013_debug_includes=win_x64_vs2013_debug_includes,
+        win_x64_vs2015_debug_includes=win_x64_vs2015_debug_includes,
+        win_x64_vs2013_debug_dedicated_includes=win_x64_vs2013_debug_includes,
+        win_x64_vs2015_debug_dedicated_includes=win_x64_vs2015_debug_includes,
+        win_x64_vs2013_ndebug_includes=win_x64_vs2013_ndebug_includes,
+        win_x64_vs2015_ndebug_includes=win_x64_vs2015_ndebug_includes,
+        win_x64_vs2013_ndebug_dedicated_includes=win_x64_vs2013_ndebug_includes,
+        win_x64_vs2015_ndebug_dedicated_includes=win_x64_vs2015_ndebug_includes,
+
+        darwin_x64_debug_includes=darwin_x64_debug_includes,
+        darwin_x64_debug_dedicated_includes=darwin_x64_debug_includes,
+        darwin_x64_ndebug_includes=darwin_x64_ndebug_includes,
+        darwin_x64_ndebug_dedicated_includes=darwin_x64_ndebug_includes,
+
+        linux_x64_debug_includes=linux_x64_debug_includes,
+        linux_x64_ndebug_includes=linux_x64_ndebug_includes,
+
+        lib=llvm_libs,
+        darwin_x64_lib=darwin_x64_lib,
+        linux_x64_lib=linux_x64_lib,
+
+        win_x64_vs2013_debug_libpath=win_x64_vs2013_debug_libpath,
+        win_x64_vs2015_debug_libpath=win_x64_vs2015_debug_libpath,
+        win_x64_vs2013_debug_dedicated_libpath=win_x64_vs2013_debug_libpath,
+        win_x64_vs2015_debug_dedicated_libpath=win_x64_vs2015_debug_libpath,
+        win_x64_vs2013_ndebug_libpath=win_x64_vs2013_ndebug_libpath,
+        win_x64_vs2015_ndebug_libpath=win_x64_vs2015_ndebug_libpath,
+        win_x64_vs2013_ndebug_dedicated_libpath=win_x64_vs2013_ndebug_libpath,
+        win_x64_vs2015_ndebug_dedicated_libpath=win_x64_vs2015_ndebug_libpath,
+
+        darwin_x64_debug_libpath=darwin_x64_debug_libpath,
+        darwin_x64_debug_dedicated_libpath=darwin_x64_debug_libpath,
+        darwin_x64_ndebug_libpath=darwin_x64_ndebug_libpath,
+        darwin_x64_ndebug_dedicated_libpath=darwin_x64_ndebug_libpath,
+
+        linux_x64_debug_libpath=linux_x64_debug_libpath,
+        linux_x64_ndebug_libpath=linux_x64_ndebug_libpath,
+
+        linux_x64_linkflags=linux_x64_linkflags,
+        linux_x64_rpath=linux_x64_rpath,
+
+        win_x64_vs2013_output_folder=output_folder_vs2013,
+        win_x64_vs2015_output_folder=output_folder_vs2015,
+        darwin_x64_output_folder=output_folder_darwin,
+        linux_x64_output_folder=output_folder_linux,
+
+        ndebug_output_file_name='AzCodeGenerator',
+        debug_output_file_name='AzCodeGeneratorD',
+
+    )

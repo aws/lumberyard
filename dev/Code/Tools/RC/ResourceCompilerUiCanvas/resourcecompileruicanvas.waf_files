@@ -1,0 +1,12 @@
+{
+   "ResourceCompilerUiCanvas_uber_0.cpp":
+   {
+        "Source Files":
+        [
+            "ResourceCompilerUiCanvas.cpp",
+            "../ResourceCompiler/IConfig.cpp",
+  
+            "stdafx.h"
+        ]
+    }
+}

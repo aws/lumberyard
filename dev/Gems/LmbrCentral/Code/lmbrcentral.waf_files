@@ -1,0 +1,263 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h",
+            "Source/LmbrCentral.h",
+            "Source/LmbrCentral.cpp"
+        ]
+    },
+    "auto": {
+        "Include/Ai": [
+            "include/LmbrCentral/Ai/NavigationComponentBus.h",
+            "include/LmbrCentral/Ai/NavigationSystemBus.h",
+            "include/LmbrCentral/Ai/BehaviorTreeComponentBus.h",
+            "include/LmbrCentral/Ai/BehaviorTreeAsset.h"
+        ],
+        "Include/Animation": [
+            "include/LmbrCentral/Animation/AttachmentComponentBus.h",
+            "include/LmbrCentral/Animation/MannequinComponentBus.h",
+            "include/LmbrCentral/Animation/MannequinAsset.h",
+            "include/LmbrCentral/Animation/CharacterAnimationBus.h",
+            "include/LmbrCentral/Animation/MotionExtraction.h",
+            "include/LmbrCentral/Animation/MotionExtraction.cpp",
+            "include/LmbrCentral/Animation/SimpleAnimationComponentBus.h"
+        ],
+        "Include/Audio": [
+            "include/LmbrCentral/Audio/AudioEnvironmentComponentBus.h",
+            "include/LmbrCentral/Audio/AudioListenerComponentBus.h",
+            "include/LmbrCentral/Audio/AudioProxyComponentBus.h",
+            "include/LmbrCentral/Audio/AudioRtpcComponentBus.h",
+            "include/LmbrCentral/AUdio/AudioSwitchComponentBus.h",
+            "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
+        ],
+        "Include/Cinematics": [
+            "include/LmbrCentral/Cinematics/EditorSequenceAgentComponentBus.h",
+            "include/LmbrCentral/Cinematics/EditorSequenceComponentBus.h",
+            "include/LmbrCentral/Cinematics/SequenceAgentComponentBus.h",
+            "include/LmbrCentral/Cinematics/SequenceComponentBus.h"
+        ],
+        "Include/Physics": [
+            "include/LmbrCentral/Physics/RagdollPhysicsBus.h",
+            "include/LmbrCentral/Physics/ColliderComponentBus.h",
+            "include/LmbrCentral/Physics/ConstraintComponentBus.h",
+            "include/LmbrCentral/Physics/PhysicsComponentBus.h",
+            "include/LmbrCentral/Physics/PhysicsSystemComponentBus.h",
+            "include/LmbrCentral/Physics/PhysicsSystemComponentBus.inl",
+            "include/LmbrCentral/Physics/CryCharacterPhysicsBus.h"
+        ],
+        "Include/Rendering": [
+            "include/LmbrCentral/Rendering/DecalComponentBus.h",
+            "include/LmbrCentral/Rendering/LensFlareAsset.h",
+            "include/LmbrCentral/Rendering/LensFlareComponentBus.h",
+            "include/LmbrCentral/Rendering/LightComponentBus.h",
+            "include/LmbrCentral/Rendering/MaterialAsset.h",
+            "include/LmbrCentral/Rendering/MeshAsset.h",
+            "include/LmbrCentral/Rendering/MeshComponentBus.h",
+            "include/LmbrCentral/Rendering/ParticleAsset.h",
+            "include/LmbrCentral/Rendering/ParticleComponentBus.h",
+            "include/LmbrCentral/Rendering/RenderNodeBus.h"
+        ],
+        "Include/Scripting": [
+            "include/LmbrCentral/Scripting/SimpleStateComponentBus.h",
+            "include/LmbrCentral/Scripting/SpawnerComponentBus.h",
+            "include/LmbrCentral/Scripting/TagComponentBus.h",
+            "include/LmbrCentral/Scripting/TriggerAreaComponentBus.h",
+            "include/LmbrCentral/Scripting/FlowGraphSerialization.h",
+            "include/LmbrCentral/Scripting/FlowGraphSerialization.inl"
+        ],
+        "Include/Shape": [
+            "include/LmbrCentral/Shape/ShapeComponentBus.h",
+            "include/LmbrCentral/Shape/SphereShapeComponentBus.h",
+            "include/LmbrCentral/Shape/BoxShapeComponentBus.h",
+            "include/LmbrCentral/Shape/CylinderShapeComponentBus.h",
+            "include/LmbrCentral/Shape/CapsuleShapeComponentBus.h",
+            "include/LmbrCentral/Shape/CompoundShapeComponentBus.h"
+        ],
+        "Source/Ai": [
+            "Source/Ai/BehaviorTreeAssetHandler.h",
+            "Source/Ai/BehaviorTreeAssetHandler.cpp",
+            "Source/Ai/NavigationComponent.h",
+            "Source/Ai/NavigationComponent.cpp",
+            "Source/Ai/BehaviorTreeComponent.h",
+            "Source/Ai/BehaviorTreeComponent.cpp",
+            "Source/Ai/NavigationSystemComponent.h",
+            "Source/Ai/NavigationSystemComponent.cpp"
+        ],
+        "Source/Animation": [
+            "Source/Animation/AttachmentComponent.h",
+            "Source/Animation/AttachmentComponent.cpp",
+            "Source/Animation/SimpleAnimationComponent.h",
+            "Source/Animation/SimpleAnimationComponent.cpp",
+            "Source/Animation/MannequinScopeComponent.h",
+            "Source/Animation/MannequinScopeComponent.cpp",
+            "Source/Animation/MannequinComponent.h",
+            "Source/Animation/MannequinComponent.cpp",
+            "Source/Animation/MotionParameterSmoothingComponent.h",
+            "Source/Animation/MotionParameterSmoothingComponent.cpp",
+            "Source/Animation/CharacterAnimationManagerComponent.h",
+            "Source/Animation/CharacterAnimationManagerComponent.cpp"
+        ],
+        "Source/Audio": [
+            "Source/Audio/AudioAreaEnvironmentComponent.h",
+            "Source/Audio/AudioAreaEnvironmentComponent.cpp",
+            "Source/Audio/AudioComponentConverters.cpp",
+            "Source/Audio/AudioEnvironmentComponent.h",
+            "Source/Audio/AudioEnvironmentComponent.cpp",
+            "Source/Audio/AudioListenerComponent.h",
+            "Source/Audio/AudioListenerComponent.cpp",
+            "Source/Audio/AudioProxyComponent.h",
+            "Source/Audio/AudioProxyComponent.cpp",
+            "Source/Audio/AudioRtpcComponent.h",
+            "Source/Audio/AudioRtpcComponent.cpp",
+            "Source/Audio/AudioSwitchComponent.h",
+            "Source/Audio/AudioSwitchComponent.cpp",
+            "Source/Audio/AudioTriggerComponent.h",
+            "Source/Audio/AudioTriggerComponent.cpp"
+        ],
+        "Source/Cinematics": [
+            "Source/Cinematics/SequenceComponent.h",
+            "Source/Cinematics/SequenceComponent.cpp",
+            "Source/Cinematics/SequenceAgent.h",
+            "Source/Cinematics/SequenceAgent.cpp",
+            "Source/Cinematics/SequenceAgentComponent.h",
+            "Source/Cinematics/SequenceAgentComponent.cpp"
+        ],
+        "Source/Events": [
+            "Source/Events/ReflectScriptableEvents.h",
+            "Source/Events/ReflectScriptableEvents.cpp"
+        ],
+        "Source/Physics": [
+            "Source/Physics/CharacterPhysicsComponent.h",
+            "Source/Physics/CharacterPhysicsComponent.cpp",
+            "Source/Physics/ConstraintComponent.h",
+            "Source/Physics/ConstraintComponent.cpp",
+            "Source/Physics/PhysicsComponent.h",
+            "Source/Physics/PhysicsComponent.cpp",
+            "Source/Physics/PhysicsComponentV1Converter.cpp",
+            "Source/Physics/PhysicsSystemComponent.h",
+            "Source/Physics/PhysicsSystemComponent.cpp",
+            "Source/Physics/RagdollComponent.h",
+            "Source/Physics/RagdollComponent.cpp",
+            "Source/Physics/RigidPhysicsComponent.h",
+            "Source/Physics/RigidPhysicsComponent.cpp",
+            "Source/Physics/StaticPhysicsComponent.h",
+            "Source/Physics/StaticPhysicsComponent.cpp"
+        ],
+        "Source/Physics/Colliders": [
+            "Source/Physics/Colliders/MeshColliderComponent.h",
+            "Source/Physics/Colliders/MeshColliderComponent.cpp",
+            "Source/Physics/Colliders/PrimitiveColliderComponent.h",
+            "Source/Physics/Colliders/PrimitiveColliderComponent.cpp"
+        ],
+        "Source/Rendering": [
+            "Source/Rendering/DecalComponent.h",
+            "Source/Rendering/DecalComponent.cpp",
+            "Source/Rendering/ParticleComponent.h",
+            "Source/Rendering/ParticleComponent.cpp",
+            "Source/Rendering/LensFlareAssetHandler.h",
+            "Source/Rendering/LensFlareAssetHandler.cpp",
+            "Source/Rendering/LensFlareComponent.h",
+            "Source/Rendering/LensFlareComponent.cpp",
+            "Source/Rendering/LightComponent.h",
+            "Source/Rendering/LightComponent.cpp",
+            "Source/Rendering/LightInstance.h",
+            "Source/Rendering/LightInstance.cpp",
+            "Source/Rendering/MeshAssetHandler.h",
+            "Source/Rendering/MeshAssetHandler.cpp",
+            "Source/Rendering/StaticMeshComponent.h",
+            "Source/Rendering/StaticMeshComponent.cpp",
+            "Source/Rendering/SkinnedMeshComponent.h",
+            "Source/Rendering/SkinnedMeshComponent.cpp",
+            "Source/Rendering/ParticleAssetHandler.h",
+            "Source/Rendering/ParticleAssetHandler.cpp",
+            "Source/Rendering/StereoRendererComponent.h",
+            "Source/Rendering/StereoRendererComponent.cpp"
+        ],
+        "Source/Scripting": [
+            "Source/Scripting/FlowGraphComponent.h",
+            "Source/Scripting/FlowGraphComponent.cpp",
+            "Source/Scripting/LookAtComponent.h",
+            "Source/Scripting/LookAtComponent.cpp",
+            "Source/Scripting/SimpleStateComponent.h",
+            "Source/Scripting/SimpleStateComponent.cpp",
+            "Source/Scripting/SpawnerComponent.h",
+            "Source/Scripting/SpawnerComponent.cpp",
+            "Source/Scripting/TagComponent.h",
+            "Source/Scripting/TagComponent.cpp",
+            "Source/Scripting/TriggerAreaComponent.h",
+            "Source/Scripting/TriggerAreaComponent.cpp"
+        ],
+        "Source/Shape": [
+            "Source/Shape/ShapeComponent.cpp",
+            "Source/Shape/SphereShapeComponent.h",
+            "Source/Shape/SphereShapeComponent.cpp",
+            "Source/Shape/BoxShapeComponent.h",
+            "Source/Shape/BoxShapeComponent.cpp",
+            "Source/Shape/CylinderShapeComponent.h",
+            "Source/Shape/CylinderShapeComponent.cpp",
+            "Source/Shape/CapsuleShapeComponent.h",
+            "Source/Shape/CapsuleShapeComponent.cpp",
+            "Source/Shape/CompoundShapeComponent.h",
+            "Source/Shape/CompoundShapeComponent.cpp"
+        ],
+        "Source/Unhandled/Animation": [
+            "Source/Unhandled/Animation/AnimationEventsAssetTypeInfo.cpp",
+            "Source/Unhandled/Animation/AnimationEventsAssetTypeInfo.h",
+            "Source/Unhandled/Animation/DbaAssetTypeInfo.cpp",
+            "Source/Unhandled/Animation/DbaAssetTypeInfo.h",
+            "Source/Unhandled/Animation/MannequinControllerAssetTypeInfo.cpp",
+            "Source/Unhandled/Animation/MannequinControllerAssetTypeInfo.h",
+            "Source/Unhandled/Animation/MannequinPreviewAssetTypeInfo.cpp",
+            "Source/Unhandled/Animation/MannequinPreviewAssetTypeInfo.h",
+            "Source/Unhandled/Animation/SimpleAnimationAssetTypeInfo.cpp",
+            "Source/Unhandled/Animation/SimpleAnimationAssetTypeInfo.h"
+        ],
+        "Source/Unhandled/Material": [
+            "Source/Unhandled/Material/MaterialAssetTypeInfo.cpp",
+            "Source/Unhandled/Material/MaterialAssetTypeInfo.h"
+        ],
+        "Source/Unhandled/Other": [
+            "Source/Unhandled/Other/AudioAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/AudioAssetTypeInfo.h",
+            "Source/Unhandled/Other/CharacterPhysicsAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/CharacterPhysicsAssetTypeInfo.h",
+            "Source/Unhandled/Other/CharacterRigAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/CharacterRigAssetTypeInfo.h",
+            "Source/Unhandled/Other/EntityPrototypeLibraryAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/EntityPrototypeLibraryAssetTypeInfo.h",
+            "Source/Unhandled/Other/GameTokenAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/GameTokenAssetTypeInfo.h",
+            "Source/Unhandled/Other/GeomCacheAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/GeomCacheAssetTypeInfo.h",
+            "Source/Unhandled/Other/GroupAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/GroupAssetTypeInfo.h",
+            "Source/Unhandled/Other/PrefabsLibraryAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/PrefabsLibraryAssetTypeInfo.h",
+            "Source/Unhandled/Other/SkeletonAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/SkeletonAssetTypeInfo.h",
+            "Source/Unhandled/Other/SkeletonParamsAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/SkeletonParamsAssetTypeInfo.h",
+            "Source/Unhandled/Other/SkinnedMeshAssetTypeInfo.cpp",
+            "Source/Unhandled/Other/SkinnedMeshAssetTypeInfo.h"
+        ],
+        "Source/Unhandled/Texture": [
+            "Source/Unhandled/Texture/SubstanceAssetTypeInfo.cpp",
+            "Source/Unhandled/Texture/SubstanceAssetTypeInfo.h",
+            "Source/Unhandled/Texture/TextureAssetTypeInfo.cpp",
+            "Source/Unhandled/Texture/TextureAssetTypeInfo.h"
+        ],
+        "Source/Unhandled/Hidden": [
+            "Source/Unhandled/Hidden/TextureMipmapAssetTypeInfo.cpp",
+            "Source/Unhandled/Hidden/TextureMipmapAssetTypeInfo.h"
+        ],
+        "Source/Unhandled/UI": [
+            "Source/Unhandled/UI/EntityIconAssetTypeInfo.cpp",
+            "Source/Unhandled/UI/EntityIconAssetTypeInfo.h",
+            "Source/Unhandled/UI/FontAssetTypeInfo.cpp",
+            "Source/Unhandled/UI/FontAssetTypeInfo.h",
+            "Source/Unhandled/UI/UICanvasAssetTypeInfo.cpp",
+            "Source/Unhandled/UI/UICanvasAssetTypeInfo.h"
+        ]
+    }
+}

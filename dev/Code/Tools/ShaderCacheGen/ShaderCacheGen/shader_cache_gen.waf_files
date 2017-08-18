@@ -1,0 +1,11 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"ShaderCacheGen.cpp",
+			"stdafx.cpp",
+			"stdafx.h"
+		]
+	}
+}

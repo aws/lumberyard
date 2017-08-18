@@ -1,0 +1,4 @@
+<Entity
+	Name="GravityBox"
+	Script="Scripts/Entities/Physics/GravityBox.lua"
+/>

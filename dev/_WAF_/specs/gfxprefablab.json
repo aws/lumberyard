@@ -1,0 +1,18 @@
+{
+    "description"           : "Configuration to build non-essential GFXPrefabLab suite",
+    "visual_studio_name"    : "GFXPrefabLab",
+    "comment"               : "Compile graphics prefab lab on windows.",
+    "disable_game_projects" : true,
+
+    "win_modules" :
+    [
+        "AzCore",
+        "AzFramework",
+        "AzToolsFramework",
+        "AzQtComponents",
+        "CryCommon",
+        "CrySystem",
+        "AzTestRunner",
+        "GFXPrefabLab"
+    ]
+}

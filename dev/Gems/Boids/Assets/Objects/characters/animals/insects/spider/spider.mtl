@@ -1,0 +1,11 @@
+<Material MtlFlags="524544">
+ <SubMaterials>
+  <Material Name="Spider1" MtlFlags="524418" Shader="Illum" GenMask="1" StringGenMask="%ALLOW_SILHOUETTE_POM" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.18782078,0.18782078,0.18782078" Specular="0.0069954107,0.0069954107,0.0069954107" Emissive="0,0,0" Shininess="10" Opacity="1" AlphaTest="0.30000001" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/insects/spider/spider_diff.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

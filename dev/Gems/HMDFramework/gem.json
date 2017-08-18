@@ -1,0 +1,12 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "24a3427048184feba39ba2cf75d45c4c",
+    "Name": "HMDFramework",
+    "DisplayName": "HMD Framework",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Framework for managing VR devices",
+    "Tags": ["VR"],
+    "IconPath": "preview.png",
+    "EditorModule": true
+}

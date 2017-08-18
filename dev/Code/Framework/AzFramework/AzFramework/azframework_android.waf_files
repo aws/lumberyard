@@ -1,0 +1,36 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "API": [
+            "API/ApplicationAPI_android.h",
+            "API/ApplicationAPI_android.cpp"
+        ],
+        "Input/Buses/Notifications": [
+            "Input/Buses/Notifications/RawInputNotificationBus_android.h"
+        ],
+        "Input/Devices/Gamepad": [
+            "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_android.cpp"
+        ],
+        "Input/Devices/Keyboard": [
+            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_none.cpp"
+        ],
+        "Input/Devices/Motion": [
+            "Input/Devices/Motion/InputDeviceMotion_pimpl_android.cpp"
+        ],
+        "Input/Devices/Mouse": [
+            "Input/Devices/Mouse/InputDeviceMouse_pimpl_none.cpp"
+        ],
+        "Input/Devices/Touch": [
+            "Input/Devices/Touch/InputDeviceTouch_pimpl_android.cpp"
+        ],
+        "Input/Devices/VirtualKeyboard": [
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_android.cpp"
+        ],
+        "Input/System": [
+            "Input/System/InputSystemComponent_pimpl_none.cpp"
+        ]
+    }
+}

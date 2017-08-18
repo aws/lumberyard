@@ -1,0 +1,317 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include "stdafx.h"
+
+#include "EditorCommon.h"
+
+namespace EntityHelpers
+{
+    AZ::Vector2 QPointFToVec2(const QPointF& other)
+    {
+        return AZ::Vector2(other.x(), other.y());
+    }
+
+    AZ::Vector2 RoundXY(const AZ::Vector2& v)
+    {
+        return AZ::Vector2(roundf(v.GetX()), roundf(v.GetY()));
+    }
+
+    AZ::Vector3 RoundXY(const AZ::Vector3& v)
+    {
+        return AZ::Vector3(roundf(v.GetX()), roundf(v.GetY()), v.GetZ());
+    }
+
+    AZ::Vector3 MakeVec3(const AZ::Vector2& v)
+    {
+        return AZ::Vector3(v.GetX(), v.GetY(), 0.0f);
+    }
+
+    float Snap(float value, float snapDistance)
+    {
+        // std::remainder gives the difference between the value and the closest multiple of the snap distance
+        float rem = std::remainder(value, snapDistance);
+
+        // return the closest value that is on the snap grid
+        return value - rem;
+    }
+
+    AZ::Vector2 Snap(const AZ::Vector2& v, float snapDistance)
+    {
+        return AZ::Vector2(v.GetX() - std::remainder(v.GetX(), snapDistance),
+            v.GetY() - std::remainder(v.GetY(), snapDistance));
+    }
+
+    UiTransform2dInterface::Offsets Snap(const UiTransform2dInterface::Offsets& offs, const ViewportHelpers::ElementEdges& grabbedEdges, float snapDistance)
+    {
+        return UiTransform2dInterface::Offsets(offs.m_left - std::remainder((grabbedEdges.m_left ? offs.m_left : 0.0f), snapDistance),
+            offs.m_top - std::remainder((grabbedEdges.m_top ? offs.m_top : 0.0f), snapDistance),
+            offs.m_right - std::remainder((grabbedEdges.m_right ? offs.m_right : 0.0f), snapDistance),
+            offs.m_bottom - std::remainder((grabbedEdges.m_bottom ? offs.m_bottom : 0.0f), snapDistance));
+    }
+
+    void MoveElementToGlobalPosition(AZ::Entity* element, const QPoint& globalPos)
+    {
+        if (!element)
+        {
+             return;
+        }
+
+        // Transform pivot position to canvas space
+        AZ::Vector2 pivotPos;
+        EBUS_EVENT_ID_RESULT(pivotPos, element->GetId(), UiTransformBus, GetCanvasSpacePivotNoScaleRotate);
+
+        // Transform destination position to canvas space
+        AZ::Matrix4x4 transformFromViewport;
+        EBUS_EVENT_ID(element->GetId(), UiTransformBus, GetTransformFromViewport, transformFromViewport);
+        AZ::Vector2 globalPos2(QPointFToVec2(globalPos));
+        AZ::Vector3 destPos3 = transformFromViewport * AZ::Vector3(globalPos2.GetX(), globalPos2.GetY(), 0.0f);
+        AZ::Vector2 destPos(destPos3.GetX(), destPos3.GetY());
+
+        // Adjust offsets
+        UiTransform2dInterface::Offsets offsets;
+        EBUS_EVENT_ID_RESULT(offsets, element->GetId(), UiTransform2dBus, GetOffsets);
+        EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetOffsets, offsets + (destPos - pivotPos));
+    }
+
+    AZ::Entity* GetParentElement(const AZ::Entity* element)
+    {
+        AZ::Entity* parentElement = nullptr;
+
+        if (!element)
+        {
+            return nullptr;
+        }
+
+        EBUS_EVENT_ID_RESULT(parentElement, element->GetId(), UiElementBus, GetParent);
+
+        return parentElement;
+    }
+
+    AZ::Entity* GetParentElement(const AZ::EntityId& elementId)
+    {
+        AZ::Entity* parentElement = nullptr;
+        EBUS_EVENT_ID_RESULT(parentElement, elementId, UiElementBus, GetParent);
+        return parentElement;
+    }
+
+    AZ::Entity* GetEntity(AZ::EntityId id)
+    {
+        AZ::Entity* element = nullptr;
+        EBUS_EVENT_RESULT(element, AZ::ComponentApplicationBus, FindEntity, id);
+        return element;
+    }
+
+    void ComputeCanvasSpaceRectNoScaleRotate(AZ::EntityId elementId, UiTransform2dInterface::Offsets offsets, UiTransformInterface::Rect& rect)
+    {
+        AZ::Entity* parentElement = nullptr;
+        EBUS_EVENT_ID_RESULT(parentElement, elementId, UiElementBus, GetParent);
+        if (parentElement)
+        {
+            UiTransformInterface::Rect parentRect;
+            EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetCanvasSpaceRectNoScaleRotate, parentRect);
+
+            AZ::Vector2 parentSize = parentRect.GetSize();
+
+            UiTransform2dInterface::Anchors anchors;
+            EBUS_EVENT_ID_RESULT(anchors, elementId, UiTransform2dBus, GetAnchors);
+
+            float left   = parentRect.left + parentSize.GetX() * anchors.m_left   + offsets.m_left;
+            float right  = parentRect.left + parentSize.GetX() * anchors.m_right  + offsets.m_right;
+            float top    = parentRect.top + parentSize.GetY() * anchors.m_top    + offsets.m_top;
+            float bottom = parentRect.top + parentSize.GetY() * anchors.m_bottom + offsets.m_bottom;
+
+            rect.Set(left, right, top, bottom);
+        }
+        else
+        {
+            AZ_Assert(false, "This is the root element.");
+        }
+
+        // we never return a "flipped" rect. I.e. left is always less than right, top is always less than bottom
+        // if it is flipped in a dimension then we make it zero size in that dimension
+        if (rect.left > rect.right)
+        {
+            rect.left = rect.right = rect.GetCenterX();
+        }
+        if (rect.top > rect.bottom)
+        {
+            rect.top = rect.bottom = rect.GetCenterY();
+        }
+    }
+
+    AZ::Vector2 ComputeCanvasSpacePivotNoScaleRotate(AZ::EntityId elementId, UiTransform2dInterface::Offsets offsets)
+    {
+        AZ::Vector2 pivot;
+        EBUS_EVENT_ID_RESULT(pivot, elementId, UiTransformBus, GetPivot);
+
+        UiTransformInterface::Rect rect;
+        ComputeCanvasSpaceRectNoScaleRotate(elementId, offsets, rect);
+
+        AZ::Vector2 size = rect.GetSize();
+
+        float x =  rect.left + size.GetX() * pivot.GetX();
+        float y =  rect.top + size.GetY() * pivot.GetY();
+
+        return AZ::Vector2(x, y);
+    }
+
+    AZStd::string GetHierarchicalElementName(AZ::EntityId entityId)
+    {
+        AZStd::string result;
+
+        // attempt to get more info about the entity
+        AZ::Entity* entity = nullptr;
+        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+
+        if (entity)
+        {
+            result = entity->GetName();
+
+            AZ::Entity* parent = nullptr;
+            EBUS_EVENT_ID_RESULT(parent, entityId, UiElementBus, GetParent);
+            while (parent)
+            {
+                AZStd::string entityName = parent->GetName();
+                AZ::EntityId parentId = parent->GetId();
+                parent = nullptr;   // in case entity is not listening on bus
+                EBUS_EVENT_ID_RESULT(parent, parentId, UiElementBus, GetParent);
+
+                // we do not want to include the root element name
+                if (parent)
+                {
+                    result = entityName + "/" + result;
+                }
+            }
+        }
+        else
+        {
+            result = entityId.ToString();
+        }
+
+        return result;
+    }
+
+    AZ::Entity* GetCommonAncestor(AZ::Entity* element1, AZ::Entity* element2,
+        AZ::Entity*& element1NextAncestor, AZ::Entity*& element2NextAncestor)
+    {
+        element1NextAncestor = element1;
+        element2NextAncestor = element2;
+
+        // if the two elements are the same then their common ancestor is the element itself
+        if (element1 == element2)
+        {
+            return element1;
+        }
+
+        // traverse up element1's parent chain storing all the ancestors in a vector
+        AZStd::vector<AZ::Entity*> element1Ancestors;
+        AZ::Entity* parent = GetParentElement(element1);
+        while (parent)
+        {
+            if (parent == element2)
+            {
+                return element2;    // element2 is an ancestor of element1, early out
+            }
+
+            element1Ancestors.push_back(parent);
+            element1NextAncestor = parent;
+
+            parent = GetParentElement(parent);
+        }
+
+        // now traverse up element2's parent chain looking for a match in element1's ancestors
+        parent = GetParentElement(element2);
+        while (parent)
+        {
+            if (parent == element1)
+            {
+                return element1; // element1 is a parent of element 2, early out
+            }
+
+            // search for this parent in element1's ancestors
+            for (int i = 0; i < element1Ancestors.size(); ++i)
+            {
+                if (element1Ancestors[i] == parent)
+                {
+                    // this parent is in element1's ancestors so it is the common ancestor
+
+                    if (i > 0)
+                    {
+                        // the child of the common ancestor is the previous ancestor in the list
+                        element1NextAncestor = element1Ancestors[i-1];
+                    }
+                    else
+                    {
+                        // element1 is an immediate child of the common parent
+                        element1NextAncestor = element1;
+                    }
+
+                    // we have found the common parent
+                    return parent;
+                }
+            }
+
+            element2NextAncestor = parent;
+            parent = GetParentElement(parent);
+        }
+
+        // no common parent was found
+        // this should never happen if the given elements are part of the same canvas
+        return nullptr;
+    }
+
+    bool CompareOrderInElementHierarchy(AZ::Entity* element1, AZ::Entity* element2)
+    {
+        if (element1 == element2)
+        {
+            // this should not be used to compare the same element but if it is always return a consistent
+            // result
+            return true;
+        }
+
+        AZ::Entity* element1NextAncestor = nullptr;
+        AZ::Entity* element2NextAncestor = nullptr;
+        AZ::Entity* commonParent = GetCommonAncestor(element1, element2, element1NextAncestor, element2NextAncestor);
+
+        if (!commonParent)
+        {
+            // an error orccured and no common parent was found
+            // to recover just compare the pointers
+            AZ_Assert(false, "No common parent found.");
+            return (element1 < element2);
+        }
+
+        if (element1 == commonParent)
+        {
+            return true; // element2 is a child of element1 so element1 is before
+        }
+        else if (element2 == commonParent)
+        {
+            return false; // element1 is a child of element2 so element1 is not before
+        }
+        else
+        {
+            // neither is the parent of the other. In this case we know that element1NextAncestor and
+            // element2NextAncestor are siblings and children of the common parent
+            int index1 = -1;
+            EBUS_EVENT_ID_RESULT(index1, commonParent->GetId(), UiElementBus, GetIndexOfChild, element1NextAncestor);
+            int index2 = -1;
+            EBUS_EVENT_ID_RESULT(index2, commonParent->GetId(), UiElementBus, GetIndexOfChild, element2NextAncestor);
+
+            AZ_Assert(index1 != -1 && index2 != -1, "Immediate ancestors not found in parent.");
+
+            return (index1 < index2);
+        }
+
+    }
+
+}   // namespace EntityHelpers

@@ -1,0 +1,16 @@
+{				
+    "description"           : "Configuration to build only the ShaderCache Generator",
+    "visual_studio_name"    : "ShaderCacheGen",
+    "disable_game_projects"  : true,
+    "platforms" : ["win"],
+    "configurations" : ["debug","profile"],
+    "modules" :
+    [
+        "CryCommon",
+        "CrySystem",
+        "CryRenderD3D11",
+        "CryRenderD3D12",
+        "CryRenderGL",
+        "ShaderCacheGen"
+    ]
+}

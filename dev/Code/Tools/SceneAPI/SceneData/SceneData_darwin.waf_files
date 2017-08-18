@@ -1,0 +1,17 @@
+{
+    "none":
+    {
+        "Events":
+        [
+            "../SceneCore/Containers/SceneManifest.h",
+            "../SceneCore/Containers/SceneManifest.inl",
+            "../SceneCore/Containers/SceneManifest.cpp",
+            "../SceneCore/Events/AssetImportRequest.cpp",
+            "../SceneCore/Events/AssetImportRequest.h",
+            "../SceneCore/Events/ManifestMetaInfoBus.cpp",
+            "../SceneCore/Events/ManifestMetaInfoBus.h",
+            "../SceneCore/Events/GraphMetaInfoBus.cpp",
+            "../SceneCore/Events/GraphMetaInfoBus.h"
+        ]
+    }
+}

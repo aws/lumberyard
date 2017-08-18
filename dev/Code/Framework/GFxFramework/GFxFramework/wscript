@@ -1,0 +1,85 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    defines = []
+    debug_defines = []
+
+    bld.CryEngineStaticLibrary(
+        use             = ['AzCore', 'AzToolsFramework'],
+        uselib          = ['RAPIDXML'],
+        target          = 'GFxFramework',
+        vs_filter       = 'GFxFramework',
+        file_list       = ['gfxframework.waf_files'],
+        platforms       = ['all'],
+        configurations  = ['all'],
+        disable_pch     = True,
+        includes        = ['..',
+                           bld.Path('Code/Framework/AzToolsFramework')],
+        export_includes = ['..'],
+
+        defines                          = list(defines),
+        debug_defines                    = list(debug_defines),
+        profile_defines                  = list(debug_defines),
+        debug_dedicated_defines          = list(debug_defines),
+        profile_dedicated_defines        = list(debug_defines),
+        export_defines                   = list(defines),
+        debug_export_defines             = list(debug_defines),
+        profile_export_defines           = list(debug_defines),
+        debug_dedicated_export_defines   = list(debug_defines),
+        profile_dedicated_export_defines = list(debug_defines),
+       
+
+        win_defines = [
+            '_HAS_EXCEPTIONS=0', # prevents warning: "C++ exception handler used, but unwind semantics are not enabled"
+            ],
+
+        win_file_list       = [],
+
+        linux_file_list     = [],
+
+        android_file_list   = [],
+
+        ios_file_list       = [],
+
+        appletv_file_list   = [],
+
+        darwin_file_list    = [],
+
+       
+
+       
+
+        win_cxxflags=[
+            '/WX', # warnings as errors
+            '/W4', # warning level
+            ],
+       
+       
+        android_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        ios_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        appletv_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        darwin_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+    )

@@ -1,0 +1,12 @@
+<ACBConfig>
+    <Group name="default" />
+    <Group name="high" />
+    <Group name="low" />
+    <Platform name="Windows" />
+    <Platform name="Mac" />
+    <Platform name="Linux" />
+    <Platform name="Android" />
+    <Platform name="iOS" />
+    <Platform name="XboxOne" />
+    <Platform name="PS4" />
+</ACBConfig>

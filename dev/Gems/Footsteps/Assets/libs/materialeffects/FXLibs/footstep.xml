@@ -1,0 +1,106 @@
+<FXLib>
+
+	<Effect name="default">
+		<Audio trigger="Play_box_impact">
+			<Switch name="SurfaceType" state="default" />
+		</Audio>
+		<Particle>
+			<Name>bullet.hit_default.a</Name>
+		</Particle>
+	</Effect>
+
+	<Effect name="concrete">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="concrete" />
+		</Audio>
+	</Effect>
+
+	<Effect name="wood_hollow">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="wood_hollow" />
+		</Audio>
+	</Effect>
+
+	<Effect name="grass">
+		<Audio trigger="Play_cannonball_wall_impact">
+			<Switch name="SurfaceType" state="grass" />
+		</Audio>
+	</Effect>
+
+	<Effect name="dirt">
+		<Audio trigger="Play_box_impact">
+			<Switch name="SurfaceType" state="dirt" />
+		</Audio>
+		<Particle>
+			<Name minscale="0.9" maxscale="0.9" maxscaledist="100">collisions.footsteps.dirt</Name>
+		</Particle>
+	</Effect>
+
+	<Effect name="wood_solid">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="wood_solid" />
+		</Audio>
+	</Effect>
+
+	<Effect name="grass_tall">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="grass_tall" />
+		</Audio>
+	</Effect>
+
+	<Effect name="gravel">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="gravel" />
+		</Audio>
+	</Effect>
+
+	<Effect name="leaves">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="leaves" />
+		</Audio>
+	</Effect>
+
+	<Effect name="metal_thick">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="metal_thick" />
+		</Audio>
+	</Effect>
+
+	<Effect name="metal_chainlink">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="metal_chainlink" />
+		</Audio>
+	</Effect>
+
+	<Effect name="metal_grate">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="metal_grate" />
+		</Audio>
+	</Effect>
+
+	<Effect name="metal_thin">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="metal" />
+		</Audio>
+	</Effect>
+
+	<Effect name="pebble">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="pebble" />
+		</Audio>
+	</Effect>
+
+	<Effect name="vegetation">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="vegetation" />
+		</Audio>
+	</Effect>
+
+	<Effect name="rock">
+		<Audio trigger="Play_c_npc_fts">
+			<Switch name="SurfaceType" state="rock" />
+		</Audio>
+	</Effect>
+
+</FXLib>
+

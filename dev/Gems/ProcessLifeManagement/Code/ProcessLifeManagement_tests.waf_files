@@ -1,0 +1,7 @@
+{
+    "none": {
+        "Tests": [
+            "Tests/ProcessLifeManagementTest.cpp"
+        ]
+    }
+}

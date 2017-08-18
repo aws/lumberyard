@@ -1,0 +1,74 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    msvc_cxx_flags = [
+        '/W4', # warning level
+    ]
+
+    clang_flags = [
+        '-Werror',  # warnings as errors
+        '-Wall'     # warning level
+    ]
+
+    defines = []
+
+    bld.CryEngineStaticLibrary(
+        # Settings
+        target          = 'AzCore',
+        vs_filter       = 'AZ Framework',
+        file_list       = ['azcore.waf_files', 'std/azstd.waf_files'],
+        platforms       = ['all'],
+        configurations  = ['all'],
+        disable_pch     = True,
+        includes        = ['..'],
+        export_includes = ['..'],
+        use             = ['RAPIDJSON',
+                           'RAPIDXML',
+                           'LUA',
+                           'ZLIB',
+                           'RAD_TELEMETRY'],
+        defines         = list(defines),
+        export_defines  = list(defines),
+        features        = ['internal_telemetry'],
+
+        # Platform Specific
+        win_file_list       = ['azcore_win.waf_files', 'std/azstd_win.waf_files'],
+        win_cxxflags        = msvc_cxx_flags,
+        win_defines         = [
+                              '_HAS_EXCEPTIONS=0',  # prevents warning: "C++ exception handler used, but unwind semantics are not enabled"
+                              ],
+        win_features        = ['crcfix'],
+
+       
+       
+       
+       
+       
+        android_file_list   = ['azcore_android.waf_files', 'std/azstd_android.waf_files'],
+        android_cxxflags    = clang_flags,
+
+        ios_file_list       = ['azcore_ios.waf_files', 'std/azstd_apple.waf_files'],
+        ios_cxxflags        = clang_flags,
+
+        appletv_file_list   = ['azcore_appletv.waf_files', 'std/azstd_apple.waf_files'],
+        appletv_cxxflags    = clang_flags,
+
+        darwin_file_list    = ['azcore_osx.waf_files', 'std/azstd_apple.waf_files'],
+        darwin_cxxflags     = clang_flags,
+
+        linux_file_list     = ['azcore_linux.waf_files', 'std/azstd_linux.waf_files'],
+        linux_cxxflags      = clang_flags,
+
+    )
+

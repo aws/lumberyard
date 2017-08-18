@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/Controls">
+        <file>PanelTreeBrowser/treeview-00.png</file>
+        <file>PanelTreeBrowser/treeview-01.png</file>
+        <file>PanelTreeBrowser/treeview-02.png</file>
+        <file>PanelTreeBrowser/treeview-03.png</file>
+    </qresource>
+</RCC>

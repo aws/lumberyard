@@ -1,0 +1,7868 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#include "StdAfx.h"
+
+#ifdef WIN32
+#include <gdiplus.h>
+#pragma comment (lib, "Gdiplus.lib")
+#endif
+
+#include "CryEdit.h"
+
+#include "QtUtilWin.h"
+#include "GameExporter.h"
+#include "GameResourcesExporter.h"
+#include "Core/QtEditorApplication.h"
+#include "MainWindow.h"
+#include "Core/QtEditorApplication.h"
+#include "CryEditDoc.h"
+#include "ViewPane.h"
+#include "StringDlg.h"
+#include "SelectObjectDlg.h"
+#include "LinkTool.h"
+#include "AlignTool.h"
+#include "VoxelAligningTool.h"
+#include "MissionScript.h"
+#include "NewLevelDialog.h"
+#include "NewTerrainDialog.h"
+#include "TerrainDialog.h"
+#include "SkyDialog.h"
+#include "TerrainLighting.h"
+#include "VegetationMap.h"
+#include "GridSettingsDialog.h"
+#include "LayoutConfigDialog.h"
+#include "IEditorGame.h"
+#include "KeyboardCustomizationSettings.h"
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
+#include "ProcessInfo.h"
+
+#include "ViewManager.h"
+#include "ModelViewport.h"
+#include "RenderViewport.h"
+#include "FileTypeUtils.h"
+
+#include "PluginManager.h"
+
+#include "Objects/Group.h"
+#include "Objects/AIPoint.h"
+#include "Objects/CloudGroup.h"
+#include "Objects/CameraObject.h"
+#include "Objects/EntityScript.h"
+#include "Objects/BrushObject.h"
+#include "Objects/GeomEntity.h"
+
+#include "Objects/PrefabObject.h"
+#include "Prefabs/PrefabManager.h"
+
+#include "IEditorImpl.h"
+#include "StartupLogoDialog.h"
+#include "DisplaySettings.h"
+
+#include "ObjectCloneTool.h"
+
+#include "Mission.h"
+#include "MissionSelectDialog.h"
+
+#include "EquipPackDialog.h"
+
+#include "Undo/Undo.h"
+
+#include "ThumbnailGenerator.h"
+#include "LayersSelectDialog.h"
+#include "ToolsConfigPage.h"
+
+#include "TrackView/TrackViewDialog.h"
+#include "GameEngine.h"
+
+#include "AI/AIManager.h"
+#include "AI/GenerateSpawners.h"
+
+#include "TerrainMoveTool.h"
+#include "TerrainModifyTool.h"
+#include "ToolBox.h"
+#include "Geometry/EdMesh.h"
+
+#include "LevelInfo.h"
+#include "EditorPreferencesDialog.h"
+#include "FeedbackDialog/FeedbackDialog.h"
+
+#include "MatEditMainDlg.h"
+
+#include <WinWidget/WinWidgetId.h>
+
+#include <IScriptSystem.h>
+#include <IEntitySystem.h>
+#include <I3DEngine.h>
+#include <ITimer.h>
+#include <IGame.h>
+#include <IGameFramework.h>
+#include <IItemSystem.h>
+#include <ICryAnimation.h>
+#include <IPhysics.h>
+#include <IGameRulesSystem.h>
+#include <IBackgroundScheduleManager.h>
+#include "IEditorGame.h"
+
+#include "TimeOfDayDialog.h"
+#include "CryEdit.h"
+#include "ShaderCache.h"
+#include "GotoPositionDlg.h"
+#include "SetVectorDlg.h"
+#include "TerrainTextureExport.h"
+
+#include "ConsoleDialog.h"
+#include "Controls/ConsoleSCB.h"
+
+#include "StringUtils.h"
+
+#include "ScopedVariableSetter.h"
+
+#include "Util/3DConnexionDriver.h"
+
+#include "DimensionsDialog.h"
+
+#include "Terrain/TerrainManager.h"
+
+#include "MeasurementSystem/MeasurementSystem.h"
+
+#include "Util/AutoDirectoryRestoreFileDialog.h"
+#include "Util/EditorAutoLevelLoadTest.h"
+#include "Util/Ruler.h"
+#include "Util/IndexedFiles.h"
+#include <Util/PathUtil.h>  // for getting the game (editing) folder
+
+#include "AssetBrowser/AssetBrowserManager.h"
+#include "IAssetItemDatabase.h"
+
+#include "Mannequin/MannequinChangeMonitor.h"
+
+#include "AboutDialog.h"
+#include "ScriptHelpDialog.h"
+
+#include "QuickAccessBar.h"
+#include "QtViewPaneManager.h"
+
+#include "Util/BoostPythonHelpers.h"
+#include "Export/ExportManager.h"
+
+#include "LevelFileDialog.h"
+#include "LevelIndependentFileMan.h"
+#include "WelcomeScreen/WelcomeScreenDialog.h"
+#include "Objects/ObjectLayerManager.h"
+#include "Dialogs/DuplicatedObjectsHandlerDlg.h"
+#include "IconManager.h"
+#include "Dialogs/DuplicatedObjectsHandlerDlg.h"
+#include "Include/IEventLoopHook.h"
+#include "EditMode/VertexSnappingModeTool.h"
+
+#include "UndoViewPosition.h"
+#include "UndoViewRotation.h"
+#include "UndoConfigSpec.h"
+
+#include "Core/LevelEditorMenuHandler.h"
+
+#include "ParseEngineConfig.h"
+
+#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Component/TransformBus.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
+
+#include <Controls/ReflectedPropertyControl/PropertyCtrl.h>
+#include <Controls/ReflectedPropertyControl/ReflectedVar.h>
+
+// Confetti Begin: Jurecka
+#include "Include/IParticleEditor.h"
+// Confetti End: Jurecka
+
+#include <QtUtil.h>
+#include <QtUtilWin.h>
+
+#include <QAction>
+#include <QDir>
+#include <QDebug>
+#include <QApplication>
+#include <QDialogButtonBox>
+#include <QProcess>
+#include <QFile>
+#include <QString>
+#include <QMenuBar>
+#include <QUrl>
+#include <QUrlQuery>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
+#include <QApplication>
+#include <QDesktopServices>
+#include <QSharedMemory>
+#include <QSystemSemaphore>
+#include <QSurfaceFormat>
+#include <ILevelSystem.h>
+
+#include <AzFramework/Components/CameraBus.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/Casting/numeric_cast.h>
+
+#include <Amazon/Login.h>
+#include <LmbrAWS/ILmbrAWS.h>
+#include <LmbrAWS/IAWSClientManager.h>
+#include <aws/sts/STSClient.h>
+#include <aws/core/auth/AWSCredentialsProvider.h>
+#include <aws/core/external/json-cpp/json.h>
+#include <aws/sts/model/GetFederationTokenRequest.h>
+#include <aws/core/http/HttpClient.h>
+#include <aws/core/http/HttpResponse.h>
+#include <aws/core/utils/json/JsonSerializer.h>
+#include <array>
+#include <string>
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+
+#include "Core/EditorMetricsPlainTextNameRegistration.h"
+
+#include <Engines/EnginesAPI.h> // For LyzardSDK
+#include <Crates/Crates.h>
+
+#ifdef AZ_PLATFORM_APPLE
+#include "WindowObserver_mac.h"
+#endif
+
+//#define m_pMainWnd MainWindow::instance()
+
+/////////////////////////////////////////////////////////////////////////////
+// The one and only CCryEditApp object
+//////////////////////////////////////////////////////////////////////////
+CCryEditApp theApp;
+
+RecentFileList::RecentFileList()
+{
+    m_settings.beginGroup(QStringLiteral("Application"));
+    m_settings.beginGroup(QStringLiteral("Recent File List"));
+
+    ReadList();
+}
+
+void RecentFileList::Remove(int index)
+{
+    m_arrNames.removeAt(index);
+}
+
+void RecentFileList::Add(const QString& f)
+{
+    QString filename = QDir::toNativeSeparators(f);
+    m_arrNames.removeAll(filename);
+    m_arrNames.push_front(filename);
+    while (m_arrNames.count() > Max)
+    {
+        m_arrNames.removeAt(Max);
+    }
+}
+
+int RecentFileList::GetSize()
+{
+    return m_arrNames.count();
+}
+
+void RecentFileList::GetDisplayName(QString& name, int index, const QString& curDir)
+{
+    name = m_arrNames[index];
+    QFileInfo cur(curDir);
+    QFileInfo n(name);
+    if (QDir::toNativeSeparators(n.absoluteFilePath()).startsWith(QDir::toNativeSeparators(cur.absoluteFilePath())))
+    {
+        name = n.absoluteFilePath().mid(cur.absoluteFilePath().length());
+    }
+    else
+    {
+        name = n.absoluteFilePath();
+    }
+    name = QDir::toNativeSeparators(name);
+}
+
+QString& RecentFileList::operator[](int index)
+{
+    return m_arrNames[index];
+}
+
+void RecentFileList::ReadList()
+{
+    m_arrNames.clear();
+
+    for (int i = 1; i <= Max; ++i)
+    {
+        QString f = m_settings.value(QStringLiteral("File%1").arg(i)).toString();
+        if (!f.isEmpty())
+        {
+            m_arrNames.push_back(f);
+        }
+    }
+}
+
+void RecentFileList::WriteList()
+{
+    m_settings.remove(QString());
+
+    int i = 1;
+    for (auto f : m_arrNames)
+    {
+        m_settings.setValue(QStringLiteral("File%1").arg(i++), f);
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+namespace
+{
+    QString PyGetGameFolder()
+    {
+        return Path::GetEditingGameDataFolder().c_str();
+    }
+
+    void PyOpenLevel(const char* pLevelName)
+    {
+        QString levelPath = pLevelName;
+        QString levelsDir = PyGetGameFolder() / "Levels";
+        if (Path::GetPath(levelPath).isEmpty())
+        {
+            levelPath = levelsDir / levelPath / levelPath;
+            levelPath += ".cry";
+        }
+
+        CCryEditApp::instance()->OpenDocumentFile(levelPath.toLatin1().data());
+    }
+
+    void PyOpenLevelNoPrompt(const char* pLevelName)
+    {
+        GetIEditor()->GetDocument()->SetModifiedFlag(false);
+        PyOpenLevel(pLevelName);
+    }
+
+    int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
+    {
+        return theApp.CreateLevel(levelName, resolution, unitSize, bUseTerrain);
+    }
+
+    QString PyGetCurrentLevelName()
+    {
+        return GetIEditor()->GetGameEngine()->GetLevelName();
+    }
+
+    QString PyGetCurrentLevelPath()
+    {
+        return GetIEditor()->GetGameEngine()->GetLevelPath();
+    }
+
+    void Command_LoadPlugins()
+    {
+        GetIEditor()->LoadPlugins();
+    }
+
+    void Command_UnloadPlugins()
+    {
+        GetIEditor()->UnloadPlugins();
+    }
+
+    boost::python::tuple PyGetCurrentViewPosition()
+    {
+        Vec3 pos = GetIEditor()->GetSystem()->GetViewCamera().GetPosition();
+        return boost::python::make_tuple(pos.x, pos.y, pos.z);
+    }
+
+    boost::python::tuple PyGetCurrentViewRotation()
+    {
+        Ang3 ang = RAD2DEG(Ang3::GetAnglesXYZ(Matrix33(GetIEditor()->GetSystem()->GetViewCamera().GetMatrix())));
+        return boost::python::make_tuple(ang.x, ang.y, ang.z);
+    }
+
+    void PySetCurrentViewPosition(float x, float y, float z)
+    {
+        CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+        if (pRenderViewport)
+        {
+            CUndo undo("Set Current View Position");
+            if (CUndo::IsRecording())
+            {
+                CUndo::Record(new CUndoViewPosition());
+            }
+            Matrix34 tm = pRenderViewport->GetViewTM();
+            tm.SetTranslation(Vec3(x, y, z));
+            pRenderViewport->SetViewTM(tm);
+        }
+    }
+
+    void PySetCurrentViewRotation(float x, float y, float z)
+    {
+        CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+        if (pRenderViewport)
+        {
+            CUndo undo("Set Current View Rotation");
+            if (CUndo::IsRecording())
+            {
+                CUndo::Record(new CUndoViewRotation());
+            }
+            Matrix34 tm = pRenderViewport->GetViewTM();
+            tm.SetRotationXYZ(Ang3(DEG2RAD(x), DEG2RAD(y), DEG2RAD(z)), tm.GetTranslation());
+            pRenderViewport->SetViewTM(tm);
+        }
+    }
+}
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevel, general, open_level,
+    "Opens a level.",
+    "general.open_level(str levelName)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevelNoPrompt, general, open_level_no_prompt,
+    "Opens a level. Doesn't prompt user about saving a modified level",
+    "general.open_level_no_prompt(str levelName)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevel, general, create_level,
+    "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'.",
+    "general.create_level(str levelName, int resolution, int unitSize, bool useTerrain)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetGameFolder, general, get_game_folder,
+    "Gets the path to the Game folder of current project.",
+    "general.get_game_folder()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentLevelName, general, get_current_level_name,
+    "Gets the name of the current level.",
+    "general.get_current_level_name()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentLevelPath, general, get_current_level_path,
+    "Gets the fully specified path of the current level.",
+    "general.get_current_level_path()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(Command_LoadPlugins, general, load_all_plugins,
+    "Loads all available plugins.",
+    "general.load_all_plugins()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(Command_UnloadPlugins, general, unload_all_plugins,
+    "Unloads all available plugins.",
+    "general.unload_all_plugins()");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentViewPosition, general, get_current_view_position,
+    "Returns the position of the current view as a list of 3 floats.",
+    "general.get_current_view_position()");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentViewRotation, general, get_current_view_rotation,
+    "Returns the rotation of the current view as a list of 3 floats, each of which represents x, y, z Euler angles.",
+    "general.get_current_view_rotation()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewPosition, general, set_current_view_position,
+    "Sets the position of the current view as given x, y, z coordinates.",
+    "general.set_current_view_position(float xValue, float yValue, float zValue)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewRotation, general, set_current_view_rotation,
+    "Sets the rotation of the current view as given x, y, z Euler angles.",
+    "general.set_current_view_rotation(float xValue, float yValue, float zValue)");
+
+namespace {
+
+// Override the ToolsApplication so that we can special case when the config file is not
+// found and give the user of the Editor a specific message about it.
+class EditorToolsApplication : public AzToolsFramework::ToolsApplication
+{
+public:
+    bool OnFailedToFindConfiguration(const char* configFilePath) override
+    {
+        CEngineConfig engineCfg;
+        char msg[4096] = { 0 };
+        azsnprintf(msg, sizeof(msg),
+            "Application descriptor file not found:\n"
+            "%s\n"
+            "Generate this file and commit it to source control by running:\n"
+            "Bin64\\lmbr.exe projects populate-appdescriptors -projects %s",
+            configFilePath, engineCfg.m_gameDLL.c_str());
+        QMessageBox::critical(nullptr, QObject::tr("File not found"), msg);
+
+        // flag that we failed, so that the application can exit out
+        m_StartupAborted = true;
+
+        // indicate that we don't want AzFramework::Application::Start to continue startup
+        const bool continueStartup = false;
+        return continueStartup;
+    }
+
+    bool IsStartupAborted() const
+    {
+        return m_StartupAborted;
+    }
+
+    void RegisterCoreComponents() override
+    {
+        AzToolsFramework::ToolsApplication::RegisterCoreComponents();
+
+        RegisterComponentDescriptor(AZ::CratesHandler::CreateDescriptor());
+    }
+
+    AZ::ComponentTypeList GetRequiredSystemComponents() const
+    {
+        AZ::ComponentTypeList components = AzToolsFramework::ToolsApplication::GetRequiredSystemComponents();
+
+        components.emplace_back(azrtti_typeid<AZ::CratesHandler>());
+
+        return components;
+    }
+
+    void InitDynamicModules() override
+    {
+        ToolsApplication::InitDynamicModules();
+
+        LoadDynamicModule({ "LyzardEngines" });
+        LoadDynamicModule({ "LyzardGems" });
+        LoadDynamicModule({ "LyzardProjects" });
+    }
+
+private:
+    bool m_StartupAborted = false;
+    Editor::EditorMetricsPlainTextNameRegistrationBusListener m_metricsPlainTextRegistrar;
+};
+
+}
+
+EditorToolsApplication AZToolsApp;
+
+enum
+{
+    DefaultExportSettings_ExportToPC = true,
+    DefaultExportSettings_ExportToConsole = false,
+};
+
+const UINT kDisplayMenuIndex = 3;
+const UINT kRememberLocationMenuIndex = 12;
+const UINT kGotoLocationMenuIndex = 13;
+
+#define ERROR_LEN 256
+
+
+CCryDocManager::CCryDocManager()
+    : m_pDefTemplate(NULL)
+{
+}
+
+CCrySingleDocTemplate* CCryDocManager::SetDefaultTemplate(CCrySingleDocTemplate* pNew)
+{
+    CCrySingleDocTemplate* pOld = m_pDefTemplate;
+    m_pDefTemplate = pNew;
+    m_templateList.clear();
+    m_templateList.push_back(m_pDefTemplate);
+    return pOld;
+}
+// Copied from MFC to get rid of the silly ugly unoverridable doc-type pick dialog
+void CCryDocManager::OnFileNew()
+{
+    assert(m_pDefTemplate != NULL);
+
+    m_pDefTemplate->OpenDocumentFile(NULL);
+    // if returns NULL, the user has already been alerted
+}
+BOOL CCryDocManager::DoPromptFileName(QString& fileName, UINT nIDSTitle,
+    DWORD lFlags, BOOL bOpenFileDialog, CDocTemplate* pTemplate)
+{
+    CLevelFileDialog levelFileDialog(bOpenFileDialog);
+
+    if (levelFileDialog.exec() == QDialog::Accepted)
+    {
+        fileName = levelFileDialog.GetFileName();
+        return true;
+    }
+
+    return false;
+}
+CCryEditDoc* CCryDocManager::OpenDocumentFile(LPCTSTR lpszFileName, BOOL bAddToMRU)
+{
+    assert(lpszFileName != NULL);
+
+    // find the highest confidence
+    auto pos = m_templateList.begin();
+    CCrySingleDocTemplate::Confidence bestMatch = CCrySingleDocTemplate::noAttempt;
+    CCrySingleDocTemplate* pBestTemplate = NULL;
+    CCryEditDoc* pOpenDocument = NULL;
+
+    if (lpszFileName[0] == '\"')
+    {
+        ++lpszFileName;
+    }
+    QString szPath = lpszFileName;
+    if (szPath.endsWith('"'))
+    {
+        szPath.remove(szPath.length() - 1, 1);
+    }
+
+    while (pos != m_templateList.end())
+    {
+        auto pTemplate = *(pos++);
+
+        CCrySingleDocTemplate::Confidence match;
+        assert(pOpenDocument == NULL);
+        match = pTemplate->MatchDocType(szPath.toLatin1().data(), pOpenDocument);
+        if (match > bestMatch)
+        {
+            bestMatch = match;
+            pBestTemplate = pTemplate;
+        }
+        if (match == CCrySingleDocTemplate::yesAlreadyOpen)
+        {
+            break;      // stop here
+        }
+    }
+
+    if (pOpenDocument != NULL)
+    {
+        return pOpenDocument;
+    }
+
+    if (pBestTemplate == NULL)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Failed to open document."));
+        return NULL;
+    }
+
+    return pBestTemplate->OpenDocumentFile(szPath.toLatin1().data(), bAddToMRU, FALSE);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// CCryEditApp
+
+#undef ON_COMMAND
+#define ON_COMMAND(id, method) \
+    MainWindow::instance()->GetActionManager()->RegisterActionHandler(id, this, &CCryEditApp::method);
+
+#undef ON_COMMAND_RANGE
+#define ON_COMMAND_RANGE(idStart, idEnd, method) \
+    for (int i = idStart; i <= idEnd; ++i) \
+        ON_COMMAND(i, method);
+
+void CCryEditApp::RegisterActionHandlers()
+{
+    ON_COMMAND(ID_APP_ABOUT, OnAppAbout)
+    ON_COMMAND(ID_DOCUMENTATION_GETTINGSTARTEDGUIDE, OnDocumentationGettingStartedGuide)
+    ON_COMMAND(ID_DOCUMENTATION_TUTORIALS, OnDocumentationTutorials)
+    ON_COMMAND(ID_DOCUMENTATION_GLOSSARY, OnDocumentationGlossary)
+    ON_COMMAND(ID_DOCUMENTATION_LUMBERYARD, OnDocumentationLumberyard)
+    ON_COMMAND(ID_DOCUMENTATION_GAMELIFT, OnDocumentationGamelift)
+    ON_COMMAND(ID_DOCUMENTATION_RELEASENOTES, OnDocumentationReleaseNotes)
+    ON_COMMAND(ID_DOCUMENTATION_GAMEDEVBLOG, OnDocumentationGameDevBlog)
+    ON_COMMAND(ID_DOCUMENTATION_TWITCHCHANNEL, OnDocumentationTwitchChannel)
+    ON_COMMAND(ID_DOCUMENTATION_FORUMS, OnDocumentationForums)
+    ON_COMMAND(ID_DOCUMENTATION_AWSSUPPORT, OnDocumentationAWSSupport)
+    ON_COMMAND(ID_DOCUMENTATION_FEEDBACK, OnDocumentationFeedback)
+    ON_COMMAND(ID_AWS_CREDENTIAL_MGR, OnAWSCredentialEditor)
+    ON_COMMAND(ID_AWS_RESOURCE_MANAGEMENT, OnAWSResourceManagement)
+    ON_COMMAND(ID_AWS_ACTIVE_DEPLOYMENT, OnAWSActiveDeployment)
+    ON_COMMAND(ID_AWS_GAMELIFT_LEARN, OnAWSGameliftLearn)
+    ON_COMMAND(ID_AWS_GAMELIFT_CONSOLE, OnAWSGameliftConsole)
+    ON_COMMAND(ID_AWS_GAMELIFT_GETSTARTED, OnAWSGameliftGetStarted)
+    ON_COMMAND(ID_AWS_GAMELIFT_TRIALWIZARD, OnAWSGameliftTrialWizard)
+    ON_COMMAND(ID_AWS_COGNITO_CONSOLE, OnAWSCognitoConsole)
+    ON_COMMAND(ID_AWS_DYNAMODB_CONSOLE, OnAWSDynamoDBConsole)
+    ON_COMMAND(ID_AWS_S3_CONSOLE, OnAWSS3Console)
+    ON_COMMAND(ID_AWS_LAMBDA_CONSOLE, OnAWSLambdaConsole)
+    ON_COMMAND(ID_AWS_LAUNCH, OnAWSLaunch)
+    ON_COMMAND(ID_AWS_HOW_TO_SET_UP_CLOUD_CANVAS, OnHowToSetUpCloudCanvas)
+    ON_COMMAND(ID_AWS_LEARN_ABOUT_GAME_LIFT, OnLearnAboutGameLift)
+    ON_COMMAND(ID_COMMERCE_PUBLISH, OnCommercePublish)
+    ON_COMMAND(ID_COMMERCE_MERCH, OnCommerceMerch)
+    ON_COMMAND(ID_TERRAIN, ToolTerrain)
+    // Confetti Begin: Jurecka
+    ON_COMMAND(ID_PARTICLE_EDITOR, OnOpenParticleEditor)
+    // Confetti End: Jurecka
+    ON_COMMAND(IDC_SKY, ToolSky)
+    ON_COMMAND(ID_GENERATORS_LIGHTING, ToolLighting)
+    ON_COMMAND(ID_MEASUREMENT_SYSTEM_TOOL, MeasurementSystemTool)
+    ON_COMMAND(ID_TERRAIN_TEXTURE_EXPORT, TerrainTextureExport)
+    ON_COMMAND(ID_TERRAIN_REFINETERRAINTEXTURETILES, RefineTerrainTextureTiles)
+    ON_COMMAND(ID_GENERATORS_TEXTURE, ToolTexture)
+    ON_COMMAND(ID_FILE_GENERATETERRAINTEXTURE, GenerateTerrainTexture)
+    ON_COMMAND(ID_FILE_GENERATETERRAIN, GenerateTerrain)
+    ON_COMMAND(ID_FILE_EXPORT_SELECTEDOBJECTS, OnExportSelectedObjects)
+    ON_COMMAND(ID_FILE_EXPORT_TERRAINAREA, OnExportTerrainArea)
+    ON_COMMAND(ID_FILE_EXPORT_TERRAINAREAWITHOBJECTS, OnExportTerrainAreaWithObjects)
+    ON_COMMAND(ID_EDIT_HOLD, OnEditHold)
+    ON_COMMAND(ID_EDIT_FETCH, OnEditFetch)
+    ON_COMMAND(ID_GENERATORS_STATICOBJECTS, OnGeneratorsStaticobjects)
+    ON_COMMAND(ID_FILE_EXPORTTOGAMENOSURFACETEXTURE, OnFileExportToGameNoSurfaceTexture)
+    ON_COMMAND(ID_VIEW_SWITCHTOGAME, OnViewSwitchToGame)
+    ON_COMMAND(ID_EDIT_SELECTALL, OnEditSelectAll)
+    ON_COMMAND(ID_EDIT_SELECTNONE, OnEditSelectNone)
+    ON_COMMAND(ID_EDIT_DELETE, OnEditDelete)
+    ON_COMMAND(ID_MOVE_OBJECT, OnMoveObject)
+    ON_COMMAND(ID_SELECT_OBJECT, OnSelectObject)
+    ON_COMMAND(ID_RENAME_OBJ, OnRenameObj)
+    ON_COMMAND(ID_SET_HEIGHT, OnSetHeight)
+    ON_COMMAND(ID_SCRIPT_COMPILESCRIPT, OnScriptCompileScript)
+    ON_COMMAND(ID_SCRIPT_EDITSCRIPT, OnScriptEditScript)
+    ON_COMMAND(ID_EDITMODE_MOVE, OnEditmodeMove)
+    ON_COMMAND(ID_EDITMODE_ROTATE, OnEditmodeRotate)
+    ON_COMMAND(ID_EDITMODE_SCALE, OnEditmodeScale)
+    ON_COMMAND(ID_EDITTOOL_LINK, OnEditToolLink)
+    ON_COMMAND(ID_EDITTOOL_UNLINK, OnEditToolUnlink)
+    ON_COMMAND(ID_EDITMODE_SELECT, OnEditmodeSelect)
+    ON_COMMAND(ID_EDIT_ESCAPE, OnEditEscape)
+    ON_COMMAND(ID_OBJECTMODIFY_SETAREA, OnObjectSetArea)
+    ON_COMMAND(ID_OBJECTMODIFY_SETHEIGHT, OnObjectSetHeight)
+    ON_COMMAND(ID_OBJECTMODIFY_VERTEXSNAPPING, OnObjectVertexSnapping)
+    ON_COMMAND(ID_MODIFY_ALIGNOBJTOSURF, OnAlignToVoxel)
+    ON_COMMAND(ID_OBJECTMODIFY_FREEZE, OnObjectmodifyFreeze)
+    ON_COMMAND(ID_OBJECTMODIFY_UNFREEZE, OnObjectmodifyUnfreeze)
+    ON_COMMAND(ID_EDITMODE_SELECTAREA, OnEditmodeSelectarea)
+    ON_COMMAND(ID_SELECT_AXIS_X, OnSelectAxisX)
+    ON_COMMAND(ID_SELECT_AXIS_Y, OnSelectAxisY)
+    ON_COMMAND(ID_SELECT_AXIS_Z, OnSelectAxisZ)
+    ON_COMMAND(ID_SELECT_AXIS_XY, OnSelectAxisXy)
+    ON_COMMAND(ID_UNDO, OnUndo)
+    ON_COMMAND(ID_TOOLBAR_WIDGET_REDO, OnUndo)     // Can't use the same ID, because for the menu we can't have a QWidgetAction, while for the toolbar we want one
+    ON_COMMAND(ID_EDIT_CLONE, OnEditClone)
+    ON_COMMAND(ID_SELECTION_SAVE, OnSelectionSave)
+    ON_COMMAND(ID_IMPORT_ASSET, OnOpenAssetImporter)
+    ON_COMMAND(ID_SELECTION_LOAD, OnSelectionLoad)
+    ON_COMMAND(ID_EDIT_PHYS_RESET, OnPhysicsResetState)
+    ON_COMMAND(ID_EDIT_PHYS_GET, OnPhysicsGetState)
+    ON_COMMAND(ID_EDIT_PHYS_SIMULATE, OnPhysicsSimulateObjects)
+    ON_COMMAND(ID_OBJECTMODIFY_ALIGN, OnAlignObject)
+    ON_COMMAND(ID_MODIFY_ALIGNOBJTOSURF, OnAlignToVoxel)
+    ON_COMMAND(ID_OBJECTMODIFY_ALIGNTOGRID, OnAlignToGrid)
+    ON_COMMAND(ID_GROUP_ATTACH, OnGroupAttach)
+    ON_COMMAND(ID_GROUP_CLOSE, OnGroupClose)
+    ON_COMMAND(ID_GROUP_DETACH, OnGroupDetach)
+    ON_COMMAND(ID_GROUP_MAKE, OnGroupMake)
+    ON_COMMAND(ID_GROUP_OPEN, OnGroupOpen)
+    ON_COMMAND(ID_GROUP_UNGROUP, OnGroupUngroup)
+    ON_COMMAND(ID_CLOUDS_CREATE, OnCloudsCreate)
+    ON_COMMAND(ID_CLOUDS_DESTROY, OnCloudsDestroy)
+    ON_COMMAND(ID_CLOUDS_OPEN, OnCloudsOpen)
+    ON_COMMAND(ID_CLOUDS_CLOSE, OnCloudsClose)
+    ON_COMMAND(ID_MISSION_RENAME, OnMissionRename)
+    ON_COMMAND(ID_MISSION_SELECT, OnMissionSelect)
+    ON_COMMAND(ID_LOCK_SELECTION, OnLockSelection)
+    ON_COMMAND(ID_EDIT_LEVELDATA, OnEditLevelData)
+    ON_COMMAND(ID_FILE_EDITLOGFILE, OnFileEditLogFile)
+    ON_COMMAND(ID_FILE_EDITEDITORINI, OnFileEditEditorini)
+    ON_COMMAND(ID_SELECT_AXIS_TERRAIN, OnSelectAxisTerrain)
+    ON_COMMAND(ID_SELECT_AXIS_SNAPTOALL, OnSelectAxisSnapToAll)
+    ON_COMMAND(ID_PREFERENCES, OnPreferences)
+    ON_COMMAND(ID_RELOAD_ALL_SCRIPTS, OnReloadAllScripts)
+    ON_COMMAND(ID_RELOAD_ENTITY_SCRIPTS, OnReloadEntityScripts)
+    ON_COMMAND(ID_RELOAD_ACTOR_SCRIPTS, OnReloadActorScripts)
+    ON_COMMAND(ID_RELOAD_ITEM_SCRIPTS, OnReloadItemScripts)
+    ON_COMMAND(ID_RELOAD_AI_SCRIPTS, OnReloadAIScripts)
+    ON_COMMAND(ID_RELOAD_GEOMETRY, OnReloadGeometry)
+    ON_COMMAND(ID_RELOAD_TERRAIN, OnReloadTerrain)
+    ON_COMMAND(ID_TOGGLE_MULTIPLAYER, OnToggleMultiplayer)
+    ON_COMMAND(ID_REDO, OnRedo)
+    ON_COMMAND(ID_TOOLBAR_WIDGET_REDO, OnRedo)
+    ON_COMMAND(ID_RELOAD_TEXTURES, OnReloadTextures)
+    ON_COMMAND(ID_FILE_OPEN_LEVEL, OnOpenLevel)
+    ON_COMMAND(ID_TERRAIN_COLLISION, OnTerrainCollision)
+    ON_COMMAND(ID_RESOURCES_GENERATECGFTHUMBNAILS, OnGenerateCgfThumbnails)
+    ON_COMMAND(ID_AI_GENERATEALL, OnAIGenerateAll)
+    ON_COMMAND(ID_AI_GENERATETRIANGULATION, OnAIGenerateTriangulation)
+    ON_COMMAND(ID_AI_GENERATEWAYPOINT, OnAIGenerateWaypoint)
+    ON_COMMAND(ID_AI_GENERATEFLIGHTNAVIGATION, OnAIGenerateFlightNavigation)
+    ON_COMMAND(ID_AI_GENERATE3DVOLUMES, OnAIGenerate3dvolumes)
+    ON_COMMAND(ID_AI_VALIDATENAVIGATION, OnAIValidateNavigation)
+    ON_COMMAND(ID_AI_GENERATE3DDEBUGVOXELS, OnAIGenerate3DDebugVoxels)
+    ON_COMMAND(ID_AI_CLEARALLNAVIGATION, OnAIClearAllNavigation)
+    ON_COMMAND(ID_AI_GENERATESPAWNERS, OnAIGenerateSpawners)
+    ON_COMMAND(ID_AI_GENERATECOVERSURFACES, OnAIGenerateCoverSurfaces)
+    ON_COMMAND(ID_AI_NAVIGATION_SHOW_AREAS, OnAINavigationShowAreas)
+    ON_COMMAND(ID_AI_NAVIGATION_ENABLE_CONTINUOUS_UPDATE, OnAINavigationEnableContinuousUpdate)
+    ON_COMMAND(ID_AI_NAVIGATION_NEW_AREA, OnAINavigationNewArea)
+    ON_COMMAND(ID_AI_NAVIGATION_TRIGGER_FULL_REBUILD, OnAINavigationFullRebuild)
+    ON_COMMAND(ID_AI_NAVIGATION_ADD_SEED, OnAINavigationAddSeed)
+    ON_COMMAND(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY, OnVisualizeNavigationAccessibility)
+    ON_COMMAND(ID_LAYER_SELECT, OnLayerSelect)
+    ON_COMMAND(ID_SWITCH_PHYSICS, OnSwitchPhysics)
+    ON_COMMAND(ID_GAME_SYNCPLAYER, OnSyncPlayer)
+    ON_COMMAND(ID_RESOURCES_REDUCEWORKINGSET, OnResourcesReduceworkingset)
+    ON_COMMAND(ID_TOOLS_EQUIPPACKSEDIT, OnToolsEquipPacksEdit)
+    ON_COMMAND(ID_TOOLS_UPDATEPROCEDURALVEGETATION, OnToolsUpdateProcVegetation)
+    //}}AFX_MSG_MAP
+    // Standard file based document commands
+    ON_COMMAND(ID_EDIT_HIDE, OnEditHide)
+    ON_COMMAND(ID_EDIT_SHOW_LAST_HIDDEN, OnEditShowLastHidden)
+    ON_COMMAND(ID_EDIT_UNHIDEALL, OnEditUnhideall)
+    ON_COMMAND(ID_EDIT_FREEZE, OnEditFreeze)
+    ON_COMMAND(ID_EDIT_UNFREEZEALL, OnEditUnfreezeall)
+
+    ON_COMMAND(ID_SNAP_TO_GRID, OnSnap)
+
+    ON_COMMAND(ID_WIREFRAME, OnWireframe)
+
+    ON_COMMAND(ID_VIEW_GRIDSETTINGS, OnViewGridsettings)
+    ON_COMMAND(ID_VIEW_CONFIGURELAYOUT, OnViewConfigureLayout)
+
+    ON_COMMAND(IDC_SELECTION, OnDummyCommand)
+    //////////////////////////////////////////////////////////////////////////
+    ON_COMMAND(ID_TAG_LOC1, OnTagLocation1)
+    ON_COMMAND(ID_TAG_LOC2, OnTagLocation2)
+    ON_COMMAND(ID_TAG_LOC3, OnTagLocation3)
+    ON_COMMAND(ID_TAG_LOC4, OnTagLocation4)
+    ON_COMMAND(ID_TAG_LOC5, OnTagLocation5)
+    ON_COMMAND(ID_TAG_LOC6, OnTagLocation6)
+    ON_COMMAND(ID_TAG_LOC7, OnTagLocation7)
+    ON_COMMAND(ID_TAG_LOC8, OnTagLocation8)
+    ON_COMMAND(ID_TAG_LOC9, OnTagLocation9)
+    ON_COMMAND(ID_TAG_LOC10, OnTagLocation10)
+    ON_COMMAND(ID_TAG_LOC11, OnTagLocation11)
+    ON_COMMAND(ID_TAG_LOC12, OnTagLocation12)
+    //////////////////////////////////////////////////////////////////////////
+    ON_COMMAND(ID_GOTO_LOC1, OnGotoLocation1)
+    ON_COMMAND(ID_GOTO_LOC2, OnGotoLocation2)
+    ON_COMMAND(ID_GOTO_LOC3, OnGotoLocation3)
+    ON_COMMAND(ID_GOTO_LOC4, OnGotoLocation4)
+    ON_COMMAND(ID_GOTO_LOC5, OnGotoLocation5)
+    ON_COMMAND(ID_GOTO_LOC6, OnGotoLocation6)
+    ON_COMMAND(ID_GOTO_LOC7, OnGotoLocation7)
+    ON_COMMAND(ID_GOTO_LOC8, OnGotoLocation8)
+    ON_COMMAND(ID_GOTO_LOC9, OnGotoLocation9)
+    ON_COMMAND(ID_GOTO_LOC10, OnGotoLocation10)
+    ON_COMMAND(ID_GOTO_LOC11, OnGotoLocation11)
+    ON_COMMAND(ID_GOTO_LOC12, OnGotoLocation12)
+    //////////////////////////////////////////////////////////////////////////
+
+    ON_COMMAND(ID_TOOLS_LOGMEMORYUSAGE, OnToolsLogMemoryUsage)
+    ON_COMMAND(ID_TERRAIN_EXPORTBLOCK, OnTerrainExportblock)
+    ON_COMMAND(ID_TERRAIN_IMPORTBLOCK, OnTerrainImportblock)
+    ON_COMMAND(ID_TOOLS_CUSTOMIZEKEYBOARD, OnCustomizeKeyboard)
+    ON_COMMAND(ID_TOOLS_CONFIGURETOOLS, OnToolsConfiguretools)
+    ON_COMMAND(ID_TOOLS_SCRIPTHELP, OnToolsScriptHelp)
+    ON_COMMAND(ID_EXPORT_INDOORS, OnExportIndoors)
+    ON_COMMAND(ID_VIEW_CYCLE2DVIEWPORT, OnViewCycle2dviewport)
+    ON_COMMAND(ID_DISPLAY_GOTOPOSITION, OnDisplayGotoPosition)
+    ON_COMMAND(ID_DISPLAY_SETVECTOR, OnDisplaySetVector)
+    ON_COMMAND(ID_SNAPANGLE, OnSnapangle)
+    ON_COMMAND(ID_RULER, OnRuler)
+    ON_COMMAND(ID_ROTATESELECTION_XAXIS, OnRotateselectionXaxis)
+    ON_COMMAND(ID_ROTATESELECTION_YAXIS, OnRotateselectionYaxis)
+    ON_COMMAND(ID_ROTATESELECTION_ZAXIS, OnRotateselectionZaxis)
+    ON_COMMAND(ID_ROTATESELECTION_ROTATEANGLE, OnRotateselectionRotateangle)
+    ON_COMMAND(ID_CONVERTSELECTION_TOBRUSHES, OnConvertselectionTobrushes)
+    ON_COMMAND(ID_CONVERTSELECTION_TOSIMPLEENTITY, OnConvertselectionTosimpleentity)
+    ON_COMMAND(ID_CONVERTSELECTION_TODESIGNEROBJECT, OnConvertSelectionToDesignerObject)
+    ON_COMMAND(ID_CONVERTSELECTION_TOGAMEVOLUME, OnConvertselectionToGameVolume)
+    ON_COMMAND(ID_CONVERTSELECTION_TOCOMPONENTENTITY, OnConvertSelectionToComponentEntity)
+    ON_COMMAND(ID_EDIT_RENAMEOBJECT, OnEditRenameobject)
+    ON_COMMAND(ID_CHANGEMOVESPEED_INCREASE, OnChangemovespeedIncrease)
+    ON_COMMAND(ID_CHANGEMOVESPEED_DECREASE, OnChangemovespeedDecrease)
+    ON_COMMAND(ID_CHANGEMOVESPEED_CHANGESTEP, OnChangemovespeedChangestep)
+    ON_COMMAND(ID_MODIFY_AIPOINT_PICKLINK, OnModifyAipointPicklink)
+    ON_COMMAND(ID_MODIFY_AIPOINT_PICKIMPASSLINK, OnModifyAipointPickImpasslink)
+    ON_COMMAND(ID_MATERIAL_ASSIGNCURRENT, OnMaterialAssigncurrent)
+    ON_COMMAND(ID_MATERIAL_RESETTODEFAULT, OnMaterialResettodefault)
+    ON_COMMAND(ID_MATERIAL_GETMATERIAL, OnMaterialGetmaterial)
+    ON_COMMAND(ID_PHYSICS_GETPHYSICSSTATE, OnPhysicsGetState)
+    ON_COMMAND(ID_PHYSICS_RESETPHYSICSSTATE, OnPhysicsResetState)
+    ON_COMMAND(ID_PHYSICS_SIMULATEOBJECTS, OnPhysicsSimulateObjects)
+    ON_COMMAND(ID_FILE_SAVELEVELRESOURCES, OnFileSavelevelresources)
+    ON_COMMAND(ID_CLEAR_REGISTRY, OnClearRegistryData)
+    ON_COMMAND(ID_VALIDATELEVEL, OnValidatelevel)
+    ON_COMMAND(ID_TOOLS_VALIDATEOBJECTPOSITIONS, OnValidateObjectPositions)
+    ON_COMMAND(ID_TERRAIN_RESIZE, OnTerrainResizeterrain)
+    ON_COMMAND(ID_TOOLS_PREFERENCES, OnToolsPreferences)
+    ON_COMMAND(ID_EDIT_INVERTSELECTION, OnEditInvertselection)
+    ON_COMMAND(ID_PREFABS_MAKEFROMSELECTION, OnPrefabsMakeFromSelection)
+    ON_COMMAND(ID_PREFABS_ADDSELECTIONTOPREFAB, OnAddSelectionToPrefab)
+    ON_COMMAND(ID_PREFABS_CLONESELECTIONFROMPREFAB, OnCloneSelectionFromPrefab)
+    ON_COMMAND(ID_PREFABS_EXTRACTSELECTIONFROMPREFAB, OnExtractSelectionFromPrefab)
+    ON_COMMAND(ID_PREFABS_OPENALL, OnPrefabsOpenAll)
+    ON_COMMAND(ID_PREFABS_CLOSEALL, OnPrefabsCloseAll)
+    ON_COMMAND(ID_PREFABS_REFRESHALL, OnPrefabsRefreshAll)
+    ON_COMMAND(ID_TOOLTERRAINMODIFY_SMOOTH, OnToolterrainmodifySmooth)
+    ON_COMMAND(ID_TERRAINMODIFY_SMOOTH, OnTerrainmodifySmooth)
+    ON_COMMAND(ID_TERRAIN_VEGETATION, OnTerrainVegetation)
+    ON_COMMAND(ID_TERRAIN_PAINTLAYERS, OnTerrainPaintlayers)
+    ON_COMMAND(ID_SWITCHCAMERA_DEFAULTCAMERA, OnSwitchToDefaultCamera)
+    ON_COMMAND(ID_SWITCHCAMERA_SEQUENCECAMERA, OnSwitchToSequenceCamera)
+    ON_COMMAND(ID_SWITCHCAMERA_SELECTEDCAMERA, OnSwitchToSelectedcamera)
+    ON_COMMAND(ID_SWITCHCAMERA_NEXT, OnSwitchcameraNext)
+    ON_COMMAND(ID_OPEN_SUBSTANCE_EDITOR, OnOpenProceduralMaterialEditor)
+    ON_COMMAND(ID_OPEN_MANNEQUIN_EDITOR, OnOpenMannequinEditor)
+    ON_COMMAND(ID_OPEN_CHARACTER_TOOL, OnOpenCharacterTool)
+    ON_COMMAND(ID_OPEN_DATABASE, OnOpenDataBaseView)
+    ON_COMMAND(ID_OPEN_FLOWGRAPH, OnOpenFlowGraphView)
+    ON_COMMAND(ID_OPEN_ASSET_BROWSER, OnOpenAssetBrowserView)
+    ON_COMMAND(ID_OPEN_AUDIO_CONTROLS_BROWSER, OnOpenAudioControlsEditor)
+    ON_COMMAND(ID_GAMEP1_AUTOGEN, OnGameP1AutoGen)
+
+    ON_COMMAND(ID_OPEN_MATERIAL_EDITOR, OnOpenMaterialEditor)
+    ON_COMMAND(ID_GOTO_VIEWPORTSEARCH, OnGotoViewportSearch)
+    ON_COMMAND(ID_BRUSH_MAKEHOLLOW, OnBrushMakehollow)
+    ON_COMMAND(ID_BRUSH_CSGCOMBINE, OnBrushCsgcombine)
+    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT, OnBrushCsgsubstruct)
+    ON_COMMAND(ID_BRUSH_CSGINTERSECT, OnBrushCsgintersect)
+    ON_COMMAND(ID_SUBOBJECTMODE_VERTEX, OnSubobjectmodeVertex)
+    ON_COMMAND(ID_SUBOBJECTMODE_EDGE, OnSubobjectmodeEdge)
+    ON_COMMAND(ID_SUBOBJECTMODE_FACE, OnSubobjectmodeFace)
+    ON_COMMAND(ID_SUBOBJECTMODE_PIVOT, OnSubobjectmodePivot)
+    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT2, OnBrushCsgsubstruct2)
+    ON_COMMAND(ID_MATERIAL_PICKTOOL, OnMaterialPicktool)
+    ON_COMMAND(ID_DISPLAY_SHOWHELPERS, OnShowHelpers)
+    ON_COMMAND(ID_OPEN_AIDEBUGGER, OnOpenAIDebugger)
+    ON_COMMAND(ID_OPEN_TERRAINTEXTURE_EDITOR, ToolTexture)
+    ON_COMMAND(ID_OPEN_LAYER_EDITOR, OnOpenLayerEditor)
+    ON_COMMAND(ID_OPEN_TERRAIN_EDITOR, OnOpenTerrainEditor)
+    ON_COMMAND(ID_OPEN_TRACKVIEW, OnOpenTrackView)
+    ON_COMMAND(ID_OPEN_UICANVASEDITOR, OnOpenUICanvasEditor)
+    ON_COMMAND(ID_GOTO_VIEWPORTSEARCH, OnGotoViewportSearch)
+    ON_COMMAND(ID_BRUSH_MAKEHOLLOW, OnBrushMakehollow)
+    ON_COMMAND(ID_BRUSH_CSGCOMBINE, OnBrushCsgcombine)
+    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT, OnBrushCsgsubstruct)
+    ON_COMMAND(ID_BRUSH_CSGINTERSECT, OnBrushCsgintersect)
+    ON_COMMAND(ID_BRUSH_CSGSUBSTRUCT2, OnBrushCsgsubstruct2)
+    ON_COMMAND(ID_MATERIAL_PICKTOOL, OnMaterialPicktool)
+    ON_COMMAND(ID_TERRAIN_TIMEOFDAY, OnTimeOfDay)
+    ON_COMMAND(ID_TERRAIN_TIMEOFDAYBUTTON, OnTimeOfDay)
+
+    ON_COMMAND(ID_TOOLS_RESOLVEMISSINGOBJECTS, OnResolveMissingObjects)
+
+    ON_COMMAND(ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW, OnToggleFullScreenPerspectiveWindow)
+
+    ON_COMMAND_RANGE(ID_GAME_ENABLELOWSPEC, ID_GAME_ENABLEVERYHIGHSPEC, OnChangeGameSpec)
+
+    ON_COMMAND_RANGE(ID_GAME_ENABLEDURANGOSPEC, ID_GAME_ENABLEDURANGOSPEC, OnChangeGameSpec)
+
+    ON_COMMAND_RANGE(ID_GAME_ENABLEORBISSPEC, ID_GAME_ENABLEORBISSPEC, OnChangeGameSpec)
+
+    ON_COMMAND_RANGE(ID_GAME_ENABLEANDROIDSPEC, ID_GAME_ENABLEANDROIDSPEC, OnChangeGameSpec)
+
+    ON_COMMAND_RANGE(ID_GAME_ENABLEIOSSPEC, ID_GAME_ENABLEIOSSPEC, OnChangeGameSpec)
+
+    ON_COMMAND(ID_OPEN_QUICK_ACCESS_BAR, OnOpenQuickAccessBar)
+
+    ON_COMMAND(ID_START_STOP, OnStartStop)
+    ON_COMMAND(ID_NEXT_KEY, OnNextKey)
+    ON_COMMAND(ID_PREV_KEY, OnPrevKey)
+    ON_COMMAND(ID_SELECT_ALL, OnSelectAll)
+    ON_COMMAND(ID_SET_KEY, OnKeyAll)
+    ON_COMMAND(ID_NEXT_FRAME, OnNextFrame)
+    ON_COMMAND(ID_PREV_FRAME, OnPrevFrame)
+    ON_COMMAND(ID_FILE_SAVE_LEVEL, OnFileSave)
+    ON_COMMAND(ID_PANEL_LAYERS_SAVE_EXTERNAL_LAYERS, OnFileSaveExternalLayers)
+    ON_COMMAND(ID_FILE_EXPORTOCCLUSIONMESH, OnFileExportOcclusionMesh)
+
+    // Project Configurator
+    ON_COMMAND(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION, OnOpenProjectConfiguratorSwitchProject)
+    ON_COMMAND(ID_PROJECT_CONFIGURATOR_GEMS, OnOpenProjectConfiguratorGems)
+    // ~Project Configurator
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CCryEditApp construction
+CCryEditApp::CCryEditApp()
+    : m_pEventLoopHook(0)
+{
+    m_mutexApplication = NULL;
+
+    m_sPreviewFile[0] = 0;
+
+#ifdef Q_OS_WIN
+#ifdef _DEBUG
+    int tmpDbgFlag;
+    tmpDbgFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+    // Clear the upper 16 bits and OR in the desired freqency
+    tmpDbgFlag = (tmpDbgFlag & 0x0000FFFF) | (32768 << 16);
+    //tmpDbgFlag |= _CRTDBG_LEAK_CHECK_DF;
+    _CrtSetDbgFlag(tmpDbgFlag);
+
+    // Check heap every
+    //_CrtSetBreakAlloc(119065);
+#endif
+#endif
+
+    // TODO: add construction code here,
+    // Place all significant initialization in InitInstance
+    m_pEditor = 0;
+    m_bExiting = false;
+    m_bPreviewMode = false;
+    m_bConsoleMode = false;
+    m_bTestMode = false;
+    m_bPrecacheShaderList = false;
+    m_bStatsShaderList = false;
+    m_bMergeShaders = false;
+    m_pMatEditDlg = 0;
+    m_bLevelLoadTestMode = false;
+
+    ZeroStruct(m_tagLocations);
+    ZeroStruct(m_tagAngles);
+
+    m_fastRotateAngle = 45;
+    m_moveSpeedStep = 0.1f;
+
+    m_pConsoleDialog = 0;
+
+    m_bForceProcessIdle = false;
+    m_bKeepEditorActive = false;
+
+    m_initSegmentsToOpen = 0;
+    AzFramework::AssetSystemInfoBus::Handler::BusConnect();
+
+    m_disableIdleProcessingCounter = 0;
+    EditorIdleProcessingBus::Handler::BusConnect();
+}
+
+//////////////////////////////////////////////////////////////////////////
+CCryEditApp::~CCryEditApp()
+{
+    EditorIdleProcessingBus::Handler::BusDisconnect();
+    AzFramework::AssetSystemInfoBus::Handler::BusDisconnect();
+}
+
+CCryEditApp* CCryEditApp::instance()
+{
+    return &theApp;
+}
+
+class CEditCommandLineInfo
+{
+public:
+    bool m_bTest = false;
+    bool m_bAutoLoadLevel = false;
+    bool m_bExport = false;
+    bool m_bExportTexture = false;
+    bool m_bExportAI = false;
+
+    bool m_bMatEditMode = false;
+    bool m_bPrecacheShaders = false;
+    bool m_bPrecacheShadersLevels = false;
+    bool m_bPrecacheShaderList = false;
+    bool m_bStatsShaders = false;
+    bool m_bStatsShaderList = false;
+    bool m_bMergeShaders = false;
+
+    bool m_bConsoleMode = false;
+    bool m_bDeveloperMode = false;
+    bool m_bMemReplay = false;
+    bool m_bRunPythonScript = false;
+    bool m_bSWBatch = false;
+    bool m_bShowVersionInfo = false;
+    QString m_exportFile;
+    QString m_gameCmdLine; // This variable was already unused in the MFC port.
+    QString m_swCmdLine;
+    QString m_strFileName;
+
+    bool m_bNewMenus = true;
+
+#if AZ_TESTS_ENABLED
+    bool m_bBootstrapPluginTests = false;
+    std::vector<std::string> m_testArgs;
+#endif
+
+    CEditCommandLineInfo()
+    {
+        bool dummy;
+        QCommandLineParser parser;
+        parser.addHelpOption();
+        parser.setSingleDashWordOptionMode(QCommandLineParser::ParseAsLongOptions);
+        parser.setApplicationDescription(QObject::tr("Amazon Lumberyard"));
+        static const std::vector<std::pair<QString, bool&> > options = {
+            { "export", m_bExport },
+            { "exportTexture", m_bExportTexture },
+            { "exportAI", m_bExportAI },
+            { "test", m_bTest },
+            { "auto_level_load", m_bAutoLoadLevel },
+            { "PrecacheShaders", m_bPrecacheShaders },
+            { "PrecacheShadersLevels", m_bPrecacheShadersLevels },
+            { "PrecacheShaderList", m_bPrecacheShaderList },
+            { "StatsShaders", m_bStatsShaders },
+            { "StatsShaderList", m_bStatsShaderList },
+            { "MergeShaders", m_bMergeShaders },
+            { "MatEdit", m_bMatEditMode },
+            { "BatchMode", m_bConsoleMode },
+            { "devmode", m_bDeveloperMode },
+            { "memreplay", m_bMemReplay },
+            { "sw", m_bSWBatch },
+            { "VTUNE", dummy },
+            { "runpython", m_bRunPythonScript },
+            { "version", m_bShowVersionInfo },
+            { "newmenus", m_bNewMenus },
+        };
+
+        parser.addPositionalArgument("file", QCoreApplication::translate("main", "file to open"));
+        for (const auto& option : options)
+        {
+            parser.addOption(QCommandLineOption(option.first));
+        }
+
+        QStringList args = qApp->arguments();
+
+#if AZ_TESTS_ENABLED
+        // have to get all parameters after the bootstrap parameters to pass on
+        QStringList filteredArgs;
+        for (QString& arg : args)
+        {
+            if (m_bBootstrapPluginTests)
+            {
+                m_testArgs.push_back(arg.toStdString());
+            }
+            else if (arg.contains("bootstrap_plugin_tests"))
+            {
+                m_bBootstrapPluginTests = true;
+            }
+            else
+            {
+                filteredArgs.push_back(arg);
+            }
+        }
+        args = filteredArgs;
+#endif
+
+#ifdef Q_OS_WIN32
+        for (QString& arg : args)
+        {
+            if (!arg.isEmpty() && arg[0] == '/')
+            {
+                arg[0] = '-'; // QCommandLineParser only supports - and -- prefixes
+            }
+        }
+#endif
+
+        parser.process(args);
+
+        const int numOptions = options.size();
+        for (int i = 0; i < numOptions; ++i)
+        {
+            options[i].second = parser.isSet(options[i].first);
+        }
+
+        m_bExport = m_bExport | m_bExportTexture | m_bExportAI;
+
+        if (parser.isSet("VTUNE"))
+        {
+            m_gameCmdLine += " -VTUNE";
+        }
+
+        if (parser.isSet("sw"))
+        {
+            m_swCmdLine = parser.value("sw");
+        }
+
+        const QStringList positionalArgs = parser.positionalArguments();
+
+        if (!positionalArgs.isEmpty())
+        {
+            m_strFileName = positionalArgs.first();
+
+            if (positionalArgs.first().at(0) != '[')
+            {
+                m_exportFile = positionalArgs.first();
+            }
+        }
+    }
+};
+
+struct SharedData
+{
+    bool raise = false;
+    char text[_MAX_PATH];
+};
+/////////////////////////////////////////////////////////////////////////////
+// CTheApp::FirstInstance
+//      FirstInstance checks for an existing instance of the application.
+//      If one is found, it is activated.
+//
+//      This function uses a technique similar to that described in KB
+//      article Q141752 to locate the previous instance of the application. .
+BOOL CCryEditApp::FirstInstance(bool bForceNewInstance)
+{
+    QSystemSemaphore sem("LumberyardApplication_sem", 1);
+    sem.acquire();
+    {
+        QSharedMemory fix("LumberyardEditorClass");
+        fix.attach();
+    }
+    sem.release();
+    m_mutexApplication = new QSharedMemory("LumberyardEditorClass");
+    if (!m_mutexApplication->create(sizeof(SharedData)) && !bForceNewInstance)
+    {
+        m_mutexApplication->attach();
+        // another instance is already running - activate it
+        sem.acquire();
+        SharedData* data = reinterpret_cast<SharedData*>(m_mutexApplication->data());
+        data->raise = true;
+
+        if (m_bPreviewMode)
+        {
+            // IF in preview mode send this window copy data message to load new preview file.
+            strcpy(data->text, m_sPreviewFile);
+        }
+        return false;
+    }
+    else
+    {
+        m_mutexApplication->attach();
+        // this is the first instance
+        sem.acquire();
+        ::memset(m_mutexApplication->data(), 0, m_mutexApplication->size());
+        sem.release();
+        QTimer* t = new QTimer(this);
+        connect(t, &QTimer::timeout, [this]() {
+            QSystemSemaphore sem("LumberyardApplication_sem", 1);
+            sem.acquire();
+            SharedData* data = reinterpret_cast<SharedData*>(m_mutexApplication->data());
+            QString preview = QString::fromLatin1(data->text);
+            if (data->raise)
+            {
+                QWidget* w = MainWindow::instance();
+                w->setWindowState((w->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+                w->raise();
+                w->activateWindow();
+                data->raise = false;
+            }
+            if (!preview.isEmpty())
+            {
+                // Load this file
+                LoadFile(preview);
+                data->text[0] = 0;
+            }
+            sem.release();
+        });
+        t->start(1000);
+
+        return true;
+    }
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileSave()
+{
+    GetIEditor()->GetDocument()->DoFileSave();
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateDocumentReady(QAction* action)
+{
+    action->setEnabled(GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileSaveExternalLayers()
+{
+    GetIEditor()->GetDocument()->BackupBeforeSave();
+    GetIEditor()->GetObjectManager()->GetLayersManager()->SaveExternalLayers();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::InitDirectory()
+{
+    //////////////////////////////////////////////////////////////////////////
+    // Initializes Root folder of the game.
+    //////////////////////////////////////////////////////////////////////////
+    QString szExeFileName = qApp->applicationDirPath();
+
+    // Remove Bin32/Bin64 folder/
+    szExeFileName.remove(QRegularExpression(R"((\\|/)Bin32.*)"));
+
+    const QString bin = QRegularExpression::escape(BINFOLDER_NAME);
+    const QString reg = QStringLiteral("(\\\\|/)%1.*").arg(bin);
+    szExeFileName.remove(QRegularExpression(reg));
+
+    QDir::setCurrent(szExeFileName);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Needed to work with custom memory manager.
+//////////////////////////////////////////////////////////////////////////
+
+CFrameWnd* CCrySingleDocTemplate::CreateNewFrame(CCryEditDoc* pDoc, CFrameWnd* pOther)
+{
+    return nullptr;
+}
+
+CCryEditDoc* CCrySingleDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName, BOOL bMakeVisible /*= true*/)
+{
+    return OpenDocumentFile(lpszPathName, true, bMakeVisible);
+}
+
+CCryEditDoc* CCrySingleDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName, BOOL bAddToMRU, BOOL bMakeVisible)
+{
+    //((CCryEditApp*)AfxGetApp())->m_pDocManager->CloseAllDocuments(true);
+    CCryEditDoc* pCurDoc = GetIEditor()->GetDocument();
+
+    if (pCurDoc)
+    {
+        if (!pCurDoc->SaveModified())
+        {
+            return nullptr;
+        }
+    }
+
+    if (!pCurDoc)
+    {
+        pCurDoc = qobject_cast<CCryEditDoc*>(m_documentClass->newInstance());
+        if (pCurDoc == nullptr)
+            return nullptr;
+        pCurDoc->setParent(this);
+    }
+
+    CreateNewFrame(pCurDoc, nullptr);
+
+    pCurDoc->SetModifiedFlag(false);
+    if (lpszPathName == nullptr)
+    {
+        pCurDoc->SetTitle(tr("Untitled"));
+        pCurDoc->OnNewDocument();
+    }
+    else
+    {
+        pCurDoc->OnOpenDocument(lpszPathName);
+        pCurDoc->SetPathName(lpszPathName);
+        if (bAddToMRU)
+        {
+            CCryEditApp::instance()->GetRecentFileList()->Add(lpszPathName);
+            CCryEditApp::instance()->GetRecentFileList()->WriteList();
+        }
+    }
+
+    return pCurDoc;
+}
+
+CCrySingleDocTemplate::Confidence CCrySingleDocTemplate::MatchDocType(LPCTSTR lpszPathName, CCryEditDoc*& rpDocMatch)
+{
+    assert(lpszPathName != NULL);
+    rpDocMatch = NULL;
+
+    // go through all documents
+    CCryEditDoc* pDoc = GetIEditor()->GetDocument();
+    if (pDoc)
+    {
+        QString prevPathName = Path::GetRelativePath(pDoc->GetPathName());
+        Path::ConvertBackSlashToSlash(prevPathName);
+        if (!QString::compare(prevPathName, lpszPathName))
+        {
+            // already open
+            rpDocMatch = pDoc;
+            return yesAlreadyOpen;
+        }
+    }
+
+    // see if it matches our default suffix
+    const QString strFilterExt = QStringLiteral(".cry");
+
+    // see if extension matches
+    assert(strFilterExt[0] == '.');
+    QString strDot = "." + Path::GetExt(lpszPathName);
+    if (!strDot.isEmpty())
+    {
+        if(strDot == strFilterExt)
+        {
+            return yesAttemptNative; // extension matches, looks like ours
+        }
+    }
+    // otherwise we will guess it may work
+    return yesAttemptForeign;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+namespace
+{
+    CryMutex g_splashScreenStateLock;
+    CryConditionVariable g_splashScreenStateChange;
+    enum ESplashScreenState
+    {
+        eSplashScreenState_Init, eSplashScreenState_Started, eSplashScreenState_Destroy
+    };
+    ESplashScreenState g_splashScreenState = eSplashScreenState_Init;
+    IInitializeUIInfo* g_pInitializeUIInfo = nullptr;
+    QWidget* g_splashScreen = nullptr;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::ShowSplashScreen(CCryEditApp* app)
+{
+    g_splashScreenStateLock.Lock();
+
+    CStartupLogoDialog* splashScreen = new CStartupLogoDialog;
+    splashScreen->SetVersion(app->m_pEditor->GetFileVersion());
+
+    g_pInitializeUIInfo = splashScreen;
+    g_splashScreen = splashScreen;
+    g_splashScreenState = eSplashScreenState_Started;
+
+    g_splashScreenStateLock.Unlock();
+    g_splashScreenStateChange.Notify();
+
+    splashScreen->show();
+    // Make sure the initial paint of the splash screen occurs so we dont get stuck with a blank window
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+    QObject::connect(splashScreen, &QObject::destroyed, [=]()
+    {
+        g_splashScreenStateLock.Lock();
+        g_pInitializeUIInfo = nullptr;
+        g_splashScreen = nullptr;
+        g_splashScreenStateLock.Unlock();
+    });
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::CreateSplashScreen()
+{
+    if (!m_bConsoleMode)
+    {
+        // Create startup output splash
+        ShowSplashScreen(this);
+
+        GetIEditor()->Notify(eNotify_OnSplashScreenCreated);
+    }
+    else
+    {
+        // Create console
+        m_pConsoleDialog = new CConsoleDialog();
+        m_pConsoleDialog->show();
+
+        g_pInitializeUIInfo = m_pConsoleDialog;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::CloseSplashScreen()
+{
+    if (CStartupLogoDialog::instance())
+    {
+        delete CStartupLogoDialog::instance();
+        g_splashScreenStateLock.Lock();
+        g_splashScreenState = eSplashScreenState_Destroy;
+        g_splashScreenStateLock.Unlock();
+    }
+
+    GetIEditor()->Notify(eNotify_OnSplashScreenDestroyed);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OutputStartupMessage(QString str)
+{
+    g_splashScreenStateLock.Lock();
+    if (g_pInitializeUIInfo)
+    {
+        g_pInitializeUIInfo->SetInfoText(str.toLatin1().data());
+    }
+    g_splashScreenStateLock.Unlock();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
+{
+    //! Setup flags from command line
+    if (cmdInfo.m_bPrecacheShaders || cmdInfo.m_bPrecacheShadersLevels || cmdInfo.m_bMergeShaders
+        || cmdInfo.m_bPrecacheShaderList || cmdInfo.m_bStatsShaderList || cmdInfo.m_bStatsShaders)
+    {
+        m_bPreviewMode = true;
+        m_bConsoleMode = true;
+        m_bTestMode = true;
+    }
+
+    m_bConsoleMode |= cmdInfo.m_bConsoleMode;
+    m_bTestMode |= cmdInfo.m_bTest;
+
+    m_bPrecacheShaderList = cmdInfo.m_bPrecacheShaderList;
+    m_bStatsShaderList = cmdInfo.m_bStatsShaderList;
+    m_bStatsShaders = cmdInfo.m_bStatsShaders;
+    m_bPrecacheShaders = cmdInfo.m_bPrecacheShaders;
+    m_bPrecacheShadersLevels = cmdInfo.m_bPrecacheShadersLevels;
+    m_bMergeShaders = cmdInfo.m_bMergeShaders;
+    m_bExportMode = cmdInfo.m_bExport;
+    m_bRunPythonScript = cmdInfo.m_bRunPythonScript;
+    m_bSWBatchMode = cmdInfo.m_bSWBatch;
+
+    m_pEditor->SetMatEditMode(cmdInfo.m_bMatEditMode);
+
+    if (m_bExportMode)
+    {
+        m_exportFile = cmdInfo.m_exportFile;
+    }
+
+    // Do we have a passed filename ?
+    if (!cmdInfo.m_strFileName.isEmpty())
+    {
+        if (!cmdInfo.m_bRunPythonScript && IsPreviewableFileType(cmdInfo.m_strFileName.toLatin1().constData()))
+        {
+            m_bPreviewMode = true;
+            azstrncpy(m_sPreviewFile, _MAX_PATH, cmdInfo.m_strFileName.toLatin1().constData(), _MAX_PATH);
+        }
+    }
+
+    if (cmdInfo.m_bAutoLoadLevel)
+    {
+        m_bLevelLoadTestMode = true;
+        gEnv->bNoAssertDialog = true;
+        CEditorAutoLevelLoadTest::Instance();
+    }
+
+    if (cmdInfo.m_bMemReplay)
+    {
+        CryGetIMemReplay()->Start();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+AZ::Outcome<void, AZStd::string> CCryEditApp::InitGameSystem(HWND hwndForInputSystem)
+{
+    bool bShaderCacheGen = m_bPrecacheShaderList | m_bPrecacheShaders | m_bPrecacheShadersLevels;
+
+    CGameEngine* pGameEngine = new CGameEngine;
+
+    AZ::Outcome<void, AZStd::string> initOutcome = pGameEngine->Init(m_bPreviewMode, m_bTestMode, bShaderCacheGen, qApp->arguments().join(" ").toUtf8().data(), g_pInitializeUIInfo, hwndForInputSystem);
+    if (!initOutcome.IsSuccess())
+    {
+        return initOutcome;
+    }
+
+    m_pEditor->SetGameEngine(pGameEngine);
+    if (!GetIEditor()->GetSystem())
+    {
+        return AZ::Failure(AZStd::string("System initialization failed. View the Editor log (editor.log) in the log folder for more details."));
+    }
+
+    // needs to be called after CrySystem has been loaded.
+    gSettings.LoadDefaultGamePaths();
+
+    return AZ::Success();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+BOOL CCryEditApp::CheckIfAlreadyRunning()
+{
+    bool bForceNewInstance = false;
+
+    if (!m_bPreviewMode)
+    {
+        QSystemSemaphore sem("LumberyardApplication_sem", 1);
+        sem.acquire();
+        {
+            QSharedMemory fix("LumberyardApplication");
+            fix.attach();
+        }
+        sem.release();
+        m_mutexApplication = new QSharedMemory("LumberyardApplication");
+        if (!m_mutexApplication->create(16))
+        {
+            if (QMessageBox::question(QApplication::activeWindow(), QObject::tr("Too many apps"), QObject::tr("There is already a Lumberyard application running\nDo you want to start another one?")) != QMessageBox::Yes)
+            {
+                return false;
+            }
+
+            bForceNewInstance = true;
+        }
+    }
+
+    // Shader precaching may start multiple editor copies
+    if (!FirstInstance(bForceNewInstance) && !m_bPrecacheShaderList)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+bool CCryEditApp::InitGame()
+{
+    if (!m_bPreviewMode && !GetIEditor()->IsInMatEditMode())
+    {
+        ICVar* pVar = gEnv->pConsole->GetCVar("sys_dll_game");
+        const char* sGameDLL = nullptr;
+
+        // Log either the legacy game dll or the name of the game gem 
+        bool legacyGameDllStartup = (EditorGameRequestBus::GetTotalNumOfEventHandlers() == 0);
+        if (legacyGameDllStartup)
+        {
+            sGameDLL = pVar ? pVar->GetString() : nullptr;
+            QString logString = QString("sys_dll_game = ") + (sGameDLL && sGameDLL[0] ? sGameDLL : "<not set>");
+            Log(logString.toUtf8().data());
+        }
+        else
+        {
+            // If the game uses a game gem, then reset the sys_dll_game cvar to the name of the game from the gem
+            AZStd::string gameName;
+            EditorGameRequestBus::BroadcastResult(gameName, &EditorGameRequestBus::Events::GetGameName);
+            if (pVar && gameName.length()>0)
+            {
+                pVar->ForceSet(gameName.c_str());
+                QString logString = QString("sys_dll_game = ") + gameName.c_str();
+                Log(logString.toUtf8().data());
+            }
+            else
+            {
+                Log("sys_dll_game = <not set>");
+            }
+        }
+
+
+        pVar = gEnv->pConsole->GetCVar("sys_game_folder");
+        const char* sGameFolder = pVar ? pVar->GetString() : nullptr;
+        pVar = gEnv->pConsole->GetCVar("sys_localization_folder");
+        const char* sLocalizationFolder = pVar ? pVar->GetString() : nullptr;
+        Log((QString("sys_game_folder = ") + (sGameFolder && sGameFolder[0] ? sGameFolder : "<not set>")).toLatin1().data());
+        Log((QString("sys_localization_folder = ") + (sLocalizationFolder && sLocalizationFolder[0] ? sLocalizationFolder : "<not set>")).toLatin1().data());
+
+        OutputStartupMessage("Starting Game...");
+        if (!GetIEditor()->GetGameEngine()->InitGame(sGameDLL))
+        {
+            return false;
+        }
+    }
+
+    gSettings.LoadCloudSettings();
+
+    //////////////////////////////////////////////////////////////////////////
+    // Apply settings post engine initialization.
+    GetIEditor()->GetDisplaySettings()->PostInitApply();
+    gSettings.PostInitApply();
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::InitPlugins()
+{
+    OutputStartupMessage("Loading Plugins...");
+    // Load the plugins
+    {
+        Command_LoadPlugins();
+
+        C3DConnexionDriver* p3DConnexionDriver = new C3DConnexionDriver;
+        GetIEditor()->GetPluginManager()->RegisterPlugin(0, p3DConnexionDriver);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::InitLevel(CEditCommandLineInfo& cmdInfo)
+{
+    if (m_bPreviewMode)
+    {
+        GetIEditor()->EnableAcceleratos(false);
+
+        // Load geometry object.
+        if (!cmdInfo.m_strFileName.isEmpty())
+        {
+            LoadFile(cmdInfo.m_strFileName);
+        }
+    }
+    else if (m_bExportMode && !m_exportFile.isEmpty())
+    {
+        GetIEditor()->SetModifiedFlag(false);
+        GetIEditor()->SetModifiedModule(eModifiedNothing);
+        auto pDocument = OpenDocumentFile(m_exportFile.toLatin1().constData());
+        if (pDocument)
+        {
+            GetIEditor()->SetModifiedFlag(false);
+            GetIEditor()->SetModifiedModule(eModifiedNothing);
+            if (cmdInfo.m_bExportAI)
+            {
+                GetIEditor()->GetGameEngine()->GenerateAiAll();
+            }
+            ExportLevel(cmdInfo.m_bExport, cmdInfo.m_bExportTexture, true);
+            // Terminate process.
+            CLogFile::WriteLine("Editor: Terminate Process after export");
+        }
+
+        QCoreApplication::instance()->quit();
+        return;
+    }
+    else if (m_bSWBatchMode && !cmdInfo.m_strFileName.isEmpty())
+    {
+        GetIEditor()->SetModifiedFlag(false);
+        GetIEditor()->SetModifiedModule(eModifiedNothing);
+        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toLatin1().constData());
+        if (pDocument)
+        {
+            GetIEditor()->SetModifiedFlag(false);
+            GetIEditor()->SetModifiedModule(eModifiedNothing);
+            GetISystem()->GetIConsole()->ExecuteString(QString("sw batch %1 sw %2").arg(cmdInfo.m_strFileName, cmdInfo.m_swCmdLine).toLatin1().constData());
+        }
+    }
+    else if (QFileInfo(cmdInfo.m_strFileName).suffix() == "cry")
+    {
+        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toLatin1().constData());
+        if (pDocument)
+        {
+            GetIEditor()->SetModifiedFlag(false);
+            GetIEditor()->SetModifiedModule(eModifiedNothing);
+        }
+    }
+    else
+    {
+        //////////////////////////////////////////////////////////////////////////
+        //It can happen that if you are switching between projects and you have auto load set that
+        //you could inadvertently load the wrong project and not know it, you would think you are editing
+        //one level when in fact you are editing the old one. This can happen if both projects have the same
+        //relative path... which is often the case when branching.
+        // Ex. D:\cryengine\dev\ gets branched to D:\cryengine\branch\dev
+        // Now you have gamesdk in both roots and therefore GameSDK\Levels\Singleplayer\Forest in both
+        // If you execute the branch the m_pRecentFileList will be an absolute path to the old gamesdk,
+        // then if auto load is set simply takes the old level and loads it in the new branch...
+        //I would question ever trying to load a level not in our gamesdk, what happens when there are things that
+        //an not exist in the level when built in a different gamesdk.. does it erase them, most likely, then you
+        //just screwed up the level for everyone in the other gamesdk...
+        //So if we are auto loading a level outside our current gamesdk we should act as though the flag
+        //was unset and pop the dialog which should be in the correct location. This is not fool proof, but at
+        //least this its a compromise that doesn't automatically do something you probably shouldn't.
+        bool autoloadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
+        if (autoloadLastLevel
+            && GetRecentFileList()
+            && GetRecentFileList()->GetSize())
+        {
+            QString gamePath = Path::GetEditingGameDataFolder().c_str();
+            Path::ConvertSlashToBackSlash(gamePath);
+            gamePath = Path::ToUnixPath(gamePath.toLower());
+            gamePath = Path::AddSlash(gamePath);
+
+            QString fullPath = GetRecentFileList()->m_arrNames[0];
+            Path::ConvertSlashToBackSlash(fullPath);
+            fullPath = Path::ToUnixPath(fullPath.toLower());
+            fullPath = Path::AddSlash(fullPath);
+
+            if (fullPath.indexOf(gamePath, 0) != 0)
+            {
+                autoloadLastLevel = false;
+            }
+        }
+        //////////////////////////////////////////////////////////////////////////
+
+        QString levelName;
+        bool isLevelNameValid = false;
+        bool doLevelNeedLoading = true;
+
+        AZ::EBusLogicalResult<bool, AZStd::logical_or<bool> > skipStartupUIProcess(false);
+        EBUS_EVENT_RESULT(skipStartupUIProcess, AzToolsFramework::EditorEvents::Bus, SkipEditorStartupUI);
+
+        if (!skipStartupUIProcess.value)
+        {
+        do
+        {
+            isLevelNameValid = false;
+            doLevelNeedLoading = true;
+            if (gSettings.bShowDashboardAtStartup
+                && !cmdInfo.m_bRunPythonScript
+                && !GetIEditor()->IsInMatEditMode()
+                && !m_bConsoleMode
+                && !m_bPreviewMode
+                && !autoloadLastLevel)
+            {
+                WelcomeScreenDialog wsDlg(MainWindow::instance());
+                wsDlg.SetRecentFileList(GetRecentFileList());
+                wsDlg.exec();
+                levelName = wsDlg.GetLevelPath();
+            }
+            else if (autoloadLastLevel
+                     && GetRecentFileList()
+                     && GetRecentFileList()->GetSize())
+            {
+                levelName = GetRecentFileList()->m_arrNames[0];
+            }
+
+            if (levelName.isEmpty())
+            {
+                break;
+            }
+            if (levelName == "new")
+            {
+                //implies that the user has clicked the create new level option
+                bool wasCreateLevelOperationCancelled = false;
+                bool isNewLevelCreationSuccess = false;
+                // This will show the new level dialog until a valid input has been entered by the user or until the user click cancel
+                while (!isNewLevelCreationSuccess && !wasCreateLevelOperationCancelled)
+                {
+                    isNewLevelCreationSuccess = CreateLevel(wasCreateLevelOperationCancelled);
+                    if (isNewLevelCreationSuccess == true)
+                    {
+                        doLevelNeedLoading = false;
+                        isLevelNameValid = true;
+                    }
+                }
+                ;
+            }
+            else
+            {
+                //implies that the user wants to open an existing level
+                doLevelNeedLoading = true;
+                isLevelNameValid = true;
+            }
+        } while (!isLevelNameValid);// if we reach here and levelName is not valid ,it implies that the user has clicked cancel on the create new level dialog
+
+        // load level
+        if (doLevelNeedLoading && !levelName.isEmpty())
+        {
+            QString str;
+            str = tr("Loading level %1 ...").arg(levelName);
+            OutputStartupMessage(str);
+
+            // create an empty doc for doc template other than default template, such as ".scry", to avoid frame shutdown due to open failed
+            //m_pDocManager->GetBestTemplate(levelName)->OpenDocumentFile(NULL);
+
+            OpenDocumentFile(levelName.toLatin1().data());
+        }
+    }
+}
+}
+
+/////////////////////////////////////////////////////////////////////////////
+BOOL CCryEditApp::InitConsole()
+{
+    if (m_bPrecacheShaderList)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_PrecacheShaderList");
+        return false;
+    }
+    else if (m_bStatsShaderList)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_StatsShaderList");
+        return false;
+    }
+    else if (m_bStatsShaders)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_StatsShaders");
+        return false;
+    }
+    else if (m_bPrecacheShaders)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_PrecacheShaders");
+        return false;
+    }
+    else if (m_bPrecacheShadersLevels)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_PrecacheShadersLevels");
+        return false;
+    }
+    else if (m_bMergeShaders)
+    {
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString("r_MergeShaders");
+        return false;
+    }
+
+    // Execute special configs.
+    gEnv->pConsole->ExecuteString("exec editor_autoexec.cfg");
+    gEnv->pConsole->ExecuteString("exec editor.cfg");
+    gEnv->pConsole->ExecuteString("exec user.cfg");
+
+    // should be after init game (should be executed even if there is no game)
+    if (!GetIEditor()->GetSystem()->GetIGame())
+    {
+        GetISystem()->ExecuteCommandLine();
+    }
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////
+void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
+{
+    if (cmdInfo.m_bRunPythonScript)
+    {
+        GetIEditor()->ExecuteCommand("general.run_file '%s'", cmdInfo.m_strFileName.toLatin1().data());
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CCryEditApp initialization
+BOOL CCryEditApp::InitInstance()
+{
+    InitDirectory();
+
+    // parameters must be parsed early to capture arguments for test bootstrap
+    CEditCommandLineInfo cmdInfo;
+
+#if AZ_TESTS_ENABLED
+    if (!cmdInfo.m_bBootstrapPluginTests) // don't check running state for google test (for death tests)
+#endif
+    {
+        if (!CheckIfAlreadyRunning())
+        {
+            return false;
+        }
+    }
+
+    InitDirectory();
+
+    // create / attach to the environment:
+    AttachEditorCoreAZEnvironment(AZ::Environment::GetInstance());
+
+    m_pEditor = new CEditorImpl();
+    qobject_cast<Editor::EditorQtApplication*>(qApp)->Initialize(); // Must be done after CEditorImpl() is created
+    m_pEditor->Initialize();
+
+#if AZ_TESTS_ENABLED
+    // bootstrap the editor to run tests
+    if (cmdInfo.m_bBootstrapPluginTests)
+    {
+        m_bootstrapTestInfo.exitCode = RunPluginUnitTests(cmdInfo);
+        m_bootstrapTestInfo.didRun = true;
+        return FALSE;
+    }
+#endif
+
+    if (cmdInfo.m_bShowVersionInfo)
+    {
+        CAboutDialog aboutDlg;
+        aboutDlg.exec();
+        return FALSE;
+    }
+
+
+    // Reflect property control classes to the serialize context...
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+    AZ_Assert(serializeContext, "Serialization context not available");
+    ReflectedVarInit::setupReflection(serializeContext);
+    RegisterReflectedVarHandlers();
+
+
+    InitFromCommandLine(cmdInfo);
+
+    CreateSplashScreen();
+
+    // Register the application's document templates. Document templates
+    // serve as the connection between documents, frame windows and views
+    CCrySingleDocTemplate* pDocTemplate;
+    pDocTemplate = CCrySingleDocTemplate::create<CCryEditDoc>(
+        IDR_MAINFRAME, nullptr);
+
+    m_pDocManager = new CCryDocManager;
+    ((CCryDocManager*)m_pDocManager)->SetDefaultTemplate(pDocTemplate);
+
+    auto mainWindow = new MainWindow();
+#ifdef Q_OS_MACOS
+    auto mainWindowWrapper = new AzQtComponents::WindowDecorationWrapper(AzQtComponents::WindowDecorationWrapper::OptionDisabled);
+#else
+    auto mainWindowWrapper = new AzQtComponents::WindowDecorationWrapper(cmdInfo.m_bMatEditMode ? AzQtComponents::WindowDecorationWrapper::OptionDisabled
+        : AzQtComponents::WindowDecorationWrapper::OptionAutoTitleBarButtons);
+#endif
+    mainWindowWrapper->setGuest(mainWindow);
+    HWND mainWindowWrapperHwnd = (HWND)mainWindowWrapper->winId();
+
+    // Note: we should use getNativeHandle to get the HWND from the widget, but
+    // it returns an invalid handle unless the widget has been shown and polished and even then
+    // it sometimes returns an invalid handle.
+    // So instead, we use winId(), which does consistently work
+    //mainWindowWrapperHwnd = QtUtil::getNativeHandle(mainWindowWrapper);
+
+    auto initGameSystemOutcome = InitGameSystem(mainWindowWrapperHwnd);
+    if (!initGameSystemOutcome.IsSuccess())
+    {
+        if (!initGameSystemOutcome.GetError().empty())
+        {
+            CryMessageBox(initGameSystemOutcome.GetError().c_str(), "Initialization failed", MB_OK);
+        }
+        return false;
+    }
+
+    // Init Lyzard
+    Engines::EngineManagerRequestBus::Broadcast(&Engines::EngineManagerRequests::LoadEngines);
+
+    QDir dir(QApplication::applicationDirPath());
+    QString userPreferenceFileName = "SetupAssistantUserPreferences.ini";
+    dir.cdUp();
+    QString userPreferenceFilePath = dir.filePath(userPreferenceFileName);
+    QFile userPreferenceFile(userPreferenceFilePath);
+    // check for Lumberyard Setup Assistant's user preference ini file (indicating that you have ran it at least once)
+    if (!userPreferenceFile.exists())
+    {
+        OpenSetupAssistant();
+        return false;
+    }
+
+    qobject_cast<Editor::EditorQtApplication*>(qApp)->LoadSettings();
+
+    // Create Sandbox user folder if necessary
+    GetISystem()->GetIPak()->MakeDir("@user@/Sandbox");
+
+    if (!InitGame())
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Game can not be initialized, please refer to the editor log file"));
+        return false;
+    }
+
+    // Must be called before MainWindow::Initialize, which calls PyScript::InitializePython
+    // Python helpers needing initialization may be added by plugins loaded here
+    InitPlugins();
+
+    mainWindow->Initialize();
+
+    m_pEditor->InitializeCrashLog();
+    // Legacy - hide the "Actor Entity" menu until the code is removed.
+    // we do this by unregistering it (it is registered very early on before CVars are loaded from disk).
+    if (gEnv->pConsole->GetCVar("ed_showActorEntity")->GetIVal() == 0)
+    {
+        CClassFactory* cf = CClassFactory::Instance();
+        GUID actorEntityGUID =
+        {
+            0x5529607a, 0xc374, 0x4588,{ 0xad, 0x41, 0xd6, 0x8f, 0xb2, 0x6a, 0x1e, 0x8c }
+        };
+        cf->UnregisterClass(actorEntityGUID);
+    }
+    //Show login screen
+    {
+        //Wrap the existing splash with a QT widget so our login screen has a parent
+        Aws::Http::InitHttp();
+        Amazon::LoginManager loginManager(*g_splashScreen);
+        auto loggedInUser = loginManager.GetLoggedInUser();
+        if (!loggedInUser)
+        {
+            ExitInstance();
+        }
+    }
+
+    GetIEditor()->GetCommandManager()->RegisterAutoCommands();
+    GetIEditor()->AddUIEnums();
+
+    m_pChangeMonitor = new CMannequinChangeMonitor();
+
+    mainWindowWrapper->enableSaveRestoreGeometry("amazon", "lumberyard", "mainWindowGeometry");
+    m_pDocManager->OnFileNew();
+
+    if (IsInRegularEditorMode())
+    {
+        CIndexedFiles::Create();
+
+        if (gEnv->pConsole->GetCVar("ed_indexfiles")->GetIVal())
+        {
+            Log("Started game resource files indexing...");
+            CIndexedFiles::StartFileIndexing();
+        }
+        else
+        {
+            Log("Game resource files indexing is disabled.");
+        }
+
+        // QuickAccessBar creation should be before m_pMainWnd->SetFocus(),
+        // since it receives the focus at creation time. It brakes MainFrame key accelerators.
+        m_pQuickAccessBar = new CQuickAccessBar;
+        m_pQuickAccessBar->setVisible(false);
+    }
+
+    if (MainWindow::instance())
+    {
+        if (m_bConsoleMode)
+        {
+            m_pConsoleDialog->raise();
+        }
+        else if (!GetIEditor()->IsInMatEditMode())
+        {
+            MainWindow::instance()->show();
+            MainWindow::instance()->raise();
+            MainWindow::instance()->update();
+            MainWindow::instance()->setFocus();
+
+#ifdef AZ_PLATFORM_APPLE
+            QWindow* window = mainWindowWrapper->windowHandle();
+            if (window)
+            {
+                Editor::WindowObserver* observer = new Editor::WindowObserver(window, this);
+                connect(observer, &Editor::WindowObserver::windowIsMovingOrResizingChanged, Editor::EditorQtApplication::instance(), &Editor::EditorQtApplication::setIsMovingOrResizing);
+            }
+#endif
+        }
+    }
+
+    SetEditorWindowTitle();
+    if (!GetIEditor()->IsInMatEditMode())
+    {
+        m_pEditor->InitFinished();
+    }
+
+    if (!GetIEditor()->IsInMatEditMode() && !GetIEditor()->IsInConsolewMode())
+    {
+        mainWindowWrapper->restoreGeometryFromSettings();
+        QtViewPaneManager::instance()->RestoreLayout();
+
+        if (cmdInfo.m_bNewMenus)
+        {
+            const bool updateRegistryKeys = false; // don't update the registry key based on the command line option
+            mainWindow->GetLevelEditorMenuHandler()->ShowMenus(updateRegistryKeys);
+        }
+    }
+
+    CloseSplashScreen();
+
+    // Register callback with indexed files such that when it gets updated in the case that the file indexer is finished before initial database creation
+    if (IsInRegularEditorMode())
+    {
+        connect(this, &CCryEditApp::RefreshAssetDatabases, this, &CCryEditApp::OnRefreshAssetDatabases);
+        CIndexedFiles::RegisterCallback([&](void)
+            {
+                emit RefreshAssetDatabases();
+            });
+
+        CAssetBrowserManager::Instance();
+    }
+
+    // let editor game know editor is done initializing
+    if (GetIEditor()->GetGameEngine()->GetIEditorGame())
+    {
+        GetIEditor()->GetGameEngine()->GetIEditorGame()->PostInit();
+    }
+
+
+    InitLevel(cmdInfo);
+
+#ifdef USE_WIP_FEATURES_MANAGER
+    // load the WIP features file
+    CWipFeatureManager::Instance()->EnableManager(!cmdInfo.m_bDeveloperMode);
+    CWipFeatureManager::Init();
+#endif
+
+
+    if (GetIEditor()->IsInMatEditMode())
+    {
+        m_pMatEditDlg = new CMatEditMainDlg(QStringLiteral("Material Editor"));
+        m_pEditor->InitFinished();
+
+        m_pMatEditDlg->show();
+        return false;
+    }
+
+    if (!m_bConsoleMode && !m_bPreviewMode)
+    {
+        GetIEditor()->UpdateViews();
+        if (MainWindow::instance())
+        {
+            MainWindow::instance()->setFocus();
+        }
+    }
+
+    if (!InitConsole())
+    {
+        return true;
+    }
+
+    if (IsInRegularEditorMode())
+    {
+        int startUpMacroIndex = GetIEditor()->GetToolBoxManager()->GetMacroIndex("startup", true);
+        if (startUpMacroIndex >= 0)
+        {
+            CryLogAlways("Executing the startup macro");
+            GetIEditor()->GetToolBoxManager()->ExecuteMacro(startUpMacroIndex, true);
+        }
+    }
+
+    if (GetIEditor()->GetCommandManager()->IsRegistered("editor.open_lnm_editor"))
+    {
+        CCommand0::SUIInfo uiInfo;
+        bool ok = GetIEditor()->GetCommandManager()->GetUIInfo("editor.open_lnm_editor", uiInfo);
+        assert(ok);
+        int ID_VIEW_AI_LNMEDITOR(uiInfo.commandId);
+    }
+
+    RunInitPythonScript(cmdInfo);
+
+    return true;
+}
+
+void CCryEditApp::RegisterEventLoopHook(IEventLoopHook* pHook)
+{
+    pHook->pNextHook = m_pEventLoopHook;
+    m_pEventLoopHook = pHook;
+}
+
+void CCryEditApp::UnregisterEventLoopHook(IEventLoopHook* pHookToRemove)
+{
+    IEventLoopHook* pPrevious = 0;
+    for (IEventLoopHook* pHook = m_pEventLoopHook; pHook != 0; pHook = pHook->pNextHook)
+    {
+        if (pHook == pHookToRemove)
+        {
+            if (pPrevious)
+            {
+                pPrevious->pNextHook = pHookToRemove->pNextHook;
+            }
+            else
+            {
+                m_pEventLoopHook = pHookToRemove->pNextHook;
+            }
+
+            pHookToRemove->pNextHook = 0;
+            return;
+        }
+    }
+}
+
+#if AZ_TESTS_ENABLED
+class MainArgs
+{
+public:
+    MainArgs(std::vector<std::string> source)
+        : m_narg(0)
+        , m_args(nullptr)
+        , m_sourceArgs(source)
+    {
+        m_narg = source.size();
+        m_args = new char*[m_narg];
+        for (int i = 0; i < m_narg; i++)
+        {
+            const char* arg = m_sourceArgs[i].c_str();
+            m_args[i] = const_cast<char*>(arg);
+        }
+    }
+
+    ~MainArgs()
+    {
+        delete[] m_args;
+    }
+
+    char** GetArgs() { return m_args; }
+    int GetNarg() const { return m_narg; }
+
+private:
+    char** m_args;
+
+    int m_narg;
+
+    std::vector<std::string> m_sourceArgs;
+};
+
+int CCryEditApp::RunPluginUnitTests(CEditCommandLineInfo& cmdLine)
+{
+    using AzRunUnitTestsFn = int(int, char**);
+
+    const QString& pluginPath = cmdLine.m_strFileName; // plugin to test
+
+    // match AzTestRunner/Scanner exit codes
+    enum ExitCodes
+    {
+        Success = 0,
+        IncorrectUsage = 101,
+        LibNotFound = 102,
+        SymbolNotFound = 103
+    };
+
+    int exitCode = ExitCodes::Success;
+
+    const std::wstring strPluginPath = pluginPath.toStdWString();
+    HMODULE hPlugin = ::LoadLibraryExW(strPluginPath.c_str(), 0, 0);
+    if (NULL != hPlugin)
+    {
+        // call test hook
+        auto fn = (AzRunUnitTestsFn*) ::GetProcAddress(hPlugin, "AzRunUnitTests");
+        if (fn)
+        {
+            // argv[0] is expected by the test hook to be a path to the current application.
+            // If not present, the first argument will be ignored.
+            cmdLine.m_testArgs.insert(cmdLine.m_testArgs.begin(), std::string("dummy_path_to_executable"));
+
+            MainArgs args(cmdLine.m_testArgs);
+            exitCode = fn(args.GetNarg(), args.GetArgs());
+        }
+        else
+        {
+            exitCode = ExitCodes::SymbolNotFound;
+        }
+
+        ::FreeLibrary(hPlugin);
+    }
+    else
+    {
+        exitCode = ExitCodes::LibNotFound;
+    }
+
+    return exitCode;
+}
+#endif
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::LoadFile(QString fileName)
+{
+    //CEditCommandLineInfo cmdLine;
+    //ProcessCommandLine(cmdinfo);
+
+    //bool bBuilding = false;
+    //CString file = cmdLine.SpanExcluding()
+    if (GetIEditor()->GetViewManager()->GetViewCount() == 0)
+    {
+        return;
+    }
+    CViewport* vp = GetIEditor()->GetViewManager()->GetView(0);
+    if (CModelViewport* mvp = viewport_cast<CModelViewport*>(vp))
+    {
+        mvp->LoadObject(fileName, 1);
+    }
+
+    LoadTagLocations();
+
+    if (MainWindow::instance() || m_pConsoleDialog)
+    {
+        SetEditorWindowTitle(0, 0, GetIEditor()->GetGameEngine()->GetLevelName());
+    }
+
+    GetIEditor()->SetModifiedFlag(false);
+    GetIEditor()->SetModifiedModule(eModifiedNothing);
+}
+
+//////////////////////////////////////////////////////////////////////////
+inline void ExtractMenuName(QString& str)
+{
+    // eliminate &
+    int pos = str.indexOf('&');
+    if (pos >= 0)
+    {
+        str = str.left(pos) + str.right(str.length() - pos - 1);
+    }
+    // cut the string
+    for (int i = 0; i < str.length(); i++)
+    {
+        if (str[i] == 9)
+        {
+            str = str.left(i);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::EnableAccelerator(bool bEnable)
+{
+    /*
+    if (bEnable)
+    {
+        //LoadAccelTable( MAKEINTRESOURCE(IDR_MAINFRAME) );
+        m_AccelManager.UpdateWndTable();
+        CLogFile::WriteLine( "Enable Accelerators" );
+    }
+    else
+    {
+        CMainFrame *mainFrame = (CMainFrame*)m_pMainWnd;
+        if (mainFrame->m_hAccelTable)
+            DestroyAcceleratorTable( mainFrame->m_hAccelTable );
+        mainFrame->m_hAccelTable = NULL;
+        mainFrame->LoadAccelTable( MAKEINTRESOURCE(IDR_GAMEACCELERATOR) );
+        CLogFile::WriteLine( "Disable Accelerators" );
+    }
+    */
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::SaveAutoRemind()
+{
+    // Added a static variable here to avoid multiple messageboxes to
+    // remind the user of saving the file. Many message boxes would appear as this
+    // is triggered by a timer even which does not stop when the message box is called.
+    // Used a static variable instead of a member variable because this value is not
+    // Needed anywhere else.
+    static bool boIsShowingWarning(false);
+
+    // Ingore in game mode, or if no level created, or level not modified
+    if (GetIEditor()->IsInGameMode() || !GetIEditor()->GetGameEngine()->IsLevelLoaded() || !GetIEditor()->GetDocument()->IsModified())
+    {
+        return;
+    }
+
+    if (boIsShowingWarning)
+    {
+        return;
+    }
+
+    boIsShowingWarning = true;
+    if (QMessageBox::question(QApplication::activeWindow(), QString(), QObject::tr("Auto Reminder: You did not save level for at least %1 minute(s)\r\nDo you want to save it now?").arg(gSettings.autoRemindTime), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    {
+        // Save now.
+        GetIEditor()->SaveDocument();
+    }
+    boIsShowingWarning = false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::WriteConfig()
+{
+    IEditor* pEditor = GetIEditor();
+    if (pEditor && pEditor->GetDisplaySettings())
+    {
+        pEditor->GetDisplaySettings()->SaveRegistry();
+    }
+}
+
+// App command to run the dialog
+void CCryEditApp::OnAppAbout()
+{
+    CAboutDialog aboutDlg;
+    aboutDlg.exec();
+}
+
+// App command to open online documentation page
+void CCryEditApp::OnDocumentationGettingStartedGuide()
+{
+    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/gettingstartedguide");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationTutorials()
+{
+    QString webLink = tr("https://gamedev.amazon.com/forums/tutorials");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationGlossary()
+{
+    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/userguide/glossary");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationLumberyard()
+{
+    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/userguide");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationGamelift()
+{
+    QString webLink = tr("https://docs.aws.amazon.com/gamelift/developerguide");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationReleaseNotes()
+{
+    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/releasenotes");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationGameDevBlog()
+{
+    QString webLink = tr("https://aws.amazon.com/blogs/gamedev");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationTwitchChannel()
+{
+    QString webLink = tr("http://twitch.tv/amazongamedev");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationForums()
+{
+    QString webLink = tr("https://gamedev.amazon.com/forums");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationAWSSupport()
+{
+    QString webLink = tr("https://aws.amazon.com/contact-us");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnDocumentationFeedback()
+{
+    FeedbackDialog dialog;
+    dialog.exec();
+}
+
+bool CCryEditApp::HasAWSCredentials()
+{
+    auto editorClientSettings = gEnv->pLmbrAWS->GetClientManager()->GetEditorClientSettings();
+    auto credsProvider = editorClientSettings.credentialProvider;
+    return credsProvider && !credsProvider->GetAWSCredentials().GetAWSAccessKeyId().empty();
+}
+
+void CCryEditApp::OnAWSCredentialEditor()
+{
+    GetIEditor()->OpenWinWidget(WinWidgetId::PROFILE_SELECTOR);
+}
+
+void CCryEditApp::OnAWSActiveDeployment()
+{
+    GetIEditor()->OpenWinWidget(WinWidgetId::ACTIVE_DEPLOYMENT);
+}
+
+void CCryEditApp::OnAWSResourceManagement()
+{
+    QtViewPaneManager::instance()->OpenPane("Cloud Canvas Resource Manager");
+}
+
+void CCryEditApp::OnAWSGameliftLearn()
+{
+    QString webLink = tr("https://aws.amazon.com/gamelift/");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnAWSGameliftConsole()
+{
+    QString webLink = tr("https://console.aws.amazon.com/gamelift/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+void CCryEditApp::OnAWSGameliftGetStarted()
+{
+    QString webLink = tr("https://gamedev.amazon.com/forums/tutorials#gamelift");
+    QDesktopServices::openUrl(QUrl(webLink));
+}
+
+void CCryEditApp::OnAWSGameliftTrialWizard()
+{
+    QString webLink = tr("https://us-west-2.console.aws.amazon.com/gamelift/home?#/r/fleets/sample");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// App command to open Amazon Cognito Console page
+void CCryEditApp::OnAWSCognitoConsole()
+{
+    QString webLink = tr("https://console.aws.amazon.com/cognito/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// App command to open Amazon DynamoDB Console page
+void CCryEditApp::OnAWSDynamoDBConsole()
+{
+    QString webLink = tr("https://console.aws.amazon.com/dynamodb/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// App command to open Amazon S3 Console page
+void CCryEditApp::OnAWSS3Console()
+{
+    QString webLink = tr("https://console.aws.amazon.com/s3/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// App command to open Amazon Lambda Console page
+void CCryEditApp::OnAWSLambdaConsole()
+{
+    QString webLink = tr("https://console.aws.amazon.com/lambda/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// App command to open AWS console page
+void CCryEditApp::OnAWSLaunch()
+{
+    QString webLink = tr("http://console.aws.amazon.com/");
+    OnAWSLaunchConsolePage(webLink);
+}
+
+// Open a given AWS console page using credentials if available, othwerise go to signup page
+void CCryEditApp::OnAWSLaunchConsolePage(const QString& webLink)
+{
+    if (HasAWSCredentials())
+    {
+        OpenAWSConsoleFederated(webLink);
+    }
+    else
+    {
+        QString signupLink = tr("http://console.aws.amazon.com/");
+        QDesktopServices::openUrl(QString(signupLink));
+    }
+}
+
+void CCryEditApp::OnAWSLaunchUpdate(QAction* action)
+{
+}
+
+void CCryEditApp::OnHowToSetUpCloudCanvas()
+{
+    QString setupLink = tr("https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-intro.html");
+    QDesktopServices::openUrl(QUrl(setupLink));
+}
+
+void CCryEditApp::OnLearnAboutGameLift()
+{
+    QString learnLink = tr("https://aws.amazon.com/gamelift/");
+    QDesktopServices::openUrl(QUrl(learnLink));
+}
+
+// App command to open the AWS console, federated as the currently logged in user
+void CCryEditApp::OpenAWSConsoleFederated(const QString& destUrl)
+{
+    //Make sure they've got their default profile setup or have selected a profile
+    auto credsProvider = gEnv->pLmbrAWS->GetClientManager()->GetEditorClientSettings().credentialProvider;
+    if (!credsProvider || credsProvider->GetAWSCredentials().GetAWSAccessKeyId().empty())
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Credentials Error"),
+            QObject::tr("Your AWS credentials are not configured correctly. Please configure them using the AWS Credentials manager."));
+        return;
+    }
+
+    Aws::STS::STSClient stsClient(credsProvider);
+    std::shared_ptr<Aws::Http::HttpClient> httpClient =  Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration());
+
+    //Generate a federation token
+    Aws::STS::Model::GetFederationTokenRequest request;
+    request.SetName("LumberyardConsoleFederation");
+    request.SetPolicy("{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\" :\"*\"}}");
+    auto response = stsClient.GetFederationToken(request);
+    if (response.IsSuccess())
+    {
+        auto federatedCredentials = response.GetResult().GetCredentials();
+
+        Aws::Utils::Json::JsonValue sessionJson;
+        sessionJson.WithString("sessionId", federatedCredentials.GetAccessKeyId().c_str())
+            .WithString("sessionKey", federatedCredentials.GetSecretAccessKey().c_str())
+            .WithString("sessionToken", federatedCredentials.GetSessionToken().c_str());
+
+        QUrl signinURL;
+        signinURL.setUrl("https://signin.aws.amazon.com:443/federation");
+
+        QUrlQuery signinQuery;
+        auto session = sessionJson.WriteCompact();
+        QString qSession(session.c_str());
+
+        signinQuery.addQueryItem("Action", "getSigninToken");
+        signinQuery.addQueryItem("Session", QUrl::toPercentEncoding(qSession));
+        auto queryString = signinQuery.toString();
+        signinURL.setQuery(signinQuery);
+
+        auto cURL = signinURL.toString().toStdString();
+        Aws::String encodedGetSigninTokenURL(cURL.c_str());
+
+        //Now we  craft a URL to signin to get a federation URL.
+        //Documented here: http://docs.aws.amazon.com/STS/latest/UsingSTS/STSMgmtConsole-manualURL.html
+        auto httpRequest(Aws::Http::CreateHttpRequest(encodedGetSigninTokenURL, Aws::Http::HttpMethod::HTTP_GET, Aws::Utils::Stream::DefaultResponseStreamFactoryMethod));
+        auto httpResponse(httpClient->MakeRequest(*httpRequest, nullptr, nullptr));
+        auto& body = httpResponse->GetResponseBody();
+        auto jsonBody = Aws::Utils::Json::JsonValue(body);
+        auto tokenResponse = jsonBody.WriteReadable();
+        auto signinToken = jsonBody.GetString("SigninToken");
+
+        QUrl federationUrl("https://signin.aws.amazon.com/federation");
+        QUrlQuery federationQuery;
+        federationQuery.addQueryItem("Action", "login");
+        federationQuery.addQueryItem("Issuer", "lumberyard");
+        federationQuery.addQueryItem("Destination", QUrl::toPercentEncoding(QString(destUrl)));
+        federationQuery.addQueryItem("SigninToken", signinToken.c_str());
+        federationUrl.setQuery(federationQuery);
+        auto federationStr = federationUrl.toString();
+        QDesktopServices::openUrl(QUrl(federationStr));
+    }
+    else if (response.GetError().GetErrorType() == Aws::STS::STSErrors::ACCESS_DENIED)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Permission Denied"), QObject::tr("You are not authorized to do this. Ask your AWS administrator to grant your user to sts:GetFederationToken"));
+    }
+    else if (response.GetError().GetErrorType() == Aws::STS::STSErrors::NETWORK_CONNECTION)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Permission Denied"), QObject::tr("You do not have an active network connection. Please connect to the internet"));
+    }
+    else if (response.GetError().GetErrorType() == Aws::STS::STSErrors::INVALID_CLIENT_TOKEN_ID)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Permission Denied"), QObject::tr("Invalid AWS access key ID"));
+    }
+    else
+    {
+        QString outStr = QObject::tr("An AWS Credentials error has occurred: (%1)").arg(response.GetError().GetExceptionName().c_str());
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Unknown error"), outStr);
+    }
+}
+
+// App command to open Amazon Publish page
+void CCryEditApp::OnCommercePublish()
+{
+    QString webLink = tr("https://developer.amazon.com/appsandservices/solutions/platforms/mac-pc");
+    QDesktopServices::openUrl(QUrl(QString(webLink)));
+}
+
+// App command to open Amazon Merch page
+void CCryEditApp::OnCommerceMerch()
+{
+    QString webLink = tr("https://merch.amazon.com/landing");
+    QDesktopServices::openUrl(QUrl(QString(webLink)));
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CCryEditApp message handlers
+
+
+int CCryEditApp::ExitInstance()
+{
+    qobject_cast<Editor::EditorQtApplication*>(qApp)->SaveSettings();
+
+    #ifdef USE_WIP_FEATURES_MANAGER
+    //
+    // close wip features manager
+    //
+    CWipFeatureManager::Shutdown();
+    #endif
+
+    if (IsInRegularEditorMode() && GetIEditor())
+    {
+        if (GetIEditor())
+        {
+            int shutDownMacroIndex = GetIEditor()->GetToolBoxManager()->GetMacroIndex("shutdown", true);
+            if (shutDownMacroIndex >= 0)
+            {
+                CryLogAlways("Executing the shutdown macro");
+                GetIEditor()->GetToolBoxManager()->ExecuteMacro(shutDownMacroIndex, true);
+            }
+        }
+    }
+
+    SAFE_DELETE(m_pChangeMonitor);
+
+    CIndexedFiles::AbortFileIndexing();
+    CIndexedFiles::Destroy();
+
+    if (GetIEditor() && !GetIEditor()->GetGame())
+    {
+        int exitCode = 0;
+#if AZ_TESTS_ENABLED
+        // if bootstrapping tests, return the exit code from the test run
+        // instead of the normal editor exit code
+        if (m_bootstrapTestInfo.didRun)
+        {
+            exitCode = m_bootstrapTestInfo.exitCode;
+        }
+#endif
+        _exit(exitCode);
+    }
+
+    SAFE_DELETE(m_pConsoleDialog);
+    SAFE_DELETE(m_pQuickAccessBar);
+
+    if (GetIEditor())
+    {
+        GetIEditor()->Notify(eNotify_OnQuit);
+    }
+
+    if (IsInRegularEditorMode() && CAssetBrowserManager::IsInstanceExist())
+    {
+        CAssetBrowserManager::Instance()->Shutdown();
+    }
+
+    CBaseObject::DeleteUIPanels();
+    CEntityObject::DeleteUIPanels();
+
+    // if we're aborting due to an unexpected shutdown then don't call into objects that don't exist yet.
+    if ((gEnv) && (gEnv->pGame))
+    {
+        gEnv->pGame->GetIGameFramework()->GetILevelSystem()->UnLoadLevel();
+    }
+
+    if (GetIEditor())
+    {
+        GetIEditor()->GetDocument()->DeleteTemporaryLevel();
+    }
+
+    m_bExiting = true;
+
+    HEAP_CHECK
+    ////////////////////////////////////////////////////////////////////////
+    // Executed directly before termination of the editor, just write a
+    // quick note to the log so that we can later see that the editor
+    // terminated flawlessly. Also delete temporary files.
+    ////////////////////////////////////////////////////////////////////////
+        WriteConfig();
+
+    if (m_pEditor)
+    {
+        // Ensure component entities are wiped prior to unloading plugins,
+        // since components may be implemented in those plugins.
+        EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, ResetEditorContext);
+
+        // vital, so that the Qt integration can unhook itself!
+        m_pEditor->UnloadPlugins();
+        m_pEditor->Uninitialize();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Quick end for editor.
+    if (gEnv && gEnv->pSystem)
+    {
+        gEnv->pSystem->Quit();
+        SAFE_RELEASE(gEnv->pSystem);
+    }
+    //////////////////////////////////////////////////////////////////////////
+
+    if (m_pEditor)
+    {
+        m_pEditor->DeleteThis();
+        m_pEditor = nullptr;
+    }
+
+    // save accelerator manager configuration.
+    //m_AccelManager.SaveOnExit();
+
+#ifdef WIN32
+    Gdiplus::GdiplusShutdown(m_gdiplusToken);
+#endif
+
+    if (m_mutexApplication)
+    {
+        delete m_mutexApplication;
+    }
+
+    AZToolsApp.Stop();
+    DetachEditorCoreAZEnvironment();
+    return 0;
+}
+
+bool CCryEditApp::IsWindowInForeground()
+{
+    return Editor::EditorQtApplication::instance()->IsActive();
+}
+
+void CCryEditApp::DisableIdleProcessing()
+{
+    m_disableIdleProcessingCounter++;
+}
+
+void CCryEditApp::EnableIdleProcessing()
+{
+    m_disableIdleProcessingCounter--;
+    AZ_Assert(m_disableIdleProcessingCounter >= 0, "m_disableIdleProcessingCounter must be nonnegative");
+}
+
+BOOL CCryEditApp::OnIdle(LONG lCount)
+{
+    if (0 == m_disableIdleProcessingCounter)
+    {
+        return IdleProcessing(false);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int CCryEditApp::IdleProcessing(bool bBackgroundUpdate)
+{
+    AZ_Assert(m_disableIdleProcessingCounter == 0, "We should not be in IdleProcessing()");
+
+    //HEAP_CHECK
+    if (!MainWindow::instance())
+    {
+        return 0;
+    }
+
+    if (!GetIEditor()->GetSystem())
+    {
+        qWarning() << Q_FUNC_INFO << "System is null. Not doing any idle processing";
+        return 0;
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // Call the update function of the engine
+    ////////////////////////////////////////////////////////////////////////
+    if (m_bTestMode && !bBackgroundUpdate)
+    {
+        // Terminate process.
+        CLogFile::WriteLine("Editor: Terminate Process");
+        exit(0);
+    }
+
+    bool bIsAppWindow = IsWindowInForeground();
+    bool bActive = false;
+    int res = 0;
+    if (bIsAppWindow || m_bForceProcessIdle || m_bKeepEditorActive)
+    {
+        res = 1;
+        bActive = true;
+    }
+    m_bForceProcessIdle = false;
+
+    // focus changed
+    if (m_bPrevActive != bActive)
+    {
+        GetIEditor()->GetSystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_CHANGE_FOCUS, bActive, 0);
+    }
+
+    // process the work schedule - regardless if the app is active or not
+    GetIEditor()->GetBackgroundScheduleManager()->Update();
+
+    // if there are active schedules keep updating the application
+    if (GetIEditor()->GetBackgroundScheduleManager()->GetNumSchedules() > 0)
+    {
+        bActive = true;
+    }
+
+    m_bPrevActive = bActive;
+
+    AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
+    static AZStd::chrono::system_clock::time_point lastUpdate = now;
+
+    AZStd::chrono::duration<float> delta = now - lastUpdate;
+    float deltaTime = delta.count();
+
+    lastUpdate = now;
+
+    // Don't tick application if we're doing idle processing during an assert.
+    const bool isErrorWindowVisible = (gEnv && gEnv->pSystem->IsAssertDialogVisible());
+    if (isErrorWindowVisible)
+    {
+        if (m_pEditor)
+        {
+            m_pEditor->Update();
+        }
+    }
+    else if (bActive || (bBackgroundUpdate && !bIsAppWindow))
+    {
+        if (GetIEditor()->IsInGameMode())
+        {
+            // Update Game
+            GetIEditor()->GetGameEngine()->Update();
+        }
+        else
+        {
+            if (!GetIEditor()->IsInMatEditMode())
+            {
+                // Start profiling frame.
+                GetIEditor()->GetSystem()->GetIProfileSystem()->StartFrame();
+
+                GetIEditor()->GetGameEngine()->Update();
+
+                if (m_pEditor)
+                {
+                    m_pEditor->Update();
+                }
+
+                // syncronize all animations so ensure that their compuation have finished
+                GetIEditor()->GetSystem()->GetIAnimationSystem()->SyncAllAnimations();
+
+                GetIEditor()->Notify(eNotify_OnIdleUpdate);
+
+                IEditor* pEditor = GetIEditor();
+                if (!pEditor->GetGameEngine()->IsLevelLoaded() && pEditor->GetSystem()->NeedDoWorkDuringOcclusionChecks())
+                {
+                    pEditor->GetSystem()->DoWorkDuringOcclusionChecks();
+                }
+
+                GetIEditor()->GetSystem()->GetIProfileSystem()->EndFrame();
+            }
+        }
+    }
+    else if (GetIEditor()->GetSystem() && GetIEditor()->GetSystem()->GetILog())
+    {
+        GetIEditor()->GetSystem()->GetILog()->Update(); // print messages from other threads
+    }
+
+    if (CConsoleSCB::GetCreatedInstance())
+    {
+        CConsoleSCB::GetCreatedInstance()->FlushText();
+    }
+
+    return res;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::ExportLevel(bool bExportToGame, bool bExportTexture, bool bAutoExport)
+{
+    if (bExportTexture)
+    {
+        CGameExporter gameExporter;
+        gameExporter.SetAutoExportMode(bAutoExport);
+        gameExporter.Export(eExp_SurfaceTexture);
+    }
+    else if (bExportToGame)
+    {
+        CGameExporter gameExporter;
+        gameExporter.SetAutoExportMode(bAutoExport);
+        gameExporter.Export();
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditHold()
+{
+    GetIEditor()->GetDocument()->Hold(HOLD_FETCH_FILE);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditFetch()
+{
+    GetIEditor()->GetDocument()->Fetch(HOLD_FETCH_FILE);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, bool bShowText, bool bNoMsgBox)
+{
+    if (!GetIEditor()->GetGameEngine()->IsLevelLoaded())
+    {
+        if (bNoMsgBox == false)
+        {
+            QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Please load a level before attempting to export."));
+        }
+        return false;
+    }
+    else
+    {
+        CAIManager* pAIMgr = GetIEditor()->GetAI();
+        if (pAIMgr && !pAIMgr->IsNavigationFullyGenerated())
+        {
+            int msgBoxResult = CryMessageBox("The processing of the navigation data is still not completed."
+                    " If you export now the navigation data will probably be corrupted."
+                    " Do you want to proceed anyway with the export operation?",
+                    "Navigation System Warning", MB_YESNO | MB_ICONQUESTION);
+            if (msgBoxResult != IDYES)
+            {
+                return false;
+            }
+        }
+
+        // Record errors and display a dialog with them at the end.
+        CErrorsRecorder errRecorder(GetIEditor());
+
+        // Change the cursor to show that we're busy.
+        QWaitCursor wait;
+
+        // Temporarily disable auto backup.
+        CScopedVariableSetter<bool> autoBackupEnabledChange(gSettings.autoBackupEnabled, false);
+        CScopedVariableSetter<int> autoRemindTimeChange(gSettings.autoRemindTime, 0);
+
+        CGameExporter gameExporter;
+
+        if (bExportTexture)
+        {
+            static UINT iWidth = 4096; // 4096x4096 is default
+            CDimensionsDialog   dimensionDialog;
+            dimensionDialog.SetDimensions(iWidth);
+
+            // Query the size of the preview
+            dimensionDialog.exec();
+            iWidth = dimensionDialog.GetDimensions();
+
+            SGameExporterSettings& settings = gameExporter.GetSettings();
+            settings.iExportTexWidth = dimensionDialog.GetDimensions();
+        }
+
+        unsigned int flags = eExp_CoverSurfaces;
+        if (bExportTexture)
+        {
+            flags |= eExp_SurfaceTexture;
+        }
+        if (bReloadTerrain)
+        {
+            flags |= eExp_ReloadTerrain;
+        }
+
+        if (gameExporter.Export(flags, eLittleEndian, "."))
+        {
+            if (bNoMsgBox == false)
+            {
+                if (bExportTexture)
+                {
+                    QMessageBox::information(QApplication::activeWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
+                }
+                else
+                {
+                    CLogFile::WriteLine("$3Export to the game was successfully done.");
+                    QMessageBox::information(QApplication::activeWindow(), QString(), QObject::tr("The level was successfully exported"));
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+}
+
+void CCryEditApp::ExportToGame(bool bShowText, bool bNoMsgBox)
+{
+    CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
+    if (!pGameEngine->IsLevelLoaded())
+    {
+        if (pGameEngine->GetLevelPath().isEmpty())
+        {
+            QMessageBox::critical(QApplication::activeWindow(), QString(), ("Open or create a level first."));
+            return;
+        }
+
+        CErrorsRecorder errRecorder(GetIEditor());
+        // If level not loaded first fast export terrain.
+        CGameExporter gameExporter;
+        gameExporter.Export(eExp_ReloadTerrain);
+    }
+
+    {
+        UserExportToGame(true, true, bShowText, bNoMsgBox);
+    }
+}
+
+
+void CCryEditApp::GenerateTerrainTexture()
+{
+    ExportToGame(false, true);
+}
+
+void CCryEditApp::OnUpdateGenerateTerrainTexture(QAction* action)
+{
+    CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
+    action->setEnabled(pGameEngine && !pGameEngine->GetLevelPath().isEmpty() && GetIEditor() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+}
+
+void CCryEditApp::GenerateTerrain()
+{
+    CNewTerrainDialog dlg;
+
+    if (!GetIEditor()->GetTerrainManager()->GetUseTerrain() && dlg.exec() == QDialog::Accepted)
+    {
+        GetIEditor()->Notify(eNotify_OnBeginTerrainCreate);
+
+        int resolution = dlg.GetTerrainResolution();
+        int unitSize = dlg.GetTerrainUnits();
+
+        ////////////////////////////////////////////////////////////////////////
+        // Reset heightmap (water level, etc) to default
+        ////////////////////////////////////////////////////////////////////////
+        GetIEditor()->GetTerrainManager()->ResetHeightMap();
+
+        // If possible set terrain to correct size here, this will help with initial camera placement in new levels
+        GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
+
+
+        GetIEditor()->GetTerrainManager()->CreateDefaultLayer();
+
+        XmlNodeRef m_node = GetIEditor()->GetDocument()->GetEnvironmentTemplate();
+        if (m_node)
+        {
+            XmlNodeRef envState = m_node->findChild("EnvState");
+            if (envState)
+            {
+                XmlNodeRef showTerrainSurface = envState->findChild("ShowTerrainSurface");
+                showTerrainSurface->setAttr("value", "true");
+                GetIEditor()->GetGameEngine()->ReloadEnvironment();
+            }
+        }
+
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedTerrain);
+        GetIEditor()->GetHeightmap()->UpdateEngineTerrain(true);
+
+        GetIEditor()->GetGameEngine()->ReloadEnvironment();
+
+        GetIEditor()->GetTerrainManager()->SetUseTerrain(true);
+
+        GetIEditor()->Notify(eNotify_OnEndTerrainCreate);
+
+        GenerateTerrainTexture();
+    }
+}
+
+void CCryEditApp::OnUpdateGenerateTerrain(QAction* action)
+{
+    CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
+    // Only enable if the current level doesn't use terrain
+    action->setEnabled(!GetIEditor()->GetTerrainManager()->GetUseTerrain() && pGameEngine && !pGameEngine->GetLevelPath().isEmpty() && GetIEditor()->GetDocument()->IsDocumentReady());
+}
+
+void CCryEditApp::OnToggleFullScreenPerspectiveWindow()
+{
+    if (auto viewport = FindViewPane<CRenderViewport>("Perspective"))
+    {
+        viewport->ToggleFullscreen();
+    }
+    else
+    {
+        qDebug() << "Could not find Perspective viewport";
+    }
+}
+
+void CCryEditApp::OnFileExportToGameNoSurfaceTexture()
+{
+    UserExportToGame(false, false, false, false);
+}
+
+void CCryEditApp::ToolTerrain()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::TerrainEditor);
+}
+
+void CCryEditApp::OnOpenParticleEditor()
+{
+    GetIEditor()->OpenView("Particle Editor");
+}
+
+void CCryEditApp::MeasurementSystemTool()
+{
+    GetIEditor()->OpenView(MEASUREMENT_SYSTEM_WINDOW_NAME);
+}
+
+void CCryEditApp::ToolSky()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Show the sky dialog
+    ////////////////////////////////////////////////////////////////////////
+
+    CSkyDialog cDialog;
+
+    cDialog.exec();
+    if (GetIEditor()->GetDocument()->IsModified())
+    {
+        GetIEditor()->GetGameEngine()->ReloadEnvironment();
+    }
+}
+
+void CCryEditApp::ToolLighting()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Show the terrain lighting dialog
+    ////////////////////////////////////////////////////////////////////////
+
+    // Disable all tools. (Possible layer painter tool).
+    GetIEditor()->SetEditTool(0);
+
+    GetIEditor()->OpenView(LIGHTING_TOOL_WINDOW_NAME);
+}
+
+void CCryEditApp::TerrainTextureExport()
+{
+    GetIEditor()->SetEditTool(nullptr);
+
+    CTerrainTextureExport cDialog;
+    cDialog.exec();
+}
+
+void CCryEditApp::RefineTerrainTextureTiles()
+{
+    if (QMessageBox::question(QApplication::activeWindow(), QString(), QObject::tr("Refine TerrainTexture?\r\n"
+        "(all terrain texture tiles become split in 4 parts so a tile with 2048x2048\r\n"
+        "no longer limits the resolution) You need to save afterwards!"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    {
+        if (!GetIEditor()->GetTerrainManager()->GetRGBLayer()->RefineTiles())
+        {
+            QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("TerrainTexture refine failed (make sure current data is saved)"));
+        }
+        else
+        {
+            QMessageBox::information(QApplication::activeWindow(), QString(), QObject::tr("Successfully refined TerrainTexture - Save is now required!"));
+        }
+    }
+}
+
+void CCryEditApp::ToolTexture()
+{
+    GetIEditor()->ReinitializeEditTool();
+
+    ////////////////////////////////////////////////////////////////////////
+    // Show the terrain texture dialog
+    ////////////////////////////////////////////////////////////////////////
+
+    GetIEditor()->OpenView("Terrain Texture Layers");
+}
+
+void CCryEditApp::OnGeneratorsStaticobjects()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Show the static objects dialog
+    ////////////////////////////////////////////////////////////////////////
+    /*
+        CStaticObjects cDialog;
+
+        cDialog.DoModal();
+
+        BeginWaitCursor();
+        GetIEditor()->UpdateViews( eUpdateStatObj );
+        GetIEditor()->GetDocument()->GetStatObjMap()->PlaceObjectsOnTerrain();
+        EndWaitCursor();
+        */
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditSelectAll()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Select all map objects
+    ////////////////////////////////////////////////////////////////////////
+    AABB box(Vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX), Vec3(FLT_MAX, FLT_MAX, FLT_MAX));
+    GetIEditor()->GetObjectManager()->SelectObjects(box);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditSelectNone()
+{
+    CUndo undo("Unselect All");
+    ////////////////////////////////////////////////////////////////////////
+    // Remove the selection from all map objects
+    ////////////////////////////////////////////////////////////////////////
+    GetIEditor()->ClearSelection();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditInvertselection()
+{
+    GetIEditor()->GetObjectManager()->InvertSelection();
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditDelete()
+{
+    DeleteSelectedEntities(true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::DeleteSelectedEntities(bool includeDescendants)
+{
+    // If Edit tool active cannot delete object.
+    if (GetIEditor()->GetEditTool())
+    {
+        if (GetIEditor()->GetEditTool()->OnKeyDown(GetIEditor()->GetViewManager()->GetView(0), VK_DELETE, 0, 0))
+        {
+            return;
+        }
+    }
+
+    QString strAsk;
+    const size_t MaxObectsToListInDialog = 10;
+
+    size_t totalObjectCount = 0;
+
+    // Component (AZ) entity deletion includes children, so first compute the actual number of affected az entities.
+    AZStd::vector<AZ::EntityId> selectedAZEntityIds;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedAZEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+    AZStd::unordered_set<AZ::EntityId> componentEntitySet;
+    if (includeDescendants)
+    {
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(componentEntitySet, &AzToolsFramework::ToolsApplicationRequests::GatherEntitiesAndAllDescendents, selectedAZEntityIds);
+    }
+    else
+    {
+        componentEntitySet = AZStd::unordered_set<AZ::EntityId>(selectedAZEntityIds.begin(), selectedAZEntityIds.end());
+    }
+
+    // handle non-az entities
+    const int selectedObjectCount = GetIEditor()->GetObjectManager()->GetSelection()->GetCount();
+    for (int i = 0; i < selectedObjectCount; ++i)
+    {
+        CBaseObject* object = GetIEditor()->GetObjectManager()->GetSelection()->GetObject(i);
+        if (object->GetType() != OBJTYPE_AZENTITY)
+        {
+            ++totalObjectCount;
+
+            if (totalObjectCount < MaxObectsToListInDialog)
+            {
+                strAsk += object->GetName();
+                strAsk += "\r\n";
+            }
+        }
+    }
+
+    // Add component entities to the name summary.
+    for (const AZ::EntityId& id : componentEntitySet)
+    {
+        ++totalObjectCount;
+
+        if (totalObjectCount < MaxObectsToListInDialog)
+        {
+            AZ::Entity* entity = nullptr;
+            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, id);
+            if (entity)
+            {
+                strAsk += entity->GetName().c_str();
+                strAsk += "\r\n";
+            }
+        }
+    }
+
+    strAsk.chop(2); // Remove last newline
+
+    if (totalObjectCount == 0)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("You have to select objects before you can delete them!"));
+        return;
+    }
+    else if (totalObjectCount == 1)
+    {
+        strAsk = QObject::tr("Delete %1?").arg(strAsk);
+    }
+    else
+    {
+        strAsk = QObject::tr("Delete the %1 selected objects?\n\n%2").arg(totalObjectCount).arg(strAsk);
+    }
+
+    int iResult = QMessageBox::question(QApplication::activeWindow(), QObject::tr("Delete Objects"), strAsk, QMessageBox::Yes | QMessageBox::Cancel);
+    if (iResult == QMessageBox::Yes)
+    {
+        GetIEditor()->BeginUndo();
+        GetIEditor()->ExecuteCommand("general.delete_selected");
+        GetIEditor()->AcceptUndo("Delete Selection");
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedBrushes);
+    }
+}
+
+void CCryEditApp::OnEditClone()
+{
+    if (GetIEditor()->GetObjectManager()->GetSelection()->IsEmpty())
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("You have to select objects before you can clone them!"));
+        return;
+    }
+
+    CEditTool* tool = GetIEditor()->GetEditTool();
+    if (tool && qobject_cast<CObjectCloneTool*>(tool))
+    {
+        ((CObjectCloneTool*)tool)->Accept();
+    }
+
+    GetIEditor()->SetEditTool(new CObjectCloneTool);
+    GetIEditor()->SetModifiedFlag();
+    GetIEditor()->SetModifiedModule(eModifiedBrushes);
+}
+
+
+void CCryEditApp::OnEditEscape()
+{
+    CEditTool* pEditTool = GetIEditor()->GetEditTool();
+    // Abort current operation.
+    if (pEditTool)
+    {
+        // If Edit tool active cannot delete object.
+        CViewport* vp = GetIEditor()->GetActiveView();
+        if (GetIEditor()->GetEditTool()->OnKeyDown(vp, VK_ESCAPE, 0, 0))
+        {
+            return;
+        }
+
+        if (GetIEditor()->GetEditMode() == eEditModeSelectArea)
+        {
+            GetIEditor()->SetEditMode(eEditModeSelect);
+        }
+
+        // Disable current tool.
+        GetIEditor()->SetEditTool(0);
+    }
+    else
+    {
+        // Clear selection on escape.
+        GetIEditor()->ClearSelection();
+    }
+
+    // Reset Control vibration
+    // NB could put this somehwere : g_pInputCVars->i_forcefeedback = 0
+    IInput* pIInput = GetISystem()->GetIInput(); // Cache IInput pointer.
+    if (pIInput && pIInput->HasInputDeviceOfType(eIDT_Gamepad))
+    {
+        pIInput->ForceFeedbackEvent(SFFOutputEvent(eIDT_Gamepad, eFF_Rumble_Basic, SFFTriggerOutputData::Initial::ZeroIt, 0.0f, 0.0f, 0.0f));
+    }
+}
+
+void CCryEditApp::OnMoveObject()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Move the selected object to the marker position
+    ////////////////////////////////////////////////////////////////////////
+}
+
+void CCryEditApp::OnSelectObject()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Bring up the select object dialog
+    ////////////////////////////////////////////////////////////////////////
+
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::LegacyObjectSelector);
+}
+
+void CCryEditApp::OnRenameObj()
+{
+}
+
+void CCryEditApp::OnSetHeight()
+{
+}
+
+void CCryEditApp::OnScriptCompileScript()
+{
+    ////////////////////////////////////////////////////////////////////////
+    // Use the Lua compiler to compile a script
+    ////////////////////////////////////////////////////////////////////////
+    AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection("Lua Script");
+    selection.SetMultiselect(true);
+    AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
+    if (!selection.IsValid())
+    {
+        return;
+    }
+
+    CErrorsRecorder errRecorder(GetIEditor());
+
+    //////////////////////////////////////////////////////////////////////////
+    // Lock resources.
+    // Speed ups loading a lot.
+    ISystem* pSystem = GetIEditor()->GetSystem();
+    pSystem->GetI3DEngine()->LockCGFResources();
+    //////////////////////////////////////////////////////////////////////////
+    for (auto product : selection.GetResults())
+    {
+        if (!CFileUtil::CompileLuaFile(product->GetFullPath().c_str()))
+        {
+            return;
+        }
+
+        // No errors
+        // Reload this lua file.
+        GetIEditor()->GetSystem()->GetIScriptSystem()->ReloadScript(
+            product->GetFullPath().c_str(), false);
+    }
+    //////////////////////////////////////////////////////////////////////////
+    // Unlock resources.
+    // Some unneeded resources that were locked before may get released here.
+    pSystem->GetI3DEngine()->UnlockCGFResources();
+    //////////////////////////////////////////////////////////////////////////
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnScriptEditScript()
+{
+    // Let the user choose a LUA script file to edit
+    AssetSelectionModel selection;
+
+    AssetGroupFilter* assetGroupFilter = new AssetGroupFilter();
+    assetGroupFilter->SetAssetGroup("Script");
+
+    EntryTypeFilter* entryTypeFilter = new EntryTypeFilter();
+    entryTypeFilter->SetEntryType(AssetBrowserEntry::AssetEntryType::Source);
+
+    CompositeFilter* compFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::AND);
+    compFilter->AddFilter(FilterConstType(assetGroupFilter));
+    compFilter->AddFilter(FilterConstType(entryTypeFilter));
+
+    selection.SetSelectionFilter(FilterConstType(compFilter));
+
+    AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
+    if (selection.IsValid())
+    {
+        CFileUtil::EditTextFile(selection.GetResult()->GetFullPath().c_str());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditmodeMove()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->SetEditMode(eEditModeMove);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditmodeRotate()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->SetEditMode(eEditModeRotate);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditmodeScale()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->SetEditMode(eEditModeScale);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditToolLink()
+{
+    // TODO: Add your command handler code here
+    if (qobject_cast<CLinkTool*>(GetIEditor()->GetEditTool()))
+    {
+        GetIEditor()->SetEditTool(0);
+    }
+    else
+    {
+        GetIEditor()->SetEditTool(new CLinkTool());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditToolLink(QAction* action)
+{
+    if (!GetIEditor()->GetDocument())
+    {
+        action->setEnabled(false);
+        return;
+    }
+    action->setEnabled(GetIEditor()->GetDocument()->IsDocumentReady());
+    CEditTool* pEditTool = GetIEditor()->GetEditTool();
+    action->setChecked(qobject_cast<CLinkTool*>(pEditTool) != nullptr);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditToolUnlink()
+{
+    CUndo undo("Unlink Object(s)");
+    CSelectionGroup* pSelection = GetIEditor()->GetObjectManager()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        CBaseObject* pBaseObj = pSelection->GetObject(i);
+        CBaseObjectPtr pParent = pBaseObj->GetParent();
+        CBaseObjectPtr pGroup = pBaseObj->GetGroup();
+        pBaseObj->DetachThis();
+        if (pParent != pGroup && pGroup)
+        {
+            pGroup->AddMember(pBaseObj);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditToolUnlink(QAction* action)
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->IsEmpty())
+    {
+        action->setEnabled(false);
+    }
+    else if (pSelection->GetCount() == 1 && !pSelection->GetObject(0)->GetParent())
+    {
+        action->setEnabled(false);
+    }
+    else
+    {
+        BOOL bEnabled(false);
+        for (int i = 0, iSelectionCount(pSelection->GetCount()); i < iSelectionCount; ++i)
+        {
+            CBaseObject* pSelObject = pSelection->GetObject(i);
+            if (pSelObject == NULL)
+            {
+                continue;
+            }
+            if (pSelObject->GetLinkParent() != pSelObject->GetGroup())
+            {
+                bEnabled = true;
+                break;
+            }
+        }
+        action->setEnabled(bEnabled);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditmodeSelect()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->SetEditMode(eEditModeSelect);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditmodeSelectarea()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->SetEditMode(eEditModeSelectArea);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeSelectarea(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetEditMode() == eEditModeSelectArea);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeSelect(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetEditMode() == eEditModeSelect);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeMove(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetEditMode() == eEditModeMove);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeRotate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetEditMode() == eEditModeRotate);
+
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() == 1 && !pSelection->GetObject(0)->IsRotatable())
+    {
+        action->setEnabled(false);
+    }
+    else
+    {
+        action->setEnabled(true);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeScale(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetEditMode() == eEditModeScale);
+
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() == 1 && !pSelection->GetObject(0)->IsScalable())
+    {
+        action->setEnabled(false);
+    }
+    else
+    {
+        action->setEnabled(true);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditmodeVertexSnapping(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    CEditTool* pEditTool = GetIEditor()->GetEditTool();
+    action->setChecked(qobject_cast<CVertexSnappingModeTool*>(pEditTool) != nullptr);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnObjectSetArea()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (!pSelection->IsEmpty())
+    {
+        bool ok = false;
+        int fractionalDigitCount = 2;
+        float area = aznumeric_caster(QInputDialog::getDouble(QApplication::activeWindow(), QObject::tr("Insert Value"), QStringLiteral(""), 0, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), fractionalDigitCount, &ok));
+        if (!ok)
+        {
+            return;
+        }
+
+        GetIEditor()->BeginUndo();
+        for (int i = 0; i < pSelection->GetCount(); i++)
+        {
+            CBaseObject* obj = pSelection->GetObject(i);
+            obj->SetArea(area);
+        }
+        GetIEditor()->AcceptUndo("Set Area");
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedBrushes);
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("No objects selected"));
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnObjectSetHeight()
+{
+    CSelectionGroup* sel = GetIEditor()->GetObjectManager()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        float height = 0;
+        if (sel->GetCount() == 1)
+        {
+            Vec3 pos = sel->GetObject(0)->GetWorldPos();
+            height = pos.z - GetIEditor()->GetTerrainElevation(pos.x, pos.y);
+        }
+
+        bool ok = false;
+        int fractionalDigitCount = 2;
+        height = aznumeric_caster(QInputDialog::getDouble(QApplication::activeWindow(), QObject::tr("Enter Height"), QStringLiteral(""), height, -10000, 10000, fractionalDigitCount, &ok));
+        if (!ok)
+        {
+            return;
+        }
+
+        CUndo undo("Set Height");
+        IPhysicalWorld* pPhysics = GetIEditor()->GetSystem()->GetIPhysicalWorld();
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            Matrix34 wtm = obj->GetWorldTM();
+            Vec3 pos = wtm.GetTranslation();
+            float z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
+            if (z != pos.z)
+            {
+                float zdown = FLT_MAX;
+                float zup = FLT_MAX;
+                ray_hit hit;
+                if (pPhysics->RayWorldIntersection(pos, Vec3(0, 0, -4000), ent_all, rwi_stop_at_pierceable | rwi_ignore_noncolliding, &hit, 1) > 0)
+                {
+                    zdown = hit.pt.z;
+                }
+                if (pPhysics->RayWorldIntersection(pos, Vec3(0, 0, 4000), ent_all, rwi_stop_at_pierceable | rwi_ignore_noncolliding, &hit, 1) > 0)
+                {
+                    zup = hit.pt.z;
+                }
+                if (zdown != FLT_MAX && zup != FLT_MAX)
+                {
+                    if (fabs(zup - z) < fabs(zdown - z))
+                    {
+                        z = zup;
+                    }
+                    else
+                    {
+                        z = zdown;
+                    }
+                }
+                else if (zup != FLT_MAX)
+                {
+                    z = zup;
+                }
+                else if (zdown != FLT_MAX)
+                {
+                    z = zdown;
+                }
+            }
+            pos.z = z + height;
+            wtm.SetTranslation(pos);
+            obj->SetWorldTM(wtm);
+        }
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedBrushes);
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("No objects selected"));
+    }
+}
+
+void CCryEditApp::OnObjectVertexSnapping()
+{
+    CEditTool* pEditTool = GetIEditor()->GetEditTool();
+    if (qobject_cast<CVertexSnappingModeTool*>(pEditTool))
+    {
+        GetIEditor()->SetEditTool(NULL);
+    }
+    else
+    {
+        GetIEditor()->SetEditTool("EditTool.VertexSnappingMode");
+    }
+}
+
+void CCryEditApp::OnObjectmodifyFreeze()
+{
+    // Freeze selection.
+    OnEditFreeze();
+}
+
+void CCryEditApp::OnObjectmodifyUnfreeze()
+{
+    // Unfreeze all.
+    OnEditUnfreezeall();
+}
+
+void CCryEditApp::OnViewSwitchToGame()
+{
+    if (IsInPreviewMode())
+    {
+        return;
+    }
+    // TODO: Add your command handler code here
+    bool inGame = !GetIEditor()->IsInGameMode();
+    GetIEditor()->SetInGameMode(inGame);
+}
+
+void CCryEditApp::OnSelectAxisX()
+{
+    AxisConstrains axis = (GetIEditor()->GetAxisConstrains() != AXIS_X) ? AXIS_X : AXIS_NONE;
+    GetIEditor()->SetAxisConstraints(axis);
+}
+
+void CCryEditApp::OnSelectAxisY()
+{
+    AxisConstrains axis = (GetIEditor()->GetAxisConstrains() != AXIS_Y) ? AXIS_Y : AXIS_NONE;
+    GetIEditor()->SetAxisConstraints(axis);
+}
+
+void CCryEditApp::OnSelectAxisZ()
+{
+    AxisConstrains axis = (GetIEditor()->GetAxisConstrains() != AXIS_Z) ? AXIS_Z : AXIS_NONE;
+    GetIEditor()->SetAxisConstraints(axis);
+}
+
+void CCryEditApp::OnSelectAxisXy()
+{
+    AxisConstrains axis = (GetIEditor()->GetAxisConstrains() != AXIS_XY) ? AXIS_XY : AXIS_NONE;
+    GetIEditor()->SetAxisConstraints(axis);
+}
+
+void CCryEditApp::OnUpdateSelectAxisX(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_X);
+}
+
+void CCryEditApp::OnUpdateSelectAxisXy(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_XY);
+}
+
+void CCryEditApp::OnUpdateSelectAxisY(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_Y);
+}
+
+void CCryEditApp::OnUpdateSelectAxisZ(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_Z);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSelectAxisTerrain()
+{
+    IEditor* editor = GetIEditor();
+    bool isAlreadyEnabled = (editor->GetAxisConstrains() == AXIS_TERRAIN) && (editor->IsTerrainAxisIgnoreObjects());
+    if (!isAlreadyEnabled)
+    {
+        editor->SetAxisConstraints(AXIS_TERRAIN);
+        editor->SetTerrainAxisIgnoreObjects(true);
+    }
+    else
+    {
+        // behave like a toggle button - click on the same thing again to disable.
+        editor->SetAxisConstraints(AXIS_NONE);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSelectAxisSnapToAll()
+{
+    IEditor* editor = GetIEditor();
+    bool isAlreadyEnabled = (editor->GetAxisConstrains() == AXIS_TERRAIN) && (!editor->IsTerrainAxisIgnoreObjects());
+    if (!isAlreadyEnabled)
+    {
+        editor->SetAxisConstraints(AXIS_TERRAIN);
+        editor->SetTerrainAxisIgnoreObjects(false);
+    }
+    else
+    {
+        // behave like a toggle button - click on the same thing again to disable.
+        editor->SetAxisConstraints(AXIS_NONE);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSelectAxisTerrain(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_TERRAIN && GetIEditor()->IsTerrainAxisIgnoreObjects());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSelectAxisSnapToAll(QAction* action)
+{
+    action->setChecked(GetIEditor()->GetAxisConstrains() == AXIS_TERRAIN && !GetIEditor()->IsTerrainAxisIgnoreObjects());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnExportSelectedObjects()
+{
+    CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
+    QString filename = "untitled";
+    CBaseObject* pObj = GetIEditor()->GetSelectedObject();
+    if (pObj)
+    {
+        filename = pObj->GetName();
+    }
+    else
+    {
+        QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
+        if (!levelName.isEmpty())
+        {
+            filename = levelName;
+        }
+    }
+    QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
+    pExportManager->Export(filename.toLatin1().data(), "obj", levelPath.toLatin1().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnExportTerrainArea()
+{
+    CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
+    QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
+    QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
+    pExportManager->Export((levelName + "_terrain").toLatin1().data(), "obj", levelPath.toLatin1().data(), false, false, true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnExportTerrainAreaWithObjects()
+{
+    CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
+    QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
+    QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
+    pExportManager->Export(levelName.toLatin1().data(), "obj", levelPath.toLatin1().data(), false, true, true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileExportOcclusionMesh()
+{
+    CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
+    QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
+    QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
+    pExportManager->Export(levelName.toLatin1().data(), "ocm", levelPath.toLatin1().data(), false, false, false, true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateExportTerrainArea(QAction* action)
+{
+    AABB box;
+    GetIEditor()->GetSelectedRegion(box);
+    action->setEnabled(!box.IsEmpty());
+}
+
+void CCryEditApp::OnSelectionSave()
+{
+    char szFilters[] = "Object Group Files (*.grp)";
+    QtUtil::QtMFCScopedHWNDCapture cap;
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "grp", {}, szFilters, {}, {}, cap);
+
+    if (dlg.exec())
+    {
+        QWaitCursor wait;
+        CSelectionGroup* sel = GetIEditor()->GetSelection();
+        //CXmlArchive xmlAr( "Objects" );
+
+
+        XmlNodeRef root = XmlHelpers::CreateXmlNode("Objects");
+        CObjectArchive ar(GetIEditor()->GetObjectManager(), root, false);
+        // Save all objects to XML.
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            ar.SaveObject(sel->GetObject(i));
+        }
+        QString fileName = dlg.selectedFiles().first();
+        XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), root, fileName.toStdString().c_str());
+        //xmlAr.Save( dlg.GetPathName() );
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+struct SDuplicatedObject
+{
+    SDuplicatedObject(const QString& name, const GUID& id)
+    {
+        m_name = name;
+        m_id = id;
+    }
+    QString m_name;
+    GUID m_id;
+};
+
+void GatherAllObjects(XmlNodeRef node, std::vector<SDuplicatedObject>& outDuplicatedObjects)
+{
+    if (!_stricmp(node->getTag(), "Object"))
+    {
+        GUID guid;
+        if (node->getAttr("Id", guid))
+        {
+            if (GetIEditor()->GetObjectManager()->FindObject(guid))
+            {
+                QString name;
+                node->getAttr("Name", name);
+                outDuplicatedObjects.push_back(SDuplicatedObject(name, guid));
+            }
+        }
+    }
+
+    for (int i = 0, nChildCount(node->getChildCount()); i < nChildCount; ++i)
+    {
+        XmlNodeRef childNode = node->getChild(i);
+        if (childNode == NULL)
+        {
+            continue;
+        }
+        GatherAllObjects(childNode, outDuplicatedObjects);
+    }
+}
+
+void CCryEditApp::OnOpenAssetImporter()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::SceneSettings);
+}
+
+void CCryEditApp::OnSelectionLoad()
+{
+    // Load objects from .grp file.
+    QtUtil::QtMFCScopedHWNDCapture cap;
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptOpen, QFileDialog::ExistingFile, "grp", {}, "Object Group Files (*.grp)", {}, {}, cap);
+    if (dlg.exec() != QDialog::Accepted)
+    {
+        return;
+    }
+
+    QWaitCursor wait;
+
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(dlg.selectedFiles().first().toStdString().c_str());
+    if (!root)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Error at loading group file."));
+        return;
+    }
+
+    std::vector<SDuplicatedObject> duplicatedObjects;
+    GatherAllObjects(root, duplicatedObjects);
+
+    CDuplicatedObjectsHandlerDlg::EResult result(CDuplicatedObjectsHandlerDlg::eResult_None);
+    int nDuplicatedObjectSize(duplicatedObjects.size());
+
+    if (!duplicatedObjects.empty())
+    {
+        QString msg = QObject::tr("The following object(s) already exist(s) in the level.\r\n\r\n");
+
+        for (int i = 0; i < nDuplicatedObjectSize; ++i)
+        {
+            msg += QStringLiteral("\t");
+            msg += duplicatedObjects[i].m_name;
+            if (i < nDuplicatedObjectSize - 1)
+            {
+                msg += QStringLiteral("\r\n");
+            }
+        }
+
+        CDuplicatedObjectsHandlerDlg dlg(msg);
+        if (dlg.exec() == QDialog::Rejected)
+        {
+            return;
+        }
+        result = dlg.GetResult();
+    }
+
+    CUndo undo("Load Objects");
+    GetIEditor()->ClearSelection();
+
+    CObjectArchive ar(GetIEditor()->GetObjectManager(), root, true);
+
+    if (result == CDuplicatedObjectsHandlerDlg::eResult_Override)
+    {
+        for (int i = 0; i < nDuplicatedObjectSize; ++i)
+        {
+            CBaseObject* pObj = GetIEditor()->GetObjectManager()->FindObject(duplicatedObjects[i].m_id);
+            if (pObj)
+            {
+                GetIEditor()->GetObjectManager()->DeleteObject(pObj);
+            }
+        }
+    }
+    else if (result == CDuplicatedObjectsHandlerDlg::eResult_CreateCopies)
+    {
+        ar.MakeNewIds(true);
+    }
+
+    GetIEditor()->GetObjectManager()->LoadObjects(ar, true);
+    GetIEditor()->SetModifiedFlag();
+    GetIEditor()->SetModifiedModule(eModifiedBrushes);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnConvertSelectionToDesignerObject()
+{
+    GetIEditor()->Notify(eNotify_OnConvertToDesignerObjects);
+}
+
+void CCryEditApp::OnUpdateSelected(QAction* action)
+{
+    action->setEnabled(!GetIEditor()->GetSelection()->IsEmpty());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAlignObject()
+{
+    // Align pick callback will release itself.
+    CAlignPickCallback* alignCallback = new CAlignPickCallback;
+    GetIEditor()->PickObject(alignCallback, 0, "Align to Object");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAlignToGrid()
+{
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo("Align To Grid");
+        Matrix34 tm;
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            tm = obj->GetWorldTM();
+            Vec3 snaped = gSettings.pGrid->Snap(tm.GetTranslation());
+            tm.SetTranslation(snaped);
+            obj->SetWorldTM(tm);
+            obj->OnEvent(EVENT_ALIGN_TOGRID);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateAlignObject(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(CAlignPickCallback::IsActive());
+
+    action->setEnabled(!GetIEditor()->GetSelection()->IsEmpty());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAlignToVoxel()
+{
+    GetIEditor()->SetEditTool(new CVoxelAligningTool());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateAlignToVoxel(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    CEditTool* pEditTool = GetIEditor()->GetEditTool();
+    action->setChecked(qobject_cast<CVoxelAligningTool*>(pEditTool) != nullptr);
+
+    action->setEnabled(!GetIEditor()->GetSelection()->IsEmpty());
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Groups.
+//////////////////////////////////////////////////////////////////////////
+
+void CCryEditApp::OnGroupAttach()
+{
+    // TODO: Add your command handler code here
+    GetIEditor()->GetSelection()->PickGroupAndAddToIt();
+}
+
+void CCryEditApp::OnUpdateGroupAttach(QAction* action)
+{
+    BOOL bEnable = false;
+    if (!GetIEditor()->GetSelection()->IsEmpty())
+    {
+        bEnable = true;
+    }
+    action->setEnabled(bEnable);
+}
+
+void CCryEditApp::OnGroupClose()
+{
+    // Close _all_ selected open groups.
+    CSelectionGroup* selected = GetIEditor()->GetSelection();
+    for (unsigned int i = 0; i < selected->GetCount(); i++)
+    {
+        CBaseObject* obj = selected->GetObject(i);
+        if (obj && obj->metaObject() == &CGroup::staticMetaObject)
+        {
+            if (((CGroup*)obj)->IsOpen())
+            {
+                GetIEditor()->BeginUndo();
+                ((CGroup*)obj)->Close();
+                GetIEditor()->AcceptUndo("Group Close");
+                GetIEditor()->SetModifiedFlag();
+                GetIEditor()->SetModifiedModule(eModifiedBrushes);
+            }
+        }
+    }
+}
+
+void CCryEditApp::OnUpdateGroupClose(QAction* action)
+{
+    BOOL bEnable = false;
+
+    // Alllow multiple groups to be closed at the same time.
+    CSelectionGroup* selected = GetIEditor()->GetSelection();
+    for (unsigned int i = 0; i < selected->GetCount(); i++)
+    {
+        // if there are _any_ open grouped objects selected allow them to be closed.
+        CBaseObject* obj = selected->GetObject(i);
+        if (obj && obj->metaObject() == &CGroup::staticMetaObject)
+        {
+            if (((CGroup*)obj)->IsOpen())
+            {
+                bEnable = true;
+            }
+        }
+    }
+
+    action->setEnabled(bEnable);
+}
+
+
+void CCryEditApp::OnGroupDetach()
+{
+    CUndo undo("Remove Selection from Group");
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0, cnt = pSelection->GetCount(); i < cnt; ++i)
+    {
+        if (pSelection->GetObject(i)->GetGroup())
+        {
+            pSelection->GetObject(i)->GetGroup()->RemoveMember(pSelection->GetObject(i));
+        }
+    }
+}
+
+
+void CCryEditApp::OnUpdateGroupDetach(QAction* action)
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0, cnt = pSelection->GetCount(); i < cnt; ++i)
+    {
+        if (pSelection->GetObject(i)->GetParent())
+        {
+            action->setEnabled(true);
+            return;
+        }
+    }
+
+    action->setEnabled(false);
+}
+
+
+
+void CCryEditApp::OnShowHelpers()
+{
+    CEditTool* pEditTool(GetIEditor()->GetEditTool());
+    if (pEditTool && pEditTool->IsNeedSpecificBehaviorForSpaceAcce())
+    {
+        return;
+    }
+    GetIEditor()->GetDisplaySettings()->DisplayHelpers(!GetIEditor()->GetDisplaySettings()->IsDisplayHelpers());
+    GetIEditor()->Notify(eNotify_OnDisplayRenderUpdate);
+}
+
+void CCryEditApp::OnStartStop()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.start_stop");
+}
+
+void CCryEditApp::OnNextKey()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.next_key");
+}
+
+void CCryEditApp::OnPrevKey()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.prev_key");
+}
+
+void CCryEditApp::OnNextFrame()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.next_frame");
+}
+
+void CCryEditApp::OnPrevFrame()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.prev_frame");
+}
+
+void CCryEditApp::OnSelectAll()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.select_all");
+}
+
+void CCryEditApp::OnKeyAll()
+{
+    GetIEditor()->GetCommandManager()->Execute("face_editor.key_all");
+}
+
+void CCryEditApp::OnGroupMake()
+{
+    // Pre-filter the selected objects to make sure that they can be grouped together
+    CSelectionGroup* selection = GetIEditor()->GetSelection();
+    selection->FilterParents();
+    std::vector<CBaseObjectPtr> objects;
+    bool canGroup = true;
+    for (int i = 0; i < selection->GetFilteredCount(); i++)
+    {
+        auto selected = selection->GetFilteredObject(i);
+        if (!selected->IsGroupable())
+        {
+            canGroup = false;
+            break;
+        }
+        objects.push_back(selected);
+    }
+    if (!canGroup)
+    {
+        CryMessageBox("One or more component entities detected.  You cannot group component entities at this time.",
+                      "Error", MB_OK);
+        return;
+    }
+
+    StringDlg dlg(QObject::tr("Group Name"));
+
+
+    GetIEditor()->BeginUndo();
+    CGroup* group = (CGroup*)GetIEditor()->NewObject("Group");
+    if (!group)
+    {
+        GetIEditor()->CancelUndo();
+        return;
+    }
+
+    dlg.SetString(group->GetName());
+
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        // Setup a layer to the group and don't modify the current layer (by Undo system)
+        if (objects.size())
+        {
+            GetIEditor()->SuspendUndo();
+            group->SetLayer(objects[0]->GetLayer());
+            GetIEditor()->ResumeUndo();
+        }
+
+        GetIEditor()->GetObjectManager()->ChangeObjectName(group, dlg.GetString());
+
+        // Snap center to grid.
+        Vec3 center = gSettings.pGrid->Snap(selection->GetCenter());
+        group->SetPos(center);
+
+        // Prefab support
+        CPrefabObject* pPrefabToCompareAgainst = nullptr;
+        CPrefabObject* pObjectPrefab = nullptr;
+        bool partOfDifferentPrefabs = false;
+
+        for (int i = 0; i < objects.size(); i++)
+        {
+            // Prefab handling
+            pObjectPrefab = objects[i]->GetPrefab();
+
+            if (pPrefabToCompareAgainst && pObjectPrefab)
+            {
+                partOfDifferentPrefabs = pPrefabToCompareAgainst != pObjectPrefab;
+            }
+
+            if (!pPrefabToCompareAgainst)
+            {
+                pPrefabToCompareAgainst = pObjectPrefab;
+            }
+
+            GetIEditor()->GetObjectManager()->UnselectObject(objects[i]);
+            group->AddMember(objects[i]);
+        }
+
+        // Sanity check if user is trying to group objects from different prefabs
+        if (partOfDifferentPrefabs)
+        {
+            GetIEditor()->CancelUndo();
+            GetIEditor()->DeleteObject(group);
+            return;
+        }
+
+        // Signal that we added a group to the prefab
+        if (pPrefabToCompareAgainst)
+        {
+            pPrefabToCompareAgainst->AddMember(group);
+        }
+
+        // need again setup the layer to inform group children
+        if (objects.size())
+        {
+            group->SetLayer(objects[0]->GetLayer());
+        }
+
+        GetIEditor()->AcceptUndo("Group Make");
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedBrushes);
+    }
+    else
+    {
+        GetIEditor()->CancelUndo();
+        GetIEditor()->DeleteObject(group);
+    }
+}
+
+void CCryEditApp::OnUpdateGroupMake(QAction* action)
+{
+    OnUpdateSelected(action);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnGroupOpen()
+{
+    // Ungroup all groups in selection.
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo("Group Open");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            if (obj && obj->metaObject() == &CGroup::staticMetaObject)
+            {
+                ((CGroup*)obj)->Open();
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateGroupOpen(QAction* action)
+{
+    BOOL bEnable = false;
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj)
+    {
+        if (obj->metaObject() == &CGroup::staticMetaObject)
+        {
+            if (!((CGroup*)obj)->IsOpen())
+            {
+                bEnable = true;
+            }
+        }
+        action->setEnabled(bEnable);
+    }
+    else
+    {
+        OnUpdateSelected(action);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnGroupUngroup()
+{
+    // Ungroup all groups in selection.
+    std::vector<CBaseObjectPtr> objects;
+
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        objects.push_back(pSelection->GetObject(i));
+    }
+
+    if (objects.size())
+    {
+        CUndo undo("Ungroup");
+
+        for (int i = 0; i < objects.size(); i++)
+        {
+            CBaseObject* obj = objects[i];
+            if (obj && obj->metaObject() == &CGroup::staticMetaObject)
+            {
+                static_cast<CGroup*>(obj)->Ungroup();
+                // Signal prefab if part of any
+                if (CPrefabObject* pPrefab = obj->GetPrefab())
+                {
+                    pPrefab->RemoveMember(obj);
+                }
+                GetIEditor()->DeleteObject(obj);
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateGroupUngroup(QAction* action)
+{
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj)
+    {
+        if (obj->metaObject() == &CGroup::staticMetaObject)
+        {
+            action->setEnabled(true);
+        }
+        else
+        {
+            action->setEnabled(false);
+        }
+    }
+    else
+    {
+        OnUpdateSelected(action);
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnMissionRename()
+{
+    CMission *mission = GetIEditor()->GetDocument()->GetCurrentMission();
+    StringDlg dlg(tr("Rename Mission"));
+    dlg.SetString(mission->GetName());
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        GetIEditor()->BeginUndo();
+        mission->SetName(dlg.GetString());
+        GetIEditor()->AcceptUndo( "Mission Rename" );
+    }
+    GetIEditor()->Notify(eNotify_OnInvalidateControls);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnMissionSelect()
+{
+    CMissionSelectDialog dlg;
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        CMission* mission = GetIEditor()->GetDocument()->FindMission(dlg.GetSelected());
+        if (mission)
+        {
+            GetIEditor()->GetDocument()->SetCurrentMission(mission);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnLockSelection()
+{
+    // Invert selection lock.
+    GetIEditor()->LockSelection(!GetIEditor()->IsSelectionLocked());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditLevelData()
+{
+    auto dir = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir();
+    CFileUtil::EditTextFile(dir.absoluteFilePath("LevelData.xml").toLatin1().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileEditLogFile()
+{
+    CFileUtil::EditTextFile(CLogFile::GetLogFileName(), 0, IFileUtil::FILE_TYPE_SCRIPT);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileEditEditorini()
+{
+    CFileUtil::EditTextFile(EDITOR_CFG_FILE);
+}
+
+void CCryEditApp::OnPreferences()
+{
+    /*
+    //////////////////////////////////////////////////////////////////////////////
+    // Accels edit by CPropertyPage
+    CAcceleratorManager tmpAccelManager;
+    tmpAccelManager = m_AccelManager;
+    CAccelMapPage page(&tmpAccelManager);
+    CPropertySheet sheet;
+    sheet.SetTitle( _T("Preferences") );
+    sheet.AddPage(&page);
+    if (sheet.DoModal() == IDOK) {
+        m_AccelManager = tmpAccelManager;
+        m_AccelManager.UpdateWndTable();
+    }
+    */
+}
+
+void CCryEditApp::OnReloadTextures()
+{
+    QWaitCursor wait;
+    CLogFile::WriteLine("Reloading Static objects textures and shaders.");
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_RELOAD_TEXTURES);
+    GetIEditor()->GetRenderer()->EF_ReloadTextures();
+}
+
+void CCryEditApp::OnReloadAllScripts()
+{
+    OnReloadEntityScripts();
+    OnReloadActorScripts();
+    OnReloadItemScripts();
+    OnReloadAIScripts();
+}
+
+void CCryEditApp::OnReloadEntityScripts()
+{
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_UNLOAD_ENTITY);
+    CEntityScriptRegistry::Instance()->Reload();
+
+    SEntityEvent event;
+    event.event = ENTITY_EVENT_RELOAD_SCRIPT;
+    gEnv->pEntitySystem->SendEventToAll(event);
+
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_RELOAD_ENTITY);
+}
+
+void CCryEditApp::OnReloadActorScripts()
+{
+    gEnv->pConsole->ExecuteString("net_reseteditorclient");
+}
+
+void CCryEditApp::OnReloadItemScripts()
+{
+    gEnv->pConsole->ExecuteString("i_reload");
+}
+
+void CCryEditApp::OnReloadAIScripts()
+{
+    GetIEditor()->GetAI()->ReloadScripts();
+}
+
+void CCryEditApp::OnToggleMultiplayer()
+{
+    IEditor* pEditor = GetIEditor();
+    if (pEditor->GetGameEngine()->SupportsMultiplayerGameRules())
+    {
+        if (pEditor->IsInGameMode())
+        {
+            pEditor->SetInGameMode(false);
+        }
+
+        pEditor->GetObjectManager()->SendEvent(EVENT_UNLOAD_ENTITY);
+
+        pEditor->GetGameEngine()->ToggleMultiplayerGameRules();
+
+        CEntityScriptRegistry::Instance()->Reload();
+        pEditor->GetAI()->ReloadScripts();
+
+        pEditor->GetObjectManager()->SendEvent(EVENT_RELOAD_ENTITY);
+
+        CryLogAlways("Now running '%s' gamerules", pEditor->GetGame()->GetIGameFramework()->GetIGameRulesSystem()->GetCurrentGameRules()->GetEntity()->GetClass()->GetName());
+    }
+    else
+    {
+        Warning("Multiplayer gamerules not supported.");
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToggleMultiplayerUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(gEnv->bMultiplayer);
+    action->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnReloadGeometry()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    CWaitProgress wait("Reloading static geometry");
+
+    CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
+    if (pVegetationMap)
+    {
+        pVegetationMap->ReloadGeometry();
+    }
+
+    CLogFile::WriteLine("Reloading Static objects geometries.");
+    CEdMesh::ReloadAllGeometries();
+
+    // Reload CHRs
+    GetIEditor()->GetSystem()->GetIAnimationSystem()->ReloadAllModels();
+
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_UNLOAD_GEOM);
+    //GetIEditor()->Get3DEngine()->UnlockCGFResources();
+
+    if (GetIEditor()->GetGame()->GetIGameFramework()->GetIItemSystem() != NULL)
+
+    {
+        GetIEditor()->GetGame()->GetIGameFramework()->GetIItemSystem()->ClearGeometryCache();
+    }
+    //GetIEditor()->Get3DEngine()->LockCGFResources();
+    // Force entity system to collect garbage.
+    GetIEditor()->GetSystem()->GetIEntitySystem()->Update();
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_RELOAD_GEOM);
+    GetIEditor()->Notify(eNotify_OnReloadTrackView);
+
+    // Rephysicalize viewport meshes
+    for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); ++i)
+    {
+        CViewport* vp = GetIEditor()->GetViewManager()->GetView(i);
+        if (CModelViewport* mvp = viewport_cast<CModelViewport*>(vp))
+        {
+            mvp->RePhysicalize();
+        }
+    }
+
+    OnReloadEntityScripts();
+    IRenderNode** plist = new IRenderNode*[max(gEnv->p3DEngine->GetObjectsByType(eERType_Vegetation, 0), gEnv->p3DEngine->GetObjectsByType(eERType_Brush, 0))];
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = gEnv->p3DEngine->GetObjectsByType(i ? eERType_Brush : eERType_Vegetation, plist) - 1; j >= 0; j--)
+        {
+            plist[j]->Physicalize(true);
+        }
+    }
+    delete[] plist;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnReloadTerrain()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    // Fast export.
+    CGameExporter gameExporter;
+    gameExporter.Export(eExp_ReloadTerrain);
+    // Export does it. GetIEditor()->GetGameEngine()->ReloadLevel();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUndo()
+{
+    //GetIEditor()->GetObjectManager()->UndoLastOp();
+    GetIEditor()->Undo();
+
+    EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, Undo);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRedo()
+{
+    GetIEditor()->Redo();
+
+    EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, Redo);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateRedo(QAction* action)
+{
+    if (GetIEditor()->GetUndoManager()->IsHaveRedo())
+    {
+        action->setEnabled(true);
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateUndo(QAction* action)
+{
+    if (GetIEditor()->GetUndoManager()->IsHaveUndo())
+    {
+        action->setEnabled(true);
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainCollision()
+{
+    uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
+    if (flags & SETTINGS_NOCOLLISION)
+    {
+        flags &= ~SETTINGS_NOCOLLISION;
+    }
+    else
+    {
+        flags |= SETTINGS_NOCOLLISION;
+    }
+    GetIEditor()->GetDisplaySettings()->SetSettings(flags);
+}
+
+void CCryEditApp::OnTerrainCollisionUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
+    action->setChecked(flags & SETTINGS_NOCOLLISION);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchPhysics()
+{
+    QWaitCursor wait;
+    uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
+    if (flags & SETTINGS_PHYSICS)
+    {
+        flags &= ~SETTINGS_PHYSICS;
+    }
+    else
+    {
+        flags |= SETTINGS_PHYSICS;
+    }
+    GetIEditor()->GetDisplaySettings()->SetSettings(flags);
+
+    if ((flags & SETTINGS_PHYSICS) == 0)
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 0, 0);
+    }
+    else
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(true);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 1, 0);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchPhysicsUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetGameEngine()->GetSimulationMode());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSyncPlayer()
+{
+    GetIEditor()->GetGameEngine()->SyncPlayerPosition(!GetIEditor()->GetGameEngine()->IsSyncPlayerPosition());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSyncPlayerUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetGameEngine()->IsSyncPlayerPosition());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnGenerateCgfThumbnails()
+{
+    qApp->setOverrideCursor(Qt::BusyCursor);
+    CThumbnailGenerator gen;
+    gen.GenerateForDirectory("Objects\\");
+    qApp->restoreOverrideCursor();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateAll()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    // Do game export
+    CGameExporter gameExporter;
+    gameExporter.Export();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateTriangulation()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->GenerateAiTriangulation();
+    // Do game export
+    CGameExporter gameExporter;
+    gameExporter.Export();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateWaypoint()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->GenerateAiWaypoint();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateFlightNavigation()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->GenerateAiFlightNavigation();
+    // Do game export.
+    CGameExporter gameExporter;
+    gameExporter.Export();
+}
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerate3dvolumes()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->GenerateAiNavVolumes();
+    // Do game export.
+    CGameExporter gameExporter;
+    gameExporter.Export();
+}
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIValidateNavigation()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->ValidateAINavigation();
+}
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerate3DDebugVoxels()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->Generate3DDebugVoxels();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIClearAllNavigation()
+{
+    CErrorsRecorder errRecorder(GetIEditor());
+
+    GetIEditor()->GetGameEngine()->ClearAllAINavigation();
+
+    // Do game export with empty nav data
+    CGameExporter gameExporter;
+    gameExporter.Export();
+
+    GetIEditor()->GetGameEngine()->LoadAINavigationData();
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateSpawners()
+{
+    GenerateSpawners();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAIGenerateCoverSurfaces()
+{
+    CErrorsRecorder recorder(GetIEditor());
+    GetIEditor()->GetGameEngine()->GenerateAICoverSurfaces();
+
+    // Do game export
+    CGameExporter gameExporter;
+    gameExporter.Export(eExp_CoverSurfaces);
+
+    if (!GetIEditor()->GetErrorReport()->IsEmpty())
+    {
+        GetIEditor()->GetErrorReport()->Display();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationDisplayAgentUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    CAIManager* pAIMgr = GetIEditor()->GetAI();
+    action->setChecked(pAIMgr->GetNavigationDebugDisplayState());
+
+    size_t selected = 0;
+    if (pAIMgr->GetNavigationDebugDisplayAgent(&selected))
+    {
+        action->setText(pAIMgr->GetNavigationAgentTypeName(selected));
+    }
+    else
+    {
+        action->setText("None");
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationShowAreas()
+{
+    CAIManager* pAIMgr = GetIEditor()->GetAI();
+    pAIMgr->ShowNavigationAreas(!gSettings.bNavigationShowAreas);
+    gSettings.bNavigationShowAreas = pAIMgr->GetShowNavigationAreasState();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationShowAreasUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(gSettings.bNavigationShowAreas);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationEnableContinuousUpdate()
+{
+    if (gSettings.bIsSearchFilterActive)
+    {
+        CryMessageBox("You need to clear the search box before being able to re-enable Continuous Update.",
+            "Warning", MB_OK);
+        return;
+    }
+    CAIManager* pAIMgr = GetIEditor()->GetAI();
+    pAIMgr->EnableNavigationContinuousUpdate(!gSettings.bNavigationContinuousUpdate);
+    gSettings.bNavigationContinuousUpdate = pAIMgr->GetNavigationContinuousUpdateState();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationEnableContinuousUpdateUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(gSettings.bNavigationContinuousUpdate);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationNewArea()
+{
+    OnSelectAxisSnapToAll();
+
+    IEditor* pEditor = GetIEditor();
+    pEditor->StartObjectCreation("NavigationArea");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationFullRebuild()
+{
+    int msgBoxResult = CryMessageBox("Are you sure you want to fully rebuild the MNM data? (The operation can take several minutes)",
+            "MNM Navigation Rebuilding request", MB_YESNO | MB_ICONQUESTION);
+    if (msgBoxResult == IDYES)
+    {
+        CAIManager* pAIMgr = GetIEditor()->GetAI();
+        pAIMgr->RebuildAINavigation();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationAddSeed()
+{
+    IEditor* pEditor = GetIEditor();
+    pEditor->StartObjectCreation("NavigationSeedPoint");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnVisualizeNavigationAccessibility()
+{
+    CAIManager* pAIMgr = GetIEditor()->GetAI();
+    gSettings.bVisualizeNavigationAccessibility = pAIMgr->CalculateAndToggleVisualizationNavigationAccessibility();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnVisualizeNavigationAccessibilityUpdate(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(gSettings.bVisualizeNavigationAccessibility);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAINavigationDisplayAgent()
+{
+    CAIManager* pAIMgr = GetIEditor()->GetAI();
+    pAIMgr->EnableNavigationDebugDisplay(!gSettings.bNavigationDebugDisplay);
+    gSettings.bNavigationDebugDisplay = pAIMgr->GetNavigationDebugDisplayState();
+}
+
+void CCryEditApp::OnUpdateCurrentLayer(QAction* action)
+{
+    if (auto currentLayer = GetIEditor()->GetObjectManager()->GetLayersManager()->GetCurrentLayer())
+    {
+        QString text = QStringLiteral(" ") + currentLayer->GetName();
+        if (currentLayer->IsModified())
+        {
+            text += QStringLiteral("*");
+        }
+        action->setText(text);
+    }
+    else
+    {
+        action->setText(QString());
+    }
+}
+
+void CCryEditApp::OnUpdateNonGameMode(QAction* action)
+{
+    action->setEnabled(!GetIEditor()->IsInGameMode());
+}
+
+//////////////////////////////////////////////////////////////////////////
+CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain)
+{
+    QString currentLevel = GetIEditor()->GetLevelFolder();
+    if (!currentLevel.isEmpty())
+    {
+        GetIEditor()->GetSystem()->GetIPak()->ClosePacks(currentLevel.toLatin1().data());
+    }
+
+    QString cryFileName = levelName.mid(levelName.lastIndexOf('/') + 1, levelName.length() - levelName.lastIndexOf('/') + 1);
+    QString levelPath = QStringLiteral("%1/Levels/%2/").arg(Path::GetEditingGameDataFolder().c_str(), levelName);
+    QString filename = levelPath + cryFileName + ".cry";
+
+    // Does the directory already exist ?
+    if (QFileInfo(levelPath).exists())
+    {
+        return ECLR_ALREADY_EXISTS;
+    }
+
+    // Create the directory
+    CLogFile::WriteLine("Creating level directory");
+    if (!CFileUtil::CreatePath(levelPath))
+    {
+        return ECLR_DIR_CREATION_FAILED;
+    }
+
+    if (GetIEditor()->GetDocument()->IsDocumentReady())
+    {
+        m_pDocManager->OnFileNew();
+    }
+
+    ICVar* sv_map = gEnv->pConsole->GetCVar("sv_map");
+    if (sv_map)
+    {
+        sv_map->Set(levelName.toLatin1().data());
+    }
+
+
+    GetIEditor()->GetDocument()->InitEmptyLevel(resolution, unitSize, bUseTerrain);
+
+    GetIEditor()->SetStatusText("Creating Level...");
+
+    if (bUseTerrain)
+    {
+        GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
+    }
+
+    // Save the document to this folder
+    GetIEditor()->GetDocument()->SetPathName(filename);
+    GetIEditor()->GetGameEngine()->SetLevelPath(levelPath);
+
+    if (GetIEditor()->GetDocument()->Save())
+    {
+        CGameExporter gameExporter;
+        gameExporter.Export();
+
+        GetIEditor()->GetGameEngine()->LoadLevel(levelPath, GetIEditor()->GetGameEngine()->GetMissionName(), true, true);
+        GetIEditor()->GetSystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_PRECACHE_START, 0, 0);
+        GetIEditor()->GetGameEngine()->GetIEditorGame()->OnAfterLevelLoad(GetIEditor()->GetGameEngine()->GetLevelName().toLatin1(), GetIEditor()->GetGameEngine()->GetLevelPath().toLatin1().data());
+
+        GetIEditor()->GetHeightmap()->InitTerrain();
+
+        // During normal level load flow, the player is hidden after the player is spawned.
+        // When creating a new level, the player is not spawned until later, after that hide player command was initially sent.
+        // This hide player in level creation ensures that the player is hidden after it is created.
+        GetIEditor()->GetGameEngine()->GetIEditorGame()->HidePlayer(true);
+
+        //GetIEditor()->GetGameEngine()->LoadAINavigationData();
+        if (!bUseTerrain)
+        {
+            XmlNodeRef m_node = GetIEditor()->GetDocument()->GetEnvironmentTemplate();
+            if (m_node)
+            {
+                XmlNodeRef envState = m_node->findChild("EnvState");
+                if (envState)
+                {
+                    XmlNodeRef showTerrainSurface = envState->findChild("ShowTerrainSurface");
+                    showTerrainSurface->setAttr("value", "false");
+                    GetIEditor()->GetGameEngine()->ReloadEnvironment();
+                }
+            }
+        }
+        else
+        {
+            // we need to reload environment after terrain creation in order for water to be initialized
+            GetIEditor()->GetGameEngine()->ReloadEnvironment();
+        }
+
+        GetIEditor()->GetSystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_PRECACHE_END, 0, 0);
+    }
+
+    if (bUseTerrain)
+    {
+        GenerateTerrainTexture();
+    }
+
+    GetIEditor()->GetDocument()->SetDocumentReady(true);
+    GetIEditor()->SetStatusText("Ready");
+
+    return ECLR_OK;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCreateLevel()
+{
+    bool wasCreateLevelOperationCancelled = false;
+    bool isNewLevelCreationSuccess = false;
+    // This will show the new level dialog until a valid input has been entered by the user or until the user click cancel
+    while (!isNewLevelCreationSuccess && !wasCreateLevelOperationCancelled)
+    {
+        wasCreateLevelOperationCancelled = false;
+        isNewLevelCreationSuccess = CreateLevel(wasCreateLevelOperationCancelled);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
+{
+    BOOL bIsDocModified = GetIEditor()->GetDocument()->IsModified();
+    if (GetIEditor()->GetDocument()->IsDocumentReady() && bIsDocModified)
+    {
+        QString str = QObject::tr("Level %1 has been changed. Save Level?").arg(GetIEditor()->GetGameEngine()->GetLevelName());
+        int result = QMessageBox::question(QApplication::activeWindow(), QObject::tr("Save Level"), str, QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        if (QMessageBox::Yes == result)
+        {
+            if (!GetIEditor()->GetDocument()->DoFileSave())
+            {
+                // if the file save operation failed, assume that the user was informed of why
+                // already and treat it as a cancel
+                wasCreateLevelOperationCancelled = true;
+                return false;
+            }
+
+            bIsDocModified = false;
+        }
+        else if (QMessageBox::No == result)
+        {
+            // Set Modified flag to false to prevent show Save unchanged dialog again
+            GetIEditor()->GetDocument()->SetModifiedFlag(false);
+        }
+        else if (QMessageBox::Cancel == result)
+        {
+            wasCreateLevelOperationCancelled = true;
+            return false;
+        }
+    }
+
+    const char* temporaryLevelName = GetIEditor()->GetDocument()->GetTemporaryLevelName();
+    CNewLevelDialog dlg;
+    dlg.m_level = "";
+    if (dlg.exec() != QDialog::Accepted)
+    {
+        wasCreateLevelOperationCancelled = true;
+        GetIEditor()->GetDocument()->SetModifiedFlag(bIsDocModified);
+        return false;
+    }
+
+    if (!GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
+    {
+        return false;
+    }
+
+    QString levelNameWithPath = dlg.GetLevel();
+    QString levelName = levelNameWithPath.mid(levelNameWithPath.lastIndexOf('/') + 1);
+
+    int resolution = dlg.GetTerrainResolution();
+    int unitSize = dlg.GetTerrainUnits();
+    bool bUseTerrain = dlg.IsUseTerrain();
+
+    if (levelName == temporaryLevelName && GetIEditor()->GetLevelName() != temporaryLevelName)
+    {
+        GetIEditor()->GetDocument()->DeleteTemporaryLevel();
+    }
+
+    if (levelName.length() == 0 || !CryStringUtils::IsValidFileName(levelName.toLatin1().data()))
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Level name is invalid, please choose another name."));
+        return false;
+    }
+
+    //Verify that we are not using the temporary level name
+    if (QString::compare(levelName, temporaryLevelName) == 0)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Please enter a level name that is different from the temporary name."));
+        return false;
+    }
+
+    ECreateLevelResult result = (ECreateLevelResult)PyCreateLevel(levelNameWithPath.toLatin1().data(), resolution, unitSize, bUseTerrain);
+
+    if (result == ECLR_ALREADY_EXISTS)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Level with this name already exists, please choose another name."));
+        return false;
+    }
+    else if (result == ECLR_DIR_CREATION_FAILED)
+    {
+        QString szLevelRoot = QStringLiteral("%1\\Levels\\%2").arg(Path::GetEditingGameDataFolder().c_str(), levelName);
+
+        QByteArray windowsErrorMessage(ERROR_LEN, 0);
+        QByteArray cwd(ERROR_LEN, 0);
+        DWORD dw = GetLastError();
+
+#ifdef WIN32
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            dw,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            windowsErrorMessage.data(),
+            windowsErrorMessage.length(), NULL);
+        _getcwd(cwd.data(), cwd.length());
+#else
+        windowsErrorMessage = strerror(dw);
+        cwd = QDir::currentPath().toLatin1();
+#endif
+
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Failed to create level directory: %1\n Error: %2\nCurrent Path: %3").arg(szLevelRoot, windowsErrorMessage, cwd));
+        return false;
+    }
+
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenLevel()
+{
+    CLevelFileDialog levelFileDialog(true);
+
+    if (levelFileDialog.exec() == QDialog::Accepted)
+    {
+        GetIEditor()->ExecuteCommand("general.open_level '%s'", levelFileDialog.GetFileName().toLatin1().data());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
+{
+    MainWindow::instance()->menuBar()->setEnabled(false);
+
+    CCryEditDoc* doc = nullptr;
+    bool bVisible = false;
+    bool bTriggerConsole = false;
+
+    doc = GetIEditor()->GetDocument();
+    bVisible = GetIEditor()->ShowConsole(true);
+    bTriggerConsole = true;
+
+    if (GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
+    {
+        QString currentPath = Path::GetRelativePath(doc->GetPathName());
+        QString newPath = Path::GetRelativePath(lpszFileName);
+        Path::ConvertBackSlashToSlash(currentPath);
+        Path::ConvertBackSlashToSlash(newPath);
+
+        //if (doc && (currentPath == newPath))
+        {
+            m_pDocManager->OpenDocumentFile(lpszFileName, currentPath != newPath);
+        }
+    }
+
+    if (bTriggerConsole)
+    {
+        GetIEditor()->ShowConsole(bVisible);
+    }
+    LoadTagLocations();
+
+    MainWindow::instance()->menuBar()->setEnabled(true);
+
+    return doc; // the API wants a CDocument* to be returned. It seems not to be used, though, in our current state.
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnLayerSelect()
+{
+    if (!GetIEditor()->GetDocument()->IsDocumentReady())
+    {
+        return;
+    }
+
+    QPoint point = QCursor::pos();
+    CLayersSelectDialog dlg(point);
+    dlg.SetSelectedLayer(GetIEditor()->GetObjectManager()->GetLayersManager()->GetCurrentLayer()->GetName());
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        CUndo undo("Set Current Layer");
+        CObjectLayer* pLayer = GetIEditor()->GetObjectManager()->GetLayersManager()->FindLayerByName(dlg.GetSelectedLayer());
+        if (pLayer)
+        {
+            GetIEditor()->GetObjectManager()->GetLayersManager()->SetCurrentLayer(pLayer);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnResourcesReduceworkingset()
+{
+#ifdef WIN32 // no such thing on macOS
+    SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
+#endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsEquipPacksEdit()
+{
+    CEquipPackDialog Dlg;
+    Dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsUpdateProcVegetation()
+{
+    GetIEditor()->GetTerrainManager()->ReloadSurfaceTypes();
+
+    CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
+    if (pVegetationMap)
+    {
+        pVegetationMap->SetEngineObjectsParams();
+    }
+
+    GetIEditor()->SetModifiedFlag();
+    GetIEditor()->SetModifiedModule(eModifiedTerrain);
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+void CCryEditApp::OnToggleSelection(bool hide)
+{
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo(hide ? "Hide Selection" : "Show Selection");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            // Duplicated object names can exist in the case of prefab objects so passing a name as a script parameter and processing it couldn't be exact.
+            GetIEditor()->GetObjectManager()->HideObject(sel->GetObject(i), hide);
+        }
+    }
+    
+}
+
+void CCryEditApp::OnEditHide()
+{
+    OnToggleSelection(true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditHide(QAction* action)
+{
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        action->setEnabled(true);
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditShowLastHidden()
+{
+    CUndo undo("Show Last Hidden");
+    GetIEditor()->GetObjectManager()->ShowLastHiddenObject();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditUnhideall()
+{
+    if (QMessageBox::question(QApplication::activeWindow(), QObject::tr("Unhide All"), QObject::tr("Are you sure you want to unhide all the objects?"), QMessageBox::Yes | QMessageBox::Cancel) == QMessageBox::Yes)
+    {
+        // Unhide all.
+        CUndo undo("Unhide All");
+        GetIEditor()->GetObjectManager()->UnhideAll();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditFreeze()
+{
+    // Freeze selection.
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo("Freeze");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            // Duplicated object names can exist in the case of prefab objects so passing a name as a script parameter and processing it couldn't be exact.
+            sel->GetObject(i)->SetFrozen(true);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateEditFreeze(QAction* action)
+{
+    OnUpdateEditHide(action);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditUnfreezeall()
+{
+    if (QMessageBox::question(QApplication::activeWindow(), QObject::tr("Unfreeze All"), QObject::tr("Are you sure you want to unfreeze all the objects?"), QMessageBox::Yes | QMessageBox::Cancel) == QMessageBox::Yes)
+    {
+        // Unfreeze all.
+        CUndo undo("Unfreeze All");
+        GetIEditor()->GetObjectManager()->UnfreezeAll();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSnap()
+{
+    // Switch current snap to grid state.
+    bool bGridEnabled = gSettings.pGrid->IsEnabled();
+    gSettings.pGrid->Enable(!bGridEnabled);
+}
+
+void CCryEditApp::OnWireframe()
+{
+    int             nWireframe(R_SOLID_MODE);
+    ICVar*      r_wireframe(gEnv->pConsole->GetCVar("r_wireframe"));
+
+    if (r_wireframe)
+    {
+        nWireframe = r_wireframe->GetIVal();
+    }
+
+    if (nWireframe != R_WIREFRAME_MODE)
+    {
+        nWireframe = R_WIREFRAME_MODE;
+    }
+    else
+    {
+        nWireframe = R_SOLID_MODE;
+    }
+
+    if (r_wireframe)
+    {
+        r_wireframe->Set(nWireframe);
+    }
+}
+
+void CCryEditApp::OnUpdateWireframe(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    int             nWireframe(R_SOLID_MODE);
+    ICVar*      r_wireframe(gEnv->pConsole->GetCVar("r_wireframe"));
+
+    if (r_wireframe)
+    {
+        nWireframe = r_wireframe->GetIVal();
+    }
+
+    action->setChecked(nWireframe == R_WIREFRAME_MODE);
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnViewGridsettings()
+{
+    CGridSettingsDialog dlg;
+    dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnViewConfigureLayout()
+{
+    if (GetIEditor()->IsInGameMode())
+    {
+        // you may not change your viewports while game mode is running.
+        CryLog("You may not change viewport configuration while in game mode.");
+        return;
+    }
+    CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+    if (layout)
+    {
+        CLayoutConfigDialog dlg;
+        dlg.SetLayout(layout->GetLayout());
+        if (dlg.exec() == QDialog::Accepted)
+        {
+            // Will kill this Pane. so must be last line in this function.
+            layout->CreateLayout(dlg.GetLayout());
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::TagLocation(int index)
+{
+    CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+    if (!pRenderViewport)
+    {
+        return;
+    }
+
+    Vec3 vPosVec = pRenderViewport->GetViewTM().GetTranslation();
+
+    m_tagLocations[index - 1] = vPosVec;
+    m_tagAngles[index - 1] = Ang3::GetAnglesXYZ(Matrix33(pRenderViewport->GetViewTM()));
+
+    QString sTagConsoleText("");
+    sTagConsoleText = tr("Camera Tag Point %1 set to the position: x=%2, y=%3, z=%4 ").arg(index).arg(vPosVec.x, 0, 'f', 2).arg(vPosVec.y, 0, 'f', 2).arg(vPosVec.z, 0, 'f', 2);
+
+    GetIEditor()->WriteToConsole(sTagConsoleText.toLatin1().data());
+
+    if (gSettings.bAutoSaveTagPoints)
+    {
+        SaveTagLocations();
+    }
+}
+
+void CCryEditApp::SaveTagLocations()
+{
+    // Save to file.
+    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir().absoluteFilePath("tags.txt");
+    QFile f(filename);
+    if (f.open(QFile::WriteOnly))
+    {
+        QTextStream stream(&f);
+        for (int i = 0; i < 12; i++)
+        {
+            stream <<
+                m_tagLocations[i].x << "," << m_tagLocations[i].y << "," <<  m_tagLocations[i].z << "," <<
+                m_tagAngles[i].x << "," << m_tagAngles[i].y << "," << m_tagAngles[i].z << endl;
+        }
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::GotoTagLocation(int index)
+{
+    QString sTagConsoleText("");
+    Vec3 pos = m_tagLocations[index - 1];
+
+    if (!IsVectorsEqual(m_tagLocations[index - 1], Vec3(0, 0, 0)))
+    {
+        // Change render viewport view TM to the stored one.
+        CViewport* pRenderViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+        if (pRenderViewport)
+        {
+            Matrix34 tm = Matrix34::CreateRotationXYZ(m_tagAngles[index - 1]);
+            tm.SetTranslation(pos);
+            pRenderViewport->SetViewTM(tm);
+            Vec3 vPosVec(tm.GetTranslation());
+
+            GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_BEAM_PLAYER_TO_CAMERA_POS, (UINT_PTR)&tm, 0);
+
+            sTagConsoleText = tr("Moved Camera To Tag Point %1 (x=%2, y=%3, z=%4)").arg(index).arg(vPosVec.x, 0, 'f', 2).arg(vPosVec.y, 0, 'f', 2).arg(vPosVec.z, 0, 'f', 2);
+        }
+    }
+    else
+    {
+        sTagConsoleText = tr("Camera Tag Point %1 not set").arg(index);
+    }
+
+    if (!sTagConsoleText.isEmpty())
+    {
+        GetIEditor()->WriteToConsole(sTagConsoleText.toLatin1().data());
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::LoadTagLocations()
+{
+    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir().absoluteFilePath("tags.txt");
+    // Load tag locations from file.
+
+    ZeroStruct(m_tagLocations);
+
+    QFile f(filename);
+    if (f.open(QFile::ReadOnly))
+    {
+        QTextStream stream(&f);
+        for (int i = 0; i < 12; i++)
+        {
+            QStringList line = stream.readLine().split(",");
+            float x = 0, y = 0, z = 0, ax = 0, ay = 0, az = 0;
+            if (line.count() == 6)
+            {
+                x = line[0].toFloat();
+                y = line[1].toFloat();
+                z = line[2].toFloat();
+                ax = line[3].toFloat();
+                ay = line[4].toFloat();
+                az = line[5].toFloat();
+            }
+
+            m_tagLocations[i] = Vec3(x, y, z);
+            m_tagAngles[i] = Ang3(ax, ay, az);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsLogMemoryUsage()
+{
+    gEnv->pConsole->ExecuteString("SaveLevelStats");
+    //GetIEditor()->GetHeightmap()->LogLayerSizes();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTagLocation1() { TagLocation(1); }
+void CCryEditApp::OnTagLocation2() { TagLocation(2); }
+void CCryEditApp::OnTagLocation3() { TagLocation(3); }
+void CCryEditApp::OnTagLocation4() { TagLocation(4); }
+void CCryEditApp::OnTagLocation5() { TagLocation(5); }
+void CCryEditApp::OnTagLocation6() { TagLocation(6); }
+void CCryEditApp::OnTagLocation7() { TagLocation(7); }
+void CCryEditApp::OnTagLocation8() { TagLocation(8); }
+void CCryEditApp::OnTagLocation9() { TagLocation(9); }
+void CCryEditApp::OnTagLocation10() { TagLocation(10); }
+void CCryEditApp::OnTagLocation11() { TagLocation(11); }
+void CCryEditApp::OnTagLocation12() { TagLocation(12); }
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnGotoLocation1() { GotoTagLocation(1); }
+void CCryEditApp::OnGotoLocation2() { GotoTagLocation(2); }
+void CCryEditApp::OnGotoLocation3() { GotoTagLocation(3); }
+void CCryEditApp::OnGotoLocation4() { GotoTagLocation(4); }
+void CCryEditApp::OnGotoLocation5() { GotoTagLocation(5); }
+void CCryEditApp::OnGotoLocation6() { GotoTagLocation(6); }
+void CCryEditApp::OnGotoLocation7() { GotoTagLocation(7); }
+void CCryEditApp::OnGotoLocation8() { GotoTagLocation(8); }
+void CCryEditApp::OnGotoLocation9() { GotoTagLocation(9); }
+void CCryEditApp::OnGotoLocation10() { GotoTagLocation(10); }
+void CCryEditApp::OnGotoLocation11() { GotoTagLocation(11); }
+void CCryEditApp::OnGotoLocation12() { GotoTagLocation(12); }
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainExportblock()
+{
+    // TODO: Add your command handler code here
+    char szFilters[] = "Terrain Block files (*.trb);;All files (*)";
+    QString filename;
+    if (CFileUtil::SelectSaveFile(szFilters, "trb", {}, filename))
+    {
+        QWaitCursor wait;
+        AABB box;
+        GetIEditor()->GetSelectedRegion(box);
+
+        QPoint p1 = GetIEditor()->GetHeightmap()->WorldToHmap(box.min);
+        QPoint p2 = GetIEditor()->GetHeightmap()->WorldToHmap(box.max);
+        QRect rect(p1, p2 - QPoint(1, 1));
+
+        CXmlArchive ar("Root");
+        GetIEditor()->GetHeightmap()->ExportBlock(rect, ar);
+
+        // Save selected objects.
+        CSelectionGroup* sel = GetIEditor()->GetSelection();
+        XmlNodeRef objRoot = ar.root->newChild("Objects");
+        CObjectArchive objAr(GetIEditor()->GetObjectManager(), objRoot, false);
+        // Save all objects to XML.
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            objAr.node = objRoot->newChild("Object");
+            obj->Serialize(objAr);
+        }
+
+        ar.Save(filename);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainImportblock()
+{
+    // TODO: Add your command handler code here
+    char szFilters[] = "Terrain Block files (*.trb);;All files (*)";
+    QString filename;
+    if (CFileUtil::SelectFile(szFilters, "", filename))
+    {
+        QWaitCursor wait;
+        CXmlArchive* ar = new CXmlArchive;
+        if (!ar->Load(filename))
+        {
+            QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Loading of Terrain Block file failed"));
+            delete ar;
+            return;
+        }
+
+        CErrorsRecorder errorsRecorder(GetIEditor());
+
+        // Import terrain area.
+        CUndo undo("Import Terrain Area");
+
+        CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+        pHeightmap->ImportBlock(*ar, QPoint(0, 0), false);
+        // Load selection from archive.
+        XmlNodeRef objRoot = ar->root->findChild("Objects");
+        if (objRoot)
+        {
+            GetIEditor()->ClearSelection();
+            CObjectArchive ar(GetIEditor()->GetObjectManager(), objRoot, true);
+            GetIEditor()->GetObjectManager()->LoadObjects(ar, true);
+        }
+
+        delete ar;
+        ar = 0;
+
+        /*
+        // Archive will be deleted within Move tool.
+        CTerrainMoveTool *mt = new CTerrainMoveTool;
+        mt->SetArchive( ar );
+        GetIEditor()->SetEditTool( mt );
+        */
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateTerrainExportblock(QAction* action)
+{
+    AABB box;
+    GetIEditor()->GetSelectedRegion(box);
+    action->setEnabled(!box.IsEmpty());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateTerrainImportblock(QAction* action)
+{
+    action->setEnabled(true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCustomizeKeyboard()
+{
+    MainWindow::instance()->OnCustomizeToolbar();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsConfiguretools()
+{
+    ToolsConfigDialog dlg;
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        MainWindow::instance()->UpdateToolsMenu();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsScriptHelp()
+{
+    CScriptHelpDialog::GetInstance()->show();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnExportIndoors()
+{
+    //CBrushIndoor *indoor = GetIEditor()->GetObjectManager()->GetCurrentIndoor();
+    //CBrushExporter exp;
+    //exp.Export( indoor, "C:\\MasterCD\\Objects\\Indoor.bld" );
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnViewCycle2dviewport()
+{
+    GetIEditor()->GetViewManager()->Cycle2DViewport();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnDisplayGotoPosition()
+{
+    CGotoPositionDlg dlg;
+    dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnDisplaySetVector()
+{
+    CSetVectorDlg dlg;
+    dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSnapangle()
+{
+    gSettings.pGrid->EnableAngleSnap(!gSettings.pGrid->IsAngleSnapEnabled());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSnapangle(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(gSettings.pGrid->IsAngleSnapEnabled());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRuler()
+{
+    CRuler* pRuler = GetIEditor()->GetRuler();
+    pRuler->SetActive(!pRuler->IsActive());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateRuler(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    action->setChecked(GetIEditor()->GetRuler()->IsActive());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRotateselectionXaxis()
+{
+    CUndo undo("Rotate X");
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    pSelection->Rotate(Ang3(m_fastRotateAngle, 0, 0), GetIEditor()->GetReferenceCoordSys());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRotateselectionYaxis()
+{
+    CUndo undo("Rotate Y");
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    pSelection->Rotate(Ang3(0, m_fastRotateAngle, 0), GetIEditor()->GetReferenceCoordSys());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRotateselectionZaxis()
+{
+    CUndo undo("Rotate Z");
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    pSelection->Rotate(Ang3(0, 0, m_fastRotateAngle), GetIEditor()->GetReferenceCoordSys());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnRotateselectionRotateangle()
+{
+    bool ok = false;
+    int fractionalDigitCount = 5;
+    float angle = aznumeric_caster(QInputDialog::getDouble(QApplication::activeWindow(), QObject::tr("Rotate Angle"), QStringLiteral(""), m_fastRotateAngle, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), fractionalDigitCount, &ok));
+    if (ok)
+    {
+        m_fastRotateAngle = angle;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnConvertselectionTobrushes()
+{
+    std::vector<CBaseObjectPtr> objects;
+    // Convert every possible object in selection to the brush.
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        objects.push_back(pSelection->GetObject(i));
+    }
+
+    bool isFail = false;
+    for (int i = 0; i < objects.size(); i++)
+    {
+        if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "Brush"))
+        {
+            gEnv->pLog->LogError("Object %s can't be converted to the brush type.", objects[i]->GetName());
+            isFail = true;
+        }
+    }
+
+    if (isFail)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Some of the selected objects can't be converted to the brush type."));
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnConvertselectionTosimpleentity()
+{
+    std::vector<CBaseObjectPtr> objects;
+    // Convert every possible object in selection to the brush.
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        objects.push_back(pSelection->GetObject(i));
+    }
+
+    bool isFail = false;
+    for (int i = 0; i < objects.size(); i++)
+    {
+        if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "GeomEntity"))
+        {
+            gEnv->pLog->LogError("Object %s can't be converted to the simple entity type.", objects[i]->GetName());
+            isFail = true;
+        }
+    }
+
+    if (isFail)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Some of the selected objects can't be converted to the simple entity type."));
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnConvertselectionToGameVolume()
+{
+    std::vector<CBaseObjectPtr> objects;
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        objects.push_back(pSelection->GetObject(i));
+    }
+
+    bool isFail = false;
+    for (int i = 0; i < objects.size(); i++)
+    {
+        if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "GameVolume"))
+        {
+            gEnv->pLog->LogError("Object %s can't be converted to the game volume type.", objects[i]->GetName());
+            isFail = true;
+        }
+    }
+
+    if (isFail)
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Some of the selected objects can't be converted to the game volume type."));
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnConvertSelectionToComponentEntity()
+{
+    std::vector<CBaseObjectPtr> objects;
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSelection->GetCount(); i++)
+    {
+        objects.push_back(pSelection->GetObject(i));
+    }
+
+    CWaitProgress wait("Converting objects...");
+    QWaitCursor waitCursor;
+
+    for (int i = 0; i < objects.size(); i++)
+    {
+        wait.Step((static_cast<float>(i) / static_cast<float>(objects.size())) * 100.f);
+
+        CBaseObjectPtr object = objects[i];
+        QString meshFile;
+
+        if (qobject_cast<CBrushObject*>(object.get()))
+        {
+            CBrushObject* brush = qobject_cast<CBrushObject*>(object.get());
+            meshFile = brush->GetGeometryFile();
+        }
+        else if (qobject_cast<CGeomEntity*>(object.get()))
+        {
+            CGeomEntity* brush = qobject_cast<CGeomEntity*>(object.get());
+            meshFile = brush->GetGeometryFile();
+        }
+        else
+        {
+            AZ_Error("Editor", "Object %s could not be converted. Only Brushes and GeomEntities are supported sources.", objects[i]->GetName().toLatin1().data());
+            continue;
+        }
+
+        if (!meshFile.isEmpty())
+        {
+            // Find the asset Id by path.
+            AZ::Data::AssetId meshId;
+            EBUS_EVENT_RESULT(meshId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, meshFile.toLatin1().data(), AZ::Data::s_invalidAssetType, false);
+
+            if (meshId.IsValid())
+            {
+                // If we found it, create a new editor entity and add a mesh component pointing to the asset.
+                AZ::Entity* newEntity = nullptr;
+                EBUS_EVENT_RESULT(newEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, object->GetName().toLatin1().data());
+
+                if (newEntity)
+                {
+                    const bool isEntityActive = (newEntity->GetState() == AZ::Entity::ES_ACTIVE);
+
+                    if (isEntityActive)
+                    {
+                        newEntity->Deactivate();
+                    }
+
+                    // The editor doesn't have a compile-time dependency on LmbrCentral, so we use the Mesh
+                    // Component's Uuid directly. This is perfectly safe, just tough on the eyes.
+                    const AZ::Uuid meshComponentId("{FC315B86-3280-4D03-B4F0-5553D7D08432}");
+
+                    if (newEntity->CreateComponent(meshComponentId))
+                    {
+                        if (isEntityActive)
+                        {
+                            newEntity->Activate();
+                        }
+
+                        // Assign mesh asset.
+                        EBUS_EVENT_ID(newEntity->GetId(), LmbrCentral::MeshComponentRequestBus, SetMeshAsset, meshId);
+
+                        // Move entity to same transform.
+                        const AZ::Transform transform = LYTransformToAZTransform(object->GetWorldTM());
+                        EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetWorldTM, transform);
+
+                        // Delete old object.
+                        GetIEditor()->DeleteObject(object);
+                    }
+                    else
+                    {
+                        AZ_Error("Editor", "Object %s could not be converted because mesh component could not be created.", objects[i]->GetName().toLatin1().data());
+                    }
+                }
+                else
+                {
+                    AZ_Error("Editor", "Object %s could not be converted because component entity could not be created.", objects[i]->GetName().toLatin1().data());
+                }
+            }
+            else
+            {
+                AZ_Error("Editor", "Object %s could not be converted because Id for asset \"%s\" could not be determined.", objects[i]->GetName().toLatin1().data(), meshFile.toLatin1().data());
+            }
+        }
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnEditRenameobject()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->IsEmpty())
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("No Selected Objects!"));
+        return;
+    }
+
+    IObjectManager* pObjMan = GetIEditor()->GetObjectManager();
+
+    if (!pObjMan)
+    {
+        return;
+    }
+
+    StringDlg dlg(QObject::tr("Rename Object(s)"));
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        CUndo undo("Rename Objects");
+        QString newName;
+        QString str = dlg.GetString();
+        int num = 0;
+        bool bWarningShown = false;
+
+        for (int i = 0; i < pSelection->GetCount(); ++i)
+        {
+            CBaseObject* pObject = pSelection->GetObject(i);
+
+            if (pObject)
+            {
+                if (pObjMan->IsDuplicateObjectName(str))
+                {
+                    pObjMan->ShowDuplicationMsgWarning(pObject, str, true);
+                    return;
+                }
+            }
+        }
+
+        for (int i = 0; i < pSelection->GetCount(); ++i)
+        {
+            newName = QStringLiteral("%1%2").arg(str).arg(num);
+            ++num;
+            CBaseObject* pObject = pSelection->GetObject(i);
+
+            if (pObject)
+            {
+                pObjMan->ChangeObjectName(pObject, newName);
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnChangemovespeedIncrease()
+{
+    gSettings.cameraMoveSpeed += m_moveSpeedStep;
+    if (gSettings.cameraMoveSpeed < 0.01f)
+    {
+        gSettings.cameraMoveSpeed = 0.01f;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnChangemovespeedDecrease()
+{
+    gSettings.cameraMoveSpeed -= m_moveSpeedStep;
+    if (gSettings.cameraMoveSpeed < 0.01f)
+    {
+        gSettings.cameraMoveSpeed = 0.01f;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnChangemovespeedChangestep()
+{
+    bool ok = false;
+    int fractionalDigitCount = 5;
+    float step = aznumeric_caster(QInputDialog::getDouble(QApplication::activeWindow(), QObject::tr("Change Move Increase/Decrease Step"), QStringLiteral(""), m_moveSpeedStep, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), fractionalDigitCount, &ok));
+    if (ok)
+    {
+        m_moveSpeedStep = step;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnModifyAipointPicklink()
+{
+    // Special command to emulate pressing pick button in ai point.
+    CBaseObject* pObject = GetIEditor()->GetSelectedObject();
+    if (pObject && qobject_cast<CAIPoint*>(pObject))
+    {
+        ((CAIPoint*)pObject)->StartPick();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnModifyAipointPickImpasslink()
+{
+    // Special command to emulate pressing pick impass button in ai point.
+    CBaseObject* pObject = GetIEditor()->GetSelectedObject();
+    if (pObject && qobject_cast<CAIPoint*>(pObject))
+    {
+        ((CAIPoint*)pObject)->StartPickImpass();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPhysicsGetState()
+{
+    GetIEditor()->GetCommandManager()->Execute("physics.get_objects_state");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPhysicsResetState()
+{
+    GetIEditor()->GetCommandManager()->Execute("physics.reset_objects_state");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPhysicsSimulateObjects()
+{
+    GetIEditor()->GetCommandManager()->Execute("physics.simulate_objects");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnFileSavelevelresources()
+{
+    CGameResourcesExporter saver;
+    saver.GatherAllLoadedResources();
+    saver.ChooseDirectoryAndSave();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnClearRegistryData()
+{
+    if (QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Clear all sandbox registry data ?"),
+        QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    {
+        QSettings settings;
+        settings.clear();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnValidatelevel()
+{
+    // TODO: Add your command handler code here
+    CLevelInfo levelInfo;
+    levelInfo.Validate();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnValidateObjectPositions()
+{
+    IObjectManager* objMan = GetIEditor()->GetObjectManager();
+
+    if (!objMan)
+    {
+        return;
+    }
+
+    CErrorReport errorReport;
+    errorReport.SetCurrentFile("");
+    errorReport.SetImmidiateMode(false);
+
+    int objCount = objMan->GetObjectCount();
+    AABB bbox1;
+    AABB bbox2;
+    int bugNo = 0;
+    QString statTxt("");
+
+    std::vector<CBaseObject*> objects;
+    objMan->GetObjects(objects);
+
+    std::vector<CBaseObject*> foundObjects;
+
+    std::vector<GUID> objIDs;
+    bool reportVeg = false;
+
+    for (int i1 = 0; i1 < objCount; ++i1)
+    {
+        CBaseObject* pObj1 = objects[i1];
+
+        if (!pObj1)
+        {
+            continue;
+        }
+
+        // Ignore groups in search
+        if (pObj1->GetType() == OBJTYPE_GROUP)
+        {
+            continue;
+        }
+
+        // Object must have geometry
+        if (!pObj1->GetGeometry())
+        {
+            continue;
+        }
+
+        // Ignore solids
+        if (pObj1->GetType() == OBJTYPE_SOLID)
+        {
+            continue;
+        }
+
+        pObj1->GetBoundBox(bbox1);
+
+        // Check if object has vegetation inside its bbox
+        CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
+        if (pVegetationMap && !pVegetationMap->IsAreaEmpty(bbox1))
+        {
+            CErrorRecord error;
+            error.pObject = pObj1;
+            error.count = bugNo;
+            error.error = tr("%1 has vegetation object(s) inside").arg(pObj1->GetName());
+            error.description = "Vegetation left inside an object";
+            errorReport.ReportError(error);
+        }
+
+        // Check if object has other objects inside its bbox
+        foundObjects.clear();
+        objMan->FindObjectsInAABB(bbox1, foundObjects);
+
+        for (int i2 = 0; i2 < foundObjects.size(); ++i2)
+        {
+            CBaseObject* pObj2 = objects[i2];
+            if (!pObj2)
+            {
+                continue;
+            }
+
+            if (pObj2->GetId() == pObj1->GetId())
+            {
+                continue;
+            }
+
+            if (pObj2->GetParent())
+            {
+                continue;
+            }
+
+            if (pObj2->GetType() == OBJTYPE_SOLID)
+            {
+                continue;
+            }
+
+            if (stl::find(objIDs, pObj2->GetId()))
+            {
+                continue;
+            }
+
+            if ((!pObj2->GetGeometry() || pObj2->GetType() == OBJTYPE_SOLID) && (pObj2->GetType()))
+            {
+                continue;
+            }
+
+            pObj2->GetBoundBox(bbox2);
+
+            if (!bbox1.IsContainPoint(bbox2.max))
+            {
+                continue;
+            }
+
+            if (!bbox1.IsContainPoint(bbox2.min))
+            {
+                continue;
+            }
+
+            objIDs.push_back(pObj2->GetId());
+
+            CErrorRecord error;
+            error.pObject = pObj2;
+            error.count = bugNo;
+            error.error = tr("%1 inside %2 object").arg(pObj2->GetName(), pObj1->GetName());
+            error.description = "Object left inside other object";
+            errorReport.ReportError(error);
+            ++bugNo;
+        }
+
+        statTxt = tr("%1/%2 [Reported Objects: %3]").arg(i1).arg(objCount).arg(bugNo);
+        GetIEditor()->SetStatusText(statTxt.toLatin1().data());
+    }
+
+    if (errorReport.GetErrorCount() == 0)
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("No Errors Found"));
+    }
+    else
+    {
+        errorReport.Display();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainResizeterrain()
+{
+    if (!GetIEditor()->GetDocument()->IsDocumentReady())
+    {
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Please wait until previous operation will be finished."));
+        return;
+    }
+
+    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+
+    CNewLevelDialog dlg;
+    dlg.SetTerrainResolution(pHeightmap->GetWidth());
+    dlg.SetTerrainUnits(pHeightmap->GetUnitSize());
+    dlg.IsResize(true);
+    if (dlg.exec() != QDialog::Accepted)
+    {
+        return;
+    }
+
+    pHeightmap->ClearModSectors();
+
+    CUndoManager* undoMgr = GetIEditor()->GetUndoManager();
+    if (undoMgr)
+    {
+        undoMgr->Flush();
+    }
+
+    int resolution = dlg.GetTerrainResolution();
+    int unitSize = dlg.GetTerrainUnits();
+
+    if (resolution != pHeightmap->GetWidth() || unitSize != pHeightmap->GetUnitSize())
+    {
+        pHeightmap->Resize(resolution, resolution, unitSize, false);
+        UserExportToGame(true, false, false);
+    }
+
+    GetIEditor()->Notify(eNotify_OnTerrainRebuild);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateTerrainResizeterrain(QAction* action)
+{
+    action->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolsPreferences()
+{
+    EditorPreferencesDialog dlg(MainWindow::instance());
+    dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPrefabsMakeFromSelection()
+{
+    GetIEditor()->GetPrefabManager()->MakeFromSelection();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdatePrefabsMakeFromSelection(QAction* action)
+{
+    bool bInvalidSelection = false;
+    CSelectionGroup* pSel = GetIEditor()->GetSelection();
+    for (int i = 0; i < pSel->GetCount(); i++)
+    {
+        CBaseObject* pObj = pSel->GetObject(i);
+        if (pObj && qobject_cast<CPrefabObject*>(pObj) || pObj->GetGroup())
+        {
+            bInvalidSelection = true;
+            break;
+        }
+    }
+    action->setEnabled((!bInvalidSelection && pSel->GetCount() > 0));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnAddSelectionToPrefab()
+{
+    GetIEditor()->GetPrefabManager()->AddSelectionToPrefab();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateAddSelectionToPrefab(QAction* action)
+{
+    int nPrefabsFound = 0;
+    CSelectionGroup* pEditorSelection = GetIEditor()->GetSelection();
+    for (int i = 0; i < pEditorSelection->GetCount(); i++)
+    {
+        CBaseObject* pObj = pEditorSelection->GetObject(i);
+        if (qobject_cast<CPrefabObject*>(pObj))
+        {
+            nPrefabsFound++;
+        }
+    }
+    action->setEnabled((nPrefabsFound == 1 && pEditorSelection->GetCount() > 1));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCloneSelectionFromPrefab()
+{
+    std::vector<CBaseObject*> selectedObjects;
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+
+    for (int i = 0, count = pSelection->GetCount(); i < count; i++)
+    {
+        selectedObjects.push_back(pSelection->GetObject(i));
+    }
+
+    if (selectedObjects.empty())
+    {
+        return;
+    }
+
+    GetIEditor()->GetPrefabManager()->CloneObjectsFromPrefabs(selectedObjects);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateCloneSelectionFromPrefab(QAction* action)
+{
+    int nValidObjectsSelected = 0;
+    CSelectionGroup* pEditorSelection = GetIEditor()->GetSelection();
+    if (pEditorSelection->GetCount())
+    {
+        for (int i = 0; i < pEditorSelection->GetCount(); i++)
+        {
+            if (CBaseObject* pObject = pEditorSelection->GetObject(i))
+            {
+                if (qobject_cast<CPrefabObject*>(pObject->GetParent()))
+                {
+                    nValidObjectsSelected++;
+                }
+            }
+        }
+    }
+    action->setEnabled((nValidObjectsSelected == pEditorSelection->GetCount() && pEditorSelection->GetCount() > 0));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnExtractSelectionFromPrefab()
+{
+    std::vector<CBaseObject*> selectedObjects;
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+
+    for (int i = 0, count = pSelection->GetCount(); i < count; i++)
+    {
+        selectedObjects.push_back(pSelection->GetObject(i));
+    }
+
+    if (selectedObjects.empty())
+    {
+        return;
+    }
+
+    GetIEditor()->GetPrefabManager()->ExtractObjectsFromPrefabs(selectedObjects);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateExtractSelectionFromPrefab(QAction* action)
+{
+    int nValidObjectsSelected = 0;
+    CSelectionGroup* pEditorSelection = GetIEditor()->GetSelection();
+    if (pEditorSelection->GetCount())
+    {
+        for (int i = 0; i < pEditorSelection->GetCount(); i++)
+        {
+            if (CBaseObject* pObject = pEditorSelection->GetObject(i))
+            {
+                if (qobject_cast<CPrefabObject*>(pObject->GetParent()))
+                {
+                    nValidObjectsSelected++;
+                }
+            }
+        }
+    }
+    action->setEnabled((nValidObjectsSelected == pEditorSelection->GetCount() && pEditorSelection->GetCount() > 0));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPrefabsOpenAll()
+{
+    std::vector<CPrefabObject*> prefabObjects;
+    GetIEditor()->GetPrefabManager()->GetPrefabObjects(prefabObjects);
+    GetIEditor()->GetPrefabManager()->OpenPrefabs(prefabObjects, "Open all prefab objects");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPrefabsCloseAll()
+{
+    std::vector<CPrefabObject*> prefabObjects;
+    GetIEditor()->GetPrefabManager()->GetPrefabObjects(prefabObjects);
+    GetIEditor()->GetPrefabManager()->ClosePrefabs(prefabObjects, "Close all prefab objects");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnPrefabsRefreshAll()
+{
+    GetIEditor()->GetObjectManager()->SendEvent(EVENT_PREFAB_REMAKE);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnToolterrainmodifySmooth()
+{
+    GetIEditor()->GetCommandManager()->Execute("edit_tool.terrain_flatten");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainmodifySmooth()
+{
+    GetIEditor()->GetCommandManager()->Execute("edit_tool.terrain_smooth");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainVegetation()
+{
+    GetIEditor()->GetCommandManager()->Execute("edit_tool.vegetation_activate");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTerrainPaintlayers()
+{
+    GetIEditor()->GetCommandManager()->Execute("edit_tool.terrain_painter_activate");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchToDefaultCamera()
+{
+    CViewport* vp = GetIEditor()->GetViewManager()->GetSelectedViewport();
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(vp))
+    {
+        rvp->SetDefaultCamera();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSwitchToDefaultCamera(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    CViewport* pViewport = GetIEditor()->GetViewManager()->GetSelectedViewport();
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(pViewport))
+    {
+        action->setEnabled(true);
+        action->setChecked(rvp->IsDefaultCamera());
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchToSequenceCamera()
+{
+    CViewport* vp = GetIEditor()->GetViewManager()->GetSelectedViewport();
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(vp))
+    {
+        rvp->SetSequenceCamera();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSwitchToSequenceCamera(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+
+    CViewport* pViewport = GetIEditor()->GetViewManager()->GetSelectedViewport();
+
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(pViewport))
+    {
+        bool enableAction = false;
+
+        // only enable if we're editing a sequence in Track View and have cameras in the level
+        if (GetIEditor()->GetAnimation()->GetSequence())
+        {
+
+            AZ::EBusAggregateResults<AZ::EntityId> componentCameras;
+            Camera::CameraBus::BroadcastResult(componentCameras, &Camera::CameraRequests::GetCameras);
+
+            std::vector<CCameraObject*> legacyCameras;
+            ((CObjectManager*)GetIEditor()->GetObjectManager())->GetCameras(legacyCameras);
+
+            const int numCameras = legacyCameras.size() + componentCameras.values.size();
+
+            enableAction = (numCameras > 0);
+        }
+
+        action->setEnabled(enableAction);
+        action->setChecked(rvp->IsSequenceCamera());
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchToSelectedcamera()
+{
+    CViewport* vp = GetIEditor()->GetViewManager()->GetSelectedViewport();
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(vp))
+    {
+        rvp->SetSelectedCamera();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateSwitchToSelectedCamera(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    CBaseObject* pObject = GetIEditor()->GetSelectedObject();
+    AzToolsFramework::EntityIdList selectedEntityList;
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityList, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+    AZ::EBusAggregateResults<AZ::EntityId> cameras;
+    Camera::CameraBus::BroadcastResult(cameras, &Camera::CameraRequests::GetCameras);
+    bool isCameraComponentSelected = selectedEntityList.size() > 0 ? AZStd::find(cameras.values.begin(), cameras.values.end(), *selectedEntityList.begin()) != cameras.values.end() : false;
+    
+    CViewport* pViewport = GetIEditor()->GetViewManager()->GetSelectedViewport();
+    CRenderViewport* rvp = viewport_cast<CRenderViewport*>(pViewport);
+    if ((qobject_cast<CCameraObject*>(pObject) || isCameraComponentSelected) && rvp)
+    {
+        action->setEnabled(true);
+        action->setChecked(rvp->IsSelectedCamera());
+    }
+    else
+    {
+        action->setEnabled(false);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchcameraNext()
+{
+    CViewport* vp = GetIEditor()->GetActiveView();
+    if (CRenderViewport* rvp = viewport_cast<CRenderViewport*>(vp))
+    {
+        rvp->CycleCamera();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnMaterialAssigncurrent()
+{
+    GetIEditor()->ExecuteCommand("material.assign_to_selection");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnMaterialResettodefault()
+{
+    GetIEditor()->ExecuteCommand("material.reset_selection");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnMaterialGetmaterial()
+{
+    GetIEditor()->ExecuteCommand("material.select_from_object");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenMaterialEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::MaterialEditor);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenMannequinEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::Mannequin);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenCharacterTool()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::Geppetto);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenDataBaseView()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::DatabaseView);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenFlowGraphView()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::LegacyFlowGraph);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenAssetBrowserView()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::AssetBrowser);
+}
+
+////////////////////////////////////////////////////////////////////////////
+//CryGame
+////////////////////////////////////////////////////////////////////////////
+
+void CCryEditApp::OnGameP1AutoGen()
+{
+    // Generate the nav area of the tile the camera is currently located in.
+    PyScript::Execute("general.run_file_parameters(r'generate_nav_area.py','None')");
+    gEnv->pConsole->ExecuteString("ai_AutoGenTacticalPointNavArea");
+}
+////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenTrackView()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::TrackView);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenAudioControlsEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::AudioControlsEditor);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenUICanvasEditor()
+{
+    GetIEditor()->ExecuteCommand("general.open_pane 'UI Editor'");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenAIDebugger()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::AIDebugger);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenLayerEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::LegacyLayerEditor);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenTerrainEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::TerrainEditor);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnBrushMakehollow()
+{
+    GetIEditor()->ExecuteCommand("brush.make_hollow");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnBrushCsgcombine()
+{
+    GetIEditor()->ExecuteCommand("brush.csg_union");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnBrushCsgintersect()
+{
+    GetIEditor()->ExecuteCommand("brush.csg_intersection");
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnBrushCsgsubstruct()
+{
+    GetIEditor()->ExecuteCommand("brush.csg_difference");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnBrushCsgsubstruct2()
+{
+    GetIEditor()->ExecuteCommand("brush.csg_difference");
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSubobjectmodeVertex()
+{
+    SubObjectModeVertex();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSubobjectmodeEdge()
+{
+    SubObjectModeEdge();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSubobjectmodeFace()
+{
+    SubObjectModeFace();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSubobjectmodePivot()
+{
+    SubObjectModePivot();
+}
+
+void CCryEditApp::OnMaterialPicktool()
+{
+    GetIEditor()->SetEditTool("EditTool.PickMaterial");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCloudsCreate()
+{
+    StringDlg dlg(QObject::tr("Cloud Name"));
+    dlg.SetString(GetIEditor()->GetObjectManager()->GenerateUniqueObjectName( "Cloud" ));
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        GetIEditor()->BeginUndo();
+
+        CCloudGroup* group = (CCloudGroup*)GetIEditor()->NewObject("Cloud");
+        if (!group)
+        {
+            GetIEditor()->CancelUndo();
+            return;
+        }
+        GetIEditor()->GetObjectManager()->ChangeObjectName(group, dlg.GetString());
+
+        CSelectionGroup* selection = GetIEditor()->GetSelection();
+        selection->FilterParents();
+
+        int i;
+        std::vector<CBaseObjectPtr> objects;
+        for (i = 0; i < selection->GetFilteredCount(); i++)
+        {
+            objects.push_back(selection->GetFilteredObject(i));
+        }
+
+        // Snap center to grid.
+        Vec3 center = gSettings.pGrid->Snap(selection->GetCenter());
+        group->SetPos(center);
+
+        for (i = 0; i < objects.size(); i++)
+        {
+            GetIEditor()->GetObjectManager()->UnselectObject(objects[i]);
+            group->AddMember(objects[i]);
+        }
+        GetIEditor()->AcceptUndo("Cloud Make");
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedTerrain);
+        GetIEditor()->SelectObject(group);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCloudsDestroy()
+{
+    // Ungroup all groups in selection.
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo("CloudsDestroy");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            if (qobject_cast<CCloudGroup*>(obj))
+            {
+                ((CGroup*)obj)->Ungroup();
+                GetIEditor()->DeleteObject(obj);
+            }
+        }
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateCloudsDestroy(QAction* action)
+{
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj)
+    {
+        action->setEnabled(obj->metaObject() == &CCloudGroup::staticMetaObject);
+    }
+    else
+    {
+        OnUpdateSelected(action);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCloudsOpen()
+{
+    // Ungroup all groups in selection.
+    CSelectionGroup* sel = GetIEditor()->GetSelection();
+    if (!sel->IsEmpty())
+    {
+        CUndo undo("Clouds Open");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            if (obj && obj->metaObject() == &CCloudGroup::staticMetaObject)
+            {
+                ((CGroup*)obj)->Open();
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateCloudsOpen(QAction* action)
+{
+    BOOL bEnable = false;
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj)
+    {
+        if (obj->metaObject() == &CCloudGroup::staticMetaObject)
+        {
+            if (!((CGroup*)obj)->IsOpen())
+            {
+                bEnable = true;
+            }
+        }
+        action->setEnabled(bEnable);
+    }
+    else
+    {
+        OnUpdateSelected(action);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCloudsClose()
+{
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj)
+    {
+        GetIEditor()->BeginUndo();
+        ((CGroup*)obj)->Close();
+        GetIEditor()->AcceptUndo("Clouds Close");
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedTerrain);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateCloudsClose(QAction* action)
+{
+    BOOL bEnable = false;
+    CBaseObject* obj = GetIEditor()->GetSelectedObject();
+    if (obj && obj->metaObject() == &CCloudGroup::staticMetaObject)
+    {
+        if (((CGroup*)obj)->IsOpen())
+        {
+            bEnable = true;
+        }
+    }
+
+    action->setEnabled(bEnable);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnTimeOfDay()
+{
+    GetIEditor()->OpenView("Time Of Day");
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnResolveMissingObjects()
+{
+    GetIEditor()->GetObjectManager()->ResolveMissingObjects();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnChangeGameSpec(UINT nID)
+{
+    switch (nID)
+    {
+    case ID_GAME_ENABLELOWSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_LOW_SPEC);
+        break;
+    case ID_GAME_ENABLEMEDIUMSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_MEDIUM_SPEC);
+        break;
+    case ID_GAME_ENABLEHIGHSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_HIGH_SPEC);
+        break;
+    case ID_GAME_ENABLEVERYHIGHSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_VERYHIGH_SPEC);
+        break;
+    case ID_GAME_ENABLEDURANGOSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_DURANGO);
+        break;
+    case ID_GAME_ENABLEORBISSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_ORBIS);
+        break;
+    case ID_GAME_ENABLEANDROIDSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_ANDROID);
+        break;
+    case ID_GAME_ENABLEIOSSPEC:
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d", CONFIG_IOS);
+        break;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnUpdateGameSpec(QAction* action)
+{
+    Q_ASSERT(action->isCheckable());
+    int nCheck = 0;
+    bool enable = true;
+    switch (action->data().toInt())
+    {
+    case ID_GAME_ENABLELOWSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_LOW_SPEC)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_LOW_SPEC <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEMEDIUMSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_MEDIUM_SPEC)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_MEDIUM_SPEC <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEHIGHSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_HIGH_SPEC)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_HIGH_SPEC <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEVERYHIGHSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_VERYHIGH_SPEC)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_VERYHIGH_SPEC <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEDURANGOSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_DURANGO)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_DURANGO <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEORBISSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_ORBIS)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_ORBIS <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEANDROIDSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_ANDROID)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_ANDROID <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    case ID_GAME_ENABLEIOSSPEC:
+        if (GetIEditor()->GetEditorConfigSpec() == CONFIG_IOS)
+        {
+            nCheck = 1;
+        }
+        enable = CONFIG_IOS <= GetIEditor()->GetSystem()->GetMaxConfigSpec();
+        break;
+    }
+    action->setChecked(nCheck);
+    action->setEnabled(enable);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnGotoViewportSearch()
+{
+    if (MainWindow::instance())
+    {
+        CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
+        if (viewPane)
+        {
+            viewPane->SetFocusToViewportSearch();
+        }
+    }
+}
+
+RecentFileList* CCryEditApp::GetRecentFileList()
+{ 
+    static RecentFileList list;
+    return &list;
+};
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::AddToRecentFileList(const QString& lpszPathName)
+{
+    // In later MFC implementations (WINVER >= 0x0601) files must exist before they can be added to the recent files list.
+    // Here we override the new CWinApp::AddToRecentFileList code with the old implementation to remove this requirement.
+
+    if (GetRecentFileList())
+    {
+        GetRecentFileList()->Add(lpszPathName);
+    }
+
+    // write the list immediately so it will be remembered even after a crash
+    if (GetRecentFileList())
+    {
+        GetRecentFileList()->WriteList();
+    }
+    else
+    {
+        CLogFile::WriteLine("ERROR: Recent File List is NULL!");
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CCryEditApp::IsInRegularEditorMode()
+{
+    return !IsInTestMode() && !IsInPreviewMode()
+           && !IsInExportMode() && !IsInConsoleMode() && !IsInLevelLoadTestMode() && !GetIEditor()->IsInMatEditMode();
+}
+
+void CCryEditApp::OnOpenQuickAccessBar()
+{
+    if (m_pQuickAccessBar == NULL)
+    {
+        return;
+    }
+
+    CEditTool* pEditTool(GetIEditor()->GetEditTool());
+    if (pEditTool && pEditTool->IsNeedSpecificBehaviorForSpaceAcce())
+    {
+        return;
+    }
+
+    QRect geo = m_pQuickAccessBar->geometry();
+    geo.moveCenter(MainWindow::instance()->geometry().center());
+    m_pQuickAccessBar->setGeometry(geo);
+    m_pQuickAccessBar->setVisible(true);
+    m_pQuickAccessBar->setFocus();
+}
+
+void CCryEditApp::SetEditorWindowTitle(QString sTitleStr, QString sPreTitleStr, QString sPostTitleStr)
+{
+    if (MainWindow::instance() || m_pConsoleDialog)
+    {
+        QString platform = "";
+        const SFileVersion& v = GetIEditor()->GetFileVersion();
+
+#ifdef WIN64
+        platform = "[x64]";
+#else
+        platform = "[x86]";
+#endif //WIN64
+
+        if (sTitleStr.isEmpty())
+        {
+            sTitleStr = QObject::tr("Lumberyard Editor Beta %1 - Build %2").arg(platform).arg(LY_BUILD);
+        }
+
+        if (!sPreTitleStr.isEmpty())
+        {
+            sTitleStr.insert(0, sPreTitleStr);
+        }
+
+        if (!sPostTitleStr.isEmpty())
+        {
+            sTitleStr.insert(sTitleStr.length(), QStringLiteral(" - %1").arg(sPostTitleStr));
+        }
+
+        MainWindow::instance()->setWindowTitle(sTitleStr);
+        if (m_pConsoleDialog)
+        {
+            m_pConsoleDialog->setWindowTitle(sTitleStr);
+        }
+    }
+}
+
+namespace
+{
+    bool g_runScriptResult = false; // true -> success, false -> failure
+}
+
+namespace
+{
+    void PySetResultToSuccess()
+    {
+        g_runScriptResult = true;
+    }
+
+    void PySetResultToFailure()
+    {
+        g_runScriptResult = false;
+    }
+
+    void PyIdleWait(double timeInSec)
+    {
+        clock_t start = clock();
+        do
+        {
+            QEventLoop loop;
+            QTimer::singleShot(timeInSec * 1000, &loop, &QEventLoop::quit);
+            loop.exec();
+        } while ((double)(clock() - start) / CLOCKS_PER_SEC < timeInSec);
+    }
+}
+
+bool CCryEditApp::Command_ExportToEngine()
+{
+    return theApp.UserExportToGame(false, false, false, true);
+}
+
+
+void CCryEditApp::SubObjectModeVertex()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() != 1)
+    {
+        return;
+    }
+
+    CBaseObject* pSelObject = pSelection->GetObject(0);
+
+    if (pSelObject->GetType() == OBJTYPE_BRUSH)
+    {
+        GetIEditor()->ExecuteCommand("edit_mode.select_vertex");
+    }
+    else if (pSelObject->GetType() == OBJTYPE_SOLID)
+    {
+        PyScript::Execute("designer.select_vertexmode()");
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
+    }
+}
+
+void CCryEditApp::SubObjectModeEdge()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() != 1)
+    {
+        return;
+    }
+
+    CBaseObject* pSelObject = pSelection->GetObject(0);
+
+    if (pSelObject->GetType() == OBJTYPE_BRUSH)
+    {
+        GetIEditor()->ExecuteCommand("edit_mode.select_edge");
+    }
+    else if (pSelObject->GetType() == OBJTYPE_SOLID)
+    {
+        PyScript::Execute("designer.select_edgemode()");
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
+    }
+}
+
+void CCryEditApp::SubObjectModeFace()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() != 1)
+    {
+        return;
+    }
+
+    CBaseObject* pSelObject = pSelection->GetObject(0);
+
+    if (pSelObject->GetType() == OBJTYPE_BRUSH)
+    {
+        GetIEditor()->ExecuteCommand("edit_mode.select_face");
+    }
+    else if (pSelObject->GetType() == OBJTYPE_SOLID)
+    {
+        PyScript::Execute("designer.select_facemode()");
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
+    }
+}
+
+void CCryEditApp::SubObjectModePivot()
+{
+    CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+    if (pSelection->GetCount() != 1)
+    {
+        return;
+    }
+
+    CBaseObject* pSelObject = pSelection->GetObject(0);
+
+    if (pSelObject->GetType() == OBJTYPE_SOLID)
+    {
+        PyScript::Execute("designer.select_pivotmode()");
+    }
+    else
+    {
+        QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("The current selected object(s) do(es)n't support the mesh editing"));
+    }
+}
+
+namespace
+{
+    void PySetConfigSpec(int spec)
+    {
+        CUndo undo("Set Config Spec");
+        if (CUndo::IsRecording())
+        {
+            CUndo::Record(new CUndoConficSpec());
+        }
+        GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)spec);
+    }
+}
+
+
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToSuccess, general, set_result_to_success,
+    "Sets the result of a script execution to success. Used only for Sandbox AutoTests.",
+    "general.set_result_to_success()");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToFailure, general, set_result_to_failure,
+    "Sets the result of a script execution to failure. Used only for Sandbox AutoTests.",
+    "general.set_result_to_failure()");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleWait, general, idle_wait,
+    "Waits idling for a given seconds. Primarily used for auto-testing.",
+    "general.idle_wait(double time)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CCryEditApp::Command_ExportToEngine, general, export_to_engine,
+    "Exports the current level to the engine.",
+    "general.export_to_engine()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetConfigSpec, general, set_config_spec,
+    "Sets the system config spec.",
+    "general.set_config_spec(int specNumber)");
+
+REGISTER_PYTHON_ENUM_BEGIN(ESystemConfigSpec, general, system_config_spec)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_CUSTOM, custom)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_LOW_SPEC, low)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_MEDIUM_SPEC, medium)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_HIGH_SPEC, high)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_VERYHIGH_SPEC, veryhigh)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_DURANGO, durango)
+REGISTER_PYTHON_ENUM_ITEM(CONFIG_ORBIS, orbis)
+REGISTER_PYTHON_ENUM_END
+
+CMainFrame * CCryEditApp::GetMainFrame() const
+{
+    return MainWindow::instance()->GetOldMainFrame();
+}
+
+void CCryEditApp::OnOpenProjectConfiguratorGems()
+{
+    ToProjectConfigurator("You must use the Project Configurator to enable gems for your project. \nDo you want to save your changes and close the editor before continuing to the Project Configurator?", "Editor", "Gems settings");
+}
+
+void CCryEditApp::OnOpenProjectConfiguratorSwitchProject()
+{
+    ToProjectConfigurator("You must use the Project Configurator to set a new default project. \nDo you want to save your changes and close the editor before continuing to the Project Configurator?", "Editor", "Project Selection");
+}
+
+bool CCryEditApp::ToProjectConfigurator(const char* msg, const char* caption, const char* location)
+{
+    if (ToExternalToolPrompt(msg, caption) &&
+        ToExternalToolSave() &&
+        OpenProjectConfigurator(location))
+    {
+        MainWindow::instance()->close();
+        return true;
+    }
+    return false;
+}
+
+void CCryEditApp::OnRefreshAssetDatabases()
+{
+    CAssetBrowserManager::Instance()->RefreshAssetDatabases();
+}
+
+bool CCryEditApp::OpenProjectConfigurator(const char* startPage) const
+{
+#ifdef Q_OS_WIN
+    const char* projectConfigurator = "ProjectConfigurator.exe";
+#else
+    const char* projectConfigurator = "ProjectConfigurator";
+#endif
+
+    QDir appDirectory(QCoreApplication::applicationDirPath());
+
+    // The project configurator builds for internal devs to the same
+    // directory as the Lumberyard Editor executable.
+    // For pre-built installations, it goes to dev/Tools/LmbrSetup/{PLATFORM}/
+    QString projectConfiguratorPath = appDirectory.filePath(projectConfigurator);
+
+    if (!QFile::exists(projectConfiguratorPath))
+    {
+        appDirectory.cdUp();
+        appDirectory.cd("Tools");
+        appDirectory.cd("LmbrSetup");
+
+#ifdef Q_OS_WIN
+        appDirectory.cd("Win");
+#elif defined(Q_OS_MACOS)
+        appDirectory.cd("Mac");
+#else
+#error Platform undefined for loading the Project Configurator!
+#endif
+
+        projectConfiguratorPath = appDirectory.filePath(projectConfigurator);
+    }
+
+    bool success = QProcess::startDetached(
+        projectConfiguratorPath,
+        { "-s", startPage, "-i", QString().setNum(GetCurrentProcessId()), "-e", "1" },
+        QCoreApplication::applicationDirPath()
+    );
+
+    if (!success)
+    {
+#ifdef Q_OS_WIN
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("The Project Configurator executable (ProjectConfigurator.exe) could not be found. Please ensure that it is installed in:\n%1\nand try again.").arg(appDirectory.absolutePath()));
+#else
+        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("The ProjectConfigurator executable could not be found. Please ensure that it is installed in:\n%1\nand try again.").arg(appDirectory.absolutePath()));
+#endif
+    }
+
+    return success;
+}
+
+bool CCryEditApp::OpenSetupAssistant() const
+{
+    QDir appDirectory(QCoreApplication::applicationDirPath());
+    appDirectory.cdUp();
+
+#ifdef Q_OS_WIN32
+    QString setupAssistantFilePath = appDirectory.absoluteFilePath("Tools/LmbrSetup/Win/SetupAssistant.exe");
+#elif defined(Q_OS_MACOS)
+    QString setupAssistantFilePath = appDirectory.absoluteFilePath("Tools/LmbrSetup/Mac/SetupAssistant.app/Contents/MacOS/SetupAssistant");
+#else
+#error Need to determine the path for the SetupAssistant for this platform!
+#endif
+    QFile launcherFile(setupAssistantFilePath);
+    //Check whether Lumberyard Setup Assistant is present
+    if (launcherFile.exists())
+    {
+        //run the launcher
+        if (QProcess::startDetached(setupAssistantFilePath, {}) == false)
+        {
+#ifdef Q_OS_WIN
+            QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("The Setup Assistant executable (SetupAssistant.exe) failed to launch. Please ensure that it is installed in:\n%1\nand try again.").arg(setupAssistantFilePath));
+#else
+            QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("The SetupAssistant application failed to launch. Please ensure that it is installed in:\n%1\nand try again.").arg(setupAssistantFilePath));
+#endif
+            return false;
+        }
+    }
+    else
+    {
+        //Show an error message to user
+        QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Lumberyard Setup Assistant not found"), QObject::tr("SetupAssistant.exe not found. Please locate and run it first"));
+        return false;
+    }
+
+    return true;
+}
+
+bool CCryEditApp::ToExternalToolPrompt(const char* msg, const char* caption)
+{
+    return QMessageBox::warning(QApplication::activeWindow(), caption, msg, QMessageBox::Save | QMessageBox::Cancel) == QMessageBox::Save;
+}
+
+bool CCryEditApp::ToExternalToolSave()
+{
+    return (GetIEditor()->GetGameEngine()->IsLevelLoaded() &&
+            GetIEditor()->GetDocument()->Save()) ||
+            GetIEditor()->GetDocument()->CanCloseFrame(/*static_cast<CMainFrame*>(m_pMainWnd)*/nullptr);
+}
+
+void CCryEditApp::OnError(AzFramework::AssetSystem::AssetSystemErrors error)
+{
+    AZStd::string errorMessage = "";
+
+    switch (error)
+    {
+    case AzFramework::AssetSystem::ASSETSYSTEM_FAILED_TO_LAUNCH_ASSETPROCESSOR:
+        errorMessage = AZStd::string::format("Failed to start the Asset Processor.\r\nPlease make sure that AssetProcessor.exe is available in the same folder the Editor is in.\r\n");
+        break;
+    case AzFramework::AssetSystem::ASSETSYSTEM_FAILED_TO_CONNECT_TO_ASSETPROCESSOR:
+        errorMessage = AZStd::string::format("Failed to connect to the Asset Processor.\r\nPlease make sure that AssetProcessor.exe is available in the same folder the Editor is in and another copy is not already running somewhere else.\r\n");
+        break;
+    }
+
+    CryMessageBox(errorMessage.c_str(), "Error", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+}
+
+void CCryEditApp::OnOpenProceduralMaterialEditor()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::SubstanceEditor);
+}
+
+#if defined(AZ_PLATFORM_WINDOWS)
+//Due to some laptops not autoswitching to the discrete gpu correctly we are adding these 
+//dllspecs as defined in the amd and nvidia white papers to 'force on' the use of the 
+//discrete chips.  This will be overriden by users setting application profiles 
+//and may not work on older drivers or bios. In theory this should be enough to always force on 
+//the discrete chips.
+
+//http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
+//https://community.amd.com/thread/169965
+
+// It is unclear if this is also needed for linux or osx at this time(22/02/2017)
+extern "C"
+{
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+    __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+#endif
+
+#ifdef Q_OS_WIN
+#pragma comment(lib, "Shell32.lib")
+#ifdef _DEBUG
+#pragma comment(lib, "qtmaind.lib")
+#else
+#pragma comment(lib, "qtmain.lib")
+#endif
+#endif
+
+class ForceCommandLineArguments
+{
+public:
+    ForceCommandLineArguments(int argc, char** argv)
+    {
+        // we need to force the dpi awareness setting on Windows to 1.
+        // Qt doesn't currently expose a mechanism to do that other than via
+        // command line arguments or via a qt.conf file.
+        // I didn't want to force the build system to copy the qt.conf
+        // file around and ensure that it's in the same directory as the executable
+        // so instead, we do this.
+
+        for (int i = 0; i < argc; i++)
+        {
+            m_argStrings.push_back(argv[i]);
+        }
+
+#if defined(AZ_PLATFORM_WINDOWS)
+        m_argStrings.push_back("-platform");
+        m_argStrings.push_back("windows:dpiawareness=1");
+#endif
+        for (AZStd::string& arg : m_argStrings)
+        {
+            m_argChars.push_back(arg.data());
+        }
+
+        m_argC = (int)m_argChars.size();
+    }
+
+    char** GetArgV() { return &m_argChars[0]; }
+    int& GetArgC() { return m_argC; }
+
+private:
+    AZStd::vector<AZStd::string> m_argStrings;
+    AZStd::vector<char*> m_argChars;
+    int m_argC;
+};
+
+int main(int argc, char* argv[])
+{
+    // this does some magic to set the current directory...
+    {
+        QCoreApplication app(argc, argv);
+        CCryEditApp::InitDirectory();
+    }
+
+    int ret = 0;
+    char descriptorPath[AZ_MAX_PATH_LEN] = { 0 };
+    {
+        CEngineConfig engineCfg;
+
+        azstrcat(descriptorPath, AZ_MAX_PATH_LEN, engineCfg.m_gameFolder);
+        azstrcat(descriptorPath, AZ_MAX_PATH_LEN, "/Config/Editor.xml");
+
+        AzFramework::Application::StartupParameters params;
+#ifdef Q_OS_MAC
+        params.m_appRootOverride = "";
+#endif
+
+        // Must be done before creating QApplication, otherwise asserts when we alloc
+        AZToolsApp.Start(descriptorPath, params);
+        if (AZToolsApp.IsStartupAborted())
+        {
+            return -1;
+        }
+    }
+
+    AzQtComponents::PrepareQtPaths();
+
+    // Must be set before QApplication is initialized, so that we support HighDpi monitors, like the Retina displays
+    // on Windows 10
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
+    // QtOpenGL attributes and surface format setup.
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts, true);
+    QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(8);
+    format.setVersion(2, 1);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    format.setSamples(8);
+    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setSwapInterval(0);
+#ifdef AZ_DEBUG_BUILD
+    format.setOption(QSurfaceFormat::DebugContext);
+#endif
+    QSurfaceFormat::setDefaultFormat(format);
+
+    Editor::EditorQtApplication::InstallQtLogHandler();
+
+    ForceCommandLineArguments commandLine(argc, argv);
+    Editor::EditorQtApplication app(commandLine.GetArgC(), commandLine.GetArgV());
+
+    AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyQtApplicationAvailable, &app);
+
+#if defined(AZ_PLATFORM_APPLE_OSX)
+    // Native menu bars do not work on macOS due to all the tool dialogs
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
+#endif
+
+
+
+    CCryEditApp::instance()->InitInstance();
+    app.EnableOnIdle();
+    app.ResetIdleTimer();
+    ret = app.exec();
+    CCryEditApp::instance()->ExitInstance();
+    return ret;
+}
+
+namespace
+{
+    //! Launches a detached process
+    //! \param process The path to the process to start
+    //! \param args Space separated list of arguments to pass to the process on start.
+    void PyStartProcessDetached(const char* process, const char* args)
+    {
+        // Build the arguments as a QStringList
+        AZStd::vector<AZStd::string> tokens;
+
+        // separate the string based on spaces for paths like "-launch", "lua", "-files";
+        // also separate the string and keep spaces inside the folder path;
+        // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\empty.lua;
+        // Ex: C:\dev\Foundation\dev\Cache\SamplesProject\pc\samplesproject\scripts\components\a a\'empty'.lua;
+        AZStd::string currentStr(args);
+        AZStd::size_t firstQuotePos = AZStd::string::npos;
+        AZStd::size_t secondQuotePos = 0;
+        AZStd::size_t pos = 0;
+
+        while (!currentStr.empty())
+        {
+            firstQuotePos = currentStr.find_first_of('\"');
+            pos = currentStr.find_first_of(" ");
+
+            if ((firstQuotePos != AZStd::string::npos) && (firstQuotePos < pos || pos == AZStd::string::npos))
+            {
+                secondQuotePos = currentStr.find_first_of('\"', firstQuotePos + 1);
+                if (secondQuotePos == AZStd::string::npos)
+                {
+                    AZ_Warning("PyStartProcessDetached", false, "String tokenize failed, no matching \" found.");
+                    return;
+                }
+
+                AZStd::string newElement(AZStd::string(currentStr.data() + (firstQuotePos + 1), (secondQuotePos - 1)));
+                tokens.push_back(newElement);
+
+                currentStr = currentStr.substr(secondQuotePos + 1);
+
+                firstQuotePos = AZStd::string::npos;
+                secondQuotePos = 0;
+                continue;
+            }
+            else
+            {
+                if (pos != AZStd::string::npos)
+                {
+                    AZStd::string newElement(AZStd::string(currentStr.data() + 0, pos));
+                    tokens.push_back(newElement);
+                    currentStr = currentStr.substr(pos + 1);
+                }
+                else
+                {
+                    tokens.push_back(AZStd::string(currentStr));
+                    break;
+                }
+            }
+        }
+
+        QStringList argsList;
+        for (const auto& arg : tokens)
+        {
+            argsList.push_back(QString(arg.c_str()));
+        }
+
+        // Launch the process
+        QProcess::startDetached(
+            process,
+            argsList,
+            QCoreApplication::applicationDirPath()
+            );
+    }
+
+    //! Launches the Lua Editor/Debugger (Woodpecker)
+    //! \param files A space separated list of aliased paths
+    void PyLaunchLUAEditor(const char* files)
+    {
+        AZStd::string args = "-launch lua";
+        if (files && strlen(files) > 0)
+        {
+            AZStd::vector<AZStd::string> resolvedPaths;
+
+            AZStd::vector<AZStd::string> tokens;
+
+            AzFramework::StringFunc::Tokenize(files, tokens, '|');
+
+            for (const auto& file : tokens)
+            {
+                char resolved[AZ_MAX_PATH_LEN];
+
+                AZStd::string fullPath = Path::GamePathToFullPath(file.c_str()).toLatin1().data();
+                azstrncpy(resolved, AZ_MAX_PATH_LEN, fullPath.c_str(), fullPath.size());
+
+                if (AZ::IO::FileIOBase::GetInstance()->Exists(resolved))
+                {
+                    AZStd::string current = '\"' + AZStd::string(resolved) + '\"';
+                    AZStd::replace(current.begin(), current.end(), '\\', '/');
+                    resolvedPaths.push_back(current);
+                }
+            }
+
+            if (!resolvedPaths.empty())
+            {
+                for (const auto& resolvedPath : resolvedPaths)
+                {
+                    args.append(AZStd::string::format(" -files %s", resolvedPath.c_str()));
+                }
+            }
+        }
+
+        AZStd::string cmdLine = AZStd::string::format("general.start_process_detached 'LuaIDE.exe' '%s'", args.c_str());
+        GetIEditor()->ExecuteCommand(cmdLine.c_str());
+    }
+}
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyStartProcessDetached, general, start_process_detached,
+    "Launches a detached process with an optional space separated list of arguments.",
+    "general.start_process_detached(process, args)"
+    );
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLaunchLUAEditor, general, launch_lua_editor,
+    "Launches the Lua editor, may receive a list of space separate file paths, or an empty string to only open the editor.",
+    "general.launch_lua_editor(files)"
+    );
+
+#include <CryEdit.moc>

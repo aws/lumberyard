@@ -1,0 +1,37 @@
+{
+    "name": "SDL2",
+    "source": "@ROOT@/Code/SDKs/SDL2",
+    "description": "Simple DirectMedia Layer Library (https://www.libsdl.org/download-2.0.php)",
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "darwin_x64": {
+            "includes": [
+                "include/mac"
+            ],
+            "libpath": [
+                "lib/mac"
+            ],
+            "sharedlibpath": [
+                "lib/mac"
+            ],
+            "lib": [
+                "libSDL2.a"
+            ],
+            "shared": [
+                "libSDL2.dylib"
+            ]
+        },
+        "linux_x64": {
+            "includes": [
+                "include/linux"
+            ],
+            "libpath": [
+                "lib/linux"
+            ],
+            "lib": [
+                "libSDL2.a"
+            ]
+        }
+    }
+}

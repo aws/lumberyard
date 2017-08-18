@@ -1,0 +1,59 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+def build(bld):
+
+    if 'NOMINMAX' in bld.env['DEFINES']:
+        bld.env['DEFINES'].remove('NOMINMAX')
+
+    w_configuration = 'release'
+    if bld.env['CONFIGURATION'] != []:
+        w_configuration = bld.env['CONFIGURATION']
+
+    # If we are being executed for project_generator step then default the
+    # configuration to debug as that will be most likely what we want to run
+    # from an IDE
+    if 'project' in w_configuration:
+        w_configuration = 'debug'
+
+    # Determine the OS subpath inside tools
+    os_sub_path = 'x64'
+    if 'darwin' in bld.env['PLATFORM']:
+        os_sub_path = 'osx'
+
+    bld.CryConsoleApplication(
+    
+        # Settings
+        target          = 'CrySCompileServer',
+        vs_filter       = 'Tools',
+        copyright_org   = 'Amazon-CryTek',
+        file_list       = 'cryscompileserver.waf_files',
+        platforms       = ['win'],
+        configurations  = ['debug', 'debug_dedicated', 'profile', 'profile_dedicated'],
+        disable_pch     = True,
+
+        includes        = [bld.Path('Code/Tools/CrySCompileServer/CrySCompileServer')],
+        use             = ['AzFramework'],
+        uselib          = ['ZLIB'],
+
+        output_folder   = bld.Path('Tools/CrySCompileServer/{}/{}'.format(os_sub_path, w_configuration)),
+
+        # Platform Specific
+        win_x64_vs2013_output_file_name = 'CrySCompileServer_vc120x64',
+        win_x64_vs2015_output_file_name = 'CrySCompileServer_vc140x64',
+        win_x64_lib                     = ['wsock32'],
+        win_defines                     = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE'],
+        win_cxxflags                    = ['/EHsc'],
+    )

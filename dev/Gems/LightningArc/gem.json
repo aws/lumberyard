@@ -1,0 +1,20 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "d378b5a7b47747d0a7aa741945df58f3",
+            "VersionConstraints": [
+                "~>1.0"
+            ],
+            "_comment": "GameEffectSystem"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "LinkType": "Dynamic",
+    "Name": "LightningArc",
+    "Summary": "Provides an entity that can be used to produce electricity effects.",
+    "Tags": ["Weather", "Weather Effects","Sky"],
+    "DisplayName": "Lightning Arc",
+    "Uuid": "4c28210b23544635aa15be668dbff15d",
+    "Version": "1.0.0",
+    "IconPath": "preview.png"
+}

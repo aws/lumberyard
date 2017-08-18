@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{ea25df57-d41d-45ac-b2d5-2d009a69b402}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>
+    </StartupFile>
+    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\AccountUtils\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+    <Name>LambdaFunctionCode</Name>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="api\account.py" />
+    <Compile Include="api\admin_accounts.py" />
+    <Compile Include="api\admin_accountSearch.py" />
+    <Compile Include="api\admin_identityProviders.py" />
+    <Compile Include="api\admin_identityProviders_Cognito_users.py" />
+    <Compile Include="api\admin_identityProviders_Cognito_users_confirmSignUp.py" />
+    <Compile Include="api\admin_identityProviders_Cognito_users_resetUserPassword.py" />
+    <Compile Include="api\service_status.py" />
+    <Compile Include="api\__init__.py" />
+    <Compile Include="CloudCanvas\test\test_settings.py" />
+    <Compile Include="CloudCanvas\test\__init__.py" />
+    <Compile Include="CloudCanvas\__init__.py" />
+    <Compile Include="custom_auth_flow.py" />
+    <Compile Include="errors.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="api" />
+    <Folder Include="CloudCanvas" />
+    <Folder Include="CloudCanvas\test" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include=".ignore" />
+    <Content Include=".import">
+      <SubType>Code</SubType>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

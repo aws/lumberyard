@@ -1,0 +1,20 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"main.cpp",
+			"moc.cpp",
+			"stdafx.h",
+			"stdafx.cpp"
+		]
+	},
+	"auto":
+	{
+		"Root":
+		[
+			"ExampleWindow.cpp",
+			"ExampleWindow.h"
+		]
+	}
+}

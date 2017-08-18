@@ -1,0 +1,13 @@
+{
+   "none":{
+      "Header Files":[
+         "../AppleLaunchersCommon/AppleLauncher.h"
+      ],
+      "Source Files":[
+         "../AppleLaunchersCommon/AppleLauncher.cpp",
+         "IosLumberyardApplication.mm",
+         "IosLumberyardApplicationDelegate.mm",
+         "main.cpp"
+      ]
+   }
+}

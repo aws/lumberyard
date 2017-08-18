@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Root": [
+            "LmbrAWS.h",
+            "StdAfx.cpp",
+            "StdAfx.h",
+            "resource.h"
+        ]
+    }
+}

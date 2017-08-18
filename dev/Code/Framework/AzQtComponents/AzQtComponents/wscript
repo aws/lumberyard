@@ -1,0 +1,110 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+
+
+########################################################################################
+#
+#
+# This wscript generates 3 targets:
+#   * AzQtComponents - a shared library for the main LY Editor and plugins
+#   * AzQtComponents_static - a static library for the AssetProcessor
+#   * AmazonStyle executable - an executable to showcase the above library
+#
+########################################################################################
+
+
+def build(bld):
+
+    def CreateSettingsDictionary(**kw):
+        return kw
+
+    def MergeSettingsDictionaries(sharedSettings, **kw):
+        """
+        Merge two dictionaries, overriding sharedSettings with those in kw if there's a conflict
+        """
+        mergedSettings = sharedSettings.copy()
+        
+        for key in kw:
+            mergedSettings[key] = kw[key]
+
+        return mergedSettings
+
+    # we share the settings between both the static and the shared lib
+    sharedCompileSettings = CreateSettingsDictionary(
+        vs_filter       = 'AZ Framework',
+        file_list       = ['azqtcomponents.waf_files'],
+        platforms       = ['win', 'darwin'],
+        configurations  = ['all'],
+        disable_pch     = True,
+        features        = ['qt5'],
+        autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+        use             = ['AzToolsFramework'],
+        includes        = ['..'],
+        export_includes = ['..'],
+
+        win_defines     = ['WIN64', 'KDAB_MAC_PORT'],
+        win_lib         = ['User32'],
+
+        win_cxxflags    = [
+            '/W4', # warning level
+            '/wd4127', # warning caused by QVector and QRect; disabling in this project because it's not useful
+            '/wd4351', # warning caused by QVector and QPainter; disabling in this project because it's not useful
+        ],
+        darwin_cxxflags = [
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            '-Wno-non-pod-varargs', # ToDo: fixme (moved from the global clang settings)
+        ],
+
+        darwin_enable_rtti = True,
+    )
+
+
+    sharedLibarySettings = MergeSettingsDictionaries(sharedCompileSettings,
+
+        target                  = 'AzQtComponents',
+        defines                 = ['QT_QML_DEBUG', 'AZ_QT_COMPONENTS_EXPORT_SYMBOLS'],
+
+        # Testing
+        test_all_file_list      = ['azqtcomponents_testing.waf_files']
+    )
+
+    # using CryPipelineModule here, to prevent it from being linked monolithically in release builds.
+    bld.CryPipelineModule(**sharedLibarySettings)
+
+    staticLibarySettings = MergeSettingsDictionaries(sharedCompileSettings,
+        target                  = 'AzQtComponents_static',
+        defines                 = ['AZ_QT_COMPONENTS_STATIC'],
+        export_defines          = ['AZ_QT_COMPONENTS_STATIC']
+    )
+
+    bld.CryEngineStaticLibrary(**staticLibarySettings)
+
+
+
+    bld.LumberyardApp(
+        target          = 'AmazonStyle',
+        file_list       = ['azqtcomponents_style.waf_files'],
+        platforms       = ['win', 'darwin'],
+        configurations  = ['debug_all', 'profile_all'],
+        vs_filter       = 'AZ Framework',
+
+        use             = ['AzQtComponents_static'],
+        includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/StyleGallery')],
+
+        features        = ['qt5'],
+
+        uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+
+        darwin_rpath    = ['@executable_path/../Bin64/qtlibs_mac/Frameworks'],
+    )

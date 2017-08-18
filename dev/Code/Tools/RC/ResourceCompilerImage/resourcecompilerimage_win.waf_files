@@ -1,0 +1,17 @@
+{
+    
+    "none":
+    {
+        "Root":
+        [
+            "CheckBoxView.cpp",
+            "EditSliderPair.cpp",
+            "FloatEditView.cpp",
+            "SliderView.cpp",
+            "CheckBoxView.h",
+            "EditSliderPair.h",
+            "FloatEditView.h",
+            "SliderView.h"
+        ]
+    }
+}

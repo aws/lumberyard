@@ -1,0 +1,23 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/LyShineExamples/LyShineExamplesBus.h"
+        ],
+        "Source": [
+            "Source/LyShineExamplesModule.cpp",
+            "Source/LyShineExamplesSystemComponent.cpp",
+            "Source/LyShineExamplesSystemComponent.h",
+            "Source/UiDynamicContentDatabase.cpp",
+            "Source/UiDynamicContentDatabase.h",
+            "Source/UiDynamicContentDatabaseFlowNodes.cpp",
+            "Source/UiTestScrollBoxDataProviderComponent.h",
+            "Source/UiTestScrollBoxDataProviderComponent.cpp"
+       ]
+    }
+}

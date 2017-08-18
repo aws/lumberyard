@@ -1,0 +1,16 @@
+{
+ "none":{
+		"Header Files":
+		[
+			"StdAfx.h"
+		],			
+		"Source Files":
+		[
+			"Main.cpp"
+		],
+		"Resource Files":
+		[
+			"resource.h"
+		]
+	}
+}

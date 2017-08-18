@@ -1,0 +1,53 @@
+{
+    "name": "libav",
+    "source": "@ROOT@/Code/SDKs/libav",
+    "description": "Support library for libav",
+    "aliases": {
+        "lib_names": [
+            "avcodec",
+            "avformat",
+            "swscale",
+            "avutil",
+            "avfilter",
+            "avdevice",
+            "avresample"
+        ],
+        "dll_names": [
+            "swscale-3",
+            "avcodec-56",
+            "avdevice-55",
+            "avfilter-5",
+            "avformat-56",
+            "avutil-54",
+            "avresample-2",
+            "libogg-0",
+            "libopus-0",
+            "libvo-aacenc-0",
+            "libvorbis-0",
+            "libvorbisenc-2",
+            "zlib1"
+        ]
+    },
+    "includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "importlibpath": [
+                "bin"
+            ],
+            "sharedlibpath": [
+                "bin"
+            ],
+            "import": [
+                "${lib_names}.lib"
+            ],
+            "shared": [
+                "${dll_names}.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013"
+    }
+}

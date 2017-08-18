@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ShapePanel</class>
+ <widget class="QWidget" name="ShapePanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>257</width>
+    <height>297</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <widget class="QLabel" name="numberOfPointsLabel">
+     <property name="text">
+      <string>Num Points: 23</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QEditorToolButton" name="editButton">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>30</height>
+      </size>
+     </property>
+     <property name="text">
+      <string>Edit Shape</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="useTransformGizmoCheck">
+     <property name="text">
+      <string>Use Transform Gizmo</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout" columnstretch="1,1">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="reversePathButton">
+       <property name="text">
+        <string>Reverse Path</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QEditorToolButton" name="splitButton">
+       <property name="text">
+        <string>Split</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="resetHeightButton">
+       <property name="text">
+        <string>Reset Height</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="targetEntitiesLabel">
+     <property name="text">
+      <string>Target Entities:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListView" name="targetEntitiesListView">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>72</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>72</height>
+      </size>
+     </property>
+     <property name="uniformItemSizes">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPickObjectButton" name="pickButton">
+       <property name="text">
+        <string>Pick</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="removeButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Remove</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="selectButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Select</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="doubleClickExplanationLabel">
+     <property name="text">
+      <string>Double-Click to Select</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignHCenter|Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QPickObjectButton</class>
+   <extends>QPushButton</extends>
+   <header>Controls/PickObjectButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QEditorToolButton</class>
+   <extends>QPushButton</extends>
+   <header>Controls/ToolButton.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>editButton</tabstop>
+  <tabstop>useTransformGizmoCheck</tabstop>
+  <tabstop>reversePathButton</tabstop>
+  <tabstop>splitButton</tabstop>
+  <tabstop>resetHeightButton</tabstop>
+  <tabstop>targetEntitiesListView</tabstop>
+  <tabstop>pickButton</tabstop>
+  <tabstop>removeButton</tabstop>
+  <tabstop>selectButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

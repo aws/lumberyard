@@ -1,0 +1,23 @@
+<Material MtlFlags="524544">
+ <SubMaterials>
+  <Material Name="body" MtlFlags="524416" Shader="Illum" GenMask="81" StringGenMask="%ALLOW_SILHOUETTE_POM%BUMP_MAP" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.24228115,0.24228115,0.24228115" Specular="0.0069954107,0.0069954107,0.0069954107" Emissive="0,0,0" Shininess="45" Opacity="1" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/rooster/textures/rooster_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/characters/animals/birds/rooster/textures/rooster_ddn.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="feathers" MtlFlags="524418" Shader="Illum" GenMask="80081" StringGenMask="%ALLOW_SILHOUETTE_POM%BUMP_MAP%GLOSS_MAP" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.81484658,0.81484658,0.81484658" Specular="0.12477182,0.12477182,0.12477182" Emissive="0,0,0" Shininess="5" Opacity="1" AlphaTest="0.27000001" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/rooster/textures/feathers_diff.tif"/>
+    <Texture Map="Specular" File="objects/characters/animals/birds/rooster/textures/feathers_spec.tif"/>
+    <Texture Map="Bumpmap" File="objects/characters/animals/birds/rooster/textures/feathers_ddn.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="proxy" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_flesh" MatTemplate="" Diffuse="1,0,0" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

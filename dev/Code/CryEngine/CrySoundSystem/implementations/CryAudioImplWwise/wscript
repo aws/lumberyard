@@ -1,0 +1,60 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+
+def build(bld):
+
+    bld.CryEngineModule(
+
+        # Settings
+        target               = 'CryAudioImplWwise',
+        vs_filter            = 'CryEngine/Audio/Implementations',
+        copyright_org        = 'Amazon-CryTek',
+        file_list            = 'audioimplwwise.waf_files',
+        platforms            = ['win', 'android', 'darwin', 'ios', 'appletv'],
+        configurations       = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
+        pch                  = 'StdAfx.cpp',
+        use                  = ['AzCore'],
+        uselib               = ['WWISE'],
+        includes             = ['.',
+                                '../../Common'],
+
+        # Platform Specific
+        win_cxxflags         = ['/wd4819'],
+        win_lib              = ['Ole32', 'dxguid', 'ws2_32', 'Dsound', 'XINPUT9_1_0', 'Msacm32'],
+
+       
+       
+
+       
+
+        ios_lib              = ['AkAACDecoder'],
+        ios_framework        = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],
+
+        appletv_lib          = ['AkAACDecoder'],
+        appletv_framework    = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],
+
+        darwin_x64_lib       = ['AkAACDecoder'],
+        darwin_x64_framework = ['AVFoundation', 'AudioToolbox', 'CoreAudio'],
+
+        linux_uselib         = ['SDL2'],
+        linux_lib            = ['pthread'],
+
+        android_lib          = ['OpenSLES'],
+        android_use          = ['SDL2_Android'],
+
+        # Testing
+        test_all_file_list   = ['audioimplwwise_test.waf_files'],
+    )

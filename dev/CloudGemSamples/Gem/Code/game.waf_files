@@ -1,0 +1,36 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "StdAfx.cpp",
+            "StdAfx.h"
+        ]
+    },
+  "auto": {
+    "Include": [
+        "Include/CloudGemSamples/CloudGemSamplesBus.h"
+    ],
+    "Source": [
+        "Source/CloudGemSamplesModule.cpp",
+        "Source/CloudGemSamplesSystemComponent.cpp",
+        "Source/CloudGemSamplesSystemComponent.h"
+    ],
+    "Core": [
+      "Source/Core/EditorGame.cpp",
+      "Source/Core/CloudGemSamplesGame.cpp",
+      "Source/Core/CloudGemSamplesGameRules.cpp",
+      "Source/Core/EditorGame.h",
+      "Source/Core/CloudGemSamplesGame.h",
+      "Source/Core/CloudGemSamplesGameRules.h"
+    ],
+    "Game": [
+      "Source/Game/Actor.cpp",
+      "Source/Game/Actor.h"
+    ],
+    "System": [
+      "Source/System/GameStartup.cpp",
+      "Source/System/GameStartup.h"
+    ]
+  }
+}

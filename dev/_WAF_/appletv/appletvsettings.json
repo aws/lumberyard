@@ -1,0 +1,14 @@
+{
+    "ARCHS": "arm64",
+    "CODE_SIGN_IDENTITY": "iPhone Developer",
+    "COMBINE_HIDPI_IMAGES": "Yes",
+    "DEBUG_INFORMATION_FORMAT": "dwarf",
+    "GCC_INLINES_ARE_PRIVATE_EXTERN": "No",
+    "GCC_SYMBOLS_PRIVATE_EXTERN": "No",
+    "ONLY_ACTIVE_ARCH": "No",
+    "SDKROOT": "appletvos9.2",
+    "SUPPORTED_PLATFORMS": "appletvos",
+    "TARGETED_DEVICE_FAMILY": "3",
+    "USE_HEADERMAP": "No",
+    "VALID_ARCHS": ["arm64"]
+}

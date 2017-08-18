@@ -1,0 +1,21 @@
+<Material MtlFlags="524544">
+ <SubMaterials>
+  <Material Name="SubMtl1" MtlFlags="524416" Shader="Illum" GenMask="81" StringGenMask="%ALLOW_SILHOUETTE_POM%BUMP_MAP" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.49102089,0.49102089,0.49102089" Specular="0.006512091,0.006512091,0.006512091" Emissive="0,0,0" Shininess="20" Opacity="1" AlphaTest="0.5" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/pigeon/textures/pigeon_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/characters/animals/birds/pigeon/textures/pigeon_ddn.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="SubMtl2" MtlFlags="524448" Shader="Illum" GenMask="1" StringGenMask="%ALLOW_SILHOUETTE_POM" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.15728073,0.15728073,0.15728073" Specular="0,0,0" Emissive="0,0,0" Shininess="5" Opacity="1" AlphaTest="0.5" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/pigeon/textures/pigeon_low.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="proxy" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_flesh" MatTemplate="" Diffuse="1,0,0" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

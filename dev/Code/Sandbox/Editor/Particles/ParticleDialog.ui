@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ParticleDialog</class>
+ <widget class="QMainWindow" name="ParticleDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>807</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::StrongFocus</enum>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QSplitter" name="m_wndHSplitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      <widget class="QSplitter" name="m_wndVSplitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="childrenCollapsible">
+        <bool>false</bool>
+       </property>
+       <widget class="BaseLibraryDialogTree" name="m_treeCtrl">
+        <property name="contextMenuPolicy">
+         <enum>Qt::CustomContextMenu</enum>
+        </property>
+        <property name="dragDropMode">
+         <enum>QAbstractItemView::DragDrop</enum>
+        </property>
+        <property name="defaultDropAction">
+         <enum>Qt::CopyAction</enum>
+        </property>
+        <attribute name="headerVisible">
+         <bool>false</bool>
+        </attribute>
+       </widget>
+       <widget class="CPreviewModelCtrl" name="m_previewCtrl" native="true"/>
+      </widget>
+      <widget class="TwoColumnPropertyControl" name="m_propsCtrl" native="true"/>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>807</width>
+     <height>20</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TwoColumnPropertyControl</class>
+   <extends>QWidget</extends>
+   <header location="global">Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CPreviewModelCtrl</class>
+   <extends>QWidget</extends>
+   <header>Controls/PreviewModelCtrl.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>BaseLibraryDialogTree</class>
+   <extends>QTreeView</extends>
+   <header>BaseLibraryDialog.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

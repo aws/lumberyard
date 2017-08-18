@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TerrainTextureDialog</class>
+ <widget class="QDialog" name="TerrainTextureDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>756</width>
+    <height>563</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Terrain Texture Layers</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_6">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QMenuBar" name="menubar">
+     <widget class="QMenu" name="menu_File">
+      <property name="title">
+       <string>&amp;File</string>
+      </property>
+      <addaction name="exportLayersAction"/>
+      <addaction name="importLayersAction"/>
+      <addaction name="separator"/>
+      <addaction name="refineTerrainTextureTilesAction"/>
+     </widget>
+     <widget class="QMenu" name="menu_Layer">
+      <property name="title">
+       <string>&amp;Layer</string>
+      </property>
+      <addaction name="loadTextureAction"/>
+      <addaction name="exportTextureAction"/>
+      <addaction name="separator"/>
+      <addaction name="editSurfaceTypesAction"/>
+     </widget>
+     <widget class="QMenu" name="menu_Preview">
+      <property name="title">
+       <string>&amp;Preview</string>
+      </property>
+      <addaction name="showLargePreviewAction"/>
+      <addaction name="applyLightingAction"/>
+      <addaction name="showWaterAction"/>
+     </widget>
+     <addaction name="menu_File"/>
+     <addaction name="menu_Layer"/>
+     <addaction name="menu_Preview"/>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QWidget" name="widget" native="true">
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <widget class="QCollapsibleGroupBox" name="layerTasksGroupBox">
+          <property name="title">
+           <string>Layer Tasks</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="ClickableLabel" name="addLayerClickable">
+             <property name="text">
+              <string>Add Layer</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="deleteLayerClickable">
+             <property name="text">
+              <string>Delete Layer</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="moveLayerUpClickable">
+             <property name="text">
+              <string>Move Layer Up</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="moveLayerDownClickable">
+             <property name="text">
+              <string>Move Layer Down</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="assignMaterialClickable">
+             <property name="text">
+              <string>Assign Material</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="assignSplatMapClickable">
+             <property name="text">
+              <string>Assign Splat Map</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="ClickableLabel" name="importSplatMapsClickable">
+             <property name="text">
+              <string>Import Splat Maps</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="layerInfoGroupBox">
+          <property name="title">
+           <string>Layer Info</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QLabel" name="layerInfoLabel">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="layerTextureGroupBox">
+          <property name="title">
+           <string>Layer Texture</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="ClickableLabel" name="changeLayerTextureClickable">
+             <property name="text">
+              <string>Change Layer Texture</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="texturePreviewLabel">
+             <property name="minimumSize">
+              <size>
+               <width>128</width>
+               <height>128</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>image</string>
+             </property>
+             <property name="scaledContents">
+              <bool>true</bool>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="layerTextureInfoLabel">
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCollapsibleGroupBox" name="optionsGroupBox">
+          <property name="title">
+           <string>Options</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QCheckBox" name="showPreviewCheckBox">
+             <property name="text">
+              <string>Show Preview</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTableView" name="layerTableView">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>45</width>
+         <height>48</height>
+        </size>
+       </property>
+       <property name="showGrid">
+        <bool>false</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="verticalHeaderVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+  <action name="exportLayersAction">
+   <property name="text">
+    <string>&amp;Export Layers...</string>
+   </property>
+  </action>
+  <action name="importLayersAction">
+   <property name="text">
+    <string>&amp;Import Layers...</string>
+   </property>
+  </action>
+  <action name="refineTerrainTextureTilesAction">
+   <property name="text">
+    <string>Refine Terrain Texture Tiles</string>
+   </property>
+  </action>
+  <action name="loadTextureAction">
+   <property name="text">
+    <string>&amp;Load Texture</string>
+   </property>
+  </action>
+  <action name="exportTextureAction">
+   <property name="text">
+    <string>&amp;Export Texture...</string>
+   </property>
+  </action>
+  <action name="editSurfaceTypesAction">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Edit Surface Types...</string>
+   </property>
+  </action>
+  <action name="showLargePreviewAction">
+   <property name="text">
+    <string>&amp;Show Large Preview...</string>
+   </property>
+  </action>
+  <action name="applyLightingAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Apply Lighting</string>
+   </property>
+  </action>
+  <action name="showWaterAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Water</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>QtUI/QCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ClickableLabel</class>
+   <extends>QLabel</extends>
+   <header>QtUI/ClickableLabel.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,9 @@
+{
+    "EnabledResourceGroups": [
+        "ProjectDefinedGroup", 
+        "CloudGemMessageOfTheDay", 
+        "CloudGemPlayerAccount", 
+        "CloudGemDynamicContent", 
+        "CloudGemLeaderboard"
+    ]
+}

@@ -1,0 +1,57 @@
+<ImportSettings>
+  <FileInfo Rev="1.0" />
+  <Templates>
+    <Process Name="Delete HTR Nodes" Active="true">
+      <Script Path="" Text="fn delHTRNodes =&#xD;&#xA;(&#xD;&#xA;  if HTRBones != undefined then&#xD;&#xA;  (&#xD;&#xA;    for i = 1 to HTRBones.count do&#xD;&#xA;    (&#xD;&#xA;      try delete HTRBones[i] catch()&#xD;&#xA;    )&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Fix IK Targets" Active="true">
+      <Script Path="" Text="fn fixIK =&#xD;&#xA;(&#xD;&#xA;  local tempTM = matrix3 1&#xD;&#xA;  tempTM.pos = [100.0,0,0]&#xD;&#xA;	&#xD;&#xA;  for i = animationRange.start to animationRange.end do&#xD;&#xA;  (&#xD;&#xA;    sliderTime = i&#xD;&#xA;&#xD;&#xA;    local newTM = tempTM * $'#A_Bip01 R Hand'.transform&#xD;&#xA;    &#xD;&#xA;&#xD;&#xA;    biped.setTransform $'#A_Bip01 LHand2Weapon_IKBlend' #rotation newTM.rotation true&#xD;&#xA;    biped.setTransform $'#A_Bip01 LHand2Weapon_IKBlend' #pos newTM.pos true&#xD;&#xA;&#xD;&#xA;    biped.setTransform $'#A_Bip01 LHand2Weapon_IKTarget' #rotation $'#A_Bip01 L Hand'.transform.rotation true&#xD;&#xA;    biped.setTransform $'#A_Bip01 LHand2Weapon_IKTarget' #pos $'#A_Bip01 L Hand'.transform.pos true&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Load to Skeleton" Active="false">
+      <Script Path="" Text="fn loadToSkeleton node:&quot;&quot; =&#xD;&#xA;(&#xD;&#xA;  local tempNode = getNodeByName node&#xD;&#xA;  if tempNode != undefined then&#xD;&#xA;  (&#xD;&#xA;    local tempSkel = cryAM.usedSkel&#xD;&#xA;    cryAM.usedSkel = #(tempNode)&#xD;&#xA;    cryMaxTools.anim.functions.UI.loadAnim cryAM.currentQue&#xD;&#xA;&#xD;&#xA;   cryAM.usedSkel = tempSkel&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Run Retarget" Active="true">
+      <Script Path="" Text="fn loadMapping path:&quot;&quot; deleteOld:false =&#xD;&#xA;(&#xD;&#xA;  if path != &quot;&quot; then  &#xD;&#xA;  (&#xD;&#xA;    if (getFiles path).count &gt; 0 then&#xD;&#xA;      cryAM.loadedMappingPath = cryMaxTools.anim.functions.UI.loadMapping path&#xD;&#xA;    else&#xD;&#xA;      print &quot;Path not found&quot;&#xD;&#xA;  )&#xD;&#xA;&#xD;&#xA;  if deleteOld == true then&#xD;&#xA;  (&#xD;&#xA;    for i = 1 to cryMaxTools.anim.vars.map.count do&#xD;&#xA;      if cryMaxTools.anim.vars.map[i].sourceID &gt; 0 then&#xD;&#xA;        try ( delete (getNodeByName cryMaxTools.anim.vars.map[cryMaxTools.anim.vars.map[i].sourceID] ) ) catch()&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;fn runRetarget =&#xD;&#xA;(&#xD;&#xA;  with undo off&#xD;&#xA;  (&#xD;&#xA;    cryMaxTools.anim.functions.UI.runRetarget()&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+  </Templates>
+  <Tasks>
+    <Task Name="Retarget" Default="true" Active="true">
+      <Process Name="Load to Skeleton" Active="false">
+        <Script Path="" Text="fn loadToSkeleton node:&quot;&quot; =&#xD;&#xA;(&#xD;&#xA;  local tempNode = getNodeByName node&#xD;&#xA;  if tempNode != undefined then&#xD;&#xA;  (&#xD;&#xA;    local tempSkel = cryAM.usedSkel&#xD;&#xA;    cryAM.usedSkel = #(tempNode)&#xD;&#xA;    cryMaxTools.anim.functions.UI.loadAnim cryAM.currentQue&#xD;&#xA;&#xD;&#xA;   cryAM.usedSkel = tempSkel&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="loadToSkeleton">
+            <Property Name="node" Value="&quot;&quot;" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Retarget" Active="true">
+        <Script Path="" Text="fn loadMapping path:&quot;&quot; deleteOld:false =&#xD;&#xA;(&#xD;&#xA;  if path != &quot;&quot; then  &#xD;&#xA;  (&#xD;&#xA;    if (getFiles path).count &gt; 0 then&#xD;&#xA;      cryAM.loadedMappingPath = cryMaxTools.anim.functions.UI.loadMapping path&#xD;&#xA;    else&#xD;&#xA;      print &quot;Path not found&quot;&#xD;&#xA;  )&#xD;&#xA;&#xD;&#xA;  if deleteOld == true then&#xD;&#xA;  (&#xD;&#xA;    for i = 1 to cryMaxTools.anim.vars.map.count do&#xD;&#xA;      if cryMaxTools.anim.vars.map[i].sourceID &gt; 0 then&#xD;&#xA;        try ( delete (getNodeByName cryMaxTools.anim.vars.map[cryMaxTools.anim.vars.map[i].sourceID] ) ) catch()&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;fn runRetarget =&#xD;&#xA;(&#xD;&#xA;  with undo off&#xD;&#xA;  (&#xD;&#xA;    cryMaxTools.anim.functions.UI.runRetarget()&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="loadMapping">
+            <Property Name="path" Value="&quot;&quot;" />
+            <Property Name="deleteOld" Value="false" />
+          </Function>
+          <Function Name="runRetarget" />
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="retargetHTR" Default="true" Active="true">
+      <Process Name="Run Retarget" Active="true">
+        <Script Path="" Text="fn loadMapping path:&quot;&quot; deleteOld:false =&#xD;&#xA;(&#xD;&#xA;  if path != &quot;&quot; then  &#xD;&#xA;  (&#xD;&#xA;    if (getFiles path).count &gt; 0 then&#xD;&#xA;      cryAM.loadedMappingPath = cryMaxTools.anim.functions.UI.loadMapping path&#xD;&#xA;    else&#xD;&#xA;      print &quot;Path not found&quot;&#xD;&#xA;  )&#xD;&#xA;&#xD;&#xA;  if deleteOld == true then&#xD;&#xA;  (&#xD;&#xA;    for i = 1 to cryMaxTools.anim.vars.map.count do&#xD;&#xA;      if cryMaxTools.anim.vars.map[i].sourceID &gt; 0 then&#xD;&#xA;        try ( delete (getNodeByName cryMaxTools.anim.vars.map[cryMaxTools.anim.vars.map[i].sourceID] ) ) catch()&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;fn runRetarget =&#xD;&#xA;(&#xD;&#xA;  with undo off&#xD;&#xA;  (&#xD;&#xA;    cryMaxTools.anim.functions.UI.runRetarget()&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="loadMapping">
+            <Property Name="path" Value="&quot;&quot;" />
+            <Property Name="deleteOld" Value="false" />
+          </Function>
+          <Function Name="runRetarget" />
+        </Parameters>
+      </Process>
+      <Process Name="Delete HTR Nodes" Active="true">
+        <Script Path="" Text="fn delHTRNodes =&#xD;&#xA;(&#xD;&#xA;  if HTRBones != undefined then&#xD;&#xA;  (&#xD;&#xA;    for i = 1 to HTRBones.count do&#xD;&#xA;    (&#xD;&#xA;      try delete HTRBones[i] catch()&#xD;&#xA;    )&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="delHTRNodes" />
+        </Parameters>
+      </Process>
+    </Task>
+  </Tasks>
+</ImportSettings>

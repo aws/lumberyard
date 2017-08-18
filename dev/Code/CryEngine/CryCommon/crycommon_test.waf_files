@@ -1,0 +1,12 @@
+{
+    "NoUberFile":
+    {
+        "Tests":
+        [
+            "Tests/CryMathTestAux.h",
+            "Tests/CryMathTestAux.cpp",
+            "Tests/FlowNodeTestHarness.cpp",
+            "Tests/FlowNodeTestHarness.h"
+        ]
+    }
+}

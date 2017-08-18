@@ -1,0 +1,68 @@
+<Graph Description="" Group="" enabled="1" MultiPlayer="ClientServer">
+ <Nodes>
+  <Node Id="40" Class="Log" pos="650,540,0" flags="0">
+   <Inputs message="no message set"/>
+  </Node>
+  <Node Id="41" Class="Camera:Camera" pos="390,740,0" flags="0">
+   <Inputs entityId="0" pos="0,0,0" dir="0,0,0" roll="0"/>
+  </Node>
+  <Node Id="42" Class="Start" pos="-20,190,0" flags="0">
+   <Inputs InGame="1" InEditor="1"/>
+  </Node>
+  <Node Id="45" Class="Log" pos="580,250,0" flags="0">
+   <Inputs message="fov"/>
+  </Node>
+  <Node Id="46" Class="Time:Time" pos="480,540,0" flags="0">
+   <Inputs paused="0"/>
+  </Node>
+  <Node Id="48" Class="Log" pos="650,590,0" flags="0">
+   <Inputs message="no message set"/>
+  </Node>
+  <Node Id="53" Class="Time:Time" pos="480,590,0" flags="0">
+   <Inputs paused="0"/>
+  </Node>
+  <Node Id="54" Class="Logic:Any" pos="180,300,0" flags="0">
+   <Inputs />
+  </Node>
+  <Node Id="56" Class="System:ConsoleVariable" pos="310,350,0" flags="0">
+   <Inputs CVar="fixed_time_step" Value="0.0333"/>
+  </Node>
+  <Node Id="57" Class="Log" pos="580,310,0" flags="0">
+   <Inputs message="pos first"/>
+  </Node>
+  <Node Id="58" Class="Camera:OverrideFOV" pos="320,220,0" flags="0">
+   <Inputs SetFOV="0"/>
+  </Node>
+  <Node Id="59" Class="Log" pos="580,190,0" flags="0">
+   <Inputs message="Start Camera output"/>
+  </Node>
+  <Node Id="61" Name="Initialise_Camera_Output-_gives_FOV,_Sets_Timestep" Class="_comment" pos="180,80,0" flags="0"/>
+  <Node Id="62" Name="Direction_and_Postion_of_Camera" Class="_comment" pos="370,500,0" flags="0"/>
+  <Node Id="63" Name="Choose_camera_or_leave_blank_to_select_current_camera" Class="_comment" pos="170,690,0" flags="0"/>
+  <Node Id="65" Class="entity:AreaTrigger" pos="116,557,0" flags="0" GraphEntity="0">
+   <Inputs entityId="0" Disable="0" Enable="0" Enter="0" Leave="0"/>
+  </Node>
+  <Node Id="66" Class="Log" pos="650,640,0" flags="0">
+   <Inputs message="no message set"/>
+  </Node>
+  <Node Id="67" Class="Time:Time" pos="480,640,0" flags="1">
+   <Inputs paused="0"/>
+  </Node>
+ </Nodes>
+ <Edges>
+  <Edge nodeIn="40" nodeOut="41" portIn="message" portOut="pos" enabled="1"/>
+  <Edge nodeIn="48" nodeOut="41" portIn="message" portOut="dir" enabled="1"/>
+  <Edge nodeIn="66" nodeOut="41" portIn="message" portOut="roll" enabled="1"/>
+  <Edge nodeIn="54" nodeOut="42" portIn="in1" portOut="output" enabled="1"/>
+  <Edge nodeIn="40" nodeOut="46" portIn="input" portOut="tick" enabled="1"/>
+  <Edge nodeIn="48" nodeOut="53" portIn="input" portOut="tick" enabled="1"/>
+  <Edge nodeIn="45" nodeOut="54" portIn="input" portOut="out" enabled="1"/>
+  <Edge nodeIn="56" nodeOut="54" portIn="Set" portOut="out" enabled="1"/>
+  <Edge nodeIn="57" nodeOut="54" portIn="input" portOut="out" enabled="1"/>
+  <Edge nodeIn="58" nodeOut="54" portIn="GetFOV" portOut="out" enabled="1"/>
+  <Edge nodeIn="59" nodeOut="54" portIn="input" portOut="out" enabled="1"/>
+  <Edge nodeIn="57" nodeOut="56" portIn="message" portOut="CurValue" enabled="1"/>
+  <Edge nodeIn="45" nodeOut="58" portIn="message" portOut="CurFOV" enabled="1"/>
+  <Edge nodeIn="66" nodeOut="67" portIn="input" portOut="tick" enabled="1"/>
+ </Edges>
+</Graph>

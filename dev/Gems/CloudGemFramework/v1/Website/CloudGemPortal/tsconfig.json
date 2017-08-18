@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "rootDir": "./",
+        "module": "system",
+        "target": "es5",
+        "moduleResolution": "node",
+        "inlineSources": false,
+        "inlineSourceMap": false,
+        "sourceMap": true,
+        "noEmitOnError": true,
+        "noImplicitAny": false,
+        "preserveConstEnums": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "removeComments": false,
+        "lib": [ "es2015", "dom", "scripthost" ]
+    },
+    "exclude": [
+        "node_modules",
+        "app/app.bundle.*",
+        "dist",
+        "prototype_site",
+        "Scripts",
+        "typings",
+        "obj",
+        "bin",
+        "content"
+    ]
+}

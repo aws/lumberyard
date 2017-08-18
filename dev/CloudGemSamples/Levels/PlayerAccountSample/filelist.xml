@@ -1,0 +1,6 @@
+<download name="PlayerAccountSample" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="8187" md5="993840ff08bd6c2a6ee7ce53b5888723"/>
+ </files>
+</download>

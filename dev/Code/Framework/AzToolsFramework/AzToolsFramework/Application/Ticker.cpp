@@ -1,0 +1,51 @@
+
+#include "Ticker.h"
+
+namespace AzToolsFramework
+{
+    Ticker::Ticker(QObject* parent /*= nullptr*/, float timeoutMS)
+        : QObject(parent)
+        , m_thread(nullptr)
+        , m_cancelled(false)
+        , m_timeoutMS(timeoutMS)
+    {
+        m_thread = azcreate(QThread, (parent));
+    }
+
+    Ticker::~Ticker()
+    {
+        Cancel();
+    }
+
+    void Ticker::Start()
+    {
+        moveToThread(m_thread);
+        QMetaObject::invokeMethod(this, "Loop", Qt::QueuedConnection);
+        m_thread->start();
+        m_cancelled = false;
+    }
+
+    void Ticker::Cancel()
+    {
+        if (!m_cancelled)
+        {
+            m_cancelled = true;
+            m_thread->quit();
+            m_thread->wait();
+            azdestroy(m_thread);
+        }
+    }
+
+    void Ticker::Loop()
+    {
+        if (!m_cancelled)
+        {
+            Q_EMIT Tick();
+            QTimer::singleShot(m_timeoutMS, Qt::PreciseTimer, this, &Ticker::Loop);
+        }
+    }
+
+    #include "Application/Ticker.moc"
+
+}
+

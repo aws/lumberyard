@@ -1,0 +1,10 @@
+{
+    "GemFormatVersion": 3,
+    "LinkType": "Dynamic",
+    "Name": "Rain",
+    "Summary": "Provides the rain entity weather effect.",
+    "Tags": ["Weather", "Weather Effects"],
+    "Uuid": "e5f049ad7f534847a89c27b7339cf6a6",
+    "Version": "0.1.0",
+    "IconPath": "preview.png"
+}

@@ -1,0 +1,27 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "main.cpp",
+            "moc.cpp",
+            "stdafx.h",
+            "stdafx.cpp"
+        ],
+        "Resources":
+        [
+            "ExampleQMLViewPane.qrc",
+            "data/logo.png",
+            "data/main.qml"
+        ]
+    },
+    "auto":
+    {
+        "Root":
+        [
+            "ExampleWindow.cpp",
+            "exampleqtobject.cpp",
+            "ExampleWindow.h"
+        ]
+    }
+}

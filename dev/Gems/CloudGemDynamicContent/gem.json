@@ -1,0 +1,31 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
+    "Name": "CloudGemDynamicContent",
+    "EditorTargets": ["DynamicContentEditorPlugin"],
+    "DisplayName": "Cloud Gem Dynamic Content",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Manages dynamic content updates through AWS",
+    "Tags": ["AWS", "Cloud Canvas"],
+    "IconPath": "preview.png",
+    "Dependencies": [
+        {
+            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+            "VersionConstraints": [ "~>0.1" ],
+            "_comment": "AWS"
+        },
+        {
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ]
+}

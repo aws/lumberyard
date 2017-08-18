@@ -1,0 +1,22 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/StaticData/StaticDataBus.h",
+            "Include/StaticDataInterface.h"
+        ],
+        "Source": [
+            "Source/StaticDataGem.h",
+            "Source/StaticDataGem.cpp",
+            "Source/StaticDataManager.h",
+            "Source/StaticDataManager.cpp",
+            "Source/CSVStaticData.h",
+            "Source/CSVStaticData.cpp"
+        ]
+    }
+}

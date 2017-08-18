@@ -1,0 +1,28 @@
+{
+    "name": "libOVR",
+    "source": "@ROOT@/Code/SDKs/OculusSDK/LibOVR",
+    "description": "Support library for Oculus Rift",
+    "includes": [
+        "Include"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath": [
+                "Lib/Windows/x64/Release/VS2013"
+            ],
+            "lib": [
+                "LibOVR.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath": [
+                "Lib/Windows/x64/Release/VS2015"
+            ],
+            "lib": [
+                "LibOVR.lib"
+            ]
+        }
+    }
+}

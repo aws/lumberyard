@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Root": [
+        ],
+        
+        "ExampleBuilder": [
+            "Source/ExampleBuilderComponent.h",
+            "Source/ExampleBuilderComponent.cpp",
+            "Source/ExampleBuilderApplication.cpp"
+        ]
+    }
+}

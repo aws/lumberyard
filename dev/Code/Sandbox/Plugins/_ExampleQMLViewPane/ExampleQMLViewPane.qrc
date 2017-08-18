@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/exampleqmlviewpane" >
+        <file>data/logo.png</file>
+        <file>data/main.qml</file>
+    </qresource>
+</RCC>
+
+

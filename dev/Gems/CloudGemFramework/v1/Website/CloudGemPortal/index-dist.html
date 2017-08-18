@@ -1,0 +1,187 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head profile="http://www.w3.org/2005/10/profile">
+    <title>Lumberyard - Cloud Gem Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+    <META HTTP-EQUIV="Expires" CONTENT="-1">
+    <base href="/">
+
+    <link rel="shortcut icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/favicon_16x16._V532413168_.png" />
+    <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/fontawesome/css/font-awesome.min._V522234553_.css">
+    <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/toastr/toastr.min._V522976442_.css">
+    <link rel="stylesheet" href="https://m.media-amazon.com/images/G/01/cloudcanvas/bootstrap/bootstrap._V534991908_.css">
+    <link rel="stylesheet" href="https://m.media-amazon.com/images/G/01/cloudcanvas/bootstrap._V532315242_.css">    
+
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/jquery/jquery-3.1.1.min._V522976668_.js"></script>
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/toastr/toastr.min._V522976442_.js"></script>
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/cryptojs/core._V522075809_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/cryptojs/md5._V522075900_.js"></script>
+
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-cognito-sdk.min._V511621773_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/amazon-cognito-identity.min._V511621774_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-2.46.0.min._V511621773_.js"></script>
+
+    <!-- 1. Load libraries -->
+    <!-- IE required polyfill -->
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/es6-shim/es6-shim._V522074298_.js"></script>
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/system-polyfills/system-polyfills._V522075056_.js"></script>
+
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/zonejs/zone.min._V522074719_.js"></script>
+    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/reflectjs/Reflect._V522069253_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/systemjs/system.min._V506722814_.js"></script>
+
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/momentjs/moment.min._V511042353_.js"></script>
+
+
+    <script src="cgp_bootstrap.js"></script>
+
+    <script>        
+        function waitForLibs() {
+            if (typeof AWS !== "undefined" && typeof toastr !== "undefined") {
+                //variable exists, do what you want
+                System.config({
+                    map: {
+                        'app': './dist/app',
+
+                        "rxjs": "node_modules/rxjs",
+                        "@angular": "node_modules/@angular",
+                        "@ng-bootstrap/ng-bootstrap": "node_modules/@ng-bootstrap/ng-bootstrap/bundles/ng-bootstrap.js",
+                        "typescript": "node_modules/typescript/lib/typescript.js",
+                        "ts": "node_modules/plugin-typescript/lib/plugin.js",
+                        'dragula': 'node_modules/dragula/dist/dragula.js',
+                        'ng2-dragula': 'node_modules/ng2-dragula',
+                        'ts-clipboard': 'node_modules/ts-clipboard/ts-clipboard.js',
+                        'web-animations-js': 'node_modules/web-animations-js/web-animations.min.js'
+
+                    },
+                    packages: {
+                        'app': {
+                            main: './main.js',
+                            defaultExtension: 'js'
+                        },
+                        'rxjs': {
+                            defaultExtension: 'js'
+                        },
+                        'ng2-dragula': {
+                            main: 'ng2-dragula.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/core': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/common': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/compiler': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/platform-browser': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/platform-browser-dynamic': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/http': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/router': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        },
+                        '@angular/forms': {
+                            main: 'index.js',
+                            defaultExtension: 'js'
+                        }
+                    },
+                    buildCSS: true,
+                    transpiler: "ts",
+                    meta: {
+                        typescript: {
+                            exports: "ts"
+                        }
+                    }
+                });
+
+
+                System.import('bundles/dependencies.bundle.js').then(function () {
+                    System.import('bundles/app.bundle.js').then(function () {
+                        System.import('app/main');
+                    }).then(
+                            function handleResolve() {
+
+                                console.info("System.js successfully bootstrapped app.");
+
+                            },
+                            function handleReject(error) {
+
+                                console.warn("System.js could not bootstrap the app.");
+                                console.error(error);
+
+                            }
+                        )
+                        .catch(function (err) {
+                            console.error(err);
+                        })
+                });
+            } else {
+                setTimeout(function () {
+                    waitForLibs();
+                }, 100);
+            }
+        }
+        waitForLibs();
+    </script>
+
+
+    <style>
+     @font-face {
+            font-family: "AmazonEmber-Regular";
+            src: url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_rg-webfont._V536573323_.woff2') format('woff2'),
+                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_rg-webfont._V536573323_.woff') format('woff'),
+                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/AmazonEmber_Rg._V536573323_.ttf') format('truetype');
+        }
+
+        .text-center {
+            text-align: center;
+        }
+        .loading-container {
+            font-family: "AmazonEmber-Regular";
+        }
+    </style>
+</head>
+
+
+
+<!-- 3. Display the application -->
+<body>
+    <cc-app>
+    <div style="padding-top: 100px;">
+        <div class="container loading-container">
+            <div class="row">
+                <div class="col-12 text-center" >
+                    Welcome to the Lumberyard Cloud Gem Portal
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 text-center">
+                    <img src="https://m.media-amazon.com/images/G/01/cloudcanvas/beaver_animation._V532414134_.gif"> </img>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 text-center">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+    </cc-app>
+</body>
+</html>

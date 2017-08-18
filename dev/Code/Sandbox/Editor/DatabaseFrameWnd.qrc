@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/DatabaseFrameWnd">
+        <file alias="db_library_bar_00.png">res/db_library_bar_00.png</file>
+        <file alias="db_library_bar_01.png">res/db_library_bar_01.png</file>
+        <file alias="db_library_bar_02.png">res/db_library_bar_02.png</file>
+        <file alias="db_library_bar_03.png">res/db_library_bar_03.png</file>
+        <file alias="db_library_bar_04.png">res/db_library_bar_04.png</file>
+        <file alias="db_library_bar_05.png">res/db_library_bar_05.png</file>
+        <file alias="db_standart_00.png">res/db_standart_00.png</file>
+        <file alias="db_standart_01.png">res/db_standart_01.png</file>
+        <file alias="db_standart_02.png">res/db_standart_02.png</file>
+        <file alias="db_standart_03.png">res/db_standart_03.png</file>
+        <file alias="db_library_item_bar_00.png">res/db_library_item_bar_00.png</file>
+        <file alias="db_library_item_bar_01.png">res/db_library_item_bar_01.png</file>
+        <file alias="db_library_item_bar_02.png">res/db_library_item_bar_02.png</file>
+        <file alias="db_library_item_bar_03.png">res/db_library_item_bar_03.png</file>
+        <file alias="db_library_item_bar_04.png">res/db_library_item_bar_04.png</file>
+        <file alias="db_library_item_bar_05.png">res/db_library_item_bar_05.png</file>
+    </qresource>
+</RCC>

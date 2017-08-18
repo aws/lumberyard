@@ -1,0 +1,100 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#pragma once
+
+#include <AzQtComponents/AzQtComponentsAPI.h>
+
+#include <QDoubleSpinBox>
+#include <QSlider>
+#include <QPoint>
+
+class QIntValidator;
+
+namespace AzQtComponents
+{
+    class AZ_QT_COMPONENTS_API StyledSliderPrivate
+        : public QSlider
+    {
+        Q_OBJECT
+
+    public:
+        explicit StyledSliderPrivate();
+    };
+
+    class AZ_QT_COMPONENTS_API StyledDoubleSpinBox
+        : public QDoubleSpinBox
+    {
+        Q_OBJECT
+    public:
+        explicit StyledDoubleSpinBox(QWidget* parent = nullptr);
+        ~StyledDoubleSpinBox();
+        void displaySlider();
+        void hideSlider();
+        void handleClickOnApp(const QPoint& pos);
+        bool isMouseOnSlider();
+        void SetCustomSliderRange(double min, double max);
+
+    protected:
+        void showEvent(QShowEvent* ev) override;
+        void resizeEvent(QResizeEvent* ev) override;
+        double GetSliderMinimum();
+        double GetSliderRange();
+
+        bool m_restrictToInt;
+        double m_customSliderMinValue;
+        double m_customSliderMaxValue;
+        bool m_hasCustomSliderRange;
+
+    private:
+        void initSlider();
+        void prepareSlider();
+        bool isClickOnSpinBox(const QPoint& globalPos);
+        bool isClickOnSlider(const QPoint& globalPos);
+        void updateSliderValue(double newVal);
+        void updateValueFromSlider(int newVal);
+        int ConvertToSliderValue(double spinBoxValue);
+        double ConvertFromSliderValue(int sliderValue);
+
+        bool m_justPassFocusSlider = false;
+        StyledSliderPrivate* m_slider;
+        bool m_ignoreNextUpdateFromSlider;
+        bool m_ignoreNextUpdateFromSpinBox;
+    };
+
+    class AZ_QT_COMPONENTS_API StyledSpinBox
+        : public StyledDoubleSpinBox
+    {
+        Q_OBJECT
+    public:
+        explicit StyledSpinBox(QWidget* parent = nullptr);
+
+        // Integer helper functions
+        int maximum() const;
+        int minimum() const;
+        void setMaximum(int max);
+        void setMinimum(int min);
+        void setRange(int min, int max);
+        void setSingleStep(int val);
+        int singleStep() const;
+        int value() const;
+
+    public Q_SLOTS:
+        void setValue(int val);
+
+    Q_SIGNALS:
+        void valueChanged(int val);
+
+    private:
+        QIntValidator* m_validator;
+    };
+} // namespace AzQtComponents
+

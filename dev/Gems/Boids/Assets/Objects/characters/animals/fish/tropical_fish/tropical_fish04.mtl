@@ -1,0 +1,6 @@
+<Material MtlFlags="524288" Shader="Illum" GenMask="1" StringGenMask="%ALLOW_SILHOUETTE_POM" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.65922403,0.65922403,0.65922403" Specular="0.031896032,0.031896032,0.031896032" Emissive="0,0,0" Shininess="120" Opacity="1" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="objects/characters/animals/fish/tropical_fish/textures/tropical_fish04.tif"/>
+ </Textures>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

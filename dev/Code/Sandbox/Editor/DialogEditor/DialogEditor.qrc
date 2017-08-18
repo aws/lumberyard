@@ -1,0 +1,14 @@
+<RCC>
+	<qresource prefix="/icons/">
+		<file alias="new.png">icons/new.png</file>
+		<file alias="delete.png">icons/delete.png</file>
+		<file alias="open.png">icons/open.png</file>
+		<file alias="tile_0.png">icons/tile_0.png</file>
+		<file alias="tile_1.png">icons/tile_1.png</file>
+		<file alias="tile_2.png">icons/tile_2.png</file>
+		<file alias="tile_3.png">icons/tile_3.png</file>
+		<file alias="tile_4.png">icons/tile_4.png</file>
+		<file alias="tile_5.png">icons/tile_5.png</file>
+		<file alias="tile_6.png">icons/tile_6.png</file>
+	</qresource>
+</RCC>

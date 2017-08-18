@@ -1,0 +1,21 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "test_Main.cpp"
+        ],
+        "CharacterInstance/UnitTests":
+        [
+            "UnitTests/Command_Commands_UnitTest.cpp"
+        ],
+        "CharacterManager/UnitTests":
+        [
+            "UnitTests/ParamLoaderUnitTest.cpp"
+        ],
+        "SkeletonAnim/UnitTests":
+        [
+            "UnitTests/SkeletonAnim_Commands_UnitTests.cpp"
+        ]
+    }
+}

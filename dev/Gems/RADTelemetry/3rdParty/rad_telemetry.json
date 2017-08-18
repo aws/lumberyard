@@ -1,0 +1,54 @@
+{
+	"name": "rad_telemetry",
+	"source": "@GEM@",
+	"description": "RAD Telemetry libraries (internal only - not for distribution)",
+	"defines": ["AZ_PROFILE_TELEMETRY"],
+	"non_release_only": "True",
+	"lib_required": "True",
+	"includes": ["Code/Include", "External/Include"],
+	"sharedlibpath": ["External/Dll"],
+	"platform": {
+		"win_x64_vs2013": {
+			"importlibpath": [
+				"External/Lib"
+			],
+			"import": [
+				"rad_tm_win64.lib"
+			],
+			"shared": [
+				"rad_tm_win64.dll"
+			]
+		},
+		"win_x64_vs2015": "@win_x64_vs2013",
+		"durango": {
+			"libpath": [
+				"External/Lib"
+			],
+			"lib_debug": [
+				"rad_tm_xbone_2015_d.lib"
+			],
+			"lib_release": [
+				"rad_tm_xbone_2015.lib"
+			],
+			"linkflags" : [
+				"/ignore:4099"
+			]
+		},
+		"orbis": {
+			"libpath": [
+				"External/Lib"
+			],
+			"lib": [
+				"librad_tm_ps4.a"
+			]
+		},
+		"android_armv7_clang": {
+			"libpath": [
+				"External/Lib"
+			],
+			"lib": [
+				"librad_tm_android_arm.a"
+			]
+		}
+	}
+}

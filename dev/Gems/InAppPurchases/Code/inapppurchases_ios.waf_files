@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Implementation": [
+            "Source/Apple/InAppPurchasesApple.h",
+            "Source/Apple/InAppPurchasesApple.mm",
+            "Source/Apple/InAppPurchasesDelegate.h",
+            "Source/Apple/InAppPurchasesDelegate.mm"
+        ]
+    }
+}

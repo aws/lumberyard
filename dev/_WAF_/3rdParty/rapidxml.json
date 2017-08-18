@@ -1,0 +1,11 @@
+{
+    "name": "rapidxml",
+    "source": "@ROOT@/Code/SDKs/rapidxml",
+    "description": "Rapid XML header only library",
+    "header_only": "True",
+    "includes": [
+        "."
+    ],
+    "defines": [],
+    "lib_required": "False"
+}

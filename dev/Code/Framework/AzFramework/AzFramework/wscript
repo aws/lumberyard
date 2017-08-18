@@ -1,0 +1,65 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+
+def build(bld):
+
+    msvc_cxx_flags = [
+        '/W4', # warning level
+    ]
+
+    clang_flags = [
+        '-Werror',  # warnings as errors
+        '-Wall'     # warning level
+    ]
+
+    bld.CryEngineStaticLibrary(
+
+        # Settings
+        target              = 'AzFramework',
+        vs_filter           = 'AZ Framework',
+        file_list           = ['azframework.waf_files'],
+        platforms           = ['all'],
+        configurations      = ['all'],
+        disable_pch         = True,
+        includes            = ['..'],
+        export_includes     = ['..'],
+        use                 = ['AzCore', 'GridMate', 'GridMateForTools'],
+        uselib              = ['LUA'],
+
+        # Platform Specific
+        win_file_list       = ['azframework_win.waf_files'],
+        win_cxxflags        = msvc_cxx_flags,
+        win_features        = ['crcfix'],
+
+       
+       
+
+       
+       
+        android_file_list   = ['azframework_android.waf_files'],
+        android_use         = ['SDL2Ext'],
+        android_cxxflags    = clang_flags,
+
+        ios_file_list       = ['azframework_ios.waf_files'],
+        ios_cxxflags        = clang_flags,
+
+        appletv_file_list   = ['azframework_appletv.waf_files'],
+        appletv_cxxflags    = clang_flags,
+
+        darwin_file_list    = ['azframework_darwin.waf_files'],
+        darwin_cxxflags     = clang_flags,
+
+        linux_file_list     = ['azframework_linux.waf_files'],
+        linux_cxxflags      = clang_flags
+
+    )

@@ -1,0 +1,158 @@
+<ParticleLibrary Name="tornado" SandboxVersion="3.61.1142.464" ParticleVersion="24">
+ <Particles Name="tornado.tornado">
+  <Params Count="300" Continuous="true" ParticleLifeTime="5" EmitAngle="22,Random=1" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="ParticleAge=(t=0.5,v=1;t=1)" Color="ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseLighting="0.5" DiffuseBacklighting="1" Size="15,Random=0.3939394,ParticleAge=(v=0.87;t=0.25,v=0.906;t=1,v=1)" Speed="50" TurbulenceSize="0.5" TurbulenceSpeed="458"/>
+ </Particles>
+ <Particles Name="tornado.large">
+  <Params Count="100" Continuous="true" ParticleLifeTime="10" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.5,ParticleAge=(;t=0.47,v=1;t=0.737,v=1;t=1,v=0.02)" Color="(x=0.475,y=0.45,z=0.373)" Size="30,Random=0.317,ParticleAge=(v=0.365;t=0.176,v=0.204;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="0.22" TurbulenceSpeed="201" RandomAngles="x=22,y=22,z=22" RotationRate="x=22,y=55,z=22" SortOffset="-0.24"/>
+  <Childs>
+   <Particles Name="large1">
+    <Params Count="40" Continuous="true" ParticleLifeTime="8" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_d.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.376,Random=0.248,ParticleAge=(;t=0.024,v=0.98;t=0.43,v=0.73;t=0.784,v=0.23;t=0.996)" Color="(x=0.906,y=0.918,z=0.93),ParticleAge=(t=0.008,v=(x=0.42,y=0.34,z=0.17);t=0.455,v=(x=1,y=1,z=1))" DiffuseLighting="0.703" DiffuseBacklighting="0.345" Size="80,Random=0.188,ParticleAge=(v=0.294;t=0.145,v=0.23;t=0.27,v=0.184;t=0.447,v=0.184;t=0.63,v=0.365;t=1,v=1)" Stretch="0.2,ParticleAge=(t=0.514,v=0.5;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="1.7" TurbulenceSpeed="-98" InitAngles="y=90" RandomAngles="y=180" RotationRate="y=100" RandomRotationRate="y=20" SortOffset="-0.06" FillRateCost="0.7"/>
+   </Particles>
+   <Particles Name="large2">
+    <Params Count="80" Continuous="true" ParticleLifeTime="8" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,FirstTile=1,AnimFramerate=1" SoftParticle="true" Alpha="Random=0.248,ParticleAge=(;t=0.21,v=0.184;t=0.43,v=0.73;t=0.784,v=0.23;t=0.996)" Color="(x=0.65,y=0.694,z=0.75),ParticleAge=(t=0.008,v=(x=0.42,y=0.34,z=0.17);t=0.455,v=(x=1,y=1,z=1))" DiffuseBacklighting="0.5" Size="80,Random=0.188,ParticleAge=(v=0.294;t=0.145,v=0.23;t=0.27,v=0.184;t=0.447,v=0.184;t=0.63,v=0.365;t=1,v=1)" Stretch="0.2,ParticleAge=(t=0.514,v=0.5;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="1.7" TurbulenceSpeed="-98" InitAngles="y=90" RandomAngles="y=180" RotationRate="y=200" RandomRotationRate="y=100" SortOffset="-0.06" FillRateCost="0.7"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.top_part">
+  <Params Count="26" Continuous="true" ParticleLifeTime="12" PositionOffset="y=-80" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.317,ParticleAge=(;t=0.294,v=0.16;t=0.77,v=1;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseBacklighting="0.318" Size="99,ParticleAge=(;t=1,v=1)" Speed="6" GravityScale="-0.3" TurbulenceSize="1.666665" TurbulenceSpeed="201.0881" RandomAngles="x=22,y=22,z=22" RandomRotationRate="x=22,y=22,z=22"/>
+ </Particles>
+ <Particles Name="tornado.bottom_generic">
+  <Params Count="77" Continuous="true" ParticleLifeTime="7" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="ParticleAge=(;t=0.055,v=1;t=0.51,v=1;t=0.706,v=0.09;t=1)" Color="(x=0.32,y=0.32,z=0.32),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseLighting="0.999" Size="55,Random=0.108911,ParticleAge=(t=0.04,v=1;t=0.25,v=0.545;t=1)" Speed="5" AirResistance="0.2149023" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="x=22,y=22,z=22" RandomRotationRate="x=22,y=22,z=22" SortOffset="-0.07"/>
+ </Particles>
+ <Particles Name="tornado.leaves">
+  <Params Count="35" Continuous="true" ParticleLifeTime="4,Random=0.248" FocusGravityDir="true" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="0.267,ParticleAge=(;t=0.055,v=1;t=0.518;t=1)" Color="(x=0.608,y=0.467,z=0.34)" DiffuseLighting="0.554" DiffuseBacklighting="0.494" Size="20,Random=0.812,ParticleAge=(v=1;t=0.51,v=0.25;t=1)" Stretch="0.2" Speed="5" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359"/>
+  <Childs>
+   <Particles Name="base_dirt1">
+    <Params Count="44" Continuous="true" ParticleLifeTime="0.35" FocusGravityDir="true" EmitAngle="70" OrientToVelocity="true" Texture="textures/sprites/dirt/dirt_c.tif" SoftParticle="true" Alpha="0.3,ParticleAge=(;t=0.5,v=1;t=1)" Color="(x=0.733,y=0.725,z=0.616)" DiffuseBacklighting="1" Size="120,Random=0.2307692" Speed="180" Turbulence3DSpeed="50" TurbulenceSize="10" TurbulenceSpeed="-35.8" Bounciness="-1" SortOffset="-0.02" VisibleUnderwater="If_False" ConfigMin="Medium"/>
+   </Particles>
+   <Particles Name="base_smoke1">
+    <Params Count="25" Continuous="true" ParticleLifeTime="0.9,Random=0.168" RandomOffset="x=15,y=15" FocusGravityDir="true" EmitAngle="90" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="ParticleAge=(;t=0.49,v=1;t=1)" Color="(x=0.73,y=0.62,z=0.52)" DiffuseBacklighting="1" Size="40,Random=0.119,ParticleAge=(v=0.34;t=1,v=1)" Speed="60,Random=0.238" RandomAngles="y=359" RandomRotationRate="y=180" Bounciness="-1" SortOffset="-0.01" ConfigMin="Medium"/>
+   </Particles>
+   <Particles Name="debris">
+    <Params Count="50" Continuous="true" ParticleLifeTime="30,Random=0.3" RandomOffset="x=20,y=20" FocusGravityDir="true" EmitAngle="Random=1" Facing="Free" Texture="textures/sprites/wood/wood_chip_tiled.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" DiffuseBacklighting="1" Size="5,Random=0.317,ParticleAge=(v=0.114;t=1,v=1,flags=4)" Speed="10,Random=0.3,EmitterStrength=(v=0.5;t=1,v=1,flags=4)" GravityScale="ParticleAge=(;t=1,v=1)" TurbulenceSize="60,Random=0.2,ParticleAge=(v=0.09;t=0.663,v=0.23;t=1,v=1,flags=4)" TurbulenceSpeed="-100,Random=0.5" RandomAngles="z=180" RandomRotationRate="x=600,y=600,z=600" FillRateCost="0.2"/>
+   </Particles>
+   <Particles Name="leaves1">
+    <Params Count="50" Continuous="true" ParticleLifeTime="30,Random=0.3" FocusGravityDir="true" EmitAngle="Random=1" Facing="Free" Texture="textures/sprites/leaves/leaf_tiled_a.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" DiffuseBacklighting="1" Size="2,Random=0.317,ParticleAge=(v=0.114;t=1,v=1,flags=4)" Speed="10,Random=0.3,EmitterStrength=(v=0.5;t=1,v=1,flags=4)" GravityScale="ParticleAge=(;t=1,v=1)" TurbulenceSize="60,Random=0.2,ParticleAge=(v=0.09;t=0.663,v=0.23;t=1,v=1,flags=4)" TurbulenceSpeed="-100,Random=0.5" RandomAngles="z=180" RandomRotationRate="x=600,y=600,z=600" FillRateCost="0.2"/>
+   </Particles>
+   <Particles Name="base_smoke2">
+    <Params Count="40" Continuous="true" ParticleLifeTime="6" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_d.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.5,Random=0.248,ParticleAge=(;t=0.055,v=1;t=0.996)" Color="(x=0.353,y=0.318,z=0.28),ParticleAge=(v=(x=0.42,y=0.34,z=0.17);t=0.925,v=(x=0.867,y=0.925,z=1))" DiffuseBacklighting="0.3" Size="130,Random=0.188,ParticleAge=(v=0.57,flags=32;t=0.255,v=0.5;t=0.996,v=1,flags=4)" Stretch="0.2,ParticleAge=(t=0.514,v=0.5;t=1,v=1)" Speed="3" GravityScale="-1.6" TurbulenceSize="1.7" TurbulenceSpeed="-120" InitAngles="y=90" RandomAngles="y=180" RotationRate="y=100" RandomRotationRate="y=20" SortOffset="-0.31" FillRateCost="0.7"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.snow">
+  <Params Count="77" Continuous="true" ParticleLifeTime="5" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="0.129,ParticleAge=(;t=0.055,v=1;t=0.51,v=1;t=0.7;t=1)" Color="(x=0.64,y=0.64,z=0.686),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseBacklighting="0.494" Size="35,Random=0.108911,ParticleAge=(t=0.04,v=1;t=0.25,v=0.545;t=1)" Speed="5" AirResistance="0.2149023" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="x=22,y=22,z=22" RandomRotationRate="x=22,y=22,z=22"/>
+  <Childs>
+   <Particles Name="debris3">
+    <Params Count="25" Continuous="true" ParticleLifeTime="2,Random=0.782" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="ParticleAge=(;t=0.106,v=1;t=1)" DiffuseLighting="0.465" DiffuseBacklighting="0.624" Size="31,Random=0.119,ParticleAge=(;t=1,v=1)" Speed="Random=0.3333333" RandomAngles="y=359" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="outward_debris">
+    <Params Enabled="false" Count="77.7722" Continuous="true" ParticleLifeTime="3" PositionOffset="y=12" EmitAngle="88.8811,Random=0.227723" Texture="textures/sprites/dirt/dirt_c.tif" Color="ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.875,y=0.875,z=0.875))" DiffuseLighting="0" EmissiveLighting="1" NotAffectedByFog="true" Size="6.42936,Random=0.2307692" Speed="74.2626" GravityScale="8.18918,Random=0.554455" RandomAngles="x=66,y=66,z=66" RandomRotationRate="x=2,y=12,z=2" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="snow1">
+    <Params Count="60" Continuous="true" ParticleLifeTime="2,Random=0.396" PositionOffset="y=1" RandomOffset="x=3,y=3,z=3" EmitAngle="17.9,Random=0.227723" Texture="textures/sprites/snow/snow_sheet_a.tif" Alpha="ParticleAge=(;t=0.5,v=1;t=1)" DiffuseLighting="0.337" DiffuseBacklighting="0.325" NotAffectedByFog="true" Size="7.77,ParticleAge=(v=0.318;t=1,v=1)" Speed="6" GravityScale="-1.497,Random=0.554455" TurbulenceSize="8.53" TurbulenceSpeed="360" RandomAngles="x=66,y=66,z=66" RandomRotationRate="y=12" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.cloud_connection">
+  <Params Count="10" Continuous="true" ParticleLifeTime="11" Facing="Velocity" Texture="textures/sprites/smoke/smoke_b.tif" Alpha="0.3,ParticleAge=(;t=0.482,v=1;t=0.8,v=1;t=1)" DiffuseBacklighting="1" Size="250,ParticleAge=(;t=1,v=1)" Speed="1" RandomAngles="y=180,z=180" RotationRate="z=-22"/>
+  <Childs>
+   <Particles Name="cloud_connection1">
+    <Params Count="10" Continuous="true" ParticleLifeTime="11" Facing="Velocity" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="0.25,ParticleAge=(;t=0.482,v=1;t=0.8,v=1;t=1)" Size="333,ParticleAge=(;t=1,v=1)" Speed="1" RandomAngles="y=180,z=180" RotationRate="z=-22"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.center_tube">
+  <Params Count="111" Continuous="true" ParticleLifeTime="21" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="ParticleAge=(;t=0.16,v=1;t=0.43,v=1;t=1,v=0.02)" Color="(x=0.36,y=0.36,z=0.36),ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=1,y=1,z=0.97))" Size="20.47" Speed="5" AirResistance="0.1102743" GravityScale="-0.54" Acceleration="z=5" TurbulenceSize="1.666833" TurbulenceSpeed="201.0881" RandomAngles="x=22,y=22,z=22" RandomRotationRate="x=22,y=22,z=22"/>
+ </Particles>
+ <Particles Name="tornado.water">
+  <Params Count="33" Continuous="true" ParticleLifeTime="5" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/water/water_b.tif" SoftParticle="true" Alpha="0.25,ParticleAge=(;t=0.055,v=1;t=0.43,v=1;t=0.604;t=1)" Color="(x=0.596,y=0.596,z=0.655),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" Size="32.1568,Random=0.108911,ParticleAge=(t=0.04,v=1;t=0.25,v=0.545;t=1)" Speed="5" AirResistance="0.2742777" GravityScale="-3" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359" RandomRotationRate="x=22,y=22,z=22" SortOffset="-0.07"/>
+  <Childs>
+   <Particles Name="debris6">
+    <Params Count="33" Continuous="true" ParticleLifeTime="3,Random=0.485" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/water/water_b.tif" SoftParticle="true" Alpha="ParticleAge=(;t=0.165,v=1;t=0.51,v=1;t=0.682;t=1)" Color="(x=0.59,y=0.59,z=0.647),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseLighting="0.515" DiffuseBacklighting="1" Size="15,Random=0.108911,ParticleAge=(t=0.04,v=1;t=0.21,v=0.57;t=1,v=1)" Speed="5" AirResistance="0.2149023" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359" RandomRotationRate="x=22,y=22,z=22" SortOffset="-0.07"/>
+   </Particles>
+   <Particles Name="water1">
+    <Params Count="3" Continuous="true" ParticleLifeTime="1.86" EmitAngle="90" Facing="Free" Texture="textures/sprites/water/water_b.tif" Alpha="ParticleAge=(;t=0.35,v=1;t=0.686,v=1;t=1)" Color="(x=0.757,y=0.757,z=0.757),ParticleAge=(v=(x=0.984,y=0.984,z=0.984);t=1,v=(x=1,y=1,z=1))" Size="33.9166,Random=0.515,ParticleAge=(v=0.933;t=1)" Speed="1" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="0.46"/>
+   </Particles>
+   <Particles Name="water2">
+    <Params Count="12" Continuous="true" ParticleLifeTime="2,Random=0.337" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.25,ParticleAge=(;t=0.165,v=1;t=1)" Color="(x=0.59,y=0.59,z=0.647),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=1,v=(x=1,y=1,z=0.97))" DiffuseLighting="0.911" DiffuseBacklighting="1" Size="88,ParticleAge=(;t=1,v=1)" TurbulenceSpeed="335.1465" RandomAngles="y=359" RandomRotationRate="y=31" SortOffset="-0.07"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.soil">
+  <Params Count="35" Continuous="true" ParticleLifeTime="7,Random=0.248" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="ParticleAge=(;t=0.055,v=1;t=0.47;t=1)" Color="(x=0.608,y=0.467,z=0.34),ParticleAge=(v=(x=0.93,y=0.99,z=1);t=0.99,v=(x=1,y=1,z=1))" DiffuseLighting="0.554" DiffuseBacklighting="0.494" Size="20,Random=0.812,ParticleAge=(v=1;t=0.51,v=0.25;t=1)" Stretch="0.2" Speed="5" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359" SortOffset="-0.01"/>
+  <Childs>
+   <Particles Name="debris2">
+    <Params Count="44" Continuous="true" ParticleLifeTime="8" RandomOffset="x=10,y=10,z=10" EmitAngle="180,Random=1" Facing="Free" BlendType="Additive" Geometry="objects/effects/natural/particle_green_leafs_b.cgf" Alpha="ParticleAge=(t=0.5,v=1;t=1)" Color="(x=0.373,y=0.373,z=0.373),ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.875,y=0.875,z=0.875))" DiffuseLighting="0" EmissiveLighting="1" NotAffectedByFog="true" Size="9,Random=0.2307692" Speed="3,Random=0.3333333" AirResistance="0.5848069" GravityScale="-2,Random=0.554455" TurbulenceSize="5.891639" TurbulenceSpeed="301.3454" RotationRate="x=57,y=57,z=57" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="vari1">
+    <Params Count="44" Continuous="true" ParticleLifeTime="8" RandomOffset="x=10,y=10,z=10" EmitAngle="180,Random=1" Facing="Free" Geometry="objects/effects/natural/particle_green_leafs_d.cgf" DiffuseLighting="0" EmissiveLighting="1" NotAffectedByFog="true" Size="9,Random=0.2307692" Speed="3,Random=0.3333333" AirResistance="0.5848069" GravityScale="-5,Random=0.554455" TurbulenceSize="9.212319" TurbulenceSpeed="167.287" RandomRotationRate="x=57,y=57,z=999" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False" ConfigMin="Medium"/>
+   </Particles>
+   <Particles Name="ground_part">
+    <Params Count="25" Continuous="true" ParticleLifeTime="2,Random=0.782" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="ParticleAge=(;t=0.106,v=1;t=1)" Color="(x=0.73,y=0.624,z=0.52)" DiffuseLighting="0.277" DiffuseBacklighting="0.624" Size="31,Random=0.119,ParticleAge=(;t=1,v=1)" Speed="Random=0.3333333" RandomAngles="y=359" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" SortOffset="-0.02" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="object_spawning1">
+    <Params Count="6" Continuous="true" ParticleLifeTime="1" PositionOffset="y=3" Facing="Free" Texture="textures/sprites/dirt/dirt_c.tif" Alpha="0.287,ParticleAge=(;t=0.494,v=1;t=1)" Size="20,ParticleAge=(v=0.682;t=1,v=1)" InitAngles="x=180" RotationRate="y=150"/>
+   </Particles>
+   <Particles Name="object_spawning2">
+    <Params Count="1" Continuous="true" PulsePeriod="12,Random=0.336634" ParticleLifeTime="4" PositionOffset="y=7" EmitAngle="24.2" Facing="Free" Geometry="objects/natural/trees/thin_leave_tree/forest_ground_branches_1_h.cgf" Size="3.57" Speed="83.6216" GravityScale="6" RandomRotationRate="x=333,y=333,z=333" ConfigMin="Medium"/>
+   </Particles>
+   <Particles Name="object_spawning3">
+    <Params Count="44" Continuous="true" ParticleLifeTime="8" RandomOffset="x=10,y=10,z=10" EmitAngle="180,Random=1" Facing="Free" Texture="textures/sprites/leaves/leaf_tiled_a.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.5,v=1;t=1)" Color="(x=0.373,y=0.373,z=0.373),ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.875,y=0.875,z=0.875))" NotAffectedByFog="true" Size="0.34,Random=0.2307692" Speed="3,Random=0.3333333" AirResistance="0.5848069" GravityScale="-2,Random=0.554455" TurbulenceSize="5.891639" TurbulenceSpeed="301.3454" RotationRate="x=357,y=357,z=357" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False" ConfigMin="Medium"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.sand">
+  <Params Count="35" Continuous="true" ParticleLifeTime="4,Random=0.248" FocusGravityDir="true" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="0.267,ParticleAge=(;t=0.055,v=1;t=0.518;t=1)" Color="(x=0.608,y=0.467,z=0.34)" DiffuseLighting="0.554" DiffuseBacklighting="0.494" Size="20,Random=0.812,ParticleAge=(v=1;t=0.51,v=0.25;t=1)" Stretch="0.2" Speed="5" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359"/>
+  <Childs>
+   <Particles Name="debris2">
+    <Params Count="44" Continuous="true" ParticleLifeTime="0.35" FocusGravityDir="true" EmitAngle="58.9" OrientToVelocity="true" Texture="textures/sprites/dirt/dirt_c.tif" Alpha="0.05,ParticleAge=(;t=0.64,v=1;t=1)" Color="(x=0.49,y=0.48,z=0.35)" DiffuseBacklighting="1" Size="10,Random=0.2307692" Stretch="0.1" Speed="40" Turbulence3DSpeed="50" TurbulenceSize="10" TurbulenceSpeed="-35.8" Bounciness="-1" SortOffset="-0.02" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="vari1">
+    <Params Count="50" Continuous="true" ParticleLifeTime="2,Random=0.366" RandomOffset="x=10,y=3,z=10" FocusGravityDir="true" EmitAngle="7.4,Random=1" Facing="Free" Geometry="objects/effects/natural/particle_rock_a.cgf" DiffuseLighting="0" EmissiveLighting="1" NotAffectedByFog="true" Size="10,Random=0.604,ParticleAge=(t=0.247,v=1;t=1)" Speed="37.4,Random=0.3333333" AirResistance="4.15,ParticleAge=(v=1;t=0.506)" GravityScale="-3,Random=0.554455" TurbulenceSize="2.16" TurbulenceSpeed="167.287" RandomAngles="x=180,y=180,z=180" RandomRotationRate="x=57,y=57,z=999" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="ground_part">
+    <Params Count="25" Continuous="true" ParticleLifeTime="0.9,Random=0.168" FocusGravityDir="true" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.386,ParticleAge=(;t=0.24,v=1;t=1)" Color="(x=0.733,y=0.663,z=0.518)" DiffuseLighting="0.535" DiffuseBacklighting="1" Size="31,Random=0.119,ParticleAge=(v=0.34;t=1,v=1)" Speed="30.4,Random=0.238" RandomAngles="y=359" Bounciness="-1" SortOffset="-0.01"/>
+   </Particles>
+   <Particles Name="object_spawning1">
+    <Params Count="4" Continuous="true" ParticleLifeTime="1" PositionOffset="z=4" Facing="Free" Texture="textures/sprites/dirt/dirt_c.tif" Alpha="0.1,ParticleAge=(;t=0.2,v=1;t=0.796,v=1;t=1)" Size="10" RotationRate="z=190"/>
+   </Particles>
+   <Particles Name="object_spawning2">
+    <Params Count="1" Continuous="true" PulsePeriod="12,Random=0.336634" ParticleLifeTime="4" PositionOffset="y=7" EmitAngle="24.2" Facing="Free" Geometry="objects/natural/trees/thin_leave_tree/forest_ground_branches_1_h.cgf" Size="3.57" Speed="83.6216" GravityScale="6" RandomRotationRate="x=333,y=333,z=333"/>
+   </Particles>
+   <Particles Name="object_spawning3">
+    <Params Count="50" Continuous="true" ParticleLifeTime="2,Random=0.376" RandomOffset="x=10,z=10" FocusGravityDir="true" EmitAngle="Random=1" Facing="Free" Texture="textures/sprites/leaves/leaf_tiled_a.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.5,v=1;t=1)" Color="(x=0.373,y=0.373,z=0.373),ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.875,y=0.875,z=0.875))" NotAffectedByFog="true" Size="0.34,Random=0.2307692" Speed="42.1,Random=0.3333333" AirResistance="0.5848069" GravityScale="-2,Random=0.554455" TurbulenceSize="10" TurbulenceSpeed="360" RotationRate="x=357,y=357,z=357" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" SortOffset="-0.01" VisibleUnderwater="If_False"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.generic">
+  <Params Count="35" Continuous="true" ParticleLifeTime="4,Random=0.248" FocusGravityDir="true" EmitAngle="Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_b.tif" SoftParticle="true" Alpha="0.267,ParticleAge=(;t=0.055,v=1;t=0.518;t=1)" Color="(x=0.608,y=0.467,z=0.34)" DiffuseLighting="0.554" DiffuseBacklighting="0.494" Size="20,Random=0.812,ParticleAge=(v=1;t=0.51,v=0.25;t=1)" Stretch="0.2" Speed="5" GravityScale="-2" TurbulenceSize="1.699147" TurbulenceSpeed="335.1465" RandomAngles="y=359"/>
+  <Childs>
+   <Particles Name="debris2">
+    <Params Count="44" Continuous="true" ParticleLifeTime="0.35" FocusGravityDir="true" EmitAngle="58.9" OrientToVelocity="true" Texture="textures/sprites/dirt/dirt_c.tif" Alpha="0.178,ParticleAge=(;t=0.64,v=1;t=1)" Color="(x=0.49,y=0.48,z=0.35)" DiffuseBacklighting="1" Size="10,Random=0.2307692" Stretch="0.1" Speed="40" Turbulence3DSpeed="50" TurbulenceSize="10" TurbulenceSpeed="-35.8" Bounciness="-1" SortOffset="-0.02" VisibleUnderwater="If_False"/>
+   </Particles>
+   <Particles Name="ground_part">
+    <Params Count="25" Continuous="true" ParticleLifeTime="0.9,Random=0.168" FocusGravityDir="true" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.3,ParticleAge=(;t=0.24,v=1;t=1)" Color="(x=0.682,y=0.64,z=0.57)" DiffuseLighting="0.624" DiffuseBacklighting="1" Size="31,Random=0.119,ParticleAge=(v=0.34;t=1,v=1)" Speed="56.1,Random=0.238" RandomAngles="y=359" Bounciness="-1" SortOffset="-0.01" ConfigMin="Medium"/>
+   </Particles>
+   <Particles Name="object_spawning1">
+    <Params Count="5" Continuous="true" ParticleLifeTime="1" PositionOffset="z=4" Facing="Free" Texture="textures/sprites/dirt/dirt_c.tif" Alpha="0.1,ParticleAge=(;t=0.2,v=1;t=0.796,v=1;t=1)" Size="15" RotationRate="z=190"/>
+   </Particles>
+   <Particles Name="object_spawning2">
+    <Params Count="1" Continuous="true" PulsePeriod="12,Random=0.336634" ParticleLifeTime="4" PositionOffset="y=7" EmitAngle="24.2" Facing="Free" Geometry="objects/natural/trees/thin_leave_tree/forest_ground_branches_1_h.cgf" Size="3.57" Speed="83.6216" GravityScale="6" RandomRotationRate="x=333,y=333,z=333"/>
+   </Particles>
+   <Particles Name="object_spawning3">
+    <Params Count="50" Continuous="true" ParticleLifeTime="2,Random=0.376" RandomOffset="x=10,z=10" FocusGravityDir="true" EmitAngle="Random=1" Facing="Free" Texture="textures/sprites/leaves/leaf_tiled_a.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.5,v=1;t=1)" Color="(x=0.373,y=0.373,z=0.373),ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.875,y=0.875,z=0.875))" NotAffectedByFog="true" Size="0.34,Random=0.2307692" Speed="42.1,Random=0.3333333" AirResistance="0.5848069" GravityScale="-2,Random=0.554455" TurbulenceSize="10" TurbulenceSpeed="360" RotationRate="x=357,y=357,z=357" PhysicsType="SimpleCollision" CollideTerrain="true" Bounciness="-1" SortOffset="-0.01" VisibleUnderwater="If_False"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="tornado.large_org">
+  <Params Count="100" Continuous="true" ParticleLifeTime="10" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="ParticleAge=(;t=0.47,v=1;t=0.737,v=1;t=1,v=0.02)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=0.996,v=(x=0.69,y=0.69,z=0.69))" EmissiveLighting="1" Size="30,Random=0.317,ParticleAge=(v=0.365;t=0.176,v=0.204;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="0.2279202" TurbulenceSpeed="201.1082" RandomAngles="x=22,y=22,z=22" RotationRate="x=22,y=55,z=22"/>
+  <Childs>
+   <Particles Name="large1">
+    <Params Count="120" Continuous="true" ParticleLifeTime="6" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/smoke/smoke_tiled_c.tif" TextureTiling="TilesX=2,TilesY=2" SoftParticle="true" Alpha="0.436,Random=0.248,ParticleAge=(;t=0.21,v=0.184;t=0.43,v=1;t=0.67,v=0.34;t=1)" DiffuseLighting="0.802" DiffuseBacklighting="0.345" Size="30,Random=0.317,ParticleAge=(v=0.545;t=0.29,v=0.16;t=1,v=1)" Stretch="0.2,ParticleAge=(t=0.514,v=0.5;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="1.7" TurbulenceSpeed="-98.9" RandomAngles="y=180" RotationRate="y=160"/>
+   </Particles>
+   <Particles Name="large2">
+    <Params Count="120" Continuous="true" ParticleLifeTime="6" EmitAngle="3,Random=1" OrientToVelocity="true" Texture="textures/sprites/snow/snow_sheet_a.tif" SoftParticle="true" Alpha="Random=0.248,ParticleAge=(;t=0.21,v=0.184;t=0.43,v=1;t=0.67,v=0.34;t=1)" DiffuseLighting="0.703" DiffuseBacklighting="0.345" Size="15,Random=0.317,ParticleAge=(v=0.545;t=0.184;t=1,v=1)" Stretch="0.2,ParticleAge=(t=0.514,v=0.5;t=1,v=1)" Speed="4" GravityScale="-1.6" TurbulenceSize="1.7" TurbulenceSpeed="-98" InitAngles="y=90" RandomAngles="y=180"/>
+   </Particles>
+  </Childs>
+ </Particles>
+</ParticleLibrary>

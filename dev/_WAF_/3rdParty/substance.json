@@ -1,0 +1,37 @@
+{
+	"name": "substance",
+	"source": "@ROOT@/Code/SDKs/Substance",
+	"description": "Allegorithmic Substance API",
+	"aliases" : {
+		"lib_names" : [
+			"substance_d3d10",
+			"substance_d3d11",
+			"substance_sse2"
+		]
+	},
+	"includes": [
+		"include"
+	],
+	"defines": [
+		"USE_SUBSTANCE"
+	],
+	"lib_required": "False",
+	"platform": {
+		"win_x64_vs2013": {
+			"sharedlibpath": [
+				"bin/win32-msvc2013-64/release_md"
+			],
+			"shared": [
+				"${lib_names}.dll"
+			]
+		},
+		"win_x64_vs2015": {
+			"sharedlibpath": [
+				"bin/win32-msvc2015-64/release_md"
+			],
+			"shared": [
+				"${lib_names}.dll"
+			]
+		}
+	}
+}

@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "352fef7706634c92814c587e84d7165a",
+    "Name": "CryLegacy",
+    "DisplayName": "CryLegacy",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Gem to handle the loading of CryAction.dll and initialization of the Game Framework.",
+    "Tags": ["Required"],
+    "IconPath": "preview.png"
+}

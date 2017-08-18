@@ -1,0 +1,37 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/Gestures/GestureRecognizerClickOrTap.h",
+            "Include/Gestures/GestureRecognizerClickOrTap.inl",
+            "Include/Gestures/GestureRecognizerDrag.h",
+            "Include/Gestures/GestureRecognizerDrag.inl",
+            "Include/Gestures/GestureRecognizerHold.h",
+            "Include/Gestures/GestureRecognizerHold.inl",
+            "Include/Gestures/GestureRecognizerPinch.h",
+            "Include/Gestures/GestureRecognizerPinch.inl",
+            "Include/Gestures/GestureRecognizerRotate.h",
+            "Include/Gestures/GestureRecognizerRotate.inl",
+            "Include/Gestures/GestureRecognizerSwipe.h",
+            "Include/Gestures/GestureRecognizerSwipe.inl",
+            "Include/Gestures/GesturesBus.h",
+            "Include/Gestures/IGestureRecognizer.h"
+        ],
+        "Source": [
+            "Source/GestureManager.h",
+            "Source/GestureManager.cpp",
+            "Source/GestureRecognizerClickOrTapFlowNode.cpp",
+            "Source/GestureRecognizerDragFlowNode.cpp",
+            "Source/GestureRecognizerHoldFlowNode.cpp",
+            "Source/GestureRecognizerPinchFlowNode.cpp",
+            "Source/GestureRecognizerRotateFlowNode.cpp",
+            "Source/GestureRecognizerSwipeFlowNode.cpp",
+            "Source/GesturesGem.cpp"
+        ]
+    }
+}

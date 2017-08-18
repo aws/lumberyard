@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CModellingToolsPanel</class>
+ <widget class="QWidget" name="CModellingToolsPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>250</width>
+    <height>50</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QGridLayout" name="MAIN_GRID_LAYOUT"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

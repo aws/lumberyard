@@ -1,0 +1,11 @@
+{
+    "name": "rapidjson",
+    "source": "@ROOT@/Code/SDKs/rapidjson",
+    "description": "Rapid JSON header only library",
+    "header_only": "True",
+    "includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "False"
+}

@@ -1,0 +1,6 @@
+<download name="LeaderboardSample" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="8184" md5="65a596f0de2304fe3402d6893b95cb41"/>
+ </files>
+</download>

@@ -1,0 +1,22 @@
+Waf 1.7.x
+---------
+
+* fix the remaining bugs
+* provide more extensions
+
+
+Can be useful:
+
+def bld_command(*k):
+	fun = k[0]
+	name = fun.__name__
+	from waflib.Build import BuildContext
+	class tmp(BuildContext):
+		cmd = name
+		fun = name
+	return fun
+
+@bld_command
+def foo(ctx):
+	print ctx.env
+

@@ -1,0 +1,20 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/TestsMain.cpp"
+        ],
+        "Tests/Cgf": 
+        [
+            "Tests/Cgf/CgfExportContextTestBase.h",
+            "Tests/Cgf/CgfColorStreamExporterTests.cpp",
+            "Tests/Cgf/CgfContainerSettingsExporterTests.cpp",
+            "Tests/Cgf/CgfMaterialExporterTests.cpp",
+            "Tests/Cgf/CgfMeshExporterTests.cpp",
+            "Tests/Cgf/CgfMeshGroupExporterTests.cpp",
+            "Tests/Cgf/CgfUVStreamExporterTests.cpp",
+            "Tests/Cgf/CgfWorldMatrixExporterTests.cpp"
+        ]
+    }
+}

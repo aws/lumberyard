@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
+    "Name": "UserLoginDefault",
+    "DisplayName": "User Login: Default",
+    "Summary": "Release builds require end users to log in for configuration settings like action maps. This is a simple implementation of the user login feature to enable quick testing and verification of release builds.",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Tags": ["Reference", "Implementation"],
+    "IconPath": "preview.png"
+}

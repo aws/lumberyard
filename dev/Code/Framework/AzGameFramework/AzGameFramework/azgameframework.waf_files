@@ -1,0 +1,17 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "API":
+        [
+            "API/GameApplicationAPI.h"
+        ],
+        "Application":
+        [
+            "Application/GameApplication.cpp",
+            "Application/GameApplication.h"
+        ]
+    }
+}

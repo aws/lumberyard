@@ -1,0 +1,11 @@
+{
+    "none": {
+        "Root": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ],
+        "Source": [
+            "Source/AWSModule.cpp"
+        ]
+    }
+}

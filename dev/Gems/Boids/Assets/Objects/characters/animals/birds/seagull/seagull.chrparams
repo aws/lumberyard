@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<Params>
+	<AnimationList>
+		<Animation name="#filepath" path="Animations\animals\Birds\seagull"/>
+		<Animation name="$TracksDatabase" path="animations\animals\Birds\seagull.dba"/>
+		
+
+		<Animation name="fly_loop" path="seagull_fly.caf"/>
+
+	</AnimationList>
+</Params>

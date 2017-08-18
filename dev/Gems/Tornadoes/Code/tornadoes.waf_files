@@ -1,0 +1,21 @@
+{
+    "none" : {
+        "Source":
+        [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto":
+    {
+        "Source":
+        [
+            "Source/TornadoesGem.h",
+            "Source/TornadoesGem.cpp",
+            "Source/Tornado.h",
+            "Source/Tornado.cpp",
+            "Source/FlowTornado.h",
+            "Source/FlowTornado.cpp"
+        ]
+    }
+}

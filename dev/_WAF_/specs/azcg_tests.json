@@ -1,0 +1,16 @@
+{
+    "description"           : "Configuration to build AZ Code Generator Tests",
+    "visual_studio_name"    : "AZCG Test",
+    "disable_game_projects" : true,
+    "platforms" : ["win", "darwin", "linux"],
+    "configurations" :
+    [
+        "debug_test",
+        "profile_test"
+    ],
+    "modules" :
+    [
+        "AzCodeGenerator",
+        "AzCodeGeneratorUnitTests"
+    ]
+}

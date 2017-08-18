@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "DX12/RenderCapabilities.cpp"
+        ]
+    }
+}

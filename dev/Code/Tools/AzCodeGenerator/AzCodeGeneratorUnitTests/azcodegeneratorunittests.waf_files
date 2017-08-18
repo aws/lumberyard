@@ -1,0 +1,18 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "main.cpp",
+            "Components.h",
+            "Components.cpp",
+            "Enums.h",
+            "Structs.h",
+            "Structs.cpp"
+        ],
+        "Native": [
+            "Native.h",
+            "Native.cpp"
+        ]
+    }
+}

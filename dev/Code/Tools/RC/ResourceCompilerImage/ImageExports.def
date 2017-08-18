@@ -1,0 +1,3 @@
+EXPORTS
+    RegisterConvertors @1
+    RunUnitTests @2

@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>CObjectLayerPropsDialog</class>
+    <widget class="QDialog" name="CObjectLayerPropsDialog">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>380</width>
+                <height>314</height>
+            </rect>
+        </property>
+        <property name="minimumSize">
+            <size>
+                <width>325</width>
+                <height>310</height>
+            </size>
+        </property>
+        <property name="windowTitle">
+            <string>Layer Settings</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+            <property name="leftMargin">
+                <number>15</number>
+            </property>
+            <property name="topMargin">
+                <number>15</number>
+            </property>
+            <property name="rightMargin">
+                <number>15</number>
+            </property>
+            <property name="bottomMargin">
+                <number>15</number>
+            </property>
+            <item>
+                <widget class="QLabel" name="LABEL">
+                    <property name="text">
+                        <string>Layer Name:</string>
+                    </property>
+                    <property name="alignment">
+                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+                    </property>
+                </widget>
+            </item>
+            <item>
+                <layout class="QHBoxLayout" name="horizontalLayout">
+                    <property name="spacing">
+                        <number>12</number>
+                    </property>
+                    <item>
+                        <widget class="QLineEdit" name="STRING">
+                            <property name="alignment">
+                                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                            </property>
+                        </widget>
+                    </item>
+                    <item>
+                        <widget class="ColorButton" name="colorButton">
+                            <property name="text">
+                                <string/>
+                            </property>
+                        </widget>
+                    </item>
+                </layout>
+            </item>
+            <item>
+                <widget class="QWidget" name="LAYER_OPTIONS_CHECKBOXES" native="true">
+                    <layout class="QVBoxLayout" name="verticalLayout">
+                        <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_2">
+                                <item>
+                                    <widget class="QCheckBox" name="VISIBLE">
+                                        <property name="text">
+                                            <string>Visible</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="EXTERNAL">
+                                        <property name="text">
+                                            <string>Export *.lyr</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </item>
+                        <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_3">
+                                <item>
+                                    <widget class="QCheckBox" name="FROZEN">
+                                        <property name="text">
+                                            <string>Frozen</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="EXPORT_TO_GAME">
+                                        <property name="text">
+                                            <string>Use In Game</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </item>
+                        <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_4">
+                                <item>
+                                    <widget class="QCheckBox" name="HAVE_PHYSICS">
+                                        <property name="text">
+                                            <string>Enable Physics</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="EXPORT_LAYERPAK">
+                                        <property name="text">
+                                            <string>Export Layer Pak</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                            </layout>
+                        </item>
+                        <item>
+                            <widget class="QCheckBox" name="LAYER_DEFAULT_LOADED">
+                                <property name="text">
+                                    <string>Load By Default</string>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                    <zorder></zorder>
+                    <zorder></zorder>
+                    <zorder></zorder>
+                    <zorder>LAYER_DEFAULT_LOADED</zorder>
+                </widget>
+            </item>
+            <item>
+                <widget class="QGroupBox" name="PLATFORMS_GROUPBOX">
+                    <property name="title">
+                        <string>Platforms:</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_2">
+                        <item>
+                            <widget class="QRadioButton" name="PLATFORM_ALL">
+                                <property name="text">
+                                    <string>Export to All Platforms</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item>
+                            <widget class="QRadioButton" name="PLATFORM_SPEC">
+                                <property name="text">
+                                    <string>Export to Specific Platform(s)</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_5">
+                                <property name="spacing">
+                                    <number>20</number>
+                                </property>
+                                <item>
+                                    <spacer name="horizontalSpacer_2">
+                                        <property name="orientation">
+                                            <enum>Qt::Horizontal</enum>
+                                        </property>
+                                        <property name="sizeHint" stdset="0">
+                                            <size>
+                                                <width>40</width>
+                                                <height>20</height>
+                                            </size>
+                                        </property>
+                                    </spacer>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="PLATFORM_PC">
+                                        <property name="text">
+                                            <string>PC</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="PLATFORM_XBOXONE">
+                                        <property name="text">
+                                            <string>XBox One</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QCheckBox" name="PLATFORM_PS4">
+                                        <property name="text">
+                                            <string>PS4</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <spacer name="horizontalSpacer">
+                                        <property name="orientation">
+                                            <enum>Qt::Horizontal</enum>
+                                        </property>
+                                        <property name="sizeHint" stdset="0">
+                                            <size>
+                                                <width>40</width>
+                                                <height>20</height>
+                                            </size>
+                                        </property>
+                                    </spacer>
+                                </item>
+                            </layout>
+                        </item>
+                    </layout>
+                </widget>
+            </item>
+            <item>
+                <widget class="QDialogButtonBox" name="buttonBox">
+                    <property name="standardButtons">
+                        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+                    </property>
+                </widget>
+            </item>
+            <item>
+                <spacer name="verticalSpacer">
+                    <property name="orientation">
+                        <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                        <size>
+                            <width>20</width>
+                            <height>40</height>
+                        </size>
+                    </property>
+                </spacer>
+            </item>
+        </layout>
+    </widget>
+    <customwidgets>
+       <customwidget>
+       <class>ColorButton</class>
+       <extends>QToolButton</extends>
+       <header location="global">QtUI/ColorButton.h</header>
+      </customwidget>
+    </customwidgets>
+    <resources/>
+    <connections/>
+</ui>

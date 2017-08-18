@@ -1,0 +1,10 @@
+{
+    "none": {
+        "Process":
+        [
+            "Process/internal/ProcessWatcher_OSX.cpp",
+            "Process/internal/ProcessCommon_OSX.h",
+            "Process/internal/ProcessCommunicator_OSX.cpp"
+       ]
+    }
+}

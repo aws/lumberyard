@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CEnvironmentProbePanel</class>
+ <widget class="QWidget" name="CEnvironmentProbePanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>196</width>
+    <height>72</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPushButton" name="GENERATECUBEMAPS_BUTTON">
+     <property name="text">
+      <string>Generate Cubemap</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="GENERATE_ALL_CUBEMAPS_BUTTON">
+     <property name="text">
+      <string>Generate All Cubemaps</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

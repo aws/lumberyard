@@ -1,0 +1,29 @@
+{
+    "none": {
+        "EditorPlugin": [
+            "dllmain.cpp",
+            "DynamicContentEditorPlugin.cpp",
+            "DynamicContentEditorPlugin.h",
+            "StdAfx.cpp",
+            "StdAfx.h",
+            "QDynamicContentEditorMainWindow.h",
+            "QDynamicContentEditorMainWindow.cpp",
+            "create_package.ui",
+            "dynamic_content.ui",
+            "change_target_platform.ui",
+            "create_new_manifest.ui",
+            "incompatible_files.ui",
+            "platform_warning.ui",
+            "upload_packages.ui",
+            "PackagesModel.h",
+            "PackagesModel.cpp",
+            "FileWatcherModel.h",
+            "FileWatcherModel.cpp",
+            "ManifestTableKeys.h",
+            "ManifestTableKeys.cpp",
+            "ManifestDataStructures.h",
+            "FileWatcherView.h",
+            "FileWatcherView.cpp"
+        ]
+    }
+}

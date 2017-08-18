@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AIPointPanel</class>
+ <widget class="QWidget" name="AIPointPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>272</width>
+    <height>421</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_5">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QGroupBox" name="typeGroup">
+         <property name="title">
+          <string>Type</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QRadioButton" name="waypointRadio">
+            <property name="text">
+             <string>Waypoint</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="hideRadio">
+            <property name="text">
+             <string>Hide</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="secondaryHideRadio">
+            <property name="text">
+             <string>Sec Hide</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="entryExitRadio">
+            <property name="text">
+             <string>Entry/Exit</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="exitOnlyRadio">
+            <property name="text">
+             <string>Exit-only</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="removableCheck">
+         <property name="text">
+          <string>Removable</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QGroupBox" name="navigationTypeGroup">
+         <property name="title">
+          <string>Nav Type</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QRadioButton" name="humanRadio">
+            <property name="text">
+             <string>Human</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="threeDimensionalSurfaceRadio">
+            <property name="text">
+             <string>3D Surface</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="regenerateLinksButton">
+         <property name="text">
+          <string>Regen Links</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="linkedWaypointsLabel">
+     <property name="text">
+      <string>Linked Waypoints:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListView" name="nodesListView">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPickObjectButton" name="pickButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Pick</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPickObjectButton" name="pickImpassButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Pick impass</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="selectButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Select</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="removeButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Remove</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="removeAllButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Remove all</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="removeAllInAreaButton">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Remove all in area</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QPickObjectButton</class>
+   <extends>QPushButton</extends>
+   <header>Controls/PickObjectButton.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>waypointRadio</tabstop>
+  <tabstop>hideRadio</tabstop>
+  <tabstop>secondaryHideRadio</tabstop>
+  <tabstop>entryExitRadio</tabstop>
+  <tabstop>exitOnlyRadio</tabstop>
+  <tabstop>removableCheck</tabstop>
+  <tabstop>humanRadio</tabstop>
+  <tabstop>threeDimensionalSurfaceRadio</tabstop>
+  <tabstop>regenerateLinksButton</tabstop>
+  <tabstop>nodesListView</tabstop>
+  <tabstop>pickButton</tabstop>
+  <tabstop>pickImpassButton</tabstop>
+  <tabstop>selectButton</tabstop>
+  <tabstop>removeButton</tabstop>
+  <tabstop>removeAllButton</tabstop>
+  <tabstop>removeAllInAreaButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

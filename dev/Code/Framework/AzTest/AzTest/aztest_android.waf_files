@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Android": [
+            "Platform_android.cpp"
+        ]
+    }
+}

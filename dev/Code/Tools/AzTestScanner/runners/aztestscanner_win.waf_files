@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "Source Files/Windows":
+        [
+            "src/main.cpp"
+        ],
+        "Source Files/Test":
+        [
+            "test/RunnerTest.cpp"
+        ]
+    }
+}

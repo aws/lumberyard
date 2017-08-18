@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{e72ea18e-cf7a-4e96-991c-cc5fee9c0968}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath>..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="resource_manager_common\aws_utils.py" />
+    <Compile Include="resource_manager_common\constant.py" />
+    <Compile Include="resource_manager_common\json_utils.py" />
+    <Compile Include="resource_manager_common\stack_info.py" />
+    <Compile Include="resource_manager_common\test\mock_aws.py" />
+    <Compile Include="resource_manager_common\test\mock_stack_info.py" />
+    <Compile Include="resource_manager_common\test\test_stack_info.py" />
+    <Compile Include="resource_manager_common\test\__init__.py" />
+    <Compile Include="resource_manager_common\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="resource_manager_common" />
+    <Folder Include="resource_manager_common\test" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include=".ignore" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

@@ -1,0 +1,456 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/score": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "submit_score"
+            },
+            "post" : {
+                "description": "submit a new high score",
+                "parameters": [
+                    {
+                        "name": "score_entry",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SingleScore"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The Updated score entry",
+                        "schema": {
+                            "$ref": "#/definitions/SingleScore"
+                        }
+                    }
+                }
+            }
+        },
+        "/scores/{user}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "user_scores"
+            },
+            "get": {
+                "description": "Get all scores for given user",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response with the scores for the user",
+                        "schema": {
+                            "$ref": "#/definitions/ScoreData"
+                        }
+                    }
+                }
+            }
+        },
+        "/score/{stat}/{user}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "user_scores"
+            },
+            "get": {
+                "description": "Get a specific score for given user",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "stat",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response with the scores for the user",
+                        "schema": {
+                            "$ref": "#/definitions/ScoreData"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a specific score for given user",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "stat",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response with the scores for the user",
+                        "schema": {
+                            "$ref": "#/definitions/ScoreData"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "description": "Get a list of all valid stats (leaderbooards)",
+                "responses": {
+                    "200": {
+                        "description": "a list of all stat definitions",
+                        "schema": {
+                            "$ref": "#/definitions/StatList"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new stat to track in the leaderboards or edit an existing one",
+                "parameters": [
+                    {
+                        "name": "stat_def",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/StatDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of all stats",
+                        "schema": {
+                            "$ref": "#/definitions/StatList"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats/{stat_name}": {
+            "delete": {
+                "description": "delete a stat from the list of valid stats",
+                "parameters": [
+                    {
+                        "name": "stat_name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "a list of all stats",
+                        "schema": {
+                            "$ref": "#/definitions/StatList"
+                        }
+                    }
+                }
+            }
+        },
+        "/player/ban_list": {
+            "get": {
+                "description": "get a list of banned players",
+                "responses": {
+                    "200": {
+                        "description": "a list of players",
+                        "schema": {
+                            "$ref": "#/definitions/BannedPlayerList"
+                        }
+                    }
+                }
+            }
+        },
+        "/player/ban/{user}": {
+            "post": {
+                "description": "unban a player",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The outcome of the ban request",
+                        "schema": {
+                            "$ref": "#/definitions/BanOutcome"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "unban a player",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "the outcome of the unban request",
+                        "schema": {
+                            "$ref": "#/definitions/BanOutcome"
+                        }
+                    }
+                }
+            }
+        },
+        "/leaderboard/{stat}": {
+            "post": {
+                "description": "Get a leaderboard for {stat}",
+                "parameters": [
+                    {
+                        "name": "stat",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "name": "additional_data",
+                        "in": "body",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/definitions/AdditionalLeaderboardRequestData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The sorted list of scores that make up the leaderboard",
+                        "schema": {
+                            "$ref": "#/definitions/ScoreData"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/process_records": {
+            "get": {
+                "operationId": "process_records",
+                "description": "TESTING ONLY! Manually invoke record_set_processor to process all newly submitted scores",
+                "responses": {
+                    "200": {
+                        "description": "A successful invocation."
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "BanOutcome":{
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "SingleScore": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "string"
+                },
+                "stat": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                },
+                "estimated_rank": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "stat",
+                "value",
+                "user"
+            ]
+        },
+        "ScoreList": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/SingleScore"
+            }
+        },
+        "ScoreData": {
+            "type": "object",
+            "properties": {
+                "scores": {
+                    "$ref": "#/definitions/ScoreList"
+                },
+                "current_page": { 
+                    "type": "integer"
+                },
+                "total_pages": { 
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "scores"
+            ]
+        },
+        "StatDefinition": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "min": {
+                    "type": "number"
+                },
+                "max": {
+                    "type": "number"
+                },
+                "sample_size": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "name",
+                "mode"
+            ]
+        },
+        "StringList": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "StatDefList": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/StatDefinition"
+            }
+        },
+        "BannedPlayerList": {
+            "type": "object",
+            "properties": {
+                "players": {
+                    "$ref": "#/definitions/StringList"
+                }
+            }
+        },
+        "StatList": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "$ref": "#/definitions/StatDefList"
+                }
+            },
+            "required": [
+                "stats"
+            ]
+        },
+        "AdditionalLeaderboardRequestData": {
+            "type": "object",
+            "properties": {
+                "users": {
+                    "$ref": "#/definitions/StringList"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "MainTableKey": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user"
+            ]
+        }
+    }
+}

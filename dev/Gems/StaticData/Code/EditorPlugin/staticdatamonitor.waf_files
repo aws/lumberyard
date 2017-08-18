@@ -1,0 +1,17 @@
+{
+    "none": {
+        "Root": [
+            "dllmain.cpp",
+
+	    "IStaticDataMonitor.h",
+            "StaticDataMonitorEditorPlugin.cpp",
+            "StaticDataMonitorEditorPlugin.h",
+            "StaticDataMonitor.cpp",
+            "StaticDataMonitor.h",
+
+	    "StdAfx.cpp",
+            "StdAfx.h"
+
+        ]
+    }
+}

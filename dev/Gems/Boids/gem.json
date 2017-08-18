@@ -1,0 +1,10 @@
+{
+    "GemFormatVersion": 3,
+    "LinkType": "Dynamic",
+    "Name": "Boids",    
+    "Summary": "The Boids Gem include entities that simulate animals exhibiting group behavior, obstacle avoidance, animations, and sound. Their complex behavior arises from the interaction of an individual agent boid with other boids and the environment that they are moving in.",
+    "Uuid": "97e596870cf645e184e43d5a5ccda857",
+    "Version": "0.1.0",
+    "Tags": ["Birds", "Flocking", "Turtles", "Legacy"],
+    "IconPath": "preview.png"
+}

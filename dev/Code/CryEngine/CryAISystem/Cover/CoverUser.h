@@ -1,0 +1,80 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#ifndef CRYINCLUDE_CRYAISYSTEM_COVER_COVERUSER_H
+#define CRYINCLUDE_CRYAISYSTEM_COVER_COVERUSER_H
+#pragma once
+
+
+#include "Cover.h"
+#include "CoverPath.h"
+
+
+class CoverUser
+{
+public:
+    CoverUser();
+
+    struct Params
+    {
+        Params()
+            : distanceToCover(0.4f)
+            , inCoverRadius(0.3f)
+            , userID(0)
+        {
+        }
+
+        float distanceToCover;
+        float inCoverRadius;
+        tAIObjectID userID;
+    };
+
+    void Reset();
+    void ResetState();
+
+    void SetCoverID(const CoverID& coverID);
+    const CoverID& GetCoverID() const;
+
+    void SetParams(const Params& params);
+    const Params& GetParams() const;
+
+    void Update(float updateTime, const Vec3& pos, const Vec3* eyes, uint32 eyeCount, float minEffectiveCoverHeight = 0.001f);
+    void UpdateWhileMoving(float updateTime, const Vec3& pos, const Vec3* eyes, uint32 eyeCount);
+    void UpdateNormal(const Vec3& pos);
+
+    bool IsCompromised() const;
+    bool IsFarFromCoverLocation() const;
+    float CalculateEffectiveHeightAt(const Vec3& pos, const Vec3* eyes, uint32 eyeCount) const;
+    float GetLocationEffectiveHeight() const;
+    const Vec3& GetCoverNormal() const; // normal pointing out of the cover surface
+    Vec3 GetCoverLocation() const;
+
+    void DebugDraw() const;
+
+private:
+    bool IsInCover(const Vec3& pos, float radius, const Vec3* eyes, uint32 eyeCount) const;
+
+    CoverID m_coverID;
+    CoverID m_nextCoverID;
+
+    float m_locationEffectiveHeight;
+    Vec3 m_location;
+    Vec3 m_normal;
+
+    bool m_compromised;
+    bool m_farFromCoverLocation;
+
+    Params m_params;
+};
+
+#endif // CRYINCLUDE_CRYAISYSTEM_COVER_COVERUSER_H

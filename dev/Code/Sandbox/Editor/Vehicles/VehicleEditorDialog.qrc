@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="VehicleDialog">
+    <file>veed_tree-01.png</file>
+    <file>veed_tree-00.png</file>
+    <file>veed_tree-02.png</file>
+    <file>veed_tree-03.png</file>
+    <file>veed_tree-04.png</file>
+    <file>veed_tree-05.png</file>
+    <file>veed_tree-06.png</file>
+    <file>veed_tree-07.png</file>
+    <file>veed_tree-08.png</file>
+    <file>veed_tree-09.png</file>
+    <file>veed_tree-10.png</file>
+    <file>veed_tree-11.png</file>
+    <file>veed_tree-12.png</file>
+    <file>veed_tree-13.png</file>
+    <file>veed_tree-14.png</file>
+  </qresource>
+</RCC>

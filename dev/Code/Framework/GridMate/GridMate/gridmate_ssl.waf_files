@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "Carrier":
+        [
+            "Carrier/SecureSocketDriver.cpp",
+            "Carrier/SecureSocketDriver.h",
+            "Carrier/StreamSecureSocketDriver.cpp",
+            "Carrier/StreamSecureSocketDriver.h"
+        ]
+    }
+}

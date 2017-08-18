@@ -1,0 +1,10 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/test_Main.cpp",
+            "Tests/test_Utils.cpp"
+        ]
+    }
+}

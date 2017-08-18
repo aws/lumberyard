@@ -1,0 +1,23 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "stdafx.h",
+            "stdafx.cpp"
+        ]
+    },
+    "Uber_Content.cpp":
+    {
+        "Source Files":
+        [
+            "AssetTagging.cpp",
+            "dllmain.cpp"
+        ],
+        "Header Files":
+        [
+            "AssetTagging.h",
+            "targetver.h"
+        ]
+    }
+}

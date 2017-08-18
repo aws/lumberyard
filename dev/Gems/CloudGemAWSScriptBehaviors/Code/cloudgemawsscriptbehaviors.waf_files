@@ -1,0 +1,37 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemAWSScriptBehaviors/CloudGemAWSScriptBehaviorsBus.h"
+        ],
+        "Source": [
+            "Source/CloudGemAWSScriptBehaviorsModule.cpp",
+            "Source/CloudGemAWSScriptBehaviorsSystemComponent.cpp",
+            "Source/CloudGemAWSScriptBehaviorsSystemComponent.h",
+            "Source/AWSBehaviorLambda.cpp",
+            "Source/AWSBehaviorLambda.h",
+            "Source/AWSBehaviorURL.cpp",
+            "Source/AWSBehaviorURL.h",
+            "Source/AWSBehaviorHTTP.cpp",
+            "Source/AWSBehaviorHTTP.h",
+            "Source/AWSBehaviorS3Download.cpp",
+            "Source/AWSBehaviorS3Download.h",
+            "Source/AWSBehaviorS3Upload.cpp",
+            "Source/AWSBehaviorS3Upload.h",
+            "Source/AWSBehaviorS3Presign.cpp",
+            "Source/AWSBehaviorS3Presign.h",
+            "Source/AWSBehaviorMap.h",
+            "Source/AWSBehaviorMap.cpp",
+            "Source/AWSBehaviorJSON.h",
+            "Source/AWSBehaviorJSON.cpp",
+            "Source/AWSBehaviorAPI.h",
+            "Source/AWSBehaviorAPI.cpp",
+            "Source/AWSBehaviorBase.h"
+        ]
+    }
+}

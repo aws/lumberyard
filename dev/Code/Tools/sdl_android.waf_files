@@ -1,0 +1,19 @@
+{
+    "NoUberFile":
+    {
+        "Root":
+        [	
+            "../SDKs/SDL2/src/src/audio/android/SDL_androidaudio.c",
+            "../SDKs/SDL2/src/src/core/android/SDL_android.c",
+            "../SDKs/SDL2/src/src/joystick/android/SDL_sysjoystick.c",
+            "../SDKs/SDL2/src/src/power/android/SDL_syspower.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidclipboard.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidevents.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidgl.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidkeyboard.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidtouch.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidvideo.c",
+            "../SDKs/SDL2/src/src/video/android/SDL_androidwindow.c"
+        ]
+    }
+}

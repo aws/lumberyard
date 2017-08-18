@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/SmartObjectState">
+        <file alias="folder.png">res/smart_object_state-folder.png</file>
+    </qresource>
+</RCC>

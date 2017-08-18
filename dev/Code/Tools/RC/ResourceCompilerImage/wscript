@@ -1,0 +1,81 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+import os
+
+def build(bld):
+
+    includes    = [ '.',
+                    bld.Path('Code/Tools'),
+                    bld.Path('Code/Tools/SDKs'),
+                    bld.Path('Code/Tools/RC/ResourceCompiler'),
+                    bld.Path('Code/Tools/CryCommonTools'),
+                    bld.Path('Code/CryEngine/CryCommon'),
+                    bld.Path('Code/Tools/SDKs/squish-ccr')]
+    copy_external = [ ]
+    defines     = [ 'RESOURCECOMPILERIMAGE_EXPORTS',
+                    'RESOURCE_COMPILER_IMAGE']
+    win_lib     = [ 'PVRTexLib', 'Gdi32' ]
+    win_libpath = [ bld.Path('Code/Tools/SDKs/PowerVRTexTool/Windows_x86_64')]
+
+    bld.CryResourceCompilerModule(
+        # Settings
+        target                      = 'ResourceCompilerImage',
+        vs_filter                   = 'RC',
+        copyright_org               = 'Amazon-CryTek',
+        file_list                   = 'resourcecompilerimage.waf_files',
+        platforms                   = ['win', 'darwin'],
+        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        win_cflags                  = ['/W3', '/EHsc'],
+        use                         = ['AzToolsFramework'],
+        uselib                      = ['QT5CORE',
+                                        'QT5GUI',
+                                        'QT5WIDGETS',
+                                        'QT5SVG',
+                                        'TIFFSTATIC',
+                                        'ZLIB',
+                                        'TIFF'],
+        features                    = ['qt5'],
+        includes                    = includes,
+        win_defines                 = ['_WIN64'],
+        copy_external               = copy_external,
+        defines                     = defines,
+        libpath                     = [ bld.Path('Code/Tools/CryCommonTools')],
+
+        win_copy_dependent_files    = [ 'Bin64/rc/PVRTexLib.dll'],
+        darwin_copy_dependent_files = [ 'Bin64/rc/libPVRTexLib.dylib'],
+
+        # Configuration Specific
+        win_export_definitions          = 'ImageExports.def',
+
+        # Platform Specific
+        win_lib                     = win_lib,
+        win_libpath                 = win_libpath,
+        win_cxxflags= [
+            '/wd4819',      # Invalid characters not in default code page.  Source contain characters above extended ascii, including in comments.
+        ],
+
+        darwin_lib                  = [ 'PVRTexLib' ],
+        darwin_libpath              = [ bld.Path('Code/Tools/SDKs/PowerVRTexTool/OSX_x86')],
+        darwin_cflags               = ['-Wno-shift-count-overflow',
+                                    '-Wno-sometimes-uninitialized',
+                                    '-Wno-shift-negative-value'],
+        darwin_cxxflags             = ['-Wno-shift-count-overflow',
+                                    '-Wno-sometimes-uninitialized',
+                                    '-Wno-shift-negative-value'],
+
+        # Testing
+        test_all_file_list          = ['resourcecompilerimage_test.waf_files'],
+    )

@@ -1,0 +1,53 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.CryEngineStaticLibrary(
+        target              = 'AzGameFramework',
+        vs_filter           = 'AZ Framework',
+        file_list           = ['azgameframework.waf_files'],
+        platforms           = ['all'],
+        configurations      = ['all'],
+        disable_pch         = True,
+        use                 = ['AzFramework'],
+        includes            = ['..'],
+        export_includes     = ['..'],
+
+        win_cxxflags=[
+            '/W4', # warning level
+            ],
+        win_features        = ['crcfix'],
+        
+       
+       
+        android_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        ios_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        appletv_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        darwin_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+        linux_cxxflags=[
+            '-Werror', # warnings as errors
+            '-Wall', # warning level
+            ],
+    )

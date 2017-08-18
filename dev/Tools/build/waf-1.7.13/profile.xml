@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<Profile FormatVersion="1">
+	<Tools>
+		<Tool Filename="cl" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false" VCCompiler="true"/>
+
+		<Tool Filename="moc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
+		<Tool Filename="uic" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
+		<Tool Filename="rcc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
+		<Tool Filename="link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>
+
+		<Tool Filename="orbis-clang" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<Tool Filename="orbis-clang++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+
+		<Tool Filename="x86_64-linux-gnu-gcc" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<Tool Filename="x86_64-linux-gnu-g++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+
+		<Tool Filename="arm-linux-androideabi-gcc" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<Tool Filename="arm-linux-androideabi-g++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+
+		<Tool Filename="clang" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<Tool Filename="clang++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+
+		<Tool Filename="AzCodeGenerator" AllowRemote="true" AllowIntercept="false" TimeLimit="15"/>
+
+  </Tools>
+</Profile>
+

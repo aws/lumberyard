@@ -1,0 +1,4 @@
+<Entity
+ Name="AreaSolid"
+ Invisible="1"
+/>

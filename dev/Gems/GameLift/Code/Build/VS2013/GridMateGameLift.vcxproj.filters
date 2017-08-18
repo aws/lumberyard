@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\Source\Session\GameLiftSession.cpp">
+      <Filter>Source Files\Session</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Session\GameLiftSessionService.cpp">
+      <Filter>Source Files\Session</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Session\GameLiftSearch.cpp">
+      <Filter>Source Files\Session</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\Session\GameLiftSessionRequest.cpp">
+      <Filter>Source Files\Session</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{710b71e6-3c04-4743-aecc-73ab2522fc52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Session">
+      <UniqueIdentifier>{c1672bcd-c354-42ac-b9c9-f9cf5413f7a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Includes">
+      <UniqueIdentifier>{abde07fb-df7d-4f48-8825-ce56999a8fe9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Includes\Session">
+      <UniqueIdentifier>{b1675875-7248-4914-bca1-5f36c04cd366}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Source\Session\GameLiftSessionDefs.h">
+      <Filter>Source Files\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSearch.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSession.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSessionDefs.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSessionEvents.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSessionRequest.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSessionService.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\GameLift\Session\GameLiftSessionServiceBus.h">
+      <Filter>Source Files\Includes\Session</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

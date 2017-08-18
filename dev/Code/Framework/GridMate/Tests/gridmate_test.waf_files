@@ -1,0 +1,21 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+          "test_Main.cpp",
+          "TestProfiler.cpp",
+          "Session.cpp",
+          "Serialize.cpp",
+          "Certificates.cpp",
+          "ReplicaSmall.cpp",
+          "ReplicaMedium.cpp",
+          "Replica.cpp",
+		  "StreamSecureSocketDriverTests.cpp",
+          "StreamSocketDriverTests.cpp",
+          "CarrierStreamSocketDriverTests.cpp",
+          "Carrier.cpp",
+          "Interest.cpp"
+        ]
+    }
+}

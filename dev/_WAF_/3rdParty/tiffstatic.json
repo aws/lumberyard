@@ -1,0 +1,40 @@
+{
+    "name": "tiffstatic",
+    "source": "@ROOT@/Code/SDKs/tiff",
+    "description": "Tiff Library (static runtime)",
+    "includes": [
+        "libtiff"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath": [
+                "libtiff"
+            ],
+            "lib_debug": [
+                "libtiff64rtstaticd.lib"
+            ],
+            "lib_release": [
+                "libtiff64rtstatic.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath": [
+                "libtiff"
+            ],
+            "lib_debug": [
+                "libtiff64rtstaticd_vc140.lib"
+            ],
+            "lib_release": [
+                "libtiff64rtstatic_vc140.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        }
+    }
+}

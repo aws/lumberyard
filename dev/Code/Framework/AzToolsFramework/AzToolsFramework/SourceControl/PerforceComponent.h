@@ -1,0 +1,221 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <AzCore/base.h>
+#include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/parallel/semaphore.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/function/function_fwd.h>
+#include <AzCore/std/parallel/thread.h>
+#include <AzCore/Serialization/EditContext.h>
+
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/Component/Component.h>
+
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+#include <AzToolsFramework/SourceControl/NullSCComponent.h>
+
+namespace AzToolsFramework
+{
+    class PerforceJobRequest
+    {
+    public:
+        enum RequestType
+        {
+            PJR_Invalid = 0,
+            PJR_Stat,
+            PJR_Add,
+            PJR_Edit,
+            PJR_Delete,
+            PJR_Revert,
+        };
+
+        RequestType m_requestType;
+        AZStd::string m_requestPath;
+        bool m_allowMultiCheckout;
+        SourceControlResponseCallback m_callback;
+
+        PerforceJobRequest(RequestType requestType, const AZStd::string& requestPath, bool allowMultiCheckout, SourceControlResponseCallback responseCB)
+            : m_requestType(requestType)
+            , m_requestPath(requestPath)
+            , m_allowMultiCheckout(allowMultiCheckout)
+            , m_callback(responseCB)
+        {}
+
+        PerforceJobRequest()
+            : m_requestType(PJR_Invalid)
+            , m_callback(0) {}
+    };
+
+    class PerforceJobResult
+    {
+    public:
+
+        SourceControlResponseCallback m_callback;
+        bool m_succeeded;
+        SourceControlFileInfo m_fileInfo;
+
+        PerforceJobResult()
+            : m_succeeded(false)
+            , m_callback(NULL) {}
+    };
+
+    class PerforceSettingResult
+    {
+    public:
+        PerforceSettingResult() = default;
+        void UpdateSettingInfo(const AZStd::string& value);
+
+        SourceControlSettingCallback m_callback = nullptr;
+        SourceControlSettingInfo m_settingInfo;
+    };
+
+    typedef AZStd::unordered_map<AZStd::string, AZStd::string> PerforceMap;
+
+    // the perforce component's job is to manage perforce connectivity and execute perforce commands
+    // it parses the status of perforce commands and returns results.
+    // it has helpers to determine what needs to be done with a file in order to remove it or to add it.
+    // for example, if a file is checked out and needs to be deleted, it knows that it will need to both revert the file and mark it for delete
+    // in order to get to where we want it to be, from where we are now.
+    // it does not keep track of individual files or watch directories or anything
+    class PerforceComponent
+        : public AZ::Component
+        , private SourceControlCommandBus::Handler
+        , private SourceControlConnectionRequestBus::Handler
+    {
+    public:
+        AZ_COMPONENT(PerforceComponent, "{680C2C8B-37CA-42EB-9E50-06AB2474201E}")
+
+        AZStd::string m_autoChangelistDescription;
+
+        PerforceComponent() = default;
+        ~PerforceComponent() override = default;
+
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component overrides
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
+    private:
+        static void Reflect(AZ::ReflectContext* context);
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+
+        //////////////////////////////////////////////////////////////////////////
+        // SourceControlCommandBus::Handler overrides
+        void GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& callbackFn) override;
+        void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& callbackFn) override;
+        void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // SourceControlConnectionRequestBus::Handler overrides
+        void EnableSourceControl(bool enable) override;
+        bool IsActive() const override { return m_connectionState == SourceControlState::Active; }
+        void EnableTrust(bool enable, AZStd::string fingerprint) override;
+        bool HasTrustIssue() const override { return !m_trustedKey; }
+        void SetConnectionSetting(const char* key, const char* value, const SourceControlSettingCallback& respCallBack) override;
+        void GetConnectionSetting(const char* key, const SourceControlSettingCallback& respCallBack) override;
+        SourceControlState GetSourceControlState() const override { return m_connectionState; }
+        //////////////////////////////////////////////////////////////////////////
+
+        SourceControlFileInfo GetFileInfo(const char*);
+
+        //! Attempt to checkout a file
+        //! - If the file is marked for add, nothing will occur, its already writable for you.
+        //! - If the file is marked for delete, it will be reverted, then checked out, so that its writable and ready to add.
+        //! - If the file is marked for checkout already, nothing will occur (but we'll return true)
+        //! - If the file is not in perforce, nothing will occur (but we'll return true).
+        //! Error conditions will occur (false returned) when someone else has the file checked out, the file is locked, or from insufficient permissions
+        //! Note that calling this function will 'claim' the file into the editor's changelist, even if its already open on another changelist.
+        //! Note You cant check a file out if you don't have latest.
+        bool RequestEdit(const char* fullFilePath, bool allowMultiCheckout);
+
+        //! Attempt to delete a file from both perforce and local
+        bool RequestDelete(const char* fullFilePath);
+
+        //! Attempt to get the latest revision of the file
+        bool GetLatest(const char* fullFilePath);
+
+        //! Attempt to revert a file to its last changelist
+        bool RequestRevert(const char* fullFilePath);
+
+        // internal:
+        bool ClaimChangedFile(const char* fullFilePath, int changelistTarget);
+
+        bool ExecuteAdd(const char* filePath);
+        bool ExecuteEdit(const char* filePath, bool allowMultiCheckout);
+        bool ExecuteDelete(const char* filePath);
+        bool ExecuteRevert(const char* filePath);
+
+        void QueueJobRequest(PerforceJobRequest&& jobRequest);
+        void QueueSettingResponse(const PerforceSettingResult& result);
+
+        bool CheckConnectivityForAction(const char* actionDesc, const char* filePath);
+        bool ExecuteAndParseFstat(const char* filePath, bool& sourceAwareFile);
+        bool ExecuteAndParseSet(const char* key, const char* value);
+        bool CommandSucceeded();
+
+        bool UpdateTrust();
+        bool IsTrustKeyValid() const;
+        void TestConnectionTrust(bool attemptResolve);
+
+        bool IsConnectionValid() const;
+        bool CacheClientConfig() const;
+        void TestConnectionValid();
+        bool UpdateConnectivity();
+        void DropConnectivity();
+
+        int GetOrCreateOurChangelist();
+        int FindExistingChangelist();
+
+        void ThreadWorker();
+
+        AZStd::thread m_WorkerThread;
+        AZStd::semaphore m_WorkerSemaphore;
+
+        AZStd::queue<PerforceJobRequest> m_workerQueue;
+        AZStd::queue<PerforceJobResult> m_resultQueue;
+        AZStd::queue<PerforceSettingResult> m_settingsQueue;
+
+        AZStd::mutex m_WorkerQueueMutex;
+        AZStd::mutex m_ResultQueueMutex;
+        AZStd::mutex m_SettingsQueueMutex;
+
+        AZStd::atomic_bool m_shutdownThreadSignal;
+        AZStd::atomic_bool m_waitingOnTrust;
+
+        void ProcessJob(const PerforceJobRequest& request);
+        void ProcessJobOffline(const PerforceJobRequest& request);
+
+        void ProcessResultQueue();
+        AZStd::thread::id m_ProcessThreadID; // used for debugging!
+
+        bool ParseOutput(PerforceMap& perforceMap, AZStd::string& perforceOutput, const char* lineDelim = nullptr) const;
+        bool ParseDuplicateOutput(AZStd::vector<PerforceMap>& perforceMapList, AZStd::string& perforceOutput) const;
+
+        NullSCComponent m_nullSCComponent;
+        AZStd::atomic_bool m_offlineMode;
+
+        AZStd::atomic_bool m_resolveKey;
+        AZStd::atomic_bool m_trustedKey;
+        AZStd::atomic_bool m_testTrust;
+
+        AZStd::atomic_bool m_testConnection;
+        AZStd::atomic_bool m_validConnection;
+
+        SourceControlState m_connectionState;
+    };
+} // namespace AzToolsFramework

@@ -1,0 +1,221 @@
+{
+    "none": {
+        "Asset": [
+            "Asset/AssetSystemComponentHelper.cpp"
+        ]
+    },
+    "auto": {
+        "API": [
+            "API/ApplicationAPI.h",
+            "API/BootstrapReaderBus.h"
+        ],
+        "Application": [
+            "Application/Application.cpp",
+            "Application/Application.h"
+        ],
+        "Asset": [
+            "Asset/SimpleAsset.cpp",
+            "Asset/SimpleAsset.h",
+            "Asset/AssetCatalogBus.h",
+            "Asset/AssetSystemBus.h",
+            "Asset/AssetSystemTypes.h",
+            "Asset/AssetCatalog.h",
+            "Asset/AssetCatalog.cpp",
+            "Asset/AssetCatalogComponent.h",
+            "Asset/AssetCatalogComponent.cpp",
+            "Asset/AssetProcessorMessages.cpp",
+            "Asset/AssetProcessorMessages.h",
+            "Asset/AssetRegistry.h",
+            "Asset/AssetRegistry.cpp",
+            "Asset/AssetSystemComponent.cpp",
+            "Asset/AssetSystemComponent.h",
+            "Asset/GenericAssetHandler.h"
+        ],
+        "CommandLine": [
+            "CommandLine/CommandLine.cpp",
+            "CommandLine/CommandLine.h"
+        ],
+        "Entity": [
+            "Entity/GameEntityContextComponent.cpp",
+            "Entity/GameEntityContextComponent.h",
+            "Entity/GameEntityContextBus.h",
+            "Entity/EntityContext.cpp",
+            "Entity/EntityContext.h",
+            "Entity/EntityContextBus.h",
+            "Entity/EntityDebugDisplayBus.h",
+            "Entity/EntityReference.h",
+            "Entity/EntityReference.cpp"
+        ],
+        "Driller": [
+            "Driller/RemoteDrillerInterface.cpp",
+            "Driller/RemoteDrillerInterface.h"
+        ],
+        "Components": [
+            "Components/EditorEntityEvents.h",
+            "Components/TransformComponent.cpp",
+            "Components/TransformComponent.h",
+            "Components/BootstrapReaderComponent.h",
+            "Components/BootstrapReaderComponent.cpp",
+            "Components/CameraBus.h"
+        ],
+        "StringFunc": [
+            "StringFunc/StringFunc.h",
+            "StringFunc/StringFunc.cpp"
+        ],
+        "Input/Buses/Notifications": [
+            "Input/Buses/Notifications/InputChannelEventNotificationBus.h",
+            "Input/Buses/Notifications/InputDeviceEventNotificationBus.h",
+            "Input/Buses/Notifications/InputTextEventNotificationBus.h"
+        ],
+        "Input/Buses/Requests": [
+            "Input/Buses/Requests/InputChannelRequestBus.h",
+            "Input/Buses/Requests/InputDeviceRequestBus.h",
+            "Input/Buses/Requests/InputHapticFeedbackRequestBus.h",
+            "Input/Buses/Requests/InputMotionSensorRequestBus.h",
+            "Input/Buses/Requests/InputSystemRequestBus.h",
+            "Input/Buses/Requests/InputSystemCursorRequestBus.h",
+            "Input/Buses/Requests/InputTextEntryRequestBus.h"
+        ],
+        "Input/Channels": [
+            "Input/Channels/InputChannel.cpp",
+            "Input/Channels/InputChannel.h",
+            "Input/Channels/InputChannelAnalog.cpp",
+            "Input/Channels/InputChannelAnalog.h",
+            "Input/Channels/InputChannelAnalogWithPosition2D.cpp",
+            "Input/Channels/InputChannelAnalogWithPosition2D.h",
+            "Input/Channels/InputChannelAxis1D.cpp",
+            "Input/Channels/InputChannelAxis1D.h",
+            "Input/Channels/InputChannelAxis2D.cpp",
+            "Input/Channels/InputChannelAxis2D.h",
+            "Input/Channels/InputChannelAxis3D.cpp",
+            "Input/Channels/InputChannelAxis3D.h",
+            "Input/Channels/InputChannelDelta.cpp",
+            "Input/Channels/InputChannelDelta.h",
+            "Input/Channels/InputChannelDeltaWithSharedPosition2D.cpp",
+            "Input/Channels/InputChannelDeltaWithSharedPosition2D.h",
+            "Input/Channels/InputChannelDigital.cpp",
+            "Input/Channels/InputChannelDigital.h",
+            "Input/Channels/InputChannelDigitalWithPosition2D.cpp",
+            "Input/Channels/InputChannelDigitalWithPosition2D.h",
+            "Input/Channels/InputChannelDigitalWithSharedPosition2D.cpp",
+            "Input/Channels/InputChannelDigitalWithSharedPosition2D.h",
+            "Input/Channels/InputChannelId.cpp",
+            "Input/Channels/InputChannelId.h",
+            "Input/Channels/InputChannelQuaternion.cpp",
+            "Input/Channels/InputChannelQuaternion.h"
+        ],
+        "Input/Devices": [
+            "Input/Devices/InputDevice.cpp",
+            "Input/Devices/InputDevice.h",
+            "Input/Devices/InputDeviceId.cpp",
+            "Input/Devices/InputDeviceId.h"
+        ],
+        "Input/Devices/Gamepad": [
+            "Input/Devices/Gamepad/InputDeviceGamepad.cpp",
+            "Input/Devices/Gamepad/InputDeviceGamepad.h"
+        ],
+        "Input/Devices/Keyboard": [
+            "Input/Devices/Keyboard/InputDeviceKeyboard.cpp",
+            "Input/Devices/Keyboard/InputDeviceKeyboard.h"
+        ],
+        "Input/Devices/Motion": [
+            "Input/Devices/Motion/InputDeviceMotion.cpp",
+            "Input/Devices/Motion/InputDeviceMotion.h"
+        ],
+        "Input/Devices/Mouse": [
+            "Input/Devices/Mouse/InputDeviceMouse.cpp",
+            "Input/Devices/Mouse/InputDeviceMouse.h"
+        ],
+        "Input/Devices/VirtualKeyboard": [
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.cpp",
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h"
+        ],
+        "Input/Devices/Touch": [
+            "Input/Devices/Touch/InputDeviceTouch.cpp",
+            "Input/Devices/Touch/InputDeviceTouch.h"
+        ],
+        "Input/Events": [
+            "Input/Events/InputChannelEventListener.cpp",
+            "Input/Events/InputChannelEventListener.h",
+            "Input/Events/InputTextEventListener.cpp",
+            "Input/Events/InputTextEventListener.h"
+        ],
+        "Input/System": [
+            "Input/System/InputSystemComponent.cpp",
+            "Input/System/InputSystemComponent.h"
+        ],
+        "Input/Utils": [
+            "Input/Utils/AdjustAnalogInputForDeadZone.h",
+            "Input/Utils/ProcessRawInputEventQueues.h"
+        ],
+        "IO": [
+            "IO/LocalFileIO.cpp",
+            "IO/LocalFileIO.h",
+            "IO/LocalFileIO_android.inl",
+            "IO/LocalFileIO_posix.inl",
+            "IO/LocalFileIO_win.inl",
+            "IO/FileOperations.h",
+            "IO/FileOperations.cpp"
+        ],
+        "Math": [
+            "Math/MathUtils.cpp",
+            "Math/MathUtils.h"
+        ],
+        "Metrics":  [
+            "Metrics/MetricsPlainTextNameRegistration.h"
+        ],
+        "Network": [
+            "Network/AssetProcessorConnection.cpp",
+            "Network/AssetProcessorConnection.h",
+            "Network/DynamicSerializableFieldMarshaler.h",
+            "Network/EntityIdMarshaler.h",            
+            "Network/NetBindable.h",
+            "Network/NetBindable.cpp",
+            "Network/NetBindingHandlerBus.h",
+            "Network/NetBindingSystemBus.h",
+            "Network/NetBindingComponent.h",
+            "Network/NetBindingComponent.cpp",
+            "Network/NetBindingComponentChunk.h",
+            "Network/NetBindingComponentChunk.cpp",
+            "Network/NetBindingSystemImpl.h",
+            "Network/NetBindingSystemImpl.cpp",
+            "Network/NetBindingSystemComponent.h",
+            "Network/NetBindingSystemComponent.cpp",
+            "Network/NetworkContext.h",
+            "Network/NetworkContext.cpp",
+            "Network/NetSystemBus.h",
+            "Network/SocketConnection.cpp",
+            "Network/SocketConnection.h"
+        ],
+        "Logging": [
+            "Logging/LogFile.cpp",
+            "Logging/LogFile.h",
+            "Logging/LoggingComponent.cpp",
+            "Logging/LoggingComponent.h"
+        ],
+        "Script":
+        [
+            "Script/ScriptComponent.h",
+            "Script/ScriptComponent.cpp",
+            "Script/ScriptDebugAgentBus.h",
+            "Script/ScriptDebugMsgReflection.cpp",
+            "Script/ScriptDebugMsgReflection.h",
+            "Script/ScriptMarshal.h",
+            "Script/ScriptMarshal.cpp",
+            "Script/ScriptNetBindings.h",
+            "Script/ScriptNetBindings.cpp",
+            "Script/ScriptRemoteDebugging.cpp",
+            "Script/ScriptRemoteDebugging.h"
+        ]
+    },
+    "AzFramework_Uber_misc0.cpp": {
+        "TargetManagement": [
+            "TargetManagement/NeighborhoodAPI.cpp",
+            "TargetManagement/NeighborhoodAPI.h",
+            "TargetManagement/TargetManagementAPI.h",
+            "TargetManagement/TargetManagementComponent.cpp",
+            "TargetManagement/TargetManagementComponent.h"
+           
+        ]
+    }
+}

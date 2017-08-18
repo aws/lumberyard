@@ -1,0 +1,41 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "stdafx.h",
+            "targetver.h",
+            "stdafx.cpp"
+        ],
+        "Header Files":
+        [
+            "CachedConnection.h",
+            "DBAPI.h",
+            "DBAPIHelper.h",
+            "DBAPIHelpers.h",
+            "DBTypes.h",
+            "IDBConnection.h",
+            "IDBResultSet.h",
+            "IDBStatement.h"
+        ],
+        "Source Files":
+        [
+            "CachedConnection.cpp",
+            "DBAPI.cpp",
+            "DBAPIHelper.cpp"
+        ],
+        "SQLite":
+        [
+            "SQLite/SQLiteConnection.cpp",
+            "SQLite/SQLiteConnection.h",
+            "SQLite/SQLiteResultSet.cpp",
+            "SQLite/SQLiteResultSet.h",
+            "SQLite/SQLiteStatement.cpp",
+            "SQLite/SQLiteStatement.h"
+        ],
+        "Util":
+        [
+            "Util/DBUtil.h"
+        ]
+    }
+}

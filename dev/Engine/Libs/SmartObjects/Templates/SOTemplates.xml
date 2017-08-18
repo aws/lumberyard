@@ -1,0 +1,274 @@
+<SOTemplates>
+	<Template id="0" name="Debug" description="Only for debugging rules based on other templates. It is showing all properties of the rule.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="1" editable="1" value="0" help="Is this a navigation smart object rule?"/>
+		<Param name="sEvent" caption="Event" visible="1" editable="1" value="" help="Event on which this rule will be triggered"/>
+		<ParamGroup name="User" expand="1" help="Defines the smart object user">
+			<Param name="userClass" caption="Class" visible="1" editable="1" value="Actor" help="Only users of this class will be considered"/>
+			<Param name="userState" caption="State Pattern" visible="1" editable="1" value="-Busy" help="Only users which state matches this pattern will be considered"/>
+			<Param name="userHelper" caption="Helper" visible="1" editable="1" value="" help="User's helper point used in calculations"/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="1" editable="1" value="2" help="Consider only users which alertness state is not higher"/>
+		</ParamGroup>
+		<ParamGroup name="Object" expand="1" help="Defines the smart object to be used.">
+			<Param name="objectClass" caption="Class" visible="1" editable="1" value="" help="Only objects of this class will be considered"/>
+			<Param name="objectState" caption="State Pattern" visible="1" editable="1" value="-Busy" help="Only objects which state matches this pattern will be considered"/>
+			<Param name="objectHelper" caption="Helper" visible="1" editable="1" value="" help="Object's helper point used in calculations"/>
+		</ParamGroup>
+		<ParamGroup name="Navigation" expand="1" help="An AI navigation link will be created between these two helpers">
+			<Param name="entranceHelper" caption="Entrance" visible="1" editable="1" value="" help="Entrance point of navigational smart object"/>
+			<Param name="exitHelper" caption="Exit" visible="1" editable="1" value="" help="Exit point of navigational smart object"/>
+		</ParamGroup>
+		<ParamGroup name="Limits" expand="1" help="">
+			<Param name="limitsDistanceFrom" caption="Distance from" visible="1" editable="1" value="0" help="Range at which objects could be used"/>
+			<Param name="limitsDistanceTo" caption="Distance to" visible="1" editable="1" value="10" help="Range at which objects could be used"/>
+			<Param name="limitsOrientation" caption="Orientation" visible="1" editable="1" value="360" help="Orientation limit at which objects could be used"/>
+			<Param name="horizLimitOnly" caption="Horizontal Limit Only" visible="1" editable="1" value="0" help="When checked, the limit only applies to horizontal orientation (vertical orientation is excluded)"/>
+			<Param name="limitsOrientationToTarget" caption="User's Target" visible="1" editable="1" value="360" help="Object's orientation limit towards the user's attention target"/>
+		</ParamGroup>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="0" help="Shortest time needed for interaction to happen"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="5" help="Longest time needed for interaction to happen"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="2" help="Time needed to forget"/>
+		</ParamGroup>
+		<ParamGroup name="Multipliers" expand="1" help="">
+			<Param name="multipliersProximity" caption="Proximity" visible="1" editable="1" value="1" help="How important is the proximity"/>
+			<Param name="multipliersOrientation" caption="Orientation" visible="1" editable="1" value="0" help="How important is the orientation of the user towards the object"/>
+			<Param name="multipliersVisibility" caption="Visibility" visible="1" editable="1" value="0" help="How important is the visibility between user and object"/>
+			<Param name="multipliersRandomness" caption="Randomness" visible="1" editable="1" value="0" help="How much randomness will be added"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="fLookAtOnPerc" caption="LookAt On %" visible="1" editable="1" value="0" help="Look at the object before using it (only when the user is an AI agent)"/>
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="1" editable="1" value="" help="How user's states will change before executing the action"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="1" editable="1" value="" help="How object's states will change before executing the action"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="1" editable="1" value="" help="How user's states will change after executing the action"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="1" editable="1" value="" help="How object's states will change after executing the action"/>
+		</ParamGroup>
+		<ParamGroup name="Exact Positioning" expand="0" help="">
+			<Param name="approachSpeed" caption="Speed" visible="1" editable="1" value="0" help="Movement speed while approaching the helper point"/>
+			<Param name="approachStance" caption="Stance" visible="1" editable="1" value="3" help="Body stance while approaching the helper point"/>
+			<Param name="animationHelper" caption="Animation Helper" visible="1" editable="1" value="" help="Object's helper point at which the animation will be played"/>
+			<Param name="approachHelper" caption="Approach Helper" visible="1" editable="1" value="" help="Object's helper point to approach before the animation play (if empty the Animation Helper is used)"/>
+			<Param name="fStartRadiusTolerance" caption="Start Radius" visible="1" editable="1" value="0.2" help="Start radius (tolerance) for playing animation"/>
+			<Param name="fStartDirectionTolerance" caption="Direction Tolerance" visible="1" editable="1" value="2.0" help="Start direction (tolerance) for playing animation"/>
+			<Param name="fTargetRadiusTolerance" caption="Target Radius" visible="1" editable="1" value="0.05" help="Target radius (tolerance) for playing animation"/>
+		</ParamGroup>
+	</Template>
+
+	<Template id="3" name="Time Based" description="Executes the action after spending the specified amount of time during which the condition is satisfied.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="0"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="Condition" expand="1" help="Defines the condition ">
+			<Param name="userClass" caption="Class" visible="1" editable="1" value="Actor" help="Only smart objects of this class will be considered"/>
+			<Param name="userState" caption="State Pattern" visible="1" editable="1" value="" help="Only smart objects which state matches this pattern will be considered"/>
+			<Param name="userHelper" caption="Helper" visible="0" editable="1" value="" help="User's helper point used in calculations"/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="1" editable="1" value="2" help="Consider only users which alertness state is not higher"/>
+		</ParamGroup>
+		<Param name="objectClass" caption="Class" visible="0" editable="0" value=""/>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="1" help="Shortest time needed for action to be executed"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="2" help="Longest time needed for action to be executed"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="0" help="Time needed to expire"/>
+		</ParamGroup>
+		<Param name="multipliersProximity" caption="Proximity" visible="0" editable="1" value="0"/>
+		<Param name="multipliersOrientation" caption="Orientation" visible="0" editable="1" value="0"/>
+		<Param name="multipliersVisibility" caption="Visibility" visible="0" editable="1" value="0"/>
+		<Param name="multipliersRandomness" caption="Randomness" visible="0" editable="0" value="1"/>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="userPreActionState" caption="Pre-Action State" visible="1" editable="1" value="" help="How object's states will change before executing the action"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="Post-Action State" visible="1" editable="1" value="" help="How object's states will change after executing the action"/>
+		</ParamGroup>
+		<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="0" editable="0" value=""/>
+		<Param name="objectPostActionState" caption="Object: Post-Action State" visible="0" editable="0" value=""/>
+	</Template>
+
+	<Template id="4" name="Navigation" description="Creates navigation links in smart objects.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="1"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="User" expand="1" help="Defines the smart object user">
+			<Param name="userClass" caption="Class" visible="1" editable="1" value="Actor" help="Only users of this class will be able to pass thru this link"/>
+			<Param name="userState" caption="State Pattern" visible="1" editable="1" value="" help="Only users which state matches this pattern will pass thru this link"/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="1" editable="1" value="2" help="Only users which alertness state is not higher will pass thru this link"/>
+		</ParamGroup>
+		<ParamGroup name="Object" expand="1" help="Defines the smart object in which navigation link will be created.">
+			<Param name="objectClass" caption="Class" visible="1" editable="1" value="" help="Smart object class to be used for navigation."/>
+			<Param name="objectState" caption="State Pattern" visible="1" editable="1" value="" help="Only if object's state matches this pattern the link will be considered as passable"/>
+			<Param name="entranceHelper" caption="Entrance" visible="1" editable="1" value="" help="Entrance point of the link"/>
+			<Param name="exitHelper" caption="Exit" visible="1" editable="1" value="" help="Exit point of the link"/>
+			<Param name="multipliersProximity" caption="Cost Multiplier" visible="1" editable="1" value="1" help="The distance between helpers multiplied with this value gives the cost of passing through"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="1" editable="1" value="" help="How user's states will change before executing the action"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="1" editable="1" value="" help="How object's states will change before executing the action"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="8" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed in order to pass the link"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="1" editable="1" value="" help="How user's states will change after executing the action"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="1" editable="1" value="" help="How object's states will change after executing the action"/>
+		</ParamGroup>
+		<ParamGroup name="Exact Positioning" expand="1" help="">
+			<Param name="animationHelper" caption="Animation Helper" visible="1" editable="1" value="" help="Object's helper point at which the animation will be played (default is the Entrance helper point)"/>
+			<Param name="fStartRadiusTolerance" caption="Start Radius" visible="1" editable="1" value="0.2" help="Start radius (tolerance) for playing animation"/>
+			<Param name="fStartDirectionTolerance" caption="Direction Tolerance" visible="1" editable="1" value="2.0" help="Start direction (tolerance) for playing animation"/>
+			<Param name="fTargetRadiusTolerance" caption="Target Radius" visible="1" editable="1" value="0.05" help="Target radius (tolerance) for playing animation"/>
+		</ParamGroup>
+	</Template>
+
+	<Template id="5" name="Environment" description="Defines interactions between the agents and the environment.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="0"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="User" expand="1" help="Defines the smart object user">
+			<Param name="userClass" caption="Class" visible="1" editable="1" value="Actor" help="Only users of this class will be considered"/>
+			<Param name="userState" caption="State Pattern" visible="1" editable="1" value="-Busy" help="Only users which state matches this pattern will be considered"/>
+			<Param name="userHelper" caption="Helper" visible="1" editable="1" value="" help="User's helper point used in calculations"/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="1" editable="1" value="2" help="Consider only users which alertness state is not higher"/>
+		</ParamGroup>
+		<ParamGroup name="Object" expand="1" help="Defines the smart object to be used.">
+			<Param name="objectClass" caption="Class" visible="1" editable="1" value="" help="Only objects of this class will be considered"/>
+			<Param name="objectState" caption="State Pattern" visible="1" editable="1" value="-Busy" help="Only objects which state matches this pattern will be considered"/>
+			<Param name="objectHelper" caption="Helper" visible="1" editable="1" value="" help="Object's helper point used in calculations"/>
+		</ParamGroup>
+		<ParamGroup name="Limits" expand="1" help="">
+			<Param name="limitsDistanceFrom" caption="Distance From" visible="1" editable="1" value="0" help="Range at which objects might be used"/>
+			<Param name="limitsDistanceTo" caption="Distance To" visible="1" editable="1" value="10" help="Range at which objects might be used"/>
+			<Param name="limitsOrientation" caption="Orientation" visible="1" editable="1" value="360" help="Orientation limit at which objects might be used"/>
+			<Param name="horizLimitOnly" caption="Horizontal Limit Only" visible="1" editable="1" value="0" help="When checked, the limit only applies to horizontal orientation (vertical orientation is excluded)"/>
+			<Param name="limitsOrientationToTarget" caption="User's Target" visible="1" editable="1" value="360" help="Object's orientation limit towards the user's attention target"/>
+		</ParamGroup>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="0" help="Shortest time needed for interaction to happen"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="5" help="Longest time needed for interaction to happen"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="2" help="Time needed to forget"/>
+		</ParamGroup>
+		<ParamGroup name="Multipliers" expand="1" help="">
+			<Param name="multipliersProximity" caption="Proximity" visible="1" editable="1" value="1" help="How important is the proximity"/>
+			<Param name="multipliersOrientation" caption="Orientation" visible="1" editable="1" value="0" help="How important is the orientation of the user towards the object"/>
+			<Param name="multipliersVisibility" caption="Visibility" visible="0" editable="0" value="0" help="How important is the visibility between user and object"/>
+			<Param name="multipliersRandomness" caption="Randomness" visible="1" editable="1" value="0" help="How much randomness will be added"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="fLookAtOnPerc" caption="LookAt On %" visible="1" editable="1" value="0.4" help="Look at the object before using it (only when the user is an AI agent)"/>
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="1" editable="1" value="" help="How user's states will change before executing the action"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="1" editable="1" value="" help="How object's states will change before executing the action"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="1" editable="1" value="" help="How user's states will change after executing the action"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="1" editable="1" value="" help="How object's states will change after executing the action"/>
+		</ParamGroup>
+	</Template>
+
+	<Template id="6" name="Idle - Basic" description="Defines basic idle action. Each user can use only one object at a time. Other users can not use that object until interaction is finished. After that both the user and the object are available for other interactions.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="0"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="Condition" expand="1" help="">
+			<Param name="userClass" caption="User Class" visible="1" editable="1" value="Actor" help="Defines the smart object class of the user"/>
+			<Param name="userState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="userHelper" caption="Helper" visible="0" editable="0" value=""/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="0" editable="0" value="0"/>
+			<Param name="objectClass" caption="Object Class" visible="1" editable="1" value="" help="Defines the smart object class of the object"/>
+			<Param name="objectState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="objectHelper" caption="Helper" visible="0" editable="0" value=""/>
+			<Param name="limitsDistanceFrom" caption="Distance From" visible="1" editable="1" value="2" help="Range at which objects might be used"/>
+			<Param name="limitsDistanceTo" caption="Distance To" visible="1" editable="1" value="20" help="Range at which objects might be used"/>
+			<Param name="limitsOrientation" caption="Orientation" visible="0" editable="0" value="360"/>
+			<Param name="horizLimitOnly" caption="Horizontal Limit Only" visible="1" editable="1" value="0" help="When checked, the limit only applies to horizontal orientation (vertical orientation is excluded)"/>
+		</ParamGroup>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="0" help="Shortest time needed for interaction to happen"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="5" help="Longest time needed for interaction to happen"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="60" help="Time needed to forget"/>
+			<Param name="multipliersProximity" caption="Proximity" visible="0" editable="0" value="1" help="How important is the proximity"/>
+			<Param name="multipliersOrientation" caption="Orientation" visible="0" editable="0" value="0"/>
+			<Param name="multipliersVisibility" caption="Visibility" visible="0" editable="0" value="0"/>
+			<Param name="multipliersRandomness" caption="Randomness" visible="1" editable="1" value="0.5" help="How much randomness will be added"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="fLookAtOnPerc" caption="LookAt On %" visible="1" editable="1" value="0.4" help="Look at the object before using it (only when the user is an AI agent)"/>
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="0" editable="0" value="Busy"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="0" editable="0" value="Busy"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="0" editable="0" value="-Busy"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="0" editable="0" value="-Busy"/>
+		</ParamGroup>
+	</Template>
+
+	<Template id="7" name="Idle - Custom" description="Defines idle action with ability to customize the states.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="0"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="Condition" expand="1" help="">
+			<Param name="userClass" caption="User Class" visible="1" editable="1" value="Actor" help="Defines the smart object class of the user"/>
+			<Param name="userState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="userHelper" caption="Helper" visible="0" editable="0" value=""/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="0" editable="0" value="0"/>
+			<Param name="objectClass" caption="Object Class" visible="1" editable="1" value="" help="Defines the smart object class of the object"/>
+			<Param name="objectState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="objectHelper" caption="Helper" visible="0" editable="0" value=""/>
+			<Param name="limitsDistanceFrom" caption="Distance From" visible="1" editable="1" value="2" help="Range at which objects might be used"/>
+			<Param name="limitsDistanceTo" caption="Distance To" visible="1" editable="1" value="20" help="Range at which objects might be used"/>
+			<Param name="limitsOrientation" caption="Orientation" visible="0" editable="0" value="360"/>
+			<Param name="horizLimitOnly" caption="Horizontal Limit Only" visible="1" editable="1" value="0" help="When checked, the limit only applies to horizontal orientation (vertical orientation is excluded)"/>
+		</ParamGroup>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="0" help="Shortest time needed for interaction to happen"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="5" help="Longest time needed for interaction to happen"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="60" help="Time needed to forget"/>
+		</ParamGroup>
+		<ParamGroup name="Multipliers" expand="1" help="">
+			<Param name="multipliersProximity" caption="Proximity" visible="1" editable="1" value="1" help="How important is the proximity"/>
+			<Param name="multipliersOrientation" caption="Orientation" visible="0" editable="0" value="0"/>
+			<Param name="multipliersVisibility" caption="Visibility" visible="0" editable="0" value="0"/>
+			<Param name="multipliersRandomness" caption="Randomness" visible="1" editable="1" value="0.5" help="How much randomness will be added"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="fLookAtOnPerc" caption="LookAt On %" visible="1" editable="1" value="0.4" help="Look at the object before using it (only when the user is an AI agent)"/>
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="1" editable="1" value="Busy"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="1" editable="1" value="Busy"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="1" editable="1" value="-Busy"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="1" editable="1" value="-Busy"/>
+		</ParamGroup>
+	</Template>
+
+	<Template id="8" name="Idle - Angles" description="Defines idle actions that also depend on orientation of the user towards the objects.">
+		<Param name="bNavigationRule" caption="Navigation Rule" visible="0" editable="0" value="0"/>
+		<Param name="sEvent" caption="Event" visible="0" editable="0" value=""/>
+		<ParamGroup name="Condition" expand="1" help="">
+			<Param name="userClass" caption="User Class" visible="1" editable="1" value="Actor" help="Defines the smart object class of the user"/>
+			<Param name="userState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="userHelper" caption="Helper" visible="0" editable="0" value=""/>
+			<Param name="iMaxAlertness" caption="Max. Alertness" visible="0" editable="0" value="0"/>
+			<Param name="objectClass" caption="Object Class" visible="1" editable="1" value="" help="Defines the smart object class of the object"/>
+			<Param name="objectState" caption="State Pattern" visible="0" editable="0" value="-Busy"/>
+			<Param name="objectHelper" caption="Helper" visible="0" editable="0" value=""/>
+		</ParamGroup>
+		<ParamGroup name="Limits" expand="1" help="">
+			<Param name="limitsDistanceFrom" caption="Distance From" visible="1" editable="1" value="2" help="Range at which objects might be used"/>
+			<Param name="limitsDistanceTo" caption="Distance To" visible="1" editable="1" value="20" help="Range at which objects might be used"/>
+			<Param name="limitsOrientation" caption="Orientation" visible="1" editable="1" value="180" help="Orientation limit at which objects might be used"/>
+			<Param name="horizLimitOnly" caption="Horizontal Limit Only" visible="1" editable="1" value="0" help="When checked, the limit only applies to horizontal orientation (vertical orientation is excluded)"/>
+		</ParamGroup>
+		<ParamGroup name="Delay" expand="1" help="">
+			<Param name="delayMinimum" caption="Minimum" visible="1" editable="1" value="0" help="Shortest time needed for interaction to happen"/>
+			<Param name="delayMaximum" caption="Maximum" visible="1" editable="1" value="5" help="Longest time needed for interaction to happen"/>
+			<Param name="delayMemory" caption="Memory" visible="1" editable="1" value="60" help="Time needed to forget"/>
+		</ParamGroup>
+		<ParamGroup name="Multipliers" expand="1" help="">
+			<Param name="multipliersProximity" caption="Proximity" visible="1" editable="1" value="1" help="How important is the proximity"/>
+			<Param name="multipliersOrientation" caption="Orientation" visible="1" editable="1" value="1" help="How important is the orientation of the user towards the object"/>
+			<Param name="multipliersVisibility" caption="Visibility" visible="0" editable="0" value="0"/>
+			<Param name="multipliersRandomness" caption="Randomness" visible="1" editable="1" value="0.25" help="How much randomness will be added"/>
+		</ParamGroup>
+		<ParamGroup name="Action" expand="1" help="">
+			<Param name="fLookAtOnPerc" caption="LookAt On %" visible="1" editable="1" value="0.4" help="Look at the object before using it (only when the user is an AI agent)"/>
+			<Param name="userPreActionState" caption="User: Pre-Action State" visible="1" editable="1" value="Busy"/>
+			<Param name="objectPreActionState" caption="Object: Pre-Action State" visible="1" editable="1" value="Busy"/>
+			<Param name="actionType" caption="Action Type" visible="1" editable="1" value="1" help="What type of action to execute"/>
+			<Param name="actionName" caption="Action Name" visible="1" editable="1" value="" help="The action to be executed on interaction"/>
+			<Param name="userPostActionState" caption="User: Post-Action State" visible="1" editable="1" value="-Busy"/>
+			<Param name="objectPostActionState" caption="Object: Post-Action State" visible="1" editable="1" value="-Busy"/>
+		</ParamGroup>
+	</Template>
+</SOTemplates>

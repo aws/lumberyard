@@ -1,0 +1,8 @@
+{
+    "none": {
+        "Source": [
+            "StaticLibrary/StdAfx.cpp",
+            "StaticLibrary/StdAfx.h"
+        ]
+    }
+}

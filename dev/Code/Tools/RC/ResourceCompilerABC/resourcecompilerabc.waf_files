@@ -1,0 +1,50 @@
+{
+   "ResourceCompilerABC_uber_0.cpp":
+   {
+        "AlembicCompiler":
+        [
+            "AlembicCompiler.cpp",
+            "AlembicConvertor.cpp",
+            "GeomCacheBlockCompressor.cpp",
+            "GeomCacheEncoder.cpp",
+            "GeomCacheWriter.cpp",
+            "AlembicCompiler.h",
+            "AlembicConvertor.h",
+            "GeomCache.h",
+            "GeomCacheBlockCompressor.h",
+            "GeomCacheEncoder.h",
+            "GeomCacheWriter.h"
+        ]
+    },
+    "ResourceCompilerABC_uber_1.cpp":
+    {
+        "CryCommonTools":
+        [
+            "../../CryCommonTools/PathHelpers.cpp",
+            "../../CryCommonTools/StringHelpers.cpp",
+            "../../CryCommonTools/PathHelpers.h",
+            "../../CryCommonTools/StringHelpers.h"
+        ],
+        "MeshCompiler (Cry3DEngine)":
+        [
+            "../../../CryEngine/Cry3DEngine/MeshCompiler/ForsythFaceReorderer.cpp",
+            "../../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.cpp",
+            "../../../CryEngine/Cry3DEngine/MeshCompiler/TangentSpaceCalculation.cpp",
+            "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.h",
+            "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp",
+            "../../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.cpp"
+        ],
+        "Source Files":
+        [
+            "ResourceCompilerABC.cpp",
+            "../ResourceCompiler/IConfig.cpp",
+            "ResourceCompilerPlugin.def",
+            "stdafx.h"
+        ],
+        "Utils":
+        [
+            "../../CryCommonTools/StealingThreadPool.cpp",
+            "../../CryCommonTools/StealingThreadPool.h"
+        ]
+    }
+}

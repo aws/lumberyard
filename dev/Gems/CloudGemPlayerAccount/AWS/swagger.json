@@ -1,0 +1,547 @@
+{
+    "consumes": [
+        "application/json"
+    ],
+    "definitions": {
+        "AccountIdentityProviders": {
+            "properties": {
+                "Cognito": {
+                    "$ref": "#/definitions/CognitoUser"
+                }
+            },
+            "type": "object"
+        },
+        "AccountResponse": {
+            "properties": {
+                "AccountId": {
+                    "type": "string"
+                },
+                "PlayerName": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "AdminAccountResponse": {
+            "properties": {
+                "AccountId": {
+                    "type": "string"
+                },
+                "AccountBlacklisted": {
+                    "type": "boolean"
+                },
+                "CognitoIdentityId": {
+                    "type": "string"
+                },
+                "CognitoUsername": {
+                    "type": "string"
+                },
+                "IdentityProviders": {
+                    "$ref": "#/definitions/AccountIdentityProviders"
+                },
+                "PlayerName": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "AdminUpdateAccountRequest": {
+            "properties": {
+                "AccountBlacklisted": {
+                    "type": "boolean"
+                },
+                "PlayerName": {
+                    "type": "string"
+                },
+                "IdentityProviders": {
+                    "$ref": "#/definitions/UpdateAccountIdentityProviders"
+                }
+            },
+            "type": "object"
+        },
+        "CognitoUser": {
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "birthdate": {
+                    "type": "string"
+                },
+                "create_date": {
+                    "type": "number"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "family_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "last_modified_date": {
+                    "type": "number"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "middle_name": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "profile": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                },
+                "zoneinfo": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "ConfirmSignUpResponse": {
+            "type": "object"
+        },
+        "Error": {
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ],
+            "type": "object"
+        },
+        "IdentityProviderResponse": {
+            "properties": {
+                "EstimatedNumberOfUsers": {
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "ResetUserPasswordResponse": {
+            "type": "object"
+        },
+        "SearchAccountsResponse": {
+            "properties": {
+                "Accounts": {
+                    "items": {
+                        "properties": {
+                            "AccountId": {
+                                "type": "string"
+                            },
+                            "AccountBlacklisted": {
+                                "type": "boolean"
+                            },
+                            "CognitoIdentityId": {
+                                "type": "string"
+                            },
+                            "CognitoUsername": {
+                                "type": "string"
+                            },
+                            "IdentityProviders": {
+                                "$ref": "#/definitions/AccountIdentityProviders"
+                            },
+                            "PlayerName": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "ServiceStatus": {
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ],
+            "type": "object"
+        },
+        "UpdateAccountIdentityProviders": {
+            "properties": {
+                "Cognito": {
+                    "$ref": "#/definitions/UpdateCognitoUser"
+                }
+            },
+            "type": "object"
+        },
+        "UpdateAccountRequest": {
+            "properties": {
+                "AccountBlacklisted": {
+                    "type": "boolean"
+                },
+                "CognitoUsername": {
+                    "type": "string"
+                },
+                "PlayerName": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "UpdateCognitoUser": {
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "birthdate": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "family_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "middle_name": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "picture": {
+                    "type": "string"
+                },
+                "profile": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                },
+                "zoneinfo": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "info": {
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment).",
+        "title": "$RestApiResourceName$",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/account": {
+            "get": {
+                "description": "Gets the authenticated player's account",
+                "responses": {
+                    "200": {
+                        "description": "The player's account",
+                        "schema": {
+                            "$ref": "#/definitions/AccountResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates the authenticated player's account",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "UpdateAccountRequest",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Put account response",
+                        "schema": {
+                            "$ref": "#/definitions/AccountResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/accounts": {
+            "post": {
+                "description": "Creates a player account",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "AccountRequest",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminUpdateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Create account response",
+                        "schema": {
+                            "$ref": "#/definitions/AdminAccountResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/accounts/{AccountId}": {
+            "get": {
+                "description": "Gets the player account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "AccountId",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The player's account",
+                        "schema": {
+                            "$ref": "#/definitions/AdminAccountResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates the player account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "AccountId",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "AccountRequest",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminUpdateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Put account response",
+                        "schema": {
+                            "$ref": "#/definitions/AdminAccountResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/accountSearch": {
+            "get": {
+                "description": "Find player accounts by player name, Cognito identity id, Cognito username, or email",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "StartPlayerName",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "CognitoIdentityId",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "CognitoUsername",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "Email",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List accounts response",
+                        "schema": {
+                            "$ref": "#/definitions/SearchAccountsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/identityProviders/{IdentityProviderId}": {
+            "get": {
+                "description": "Gets identity provider",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "IdentityProviderId",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The account identity provider",
+                        "schema": {
+                            "$ref": "#/definitions/IdentityProviderResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/identityProviders/Cognito/users/{cognitoUsername}": {
+            "get": {
+                "description": "Gets the Cognito identity provider's information for the user",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cognitoUsername",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The Cognito identity provider's information for the user",
+                        "schema": {
+                            "$ref": "#/definitions/CognitoUser"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates Cognito the identity provider's information for the user",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cognitoUsername",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "UpdateCognitoUser",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateCognitoUser"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The updated Cognito identity provider's information for the user",
+                        "schema": {
+                            "$ref": "#/definitions/CognitoUser"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/identityProviders/Cognito/users/{cognitoUsername}/confirmSignUp": {
+            "post": {
+                "description": "Confirms user registration",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cognitoUsername",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The user was confirmed",
+                        "schema": {
+                            "$ref": "#/definitions/ConfirmSignUpResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/identityProviders/Cognito/users/{cognitoUsername}/resetUserPassword": {
+            "post": {
+                "description": "The user's password is invalidated and must be reset by the user with a code.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cognitoUsername",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The user password was reset",
+                        "schema": {
+                            "$ref": "#/definitions/ResetUserPasswordResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "operationId": "get_service_status",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "produces": [
+        "application/json"
+    ],
+    "schemes": [
+        "https"
+    ],
+    "swagger": "2.0",
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    }
+}

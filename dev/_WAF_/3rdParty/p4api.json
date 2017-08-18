@@ -1,0 +1,50 @@
+{
+    "name": "p4api",
+    "source": "@ROOT@/Code/SDKs/p4api",
+    "description": "Perforce API Library",
+    "aliases": {
+        "lib_names": [
+            "libclient",
+            "librpc",
+            "libsupp"
+        ]
+    },
+    "includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "vs12/debug"
+            ],
+            "libpath_release": [
+                "vs12/release"
+            ],
+            "lib": [
+                "${lib_names}.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "vs14/debug"
+            ],
+            "libpath_release": [
+                "vs14/release"
+            ],
+            "lib": [
+                "${lib_names}.lib"
+            ]
+        },
+        "darwin_x64": {
+            "libpath": [
+                "macos"
+            ],
+            "lib": [
+                "${lib_names}.a",
+                "libp4sslstub.a"
+            ]
+        }
+    }
+}

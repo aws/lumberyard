@@ -1,0 +1,19 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemMessageOfTheDay/CloudGemMessageOfTheDayBus.h",
+            "Include/AWS/ServiceAPI/CloudGemMessageOfTheDayClientComponent.h"
+        ],
+        "Source": [
+            "Source/CloudGemMessageOfTheDayModule.cpp",
+            "Source/CloudGemMessageOfTheDaySystemComponent.cpp",
+            "Source/CloudGemMessageOfTheDaySystemComponent.h"
+        ]
+    }
+}

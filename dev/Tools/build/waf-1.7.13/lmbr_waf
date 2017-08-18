@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+# encoding: ISO8859-1
+# Thomas Nagy, 2005-2012
+
+# Crytek Modifiatons:
+# - Extracts Scripts into BinTmp instead of Root
+# - Don't make the directory hidden
+
+"""
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+3. The name of the author may not be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+"""
+
+# Needed imports for PyInstaller to detect full extend of dependent modules
+import os, sys
+import json
+import xml.etree.ElementTree
+                         
+VERSION="1.7.13"
+
+# There are cases where we will execute this script from a directory that is
+# not the root directory of the cry engine. However, the wscripts expect to be
+# executed from the root directory. To support this users can specify the -cwd
+# <directory> args so that we can change to the directory first then execute
+# waf and have everything work.
+cwdArgPos = [i for i,x in enumerate(sys.argv) if x == '-cwd']
+if cwdArgPos: 
+    os.chdir(sys.argv[cwdArgPos[0] + 1])
+    # Clear out these arguments as waf will try to process them
+    sys.argv.pop(cwdArgPos[0] + 1)
+    sys.argv.pop(cwdArgPos[0])
+
+# Get executable directory path 
+# Note: (pyinstaller will be executed from a temp directory.
+cwd = os.getcwd()
+wafdir = os.path.abspath(cwd + '/Tools/build/waf-1.7.13')
+sys.path.insert(0, wafdir)
+
+if __name__ == '__main__':
+
+    # Wrap executable code into exec command
+    code = """
+import sys
+import getopt
+import profile
+
+from waflib import Scripting
+
+profile_mode = False
+if len(sys.argv)>1:
+	for arg in sys.argv:
+		if arg == '--profile-execution=True':
+			profile_mode = True
+
+if profile_mode:
+	print('WAF Execution Profile Enabled')
+	profile.run('Scripting.waf_entry_point(cwd, VERSION, wafdir)',sort='cumtime')
+else:
+    Scripting.waf_entry_point(cwd, VERSION, wafdir)
+"""
+    exec(compile(code, '<string>', 'exec'))

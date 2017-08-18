@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/AssetBrowser">
+        <file>ab_toolbar_00.png</file>
+        <file>ab_toolbar_01.png</file>
+        <file>ab_toolbar_02.png</file>
+        <file>ab_toolbar_03.png</file>
+        <file>ab_toolbar_06.png</file>
+        <file>ab_toolbar_07.png</file>
+        <file>model_viewport_dock.png</file>
+        <file>model_viewport_fullscreen.png</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,9 @@
+{
+    "auto": {
+        "Core": [
+            "LogFile_mac.mm",
+            "WindowObserver_mac.h",
+            "WindowObserver_mac.mm"
+        ]
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/ProcessLifeManagementGem.h",
+            "Source/ProcessLifeManagementGem.cpp"
+        ]
+    }
+}

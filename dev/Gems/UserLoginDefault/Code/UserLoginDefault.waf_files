@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/UserLoginDefaultGem.h",
+            "Source/UserLoginDefaultGem.cpp"
+        ]
+    }
+}

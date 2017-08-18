@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CParticleEffectPanel</class>
+ <widget class="QWidget" name="CParticleEffectPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>174</width>
+    <height>24</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPushButton" name="m_buttonGoToDatabase">
+     <property name="text">
+      <string>Go to Database</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+</ui>

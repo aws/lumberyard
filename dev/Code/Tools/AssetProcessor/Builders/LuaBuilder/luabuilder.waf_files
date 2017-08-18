@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "LuaBuilder": [
+            "Source/LuaBuilderWorker.h",
+            "Source/LuaBuilderWorker.cpp",
+            "Source/LuaHelpers.h",
+            "Source/LuaHelpers.cpp",
+            "Source/LuaBuilderApplication.cpp"
+        ]
+    }
+}

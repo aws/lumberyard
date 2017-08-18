@@ -1,0 +1,353 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#ifndef CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWANIMNODE_H
+#define CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWANIMNODE_H
+#pragma once
+
+#include <AzCore/std/containers/map.h>
+#include <AzCore/Component/EntityId.h>
+#include <AzCore/Component/EntityBus.h>
+#include <AzFramework/Entity/EntityContextBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+
+#include "TrackViewNode.h"
+#include "TrackViewTrack.h"
+#include "Objects/EntityObject.h"
+#include "Objects/TrackGizmo.h"
+
+class CTrackViewAnimNode;
+class CEntityObject;
+class QWidget;
+
+// Represents a bundle of anim nodes
+class CTrackViewAnimNodeBundle
+{
+public:
+    unsigned int GetCount() const { return m_animNodes.size(); }
+    CTrackViewAnimNode* GetNode(const unsigned int index) { return m_animNodes[index]; }
+    const CTrackViewAnimNode* GetNode(const unsigned int index) const { return m_animNodes[index]; }
+
+    void Clear();
+    const bool DoesContain(const CTrackViewNode* pTargetNode);
+
+    void AppendAnimNode(CTrackViewAnimNode* pNode);
+    void AppendAnimNodeBundle(const CTrackViewAnimNodeBundle& bundle);
+
+    void ExpandAll(bool bAlsoExpandParentNodes = true);
+    void CollapseAll();
+
+private:
+    std::vector<CTrackViewAnimNode*> m_animNodes;
+};
+
+// Callback called by animation node when its animated.
+class IAnimNodeAnimator
+{
+public:
+    virtual ~IAnimNodeAnimator() {}
+
+    virtual void Animate(CTrackViewAnimNode* pNode, const SAnimContext& ac) = 0;
+    virtual void Render(CTrackViewAnimNode* pNode, const SAnimContext& ac) {}
+
+    // Called when binding/unbinding the owning node
+    virtual void Bind(CTrackViewAnimNode* pNode) {}
+    virtual void UnBind(CTrackViewAnimNode* pNode) {}
+};
+
+////////////////////////////////////////////////////////////////////////////
+//
+// This class represents a IAnimNode in TrackView and contains
+// the editor side code for changing it
+//
+// It does *not* have ownership of the IAnimNode, therefore deleting it
+// will not destroy the CryMovie track
+//
+////////////////////////////////////////////////////////////////////////////
+class CTrackViewAnimNode
+    : public CTrackViewNode
+    , public IAnimNodeOwner
+    , public ITransformDelegate
+    , public IEntityObjectListener
+    , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+    , public AZ::EntityBus::Handler
+{
+    friend class CAbstractUndoAnimNodeTransaction;
+    friend class CAbstractUndoTrackTransaction;
+    friend class CUndoAnimNodeReparent;
+
+public:
+    CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* pAnimNode, CTrackViewNode* pParentNode);
+    ~CTrackViewAnimNode();
+
+    // Rendering
+    virtual void Render(const SAnimContext& ac);
+
+    // Playback
+    virtual void Animate(const SAnimContext& animContext);
+
+    // Binding/Unbinding
+    virtual void BindToEditorObjects();
+    virtual void UnBindFromEditorObjects();
+    virtual bool IsBoundToEditorObjects() const;
+
+    // Console sync
+    virtual void SyncToConsole(SAnimContext& animContext);
+
+    // CTrackViewAnimNode
+    virtual ETrackViewNodeType GetNodeType() const override { return eTVNT_AnimNode; }
+
+    // Create & remove sub anim nodes
+    virtual CTrackViewAnimNode* CreateSubNode(const QString& name, const EAnimNodeType animNodeType, CEntityObject* pOwner = nullptr, AZ::Uuid componentTypeId = AZ::Uuid::CreateNull(), AZ::ComponentId componenId=AZ::InvalidComponentId);
+    virtual void RemoveSubNode(CTrackViewAnimNode* pSubNode);
+
+    // Create & remove sub tracks
+    virtual CTrackViewTrack* CreateTrack(const CAnimParamType& paramType);
+    virtual void RemoveTrack(CTrackViewTrack* pTrack);
+
+    // Add selected entities from scene to group node
+    virtual CTrackViewAnimNodeBundle AddSelectedEntities(const DynArray<unsigned int>& defaultTrackCount);
+
+    // Add current layer to group node
+    virtual void AddCurrentLayer();
+
+    // Director related
+    virtual void SetAsActiveDirector();
+    virtual bool IsActiveDirector() const;
+
+    // Checks if anim node is part of active sequence and of an active director
+    virtual bool IsActive();
+
+    // Set as view camera
+    virtual void SetAsViewCamera();
+
+    // Name setter/getter
+    virtual const char* GetName() const override { return m_pAnimNode->GetName(); }
+    virtual bool SetName(const char* pName) override;
+    virtual bool CanBeRenamed() const override;
+
+    // Node owner setter/getter
+    virtual void SetNodeEntity(CEntityObject* pEntity);
+    virtual CEntityObject* GetNodeEntity(const bool bSearch = true);
+
+    // Entity setters/getters
+    void SetEntityGuid(const EntityGUID& guid);
+    EntityGUID* GetEntityGuid() const;
+    IEntity* GetEntity() const;
+
+    AZ::EntityId GetAzEntityId() const { return m_pAnimNode ? m_pAnimNode->GetAzEntityId() : AZ::EntityId(); }
+    bool IsBoundToAzEntity() const { return m_pAnimNode ? (!m_pAnimNode->GetEntity() && m_pAnimNode->GetAzEntityId().IsValid()): false; }
+
+    // Set/get source/target GUIDs
+    void SetEntityGuidSource(const EntityGUID& guid);
+    void SetEntityGuidTarget(const EntityGUID& guid);
+
+    // Snap time value to prev/next key in sequence
+    virtual bool SnapTimeToPrevKey(float& time) const override;
+    virtual bool SnapTimeToNextKey(float& time) const override;
+
+    // Node getters
+    CTrackViewAnimNodeBundle GetAllAnimNodes();
+    CTrackViewAnimNodeBundle GetSelectedAnimNodes();
+    CTrackViewAnimNodeBundle GetAllOwnedNodes(const CEntityObject* pOwner);
+    CTrackViewAnimNodeBundle GetAnimNodesByType(EAnimNodeType animNodeType);
+    CTrackViewAnimNodeBundle GetAnimNodesByName(const char* pName);
+
+    // Track getters
+    virtual CTrackViewTrackBundle GetAllTracks();
+    virtual CTrackViewTrackBundle GetSelectedTracks();
+    virtual CTrackViewTrackBundle GetTracksByParam(const CAnimParamType& paramType) const;
+
+    // Key getters
+    virtual CTrackViewKeyBundle GetAllKeys() override;
+    virtual CTrackViewKeyBundle GetSelectedKeys() override;
+    virtual CTrackViewKeyBundle GetKeysInTimeRange(const float t0, const float t1) override;
+
+    // Type getters
+    EAnimNodeType GetType() const;
+
+    // Flags
+    EAnimNodeFlags GetFlags() const;
+    bool AreFlagsSetOnNodeOrAnyParent(EAnimNodeFlags flagsToCheck) const;
+
+    // Disabled state
+    virtual void SetDisabled(bool bDisabled) override;
+    virtual bool IsDisabled() const override;
+
+    // Return track assigned to the specified parameter.
+    CTrackViewTrack* GetTrackForParameter(const CAnimParamType& paramType, uint32 index = 0) const;
+
+    // Rotation/Position & Scale
+    void SetPos(const Vec3& position);
+    Vec3 GetPos() const { return m_pAnimNode->GetPos(); }
+    void SetScale(const Vec3& scale);
+    Vec3 GetScale() const { return m_pAnimNode->GetScale(); }
+    void SetRotation(const Quat& rotation);
+    Quat GetRotation() const { return m_pAnimNode->GetRotate(); }
+
+    // Param
+    unsigned int GetParamCount() const;
+    CAnimParamType GetParamType(unsigned int index) const;
+    const char* GetParamName(const CAnimParamType& paramType) const;
+    bool IsParamValid(const CAnimParamType& param) const;
+    IAnimNode::ESupportedParamFlags GetParamFlags(const CAnimParamType& paramType) const;
+    EAnimValue GetParamValueType(const CAnimParamType& paramType) const;
+    void UpdateDynamicParams();
+
+    // Parameter getters/setters
+    template <class Type>
+    bool SetParamValue(const float time, const CAnimParamType& param, const Type& value)
+    {
+        assert(m_pAnimNode);
+        return m_pAnimNode->SetParamValue(time, param, value);
+    }
+
+    template <class Type>
+    bool GetParamValue(const float time, const CAnimParamType& param, Type& value)
+    {
+        assert(m_pAnimNode);
+        return m_pAnimNode->GetParamValue(time, param, value);
+    }
+
+    // Check if it's a group node
+    virtual bool IsGroupNode() const override;
+
+    // Generate a new node name
+    virtual QString GetAvailableNodeNameStartingWith(const QString& name) const;
+
+    // Copy/Paste nodes
+    virtual void CopyNodesToClipboard(const bool bOnlySelected, QWidget* context);
+    virtual bool PasteNodesFromClipboard(QWidget* context);
+
+    // Set new parent
+    virtual void SetNewParent(CTrackViewAnimNode* pNewParent);
+
+    // Check if this node may be moved to new parent
+    virtual bool IsValidReparentingTo(CTrackViewAnimNode* pNewParent);
+
+    int GetDefaultKeyTangentFlags() const { return m_pAnimNode ? m_pAnimNode->GetDefaultKeyTangentFlags() : SPLINE_KEY_TANGENT_UNIFIED; }
+    
+    void SetComponent(AZ::ComponentId componentId, const AZ::Uuid& componentTypeId);
+
+    // returns the AZ::ComponentId of the component associated with this node if it is of type eAnimNodeType_Component, InvalidComponentId otherwise
+    AZ::ComponentId GetComponentId() const;
+
+    // IAnimNodeOwner
+    void MarkAsModified() override;
+    // ~IAnimNodeOwner
+
+    // Compares all of the node's track values at the given time with the associated property value and 
+    //     sets a key at that time if they are different to match the latter
+    // Returns the number of keys set
+    int SetKeysForChangedTrackValues(float time) { return m_pAnimNode->SetKeysForChangedTrackValues(time); }
+
+    // returns true if this node is associated with an eAnimNodeType_AzEntity node and contains a component with the given id
+    bool ContainsComponentWithId(AZ::ComponentId componentId) const;
+
+    //////////////////////////////////////////////////////////////////////////
+    // AzToolsFramework::EditorEntityContextNotificationBus implementation
+    void OnStartPlayInEditor() override;
+    void OnStopPlayInEditor() override;
+    //~AzToolsFramework::EditorEntityContextNotificationBus implementation
+
+    //////////////////////////////////////////////////////////////////////////
+    // AZ::EntityBus
+    void OnEntityActivated(const AZ::EntityId& activatedEntityId) override;
+    //~AZ::EntityBus 
+
+    void OnEntityRemoved();
+
+    // Creates a sub-node for the given component. Returns a pointer to the created component sub-node
+    CTrackViewAnimNode* AddComponent(const AZ::Component* component);
+
+    void AppendNonBehaviorAnimatableProperties(IAnimNode::AnimParamInfos& animatableParams) const
+    {
+        m_pAnimNode->AppendNonBehaviorAnimatableProperties(animatableParams);
+    }
+    void AppendNonBehaviorAnimatableComponents(AZStd::vector<AZ::ComponentId>& animatableComponents) const
+    {
+        m_pAnimNode->AppendNonBehaviorAnimatableComponents(animatableComponents);
+    }
+    // Depth-first search for TrackViewAnimNode associated with the given animNode. Returns the first match found or nullptr if not found
+    CTrackViewAnimNode* FindNodeByAnimNode(const IAnimNode* animNode);
+
+protected:
+    // IAnimNodeOwner
+    void OnNodeAnimated(IAnimNode* pNode) override;
+    // ~IAnimNodeOwner
+
+    IAnimNode* GetAnimNode() { return m_pAnimNode; }
+    EAnimNodeType GetAnimNodeTypeFromObject(const CBaseObject* object) const;
+
+private:
+    // Copy selected keys to XML representation for clipboard
+    virtual void CopyKeysToClipboard(XmlNodeRef& xmlNode, const bool bOnlySelectedKeys, const bool bOnlyFromSelectedTracks) override;
+
+    void CopyNodesToClipboardRec(CTrackViewAnimNode* pCurrentAnimNode, XmlNodeRef& xmlNode, const bool bOnlySelected);
+
+    void PasteTracksFrom(XmlNodeRef& xmlNodeWithTracks);
+
+    bool HasObsoleteTrackRec(CTrackViewNode* pCurrentNode) const;
+    CTrackViewTrackBundle GetTracks(const bool bOnlySelected, const CAnimParamType& paramType) const;
+
+    void PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& copiedIdToNodeMap, XmlNodeRef xmlNode);
+
+    void SetPosRotScaleTracksDefaultValues();
+
+    void UpdateTrackGizmo();
+
+    bool CheckTrackAnimated(const CAnimParamType& paramType) const;
+
+    // IAnimNodeOwner
+    void OnNodeVisibilityChanged(IAnimNode* pNode, const bool bHidden) override;
+    void OnNodeReset(IAnimNode* pNode) override;
+    // ~IAnimNodeOwner
+
+    // ITransformDelegate
+    virtual void MatrixInvalidated() override;
+
+    virtual Vec3 GetTransformDelegatePos(const Vec3& realPos) const override;
+    virtual Quat GetTransformDelegateRotation(const Quat& realRotation) const override;
+    virtual Vec3 GetTransformDelegateScale(const Vec3& realScale) const override;
+
+    virtual void SetTransformDelegatePos(const Vec3& position) override;
+    virtual void SetTransformDelegateRotation(const Quat& rotation) override;
+    virtual void SetTransformDelegateScale(const Vec3& scale) override;
+
+    // If those return true the base object uses its own transform instead
+    virtual bool IsPositionDelegated() const override;
+    virtual bool IsRotationDelegated() const override;
+    virtual bool IsScaleDelegated() const override;
+    // ~ITransformDelegate
+
+    // IEntityObjectListener
+    virtual void OnNameChanged(const char* pName) override {}
+    virtual void OnSelectionChanged(const bool bSelected) override;
+    virtual void OnDone() override;
+    // ~IEntityObjectListener
+
+    IAnimSequence* m_pAnimSequence;
+    _smart_ptr<IAnimNode> m_pAnimNode;
+    CEntityObject* m_pNodeEntity;
+    std::unique_ptr<IAnimNodeAnimator> m_pNodeAnimator;
+    _smart_ptr<CGizmo> m_trackGizmo;
+
+    // used to stash the Editor sequence and node entity Ids when we switch to game mode from the editor
+    AZ::EntityId    m_stashedAnimNodeEditorAzEntityId;
+    AZ::EntityId    m_stashedAnimSequenceEditorAzEntityId;
+
+    // used to return a const reference to a null Uuid
+    static const AZ::Uuid s_nullUuid;
+};
+
+#endif // CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWANIMNODE_H

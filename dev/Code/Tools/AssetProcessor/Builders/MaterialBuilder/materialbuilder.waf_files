@@ -1,0 +1,12 @@
+{
+    "NoUberFile": {
+        "Root": [
+        ],
+        
+        "MaterialBuilder": [
+            "Source/MaterialBuilderComponent.h",
+            "Source/MaterialBuilderComponent.cpp",
+            "Source/MaterialBuilderApplication.cpp"
+        ]
+    }
+}

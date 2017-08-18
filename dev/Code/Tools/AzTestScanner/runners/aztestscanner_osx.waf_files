@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "Source Files/Mac":
+        [
+            "src/main.cpp"
+        ],
+        "Source Files/Test":
+        [
+            "test/RunnerTest.cpp"
+        ]
+    }
+}

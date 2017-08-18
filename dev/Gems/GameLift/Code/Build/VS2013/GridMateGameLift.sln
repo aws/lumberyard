@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GridMateGameLiftServer", "GridMateGameLiftServer.vcxproj", "{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GridMateGameLiftClientTest", "GridMateGameLiftClientTest.vcxproj", "{5AA56F75-7C97-4F8C-B89F-767A96B75C04}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GridMateGameLiftClient", "GridMateGameLiftClient.vcxproj", "{86FE3C95-837B-46C2-A77B-010854148BBE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GridMateGameLiftServerTest", "GridMateGameLiftServerTest.vcxproj", "{450BB18A-150F-49CF-918D-BC4F013ED1B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		DebugOpt|x64 = DebugOpt|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.Debug|x64.ActiveCfg = Debug|x64
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.Debug|x64.Build.0 = Debug|x64
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.DebugOpt|x64.ActiveCfg = DebugOpt|x64
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.DebugOpt|x64.Build.0 = DebugOpt|x64
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.Release|x64.ActiveCfg = Release|x64
+		{1BF8993A-7FE2-53DE-6FA2-85726BFE9138}.Release|x64.Build.0 = Release|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.Debug|x64.ActiveCfg = Debug|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.Debug|x64.Build.0 = Debug|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.DebugOpt|x64.ActiveCfg = DebugOpt|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.DebugOpt|x64.Build.0 = DebugOpt|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.Release|x64.ActiveCfg = Release|x64
+		{5AA56F75-7C97-4F8C-B89F-767A96B75C04}.Release|x64.Build.0 = Release|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.Debug|x64.ActiveCfg = Debug|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.Debug|x64.Build.0 = Debug|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.DebugOpt|x64.ActiveCfg = DebugOpt|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.DebugOpt|x64.Build.0 = DebugOpt|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.Release|x64.ActiveCfg = Release|x64
+		{86FE3C95-837B-46C2-A77B-010854148BBE}.Release|x64.Build.0 = Release|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.Debug|x64.ActiveCfg = Debug|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.Debug|x64.Build.0 = Debug|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.DebugOpt|x64.ActiveCfg = DebugOpt|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.DebugOpt|x64.Build.0 = DebugOpt|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.Release|x64.ActiveCfg = Release|x64
+		{450BB18A-150F-49CF-918D-BC4F013ED1B1}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

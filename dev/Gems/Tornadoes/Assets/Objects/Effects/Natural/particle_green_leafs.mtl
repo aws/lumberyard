@@ -1,0 +1,9 @@
+<Material AlphaTest="0.5" Diffuse="0.82352948,0.82352948,0.82352948" Emissive="0,0,0" GenMask="256" MtlFlags="2" Opacity="1" Shader="Vegetation" Shininess="10" Specular="0,0,0" SurfaceType="" >
+ <Textures>
+  <Texture File="objects/effects/natural/particle_green_leafs.tif" Map="Diffuse" >
+   <TexMod />
+  </Texture>
+ </Textures>
+ <PublicParams AnimAltitude="0.2" BackDiffuse="0.85000002,0.85000002,0.34999999" BackDiffuseMultiplier="0.75" BackViewDep="0.5" bendDetailBranchAmplitude="0.2" bendDetailFrequency="5" bendDetailLeafAmplitude="0.079999998" bendDetailPhase="100" />
+ <MaterialLayers />
+</Material>

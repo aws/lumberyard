@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<Params>
+	<AnimationList>
+		<Animation name="#filepath" path="Animations\animals\birds\rooster"/>
+		
+
+		<Animation name="walk_loop" path="rooster_walk.caf"/>
+		<Animation name="idle01_loop" path="rooster_idle01.caf"/>
+		<Animation name="pickup" path="rooster_pickup.caf"/>
+		<Animation name="throw" path="rooster_throw.caf"/>
+	</AnimationList>
+</Params>

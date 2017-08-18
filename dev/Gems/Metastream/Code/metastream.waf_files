@@ -1,0 +1,24 @@
+{
+    "NoUberFile": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/Metastream/MetastreamBus.h"
+        ],
+        "Source": [
+            "Source/MetastreamGem.h",
+            "Source/MetastreamGem.cpp"
+        ],
+        "Source/DataCache": [
+            "Source/DataCache.h",
+            "Source/DataCache.cpp"
+        ],
+        "Source/FlowGraph": [
+            "Source/FlowMetastream.cpp"
+        ]
+    }
+}

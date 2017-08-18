@@ -1,0 +1,89 @@
+{
+    "name": "alembic",
+    "source": "@ROOT@/Code/Tools/SDKs/Alembic",
+    "description": "Alembic Library",
+    "aliases": {
+        "alembic_libs" : [
+                "AlembicAbc",
+                "AlembicAbcCollection",
+                "AlembicAbcCoreAbstract",
+                "AlembicAbcCoreFactory",
+                "AlembicAbcCoreHDF5",
+                "AlembicAbcCoreOgawa",
+                "AlembicAbcGeom",
+                "AlembicAbcMaterial",
+                "AlembicOgawa",
+                "AlembicUtil"
+        ],
+        "ilmbase_libs" : [
+                "Half",
+                "IexMath",
+                "Iex",
+                "IlmThread",
+                "Imath"
+        ],
+        "hdf5_libs" : [
+            "hdf5_hl",
+            "hdf5"
+        ],
+        "lib_names" : [
+            "${alembic_libs}",
+            "${ilmbase_libs}",
+            "${hdf5_libs}"
+        ]
+    },
+    "includes": [
+        "alembic/include",
+        "ilmbase/include/OpenEXR"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath": [
+                "alembic/lib/x64",
+                "hdf5/lib/x64",
+                "ilmbase/lib/x64"
+            ],
+            "lib_debug": [
+                "${lib_names}-vc120-mt-sd.lib"
+            ],
+            "lib_release": [
+                "${lib_names}-vc120-mt-s.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath": [
+                "alembic/lib/x64",
+                "hdf5/lib/x64",
+                "ilmbase/lib/x64"
+            ],
+            "lib_debug": [
+                "${lib_names}-vc140-md-sd.lib"
+            ],
+            "lib_release": [
+                "${lib_names}-vc140-md-s.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        },
+        "darwin_x64": {
+            "libpath": [
+                "alembic/lib/macos",
+                "hdf5/lib/macos",
+                "ilmbase/lib/macos"
+            ],
+            "lib_debug": [
+                "lib${lib_names}.a"
+            ],
+            "lib_release": [
+                "lib${lib_names}.a"
+            ]
+        }
+    }
+}
+

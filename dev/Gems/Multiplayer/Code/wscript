@@ -1,0 +1,40 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.DefineGem(
+        # Add custom build options here
+        use         = ['GridMate'],
+        uselib      = ['OPENSSL'],
+        includes    = [bld.Path('Code/CryEngine/CryAction'),
+                       bld.Path('Code/CryEngine/CryNetwork')],
+        file_list   = ['Multiplayer.waf_files'],
+
+        # Platform Specific
+        win_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
+        win_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
+        win_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        win_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        win_lib          = ['gdi32', 'Winhttp', 'Ws2_32', 'mswsock'],
+        win_defines      = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],
+
+        linux_defines    = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],
+        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+
+       
+       
+
+    )

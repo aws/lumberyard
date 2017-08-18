@@ -1,0 +1,33 @@
+
+
+def build(bld):
+
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('chatplay.waf_files')
+        file_list.append('lmbraws_unsupported.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('chatplay.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')
+
+    bld.DefineGem(
+        # Add custom build options here
+        includes      = [bld.Path('Code/CryEngine/CryAction'),
+                         bld.Path('Code/CryEngine/CryNetwork'),
+                         bld.Path('Code/CryEngine/LmbrAWS')],
+
+        use           = ['AzFramework',
+                         'HttpRequestor'],
+
+        uselib        = ['AWS_CPP_SDK_CORE',
+                         'DYAD'],
+
+        file_list     = file_list,
+
+        win_lib       = ['Ws2_32', 'Shell32'],
+        win_file_list = 'chatplay_win.waf_files',
+    )

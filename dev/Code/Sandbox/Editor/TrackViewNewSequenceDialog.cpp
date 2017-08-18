@@ -1,0 +1,99 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#include "StdAfx.h"
+#include "TrackViewNewSequenceDialog.h"
+#include "TrackView/TrackViewSequenceManager.h"
+#include <ui_TrackViewNewSequenceDialog.h>
+#include <QMessageBox>
+#include "QtUtil.h"
+
+namespace
+{
+    struct seqTypeComboPair
+    {
+        const char*     name;
+        ESequenceType   type;
+    };
+
+    seqTypeComboPair g_seqTypeComboPairs[] = {
+        { "Object Entity Sequence (Legacy)", eSequenceType_Legacy },
+        { "Component Entity Sequence (PREVIEW)", eSequenceType_SequenceComponent }
+    };
+}
+
+// TrackViewNewSequenceDialog dialog
+CTVNewSequenceDialog::CTVNewSequenceDialog(QWidget* parent)
+    : QDialog(parent)
+    , ui(new Ui::CTVNewSequenceDialog)
+{
+    ui->setupUi(this);
+    connect(ui->BTNOK, &QPushButton::clicked, this, &CTVNewSequenceDialog::OnOK);
+    setWindowTitle("Add New Sequence");
+
+    OnInitDialog();
+}
+
+CTVNewSequenceDialog::~CTVNewSequenceDialog()
+{
+}
+
+void CTVNewSequenceDialog::OnInitDialog()
+{
+    // Fill in seq type combo box
+    for (int i = 0; i < arraysize(g_seqTypeComboPairs); ++i)
+    {
+        ui->m_seqNodeTypeCombo->addItem(tr(g_seqTypeComboPairs[i].name));
+    }
+    ui->m_seqNodeTypeCombo->setCurrentIndex(eSequenceType_SequenceComponent);         // default choice is the Director Component Entity
+    ui->NAME->setFocus();
+}
+
+void CTVNewSequenceDialog::OnOK()
+{
+    m_sequenceType = static_cast<ESequenceType>(ui->m_seqNodeTypeCombo->currentIndex());
+
+    m_sequenceName = ui->NAME->text();
+
+    if (m_sequenceName.isEmpty())
+    {
+        QMessageBox::warning(this, "New Sequence", "A sequence name cannot be empty!");
+        return;
+    }
+    else if (m_sequenceName.contains('/'))
+    {
+        QMessageBox::warning(this, "New Sequence", "A sequence name cannot contain a '/' character!");
+        return;
+    }
+    else if (m_sequenceName == LIGHT_ANIMATION_SET_NAME)
+    {
+        QMessageBox::warning(this, "New Sequence", QString("The sequence name '%1' is reserved.\n\nPlease choose a different name.").arg(LIGHT_ANIMATION_SET_NAME));
+        return;
+    }
+
+    for (int k = 0; k < GetIEditor()->GetSequenceManager()->GetCount(); ++k)
+    {
+        CTrackViewSequence* pSequence = GetIEditor()->GetSequenceManager()->GetSequenceByIndex(k);
+        QString fullname = QtUtil::ToQString(pSequence->GetName());
+
+        if (fullname.compare(m_sequenceName, Qt::CaseInsensitive) == 0)
+        {
+            QMessageBox::warning(this, "New Sequence", "Sequence with this name already exists!");
+            return;
+        }
+    }
+
+    accept();
+}
+
+#include <TrackViewNewSequenceDialog.moc>

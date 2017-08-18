@@ -1,0 +1,11 @@
+{
+    "none":
+    {        
+        "Events":
+        [
+            "../../SceneAPI/SceneCore/Events/CallProcessorBinder.h",
+            "../../SceneAPI/SceneCore/Events/CallProcessorBinder.inl",
+            "../../SceneAPI/SceneCore/Events/CallProcessorBinder.cpp"
+        ]
+    }
+}

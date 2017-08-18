@@ -1,0 +1,18 @@
+{
+    "NoUberFile": {
+        "CivetWeb": [
+            "../../../Code/SDKs/civetweb/include/CivetServer.h",
+            "../../../Code/SDKs/civetweb/src/CivetServer.cpp",
+            "../../../Code/SDKs/civetweb/include/civetweb.h",
+            "../../../Code/SDKs/civetweb/src/civetweb.c"
+        ]
+    },
+    "auto": {
+        "Source/HTTPServer": [
+            "Source/BaseHttpServer.h",
+            "Source/BaseHttpServer.cpp",
+            "Source/CivetHttpServer.h",
+            "Source/CivetHttpServer.cpp"
+        ]
+    }
+}

@@ -1,4 +1,4 @@
-/*
+ï»¿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -176,12 +176,12 @@ namespace AZ
          * Specifies where EBus data is stored. 
          * This drives how many instances of this EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy – %EBus data is stored 
+         * - (Default) EBusEnvironmentStoragePolicy â€“ %EBus data is stored 
          * in the AZ::Environment. With this policy, a single %EBus instance 
          * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy – %EBus data is stored in a global static variable. 
+         * - EBusGlobalStoragePolicy â€“ %EBus data is stored in a global static variable. 
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy – %EBus data is stored in a thread_local static 
+         * - EBusThreadLocalStoragePolicy â€“ %EBus data is stored in a thread_local static 
          * variable. With this policy, each thread has its own instance of the %EBus.
          */
         template<class Context>
@@ -641,12 +641,12 @@ namespace AZ
          * Specifies where %EBus data is stored.
          * This drives how many instances of this %EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy – %EBus data is stored
+         * - (Default) EBusEnvironmentStoragePolicy â€“ %EBus data is stored
          * in the AZ::Environment. With this policy, a single %EBus instance
          * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy – %EBus data is stored in a global static variable.
+         * - EBusGlobalStoragePolicy â€“ %EBus data is stored in a global static variable.
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy – %EBus data is stored in a thread_local static
+         * - EBusThreadLocalStoragePolicy â€“ %EBus data is stored in a thread_local static
          * variable. With this policy, each thread has its own instance of the %EBus.
          */
         typedef typename Traits::template StoragePolicy<Context> StoragePolicy;

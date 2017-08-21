@@ -106,8 +106,29 @@
 /dev/SamplesProject
 /dev/MultiplayerSample
 /dev/MultiplayerProject
+/dev/StarterGame
 /dev/Gems/GameEffectSystem
 /dev/Gems/Oculus
 /dev/Gems/OpenVR
 /dev/Gems/PBSreferenceMaterials
 /dev/Gems/Substance
+/dev/Gems/StarterGameGem
+/SetupAssistant.bat
+
+# Ignore temp and build directories
+/dev/AssetProcessorTemp
+/dev/BinTemp
+/dev/Cache
+/dev/SessionStatus
+/dev/Solutions
+
+# Ignore SDK directories
+/dev/Code/SDKs
+/dev/Code/Sandbox/SDKs
+/dev/Code/Tools/SDKs
+
+# Ignore log and user setting files
+/dev/Editor/editoreventlog.xml
+/dev/Editor/editorlayout.xml
+/dev/SetupAssistantUserPreferences.ini
+/dev/Tools/LmbrSetup/Win/UserSettings.xml

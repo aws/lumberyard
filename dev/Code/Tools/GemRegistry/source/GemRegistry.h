@@ -23,6 +23,7 @@
 #define GEM_DEF_FILE "gem.json"
 #define GEM_DEF_FILE_VERSION 3
 #define GEMS_PROJECT_FILE "gems.json"
+#define GEMS_SERVER_PROJECT_FILE "gems_server.json"
 #define GEMS_PROJECT_FILE_VERSION 2
 
 // Gem project file JSON tags

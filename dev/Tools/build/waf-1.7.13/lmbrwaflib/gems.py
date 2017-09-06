@@ -23,6 +23,7 @@ GEMS_UUID_KEY = "Uuid"
 GEMS_VERSION_KEY = "Version"
 GEMS_PATH_KEY = "Path"
 GEMS_LIST_FILE = "gems.json"
+GEMS_SERVER_LIST_FILE = "gems_server.json"
 GEMS_DEFINITION_FILE = "gem.json"
 GEMS_CODE_FOLDER = 'Code'
 GEMS_FOLDER = 'Gems'
@@ -619,7 +620,7 @@ class GemManager(object):
     def contains_gem(self, *gem_spec):
         return self.get_gem_by_spec(*gem_spec) != None
 
-    def process(self):
+    def process(self, is_server):
         """
         Process current directory for gems
 
@@ -651,7 +652,7 @@ class GemManager(object):
         for game_project in game_projects:
             Logs.debug('gems: Game Project: %s' % game_project)
 
-            gems_list_file = self.ctx.get_project_node(game_project).make_node(GEMS_LIST_FILE)
+            gems_list_file = self.ctx.get_project_node(game_project).make_node(GEMS_SERVER_LIST_FILE if is_server else GEMS_LIST_FILE)
 
             if not os.path.isfile(gems_list_file.abspath()):
                 if self.ctx.is_option_true('gems_optional'):
@@ -798,7 +799,7 @@ class GemManager(object):
         """
         if not hasattr(ctx, 'gem_manager'):
             ctx.gem_manager = GemManager(ctx)
-            ctx.gem_manager.process()
+            ctx.gem_manager.process(ctx.cmd.endswith('_dedicated'))
         return ctx.gem_manager
 
 @conf

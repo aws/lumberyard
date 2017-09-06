@@ -28,7 +28,7 @@ namespace Gems
         ~ProjectSettings() override = default;
 
         // IProjectSettings
-        AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder) override;
+        AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder, bool bDedicatedServer) override;
 
         bool EnableGem(const ProjectGemSpecifier& spec) override;
         bool DisableGem(const GemSpecifier& spec) override;

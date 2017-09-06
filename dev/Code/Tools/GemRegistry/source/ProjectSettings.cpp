@@ -44,12 +44,14 @@ namespace Gems
     {
     }
 
-    AZ::Outcome<void, AZStd::string> ProjectSettings::Initialize(const AZStd::string& projectFolder)
+    AZ::Outcome<void, AZStd::string> ProjectSettings::Initialize(const AZStd::string& projectFolder, bool bDedicatedServer)
     {
         AZ_Assert(!m_initialized, "ProjectSettings has been initialized already.");
 
         // Project file lives in (ProjectFolder)/gems.json - which might be @assets@/gems.json or an absolute path (in tools)
-        AzFramework::StringFunc::Path::Join(projectFolder.c_str(), GEMS_PROJECT_FILE, m_settingsFilePath);
+        AzFramework::StringFunc::Path::Join(projectFolder.c_str(),
+            bDedicatedServer ? GEMS_SERVER_PROJECT_FILE : GEMS_PROJECT_FILE,
+            m_settingsFilePath);
 
         auto loadOutcome = LoadSettings();
         m_initialized = loadOutcome.IsSuccess();

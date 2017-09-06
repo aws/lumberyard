@@ -113,7 +113,7 @@ namespace Gems
          *
          * \returns                 True on success, false on failure.
          */
-        virtual AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder) = 0;
+        virtual AZ::Outcome<void, AZStd::string> Initialize(const AZStd::string& projectFolder, bool bDedicatedServer) = 0;
 
         /**
          * Enables the specified instance of a Gem.

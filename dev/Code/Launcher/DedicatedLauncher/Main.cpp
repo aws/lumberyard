@@ -26,7 +26,7 @@
 #include <ParseEngineConfig.h>
 #include <IEditorGame.h>
 
-#include <AzGameFramework/Application/GameApplication.h>
+#include <AzGameFramework/Application/ServerApplication.h>
 #include <AzCore/IO/SystemFile.h> // for max path
 
 // We need shell api for Current Root Extruction.
@@ -220,7 +220,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     int result = 0;
 
-    AzGameFramework::GameApplication gameApp;
+    AzGameFramework::ServerApplication gameApp;
     {
         CEngineConfig engineCfg;
 
@@ -248,7 +248,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         engineCfg.m_waitForConnect = false;
 
         char configPath[AZ_MAX_PATH_LEN];
-        AzGameFramework::GameApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
+        AzGameFramework::ServerApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
         if (!AZ::IO::SystemFile::Exists(configPath))
         {
             fprintf(stderr, "Application descriptor file not found:\n%s", configPath);
@@ -256,7 +256,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
 
 
-        AzGameFramework::GameApplication::StartupParameters gameAppParams;
+        AzGameFramework::ServerApplication::StartupParameters gameAppParams;
 #ifdef AZ_MONOLITHIC_BUILD
         gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
         gameAppParams.m_loadDynamicModules = false;

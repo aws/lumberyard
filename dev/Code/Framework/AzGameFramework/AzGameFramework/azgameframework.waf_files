@@ -11,7 +11,8 @@
         "Application":
         [
             "Application/GameApplication.cpp",
-            "Application/GameApplication.h"
+            "Application/GameApplication.h",
+            "Application/ServerApplication.h"
         ]
     }
 }

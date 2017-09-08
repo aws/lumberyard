@@ -10,13 +10,10 @@
 *
 */
 
-#ifndef AZGAMEFRAMEWORK_SERVERAPPLICATION_H
-#define AZGAMEFRAMEWORK_SERVERAPPLICATION_H
+#pragma once
 
 #include <AzCore/base.h>
 #include "GameApplication.h"
-
-#pragma once
 
 namespace AzGameFramework
 {
@@ -27,9 +24,6 @@ namespace AzGameFramework
 
         AZ_CLASS_ALLOCATOR(ServerApplication, AZ::SystemAllocator, 0);
 
-        ServerApplication();
-        ~ServerApplication();
-
         static void GetGameDescriptorPath(char(&outConfigFilename)[AZ_MAX_PATH_LEN], const char* gameName)
         {
             azstrcpy(outConfigFilename, AZ_MAX_PATH_LEN, gameName);
@@ -38,5 +32,3 @@ namespace AzGameFramework
         }
     };
 } // namespace AzGameFramework
-
-#endif // AZGAMEFRAMEWORK_SERVERAPPLICATION_H

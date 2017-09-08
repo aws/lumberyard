@@ -620,7 +620,7 @@ class GemManager(object):
     def contains_gem(self, *gem_spec):
         return self.get_gem_by_spec(*gem_spec) != None
 
-    def process(self, is_server):
+    def process(self, is_server=False):
         """
         Process current directory for gems
 

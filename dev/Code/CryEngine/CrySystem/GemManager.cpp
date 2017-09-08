@@ -141,7 +141,6 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
     // get the game name:
 
-    //FL[FD-362] Gems configuration for dedicated server
     if (!m_projectSettings->Initialize("@assets@", initParams.bDedicatedServer))
     {
         const char* assetPath = initParams.UseAssetCache() ? initParams.assetsPathCache : initParams.assetsPath;

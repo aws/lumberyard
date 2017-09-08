@@ -29,8 +29,8 @@ namespace SliceBuilder
         explicit TraceDrillerHook(bool errorsWillFailJob);
         virtual ~TraceDrillerHook();
 
-        bool OnAssert(const char* message) override;
-        bool OnError(const char* window, const char* message) override;
+        virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override;
+        virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override;
 
         size_t GetErrorCount() const;
 

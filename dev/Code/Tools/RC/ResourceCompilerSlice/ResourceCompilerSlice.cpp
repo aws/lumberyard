@@ -70,36 +70,36 @@ public:
     virtual ~TraceDrillerHook()
     {
     }
-    bool OnAssert(const char* message) override
+    virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override
     {
         if (s_errorsWillFailJob)
         {
-            RCLogError("Assert failed: %s", CleanMessage(message).c_str());
+            RCLogError("Assert failed: %s", CleanMessage(parameters.message).c_str());
             ++s_errorsOccurred;
         }
         else
         {
-            RCLogWarning("Assert failed: %s", CleanMessage(message).c_str());
+            RCLogWarning("Assert failed: %s", CleanMessage(parameters.message).c_str());
         }
-        return true;
+        return AZ::Debug::Result::Handled;
     }
-    bool OnError(const char* /*window*/, const char* message) override
+    virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override
     {
         if (s_errorsWillFailJob)
         {
-            RCLogError("Error: %s", CleanMessage(message).c_str());
+            RCLogError("Error: %s", CleanMessage(parameters.message).c_str());
             ++s_errorsOccurred;
         }
         else
         {
-            RCLogWarning("Error: %s", CleanMessage(message).c_str());
+            RCLogWarning("Error: %s", CleanMessage(parameters.message).c_str());
         }
-        return true;
+        return AZ::Debug::Result::Handled;
     }
-    bool OnWarning(const char* /*window*/, const char* message) override
+    virtual AZ::Debug::Result OnWarning(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        RCLogWarning("Warning: %s", CleanMessage(message).c_str());
-        return true;
+        RCLogWarning("Warning: %s", CleanMessage(parameters.message).c_str());
+        return AZ::Debug::Result::Handled;
     }
 
     static AZ::OSString CleanMessage(const char* rawMessage)

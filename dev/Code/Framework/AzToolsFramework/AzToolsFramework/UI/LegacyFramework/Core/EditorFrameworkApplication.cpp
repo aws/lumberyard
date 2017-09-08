@@ -201,7 +201,7 @@ namespace LegacyFramework
         // THE FOLLOWING LINE CREATES THE MEMORY MANAGER SUBSYSTEM, do not allocate memory before this call!
         m_ptrSystemEntity = Create(configFilePath);
 
-        AZ::Debug::Trace::HandleExceptions(false);
+        AZ::Debug::Trace::Instance().HandleExceptions(false);
         FrameworkApplicationMessages::Handler::BusConnect();
         CoreMessageBus::Handler::BusConnect();
 

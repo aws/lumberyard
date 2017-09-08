@@ -91,10 +91,7 @@ namespace
         }
         catch(...)
         {
-            if (AZ::Debug::Trace::IsDebuggerPresent())
-            {
-                AZ::Debug::Trace::Break();
-            }
+            AZ_DEBUG_BREAK;
 
             CLogFile::FormatLine("Can't initialize plugin '%s'! Possible binary version incompatibility. Please reinstall this plugin.", szFilePath);
             return 0;

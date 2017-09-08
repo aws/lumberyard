@@ -28,11 +28,10 @@ struct GridMateTestEnvironment
         BusDisconnect();
         AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
     }
-    bool OnAssert(const char* message) override
+    AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
     {
-        (void)message;
         AZ_TEST_ASSERT(false); // just forward
-        return true;
+        return AZ::Debug::Result::Handled;
     }
 };
 

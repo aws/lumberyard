@@ -78,14 +78,14 @@ namespace AssetUtilsInternal
             BusConnect();
         }
 
-        bool OnAssert(const char* message)
+        virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override
         {
             if (s_onAbsorbThread)
             {
-                m_assertMessage = message;
-                return true; // I handled this, do not forward it
+                m_assertMessage = parameters.message;
+                return AZ::Debug::Result::Ignore; // I handled this, do not forward it
             }
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
         ~AssertAbsorber()
@@ -1266,68 +1266,68 @@ namespace AssetUtilities
         BusDisconnect();
     }
 
-    bool JobLogTraceListener::OnAssert(const char* message)
+    AZ::Debug::Result JobLogTraceListener::OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_ASSERT, "ASSERT", message);
-            return true;
+            AppendLog(AzFramework::LogFile::SEV_ASSERT, "ASSERT", parameters.message);
+            return AZ::Debug::Result::Handled;
         }
 
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
-    bool JobLogTraceListener::OnException(const char* message)
+    AZ::Debug::Result JobLogTraceListener::OnException(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_EXCEPTION, "EXCEPTION", message);
-            return true;
+            AppendLog(AzFramework::LogFile::SEV_EXCEPTION, "EXCEPTION", parameters.message);
+            return AZ::Debug::Result::Handled;
         }
 
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
-    bool JobLogTraceListener::OnError(const char* window, const char* message)
+    AZ::Debug::Result JobLogTraceListener::OnError(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_ERROR, window, message);
-            return true;
+            AppendLog(AzFramework::LogFile::SEV_ERROR, parameters.window, parameters.message);
+            return AZ::Debug::Result::Handled;
         }
 
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
-    bool JobLogTraceListener::OnWarning(const char* window, const char* message)
+    AZ::Debug::Result JobLogTraceListener::OnWarning(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            AppendLog(AzFramework::LogFile::SEV_WARNING, window, message);
-            return true;
+            AppendLog(AzFramework::LogFile::SEV_WARNING, parameters.window, parameters.message);
+            return AZ::Debug::Result::Handled;
         }
 
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
-    bool JobLogTraceListener::OnPrintf(const char* window, const char* message)
+    AZ::Debug::Result JobLogTraceListener::OnPrintf(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId() == m_runKey)
         {
-            if (azstrnicmp(window, "debug", 5) == 0)
+            if (azstrnicmp(parameters.window, "debug", 5) == 0)
             {
-                AppendLog(AzFramework::LogFile::SEV_DEBUG, window, message);
+                AppendLog(AzFramework::LogFile::SEV_DEBUG, parameters.window, parameters.message);
             }
             else
             {
-                AppendLog(AzFramework::LogFile::SEV_NORMAL, window, message);
+                AppendLog(AzFramework::LogFile::SEV_NORMAL, parameters.window, parameters.message);
             }
 
-            return true;
+            return AZ::Debug::Result::Handled;
         }
 
 
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
     void JobLogTraceListener::AppendLog(AzFramework::LogFile::SeverityLevel severity, const char* window, const char* message)

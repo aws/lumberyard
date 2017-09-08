@@ -37,7 +37,6 @@ namespace AZ {
 
     //////////////////////////////////////////////////////////////////////////
     // Globals
-    const int       g_maxMessageLength = 4096;
     const char*    g_dbgSystemWnd = "System";
     Trace Debug::g_tracer;
     void* g_exceptionInfo = NULL;
@@ -48,23 +47,8 @@ namespace AZ {
 #endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
 #endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
-    /**
-     * If any listener returns true, store the result so we do not outputs detailed information.
-     */
-    struct TraceMessageResult
-    {
-        bool     m_value;
-        TraceMessageResult()
-            : m_value(false) {}
-        void operator=(bool rhs)     { m_value = m_value || rhs; }
-    };
-
     //=========================================================================
-    // IsDebuggerPresent
-    // [8/3/2009]
-    //=========================================================================
-    bool
-    Trace::IsDebuggerPresent()
+    bool Trace::IsDebuggerPresent()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
@@ -84,11 +68,7 @@ namespace AZ {
     }
 
     //=========================================================================
-    // HandleExceptions
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::HandleExceptions(bool isEnabled)
+    void Trace::HandleExceptions(bool isEnabled)
     {
         (void)isEnabled;
         if (IsDebuggerPresent())
@@ -112,11 +92,7 @@ namespace AZ {
     }
 
     //=========================================================================
-    // Break
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Break()
+    void Trace::Break()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #   if defined(AZ_TESTS_ENABLED)
@@ -141,189 +117,272 @@ namespace AZ {
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
-    //=========================================================================
-    // Assert
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    Debug::Result Trace::Assert(const char* expression, const char* fileName, int line, const char* funcName, const char* format, ...)
     {
-        char message[g_maxMessageLength];
-        char header[g_maxMessageLength];
+        TraceMessageParameters params;
+        azstrcpy(params.expression, sizeof(params.expression), expression);
+        azstrcpy(params.fileName, sizeof(params.fileName), fileName);
+        params.line = line;
+        azstrcpy(params.funcName, sizeof(params.funcName), funcName);
+
+        // format message
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(params.message, MaxMessageLength, format, mark);
+        azstrcat(params.message, MaxMessageLength, "\n");
         va_end(mark);
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnPreAssert, fileName, line, funcName, message);
+        // handle assert
 
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnPreAssert, fileName, line, funcName, message);
-        if (result.m_value)
+        Result handled = Result::Continue;
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnPreAssert, params.fileName, params.line, params.funcName, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnPreAssert, params);
+
+        if (handled != Result::Continue)
         {
-            return;
+            switch (handled)
+            {
+
+            case Result::Handled:
+                return Result::Continue;
+
+            case Result::Break:
+                return IsDebuggerPresent() ? Result::Break : Result::Continue;
+
+            default:
+                return handled;
+
+            }
         }
 
-        Output(g_dbgSystemWnd, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): '%s'\n", fileName, line, funcName);
-        Output(g_dbgSystemWnd, header);
-        azstrcat(message, g_maxMessageLength, "\n");
-        Output(g_dbgSystemWnd, message);
+        // log assert
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnAssert, message);
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnAssert, message);
-        if (result.m_value)
+        Output(g_dbgSystemWnd, "\n==================================================================\n");
+        char header[MaxMessageLength];
+        azsnprintf(header, MaxMessageLength, "Trace::Assert\n %s(%d): '%s'\n", fileName, line, funcName);
+        Output(g_dbgSystemWnd, header);
+        azstrcat(params.message, MaxMessageLength, "\n");
+        Output(g_dbgSystemWnd, params.message);
+
+        // handle assert
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnAssert, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnAssert, params);
+
+        if (handled != Result::Continue)
         {
             Output(g_dbgSystemWnd, "==================================================================\n");
-            return;
+
+            switch (handled)
+            {
+
+            case Result::Handled:
+                return Result::Continue;
+
+            case Result::Break:
+                return IsDebuggerPresent() ? Result::Break : Result::Continue;
+
+            default:
+                return handled;
+
+            }
         }
 
         Output(g_dbgSystemWnd, "------------------------------------------------\n");
         PrintCallstack(g_dbgSystemWnd, 1);
         Output(g_dbgSystemWnd, "==================================================================\n");
 
-        g_tracer.Break();
+        return handled;
     }
 
     //=========================================================================
-    // Error
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
+    Debug::Result Trace::Error(const char* expression, const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
     {
-        char message[g_maxMessageLength];
-        char header[g_maxMessageLength];
+        TraceMessageParameters params;
+        azstrcpy(params.expression, sizeof(params.expression), expression);
+        azstrcpy(params.fileName, sizeof(params.fileName), fileName);
+        params.line = line;
+        azstrcpy(params.funcName, sizeof(params.funcName), funcName);
+        azstrcpy(params.window, sizeof(params.window), window);
+
+        // format message
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(params.message, MaxMessageLength, format, mark);
+        azstrcat(params.message, MaxMessageLength, "\n");
         va_end(mark);
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnPreError, window, fileName, line, funcName, message);
+        // handle error
 
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnPreError, window, fileName, line, funcName, message);
-        if (result.m_value)
+        Result handled = Result::Continue;
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnPreError, params.window, params.fileName, params.line, params.funcName, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnPreError, params);
+
+        if (handled != Result::Continue)
+        {
+            switch (handled)
+            {
+
+            case Result::Handled:
+                return Result::Continue;
+
+            case Result::Break:
+                return IsDebuggerPresent() ? Result::Break : Result::Continue;
+
+            default:
+                return handled;
+
+            }
+        }
+
+        // log error
+
+        Output(window, "\n==================================================================\n");
+        char header[MaxMessageLength];
+        azsnprintf(header, MaxMessageLength, "Trace::Error\n %s(%d): '%s'\n", fileName, line, funcName);
+        Output(window, header);
+        azstrcat(params.message, MaxMessageLength, "\n");
+        Output(window, params.message);
+
+        // handle error
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnError, params.window, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnError, params);
+
+        if (handled != Result::Continue)
+        {
+            Output(g_dbgSystemWnd, "==================================================================\n");
+
+            switch (handled)
+            {
+
+            case Result::Handled:
+                return Result::Continue;
+
+            case Result::Break:
+                return IsDebuggerPresent() ? Result::Break : Result::Continue;
+
+            default:
+                return handled;
+
+            }
+        }
+
+        Output(window, "------------------------------------------------\n");
+        PrintCallstack(window, 1);
+        Output(window, "==================================================================\n");
+
+        return handled;
+    }
+
+    //=========================================================================
+    void Trace::Warning(const char* expression, const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
+    {
+        TraceMessageParameters params;
+        azstrcpy(params.expression, sizeof(params.expression), expression);
+        azstrcpy(params.fileName, sizeof(params.fileName), fileName);
+        params.line = line;
+        azstrcpy(params.funcName, sizeof(params.funcName), funcName);
+        azstrcpy(params.window, sizeof(params.window), window);
+
+        // format message
+
+        va_list mark;
+        va_start(mark, format);
+        azvsnprintf(params.message, MaxMessageLength, format, mark);
+        azstrcat(params.message, MaxMessageLength, "\n");
+        va_end(mark);
+
+        // handle pre warning
+
+        Result handled = Result::Continue;
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnPreWarning, params.window, params.fileName, params.line, params.funcName, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnPreWarning, params);
+
+        if (handled != Result::Continue)
         {
             return;
         }
 
-        Output(window, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Error\n %s(%d): '%s'\n", fileName, line, funcName);
-        Output(window, header);
-        azstrcat(message, g_maxMessageLength, "\n");
-        Output(window, message);
+        // log warning
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnError, window, message);
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnError, window, message);
-        if (result.m_value)
+        Output(window, "\n==================================================================\n");
+        char header[MaxMessageLength];
+        azsnprintf(header, MaxMessageLength, "Trace::Warning\n %s(%d): '%s'\n", fileName, line, funcName);
+        Output(window, header);
+        azstrcat(params.message, MaxMessageLength, "\n");
+        Output(window, params.message);
+
+        // handle warning
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnWarning, params.window, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnWarning, params);
+
+        if (handled != Result::Continue)
         {
             Output(window, "==================================================================\n");
+
             return;
         }
 
         Output(window, "------------------------------------------------\n");
         PrintCallstack(window, 1);
         Output(window, "==================================================================\n");
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
-        //show error message box
-        char fullMsg[8 * 1024];
-        _snprintf_s(fullMsg, AZ_ARRAY_SIZE(fullMsg), _TRUNCATE, "An error has occurred!\n%s(%d): '%s'\n%s\n\nPress OK to continue, or Cancel to debug\n", fileName, line, funcName, message);
-        if (MessageBox(NULL, fullMsg, "Error!", MB_OKCANCEL | MB_SYSTEMMODAL) == IDCANCEL)
-        {
-            Break();
-        }
-#endif // RR_PLATFORM_WIN32
     }
+
     //=========================================================================
-    // Warning
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Warning(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
+    void Trace::Printf(const char* window, const char* format, ...)
     {
-        char message[g_maxMessageLength];
-        char header[g_maxMessageLength];
+        TraceMessageParameters params;
+        azstrcpy(params.window, sizeof(params.window), window);
+
+        // format message
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        azvsnprintf(params.message, MaxMessageLength, format, mark);
+        azstrcat(params.message, MaxMessageLength, "\n");
         va_end(mark);
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnPreWarning, window, fileName, line, funcName, message);
+        // handle printf
 
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnPreWarning, window, fileName, line, funcName, message);
-        if (result.m_value)
+        Result handled = Result::Continue;
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnPrintf, params.window, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnPrintf, params);
+
+        if (handled != Result::Continue)
         {
             return;
         }
 
-        Output(window, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Warning\n %s(%d): '%s'\n", fileName, line, funcName);
-        Output(window, header);
-        azstrcat(message, g_maxMessageLength, "\n");
-        Output(window, message);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnWarning, window, message);
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnWarning, window, message);
-        if (result.m_value)
-        {
-            Output(window, "==================================================================\n");
-            return;
-        }
-
-        Output(window, "------------------------------------------------\n");
-        PrintCallstack(window, 1);
-        Output(window, "==================================================================\n");
+        Output(window, params.message);
     }
 
     //=========================================================================
-    // Printf
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Printf(const char* window, const char* format, ...)
-    {
-        char message[g_maxMessageLength];
-
-        va_list mark;
-        va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
-        va_end(mark);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnPrintf, window, message);
-
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnPrintf, window, message);
-        if (result.m_value)
-        {
-            return;
-        }
-
-        Output(window, message);
-    }
-
-    //=========================================================================
-    // Output
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::Output(const char* window, const char* message)
+    void Trace::Output(const char* window, const char* message)
     {
         if (window == 0)
         {
             window = g_dbgSystemWnd;
         }
 
+        TraceMessageParameters params;
+        azstrcpy(params.window, sizeof(params.window), window);
+        azstrcpy(params.message, sizeof(params.message), message);
+
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)  /// Output to the debugger!
 
 #   ifdef _UNICODE
-        wchar_t messageW[g_maxMessageLength];
+        wchar_t messageW[MaxMessageLength];
         size_t numCharsConverted;
-        if (mbstowcs_s(&numCharsConverted, messageW, message, g_maxMessageLength - 1) == 0)
+        if (mbstowcs_s(&numCharsConverted, messageW, message, MaxMessageLength - 1) == 0)
         {
             OutputDebugStringW(messageW);
         }
@@ -336,10 +395,12 @@ namespace AZ {
         __android_log_print(ANDROID_LOG_INFO, window, message);
 #endif // AZ_PLATFORM_ANDROID
 
+        Result handled = Result::Continue;
+
         EBUS_EVENT(TraceMessageDrillerBus, OnOutput, window, message);
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnOutput, window, message);
-        if (result.m_value)
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnOutput, params);
+
+        if (handled != Result::Continue)
         {
             return;
         }
@@ -348,11 +409,7 @@ namespace AZ {
     }
 
     //=========================================================================
-    // PrintCallstack
-    // [8/3/2009]
-    //=========================================================================
-    void
-    Trace::PrintCallstack(const char* window, unsigned int suppressCount, void* nativeContext)
+    void Trace::PrintCallstack(const char* window, unsigned int suppressCount, void* nativeContext)
     {
         StackFrame frames[25];
 
@@ -384,20 +441,13 @@ namespace AZ {
     }
 
     //=========================================================================
-    // GetExceptionInfo
-    // [4/2/2012]
-    //=========================================================================
-    void*
-    Trace::GetNativeExceptionInfo()
+    void* Trace::GetNativeExceptionInfo()
     {
         return g_exceptionInfo;
     }
 
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
-    //=========================================================================
-    // GetExeptionName
-    // [8/3/2011]
     //=========================================================================
     const char* GetExeptionName(DWORD code)
     {
@@ -433,9 +483,6 @@ namespace AZ {
     }
 
     //=========================================================================
-    // ExceptionHandler
-    // [8/3/2011]
-    //=========================================================================
     LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo)
     {
         static bool volatile isInExeption = false;
@@ -455,21 +502,25 @@ namespace AZ {
         isInExeption = true;
         g_exceptionInfo = (void*)ExceptionInfo;
 
-        char message[g_maxMessageLength];
+        TraceMessageParameters params;
+
         g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-        azsnprintf(message, g_maxMessageLength, "Exception : 0x%X - '%s' [%p]\n", ExceptionInfo->ExceptionRecord->ExceptionCode, GetExeptionName(ExceptionInfo->ExceptionRecord->ExceptionCode), ExceptionInfo->ExceptionRecord->ExceptionAddress);
-        g_tracer.Output(g_dbgSystemWnd, message);
+        azsnprintf(params.message, Debug::MaxMessageLength, "Exception : 0x%X - '%s' [%p]\n", ExceptionInfo->ExceptionRecord->ExceptionCode, GetExeptionName(ExceptionInfo->ExceptionRecord->ExceptionCode), ExceptionInfo->ExceptionRecord->ExceptionAddress);
+        g_tracer.Output(g_dbgSystemWnd, params.message);
 
-        EBUS_EVENT(TraceMessageDrillerBus, OnException, message);
+        Result handled = Result::Continue;
 
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnException, message);
-        if (result.m_value)
+        EBUS_EVENT(TraceMessageDrillerBus, OnException, params.message);
+        EBUS_EVENT_RESULT(handled, TraceMessageBus, OnException, params);
+
+        if (handled != Result::Continue)
         {
             g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
             g_exceptionInfo = NULL;
+
             return EXCEPTION_CONTINUE_EXECUTION;
         }
+
         g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
         g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
 

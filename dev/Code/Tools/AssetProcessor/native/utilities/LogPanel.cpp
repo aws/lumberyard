@@ -39,53 +39,53 @@ namespace AssetProcessor
         LogTraceMessage(AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, "AssetProcessor", "Started recording logs. To check previous logs please navigate to the logs folder.");
     }
 
-    bool LogTab::OnAssert(const char* message)
+    AZ::Debug::Result LogTab::OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId())
         {
-            return false; // we are in a job thread
+            return AZ::Debug::Result::Continue; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnAssert(message);
+        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnAssert(parameters);
     }
-    bool LogTab::OnException(const char* message)
+    AZ::Debug::Result LogTab::OnException(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId())
         {
-            return false; // we are in a job thread
+            return AZ::Debug::Result::Continue; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnException(message);
-    }
-
-    bool LogTab::OnPrintf(const char* window, const char* message)
-    {
-        if (AssetProcessor::GetThreadLocalJobId())
-        {
-            return false; // we are in a job thread
-        }
-
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnPrintf(window, message);
+        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnException(parameters);
     }
 
-    bool LogTab::OnError(const char* window, const char* message)
+    AZ::Debug::Result LogTab::OnPrintf(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId())
         {
-            return false; // we are in a job thread
+            return AZ::Debug::Result::Continue; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnError(window, message);
+        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnPrintf(parameters);
     }
 
-    bool LogTab::OnWarning(const char* window, const char* message)
+    AZ::Debug::Result LogTab::OnError(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AssetProcessor::GetThreadLocalJobId())
         {
-            return false; // we are in a job thread
+            return AZ::Debug::Result::Continue; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnWarning(window, message);
+        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnError(parameters);
+    }
+
+    AZ::Debug::Result LogTab::OnWarning(const AZ::Debug::TraceMessageParameters& parameters)
+    {
+        if (AssetProcessor::GetThreadLocalJobId())
+        {
+            return AZ::Debug::Result::Continue; // we are in a job thread
+        }
+
+        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnWarning(parameters);
     }
 
 }

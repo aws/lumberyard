@@ -61,8 +61,8 @@ public:
     explicit TraceMessageAggregator(const AZ::Uuid& filterTag);
     ~TraceMessageAggregator() override;
 
-    bool OnPrintf(const char* window, const char* message) override;
-    bool OnAssert(const char* message) override;
+    virtual AZ::Debug::Result OnPrintf(const AZ::Debug::TraceMessageParameters& parameters) override;
+    virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override;
 
     bool HasEntries() const;
     bool HasWarnings() const;

@@ -14,6 +14,7 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Debug/TraceResult.h>
 
 namespace AZ
 {
@@ -27,6 +28,7 @@ namespace AZ
          * will be output (that's critical). For example: Asserts will always print a header,
          * so no matter what you return we will have a minimal indication an assert is triggered.
          */
+
         class TraceMessageEvents
             : public AZ::EBusTraits
         {
@@ -36,21 +38,21 @@ namespace AZ
 
             virtual ~TraceMessageEvents() {}
 
-            virtual bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
-            virtual bool OnAssert(const char* /*message*/) { return false; }
-            virtual bool OnException(const char* /*message*/) { return false; }
-            virtual bool OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
-            virtual bool OnError(const char* /*window*/, const char* /*message*/) { return false; }
-            virtual bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
-            virtual bool OnWarning(const char* /*window*/, const char* /*message*/) { return false; }
-            virtual bool OnPrintf(const char* /*window*/, const char* /*message*/) { return false; }
+            virtual Result OnPreAssert(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnAssert(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnException(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnPreError(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnError(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnPreWarning(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnWarning(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
+            virtual Result OnPrintf(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
 
             /**
             * All trace functions you output to anything. So if you want to handle all the output this is the place.
             * Do not return true and disable the system output if you listen at that level. Otherwise we can trigger
             * an assert without even one line of message send to the console/debugger.
             */
-            virtual bool OnOutput(const char* /*window*/, const char* /*message*/) { return false; }
+            virtual Result OnOutput(const TraceMessageParameters& parameters) { (void)parameters; return Result::Continue; }
         };
 
         typedef AZ::EBus<TraceMessageEvents> TraceMessageBus;

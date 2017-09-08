@@ -463,12 +463,12 @@ namespace AzFramework
     //---------------------------------------------------------------------
     void DrillerNetworkAgentComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("DrillerNetworkAgentService"));
+        provided.push_back(AZ_CRC("DrillerNetworkAgentService", 0xcd2ab821));
     }
     //---------------------------------------------------------------------
     void DrillerNetworkAgentComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("DrillerNetworkAgentService"));
+        incompatible.push_back(AZ_CRC("DrillerNetworkAgentService", 0xcd2ab821));
     }
     //---------------------------------------------------------------------
     void DrillerNetworkAgentComponent::Reflect(AZ::ReflectContext* context)
@@ -485,7 +485,7 @@ namespace AzFramework
                     "Driller Network Agent", "Runs on the machine being drilled and communicates with tools")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Profiling")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
 
@@ -616,12 +616,12 @@ namespace AzFramework
     //---------------------------------------------------------------------
     void DrillerNetworkConsoleComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("DrillerNetworkConsoleService"));
+        provided.push_back(AZ_CRC("DrillerNetworkConsoleService", 0x2286125d));
     }
     //---------------------------------------------------------------------
     void DrillerNetworkConsoleComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("DrillerNetworkConsoleService"));
+        incompatible.push_back(AZ_CRC("DrillerNetworkConsoleService", 0x2286125d));
     }
     //---------------------------------------------------------------------
     void DrillerNetworkConsoleComponent::Reflect(AZ::ReflectContext* context)
@@ -639,7 +639,7 @@ namespace AzFramework
                     "Driller Network Console", "Runs on the tool machine and is responsible for communications with the DrillerNetworkAgent")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Profiling")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
 

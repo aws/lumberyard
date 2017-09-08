@@ -86,22 +86,22 @@ namespace UnitTestUtils
             BusConnect();
         }
 
-        bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) override
+        virtual AZ::Debug::Result OnPreWarning(const AZ::Debug::TraceMessageParameters& parameters) override
         {
             ++m_numWarningsAbsorbed;
-            return true;
+            return AZ::Debug::Result::Handled;
         }
 
-        bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) override
+        virtual AZ::Debug::Result OnPreAssert(const AZ::Debug::TraceMessageParameters& parameters) override
         {
             ++m_numAssertsAbsorbed;
-            return true; // I handled this, do not forward it
+            return AZ::Debug::Result::Handled; // I handled this, do not forward it
         }
 
-        bool OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/)
+        virtual AZ::Debug::Result OnPreError(const AZ::Debug::TraceMessageParameters& parameters) override
         {
             ++m_numErrorsAbsorbed;
-            return true; // I handled this, do not forward it
+            return AZ::Debug::Result::Handled; // I handled this, do not forward it
         }
 
         ~AssertAbsorber()

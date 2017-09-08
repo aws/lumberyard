@@ -62,58 +62,58 @@ namespace AzToolsFramework
             }
         }
 
-        bool AZTracePrintFLogTab::OnAssert(const char* message)
+        AZ::Debug::Result AZTracePrintFLogTab::OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
         {
             if (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_ERROR))
             {
-                LogTraceMessage(Logging::LogLine::TYPE_ERROR, "ASSERT", message);
+                LogTraceMessage(Logging::LogLine::TYPE_ERROR, "ASSERT", parameters.message);
             }
 
-            return false;
+            return AZ::Debug::Result::Continue;
         }
-        bool AZTracePrintFLogTab::OnException(const char* message)
+        AZ::Debug::Result AZTracePrintFLogTab::OnException(const AZ::Debug::TraceMessageParameters& parameters)
         {
             if (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_ERROR))
             {
-                LogTraceMessage(Logging::LogLine::TYPE_ERROR, "EXCEPTION", message);
+                LogTraceMessage(Logging::LogLine::TYPE_ERROR, "EXCEPTION", parameters.message);
             }
 
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
-        bool AZTracePrintFLogTab::OnError(const char* window, const char* message)
+        AZ::Debug::Result AZTracePrintFLogTab::OnError(const AZ::Debug::TraceMessageParameters& parameters)
         {
             if (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_ERROR))
             {
-                LogTraceMessage(Logging::LogLine::TYPE_ERROR, window, message);
+                LogTraceMessage(Logging::LogLine::TYPE_ERROR, parameters.window, parameters.message);
             }
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
-        bool AZTracePrintFLogTab::OnWarning(const char* window, const char* message)
+        AZ::Debug::Result AZTracePrintFLogTab::OnWarning(const AZ::Debug::TraceMessageParameters& parameters)
         {
             if (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_WARNING))
             {
-                LogTraceMessage(Logging::LogLine::TYPE_WARNING, window, message);
+                LogTraceMessage(Logging::LogLine::TYPE_WARNING, parameters.window, parameters.message);
             }
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
-        bool AZTracePrintFLogTab::OnPrintf(const char* window, const char* message)
+        AZ::Debug::Result AZTracePrintFLogTab::OnPrintf(const AZ::Debug::TraceMessageParameters& parameters)
         {
             if (
                 (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_DEBUG)) &&
-                (azstricmp(window, "debug") == 0)
+                (azstricmp(parameters.window, "debug") == 0)
                 )
             {
-                LogTraceMessage(Logging::LogLine::TYPE_DEBUG, window, message);
+                LogTraceMessage(Logging::LogLine::TYPE_DEBUG, parameters.window, parameters.message);
             }
             else if (m_settings.m_filterFlags & (0x01 << TabSettings::FILTER_NORMAL) &&
-                (azstricmp(window, "debug") != 0))
+                (azstricmp(parameters.window, "debug") != 0))
             {
-                LogTraceMessage(Logging::LogLine::TYPE_MESSAGE, window, message);
+                LogTraceMessage(Logging::LogLine::TYPE_MESSAGE, parameters.window, parameters.message);
             }
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
         void AZTracePrintFLogTab::LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message)

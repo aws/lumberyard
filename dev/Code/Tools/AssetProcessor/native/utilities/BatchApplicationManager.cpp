@@ -1126,11 +1126,11 @@ void BatchApplicationManager::GetMatchingBuildersInfo(const AZStd::string& asset
     }
 }
 
-bool BatchApplicationManager::OnError(const char* window, const char* message)
+AZ::Debug::Result BatchApplicationManager::OnError(const AZ::Debug::TraceMessageParameters& parameters)
 {
     // We don't need to print the message to stdout, the trace system will already do that
 
-    return true;
+    return AZ::Debug::Result::Handled;
 }
 
 void BatchApplicationManager::OnRegistrySaveComplete(int assetCatalogVersion)

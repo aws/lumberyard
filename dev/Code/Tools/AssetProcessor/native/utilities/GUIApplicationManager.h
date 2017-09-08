@@ -59,7 +59,7 @@ public:
     ///////////////////////////////////////////////////
 
     //! TraceMessageBus::Handler
-    bool OnError(const char* window, const char* message) override;
+    virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override;
 
 protected:
     bool Activate() override;

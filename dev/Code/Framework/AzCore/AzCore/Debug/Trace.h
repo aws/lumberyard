@@ -13,6 +13,7 @@
 #define AZCORE_TRACE_H 1
 
 #include <AzCore/PlatformDef.h>
+#include <AzCore/Debug/TraceResult.h>
 
 #if defined(AZ_COMPILER_MSVC)
 //# pragma warning(push)
@@ -23,6 +24,45 @@
 //# pragma diag_push
 #   pragma diag_suppress=237 // controlling expression is constant
 #endif // AZ_COMPILER_SNC
+
+#ifndef AZ_ENABLE_BREAK
+#define AZ_ENABLE_BREAK 1
+#endif
+
+#ifndef AZ_DEBUG_BREAK
+#   if defined(AZ_PLATFORM_X360)
+#      include <xbdm.h>
+#   elif defined(AZ_PLATFORM_PS4)
+#      include <libdbg.h>
+#   elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
+#      if defined(AZ_PLATFORM_ANDROID)
+#          include <android/log.h>
+#      endif // AZ_PLATFORM_ANDROID
+#      include <AzCore/Debug/TraceCppLinux.inl>
+#   elif defined(AZ_PLATFORM_APPLE)
+#      include <AzCore/Debug/TraceCppApple.inl>
+#   endif
+
+#   if AZ_ENABLE_BREAK
+#      if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#          define AZ_DEBUG_BREAK    __debugbreak();
+#      elif defined(AZ_PLATFORM_X360)
+/ / Redacted
+#          define AZ_DEBUG_BREAK
+#      elif defined(AZ_PLATFORM_LINUX)
+#          define AZ_DEBUG_BREAK    DEBUG_BREAK;
+#      elif defined(AZ_PLATFORM_ANDROID)
+#          include <signal.h>
+#          define AZ_DEBUG_BREAK    raise(SIGINT);
+#      elif defined(AZ_PLATFORM_APPLE)
+#          define AZ_DEBUG_BREAK    __builtin_trap();
+#      else
+#          define AZ_DEBUG_BREAK    (*((int*)0)) = 1;
+#      endif
+#   else
+#      define AZ_DEBUG_BREAK
+#   endif // AZ_ENABLE_BREAK
+#endif // AZ_DEBUG_BREAK
 
 /**
     *  Forward declarations
@@ -45,25 +85,25 @@ namespace AZ
         public:
             static Trace& Instance()    { return g_tracer; }
 
-            static bool IsDebuggerPresent();
+            bool IsDebuggerPresent();
 
             /// True or false if we want to handle system exceptions.
-            static void HandleExceptions(bool isEnabled);
+            void HandleExceptions(bool isEnabled);
 
             /// Breaks program execution immediately.
-            static void Break();
+            void Break();
 
-            static void Assert(const char* fileName, int line, const char* funcName, const char* format, ...);
-            static void Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
-            static void Warning(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
-            static void Printf(const char* window, const char* format, ...);
+            Debug::Result Assert(const char* expression, const char* fileName, int line, const char* funcName, const char* format, ...);
+            Debug::Result Error(const char* expression, const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
+            void Warning(const char* expression, const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
+            void Printf(const char* window, const char* format, ...);
 
-            static void Output(const char* window, const char* message);
+            void Output(const char* window, const char* message);
 
-            static void PrintCallstack(const char* window, unsigned int suppressCount = 0, void* nativeContext = 0);
+             void PrintCallstack(const char* window, unsigned int suppressCount = 0, void* nativeContext = 0);
 
             /// PEXCEPTION_POINTERS on Windows/X360, always NULL on other platforms
-            static void* GetNativeExceptionInfo();
+            void* GetNativeExceptionInfo();
         };
     }
 }
@@ -72,7 +112,7 @@ namespace AZ
 
 /**
 * AZ tracing macros provide debug information reporting for assert, errors, warnings, and informational messages.
-* The syntax allows printf style formatting for the message, e.g DBG_Error("System | MyWindow", true/false, "message %d", ...).
+* The syntax allows printf style formatting for the message, e.g DAZ_Error("System | MyWindow", true/false, "message %d", ...).
 * Asserts are always sent to the "System" window, since they cannot be ignored.
 *
 * The four different types of macro should be used depending on the situation:
@@ -90,37 +130,50 @@ namespace AZ
 * Metroweirks. They require at least one parameter for "...".
 * \note AZCore implements the AZStd::Deafult_Assert so if you want to customize it user the Tracer Listerners...
 */
-    #define AZ_Assert(expression, ...)                           if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Assert(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, /*format,*/ __VA_ARGS__); }
+    #define AZ_Assert(expression, ...) \
+        if (!(expression)) { \
+            switch (AZ::Debug::Trace::Instance().Assert(#expression, __FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, /*format,*/ __VA_ARGS__)) { \
+                case AZ::Debug::Result::Break: { AZ_DEBUG_BREAK; } break; \
+                default: break; \
+            } \
+        }
 
-    #define AZ_Error(window, expression, ...)                     if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); }
+    #define AZ_Error(window, expression, ...) \
+        if (!(expression)) { \
+            switch (AZ::Debug::Trace::Instance().Error(#expression, __FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__)) { \
+                case AZ::Debug::Result::Break: { AZ_DEBUG_BREAK; } break; \
+                default: break; \
+            } \
+        }
 
-    #define AZ_ErrorOnce(window, expression, ...)                 if (!(expression))                                        \
-    {                                                                                                                       \
-        static bool isDisplayed = false;                                                                                    \
-        if (!isDisplayed)                                                                                                   \
-        {                                                                                                                   \
-            isDisplayed = true;                                                                                             \
-            AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
-        }                                                                                                                   \
+    #define AZ_ErrorOnce(window, expression, ...) \
+    if (!(expression)) { \
+        static bool isDisplayed = false; \
+        if (!isDisplayed) { \
+            isDisplayed = true; \
+            switch (AZ::Debug::Trace::Instance().Error(#expression, __FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__)) { \
+                case AZ::Debug::Result::Break: { AZ_DEBUG_BREAK; } break; \
+                default: break; \
+            } \
+        } \
     }
 
-    #define AZ_Warning(window, expression, ...)                   if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); }
+    #define AZ_Warning(window, expression, ...) \
+        if (!(expression)) { \
+            AZ::Debug::Trace::Instance().Warning(#expression, __FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
+        }
 
+    #define AZ_WarningOnce(window, expression, ...) \
+        if (!(expression)) { \
+            static bool isDisplayed = false; \
+            if (!isDisplayed) { \
+                isDisplayed = true; \
+                AZ::Debug::Trace::Instance().Warning(#expression, __FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
+            } \
+        }
 
-    #define AZ_WarningOnce(window, expression, ...)               if (!(expression))                                          \
-    {                                                                                                                         \
-        static bool isDisplayed = false;                                                                                      \
-        if (!isDisplayed)                                                                                                     \
-        {                                                                                                                     \
-            AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
-            isDisplayed = true;                                                                                               \
-        }                                                                                                                     \
-    }
-
-    #define AZ_TracePrintf(window, ...)                      AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
+    #define AZ_TracePrintf(window, ...) \
+        AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
 
 /*!
  * Verify version of the trace checks evaluates the expression even in release.

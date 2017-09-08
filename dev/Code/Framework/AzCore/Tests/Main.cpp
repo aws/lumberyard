@@ -75,43 +75,43 @@ public:
         AllocatorInstance<OSAllocator>::Destroy(); // used by the bus
     }
 
-    bool OnPreAssert(const char* file, int line, const char* /* func */, const char* message) override 
+    virtual AZ::Debug::Result OnPreAssert(const AZ::Debug::TraceMessageParameters& parameters) override
     { 
-        UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-        return true; 
+        UnitTest::TestRunner::Instance().ProcessAssert(parameters.message, parameters.file, parameters.line, false);
+        return AZ::Debug::Result::Handled;
     }
-    bool OnAssert(const char* /*message*/) override
+    virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        return true; // stop processing
+        return AZ::Debug::Result::Handled; // stop processing
     }
-    bool OnPreError(const char* /*window*/, const char* file, int line, const char* /*func*/, const char* message) override
+    virtual AZ::Debug::Result OnPreError(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-        return true;
+        UnitTest::TestRunner::Instance().ProcessAssert(parameters.message, parameters.file, parameters.line, false);
+        return AZ::Debug::Result::Handled;
     }
-    bool OnError(const char* /*window*/, const char* message) override
+    virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override
     {
         if (UnitTest::TestRunner::Instance().m_isAssertTest)
         {
-            UnitTest::TestRunner::Instance().ProcessAssert(message, __FILE__, __LINE__, UnitTest::AssertionExpr(false));
+            UnitTest::TestRunner::Instance().ProcessAssert(parameters.message, __FILE__, __LINE__, UnitTest::AssertionExpr(false));
         }
         else
         {
-            GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+            GTEST_TEST_BOOLEAN_(false, parameters.message, false, true, GTEST_NONFATAL_FAILURE_);
         }
-        return true; // stop processing
+        return AZ::Debug::Result::Handled; // stop processing
     }
-    bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) 
+    virtual AZ::Debug::Result OnPreWarning(const AZ::Debug::TraceMessageParameters& parameters) override 
     { 
-        return false; 
+        return AZ::Debug::Result::Continue;
     }
-    bool OnWarning(const char* /*window*/, const char* /*message*/) override
+    virtual AZ::Debug::Result OnWarning(const AZ::Debug::TraceMessageParameters& parameters) override
     { 
-        return false; 
+        return AZ::Debug::Result::Continue;
     }
-    bool OnOutput(const char* /*window*/, const char* /*message*/) override
+    virtual AZ::Debug::Result OnOutput(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        return true;
+        return AZ::Debug::Result::Handled;
     }
 };
 

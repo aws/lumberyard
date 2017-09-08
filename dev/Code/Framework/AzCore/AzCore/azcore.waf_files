@@ -95,7 +95,8 @@
             "Debug/TraceMessageBus.h",
             "Debug/TraceMessagesDriller.cpp",
             "Debug/TraceMessagesDriller.h",
-            "Debug/TraceMessagesDrillerBus.h"
+            "Debug/TraceMessagesDrillerBus.h",
+            "Debug/TraceResult.h"
         ],
         "Driller":
         [

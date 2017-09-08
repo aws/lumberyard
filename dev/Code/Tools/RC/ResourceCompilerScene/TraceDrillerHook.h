@@ -30,7 +30,7 @@ namespace AZ
             TraceDrillerHook();
             ~TraceDrillerHook() override;
 
-            bool OnPrintf(const char* window, const char* message) override;
+            virtual AZ::Debug::Result OnPrintf(const AZ::Debug::TraceMessageParameters& parameters) override;
 
         private:
             size_t CalculateLineLength(const char* message) const;

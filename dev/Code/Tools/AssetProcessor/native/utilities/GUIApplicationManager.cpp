@@ -363,13 +363,13 @@ void GUIApplicationManager::ShowMessageBox(QString title,  QString msg, bool isC
     }
 }
 
-bool GUIApplicationManager::OnError(const char* window, const char* message)
+AZ::Debug::Result GUIApplicationManager::OnError(const AZ::Debug::TraceMessageParameters& parameters)
 {
     // if we're in a worker thread, errors must not pop up a dialog box
     if (AssetProcessor::GetThreadLocalJobId() != 0)
     {
         // just absorb the error, do not perform default op
-        return true;
+        return AZ::Debug::Result::Handled;
     }
 
     // If we're the main thread, then consider showing the message box directly.  
@@ -381,9 +381,9 @@ bool GUIApplicationManager::OnError(const char* window, const char* message)
     {
         connection = Qt::QueuedConnection;
     }
-    QMetaObject::invokeMethod(this, "ShowMessageBox", connection, Q_ARG(QString, QString("Error")), Q_ARG(QString, QString(message)), Q_ARG(bool, true));
+    QMetaObject::invokeMethod(this, "ShowMessageBox", connection, Q_ARG(QString, QString("Error")), Q_ARG(QString, QString(parameters.message)), Q_ARG(bool, true));
 
-    return true;
+    return AZ::Debug::Result::Handled;
 }
 
 bool GUIApplicationManager::Activate()

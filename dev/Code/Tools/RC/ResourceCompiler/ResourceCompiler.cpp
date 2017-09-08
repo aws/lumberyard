@@ -138,10 +138,10 @@ public:
     {
     }
 
-    bool OnAssert(const char* message) override
+    AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
     {
-        RCLogWarning("An assert occurred during shutdown!  %s", message);
-        return true;
+        RCLogWarning("An assert occurred during shutdown!  %s", parameters.message);
+        return AZ::Debug::Result::Handled;
     }
 };
 

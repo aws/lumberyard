@@ -51,28 +51,28 @@ TraceMessageAggregator::~TraceMessageAggregator()
     BusDisconnect();
 }
 
-bool TraceMessageAggregator::OnPrintf(const char* window, const char* message)
+AZ::Debug::Result TraceMessageAggregator::OnPrintf(const AZ::Debug::TraceMessageParameters& parameters)
 {
     if (!IsAcceptedMessage())
     {
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
     Entry entry;
     entry.m_timeStamp = 0;
     time(&entry.m_timeStamp);
     entry.m_stack = m_stack.GetStack();
-    entry.m_message = message;
+    entry.m_message = parameters.message;
     if (entry.m_message[entry.m_message.length() - 1] != '\n')
     {
         entry.m_message += '\n';
     }
 
-    if (AzFramework::StringFunc::Equal(window, AZ::SceneAPI::Utilities::ErrorWindow))
+    if (AzFramework::StringFunc::Equal(parameters.window, AZ::SceneAPI::Utilities::ErrorWindow))
     {
         entry.m_type = Type::Error;
     }
-    else if (AzFramework::StringFunc::Equal(window, AZ::SceneAPI::Utilities::WarningWindow))
+    else if (AzFramework::StringFunc::Equal(parameters.window, AZ::SceneAPI::Utilities::WarningWindow))
     {
         entry.m_type = Type::Warning;
     }
@@ -83,21 +83,21 @@ bool TraceMessageAggregator::OnPrintf(const char* window, const char* message)
 
     m_entries.push_back(AZStd::move(entry));
 
-    return true;
+    return AZ::Debug::Result::Handled;
 }
 
-bool TraceMessageAggregator::OnAssert(const char* message)
+AZ::Debug::Result TraceMessageAggregator::OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
 {
     if (!IsAcceptedMessage())
     {
-        return false;
+        return AZ::Debug::Result::Continue;
     }
 
     Entry entry;
     entry.m_timeStamp = 0;
     time(&entry.m_timeStamp);
     entry.m_stack = m_stack.GetStack();
-    entry.m_message = message;
+    entry.m_message = parameters.message;
     if (entry.m_message[entry.m_message.length() - 1] != '\n')
     {
         entry.m_message += '\n';
@@ -106,7 +106,7 @@ bool TraceMessageAggregator::OnAssert(const char* message)
     m_entries.push_back(AZStd::move(entry));
 
     // Return false so the normal assert message box still appears.
-    return false;
+    return AZ::Debug::Result::Continue;
 }
 
 bool TraceMessageAggregator::HasEntries() const

@@ -185,7 +185,7 @@ namespace AZ
     void StreamerComponent::GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent)
     {
         dependent.push_back(AZ_CRC("UserSettingsService", 0xa0eadff5));
-        dependent.push_back(AZ_CRC("ProfilerService"));
+        dependent.push_back(AZ_CRC("ProfilerService", 0x505033c9));
     }
 
     //=========================================================================

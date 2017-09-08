@@ -94,7 +94,7 @@ public:
     void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList);
 
     //! TraceMessageBus Interface
-    bool OnError(const char* window, const char* message) override;
+    virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override;
 
     //! AssetRegistryNotificationBus::Handler
     void OnRegistrySaveComplete(int assetCatalogVersion) override;

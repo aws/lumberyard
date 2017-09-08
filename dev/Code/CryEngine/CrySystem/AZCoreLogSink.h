@@ -56,21 +56,21 @@ public:
         return gEnv && gEnv->pSystem && gEnv->pLog;
     }
 
-    bool OnPreAssert(const char* fileName, int line, const char* func, const char* message) override
+    virtual AZ::Debug::Result OnPreAssert(const AZ::Debug::TraceMessageParameters& parameters) override
     {
         if (!IsCryLogReady())
         {
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
-        CryLogAlways("%s", message);
+        CryLogAlways("%s", parameters.message);
 
 #if defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
         AZ::Crc32 crc;
-        crc.Add(&line, sizeof(line));
-        if (fileName)
+        crc.Add(&parameters.line, sizeof(parameters.line));
+        if (parameters.fileName)
         {
-            crc.Add(fileName, strlen(fileName));
+            crc.Add(parameters.fileName, strlen(parameters.fileName));
         }
 
         bool* ignore = nullptr;
@@ -87,52 +87,49 @@ public:
 
         if (!(*ignore))
         {
-            CryAssertTrace("%s", message);
-            if (CryAssert("Assertion failed", fileName, line, ignore))
+            CryAssertTrace("%s", parameters.message);
+            if (CryAssert("Assertion failed", parameters.fileName, parameters.line, ignore))
             {
-                AZ::Debug::Trace::Break();
+                return AZ::Debug::Result::Break;
             }
         }
 
-        return true;
+        return AZ::Debug::Result::Handled;
 #else
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, message);
-        return true;
+        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, parameters.message);
+        return AZ::Debug::Result::Handled;
 #endif // defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
     }
 
-    bool OnException(const char* message) override
+    virtual AZ::Debug::Result OnException(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        CryFatalError("%s", message);
-        return true;
+        CryFatalError("%s", parameters.message);
+        return AZ::Debug::Result::Handled;
     }
 
-    bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message) override
+    virtual AZ::Debug::Result OnPreError(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        (void)window;
-        return OnPreAssert(fileName, line, func, message);
+        return OnPreAssert(parameters);
     }
 
-    bool OnWarning(const char* window, const char* message) override
+    virtual AZ::Debug::Result OnWarning(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        (void)window;
         if (!IsCryLogReady())
         {
-            return false;
+            return AZ::Debug::Result::Continue;
         }
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "%s", message);
-        return true;
+        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "%s", parameters.message);
+        return AZ::Debug::Result::Handled;
     }
 
-    bool OnPrintf(const char* window, const char* message) override
+    virtual AZ::Debug::Result OnPrintf(const AZ::Debug::TraceMessageParameters& parameters) override
     {
-        (void)window;
         if (!IsCryLogReady())
         {
-            return false;
+            return AZ::Debug::Result::Continue;
         }
-        CryLog("%s", message);
-        return true;
+        CryLog("%s", parameters.message);
+        return AZ::Debug::Result::Handled;
     }
 
 private:

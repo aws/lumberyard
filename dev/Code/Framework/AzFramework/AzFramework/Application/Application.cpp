@@ -205,7 +205,7 @@ namespace AzFramework
 
     bool Application::OnFailedToFindConfiguration(const char* configFilePath)
     {
-        AZ::Debug::Trace::Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, "Application", "Failed to find app descriptor file \"%s\".", configFilePath);
+        AZ_Error("Application", false, "Failed to find app descriptor file \"%s\".", configFilePath);
         return true;
     }
 

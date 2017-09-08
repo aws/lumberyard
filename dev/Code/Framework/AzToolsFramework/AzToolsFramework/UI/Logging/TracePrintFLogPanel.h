@@ -59,11 +59,11 @@ namespace AzToolsFramework
 
             //////////////////////////////////////////////////////////////////////////
             // TraceMessagesBus
-            virtual bool OnAssert(const char* message);
-            virtual bool OnException(const char* message);
-            virtual bool OnError(const char* window, const char* message);
-            virtual bool OnWarning(const char* window, const char* message);
-            virtual bool OnPrintf(const char* window, const char* message);
+            virtual AZ::Debug::Result OnAssert(const AZ::Debug::TraceMessageParameters& parameters) override;
+            virtual AZ::Debug::Result OnException(const AZ::Debug::TraceMessageParameters& parameters) override;
+            virtual AZ::Debug::Result OnError(const AZ::Debug::TraceMessageParameters& parameters) override;
+            virtual AZ::Debug::Result OnWarning(const AZ::Debug::TraceMessageParameters& parameters) override;
+            virtual AZ::Debug::Result OnPrintf(const AZ::Debug::TraceMessageParameters& parameters) override;
             //////////////////////////////////////////////////////////////////////////
 
         protected:

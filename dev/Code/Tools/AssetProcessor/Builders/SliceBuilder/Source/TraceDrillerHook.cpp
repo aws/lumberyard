@@ -26,41 +26,41 @@ namespace SliceBuilder
         BusDisconnect();
     }
 
-    bool TraceDrillerHook::OnError(const char*, const char* message)
+    AZ::Debug::Result TraceDrillerHook::OnError(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AZStd::this_thread::get_id() != m_jobThreadId)
         {
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
         if (m_errorsWillFailJob)
         {
             ++m_errorsOccurred;
-            return false;
+            return AZ::Debug::Result::Continue;
         }
         else
         {
-            AZ_Warning("", false, "Error: %s", message);
-            return true;
+            AZ_Warning("", false, "Error: %s", parameters.message);
+            return AZ::Debug::Result::Handled;
         }
     }
 
-    bool TraceDrillerHook::OnAssert(const char* message)
+    AZ::Debug::Result TraceDrillerHook::OnAssert(const AZ::Debug::TraceMessageParameters& parameters)
     {
         if (AZStd::this_thread::get_id() != m_jobThreadId)
         {
-            return false;
+            return AZ::Debug::Result::Continue;
         }
 
         if (m_errorsWillFailJob)
         {
             ++m_errorsOccurred;
-            return false;
+            return AZ::Debug::Result::Continue;
         }
         else
         {
-            AZ_Warning("", false, "Assert failed: %s", message);
-            return true;
+            AZ_Warning("", false, "Assert failed: %s", parameters.message);
+            return AZ::Debug::Result::Handled;
         }
     }
 

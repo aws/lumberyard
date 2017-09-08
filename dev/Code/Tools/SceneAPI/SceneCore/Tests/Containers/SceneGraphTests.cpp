@@ -112,10 +112,10 @@ namespace AZ
                     BusDisconnect();
                 }
 
-                bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/)
+                virtual AZ::Debug::Result OnPreAssert(const AZ::Debug::TraceMessageParameters& parameters) override
                 {
                     m_assertTriggered = true;
-                    return true;
+                    return AZ::Debug::Result::Handled;
                 }
                 bool m_assertTriggered = false;
             };

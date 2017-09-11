@@ -141,7 +141,7 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
     // get the game name:
 
-    if (!m_projectSettings->Initialize("@assets@"))
+    if (!m_projectSettings->Initialize("@assets@", initParams.bDedicatedServer))
     {
         const char* assetPath = initParams.UseAssetCache() ? initParams.assetsPathCache : initParams.assetsPath;
         AZ_Error("Gems", false, "Error initializing Gems::ProjectSettings for project. Add gems.json to %s at enabled Gems", assetPath);

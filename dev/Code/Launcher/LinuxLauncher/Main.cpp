@@ -36,7 +36,7 @@
 
 #include <ParseEngineConfig.h>
 
-#include <AzGameFramework/Application/GameApplication.h>
+#include <AzGameFramework/Application/ServerApplication.h>
 
 // FIXME: get the correct version string from somewhere, maybe a -D supplied
 // by the build environment?
@@ -326,10 +326,10 @@ int RunGame(const char* commandLine)
     engineCfg.CopyToStartupParams(startupParams);
     
     char configPath[AZ_MAX_PATH_LEN];
-    AzGameFramework::GameApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
+    AzGameFramework::ServerApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
 
-    AzGameFramework::GameApplication gameApp;
-    AzGameFramework::GameApplication::StartupParameters gameAppParams;
+    AzGameFramework::ServerApplication gameApp;
+    AzGameFramework::ServerApplication::StartupParameters gameAppParams;
 #ifdef AZ_MONOLITHIC_BUILD
     gameAppParams.m_createStaticModulesCallback = CreateStaticModules;
     gameAppParams.m_loadDynamicModules = false;

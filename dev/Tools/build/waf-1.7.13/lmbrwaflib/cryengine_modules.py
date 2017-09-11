@@ -1200,7 +1200,7 @@ def codegen_static_modules_cpp_for_launcher(ctx, project, k, kw):
         return
         
     # Gather modules used by this project
-    static_modules = ctx.project_flavor_modules(project, 'Game')
+    static_modules = ctx.project_flavor_modules(project, ctx.get_project_flavour())
     for gem in ctx.get_game_gems(project):
         if gem.link_type != 'NoCode' and not gem.is_legacy_igem:
             static_modules.append('{}_{}'.format(gem.name, gem.id.hex))
@@ -2387,6 +2387,9 @@ def is_building_dedicated_server(ctx):
 
     return config.endswith('_dedicated')
 
+@conf
+def get_project_flavour(ctx):
+    return 'Game' if not ctx.is_building_dedicated_server() else 'Server'
 
 @feature('cxx')
 @after_method('apply_incpaths')

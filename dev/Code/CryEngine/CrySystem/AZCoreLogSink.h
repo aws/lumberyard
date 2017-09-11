@@ -135,6 +135,17 @@ public:
         return true;
     }
 
+    bool OnPrintfAlways(const char* window, const char* message) override
+    {
+        (void)window;
+        if (!IsCryLogReady())
+        {
+            return false;
+        }
+        CryLogAlways("%s", message);
+        return true;
+    }
+
 private:
 
     using IgnoredAssertMap = AZStd::unordered_map<AZ::Crc32, bool, AZStd::hash<AZ::Crc32>, AZStd::equal_to<AZ::Crc32>, AZ::OSStdAllocator>;

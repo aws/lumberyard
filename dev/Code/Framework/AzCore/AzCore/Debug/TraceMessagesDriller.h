@@ -47,6 +47,7 @@ namespace AZ
             virtual void OnError(const char* window, const char* message);
             virtual void OnWarning(const char* window, const char* message);
             virtual void OnPrintf(const char* window, const char* message);
+            virtual void OnPrintfAlways(const char* window, const char* message);
             //////////////////////////////////////////////////////////////////////////
         };
     } // namespace Debug

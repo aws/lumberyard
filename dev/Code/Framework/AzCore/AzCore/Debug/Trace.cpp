@@ -307,6 +307,32 @@ namespace AZ {
     }
 
     //=========================================================================
+    // PrintfAlways
+    // [9/8/2017]
+    //=========================================================================
+    void
+        Trace::PrintfAlways(const char* window, const char* format, ...)
+    {
+        char message[g_maxMessageLength];
+
+        va_list mark;
+        va_start(mark, format);
+        azvsnprintf(message, g_maxMessageLength, format, mark);
+        va_end(mark);
+
+        EBUS_EVENT(TraceMessageDrillerBus, OnPrintfAlways, window, message);
+
+        TraceMessageResult result;
+        EBUS_EVENT_RESULT(result, TraceMessageBus, OnPrintfAlways, window, message);
+        if (result.m_value)
+        {
+            return;
+        }
+
+        Output(window, message);
+    }
+
+    //=========================================================================
     // Output
     // [8/3/2009]
     //=========================================================================

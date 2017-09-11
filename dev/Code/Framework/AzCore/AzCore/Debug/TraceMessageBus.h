@@ -44,6 +44,7 @@ namespace AZ
             virtual bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) { return false; }
             virtual bool OnWarning(const char* /*window*/, const char* /*message*/) { return false; }
             virtual bool OnPrintf(const char* /*window*/, const char* /*message*/) { return false; }
+            virtual bool OnPrintfAlways(const char* /*window*/, const char* /*message*/) { return false; }
 
             /**
             * All trace functions you output to anything. So if you want to handle all the output this is the place.

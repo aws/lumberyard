@@ -103,6 +103,20 @@ namespace AZ
             m_output->EndTag(AZ_CRC("OnPrintf", 0xd4b5c294));
             m_output->EndTag(AZ_CRC("TraceMessagesDriller", 0xa61d1b00));
         }
+
+        //=========================================================================
+        // OnPrintfAlways
+        // [9/8/2017]
+        //=========================================================================
+        void TraceMessagesDriller::OnPrintfAlways(const char* window, const char* message)
+        {
+            m_output->BeginTag(AZ_CRC("TraceMessagesDriller", 0xa61d1b00));
+            m_output->BeginTag(AZ_CRC("OnPrintfAlways", 0x13aaf0b1));
+            m_output->Write(AZ_CRC("Window", 0x8be4f9dd), window);
+            m_output->Write(AZ_CRC("Message", 0xb6bd307f), message);
+            m_output->EndTag(AZ_CRC("OnPrintfAlways", 0x13aaf0b1));
+            m_output->EndTag(AZ_CRC("TraceMessagesDriller", 0xa61d1b00));
+        }
     } // namespace Debug
 } // namespace AZ
 

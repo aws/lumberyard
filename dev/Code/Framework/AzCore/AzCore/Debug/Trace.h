@@ -57,6 +57,7 @@ namespace AZ
             static void Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
             static void Warning(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
             static void Printf(const char* window, const char* format, ...);
+            static void PrintfAlways(const char* window, const char* format, ...);
 
             static void Output(const char* window, const char* message);
 
@@ -154,6 +155,7 @@ namespace AZ
 #endif  // AZ_ENABLE_TRACING
 
 #define AZ_Printf(window, ...)       AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
+#define AZ_PrintfAlways(window, ...)       AZ::Debug::Trace::Instance().PrintfAlways(window, __VA_ARGS__);
 
 #if defined(AZ_DEBUG_BUILD)
 #   define AZ_DbgIf(expression)         if (expression)

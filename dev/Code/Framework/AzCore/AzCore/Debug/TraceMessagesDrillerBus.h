@@ -44,6 +44,7 @@ namespace AZ
             virtual void OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) {}
             virtual void OnWarning(const char* /*window*/, const char* /*message*/) {}
             virtual void OnPrintf(const char* /*window*/, const char* /*message*/) {}
+            virtual void OnPrintfAlways(const char* /*window*/, const char* /*message*/) {}
             /**
              * All trace functions you output to anything. So if you want to handle all the output this is the place.
              * You are not given the choice to disable the system output as if you listen at that level you can't make

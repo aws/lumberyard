@@ -1698,7 +1698,7 @@ void CEditorImpl::InitMetrics()
             // Therefore, if the UUID from the project name is the same as the UUID in the file, it's one of our projects
             // and we can therefore send the name back, making it easier for Metrics to determine which level it was.
             // We are checking to see if this is a project we ship with Lumberyard, and therefore we can unobfuscate non-customer information.
-            if (projectId && editorProjectName.compare(projectName, Qt::CaseInsensitive) == 0 &&
+            if (projectId[0] != '\0' && editorProjectName.compare(projectName, Qt::CaseInsensitive) == 0 &&
                 (id == AZ::Uuid(projectId)))
             {
                 QByteArray projectNameUtf8 = projectName.toUtf8();

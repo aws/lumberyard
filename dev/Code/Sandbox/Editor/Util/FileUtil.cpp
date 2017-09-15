@@ -339,7 +339,7 @@ bool CFileUtil::CalculateDccFilename(const QString& assetFilename, QString& dccF
         return true;
     }
 
-    gEnv->pLog->LogError("Failed to find psd file for texture: '%s'", assetFilename);
+    gEnv->pLog->LogError("Failed to find psd file for texture: '%s'", assetFilename.toLatin1().data());
     return false;
 }
 

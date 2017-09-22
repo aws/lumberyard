@@ -377,7 +377,7 @@ void DesignerObject::Serialize(CObjectArchive& ar)
         {
             ar.node->setAttr("RndFlags", ERF_GET_WRITABLE(GetCompiler()->GetRenderFlags()));
             ar.node->setAttr("StaticObjFlags", ERF_GET_WRITABLE(GetCompiler()->GetStaticObjFlags()));
-            ar.node->setAttr("ViewDistMultiplier", GetCompiler()->GetViewDistanceMultiplier());
+            ar.node->setAttr("ViewDistRatio", GetCompiler()->GetViewDistanceMultiplier());
             if (!GetCompiler()->IsValid())
             {
                 GetCompiler()->Compile(this, GetModel());

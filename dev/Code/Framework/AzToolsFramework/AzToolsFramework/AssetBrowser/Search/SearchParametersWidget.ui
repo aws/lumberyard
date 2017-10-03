@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>96</width>
-    <height>16</height>
+    <height>28</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -33,16 +33,16 @@
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="leftMargin">
-    <number>0</number>
+    <number>6</number>
    </property>
    <property name="topMargin">
-    <number>0</number>
+    <number>6</number>
    </property>
    <property name="rightMargin">
-    <number>0</number>
+    <number>6</number>
    </property>
    <property name="bottomMargin">
-    <number>0</number>
+    <number>6</number>
    </property>
    <item>
     <widget class="QLabel" name="m_filtersLabel">
@@ -51,6 +51,11 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
      </property>
      <property name="styleSheet">
       <string notr="true">color: white;</string>
@@ -64,7 +69,15 @@
     </widget>
    </item>
    <item>
-    <widget class="AzToolsFramework::QBetterLabel" name="m_clearAllButton">
+    <widget class="AzToolsFramework::QBetterLabel" name="m_clearFiltersButton">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+       <kerning>true</kerning>
+      </font>
+     </property>
      <property name="text">
       <string>Clear</string>
      </property>

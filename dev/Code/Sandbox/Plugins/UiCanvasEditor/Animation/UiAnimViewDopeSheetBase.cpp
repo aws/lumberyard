@@ -2196,7 +2196,7 @@ void CUiAnimViewDopeSheetBase::DrawSelectTrack(const Range& timeRange, QPainter*
         ISelectKey selectKey;
         keyHandle.GetKey(&selectKey);
 
-        if (*selectKey.szSelection != 0)
+        if (!selectKey.szSelection.empty())
         {
             float time = keyHandle.GetTime();
             float nextTime = timeRange.end;
@@ -2310,7 +2310,7 @@ void CUiAnimViewDopeSheetBase::DrawSequenceTrack(const Range& timeRange, QPainte
 
         ISequenceKey sequenceKey;
         keyHandle.GetKey(&sequenceKey);
-        if (*sequenceKey.szSelection != 0)
+        if (!sequenceKey.szSelection.empty())
         {
             float time = keyHandle.GetTime();
             float nextTime = timeRange.end;

@@ -80,7 +80,6 @@ private:
     IPhysicalEntity* m_body0, * m_body1;
 };
 
-#if defined(USE_GEOM_CACHES) || defined(Q_MOC_RUN)
 // GeomCache entity.
 class SANDBOX_API CGeomCacheEntity
     : public CEntityObject
@@ -100,6 +99,7 @@ public:
 
     virtual bool HitTestEntity(HitContext& hc, bool& bHavePhysics) override
     {
+#if defined(USE_GEOM_CACHES)
         IGeomCacheRenderNode* pGeomCacheRenderNode = m_pEntity->GetGeomCacheRenderNode(0);
         if (pGeomCacheRenderNode)
         {
@@ -117,10 +117,10 @@ public:
                 return true;
             }
         }
-
+#endif
         return false;
     }
 };
-#endif
+
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_MISCENTITIES_H

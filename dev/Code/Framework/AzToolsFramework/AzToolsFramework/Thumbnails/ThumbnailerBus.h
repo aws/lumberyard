@@ -1,0 +1,78 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/Asset/AssetCommon.h>
+#include <AzToolsFramework/Thumbnails/Thumbnail.h>
+
+class QPixmap;
+
+namespace AzToolsFramework
+{
+    namespace Thumbnailer
+    {
+        //! Interaction with thumbnailer
+        class ThumbnailerRequests
+            : public AZ::EBusTraits
+        {
+        public:
+            //! Add thumbnail context
+            virtual void RegisterContext(const char* contextName, int thumbnailSize) = 0;
+
+            //! Add new thumbnail provider to ThumbnailContext
+            virtual void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) = 0;
+
+            //! Retrieve thumbnail by key,
+            //! if no thumbnail matching found, one of ThumbnailProviders will attempt to create
+            //! If no compatible providers found, MissingThumbnail will be returned
+            virtual SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) = 0;
+        };
+
+        using ThumbnailerRequestsBus = AZ::EBus<ThumbnailerRequests>;
+
+        //! Request product thumbnail to be rendered
+        class ThumbnailerRendererRequests
+            : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            typedef AZ::Data::AssetType BusIdType;
+
+            static const bool EnableEventQueue = true;
+            typedef AZStd::recursive_mutex MutexType;
+
+            virtual void RenderThumbnail(AZ::Data::AssetId assetId, int thumbnailSize) = 0;
+
+            virtual bool Installed() const { return false; }
+        };
+
+        using ThumbnailerRendererRequestsBus = AZ::EBus<ThumbnailerRendererRequests>;
+
+        //! Notify that product thumbnail was rendered
+        class ThumbnailerRendererNotifications
+            : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            typedef AZ::Data::AssetId BusIdType;
+
+            //! notify product thumbnail that the data is ready
+            virtual void ThumbnailRendered(QPixmap& thumbnailImage) = 0;
+            //! notify product thumbnail that the thumbnail failed to render
+            virtual void ThumbnailFailedToRender() = 0;
+        };
+
+        using ThumbnailerRendererNotificationsBus = AZ::EBus<ThumbnailerRendererNotifications>;
+    } // namespace Thumbnailer
+} // namespace AzToolsFramework

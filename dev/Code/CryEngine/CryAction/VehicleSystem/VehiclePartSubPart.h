@@ -65,9 +65,9 @@ private:
         {
         }
 
-        inline StateGeom(EVehiclePartState state, IStatObj* pStatObj)
-            : state(state)
-            , pStatObj(pStatObj)
+        inline StateGeom(EVehiclePartState _state, IStatObj* _pStatObj)
+            : state(_state)
+            , pStatObj(_pStatObj)
         {
             if (pStatObj)
             {

@@ -17,6 +17,7 @@ SUBFOLDERS = [
     'MaterialBuilder',
     'LuaBuilder',
     'SliceBuilder',
+    'TranslationBuilder'
 ]
 
 def build(bld):

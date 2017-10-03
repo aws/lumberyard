@@ -145,13 +145,13 @@ private:
             memset(this, 0, sizeof(*this));
         }
 
-        Copy(void* pContext, UINT_PTR dstOffset, UINT_PTR srcOffset, UINT_PTR size, IDefragAllocatorCopyNotification* pNotification)
+        Copy(void* _pContext, UINT_PTR _dstOffset, UINT_PTR _srcOffset, UINT_PTR _size, IDefragAllocatorCopyNotification* _pNotification)
             : inUse(true)
-            , pContext(pContext)
-            , dstOffset(dstOffset)
-            , srcOffset(srcOffset)
-            , size(size)
-            , pNotification(pNotification)
+            , pContext(_pContext)
+            , dstOffset(_dstOffset)
+            , srcOffset(_srcOffset)
+            , size(_size)
+            , pNotification(_pNotification)
             , jobState(-1)
             , relocateFrameId(0)
             , cancelled(false)
@@ -187,11 +187,11 @@ private:
     };
 
 private:
-    virtual uint32 BeginCopy(void* pContext, UINT_PTR dstOffset, UINT_PTR srcOffset, UINT_PTR size, IDefragAllocatorCopyNotification* pNotification);
+    virtual uint32 BeginCopy(void* context, UINT_PTR dstOffset, UINT_PTR srcOffset, UINT_PTR size, IDefragAllocatorCopyNotification* pNotification);
     virtual void Relocate(uint32 userMoveId, void* pContext, UINT_PTR newOffset, UINT_PTR oldOffset, UINT_PTR size);
     virtual void CancelCopy(uint32 userMoveId, void* pContext, bool bSync);
 
-    virtual void SyncCopy(void* pContext, UINT_PTR dstOffset, UINT_PTR srcOffset, UINT_PTR size);
+    virtual void SyncCopy(void* context, UINT_PTR dstOffset, UINT_PTR srcOffset, UINT_PTR size);
 
 private:
     CControllerDefragHeap(const CControllerDefragHeap&);

@@ -27,6 +27,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 namespace AZ
@@ -84,7 +85,12 @@ namespace AZ
             
             if (m_assetWriter && cgfContent.GetNodeCount() > 0)
             {
-                if (!m_assetWriter->WriteCGF(&cgfContent))
+                if (m_assetWriter->WriteCGF(&cgfContent))
+                {
+                    static const Data::AssetType staticMeshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
+                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshAssetType, 0);
+                }
+                else
                 {
                     AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to write CGF file.");
                     result += SceneEvents::ProcessingResult::Failure;

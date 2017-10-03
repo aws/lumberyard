@@ -159,7 +159,7 @@ void* ParticleObjectPool::Allocate_128Byte()
                     break;
                 }
                 
-            } while (m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
+            } while (!m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
 #endif
             return listEntry;
         }
@@ -214,7 +214,7 @@ void* ParticleObjectPool::Allocate_256Byte()
                     break;
                 }
 
-            } while (m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
+            } while (!m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
 #endif
             return listEntry;
         }
@@ -269,7 +269,7 @@ void* ParticleObjectPool::Allocate_512Byte()
                     break;
                 }
 
-            } while (m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
+            } while (!m_maxUsedMemory.compare_exchange_strong(maxUsedMemory, m_usedMemory));
 #endif
             return listEntry;
         }

@@ -22,6 +22,8 @@
 
 #include <CryCommon/IFlares.h>
 
+#include <LmbrCentral/Rendering/EditorLightComponentBus.h>
+
 #include "EditorLensFlareComponent.h"
 #include "LightComponent.h"
 
@@ -55,6 +57,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/LensFlare.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-lens-flare.html")
 
                     ->DataElement(0, &EditorLensFlareComponent::m_configuration, "Settings", "Lens flare configuration")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
@@ -190,14 +193,14 @@ namespace LmbrCentral
                 //Get the config of the light we want to sync with
                 LmbrCentral::LightConfiguration lightConfig;
 
-                EBUS_EVENT_ID_RESULT(lightConfig, m_lightEntity, LightComponentEditorRequestBus, GetConfiguration);
+                EBUS_EVENT_ID_RESULT(lightConfig, m_lightEntity, EditorLightComponentRequestBus, GetConfiguration);
 
                 m_syncAnimIndex = lightConfig.m_animIndex;
                 m_syncAnimSpeed = lightConfig.m_animSpeed;
                 m_syncAnimPhase = lightConfig.m_animPhase;
             }
 
-            EBUS_EVENT_ID(m_editorEntityId, LensFlareComponentEditorRequestBus, RefreshLensFlare);
+            EBUS_EVENT_ID(m_editorEntityId, EditorLensFlareComponentRequestBus, RefreshLensFlare);
         }
 
         return AZ::Edit::PropertyRefreshLevels::None;
@@ -251,7 +254,7 @@ namespace LmbrCentral
         //Check to see if we need to start connected to the LightSettingsNotificationBus
         m_configuration.SyncAnimationChanged();
 
-        LensFlareComponentEditorRequestBus::Handler::BusConnect(entityId);
+        EditorLensFlareComponentRequestBus::Handler::BusConnect(entityId);
         RenderNodeRequestBus::Handler::BusConnect(entityId);
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(entityId);
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
@@ -263,7 +266,7 @@ namespace LmbrCentral
         //Check to see if we need to disconnect from the LightSettingsNotificationBus
         m_configuration.SyncAnimationChanged();
 
-        LensFlareComponentEditorRequestBus::Handler::BusDisconnect();
+        EditorLensFlareComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
@@ -479,7 +482,7 @@ namespace LmbrCentral
     AZStd::string EditorLensFlareComponent::GetFlareNameFromPath(const AZStd::string& path) const
     {
         //Trim the library name from the beginning of the path to get the flare's name
-        if (!m_selectedLensFlareLibrary.empty())
+        if (!m_selectedLensFlareLibrary.empty() && m_selectedLensFlareLibrary.size() < path.size())
         {
             return path.substr(m_selectedLensFlareLibrary.size() + 1);
         }

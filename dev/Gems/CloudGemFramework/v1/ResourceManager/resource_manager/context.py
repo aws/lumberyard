@@ -36,6 +36,7 @@ class Context(object):
     def bootstrap(self, args):
         self.view.bootstrap(args)
         self.config.bootstrap(args)
+        self.gem.bootstrap(args)
         self.resource_groups.bootstrap(args)
 
     def initialize(self, args):

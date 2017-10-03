@@ -1,0 +1,8 @@
+<Params>
+ <AnimationList>
+  <Animation name="#filepath" path="Animations/Characters/Rin"/>
+  <Animation name="*" path="*/*.caf"/>
+  <Animation name="*" path="*/*.bspace"/>
+  <Animation name="*" path="*/*.comb"/>
+ </AnimationList>
+</Params>

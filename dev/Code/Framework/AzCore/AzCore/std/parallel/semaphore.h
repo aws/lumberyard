@@ -61,10 +61,8 @@ namespace AZStd
     };
 }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
     #include <AzCore/std/parallel/internal/semaphore_win.h>
-#elif defined(AZ_PLATFORM_WII)
-    #include <AzCore/std/parallel/internal/semaphore_wii.h>
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
     #include <AzCore/std/parallel/internal/semaphore_linux.h>
 #elif defined(AZ_PLATFORM_APPLE)

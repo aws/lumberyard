@@ -8,12 +8,13 @@
     "auto": {
         "Include": [
             "Include/CloudGemLeaderboard/CloudGemLeaderboardBus.h",
-            "Include/AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
+            "AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
         ],
         "Source": [
             "Source/CloudGemLeaderboardModule.cpp",
             "Source/CloudGemLeaderboardSystemComponent.cpp",
-            "Source/CloudGemLeaderboardSystemComponent.h"
+            "Source/CloudGemLeaderboardSystemComponent.h",
+            "AWS/ServiceAPI/CloudGemLeaderboardClientComponent.cpp"
         ]
     }
 }

@@ -48,6 +48,6 @@ namespace LmbrCentral
     }
     const char* MannequinControllerAssetTypeInfo::GetBrowserIcon() const
     {
-        return "Editor/Icons/Mannequin.png";
+        return "Editor/Icons/Components/Mannequin.png";
     }
 } // namespace LmbrCentral

@@ -3,7 +3,8 @@
     {
         "Tests":
         [
-            "Core/Tests/test_Main.cpp"
+            "Core/Tests/test_Main.cpp",
+            "Core/Tests/test_Archive.cpp"
         ]
     }
 }

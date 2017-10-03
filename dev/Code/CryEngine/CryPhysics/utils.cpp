@@ -561,6 +561,11 @@ real RotatePointToPlane(const Vec3r& pt, const Vec3r& axis, const Vec3r& center,
 
 int BakeScaleIntoGeometry(phys_geometry*& pgeom, IGeomManager* pGeoman, const Vec3& s, int bReleaseOld)
 {
+    if (!pgeom->pGeom)
+    {
+        return 0;
+    }
+
     IGeometry* pGeomScaled = 0;
     if (phys_geometry* pAdam = (phys_geometry*)pgeom->pGeom->GetForeignData(DATA_UNSCALED_GEOM))
     {

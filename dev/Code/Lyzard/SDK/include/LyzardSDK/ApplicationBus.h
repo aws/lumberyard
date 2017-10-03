@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
 
 namespace Lyzard
 {
@@ -37,4 +38,28 @@ namespace Lyzard
         virtual bool IsReadyForShutdown() { return true; }
     };
     using ApplicationNotificationBus = AZ::EBus<ApplicationNotifications>;
+
+
+
+    class ApplicationRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual ~ApplicationRequests() { };
+
+        /**
+        * Returns the corresponding Bin64 directory for binaries, DLL's, and gems.
+        * The intended Bin64 directory is the one containing Gems built and meant to be loaded for Lyzard.exe, 
+        * when invoking the System Entity Editor.
+        * Which Bin64 directory is returned depends on the preferred build settings and config.
+        */
+        virtual AZStd::string GetPreferredOutputDirectory() = 0;
+    };
+    using ApplicationRequestBus = AZ::EBus<ApplicationRequests>;
 }

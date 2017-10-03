@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "SelectTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -21,7 +22,7 @@ void CSelectTrack::SerializeKey(ISelectKey& key, XmlNodeRef& keyNode, bool bLoad
     {
         const char* szSelection;
         szSelection = keyNode->getAttr("node");
-        cry_strcpy(key.szSelection, szSelection);
+        key.szSelection = szSelection;
         AZ::u64 id64;
         if (keyNode->getAttr("CameraAzEntityId", id64))
         {
@@ -31,7 +32,7 @@ void CSelectTrack::SerializeKey(ISelectKey& key, XmlNodeRef& keyNode, bool bLoad
     }
     else
     {
-        keyNode->setAttr("node", key.szSelection);
+        keyNode->setAttr("node", key.szSelection.c_str());
         if (key.cameraAzEntityId.IsValid())
         {
             AZ::u64 id64 = static_cast<AZ::u64>(key.cameraAzEntityId);
@@ -48,8 +49,29 @@ void CSelectTrack::GetKeyInfo(int key, const char*& description, float& duration
     CheckValid();
     description = 0;
     duration = m_keys[key].fDuration;
-    if (strlen(m_keys[key].szSelection) > 0)
+    if (!m_keys[key].szSelection.empty())
     {
-        description = m_keys[key].szSelection;
+        description = m_keys[key].szSelection.c_str();
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ISelectKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ISelectKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ISelectKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ISelectKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ISelectKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ISelectKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSelectTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ISelectKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CSelectTrack, TAnimTrack<ISelectKey> >()
+        ->Version(1);
 }

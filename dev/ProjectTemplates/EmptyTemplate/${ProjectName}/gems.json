@@ -1,0 +1,41 @@
+{
+    "GemListFormatVersion": 2, 
+    "Gems": [
+        {
+            "Path": "Gems/LegacyGameInterface",
+            "Uuid": "3108b261962e44b6a0c1c036c693bca2",
+            "Version": "1.0.0",
+            "_comment": "LegacyGameInterface"
+        },
+        {
+            "Path": "Gems/CryLegacy",
+            "Uuid": "352fef7706634c92814c587e84d7165a",
+            "Version": "0.1.0",
+            "_comment": "CryLegacy"
+        },
+        {
+            "Path": "Gems/LmbrCentral",
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "Version": "0.1.0",
+            "_comment": "LmbrCentral"
+        },
+        {
+            "Path": "Gems/LyShine",
+            "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
+            "Version": "0.1.0",
+            "_comment": "LyShine"
+        },
+        {
+            "Path": "Gems/Maestro",
+            "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
+            "Version": "0.1.0",
+            "_comment": "Maestro"
+        },
+        {
+            "Path" : "${ProjectName}/Gem",
+            "Uuid" : "${GemId}",
+            "Version" : "${GemVersion}",
+            "_comment" : "${GemName}"
+        }
+   ]
+}

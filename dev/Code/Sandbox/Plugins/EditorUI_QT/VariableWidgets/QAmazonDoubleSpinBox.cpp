@@ -16,7 +16,6 @@
 #include <qdebug.h>
 #include <QApplication.h>
 #include <QtWidgets/QDesktopWidget.h>
-#include <math.h>
 
 
 QAmazonDoubleSpinBox::QAmazonDoubleSpinBox(QWidget* parent)
@@ -24,7 +23,7 @@ QAmazonDoubleSpinBox::QAmazonDoubleSpinBox(QWidget* parent)
 {
     setDecimals(m_precision);
     lineEdit()->installEventFilter(this);
-    connect(lineEdit(), &QLineEdit::editingFinished, this, [=](){ m_isEditInProgress = false; });
+    connect(lineEdit(), &QLineEdit::editingFinished, this, [=]() { m_isEditInProgress = false; });
 }
 
 QAmazonDoubleSpinBox::~QAmazonDoubleSpinBox()

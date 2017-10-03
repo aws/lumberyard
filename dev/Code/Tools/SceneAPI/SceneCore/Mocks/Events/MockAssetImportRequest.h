@@ -47,8 +47,8 @@ namespace AZ
 
                 MOCK_METHOD2(PrepareForAssetLoading,
                     ProcessingResult(Containers::Scene& scene, RequestingApplication requester));
-                MOCK_METHOD3(LoadAsset,
-                    LoadingResult(Containers::Scene& scene, const AZStd::string& path, RequestingApplication requester));
+                MOCK_METHOD4(LoadAsset,
+                    LoadingResult(Containers::Scene& scene, const AZStd::string& path, const Uuid& guid, RequestingApplication requester));
                 MOCK_METHOD2(FinalizeAssetLoading,
                     void(Containers::Scene& scene, RequestingApplication requester));
                 MOCK_METHOD3(UpdateManifest,
@@ -78,12 +78,12 @@ namespace AZ
                         .WillByDefault(Return(ProcessingResult::Ignored));
                     if (forManifest)
                     {
-                        ON_CALL(*this, LoadAsset(Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<RequestingApplication>(_)))
+                        ON_CALL(*this, LoadAsset(Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<const Uuid&>(_), Matcher<RequestingApplication>(_)))
                             .WillByDefault(Return(LoadingResult::ManifestLoaded));
                     }
                     else
                     {
-                        ON_CALL(*this, LoadAsset(Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<RequestingApplication>(_)))
+                        ON_CALL(*this, LoadAsset(Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<const Uuid&>(_), Matcher<RequestingApplication>(_)))
                             .WillByDefault(Return(LoadingResult::AssetLoaded));
                     }
                     ON_CALL(*this, UpdateManifest(Matcher<Containers::Scene&>(_), Matcher<ManifestAction>(_), Matcher<RequestingApplication>(_)))

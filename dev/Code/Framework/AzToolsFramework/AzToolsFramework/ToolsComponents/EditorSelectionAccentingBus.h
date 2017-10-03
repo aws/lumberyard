@@ -32,9 +32,10 @@ namespace AzToolsFramework
 
             /**
             * \brief Invalidates then Recalculates and Applies accenting on the currently selected set of entities
-            *        [IMPORTANT] To be called after a selection or highlight change
+            *        This shouldn't be necessary to call except in unique circumstances, as it is automatically done 
+            *        on highlight and selection changes.
             */
-            virtual void ProcessQueuedSelectionAccents() = 0;
+            virtual void ForceSelectionAccentRefresh() = 0;
         };
 
         using EditorSelectionAccentingRequestBus = AZ::EBus<EditorSelectionAccentingRequests>;

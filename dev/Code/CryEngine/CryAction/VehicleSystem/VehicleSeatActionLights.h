@@ -83,8 +83,8 @@ protected:
         {
         }
 
-        inline SLightPart(CVehiclePartLight* pPart)
-            : pPart(pPart)
+        inline SLightPart(CVehiclePartLight* part)
+            : pPart(part)
         {
         }
 

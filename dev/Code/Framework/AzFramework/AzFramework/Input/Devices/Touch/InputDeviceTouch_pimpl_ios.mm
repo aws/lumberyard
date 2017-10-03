@@ -12,7 +12,6 @@
 
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_ios.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_ios.h>
 
 #include <UIKit/UIKit.h>
 
@@ -101,13 +100,8 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceTouchIos::TickInputDevice()
     {
-        // Pump the ios event loop to ensure that it has dispatched all input events. Other systems
-        // (or other input devices) may also do this so some (or all) input events may have already
-        // been dispatched, but they are queued until ProcessRawEventQueues is called below so that
-        // all raw input events are processed at the same time every frame.
-        RawInputRequestBusIos::Broadcast(&RawInputRequestsIos::PumpRawEventLoop);
-
-        // Process the raw event queues once each frame
+        // The ios event loop has just been pumped in InputSystemComponentIos::PreTickInputDevices,
+        // so we now just need to process any raw events that have been queued since the last frame
         ProcessRawEventQueues();
     }
 
@@ -171,7 +165,9 @@ namespace AzFramework
 
         const float normalizedLocationX = touchLocation.x / viewSize.width;
         const float normalizedLocationY = touchLocation.y / viewSize.height;
-        float pressure = touch.force / touch.maximumPossibleForce;
+
+        const bool supportsForceTouch = UIScreen.mainScreen.traitCollection.forceTouchCapability == UIForceTouchCapabilityAvailable;
+        float pressure = supportsForceTouch ? touch.force / touch.maximumPossibleForce : 1.0f;
 
         RawTouchEvent::State state = RawTouchEvent::State::Began;
         switch (touch.phase)

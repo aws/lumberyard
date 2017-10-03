@@ -23,11 +23,11 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
-#include <LmbrCentral/Cinematics/SequenceAgentComponentBus.h>
+#include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     /*static*/ AZ::ScriptTimePoint EditorSequenceComponent::s_lastPropertyRefreshTime;
     /*static*/ const double        EditorSequenceComponent::s_refreshPeriodMilliseconds = 200.0;  // 5 Hz refresh rate
@@ -36,6 +36,7 @@ namespace LmbrCentral
     namespace ClassConverters
     {
         static bool UpVersionAnimationData(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
+        static bool UpVersionEditorSequenceComponent(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
     } // namespace ClassConverters
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,9 +49,9 @@ namespace LmbrCentral
             IAnimSequence* sequence = editor->GetMovieSystem()->FindSequenceById(m_sequenceId);
             ITrackViewSequenceManager* pSequenceManager = editor->GetSequenceManager();
 
-            if (sequence && pSequenceManager && pSequenceManager->GetSequenceByName(sequence->GetName()))
+            if (sequence && pSequenceManager && pSequenceManager->GetSequenceByEntityId(sequence->GetOwnerId()))
             {
-                pSequenceManager->OnDeleteSequenceObject(sequence->GetName());
+                pSequenceManager->OnDeleteSequenceObject(sequence->GetOwnerId());
             }
         }
 
@@ -73,8 +74,8 @@ namespace LmbrCentral
                 ->Version(1, &ClassConverters::UpVersionAnimationData);
 
             serializeContext->Class<EditorSequenceComponent, EditorComponentBase>()
-                ->Field("AnimationData", &EditorSequenceComponent::m_serializedAnimData)
-                ->Version(3);
+                ->Field("Sequence", &EditorSequenceComponent::m_sequence)
+                ->Version(4, &ClassConverters::UpVersionEditorSequenceComponent);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
@@ -104,59 +105,42 @@ namespace LmbrCentral
     void EditorSequenceComponent::Init()
     {
         EditorComponentBase::Init();
-        m_sequence = nullptr;
         m_sequenceId = s_invalidSequenceId;
         IEditor* editor = nullptr;
         EBUS_EVENT_RESULT(editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
 
         if (editor)
         {
-            // request the creation an IAnimSequence object from TrackView and set its owner to this Director
-            m_sequence = editor->GetSequenceManager()->OnCreateSequenceObject(m_entity->GetName().c_str(), false);
+            bool sequenceWasDeserialized = false;
+            if (m_sequence)
+            {
+                // m_sequence is already filled if the component it was deserialized - register it with Track View
+                sequenceWasDeserialized = true;
+                editor->GetSequenceManager()->OnCreateSequenceComponent(m_sequence);
+            }
+            else
+            {
+                // if m_sequence is NULL, we're creating a new sequence - request the creation from the Track view
+                m_sequence = static_cast<CAnimSequence*>(editor->GetSequenceManager()->OnCreateSequenceObject(m_entity->GetName().c_str(), false));
+            }
+
             if (m_sequence)
             {
                 m_sequence->SetOwner(GetEntityId());
                 m_sequenceId = m_sequence->GetId();
             }
 
-            // If we're deserializing the Director from disk, the m_serializedAnimData.m_serializedData will have data in it.
-            // Deserialize the m_sequence with this data.
-            const char* buffer = m_serializedAnimData.m_serializedData.c_str();
-            size_t size = m_serializedAnimData.m_serializedData.length();
-            if (size > 0)
+            if (sequenceWasDeserialized)
             {
-                XmlNodeRef xmlArchive = gEnv->pSystem->LoadXmlFromBuffer(buffer, size);
-
-                XmlNodeRef sequenceNode = xmlArchive->findChild("Sequence");
-                if (sequenceNode != NULL)
+                // Notify Trackview of the load
+                ITrackViewSequence* trackViewSequence = editor->GetSequenceManager()->GetSequenceByEntityId(GetEntityId());
+                if (trackViewSequence)
                 {
-                    // check of sequence ID collision and resolve if needed
-                    XmlNodeRef idNode = xmlArchive->findChild("ID");
-                    if (idNode)
-                    {
-                        idNode->getAttr("value", m_sequenceId);
-                        if (editor->GetMovieSystem()->FindSequenceById(m_sequenceId))  // A collision found!
-                        {
-                            uint32 newId = editor->GetMovieSystem()->GrabNextSequenceId();
-                            // TODO - need to call ar.AddSequenceIdMapping(m_sequenceId, newId);
-                            m_sequenceId = newId;
-                        }
-                    }
-
-                    // deserialize into m_sequence
-                    m_sequence->Serialize(sequenceNode, true, true, m_sequenceId);
-
-                    // clear the serializationData now that we've deserialized it
-                    m_serializedAnimData.m_serializedData.clear();
-
-                    // Notify Trackview of the load
-                    ITrackViewSequence* pTrackViewSequence = editor->GetSequenceManager()->GetSequenceByName(m_sequence->GetName());
-                    if (pTrackViewSequence)
-                    {
-                        pTrackViewSequence->Load();
-                    }
+                    trackViewSequence->Load();
                 }
             }
+
+            editor->GetSequenceManager()->OnSequenceLoaded(GetEntityId());
         }
     }
 
@@ -165,15 +149,15 @@ namespace LmbrCentral
     {
         EditorComponentBase::Activate();
 
-        LmbrCentral::EditorSequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
-        LmbrCentral::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
+        Maestro::EditorSequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
+        Maestro::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::Deactivate()
     {
-        LmbrCentral::EditorSequenceComponentRequestBus::Handler::BusDisconnect();
-        LmbrCentral::SequenceComponentRequestBus::Handler::BusDisconnect();
+        Maestro::EditorSequenceComponentRequestBus::Handler::BusDisconnect();
+        Maestro::SequenceComponentRequestBus::Handler::BusDisconnect();
 
         // disconnect from TickBus if we're connected (which would only happen if we deactivated during a pending property refresh)
         AZ::TickBus::Handler::BusDisconnect();
@@ -184,11 +168,11 @@ namespace LmbrCentral
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::AddEntityToAnimate(AZ::EntityId entityToAnimate)
     {
-        LmbrCentral::EditorSequenceAgentComponent* agentComponent = nullptr;
+        Maestro::EditorSequenceAgentComponent* agentComponent = nullptr;
         auto component = AzToolsFramework::FindComponent<EditorSequenceAgentComponent>::OnEntity(entityToAnimate);
         if (component)
         {
-            agentComponent = static_cast<LmbrCentral::EditorSequenceAgentComponent*>(component);
+            agentComponent = static_cast<Maestro::EditorSequenceAgentComponent*>(component);
         }
         else
         {
@@ -199,7 +183,7 @@ namespace LmbrCentral
             {
                 // We need to register our Entity and Component Ids with the SequenceAgentComponent so we can communicate over EBuses with it.
                 // We can't do this registration over an EBus because we haven't registered with it yet - do it with pointers? Is this safe?
-                agentComponent = static_cast<LmbrCentral::EditorSequenceAgentComponent*>(addComponentResult.GetValue()[entityToAnimate].m_componentsAdded[0]);
+                agentComponent = static_cast<Maestro::EditorSequenceAgentComponent*>(addComponentResult.GetValue()[entityToAnimate].m_componentsAdded[0]);
             }
         }
 
@@ -211,35 +195,35 @@ namespace LmbrCentral
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::RemoveEntityToAnimate(AZ::EntityId removedEntityId)
     {
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), removedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), removedEntityId);
 
         // Notify the SequenceAgentComponent that we're disconnecting from it
-        EBUS_EVENT_ID(ebusId, LmbrCentral::SequenceAgentComponentRequestBus, DisconnectSequence);
+        EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, DisconnectSequence);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::GetAllAnimatablePropertiesForComponent(IAnimNode::AnimParamInfos& properties, AZ::EntityId animatedEntityId, AZ::ComponentId componentId)
     {
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
 
-        LmbrCentral::EditorSequenceAgentComponentRequestBus::Event(ebusId, &LmbrCentral::EditorSequenceAgentComponentRequestBus::Events::GetAllAnimatableProperties, properties, componentId);
+        Maestro::EditorSequenceAgentComponentRequestBus::Event(ebusId, &Maestro::EditorSequenceAgentComponentRequestBus::Events::GetAllAnimatableProperties, properties, componentId);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::GetAnimatableComponents(AZStd::vector<AZ::ComponentId>& componentIds, AZ::EntityId animatedEntityId)
     {
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
 
-        EBUS_EVENT_ID(ebusId, LmbrCentral::EditorSequenceAgentComponentRequestBus, GetAnimatableComponents, componentIds);
+        EBUS_EVENT_ID(ebusId, Maestro::EditorSequenceAgentComponentRequestBus, GetAnimatableComponents, componentIds);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    AZ::Uuid EditorSequenceComponent::GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    AZ::Uuid EditorSequenceComponent::GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
     {
         AZ::Uuid typeId = AZ::Uuid::CreateNull();
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
 
-        LmbrCentral::SequenceAgentComponentRequestBus::EventResult(typeId, ebusId, &LmbrCentral::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, animatableAddress);
+        Maestro::SequenceAgentComponentRequestBus::EventResult(typeId, ebusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, animatableAddress);
 
         return typeId;
     }
@@ -251,26 +235,6 @@ namespace LmbrCentral
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    void EditorSequenceComponent::OnBeforeSave()
-    {
-        if (m_sequence)
-        {
-            // serialize to a string and store for AZ::Serialization on component save
-            XmlNodeRef animationNode = GetISystem()->CreateXmlNode("SequenceAnimation");
-            XmlNodeRef sequenceNode = animationNode->newChild("Sequence");
-            m_sequence->Serialize(sequenceNode, false);
-
-            // The id should be saved here again so that it can be restored
-            // early enough. This is required for a proper saving of FG nodes like
-            // the 'TrackEvent' node with the new id-based sequence identification.
-            XmlNodeRef idNode = animationNode->newChild("ID");
-            idNode->setAttr("value", m_sequence->GetId());
-
-            m_serializedAnimData.m_serializedData = animationNode->getXML();
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
     EAnimValue EditorSequenceComponent::GetValueType(const AZStd::string& animatableAddress)
     {
         // TODO: look up type from BehaviorContext Property
@@ -278,9 +242,9 @@ namespace LmbrCentral
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool EditorSequenceComponent::SetAnimatedPropertyValue(const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
+    bool EditorSequenceComponent::SetAnimatedPropertyValue(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
     {
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         bool changed = false;
         bool animatedEntityIsSelected = false;
 
@@ -291,7 +255,7 @@ namespace LmbrCentral
             AZ::TickBus::Handler::BusConnect();
         }
 
-        EBUS_EVENT_ID_RESULT(changed, ebusId, LmbrCentral::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
+        EBUS_EVENT_ID_RESULT(changed, ebusId, Maestro::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
 
         return changed;
     }
@@ -312,12 +276,12 @@ namespace LmbrCentral
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    void EditorSequenceComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    void EditorSequenceComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
     {
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         float retVal = .0f;
 
-        EBUS_EVENT_ID(ebusId, LmbrCentral::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
+        EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -439,5 +403,108 @@ namespace LmbrCentral
 
             return true;
         }
+
+        static bool UpVersionEditorSequenceComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            bool success = true;
+
+            // The "AnimationData" field was deprecated in version 4. It used to hold a serialized string of the xml tree as serialized
+            // by the legacy CrySerialize support functions in the Maestro Cinematics library. For versions < 4, detect this string,
+            // deserialize and fill in the "Sequence" element from it, then remove the string.
+            if (classElement.GetVersion() < 4)
+            {
+                int animationDataIdx = classElement.FindElement(AZ::Crc32("AnimationData"));
+                if (animationDataIdx != -1)
+                {
+                    bool sequenceUpconverted = false;
+
+                    AZ::SerializeContext::DataElementNode& animDataElementNode = classElement.GetSubElement(animationDataIdx);
+                    AZ::SerializeContext::DataElementNode* serializedStringElementNode = animDataElementNode.FindSubElement(AZ::Crc32("SerializedString"));
+                    if (serializedStringElementNode)
+                    {
+                        AZStd::string serializedAnimString;
+                        serializedStringElementNode->GetData(serializedAnimString);
+
+                        // add a new "Sequence" element and deserialize the serializedAnimString into it
+                        int sequenceIdx = classElement.AddElement<AZStd::intrusive_ptr<IAnimSequence>>(context, "Sequence");
+                        if (sequenceIdx == -1)
+                        {
+                            AZ_Error("Serialization", false, "Failed to add 'Sequence' element in Maestro::ClassConverters::UpVersionEditorSequenceComponent.");
+                            success = false;
+                        }
+                        else
+                        {
+                            AZ::SerializeContext::DataElementNode& sequenceElemNode = classElement.GetSubElement(sequenceIdx);
+                            
+                            const char* buffer = serializedAnimString.c_str();
+                            size_t size = serializedAnimString.length();
+                            bool gEnvInitialized = (gEnv && gEnv->pSystem && gEnv->pMovieSystem);
+
+                            if (!gEnvInitialized)
+                            {
+                                success = false;
+                            }
+
+                            if (size > 0 && gEnvInitialized)
+                            {
+                                XmlNodeRef xmlArchive = gEnv->pSystem->LoadXmlFromBuffer(buffer, size);
+
+                                XmlNodeRef sequenceNode = xmlArchive->findChild("Sequence");
+                                uint32 seqId = 0;
+                                if (sequenceNode != NULL)
+                                {
+                                    IMovieSystem* movieSystem = gEnv->pMovieSystem;
+                                    if (movieSystem)
+                                    {
+                                        // check for sequence ID collision and resolve if needed
+                                        XmlNodeRef idNode = xmlArchive->findChild("ID");
+                                        if (idNode)
+                                        {
+                                            idNode->getAttr("value", seqId);
+                                            if (movieSystem->FindSequenceById(seqId))  // A collision found!
+                                            {
+                                                uint32 newId = movieSystem->GrabNextSequenceId();
+                                                // TODO: incorporate remapping of id's within archive (see CObjectArchive.AddSequenceIdMapping())
+                                                seqId = newId;
+                                                idNode->setAttr("value", seqId);
+                                            }
+                                        }
+
+                                        const char* seqName = sequenceNode->getAttr("Name");
+                                        if (seqName)
+                                        {
+                                            // create and fill in the sequence outside of the Cinematics/TrackView system - the sequence will get registered
+                                            // with these the Cinematics/TrackView libraries during the Init() call
+                                            CAnimSequence sequence(movieSystem, seqId, eSequenceType_SequenceComponent);
+                                            sequence.SetName(seqName);
+
+                                            /// deserialize Xml data into m_sequence via deprecated legacy CrySerialization
+                                            /// @deprecated Serialization now occurs through AZ::SerializeContext
+                                            sequence.Serialize(sequenceNode, true, true, seqId);
+
+                                            // save the data to the "Sequence" element. Calling SetData() on this intrusive_ptr directly
+                                            // doesn't seem to work, so instead we'll set the child "element" node
+                                            int elementIdx = sequenceElemNode.AddElement<CAnimSequence>(context, "element");
+                                            sequenceElemNode.GetSubElement(elementIdx).SetData(context, sequence);
+
+                                            sequenceUpconverted = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (sequenceUpconverted)
+                    {
+                        // remove old serialized animationData
+                        classElement.RemoveElement(animationDataIdx);
+                    }        
+                } 
+            }
+
+            return success;
+        }
+
     } // namespace ClassConverters
-} // namespace LmbrCentral
+} // namespace Maestro

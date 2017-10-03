@@ -28,11 +28,11 @@ struct SDynamicObjectHideSpot
     EntityId    entityId;
     unsigned int nodeIndex;
 
-    SDynamicObjectHideSpot(const Vec3& pos = ZERO, const Vec3& dir = ZERO, EntityId id = 0, unsigned int nodeIndex = 0)
-        : pos(pos)
-        , dir(dir)
+    SDynamicObjectHideSpot(const Vec3& _pos = ZERO, const Vec3& _dir = ZERO, EntityId id = 0, unsigned int index = 0)
+        : pos(_pos)
+        , dir(_dir)
         , entityId(id)
-        , nodeIndex(nodeIndex) {}
+        , nodeIndex(index) {}
 };
 
 

@@ -131,6 +131,8 @@
         [
             "Terrain/Texture/MacroTexture.h",
             "Terrain/Texture/MacroTexture.cpp",
+            "Terrain/Texture/MacroTextureImporter.h",
+            "Terrain/Texture/MacroTextureImporter.cpp",
             "Terrain/Texture/TexturePool.h",
             "Terrain/Texture/TexturePool.cpp"
         ],

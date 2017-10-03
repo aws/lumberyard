@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "861c511671ac4454a835fac9e588f36a",
+    "Name": "LegacyTimeDemoRecorder",
+    "DisplayName": "LegacyTimeDemoRecorder",
+    "Version": "1.0.0",
+    "LinkType": "Dynamic",
+    "Summary": "Contains the TimeDemoRecorder that used to be in CryAction.",
+    "Tags": ["Legacy"],
+    "IconPath": "preview.png"
+}

@@ -144,9 +144,14 @@ namespace LmbrCentral
     public:
 
         /// An animation event has been fired during animation playback.
-        virtual void OnAnimationEvent(const AnimationEvent& event) = 0;
-    };
+        virtual void OnAnimationEvent(const AnimationEvent& event) { (void)event;  };
 
+        /// Sent when a character instance for this entity is registered and ready for animation.
+        virtual void OnCharacterInstanceRegistered(ICharacterInstance* character) { (void)character; }
+
+        /// Sent when a character instance is unregistered from animation and is likely being destroyed.
+        virtual void OnCharacterInstanceUnregistered() {}
+    };
     using CharacterAnimationNotificationBus = AZ::EBus<CharacterAnimationNotifications>;
 
 } // namespace LmbrCentral

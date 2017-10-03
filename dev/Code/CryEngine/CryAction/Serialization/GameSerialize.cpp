@@ -29,6 +29,7 @@
 #include "IMovieSystem.h"
 #include "IPlayerProfiles.h"
 #include "IStreamEngine.h"
+#include <ITimeDemoRecorder.h>
 #include "DialogSystem/DialogSystem.h"
 #include "MaterialEffects/MaterialEffects.h"
 #include "Network/GameContext.h"
@@ -350,7 +351,9 @@ bool CGameSerialize::SaveGame(CCryAction* pCryAction, const char* method, const 
 
     if (reason == eSGR_FlowGraph)
     {
-        if (pCryAction->IsInTimeDemo())
+        bool isTimeDemoActive = false;
+        TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+        if (isTimeDemoActive)
         {
             return true; // Ignore checkpoint saving when running time demo
         }

@@ -51,6 +51,40 @@ namespace AZ
             class SceneGraph
             {
             public:
+                // Index for a node.
+                //      Instead of using just a plain int, this is it's own type to reduce the
+                //      risk of invalid indices being passed.
+                class NodeIndex
+                {
+                    friend class SceneGraph;
+                public:
+                    // Type needs to be able to store an index in a NodeHeader (currently 21-bits).
+                    using IndexType = uint32_t;
+
+                    NodeIndex(const NodeIndex& rhs) = default;
+                    NodeIndex& operator=(const NodeIndex& rhs) = default;
+
+                    // Returns whether or not the node index is valid.
+                    //      Note that this function reports explicit invalid nodes, such as the invalid node that's returned when a name can't be found, and
+                    //      whether it's valid before any changes are made. If changes to the SceneGraph are made it will not be able to detect that a
+                    //      previously valid index has become invalid.
+                    inline bool IsValid() const;
+
+                    inline bool operator==(NodeIndex rhs) const;
+                    inline bool operator!=(NodeIndex rhs) const;
+
+                    inline IndexType AsNumber() const;
+                    inline s32 Distance(NodeIndex rhs) const;
+
+                private:
+                    static const IndexType INVALID_INDEX = static_cast<IndexType>(-1);
+
+                    inline NodeIndex();
+                    inline explicit NodeIndex(IndexType value);
+
+                    IndexType m_value;
+                };
+
                 // NodeHeader contains the relationship a node has with its surrounding nodes and additional information about a node.
                 //      Note that this is always passed by value, so direct access to the member variables doesn't risk unwanted changes.
                 struct NodeHeader
@@ -70,42 +104,14 @@ namespace AZ
                     inline bool HasChild() const;
                     inline bool IsEndPoint() const;
 
+                    inline NodeIndex GetParentIndex() const;
+                    inline NodeIndex GetSiblingIndex() const;
+                    inline NodeIndex GetChildIndex() const;
+
                     inline NodeHeader();
 
                     NodeHeader(const NodeHeader& rhs) = default;
                     NodeHeader& operator=(const NodeHeader& rhs) = default;
-                };
-
-                // Index for a node.
-                //      Instead of using just a plain int, this is it's own type to reduce the
-                //      risk of invalid indices being passed.
-                class NodeIndex
-                {
-                    friend class SceneGraph;
-                public:
-                    // Type needs to be able to store an index in a NodeHeader (currently 21-bits).
-                    using IndexType = uint32_t;
-                    NodeIndex(const NodeIndex& rhs) = default;
-                    NodeIndex& operator=(const NodeIndex& rhs) = default;
-
-                    // Returns whether or not the node index is valid.
-                    //      Note that this function reports explicit invalid nodes, such as the invalid node that's returned when a name can't be found, and
-                    //      whether it's valid before any changes are made. If changes to the SceneGraph are made it will not be able to detect that a
-                    //      previously valid index has become invalid.
-                    inline bool IsValid() const;
-
-                    inline bool operator==(NodeIndex rhs) const;
-                    inline bool operator!=(NodeIndex rhs) const;
-
-                    inline IndexType AsNumber() const;
-
-                private:
-                    static const IndexType INVALID_INDEX = static_cast<IndexType>(-1);
-
-                    inline NodeIndex();
-                    inline explicit NodeIndex(IndexType value);
-
-                    IndexType m_value;
                 };
 
                 class Name
@@ -189,6 +195,9 @@ namespace AZ
 
                 // Used when switching from index based navigation to iterator based.
                 inline HierarchyStorageConstData::iterator ConvertToHierarchyIterator(NodeIndex node) const;
+                inline NameStorageConstData::iterator ConvertToNameIterator(NodeIndex node) const;
+                inline ContentStorageData::iterator ConvertToStorageIterator(NodeIndex node);
+                inline ContentStorageConstData::iterator ConvertToStorageIterator(NodeIndex node) const;
                 // Used when switching from iterator based navigation to index based.
                 //      Note that any changes made to the SceneGraph using the node index will invalidate
                 //      the original iterator.

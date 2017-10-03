@@ -99,6 +99,7 @@ namespace ChatPlay
                 ;
 
             behaviorContext->EBus<ChatPlayRequestBus>("ChatPlayRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->CHATPLAY_BC_EVENT(ChatPlayRequestBus, CreateChannel)
                 ->CHATPLAY_BC_EVENT(ChatPlayRequestBus, DestroyChannel)
                 ->CHATPLAY_BC_EVENT(ChatPlayRequestBus, DisconnectAll)
@@ -113,10 +114,12 @@ namespace ChatPlay
                 ;
 
             behaviorContext->EBus<ChatPlayNotificationBus>("ChatPlayNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<ChatPlayNotificationBusHandler>()
                 ;
 
             behaviorContext->EBus<ChatPlayChannelRequestBus>("ChatPlayChannelRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->CHATPLAY_BC_EVENT(ChatPlayChannelRequestBus, Connect)
                 ->CHATPLAY_BC_EVENT(ChatPlayChannelRequestBus, Disconnect)
 
@@ -124,10 +127,12 @@ namespace ChatPlay
                 ;
 
             behaviorContext->EBus<ChatPlayChannelNotificationBus>("ChatPlayChannelNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<ChatPlayChannelNotificationBusHandler>()
                 ;
 
             behaviorContext->EBus<ChatPlayVoteRequestBus>("ChatPlayVoteRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->CHATPLAY_BC_EVENT(ChatPlayVoteRequestBus, AddOption)
                 ->CHATPLAY_BC_EVENT(ChatPlayVoteRequestBus, RemoveOption)
                 ->CHATPLAY_BC_EVENT(ChatPlayVoteRequestBus, ConfigureOption)
@@ -226,7 +231,7 @@ namespace ChatPlay
     {
         WhisperToken token = ++m_lastWhisperToken;
 
-        WhisperCallback cb = [token](WhisperResult result) {
+        WhisperCallback cb = [](WhisperResult result) {
             ChatPlayNotificationBus::Broadcast(&ChatPlayNotificationBus::Events::OnWhisperSent, result);
         };
 

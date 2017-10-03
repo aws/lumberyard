@@ -430,14 +430,14 @@ namespace FeatureTests
             maxInitNode->getAttr("value", m_maxInitTime);
         }
 
-        //sys_spec gets handled outside of cvar group, to make sure it gets applied first.
-        auto sysSpecNode = testConfig->findChild("sys_spec");
+        //r_GraphicsQuality gets handled outside of cvar group, to make sure it gets applied first.
+        auto sysSpecNode = testConfig->findChild("r_GraphicsQuality");
         if (sysSpecNode)
         {
             int sysSpec = 1;
             if (sysSpecNode->getAttr("value", sysSpec))
             {
-                auto cvar = gEnv->pConsole->GetCVar("sys_spec");
+                auto cvar = gEnv->pConsole->GetCVar("r_GraphicsQuality");
                 if (cvar)
                 {
                     cvar->Set(sysSpec);

@@ -48,10 +48,6 @@ namespace LmbrAWS
             EIP_FileName
         };
 
-        LmbrAWS::S3::BucketClientInputPort m_bucketClientPort {
-            EIP_BucketClient
-        };
-
         void ApplyResult(const Aws::S3::Model::GetObjectRequest& request,
             const Aws::S3::Model::GetObjectOutcome& outcome,
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context);

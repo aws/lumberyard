@@ -59,8 +59,7 @@ def build(bld):
                                    bld.Path('Code/CryEngine/CryAction'),
                                    
                                    bld.Path('Code/Tools'),
-                                   bld.Path('Code/CryEngine/CryCommon'),
-                                   bld.Path('Code/CryEngine/LmbrAWS')],
+                                   bld.Path('Code/CryEngine/CryCommon')],
 
         darwin_includes         = additional_qt_includes,
         darwin_cxxflags         = ['-Wno-array-bounds'], # Squish includes have this code like this that triggers this warning: sets >= 2? array[sets - 2] : NULL
@@ -91,7 +90,6 @@ def build(bld):
                                                bld.Path('Code/CryEngine/CryCommon'),
                                                bld.Path('Code/CryEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
-                                               bld.Path('Code/CryEngine/LmbrAWS'),
                                                bld.Path('Code/CryEngine/CrySystem'),
                                                bld.Path('Gems/LmbrCentral/Code/Include'),
                                                bld.Path('Code/Tools/'),
@@ -133,6 +131,8 @@ def build(bld):
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
                                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                                               'AWS_CPP_SDK_IDENTITY_LAMBDA',
+                                               'AWS_CPP_SDK_IDENTITY_METRICS',
                                                'BOOSTPYTHON',
                                                'TIFF',
                                                'ZLIB',

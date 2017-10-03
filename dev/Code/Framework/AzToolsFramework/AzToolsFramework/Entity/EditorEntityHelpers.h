@@ -92,17 +92,31 @@ namespace AzToolsFramework
         EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::DisableComponents, AZ::Entity::ComponentArrayType{ components... });
     }
 
-    AZ::Entity::ComponentArrayType GetAllComponentsForEntity(const AZ::Entity* entity);
-    AZ::Entity::ComponentArrayType GetAllComponentsForEntity(const AZ::EntityId& entityId);
+    void GetAllComponentsForEntity(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity);
+    void GetAllComponentsForEntity(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
 
     // Component helpers (Uses EBus calls, so safe)
     AZ::Uuid GetComponentTypeId(const AZ::Component* component);
     const AZ::SerializeContext::ClassData* GetComponentClassData(const AZ::Component* component);
     const AZ::SerializeContext::ClassData* GetComponentClassDataForType(const AZ::Uuid& componentTypeId);
-    const char* GetFriendlyComponentName(const AZ::Component* component);
+    AZStd::string GetFriendlyComponentName(const AZ::Component* component);
     const char* GetFriendlyComponentDescription(const AZ::Component* component);
     AZ::ComponentDescriptor* GetComponentDescriptor(const AZ::Component* component);
     Components::EditorComponentDescriptor* GetEditorComponentDescriptor(const AZ::Component* component);
     Components::EditorComponentBase* GetEditorComponent(AZ::Component* component);
+
+    AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId);
+
+    void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack = false);
+
+    void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId);
+
+    void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
+
+    EntityIdList GetEntityChildOrder(const AZ::EntityId parentId);
+
+    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location);
+
+    void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds);
 
 }; // namespace AzToolsFramework

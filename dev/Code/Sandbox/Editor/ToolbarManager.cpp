@@ -51,9 +51,10 @@ enum AmazonToolbarVersions
 {
     ORIGINAL_TOOLBAR_VERSION = 1,
     TOOLBARS_WITH_PLAY_GAME = 2,
+    TOOLBARS_WITH_PERSISTENT_VISIBILITY = 3,
 
     //TOOLBAR_VERSION = 1
-    TOOLBAR_VERSION = TOOLBARS_WITH_PLAY_GAME
+    TOOLBAR_VERSION = TOOLBARS_WITH_PERSISTENT_VISIBILITY
 };
 
 struct InternalAmazonToolbarList
@@ -77,6 +78,7 @@ static QDataStream& WriteToolbarDataStream(QDataStream& out, const AmazonToolbar
     out << toolbar.GetTranslatedName();
     out << toolbar.ActionIds();
     out << toolbar.IsShowByDefault();
+    out << toolbar.IsShowToggled();
 
     return out;
 }
@@ -88,6 +90,7 @@ static QDataStream& ReadToolbarDataStream(QDataStream& in, AmazonToolbar& toolba
     QVector<int> actionIds;
 
     bool showByDefault = true;
+    bool showToggled = false;
 
     in >> name;
     in >> translatedName;
@@ -98,6 +101,12 @@ static QDataStream& ReadToolbarDataStream(QDataStream& in, AmazonToolbar& toolba
     {
         in >> showByDefault;
         toolbar.SetShowByDefault(showByDefault);
+    }
+
+    if (version >= TOOLBARS_WITH_PERSISTENT_VISIBILITY)
+    {
+        in >> showToggled;
+        toolbar.SetShowToggled(showToggled);
     }
 
     for (int actionId : actionIds)
@@ -213,7 +222,7 @@ static bool operator!=(const AmazonToolbar& t1, const AmazonToolbar& t2)
 void ToolbarManager::SanitizeToolbars()
 {
     // All standard toolbars must be present
-    const auto stdToolbars = m_standardToolbars;
+    auto stdToolbars = m_standardToolbars;
     const int numStandardToolbars = stdToolbars.size();
 
     // make a set of the loaded toolbars
@@ -227,7 +236,7 @@ void ToolbarManager::SanitizeToolbars()
     // so we go through the loaded toolbars and make sure that our standard ones are all in there
     // in the right order. We also remove them from the set, so that we know what's left later
     AmazonToolbar::List newToolbars;
-    for (const AmazonToolbar& stdToolbar : stdToolbars)
+    for (AmazonToolbar& stdToolbar : stdToolbars)
     {
         auto customToolbarReference = toolbarSet.find(stdToolbar.GetName());
         if (customToolbarReference == toolbarSet.end())
@@ -242,6 +251,12 @@ void ToolbarManager::SanitizeToolbars()
             // added after the user saved the previous version)
             if (customToolbarReference.value().IsOlderVersionOf(stdToolbar, m_loadedVersion))
             {
+                // If we're replacing the Toolbar and haven't changed whether or not it's hidden by default since
+                // last load, ensure we respect whether or not the user had previously toggled it
+                if (stdToolbar.IsShowByDefault() == customToolbarReference.value().IsShowByDefault())
+                {
+                    stdToolbar.SetShowToggled(customToolbarReference.value().IsShowToggled());
+                }
                 newToolbars.push_back(stdToolbar);
             }
             else
@@ -353,6 +368,21 @@ void ToolbarManager::SaveToolbar(EditableQToolBar* toolbar)
 
 void ToolbarManager::SaveToolbars()
 {
+    // Determine if the user has manually shown or hidden any toolbars and flag that so we remember on startup
+    for (auto& toolbar : m_toolbars)
+    {
+        QToolBar* toolbarWidget = toolbar.Toolbar();
+        // If we're not explicitly hidden and we're not shown by default, or the converse, record that the user toggled our visibility
+        if (toolbarWidget && (!toolbarWidget->isHidden()) != toolbar.IsShowByDefault())
+        {
+            toolbar.SetShowToggled(true);
+        }
+        else
+        {
+            toolbar.SetShowToggled(false);
+        }
+    }
+
     m_settings.beginGroup(TOOLBAR_SETTINGS_KEY);
     InternalAmazonToolbarList savedToolbars = { TOOLBAR_VERSION, m_toolbars };
     m_settings.setValue("toolbars", QVariant::fromValue<InternalAmazonToolbarList>(savedToolbars));
@@ -451,11 +481,14 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_GRID, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_ANGLE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_RULER, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_WIDGET_SELECT_OBJECT, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_SELECTION_DELETE, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_SELECTION_SAVE, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_SELECTION_LOAD, ORIGINAL_TOOLBAR_VERSION);
+    if (GetIEditor()->IsLegacyUIEnabled())
+    {
+        t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_TOOLBAR_WIDGET_SELECT_OBJECT, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_SELECTION_DELETE, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_SELECTION_SAVE, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_SELECTION_LOAD, ORIGINAL_TOOLBAR_VERSION);
+    }
     t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_LAYER_SELECT, ORIGINAL_TOOLBAR_VERSION);
 
@@ -490,6 +523,9 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_MANNEQUIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+#if defined(EMOTIONFX_GEM_ENABLED)
+    t.AddAction(ID_OPEN_EMOTIONFX_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+#endif // EMOTIONFX_GEM_ENABLED
     t.AddAction(ID_OPEN_FLOWGRAPH, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_TRACKVIEW, ORIGINAL_TOOLBAR_VERSION);
@@ -1176,9 +1212,10 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     mainWindow->addToolBar(m_toolbar);
 
     // Hide custom toolbars if they've been flagged that way.
-    // This only applies to toolbars the user hasn't seen already, because the saveState/restoreState on the Editor's MainWindow will
-    // show/hide based on what the user did last time the editor loaded
-    if (!m_showByDefault)
+    // We now store whether or not the user has toggled away the default visiblity
+    // and use that restore in lieu of QMainWindow's restoreState
+    // So hide if we're hidden by default XOR we've toggled the default visibility
+    if ((!m_showByDefault) ^ m_showToggled)
     {
         m_toolbar->hide();
     }

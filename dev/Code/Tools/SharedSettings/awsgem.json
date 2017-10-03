@@ -1,6 +1,8 @@
 {
     "win_lib": [
-        "shlwapi"
+        "shlwapi", 
+        "Winhttp", 
+        "Userenv"
     ], 
     "darwin_lib": [
         "curl"
@@ -14,8 +16,8 @@
     "appletv_lib": [
         "curl"
     ], 
-    "android_armv7_clang_uselib": [
-        "AWS_CPP_SDK_ANDROID_DEPENDENCIES"
+    "uselib": [
+        "OPENSSL"
     ], 
     "android_armv7_clang_features": [
         "find_android_api_libs"
@@ -25,5 +27,8 @@
     ], 
     "appletv_framework": [
         "security"
+    ], 
+    "linux_rpath": [
+        "$ORIGIN"
     ]
 }

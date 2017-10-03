@@ -28,6 +28,7 @@
 
 #include <AzCore/Debug/FrameProfilerBus.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
+#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Memory/AllocationRecords.h>
 
 #include <AzCore/std/parallel/containers/concurrent_unordered_set.h>
@@ -939,6 +940,24 @@ namespace UnitTest
         AZStd::map<EntityId, int> m_entityIdIntMap;
     };
 
+    struct EntityIdRemapContainer
+    {
+        AZ_TYPE_INFO(EntityIdRemapContainer, "{63854212-37E9-480B-8E46-529682AB9EF7}");
+        AZ_CLASS_ALLOCATOR(EntityIdRemapContainer, AZ::SystemAllocator, 0);
+
+        static void Reflect(SerializeContext& serializeContext)
+        {
+            serializeContext.Class<EntityIdRemapContainer>()
+                ->Field("Entity", &EntityIdRemapContainer::m_entity)
+                ->Field("Id", &EntityIdRemapContainer::m_id)
+                ->Field("otherId", &EntityIdRemapContainer::m_otherId)
+                ;
+        }
+        AZ::Entity* m_entity;
+        AZ::EntityId m_id;
+        AZ::EntityId m_otherId;
+    };
+
     TEST_F(Components, EntityUtilsTest)
     {
         EntityId id1 = Entity::MakeId();
@@ -1099,5 +1118,368 @@ namespace UnitTest
                 thread.join();
             }
         }
+    }
+
+    //=========================================================================
+    // Component Configuration
+
+    class ConfigurableComponentConfig : public ComponentConfig
+    {
+    public:
+        AZ_RTTI(ConfigurableComponentConfig, "{109C5A93-5571-4D45-BD2F-3938BF63AD83}", ComponentConfig);
+
+        int m_intVal = 0;
+    };
+
+    class ConfigurableComponent : public Component
+    {
+    public:
+        AZ_RTTI(ConfigurableComponent, "{E3103830-70F3-47AE-8F22-EF09BF3D57E9}", Component);
+        AZ_CLASS_ALLOCATOR(ConfigurableComponent, SystemAllocator, 0);
+
+        int m_intVal = 0;
+
+    protected:
+        void Activate() override {}
+        void Deactivate() override {}
+
+        bool ReadInConfig(const ComponentConfig* baseConfig) override
+        {
+            if (auto config = azrtti_cast<const ConfigurableComponentConfig*>(baseConfig))
+            {
+                m_intVal = config->m_intVal;
+                return true;
+            }
+            return false;
+        }
+
+        bool WriteOutConfig(ComponentConfig* outBaseConfig) const override
+        {
+            if (auto config = azrtti_cast<ConfigurableComponentConfig*>(outBaseConfig))
+            {
+                config->m_intVal = m_intVal;
+                return true;
+            }
+            return false;
+        }
+    };
+
+    TEST_F(Components, SetConfiguration_Succeeds)
+    {
+        ConfigurableComponentConfig config;
+        config.m_intVal = 5;
+
+        ConfigurableComponent component;
+
+        EXPECT_TRUE(component.SetConfiguration(config));
+        EXPECT_EQ(component.m_intVal, 5);
+    }
+
+    TEST_F(Components, SetConfigurationOnActiveEntity_DoesNothing)
+    {
+        ConfigurableComponentConfig config;
+        config.m_intVal = 5;
+
+        Entity entity;
+        auto component = entity.CreateComponent<ConfigurableComponent>();
+        entity.Init();
+        entity.Activate();
+
+        EXPECT_FALSE(component->SetConfiguration(config));
+        EXPECT_NE(component->m_intVal, 5);
+    }
+
+    TEST_F(Components, SetWrongKindOfConfiguration_DoesNothing)
+    {
+        ComponentConfig config; // base config type
+
+        ConfigurableComponent component;
+        component.m_intVal = 19;
+
+        EXPECT_FALSE(component.SetConfiguration(config));
+        EXPECT_EQ(component.m_intVal, 19);
+    }
+
+    TEST_F(Components, GetConfiguration_Succeeds)
+    {
+        ConfigurableComponent component;
+        component.m_intVal = 9;
+
+        ConfigurableComponentConfig config;
+
+        component.GetConfiguration(config);
+        EXPECT_EQ(component.m_intVal, 9);
+    }
+
+    class UnconfigurableComponent : public Component
+    {
+    public:
+        AZ_RTTI(UnconfigurableComponent, "{772E3AA6-67AC-4655-B6C4-70BC45BAFD35}", Component);
+
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+    TEST_F(Components, SetConfigurationOnUnconfigurableComponent_Fails)
+    {
+        UnconfigurableComponent component;
+        ConfigurableComponentConfig config;
+
+        EXPECT_FALSE(component.SetConfiguration(config));
+    }
+
+    TEST_F(Components, GetConfigurationOnUnconfigurableComponent_Fails)
+    {
+        UnconfigurableComponent component;
+        ConfigurableComponentConfig config;
+
+        EXPECT_FALSE(component.GetConfiguration(config));
+    }
+
+    TEST_F(Components, GenerateNewIdsAndFixRefsExistingMapTest)
+    {
+        SerializeContext context;
+        Entity::Reflect(&context);
+        EntityIdRemapContainer::Reflect(context);
+
+        const AZ::EntityId testId(21);
+        const AZ::EntityId nonMappedId(5465);
+        EntityIdRemapContainer testContainer1;
+        testContainer1.m_entity = aznew Entity(testId);
+        testContainer1.m_id = testId;
+        testContainer1.m_otherId = nonMappedId;
+
+        EntityIdRemapContainer clonedContainer;
+        context.CloneObjectInplace(clonedContainer, &testContainer1);
+        
+        // Check cloned entity has same ids
+        EXPECT_NE(nullptr, clonedContainer.m_entity);
+        EXPECT_EQ(testContainer1.m_entity->GetId(), clonedContainer.m_entity->GetId());
+        EXPECT_EQ(testContainer1.m_id, clonedContainer.m_id);
+        EXPECT_EQ(testContainer1.m_otherId, clonedContainer.m_otherId);
+        
+        // Generated new Ids in the testContainer store the results in the newIdMap
+        // The m_entity Entity id values should be remapped to a new value
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> newIdMap;
+        EntityUtils::GenerateNewIdsAndFixRefs(&testContainer1, newIdMap, &context);
+        
+        EXPECT_EQ(testContainer1.m_entity->GetId(), testContainer1.m_id);
+        EXPECT_NE(clonedContainer.m_entity->GetId(), testContainer1.m_entity->GetId());
+        EXPECT_NE(clonedContainer.m_id, testContainer1.m_id);
+        EXPECT_EQ(clonedContainer.m_otherId, testContainer1.m_otherId);
+
+        // Use the existing newIdMap to generate entityIds for the clonedContainer
+        // The testContainer1 and ClonedContainer should now have the same ids again
+        EntityUtils::GenerateNewIdsAndFixRefs(&clonedContainer, newIdMap, &context);
+
+        EXPECT_EQ(clonedContainer.m_entity->GetId(), clonedContainer.m_id);
+        EXPECT_EQ(testContainer1.m_entity->GetId(), clonedContainer.m_entity->GetId());
+        EXPECT_EQ(testContainer1.m_id, clonedContainer.m_id);
+        EXPECT_EQ(testContainer1.m_otherId, clonedContainer.m_otherId);
+
+        // Use a new map to generate entityIds for the clonedContainer
+        // The testContainer1 and ClonedContainer should have different ids again
+        AZStd::map<AZ::EntityId, AZ::EntityId> clonedIdMap; // Using regular map to test that different map types works with GenerateNewIdsAndFixRefs
+        EntityUtils::GenerateNewIdsAndFixRefs(&clonedContainer, clonedIdMap, &context);
+
+        EXPECT_EQ(clonedContainer.m_entity->GetId(), clonedContainer.m_id);
+        EXPECT_NE(testContainer1.m_entity->GetId(), clonedContainer.m_entity->GetId());
+        EXPECT_NE(testContainer1.m_id, clonedContainer.m_id);
+        EXPECT_EQ(testContainer1.m_otherId, clonedContainer.m_otherId);
+        delete testContainer1.m_entity;
+        delete clonedContainer.m_entity;
+    }
+
+    //=========================================================================
+    // Component Configuration versioning
+
+    // Version 1 of a configuration for a HydraComponent
+    class HydraConfigV1
+        : public ComponentConfig
+    {
+    public:
+        AZ_RTTI(HydraConfigV1, "{02198FDB-5CDB-4983-BC0B-CF1AA20FF2AF}", ComponentConfig);
+
+        int m_numHeads = 1;
+    };
+
+    // To add fields, inherit from previous version.
+    class HydraConfigV2
+        : public HydraConfigV1
+    {
+    public:
+        AZ_RTTI(HydraConfigV2, "{BC68C167-6B01-489C-8415-626455670C34}", HydraConfigV1);
+
+        int m_numArms = 2; // now the hydra has multiple arms, as well as multiple heads
+    };
+
+    // To make a breaking change, start from scratch by inheriting from base ComponentConfig.
+    class HydraConfigV3
+        : public ComponentConfig
+    {
+    public:
+        AZ_RTTI(HydraConfigV3, "{71C41829-AA51-4179-B8B4-3C278CBB26AA}", ComponentConfig);
+
+        int m_numHeads = 1;
+        int m_numArmsPerHead = 2; // now we require each head to have the same number of arms
+    };
+
+    // A component with many heads, and many arms
+    class HydraComponent
+        : public Component
+    {
+    public:
+        AZ_RTTI(HydraComponent, "", Component);
+        AZ_CLASS_ALLOCATOR(HydraComponent, AZ::SystemAllocator, 0);
+
+        // serialized data
+        HydraConfigV3 m_config;
+
+        // runtime data
+        int m_numArms;
+
+        HydraComponent() = default;
+
+        void Activate() override
+        {
+            m_numArms = m_config.m_numHeads * m_config.m_numArmsPerHead;
+        }
+
+        void Deactivate() override {}
+
+        bool ReadInConfig(const ComponentConfig* baseConfig) override
+        {
+            if (auto v1 = azrtti_cast<const HydraConfigV1*>(baseConfig))
+            {
+                m_config.m_numHeads = v1->m_numHeads;
+
+                // v2 is based on v1
+                if (auto v2 = azrtti_cast<const HydraConfigV2*>(v1))
+                {
+                    // v2 let user specify the total number of arms, but now we force each head to have same number of arms
+                    if (v2->m_numHeads <= 0)
+                    {
+                        m_config.m_numArmsPerHead = 0;
+                    }
+                    else
+                    {
+                        m_config.m_numArmsPerHead = v2->m_numArms / v2->m_numHeads;
+                    }
+                }
+                else
+                {
+                    // v1 assumed 2 arms per head
+                    m_config.m_numArmsPerHead = 2;
+                }
+
+                return true;
+            }
+
+            if (auto v3 = azrtti_cast<const HydraConfigV3*>(baseConfig))
+            {
+                m_config = *v3;
+                return true;
+            }
+
+            return false;
+        }
+
+        bool WriteOutConfig(ComponentConfig* outBaseConfig) const override
+        {
+            if (auto v1 = azrtti_cast<HydraConfigV1*>(outBaseConfig))
+            {
+                v1->m_numHeads = m_config.m_numHeads;
+
+                // v2 is based on v1
+                if (auto v2 = azrtti_cast<HydraConfigV2*>(v1))
+                {
+                    v2->m_numArms = m_config.m_numHeads * m_config.m_numArmsPerHead;
+                }
+
+                return true;
+            }
+            
+            if (auto v3 = azrtti_cast<HydraConfigV3*>(outBaseConfig))
+            {
+                *v3 = m_config;
+                return true;
+            }
+
+            return false;
+        }
+    };
+
+    TEST_F(Components, SetConfigurationV1_Succeeds)
+    {
+        HydraConfigV1 config;
+        config.m_numHeads = 3;
+
+        HydraComponent component;
+
+        EXPECT_TRUE(component.SetConfiguration(config));
+        EXPECT_EQ(component.m_config.m_numHeads, 3);
+    }
+
+    TEST_F(Components, GetConfigurationV1_Succeeds)
+    {
+        HydraConfigV1 config;
+
+        HydraComponent component;
+        component.m_config.m_numHeads = 8;
+
+        EXPECT_TRUE(component.GetConfiguration(config));
+        EXPECT_EQ(config.m_numHeads, component.m_config.m_numHeads);
+    }
+
+    TEST_F(Components, SetConfigurationV2_Succeeds)
+    {
+        HydraConfigV2 config;
+        config.m_numHeads = 4;
+        config.m_numArms = 12;
+
+        HydraComponent component;
+
+        EXPECT_TRUE(component.SetConfiguration(config));
+        EXPECT_EQ(component.m_config.m_numHeads, config.m_numHeads);
+        EXPECT_EQ(component.m_config.m_numArmsPerHead, 3);
+    }
+
+    TEST_F(Components, GetConfigurationV2_Succeeds)
+    {
+        HydraConfigV2 config;
+
+        HydraComponent component;
+        component.m_config.m_numHeads = 12;
+        component.m_config.m_numArmsPerHead = 1;
+
+        EXPECT_TRUE(component.GetConfiguration(config));
+        EXPECT_EQ(config.m_numHeads, component.m_config.m_numHeads);
+        EXPECT_EQ(config.m_numArms, 12);
+    }
+
+    TEST_F(Components, SetConfigurationV3_Succeeds)
+    {
+        HydraConfigV3 config;
+        config.m_numHeads = 2;
+        config.m_numArmsPerHead = 4;
+
+        HydraComponent component;
+
+        EXPECT_TRUE(component.SetConfiguration(config));
+        EXPECT_EQ(component.m_config.m_numHeads, config.m_numHeads);
+        EXPECT_EQ(component.m_config.m_numArmsPerHead, config.m_numArmsPerHead);
+    }
+
+    TEST_F(Components, GetConfigurationV3_Succeeds)
+    {
+        HydraConfigV3 config;
+
+        HydraComponent component;
+        component.m_config.m_numHeads = 94;
+        component.m_config.m_numArmsPerHead = 18;
+
+        EXPECT_TRUE(component.GetConfiguration(config));
+        EXPECT_EQ(config.m_numHeads, component.m_config.m_numHeads);
+        EXPECT_EQ(config.m_numArmsPerHead, component.m_config.m_numArmsPerHead);
     }
 }

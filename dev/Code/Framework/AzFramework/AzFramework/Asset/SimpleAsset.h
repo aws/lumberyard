@@ -77,19 +77,22 @@ namespace AzFramework
         virtual AZ::Data::AssetType GetAssetType() const = 0;
         virtual const char* GetFileFilter() const = 0;
 
-        static void Reflect(AZ::SerializeContext& context)
+        static void Reflect(AZ::ReflectContext* context)
         {
-            context.Class<SimpleAssetReferenceBase>()
-                ->Version(1)
-                ->Field("AssetPath", &SimpleAssetReferenceBase::m_assetPath);
-
-            AZ::EditContext* edit = context.GetEditContext();
-            if (edit)
+            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                edit->Class<SimpleAssetReferenceBase>("Asset path", "Asset reference as a project-relative path")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                    ;
+                serializeContext->Class<SimpleAssetReferenceBase>()
+                    ->Version(1)
+                    ->Field("AssetPath", &SimpleAssetReferenceBase::m_assetPath);
+
+                AZ::EditContext* edit = serializeContext->GetEditContext();
+                if (edit)
+                {
+                    edit->Class<SimpleAssetReferenceBase>("Asset path", "Asset reference as a project-relative path")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                        ;
+                }
             }
         }
 

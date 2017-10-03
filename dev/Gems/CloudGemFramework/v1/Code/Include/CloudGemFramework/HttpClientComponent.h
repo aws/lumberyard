@@ -23,10 +23,6 @@
 
 #include <CloudGemFramework/AwsApiClientJob.h>
 
-#include <LmbrAWS/IAWSClientManager.h>
-#include <LmbrAWS/ILmbrAWS.h>
-
-
 
 namespace CloudGemFramework
 {

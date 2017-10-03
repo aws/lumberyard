@@ -15,23 +15,23 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Rule
         {
-            class IEFXSkinRule
-                : public IRule
+            class ISkinRule
+                : public AZ::SceneAPI::DataTypes::IRule
             {
             public:
-                AZ_RTTI(IEFXSkinRule, "{5496ECAF-B096-4455-AE72-D55C5B675443}", IRule);
+                AZ_RTTI(ISkinRule, "{5496ECAF-B096-4455-AE72-D55C5B675443}", AZ::SceneAPI::DataTypes::IRule);
                 
-                ~IEFXSkinRule() override = default;
+                ~ISkinRule() override = default;
 
-                virtual uint32_t GetMaxWeightsPerVertex() const = 0;
+                virtual AZ::u32 GetMaxWeightsPerVertex() const = 0;
                 virtual float GetWeightThreshold() const = 0;
             };
-        }  // DataTypes
-    }  // SceneAPI
-}  // AZ
+        }  // Rule
+    }  // Pipeline
+}  // EMotionFX

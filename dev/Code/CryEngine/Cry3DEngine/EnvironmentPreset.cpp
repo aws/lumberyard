@@ -417,11 +417,11 @@ void CEnvironmentPreset::ResetVariables()
     AddVar("Night Sky", "Moon outer corona color", "Night sky: Moon outer corona color", ITimeOfDay::PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR, ITimeOfDay::TYPE_COLOR, 128.0f * fRecip255, 200.0f * fRecip255, 255.0f * fRecip255);
     AddVar("Night Sky", "Moon outer corona scale", "Night sky: Moon outer corona scale", ITimeOfDay::PARAM_NIGHSKY_MOON_OUTERCORONA_SCALE, ITimeOfDay::TYPE_FLOAT, 0.006f, 0.0f, 2.0f);
 
-    AddVar("Night Sky Multiplier", "Horizon color", "Night sky: Horizon color multiplier", ITimeOfDay::PARAM_NIGHSKY_HORIZON_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.0001f, 0.0f, 0.1f);
-    AddVar("Night Sky Multiplier", "Zenith color", "Night sky: Zenith color multiplier", ITimeOfDay::PARAM_NIGHSKY_ZENITH_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.00002f, 0.0f, 0.1f);
-    AddVar("Night Sky Multiplier", "Moon color", "Night sky: Moon color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.01f, 0.0f, 0.1f);
-    AddVar("Night Sky Multiplier", "Moon inner corona color", "Night sky: Moon inner corona color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_INNERCORONA_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.0001f, 0.0f, 0.1f);
-    AddVar("Night Sky Multiplier", "Moon outer corona color", "Night sky: Moon outer corona color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.00005f, 0.0f, 0.1f);
+    AddVar("Night Sky Multiplier", "Horizon color", "Night sky: Horizon color multiplier", ITimeOfDay::PARAM_NIGHSKY_HORIZON_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.0001f, 0.0f, 1.0f);
+    AddVar("Night Sky Multiplier", "Zenith color", "Night sky: Zenith color multiplier", ITimeOfDay::PARAM_NIGHSKY_ZENITH_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.00002f, 0.0f, 1.0f);
+    AddVar("Night Sky Multiplier", "Moon color", "Night sky: Moon color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.01f, 0.0f, 1.0f);
+    AddVar("Night Sky Multiplier", "Moon inner corona color", "Night sky: Moon inner corona color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_INNERCORONA_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.0001f, 0.0f, 1.0f);
+    AddVar("Night Sky Multiplier", "Moon outer corona color", "Night sky: Moon outer corona color multiplier", ITimeOfDay::PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 0.00005f, 0.0f, 1.0f);
 
     AddVar("Cloud Shading", "Sun contribution", "Cloud shading: Sun light multiplier", ITimeOfDay::PARAM_CLOUDSHADING_SUNLIGHT_MULTIPLIER, ITimeOfDay::TYPE_FLOAT, 1.96f, 0.0f, 16.0f);
     AddVar("Cloud Shading", "Sun custom color", "Cloud shading: Sun custom color", ITimeOfDay::PARAM_CLOUDSHADING_SUNLIGHT_CUSTOM_COLOR, ITimeOfDay::TYPE_COLOR, 215.0f * fRecip255, 200.0f * fRecip255, 170.0f * fRecip255);

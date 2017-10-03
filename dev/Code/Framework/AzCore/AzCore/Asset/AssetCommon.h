@@ -148,6 +148,18 @@ namespace AZ
              * loaded assets map (which is why when we call AssetDatabase::GetAsset it will not be found a new will be create)
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
+            /**
+             * TEMP HACK PRIVATE API
+             * This is only temporary function for allowing an implemented of AZ::Data::AssetData a way to veto a reload when an Asset is changed on disk
+             * Currently an asset that is saved into a monitored project directory will be processed by the AssetProcessorManager which sends an AssetNotificationMessage::AssetChanged message
+             * That message is handled by the AzFramework AssetSystemComponent, which queues an AssetChanged EBus event that is handled by the AzFramework AssetCatalog class
+             * The AzFramework Asset Catalog invokes the AssetManager::ReloadAsset method which reloads the asset.
+             * Also the AssetManager does delay the reloading of an Asset if it is in the middle of a being saved
+             * Override this function to veto an Asset reload when the AssetNotificationMessage::AssetChanged message is processed
+             */
+            // This is still deprecated, some platforms error on the deprecation warning though
+            //AZ_DEPRECATED(virtual bool ShouldVetoAssetReload(), "TEMPORARY PRIVATE API") { return false; }
+            virtual bool ShouldVetoAssetReload() { return false; }
 
             void RemoveFromDB();
 
@@ -256,7 +268,7 @@ namespace AZ
              * \param assetLoadFilterCB - ObjectStream asset filter callback for dependent asset loads.
              */
             bool QueueLoad(const AssetFilterCB& assetLoadFilterCB = nullptr);
-            
+
             /**
              * Releases reference on asset data, if one is held.
              * \return true if a reference was held, and therefore released.
@@ -305,6 +317,7 @@ namespace AZ
             bool SaveAsset(AssetData* assetData);
             Asset<AssetData> GetAssetData(const AssetId& id);
             AZStd::string ResolveAssetHint(const AssetId& id);
+            AssetId ResolveAssetId(const AssetId& id);
         }
 
         /**
@@ -335,14 +348,17 @@ namespace AZ
             {
                 static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
                 {
-                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                    // It's possible for users to open a level while the AP is still processing and as such not all legacy asset ids were known at the time
+                    // of loading. Check now to see if the assets have been compiled and find the actual asset id to connect to.
+                    typename Bus::BusIdType actualId = AssetInternal::ResolveAssetId(id);
+                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, actualId);
 
                     // If the asset is ready, notify this handler manually.
                     // It is safe to do this because we know that if the asset
                     // has already been marked ready, then the event has already
                     // finished firing or otherwise we would not have been able
                     // to lock the bus mutex
-                    Asset<AssetData> assetData(AssetInternal::GetAssetData(id));
+                    Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
                         if (assetData.Get()->GetStatus() == AssetData::AssetStatus::Ready)
@@ -519,7 +535,7 @@ namespace AZ
         {
             SetData(assetData);
         }
-        
+
         //=========================================================================
         template<class T>
         Asset<T>::Asset(const AssetId& id, const AZ::Data::AssetType& type, const AZStd::string& hint)
@@ -714,7 +730,7 @@ namespace AZ
                 m_assetData = nullptr;
             }
 
-            if (assetData) 
+            if (assetData)
             {
                 if (assetData->RTTI_IsTypeOf(AzTypeInfo<T>::Uuid()))
                 {
@@ -784,7 +800,7 @@ namespace AZ
 
             return (m_assetData != nullptr);
         }
-        
+
         //=========================================================================
         template<class T>
         bool Asset<T>::Release()
@@ -838,7 +854,6 @@ namespace AZ
 
             return false;
         }
-
     }  // namespace Data
 }   // namespace AZ
 

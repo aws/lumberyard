@@ -57,7 +57,6 @@ namespace AZ
              const char* g_blackColor = "0,0,0";
 
              const char* g_stringGenMask = "StringGenMask";
-             const char* g_defaultStringGenMask = "%ALLOW_SILHOUETTE_POM%PHONG_TESSELLATION%SUBSURFACE_SCATTERING";
              const char* g_stringGenMaskOption_VertexColors = "%VERTCOLORS";
              const char* g_stringPhysicsNoDraw = "PhysicsNoDraw";
 
@@ -789,7 +788,7 @@ namespace AZ
             attr = m_mtlDoc.allocate_attribute(MaterialExport::g_shininessString, m_mtlDoc.allocate_string(shininessString.c_str()));
             materialNode->append_attribute(attr);
 
-            AZStd::string genMask = MaterialExport::g_defaultStringGenMask;
+            AZStd::string genMask;
             if (material.UseVertexColor())
             {
                 genMask += MaterialExport::g_stringGenMaskOption_VertexColors;
@@ -805,6 +804,12 @@ namespace AZ
             AZStd::vector<TextureData> textures;
             TextureData diffuse;
             diffuse.fileName = material.GetTexture(TextureMapType::Diffuse);
+            if (diffuse.fileName.empty())
+            {
+                // Default to white texture if the material has no textures. This ensures
+                // meshes purely using material/vertex colors render properly in-engine.
+                diffuse.fileName = MaterialExport::g_whiteTexture;
+            }
             diffuse.exportName = MaterialExport::g_diffuseMapName;
             diffuse.updated = false;
             textures.push_back(diffuse);

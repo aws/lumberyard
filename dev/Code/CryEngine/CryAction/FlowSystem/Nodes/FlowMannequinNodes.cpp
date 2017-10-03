@@ -471,7 +471,11 @@ public:
     {
         if (evt == eFE_Activate)
         {
-            if (IsPortActive(pActInfo, EIP_Start))
+            if (pActInfo->pEntity == nullptr)
+            {
+                return;
+            }
+            else if (IsPortActive(pActInfo, EIP_Start))
             {
                 RegisterListener(FlowEntityId(pActInfo->pEntity->GetId()), true);
             }

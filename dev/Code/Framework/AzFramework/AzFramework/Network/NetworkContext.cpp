@@ -40,13 +40,13 @@ namespace AzFramework
     {
     }
 
-    NetworkContext::ClassInfo::ClassInfo(NetworkContext* context, ClassDescPtr binding)
+    NetworkContext::ClassBuilder::ClassBuilder(NetworkContext* context, ClassDescPtr binding)
         : m_binding(binding)
         , m_context(context)
     {
     }
 
-    NetworkContext::ClassInfo::~ClassInfo()
+    NetworkContext::ClassBuilder::~ClassBuilder()
     {
         if (m_context->IsRemovingReflection())
         {

@@ -386,7 +386,7 @@ void C3DEngine::AsyncOctreeUpdate(IRenderNode* pEnt, int nSID, int nSIDConsidere
     {
         UnRegisterEntityImpl(pEnt);
     }
-    else if (GetCVars()->e_StreamCgf && (eERType == eERType_RenderComponent || eERType == eERType_StaticMeshRenderComponent))
+    else if (GetCVars()->e_StreamCgf && (eERType == eERType_RenderComponent || eERType == eERType_DynamicMeshRenderComponent))
     { //  Temporary solution: Force streaming priority update for objects that was not registered before
       //  and was not visible before since usual prediction system was not able to detect them
 

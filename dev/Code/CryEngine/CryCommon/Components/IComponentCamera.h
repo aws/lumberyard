@@ -16,6 +16,8 @@
 #include <IComponent.h>
 #include <ComponentType.h>
 
+class CCamera;
+
 //! This component is used to render from the camera's perspective
 //! to the entity's material.
 struct IComponentCamera

@@ -51,9 +51,6 @@ namespace AzFramework
     const InputChannelId InputDeviceMouse::SystemCursorPosition("mouse_system_cursor_position");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMouse::Implementation::CustomCreateFunctionType InputDeviceMouse::Implementation::CustomCreateFunctionPointer = nullptr;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMouse::InputDeviceMouse()
         : InputDevice(Id)
         , m_allChannelsById()
@@ -61,7 +58,8 @@ namespace AzFramework
         , m_movementChannelsById()
         , m_cursorPositionChannel()
         , m_cursorPositionData2D(AZStd::make_shared<InputChannel::PositionData2D>())
-        , m_pimpl(nullptr)
+        , m_pimpl()
+        , m_implementationRequestHandler(*this)
     {
         // Create all button input channels
         for (const InputChannelId& channelId : Button::All)
@@ -84,9 +82,7 @@ namespace AzFramework
         m_allChannelsById[SystemCursorPosition] = m_cursorPositionChannel;
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
 
         // Connect to the system cursor request bus
         InputSystemCursorRequestBus::Handler::BusConnect(GetInputDeviceId());
@@ -99,7 +95,7 @@ namespace AzFramework
         InputSystemCursorRequestBus::Handler::BusDisconnect(GetInputDeviceId());
 
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy the cursor position input channel
         delete m_cursorPositionChannel;

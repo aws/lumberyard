@@ -20,6 +20,7 @@ SUBFOLDERS = [
     'DBAPI',
     'AssetProcessor',
     'AssetTagging',
+    'AZInstaller',
     'CryXML',
     'MaxCryExport',
     'MayaCryExport2',
@@ -37,6 +38,7 @@ SUBFOLDERS = [
     'News',
     'SDLExtension',
     'AzCodeGenerator',
+    'SharedQMLResource'
 ]
 
 def build(bld):

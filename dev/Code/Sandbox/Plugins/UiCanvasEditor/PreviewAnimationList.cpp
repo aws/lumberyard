@@ -17,8 +17,10 @@
 PreviewAnimationList::PreviewAnimationList(EditorWindow* editorWindow)
     : QMainWindow(editorWindow)
     , m_listWidget(new QListWidget(this))
-    , m_toolBar(new QToolBar(this))
+    , m_toolBar(new QToolBar("Play Toolbar", this))
 {
+    AddMenuItems();
+
     // Add the Reset button
     AddToolBarButton(QIcon(":/Trackview/play/tvplay-00.png"), Action::Reset,
         "Reset selected animations to start");
@@ -34,6 +36,8 @@ PreviewAnimationList::PreviewAnimationList(EditorWindow* editorWindow)
     // Add the Stop button
     AddToolBarButton(QIcon(":/Trackview/play/tvplay-04.png"), Action::Stop,
         "Stop selected animations and set to end");
+
+    m_toolBar->setFloatable(false);
 
     addToolBar(m_toolBar);
 
@@ -82,6 +86,21 @@ void PreviewAnimationList::Deactivate()
 QSize PreviewAnimationList::sizeHint() const
 {
     return QSize(160, 200);
+}
+
+void PreviewAnimationList::AddMenuItems()
+{
+    QMenu* menu = menuBar()->addMenu("&View");
+    menu->setStyleSheet(UICANVASEDITOR_QMENU_ITEM_DISABLED_STYLESHEET);
+
+    QList<QToolBar*> list = findChildren<QToolBar*>();
+    for (auto p : list)
+    {
+        if (p->parent() == this)
+        {
+            menu->addAction(p->toggleViewAction());
+        }
+    }
 }
 
 void PreviewAnimationList::AddToolBarButton(const QIcon& icon, Action action, const char* tooltip)

@@ -13,6 +13,8 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/any.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ
 {
@@ -21,18 +23,39 @@ namespace AZ
     public:
         AZ_TYPE_INFO(GameplayNotificationId, "{C5225D36-7068-412D-A46E-DDF79CA1D7FF}");
         GameplayNotificationId() = default;
-        GameplayNotificationId(const AZ::EntityId& entityChannel, AZ::Crc32 actionNameCrc)
+        GameplayNotificationId(const AZ::EntityId& entityChannel, AZ::Crc32 actionNameCrc, const AZ::Uuid& payloadType)
             : m_channel(entityChannel)
             , m_actionNameCrc(actionNameCrc)
+            , m_payloadTypeId(payloadType)
         { }
+        GameplayNotificationId(const AZ::EntityId&  entityChannel, const char* actionName, const AZ::Uuid& payloadType)
+            : GameplayNotificationId(entityChannel, AZ::Crc32(actionName), payloadType) {}
+
+        //////////////////////////////////////////////////////////////////////////
+        // Deprecated constructors.  These will be removed in 1.12
+        GameplayNotificationId(const AZ::EntityId& entityChannel, AZ::Crc32 actionNameCrc)
+            : GameplayNotificationId(entityChannel, actionNameCrc, AZ::Uuid::CreateNull())
+        {
+            AZ_WarningOnce(AZStd::string::format("GameplayNotificationId %s", ToString().c_str()).c_str(), false, "You are using a deprecated constructor.  You must now create the bus id with the type you are expecting to send/receive");
+        }
         GameplayNotificationId(const AZ::EntityId&  entityChannel, const char* actionName)
             : GameplayNotificationId(entityChannel, AZ::Crc32(actionName)) { }
-        bool operator==(const GameplayNotificationId& rhs) const { return m_channel == rhs.m_channel && m_actionNameCrc == rhs.m_actionNameCrc; }
+        //////////////////////////////////////////////////////////////////////////
+
+        bool operator==(const GameplayNotificationId& rhs) const { return m_channel == rhs.m_channel && m_actionNameCrc == rhs.m_actionNameCrc && m_payloadTypeId == rhs.m_payloadTypeId; }
         GameplayNotificationId Clone() const { return *this; }
-        AZStd::string ToString() const { return AZStd::string::format("%llu, %lu", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc)); }
+        AZStd::string ToString() const
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            auto&& classData = serializeContext->FindClassData(m_payloadTypeId);
+            AZStd::string payloadType = classData ? classData->m_name : m_payloadTypeId.ToString<AZStd::string>();
+            return AZStd::string::format("%llu, %lu, %s", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc), payloadType.c_str()); 
+        }
 
         AZ::EntityId m_channel = AZ::EntityId(0);
         AZ::Crc32 m_actionNameCrc;
+        AZ::Uuid m_payloadTypeId = AZ::Uuid::CreateNull();
     };
 
 
@@ -64,6 +87,7 @@ namespace AZStd
             AZStd::hash<AZ::EntityId> entityIdHasher;
             size_t retVal = entityIdHasher(actionId.m_channel);
             AZStd::hash_combine(retVal, actionId.m_actionNameCrc);
+            AZStd::hash_combine(retVal, actionId.m_payloadTypeId);
             return retVal;
         }
     };

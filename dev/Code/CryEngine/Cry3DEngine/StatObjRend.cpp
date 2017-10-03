@@ -61,27 +61,27 @@ void CStatObj::RenderStreamingDebugInfo(CRenderObject* pRenderObject)
 #ifndef _RELEASE
     //  CStatObj * pStreamable = m_pParentObject ? m_pParentObject : this;
 
-    CStatObj* pStreamable = m_pLod0 ? m_pLod0 : this;
+    IStatObj* pStreamable = m_pLod0 ? m_pLod0 : this;
 
     int nKB = 0;
 
-    if (pStreamable->m_pRenderMesh)
+    if (pStreamable->GetRenderMesh())
     {
-        nKB += pStreamable->m_nRenderMeshMemoryUsage;
+        nKB += pStreamable->GetRenderMeshMemoryUsage();
     }
 
-    for (int nLod = 1; pStreamable->m_pLODs && nLod < MAX_STATOBJ_LODS_NUM; nLod++)
+    for (int nLod = 1; pStreamable->GetLods() && nLod < MAX_STATOBJ_LODS_NUM; nLod++)
     {
-        CStatObj* pLod = (CStatObj*)pStreamable->m_pLODs[nLod];
+        IStatObj* pLod = (CStatObj*)pStreamable->GetLods()[nLod];
 
         if (!pLod)
         {
             continue;
         }
 
-        if (pLod->m_pRenderMesh)
+        if (pLod->GetRenderMesh())
         {
-            nKB += pLod->m_nRenderMeshMemoryUsage;
+            nKB += pLod->GetRenderMeshMemoryUsage();
         }
     }
 
@@ -93,17 +93,17 @@ void CStatObj::RenderStreamingDebugInfo(CRenderObject* pRenderObject)
 
         const char* pComment = 0;
 
-        pStreamable = pStreamable->m_pParentObject ? pStreamable->m_pParentObject : pStreamable;
+        pStreamable = pStreamable->GetParentObject() ? pStreamable->GetParentObject() : pStreamable;
 
-        if (!pStreamable->m_bCanUnload)
+        if (!pStreamable->IsUnloadable())
         {
             pComment = "No stream";
         }
-        else if (!pStreamable->m_bLodsAreLoadedFromSeparateFile && pStreamable->m_nLoadedLodsNum)
+        else if (!pStreamable->IsLodsAreLoadedFromSeparateFile() && pStreamable->GetLoadedLodsNum())
         {
             pComment = "Single";
         }
-        else if (pStreamable->m_nLoadedLodsNum > 1)
+        else if (pStreamable->GetLoadedLodsNum() > 1)
         {
             pComment = "Split";
         }
@@ -361,11 +361,11 @@ bool CStatObj::RenderDebugInfo(CRenderObject* pObj, const SRenderingPassInfo& pa
     if (m_nRenderTrisCount > 0 && !bOnlyBoxes && !bFiltered)
     { // cgf's name and tris num
         int nThisLod = 0;
-        if (m_pLod0 && m_pLod0->m_pLODs)
+        if (m_pLod0 && m_pLod0->GetLods())
         {
             for (int i = 0; i < MAX_STATOBJ_LODS_NUM; i++)
             {
-                if (m_pLod0->m_pLODs[i] == this)
+                if (m_pLod0->GetLods()[i] == this)
                 {
                     nThisLod = i;
                     break;
@@ -373,8 +373,8 @@ bool CStatObj::RenderDebugInfo(CRenderObject* pObj, const SRenderingPassInfo& pa
             }
         }
 
-        const int nMaxUsableLod = (m_pLod0) ? m_pLod0->m_nMaxUsableLod : m_nMaxUsableLod;
-        const int nRealNumLods = (m_pLod0) ? m_pLod0->m_nLoadedLodsNum : m_nLoadedLodsNum;
+        const int nMaxUsableLod = (m_pLod0) ? m_pLod0->GetMaxUsableLod() : m_nMaxUsableLod;
+        const int nRealNumLods = (m_pLod0) ? m_pLod0->GetLoadedLodsNum() : m_nLoadedLodsNum;
 
         int nNumLods = nRealNumLods;
         if (nNumLods > nMaxUsableLod + 1)

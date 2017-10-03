@@ -1,0 +1,30 @@
+{
+    "none":
+    {
+        "Pipeline/RCExt":
+        [
+            "CoordinateSystemConverter.h",
+            "CoordinateSystemConverter.cpp",
+            "ExportContexts.h",
+            "ExportContexts.cpp"
+        ],
+        "Pipeline/RCExt/Actor":
+        [
+            "Actor/ActorBuilder.h",
+            "Actor/ActorBuilder.cpp",
+            "Actor/ActorExporter.h",
+            "Actor/ActorExporter.cpp",
+            "Actor/ActorGroupExporter.h",
+            "Actor/ActorGroupExporter.cpp"
+        ],
+        "Pipeline/RCExt/Motion":
+        [
+            "Motion/MotionDataBuilder.h",
+            "Motion/MotionDataBuilder.cpp",
+            "Motion/MotionExporter.h",
+            "Motion/MotionExporter.cpp",
+            "Motion/MotionGroupExporter.h",
+            "Motion/MotionGroupExporter.cpp"
+        ]
+    }
+}

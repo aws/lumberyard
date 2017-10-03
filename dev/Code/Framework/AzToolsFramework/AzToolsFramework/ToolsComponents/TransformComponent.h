@@ -13,18 +13,13 @@
 #define TRANSFORM_COMPONENT_H_
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Math/Crc.h>
-#include <AzCore/Asset/assetcommon.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/EntityBus.h>
-
-#include <AzFramework/Components/TransformComponent.h>
-
 #include "TransformComponentBus.h"
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include "EditorComponentBase.h"
 #include <AzCore/Component/EntityId.h>
+#include <AzFramework/Components/TransformComponent.h>
 
 #pragma once
 
@@ -32,6 +27,9 @@ namespace AzToolsFramework
 {
     namespace Components
     {
+        //////////////////////////////////////////////////////////////////////////
+        // Manages transform data as separate vector fields for editing purposes.
+
         // the transform component is referenced by other components in the same entity
         // it is not an asset.
         class TransformComponent
@@ -45,7 +43,7 @@ namespace AzToolsFramework
         public:
             friend class TransformComponentFactory;
 
-            AZ_COMPONENT(TransformComponent, ToolsTransformComponentTypeId, EditorComponentBase)
+            AZ_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase)
 
             TransformComponent();
             virtual ~TransformComponent();
@@ -64,6 +62,7 @@ namespace AzToolsFramework
 
             AZ::u32 ParentChanged();
             AZ::u32 TransformChanged();
+            AZ::u32 StaticChanged();
 
             //////////////////////////////////////////////////////////////////////////
             // AZ::TransformBus
@@ -169,6 +168,7 @@ namespace AzToolsFramework
             // AZ::TransformNotificationBus
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
             void OnTransformChanged(); //convienence
+            void OnStaticChanged(bool isStatic) override;
 
             //////////////////////////////////////////////////////////////////////////
             // TransformComponentMessages::Bus
@@ -197,10 +197,13 @@ namespace AzToolsFramework
                 }
             }
 
-            virtual void BuildGameEntity(AZ::Entity* gameEntity) override;
+            void BuildGameEntity(AZ::Entity* gameEntity) override;
 
             void UpdateCachedWorldTransform();
             void ClearCachedWorldTransform();
+
+            bool IsPositionInterpolated() override;
+            bool IsRotationInterpolated() override;
 
         private:
 
@@ -208,8 +211,6 @@ namespace AzToolsFramework
             // TransformHierarchyInformationBus
             void GatherChildren(AZStd::vector<AZ::EntityId>& children) override;
             //////////////////////////////////////////////////////////////////////////
-
-        private:
 
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
@@ -219,7 +220,6 @@ namespace AzToolsFramework
             AZ::Transform GetLocalRotationTM() const;
             AZ::Transform GetLocalScaleTM() const;
 
-            void AttachToParentImpl(AZ::EntityId parentId);
             TransformComponent* GetParentTransformComponent() const;
             TransformComponent* GetTransformComponent(AZ::EntityId otherEntityId) const;
             bool IsEntityInHierarchy(AZ::EntityId entityId);
@@ -241,14 +241,14 @@ namespace AzToolsFramework
             //these are only used to hold onto the references returned by GetLocalTM and GetWorldTM
             AZ::Transform m_localTransformCache;
             AZ::Transform m_worldTransformCache;
-            
-            // Drives transform behavior when parent activates. See \ref ParentActivationTransformMode for details.
-            AzFramework::TransformComponent::ParentActivationTransformMode m_parentActivationTransformMode;
+
+            // Drives transform behavior when parent activates. See AZ::TransformConfig::ParentActivationTransformMode for details.
+            AZ::TransformConfig::ParentActivationTransformMode m_parentActivationTransformMode;
 
             // Keeping a world transform along with a parent Id at the time of capture.
             // This is required for dealing with external changes to parent assignment (i.e. slice propagation).
             // A local transform alone isn't enough, since we may've serialized a parent-relative local transform,
-            // but detached from the parent via propagation of the parent Id field. In such a case, we need to 
+            // but detached from the parent via propagation of the parent Id field. In such a case, we need to
             // know to not erroneously apply the local-space transform we serialized in a world-space capacity.
             AZ::Transform m_cachedWorldTransform;
             AZ::EntityId m_cachedWorldTransformParent;
@@ -257,7 +257,10 @@ namespace AzToolsFramework
 
             bool m_suppressTransformChangedEvent;
 
-            bool m_isSyncEnabled;                       // Used to serialize data required for NetBindable
+            // Used to serialize data required for NetBindable
+            bool m_netSyncEnabled;
+            AZ::InterpolationMode m_interpolatePosition;
+            AZ::InterpolationMode m_interpolateRotation;
         };
     }
 } // namespace AzToolsFramework

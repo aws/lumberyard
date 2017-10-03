@@ -28,6 +28,7 @@
 #include <AzCore/RTTI/AzStdReflectionComponent.h>
 
 #include <AzCore/Module/Module.h>
+#include <AzCore/Module/ModuleManager.h>
 
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
@@ -49,6 +50,11 @@
 
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Slice/SliceSystemComponent.h>
+#include <AzCore/Slice/SliceMetadataInfoComponent.h>
+
+#include <AzCore/Math/PolygonPrism.h>
+#include <AzCore/Math/Spline.h>
+#include <AzCore/Math/VertexContainer.h>
 
 #include <AzCore/XML/rapidxml.h>
 
@@ -88,26 +94,7 @@ namespace AZ
         m_stackRecordLevels = 5;
         m_enableDrilling = true;
 
-        m_x360IsPhysicalMemory = false;
-    }
-
-    //=========================================================================
-    // ReflectSerialize
-    // [5/30/2012]
-    //=========================================================================
-    void ComponentApplication::Descriptor::DynamicModuleDescriptor::ReflectSerialize(SerializeContext* context)
-    {
-        context->Class<DynamicModuleDescriptor>()->
-            Field("dynamicLibraryPath", &DynamicModuleDescriptor::m_dynamicLibraryPath);
-
-        EditContext* ec = context->GetEditContext();
-        if (ec)
-        {
-            ec->Class<DynamicModuleDescriptor>(
-                "Dynamic Module descriptor", "Describes a dynamic module (DLL) used by the application")
-                ->DataElement(Edit::UIHandlers::Default, &DynamicModuleDescriptor::m_dynamicLibraryPath, "Dynamic library path", "Path to DLL.")
-                ;
-        }
+        m_x360IsPhysicalMemory = false; // ACCEPTED_USE
     }
 
     bool AppDescriptorConverter(SerializeContext& serialize, SerializeContext::DataElementNode& node)
@@ -145,69 +132,81 @@ namespace AZ
     // ReflectSerialize
     // [5/30/2012]
     //=========================================================================
-    void  ComponentApplication::Descriptor::ReflectSerialize(SerializeContext* context, ComponentApplication* app)
+    void ComponentApplication::Descriptor::ReflectSerialize(SerializeContext* serializeContext, ComponentApplication* app)
     {
-        DynamicModuleDescriptor::ReflectSerialize(context);
+        AZ_Warning("Application", false, "ComponentApplication::Descriptor::ReflectSerialize() is deprecated, use Reflect() instead.");
+        ComponentApplication::Descriptor::Reflect(serializeContext, app);
+    }
 
-        context->Class<Descriptor>(&app->GetDescriptor())
-            ->Version(2, AppDescriptorConverter)
-            ->Field("useExistingAllocator", &Descriptor::m_useExistingAllocator)
-            ->Field("grabAllMemory", &Descriptor::m_grabAllMemory)
-            ->Field("allocationRecords", &Descriptor::m_allocationRecords)
-            ->Field("allocationRecordsSaveNames", &Descriptor::m_allocationRecordsSaveNames)
-            ->Field("allocationRecordsAttemptDecodeImmediately", &Descriptor::m_allocationRecordsAttemptDecodeImmediately)
-            ->Field("recordingMode", &Descriptor::m_recordingMode)
-            ->Field("stackRecordLevels", &Descriptor::m_stackRecordLevels)
-            ->Field("autoIntegrityCheck", &Descriptor::m_autoIntegrityCheck)
-            ->Field("markUnallocatedMemory", &Descriptor::m_markUnallocatedMemory)
-            ->Field("doNotUsePools", &Descriptor::m_doNotUsePools)
-            ->Field("enableScriptReflection", &Descriptor::m_enableScriptReflection)
-            ->Field("pageSize", &Descriptor::m_pageSize)
-            ->Field("poolPageSize", &Descriptor::m_poolPageSize)
-            ->Field("blockAlignment", &Descriptor::m_memoryBlockAlignment)
-            ->Field("blockSize", &Descriptor::m_memoryBlocksByteSize)
-            ->Field("reservedOS", &Descriptor::m_reservedOS)
-            ->Field("reservedDebug", &Descriptor::m_reservedDebug)
-            ->Field("enableDrilling", &Descriptor::m_enableDrilling)
-            ->Field("modules", &Descriptor::m_modules)
-            ->Field("x360PhysicalMemory", &Descriptor::m_x360IsPhysicalMemory)
-            ;
+    //=========================================================================
+    // Reflect
+    //=========================================================================
+    void  ComponentApplication::Descriptor::Reflect(ReflectContext* context, ComponentApplication* app)
+    {
+        DynamicModuleDescriptor::Reflect(context);
 
-        if (EditContext* ec = context->GetEditContext())
+        if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            ec->Enum<Debug::AllocationRecords::Mode>("Debug::AllocationRecords::Mode", "Allocator recording mode")
-                ->Value("No records", Debug::AllocationRecords::RECORD_NO_RECORDS)
-                ->Value("No stack trace", Debug::AllocationRecords::RECORD_STACK_NEVER)
-                ->Value("Stack trace when file/line missing", Debug::AllocationRecords::RECORD_STACK_IF_NO_FILE_LINE)
-                ->Value("Stack trace always", Debug::AllocationRecords::RECORD_FULL);
-            ec->Class<Descriptor>("System memory settings", "Settings for managing application memory usage")
-                ->ClassElement(Edit::ClassElements::EditorData, "")
-                    ->Attribute(Edit::Attributes::AutoExpand, true)
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_grabAllMemory, "Allocate all memory at startup", "Allocate all system memory at startup if enabled, or allocate as needed if disabled")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecords, "Record allocations", "Collect information on each allocation made for debugging purposes (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecordsSaveNames, "Record allocations with name saving", "Saves names/filenames information on each allocation made, useful for tracking down leaks in dynamic modules (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecordsAttemptDecodeImmediately, "Record allocations and attempt immediate decode", "Decode callstacks for each allocation when they occur, used for tracking allocations that fail decoding. Very expensive. (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::ComboBox, &Descriptor::m_recordingMode, "Stack recording mode", "Stack record mode. (Ignored in final builds)")
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_stackRecordLevels, "Stack entries to record", "Number of stack levels to record for each allocation (ignored in Release builds)")
-                    ->Attribute(Edit::Attributes::Step, 1)
-                    ->Attribute(Edit::Attributes::Max, 1024)
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_autoIntegrityCheck, "Validate allocations", "Check allocations for integrity on each allocation/free (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_markUnallocatedMemory, "Mark freed memory", "Set memory to 0xcd when a block is freed for debugging (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_doNotUsePools, "Don't pool allocations", "Pipe pool allocations in system/tree heap (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_pageSize, "Page size", "Memory page size in bytes (must be OS page size aligned)")
-                    ->Attribute(Edit::Attributes::Step, 1024)
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_poolPageSize, "Pool page size", "Memory pool page size in bytes (must be a multiple of page size)")
-                    ->Attribute(Edit::Attributes::Max, &Descriptor::m_pageSize)
-                    ->Attribute(Edit::Attributes::Step, 1024)
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_memoryBlockAlignment, "Block alignment", "Memory block alignment in bytes (must be multiple of the page size)")
-                    ->Attribute(Edit::Attributes::Step, &Descriptor::m_pageSize)
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_memoryBlocksByteSize, "Block size", "Memory block size in bytes (must be multiple of the page size)")
-                    ->Attribute(Edit::Attributes::Step, &Descriptor::m_pageSize)
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_reservedOS, "OS reserved memory", "System memory reserved for OS (used only when 'Allocate all memory at startup' is true)")
-                ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_reservedDebug, "Memory reserved for debugger", "System memory reserved for Debug allocator, like memory tracking (used only when 'Allocate all memory at startup' is true)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_enableDrilling, "Enable Driller", "Enable Drilling support for the application (ignored in Release builds)")
-                ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_x360IsPhysicalMemory, "Physical memory", "Used only on X360 to indicate is we want to allocate physical memory")
+            serializeContext->Class<Descriptor>(&app->GetDescriptor())
+                ->Version(2, AppDescriptorConverter)
+                ->Field("useExistingAllocator", &Descriptor::m_useExistingAllocator)
+                ->Field("grabAllMemory", &Descriptor::m_grabAllMemory)
+                ->Field("allocationRecords", &Descriptor::m_allocationRecords)
+                ->Field("allocationRecordsSaveNames", &Descriptor::m_allocationRecordsSaveNames)
+                ->Field("allocationRecordsAttemptDecodeImmediately", &Descriptor::m_allocationRecordsAttemptDecodeImmediately)
+                ->Field("recordingMode", &Descriptor::m_recordingMode)
+                ->Field("stackRecordLevels", &Descriptor::m_stackRecordLevels)
+                ->Field("autoIntegrityCheck", &Descriptor::m_autoIntegrityCheck)
+                ->Field("markUnallocatedMemory", &Descriptor::m_markUnallocatedMemory)
+                ->Field("doNotUsePools", &Descriptor::m_doNotUsePools)
+                ->Field("enableScriptReflection", &Descriptor::m_enableScriptReflection)
+                ->Field("pageSize", &Descriptor::m_pageSize)
+                ->Field("poolPageSize", &Descriptor::m_poolPageSize)
+                ->Field("blockAlignment", &Descriptor::m_memoryBlockAlignment)
+                ->Field("blockSize", &Descriptor::m_memoryBlocksByteSize)
+                ->Field("reservedOS", &Descriptor::m_reservedOS)
+                ->Field("reservedDebug", &Descriptor::m_reservedDebug)
+                ->Field("enableDrilling", &Descriptor::m_enableDrilling)
+                ->Field("modules", &Descriptor::m_modules)
+                ->Field("x360PhysicalMemory", &Descriptor::m_x360IsPhysicalMemory) // ACCEPTED_USE
                 ;
+
+            if (EditContext* ec = serializeContext->GetEditContext())
+            {
+                ec->Enum<Debug::AllocationRecords::Mode>("Debug::AllocationRecords::Mode", "Allocator recording mode")
+                    ->Value("No records", Debug::AllocationRecords::RECORD_NO_RECORDS)
+                    ->Value("No stack trace", Debug::AllocationRecords::RECORD_STACK_NEVER)
+                    ->Value("Stack trace when file/line missing", Debug::AllocationRecords::RECORD_STACK_IF_NO_FILE_LINE)
+                    ->Value("Stack trace always", Debug::AllocationRecords::RECORD_FULL);
+                ec->Class<Descriptor>("System memory settings", "Settings for managing application memory usage")
+                    ->ClassElement(Edit::ClassElements::EditorData, "")
+                        ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_grabAllMemory, "Allocate all memory at startup", "Allocate all system memory at startup if enabled, or allocate as needed if disabled")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecords, "Record allocations", "Collect information on each allocation made for debugging purposes (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecordsSaveNames, "Record allocations with name saving", "Saves names/filenames information on each allocation made, useful for tracking down leaks in dynamic modules (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_allocationRecordsAttemptDecodeImmediately, "Record allocations and attempt immediate decode", "Decode callstacks for each allocation when they occur, used for tracking allocations that fail decoding. Very expensive. (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::ComboBox, &Descriptor::m_recordingMode, "Stack recording mode", "Stack record mode. (Ignored in final builds)")
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_stackRecordLevels, "Stack entries to record", "Number of stack levels to record for each allocation (ignored in Release builds)")
+                        ->Attribute(Edit::Attributes::Step, 1)
+                        ->Attribute(Edit::Attributes::Max, 1024)
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_autoIntegrityCheck, "Validate allocations", "Check allocations for integrity on each allocation/free (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_markUnallocatedMemory, "Mark freed memory", "Set memory to 0xcd when a block is freed for debugging (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_doNotUsePools, "Don't pool allocations", "Pipe pool allocations in system/tree heap (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_pageSize, "Page size", "Memory page size in bytes (must be OS page size aligned)")
+                        ->Attribute(Edit::Attributes::Step, 1024)
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_poolPageSize, "Pool page size", "Memory pool page size in bytes (must be a multiple of page size)")
+                        ->Attribute(Edit::Attributes::Max, &Descriptor::m_pageSize)
+                        ->Attribute(Edit::Attributes::Step, 1024)
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_memoryBlockAlignment, "Block alignment", "Memory block alignment in bytes (must be multiple of the page size)")
+                        ->Attribute(Edit::Attributes::Step, &Descriptor::m_pageSize)
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_memoryBlocksByteSize, "Block size", "Memory block size in bytes (must be multiple of the page size)")
+                        ->Attribute(Edit::Attributes::Step, &Descriptor::m_pageSize)
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_reservedOS, "OS reserved memory", "System memory reserved for OS (used only when 'Allocate all memory at startup' is true)")
+                    ->DataElement(Edit::UIHandlers::SpinBox, &Descriptor::m_reservedDebug, "Memory reserved for debugger", "System memory reserved for Debug allocator, like memory tracking (used only when 'Allocate all memory at startup' is true)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_enableDrilling, "Enable Driller", "Enable Drilling support for the application (ignored in Release builds)")
+                    ->DataElement(Edit::UIHandlers::CheckBox, &Descriptor::m_x360IsPhysicalMemory, "Physical memory", "Used only on X360 to indicate is we want to allocate physical memory") // ACCEPTED_USE
+                    ;
+            }
         }
     }
 
@@ -228,84 +227,6 @@ namespace AZ
         // do nothing as descriptor is part of the component application
         (void)data;
     }
-
-    //=========================================================================
-    // ModuleData
-    //=========================================================================
-    ComponentApplication::ModuleData::ModuleData(ModuleData&& rhs)
-        : m_dynamicHandle(AZStd::move(rhs.m_dynamicHandle))
-    {
-        m_module = rhs.m_module;
-        rhs.m_module = nullptr;
-    }
-    
-    static_assert(!AZStd::has_trivial_copy<ComponentApplication::ModuleData>::value, "Compiler believes ModuleData is trivially copyable, despite having non-trivially copyable members.\n");
-
-    //=========================================================================
-    // DestroyModuleClass
-    //=========================================================================
-    void ComponentApplication::ModuleData::DestroyModuleClass()
-    {
-        // If the AZ::Module came from a DLL, destroy it
-        // using the DLL's \ref DestroyModuleClassFunction.
-        if (m_module && m_dynamicHandle)
-        {
-            auto destroyFunc = m_dynamicHandle->GetFunction<DestroyModuleClassFunction>(DestroyModuleClassFunctionName);
-            AZ_Assert(destroyFunc, "Unable to locate '%s' entry point in module at \"%s\".",
-                DestroyModuleClassFunctionName, m_dynamicHandle->GetFilename().c_str());
-            if (destroyFunc)
-            {
-                destroyFunc(m_module);
-                m_module = nullptr;
-            }
-        }
-
-        // If the AZ::Module came from a static LIB, delete it directly.
-        if (m_module)
-        {
-            delete m_module;
-            m_module = nullptr;
-        }
-    }
-
-    //=========================================================================
-    // GetDebugName
-    //=========================================================================
-    const char* ComponentApplication::ModuleData::GetDebugName() const
-    {
-        // If module is from DLL, return DLL name.
-        if (m_dynamicHandle)
-        {
-            const char* filepath = m_dynamicHandle->GetFilename().c_str();
-            const char* lastSlash = strrchr(filepath, '/');
-            return lastSlash ? lastSlash + 1 : filepath;
-        }
-        // If Module has its own RTTI info, return that name
-        else if (m_module && !azrtti_istypeof<Module>(m_module))
-        {
-            return m_module->RTTI_GetTypeName();
-        }
-        else
-        {
-            return "module";
-        }
-    }
-
-    //=========================================================================
-    // ~ModuleData
-    //=========================================================================
-    ComponentApplication::ModuleData::~ModuleData()
-    {
-        DestroyModuleClass();
-
-        // If dynamic, unload DLL and destroy handle.
-        if (m_dynamicHandle)
-        {
-            m_dynamicHandle->Unload();
-            m_dynamicHandle.reset();
-        }
-    }
-
 
     //=========================================================================
     // ComponentApplication
@@ -399,7 +320,7 @@ namespace AZ
         // Get the system allocator configuration
         {
             SerializeContext sc;
-            Descriptor::ReflectSerialize(&sc, this);
+            Descriptor::Reflect(&sc, this);
             ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(0, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         }
 
@@ -421,8 +342,29 @@ namespace AZ
         // Create system entity. Reset the descriptor in preparation for reserializing it.
         m_descriptor = Descriptor();
         stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+
         AZ::Entity* systemEntity = nullptr;
-        ObjectStream::LoadBlocking(&stream, *m_serializeContext, AZStd::bind(&ComponentApplication::OnEntityLoaded, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &systemEntity));
+        ObjectStream::LoadBlocking(&stream, *m_serializeContext, [this, &systemEntity](void* classPtr, const AZ::Uuid& classId, const AZ::SerializeContext* sc) {
+            if (ModuleEntity* moduleEntity = sc->Cast<ModuleEntity*>(classPtr, classId))
+            {
+                m_moduleManager->AddModuleEntity(moduleEntity);
+            }
+            else if (Entity* entity = sc->Cast<Entity*>(classPtr, classId))
+            {
+                if (entity->GetId() == AZ::SystemEntityId)
+                {
+                    systemEntity = entity;
+                }
+            }
+            else if (!sc->Cast<Descriptor*>(classPtr, classId))
+            {
+                char idStr[Uuid::MaxStringBuffer];
+                classId.ToString(idStr, AZ_ARRAY_SIZE(idStr));
+                AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
+            }
+        });
+
+        AZ_Assert(systemEntity, "SystemEntity failed to load!");
         cfg.Close();
 
         AddRequiredSystemComponents(systemEntity);
@@ -469,6 +411,8 @@ namespace AZ
     //=========================================================================
     void ComponentApplication::CreateCommon()
     {
+        CalculateExecutablePath();
+
         CreateDrillers();
 
         CreateSystemAllocator();
@@ -476,9 +420,10 @@ namespace AZ
         RegisterCoreComponents();
 
         CreateSerializeContext();
-        ReflectSerialize();
+        Reflect(m_serializeContext);
 
         CreateBehaviorContext();
+        Reflect(m_behaviorContext);
 
         ComponentApplicationBus::Handler::BusConnect();
 
@@ -492,11 +437,26 @@ namespace AZ
         Debug::SymbolStorage::RegisterModuleListeners();
 #endif // defined(AZCORE_ENABLE_MEMORY_TRACKING)
 
+        // Setup the modules list
+        m_moduleManager = AZStd::make_unique<ModuleManager>();
+        // Load dynamic modules if appropriate for the platform
+        if (m_startupParameters.m_loadDynamicModules)
+        {
+            AZ::ModuleManagerRequests::LoadModulesResult loadModuleOutcomes;
+            ModuleManagerRequestBus::BroadcastResult(loadModuleOutcomes, &ModuleManagerRequests::LoadDynamicModules, m_descriptor.m_modules, ModuleInitializationSteps::RegisterComponentDescriptors, true);
 
-        // Called after ComponentApplicationBus::Handler::BusConnect(),
-        // so that modules may communicate with the component application.
-        InitStaticModules();
-        InitDynamicModules();
+#if defined(AZ_ENABLE_TRACING)
+            for (const auto& loadModuleOutcome : loadModuleOutcomes)
+            {
+                AZ_Error("ComponentApplication", loadModuleOutcome.IsSuccess(), loadModuleOutcome.GetError().c_str());
+            }
+#endif
+        }
+        // Load static modules if provided by the platform
+        if (m_startupParameters.m_createStaticModulesCallback)
+        {
+            ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, m_startupParameters.m_createStaticModulesCallback, ModuleInitializationSteps::RegisterComponentDescriptors);
+        }
     }
 
     //=========================================================================
@@ -526,6 +486,9 @@ namespace AZ
             }
         }
 
+        // Uninit and unload any dynamic modules.
+        m_moduleManager.reset();
+
         // deactivate all system components
         if (systemEntity)
         {
@@ -540,17 +503,8 @@ namespace AZ
         m_entities.clear();
         m_entities.rehash(0); // force free all memory
 
-#ifndef AZ_BEHAVIOR_CONTEXT_TODO_FIX
-        // Because of OnDemandReflection, this must be destroyed before modules are unloaded.
-        DestroyBehaviorContext();
-#endif
 
-        // Uninit and unload any dynamic modules.
-        ShutdownAllModules();
-
-#ifdef AZ_BEHAVIOR_CONTEXT_TODO_FIX
         DestroyBehaviorContext();
-#endif
         DestroySerializeContext();
 
         // delete all descriptors left for application clean up
@@ -574,14 +528,6 @@ namespace AZ
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
-#if defined (AZ_PLATFORM_X360)
-            if (m_descriptor.m_x360IsPhysicalMemory)
-            {
-                AZ_Assert(m_memoryBlock, "We don't have a valid memory block allocated!");
-                // Redacted
-            }
-            else
-#endif
             {
                 if (m_memoryBlock != nullptr)
                 {
@@ -635,11 +581,7 @@ namespace AZ
                 AZ::u64 availableOS = AZ_CORE_MAX_ALLOCATOR_SIZE;
                 AZ::u64 reservedOS = m_descriptor.m_reservedOS;
                 AZ::u64 reservedDbg = m_descriptor.m_reservedDebug;
-#if defined (AZ_PLATFORM_X360)
-                // Redacted
-#else
                 AZ_Warning("Memory", false, "This platform is not supported for grabAllMemory flag! Provide a valid allocation size and set the m_grabAllMemory flag to false! Using default max memory size %llu!", availableOS);
-#endif
                 AZ_Assert(availableOS > 0, "OS doesn't have any memory available!");
                 // compute total memory to grab
                 desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(availableOS - reservedOS - reservedDbg);
@@ -651,9 +593,6 @@ namespace AZ
                 desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(m_descriptor.m_memoryBlocksByteSize);
             }
 
-#if defined (AZ_PLATFORM_X360)
-            // Redacted
-#endif
             {
                 if (desc.m_heap.m_memoryBlocksByteSize[0] > 0) // 0 means one demand memory which we support
                 {
@@ -689,7 +628,7 @@ namespace AZ
         if (m_descriptor.m_enableDrilling)
         {
             m_drillerManager = Debug::DrillerManager::Create();
-            // Memory driller is responsible for tracking allocations. 
+            // Memory driller is responsible for tracking allocations.
             // Tracking type and overhead is determined by app configuration.
             m_drillerManager->Register(aznew Debug::MemoryDriller);
             // Profiler driller will consume resources only when started.
@@ -845,9 +784,6 @@ namespace AZ
         if (m_behaviorContext == nullptr)
         {
             m_behaviorContext = aznew BehaviorContext;
-
-            // reflect all registered classes
-            EBUS_EVENT(ComponentDescriptorBus, Reflect, m_behaviorContext);
         }
     }
 
@@ -950,28 +886,6 @@ namespace AZ
     }
 
     //=========================================================================
-    // OnEntityLoaded
-    // [5/30/2012]
-    //=========================================================================
-    void ComponentApplication::OnEntityLoaded(void* classPtr, const AZ::Uuid& classId, const AZ::SerializeContext* sc, AZ::Entity** systemEntity)
-    {
-        Entity* entity = sc->Cast<Entity*>(classPtr, classId);
-        if (entity)
-        {
-            if (entity->GetId() == AZ::SystemEntityId && systemEntity != nullptr)
-            {
-                *systemEntity = entity;
-            }
-        }
-        else if (!sc->Cast<Descriptor*>(classPtr, classId))
-        {
-            char idStr[48];
-            classId.ToString(idStr, AZ_ARRAY_SIZE(idStr));
-            AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
-        }
-    }
-
-    //=========================================================================
     // RegisterCoreComponents
     // [5/30/2012]
     //=========================================================================
@@ -987,6 +901,8 @@ namespace AZ
         RegisterComponentDescriptor(Debug::FrameProfilerComponent::CreateDescriptor());
         RegisterComponentDescriptor(SliceComponent::CreateDescriptor());
         RegisterComponentDescriptor(SliceSystemComponent::CreateDescriptor());
+        RegisterComponentDescriptor(SliceMetadataInfoComponent::CreateDescriptor());
+
 
 #if !defined(AZCORE_EXCLUDE_LUA)
         RegisterComponentDescriptor(ScriptSystemComponent::CreateDescriptor());
@@ -1018,50 +934,19 @@ namespace AZ
         // Gather required system components from all modules and the application.
         //
 
-        // contains pair of component type-id, and name-of-source
-        AZStd::vector<AZStd::pair<Uuid, AZStd::string> > requiredComponents;
-
         for (const Uuid& componentId : GetRequiredSystemComponents())
         {
-            requiredComponents.emplace_back(componentId, "application");
-        }
-
-        for (const auto& moduleData : m_modules)
-        {
-            if (moduleData->m_module)
-            {
-                AZStd::string moduleName = moduleData->GetDebugName();
-                for (const Uuid& componentId : moduleData->m_module->GetRequiredSystemComponents())
-                {
-                    requiredComponents.emplace_back(componentId, moduleName);
-                }
-            }
-        }
-
-        //
-        // Add required components to system entity.
-        // Note that the system entity may already contain components
-        // that were read in from the application-descriptor-file.
-        //
-
-        for (const auto& pair : requiredComponents)
-        {
-            const Uuid& componentTypeId = pair.first;
-            const AZStd::string& componentSourceName = pair.second;
-            (void)componentSourceName;
-
             ComponentDescriptor* componentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(componentDescriptor, componentTypeId, ComponentDescriptorBus, GetDescriptor);
+            EBUS_EVENT_ID_RESULT(componentDescriptor, componentId, ComponentDescriptorBus, GetDescriptor);
             if (!componentDescriptor)
             {
-                AZ_Error("Module", false, "Failed to add system component required by '%s'. No component descriptor found for: %s",
-                    componentSourceName.c_str(),
-                    componentTypeId.ToString<AZStd::string>().c_str());
+                AZ_Error("Module", false, "Failed to add system component required by application. No component descriptor found for: %s",
+                    componentId.ToString<AZStd::string>().c_str());
                 continue;
             }
 
             // add component if it's not already present
-            if (!systemEntity->FindComponent(componentTypeId))
+            if (!systemEntity->FindComponent(componentId))
             {
                 systemEntity->AddComponent(componentDescriptor->CreateComponent());
             }
@@ -1070,7 +955,7 @@ namespace AZ
         //
         // Call legacy AddSystemComponents functions.
         // Issue warnings if they're still being used.
-        // 
+        //
 
         size_t componentCount = systemEntity->GetComponents().size();
         (void)componentCount; // Only used in Warnings, produces "Unused variable" warning in non-trace builds
@@ -1080,225 +965,6 @@ namespace AZ
         AZ_Warning("Module", componentCount == systemEntity->GetComponents().size(),
             "Application implements deprecated function 'AddSystemComponents'. Use 'GetRequiredSystemComponents' instead.");
         componentCount = systemEntity->GetComponents().size();
-
-        for (auto& moduleData : m_modules)
-        {
-            if (moduleData->m_module)
-            {
-                moduleData->m_module->AddSystemComponents(systemEntity);
-
-                AZ_Warning("Module", componentCount == systemEntity->GetComponents().size(),
-                    "Module '%s' implements deprecated function 'AddSystemComponents'. Use 'GetRequiredSystemComponents' instead.",
-                    moduleData->GetDebugName());
-                componentCount = systemEntity->GetComponents().size();
-            }
-        }
-    }
-
-    //=========================================================================
-    // Preprocess a dynamic module name.  This is where we will apply any legacy/upgrade
-    // of modules if necessary (and provide a warning to update the configuration)
-    //=========================================================================
-    static AZ::OSString PreProcessModule(const AZ::OSString& moduleName)
-    {
-        // This is the list of modules that have been deprecated as of version 1.10
-        // Update this list accordingly.  
-        static const char* legacyModules[] =        { "LmbrCentral", 
-                                                      "LmbrCentralEditor" };
-        // List of modules (Gems) that represents the upgrade from the legacyModules 
-        static const char* legacyUpgradeModules[] = { "Gem.LmbrCentral.ff06785f7145416b9d46fde39098cb0c.v0.1.0",
-                                                      "Gem.LmbrCentral.Editor.ff06785f7145416b9d46fde39098cb0c.v0.1.0" };
-
-        // Process out just the module name from a potential path or subpath
-        OSString preprocessedName;
-        OSString prefix = "";
-
-        auto pathSeparatorIndex = moduleName.find_last_of("/\\");
-        if (pathSeparatorIndex != moduleName.npos)
-        {
-            preprocessedName = moduleName.substr(pathSeparatorIndex + 1);
-            prefix = moduleName.substr(0, pathSeparatorIndex + 1);
-        }
-        else
-        {
-            preprocessedName = moduleName;
-        }
-
-        // Update the module name if it matches an (upgradable) legacy module
-        static size_t legacyModuleCount = AZ_ARRAY_SIZE(legacyModules);
-        AZ_Assert(legacyModuleCount == AZ_ARRAY_SIZE(legacyUpgradeModules), "Legacy Module update list is not in sync.");
-
-        for (size_t moduleIndex = 0; moduleIndex < legacyModuleCount; moduleIndex++)
-        {
-            const char* legacyModule = legacyModules[moduleIndex];
-            if (preprocessedName.compare(legacyModule) == 0)
-            {
-                preprocessedName = legacyUpgradeModules[moduleIndex];
-                break;
-            }
-        }
-
-        return AZ::OSString::format("%s%s", prefix.c_str(), preprocessedName.c_str());
-    }
-
-    //=========================================================================
-    // InitDynamicModules
-    //=========================================================================
-    void ComponentApplication::InitDynamicModules()
-    {
-        if (m_startupParameters.m_loadDynamicModules)
-        {
-            // Load DLLs specified in the application descriptor
-            for (const Descriptor::DynamicModuleDescriptor& moduleDescriptor : m_descriptor.m_modules)
-            {
-                LoadModuleOutcome loadOutcome = LoadDynamicModule(moduleDescriptor);
-                AZ_Error("Module", loadOutcome.IsSuccess(), loadOutcome.GetError().c_str());
-            }
-        }
-    }
-
-    void ComponentApplication::ResolveModulePath(AZ::OSString& modulePath)
-    {
-        modulePath = m_exeDirectory + modulePath;
-    }
-
-    //=========================================================================
-    // LoadDynamicModule
-    //=========================================================================
-    ComponentApplication::LoadModuleOutcome ComponentApplication::LoadDynamicModule(const Descriptor::DynamicModuleDescriptor& moduleDescriptor)
-    {
-        // allow overriding Applications to mutate this path before we attempt to load it.
-        AZ::OSString resolvedModulePath(PreProcessModule(moduleDescriptor.m_dynamicLibraryPath));
-        ResolveModulePath(resolvedModulePath);
-
-        // moduleData will properly tear itself down if we bail out of this function early.
-        // (ex: will unload DLL if it had been loaded)
-        auto moduleData = AZStd::unique_ptr<ModuleData>(new ModuleData);
-
-        // Create handle
-        moduleData->m_dynamicHandle = DynamicModuleHandle::Create(resolvedModulePath.c_str());
-        if (!moduleData->m_dynamicHandle)
-        {
-            return AZ::Failure(AZStd::string::format("Failed to create AZ::DynamicModuleHandle at path \"%s\".",
-                resolvedModulePath.c_str()));
-        }
-
-        // Load DLL from disk
-        if (!moduleData->m_dynamicHandle->Load(true))
-        {
-            return AZ::Failure(AZStd::string::format("Failed to load dynamic library at path \"%s\".\nThis can occur if modules have been deleted,\nor if modules have been added to your project configuration but without building the project to create those modules.",
-                moduleData->m_dynamicHandle->GetFilename().c_str()));
-        }
-
-        // Find function that creates AZ::Module class.
-        // It's acceptable for a library not to have this function.
-        auto createModuleFunc = moduleData->m_dynamicHandle->GetFunction<CreateModuleClassFunction>(CreateModuleClassFunctionName);
-        if (createModuleFunc)
-        {
-            // Create AZ::Module class
-            moduleData->m_module = createModuleFunc();
-            if (!moduleData->m_module)
-            {
-                // It's an error if the library has a CreateModuleClass() function that returns nothing.
-                return AZ::Failure(AZStd::string::format("'%s' entry point in module \"%s\" failed to create AZ::Module.",
-                    CreateModuleClassFunctionName,
-                    moduleData->m_dynamicHandle->GetFilename().c_str()));
-            }
-
-            InitModule(*moduleData->m_module);
-        }
-
-        // Success! Move ModuleData into a permanent location and return a pointer
-        m_modules.emplace_back(AZStd::move(moduleData));
-        return AZ::Success(m_modules.back().get());
-    }
-
-    //=========================================================================
-    // IsModuleLoaded
-    //=========================================================================
-    bool ComponentApplication::IsModuleLoaded(const Descriptor::DynamicModuleDescriptor& moduleDescriptor)
-    {
-        AZ::OSString resolvedModulePath(moduleDescriptor.m_dynamicLibraryPath);
-        ResolveModulePath(resolvedModulePath);
-
-        for (const auto& moduleData : m_modules)
-        {
-            if (moduleData->m_dynamicHandle)
-            {
-                if (azstricmp(moduleData->m_dynamicHandle->GetFilename().c_str(), resolvedModulePath.c_str()) == 0)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    //=========================================================================
-    // InitModule
-    //=========================================================================
-    void ComponentApplication::InitModule(AZ::Module& module)
-    {
-        module.RegisterComponentDescriptors();
-    }
-
-    //=========================================================================
-    // InitStaticModules
-    //=========================================================================
-    void ComponentApplication::InitStaticModules()
-    {
-        // Create static AZ::Modules
-        if (m_startupParameters.m_createStaticModulesCallback)
-        {
-            AZStd::vector<AZ::Module*> staticModules;
-            m_startupParameters.m_createStaticModulesCallback(staticModules);
-
-            for (Module* staticModule : staticModules)
-            {
-                AZ_Assert(staticModule, "AZCreateStaticModules() returned an invalid AZ::Module.");
-                if (staticModule)
-                {
-                    InitModule(*staticModule);
-
-                    // put in m_modules
-                    m_modules.emplace_back(new ModuleData);
-                    m_modules.back()->m_module = staticModule;
-                }
-            }
-        }
-    }
-
-    //=========================================================================
-    // ShutdownAllModules
-    //=========================================================================
-    void ComponentApplication::ShutdownAllModules()
-    {
-        // Shutdown in reverse order of initialization, just in case the order matters.
-        while (!m_modules.empty())
-        {
-            m_modules.pop_back(); // ~ModuleData() handles shutdown logic
-        }
-        m_modules.set_capacity(0);
-    }
-
-    //=========================================================================
-    // ReloadModule
-    //=========================================================================
-    void ComponentApplication::ReloadModule(const char* moduleFullPath)
-    {
-        (void)moduleFullPath;
-        AZ_Assert(false, "ReloadModule is not yet implemented");
-    }
-
-    void ComponentApplication::EnumerateModules(EnumerateModulesCallback cb)
-    {
-        for (const auto& moduleData : m_modules)
-        {
-            if (!cb(moduleData->m_module, moduleData->m_dynamicHandle.get()))
-            {
-                break;
-            }
-        }
     }
 
     //=========================================================================
@@ -1306,6 +972,12 @@ namespace AZ
     //=========================================================================
     void ComponentApplication::CalculateExecutablePath()
     {
+        // Checks if exe directory has already been calculated
+        if (strlen(m_exeDirectory) > 0)
+        {
+            return;
+        }
+
 #if   defined(AZ_PLATFORM_ANDROID)
         // On Android, all dlopen calls should be relative.
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), "");
@@ -1356,7 +1028,7 @@ namespace AZ
         }
 
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), exeDirectory);
-#endif // AZ_PLATFORM_PS4
+#endif
     }
 
     //=========================================================================
@@ -1373,7 +1045,7 @@ namespace AZ
 
         bool isFullPath = false;
 
-#if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE)
+#if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
         if (nullptr != strstr(fullApplicationDescriptorPath.c_str(), ":"))
         {
             isFullPath = true;
@@ -1388,6 +1060,11 @@ namespace AZ
         }
 
         return fullApplicationDescriptorPath;
+    }
+
+    void ComponentApplication::ResolveModulePath(AZ::OSString& modulePath)
+    {
+        modulePath = m_exeDirectory + modulePath;
     }
 
     //=========================================================================
@@ -1409,18 +1086,53 @@ namespace AZ
     }
 
     //=========================================================================
-    // ReflectSerialize
-    // [11/9/2012]
+    // Reflect
     //=========================================================================
-    void ComponentApplication::ReflectSerialize()
+    void ComponentApplication::Reflect(ReflectContext* context)
     {
+        AZ::SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+        if (serializeContext)
+        {
+            // Call deprecated ReflectSerialize() function.
+            // Issue a warning if any classes reflected as a result of this call.
+#ifdef AZ_ENABLE_TRACING
+            int serializedClassCount = 0;
+            auto countClassesFn = [&serializedClassCount](const SerializeContext::ClassData*, const Uuid&)
+            {
+                ++serializedClassCount;
+                return true;
+            };
+
+            serializeContext->EnumerateAll(countClassesFn);
+#endif // AZ_ENABLE_TRACING
+
+            ReflectSerialize();
+
+#ifdef AZ_ENABLE_TRACING
+            int previousClassCount = serializedClassCount;
+            serializedClassCount = 0;
+            serializeContext->EnumerateAll(countClassesFn);
+            AZ_Warning("Application", serializedClassCount == previousClassCount,
+                "Classes reflected via deprecated ComponentApplication::ReflectSerialize() function, use ComponentApplication::Reflect() instead.");
+#endif // AZ_ENABLE_TRACING
+        }
+
         // reflect default entity
-        Entity::Reflect(m_serializeContext);
-        // reflect default
-        Descriptor::ReflectSerialize(m_serializeContext, this);
+        Entity::Reflect(context);
+        // reflect module manager
+        ModuleManager::Reflect(context);
+        // reflect descriptor
+        Descriptor::Reflect(context, this);
+
+        if (serializeContext)
+        {
+            AZ::SplineReflect(*serializeContext);
+            AZ::VertexContainerReflect(*serializeContext);
+            AZ::PolygonPrismReflect(*serializeContext);
+        }
 
         // reflect all registered classes
-        EBUS_EVENT(ComponentDescriptorBus, Reflect, m_serializeContext);
+        EBUS_EVENT(ComponentDescriptorBus, Reflect, context);
     }
 
 } // namespace AZ

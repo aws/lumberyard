@@ -86,6 +86,8 @@ struct MyCodegenStruct
         , m_data2(0)
     {}
 
+    virtual ~MyCodegenStruct() = default;
+
     bool IsShowData2()
     {
         return m_data1 == 4 ? true : false;

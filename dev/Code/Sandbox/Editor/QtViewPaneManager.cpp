@@ -36,6 +36,7 @@
 #include "DockWidgetUtils.h"
 
 #include <AzAssetBrowser/AzAssetBrowserWindow.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzQtComponents/Utilities/AutoSettingsGroup.h>
 
 struct ViewLayoutState
@@ -389,8 +390,20 @@ static bool lessThan(const QtViewPane& v1, const QtViewPane& v2)
     }
 }
 
-void QtViewPaneManager::RegisterPane(const QString& name, const QString& category, ViewPaneFactory factory, const QtViewOptions& options)
+void QtViewPaneManager::RegisterPane(const QString& name, const QString& category, ViewPaneFactory factory, const AzToolsFramework::ViewPaneOptions& options)
 {
+    // Don't register legacy view panes unless legacy support is enabled
+    if (options.isLegacy && !m_enableLegacyCryEntities)
+    {
+        return;
+    }
+    // Don't register new view panes that are meant to replace legacy panes
+    // if we are currently in legacy mode
+    else if (options.isLegacyReplacement && m_enableLegacyCryEntities)
+    {
+        return;
+    }
+
     QtViewPane view = { NextAvailableId(), name, category, factory, nullptr, options };
 
     // Sorted insert
@@ -407,7 +420,10 @@ void QtViewPaneManager::UnregisterPane(const QString& name)
 
     if (it != m_registeredPanes.end())
     {
-        const QtViewPane& pane = *it;
+        QtViewPane& pane = *it;
+
+        ClosePane(&pane);
+
         m_knownIdsSet.removeOne(pane.m_id);
         m_registeredPanes.erase(it);
         emit registeredPanesChanged();
@@ -419,7 +435,7 @@ QtViewPaneManager* QtViewPaneManager::instance()
     return s_instance();
 }
 
-void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking)
+void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking, bool enableLegacyCryEntities)
 {
     Q_ASSERT(mainWindow && !m_mainWindow && settings && !m_settings);
     m_mainWindow = mainWindow;
@@ -429,6 +445,7 @@ void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settin
     {
         m_advancedDockManager = new FancyDocking(mainWindow);
     }
+    m_enableLegacyCryEntities = enableLegacyCryEntities;
 
     m_defaultMainWindowState = mainWindow->saveState();
     m_loadedMainWindowState = lastMainWindowState;
@@ -557,8 +574,17 @@ bool QtViewPaneManager::ClosePane(const QString& name, QtViewPane::CloseModes cl
 {
     if (QtViewPane* p = GetPane(name))
     {
-        p->Close(closeModes | QtViewPane::CloseMode::Force);
-        return true;
+        return ClosePane(p, closeModes);
+    }
+
+    return false;
+}
+
+bool QtViewPaneManager::ClosePane(QtViewPane* pane, QtViewPane::CloseModes closeModes)
+{
+    if (pane)
+    {
+        return pane->Close(closeModes | QtViewPane::CloseMode::Force);
     }
 
     return false;
@@ -718,9 +744,13 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         state.viewPanes.push_back(LyViewPane::EntityOutliner);
         state.viewPanes.push_back(LyViewPane::EntityInspector);
         state.viewPanes.push_back(LyViewPane::AssetBrowser);
-
         state.viewPanes.push_back(LyViewPane::Console);
-        state.viewPanes.push_back(LyViewPane::LegacyRollupBar);
+
+        // Only include the rollupbar in our default layout if legacy mode is enabled
+        if (m_enableLegacyCryEntities)
+        {
+            state.viewPanes.push_back(LyViewPane::LegacyRollupBar);
+        }
 
         state.mainWindowState = m_defaultMainWindowState;
 
@@ -744,8 +774,12 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
     const QtViewPane* entityOutlinerViewPane = OpenPane(LyViewPane::EntityOutliner, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* assetBrowserViewPane = OpenPane(LyViewPane::AssetBrowser, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* entityInspectorViewPane = OpenPane(LyViewPane::EntityInspector, QtViewPane::OpenMode::UseDefaultState);
-    const QtViewPane* rollupBarViewPane = OpenPane(LyViewPane::LegacyRollupBar, QtViewPane::OpenMode::UseDefaultState);
     const QtViewPane* consoleViewPane = OpenPane(LyViewPane::Console, QtViewPane::OpenMode::UseDefaultState);
+    const QtViewPane* rollupBarViewPane = nullptr;
+    if (m_enableLegacyCryEntities)
+    {
+        rollupBarViewPane = OpenPane(LyViewPane::LegacyRollupBar, QtViewPane::OpenMode::UseDefaultState);
+    }
 
     // This class does all kinds of behind the scenes magic to make docking / restore work, especially with groups
     // so instead of doing our special default layout attach / docking right now, we want to make it happen
@@ -793,45 +827,46 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
             }
         }
 
-        m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, rollupBarViewPane->m_dockWidget);
-        rollupBarViewPane->m_dockWidget->setFloating(false);
+		if (m_enableLegacyCryEntities)
+		{
+        	m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, rollupBarViewPane->m_dockWidget);
+        	rollupBarViewPane->m_dockWidget->setFloating(false);
+		}
 
         if (entityInspectorViewPane)
         {
-            // Only need to add the entity inspector with the old docking, since its about
-            // to be tabbed anyway
-            if (!m_useNewDocking)
-            {
-                m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, entityInspectorViewPane->m_dockWidget);
-            }
+            m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, entityInspectorViewPane->m_dockWidget);
             entityInspectorViewPane->m_dockWidget->setFloating(false);
 
-            if (m_useNewDocking)
-            {
-                // Tab the entity inspector with the rollupbar so that when they are
-                // tabbed they will be given the rollupbar's default width which
-                // is more appropriate, and move the entity inspector to be the
-                // first tab on the left and active
-                AzQtComponents::DockTabWidget* tabWidget = m_advancedDockManager->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget, m_mainWindow);
-                if (tabWidget)
-                {
-                    tabWidget->moveTab(1, 0);
-                    tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
+			if (m_enableLegacyCryEntities)
+       		{
+            	if (m_useNewDocking)
+            	{
+                	// Tab the entity inspector with the rollupbar so that when they are
+                	// tabbed they will be given the rollupbar's default width which
+                	// is more appropriate, and move the entity inspector to be the
+                	// first tab on the left and active
+                	AzQtComponents::DockTabWidget* tabWidget = m_advancedDockManager->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget, m_mainWindow);
+                	if (tabWidget)
+                	{
+                    	tabWidget->moveTab(1, 0);
+                    	tabWidget->setCurrentWidget(entityInspectorViewPane->m_dockWidget);
 
-                    // Resize our tabbed entity inspector and rollup bar dock widget
-                    // so that it takes up an appropriate amount of space (with the
-                    // minimum sizes removed, it was being shrunk too small by default)
-                    static const float tabWidgetWidthPercentage = 0.2f;
-                    QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
-                    int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
-                    m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
-                }
-            }
-            else
-            {
-                m_mainWindow->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget);
-            }
-        }
+                        // Resize our tabbed entity inspector and rollup bar dock widget
+                        // so that it takes up an appropriate amount of space (with the
+                        // minimum sizes removed, it was being shrunk too small by default)
+                        static const float tabWidgetWidthPercentage = 0.2f;
+                        QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
+                        int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
+                        m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
+                	}
+            	}
+            	else
+            	{
+                	m_mainWindow->tabifyDockWidget(rollupBarViewPane->m_dockWidget, entityInspectorViewPane->m_dockWidget);
+            	}
+        	}
+		}
 
         m_mainWindow->addDockWidget(Qt::BottomDockWidgetArea, consoleViewPane->m_dockWidget);
         consoleViewPane->m_dockWidget->setFloating(false);
@@ -889,7 +924,6 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
     }
 
     layoutName = layoutName.trimmed();
-    const bool isNew = !HasLayout(layoutName);
 
     ViewLayoutState state;
     foreach(const QtViewPane &pane, m_registeredPanes)
@@ -912,6 +946,13 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
         state.mainWindowState = m_mainWindow->saveState();
     }
 
+    SaveStateToLayout(state, layoutName);
+}
+
+void QtViewPaneManager::SaveStateToLayout(const ViewLayoutState& state, const QString& layoutName)
+{
+    const bool isNew = !HasLayout(layoutName);
+
     {
         AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
         m_settings->setValue(layoutName, QVariant::fromValue<ViewLayoutState>(state));
@@ -924,7 +965,6 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
         emit savedLayoutsChanged();
     }
 }
-
 
 void QtViewPaneManager::SerializeLayout(XmlNodeRef& parentNode) const
 {
@@ -1014,14 +1054,52 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
         return false;
     }
 
-    AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
-
-    if (!m_settings->contains(layoutName))
+    ViewLayoutState state;
     {
-        return false;
+        AzQtComponents::AutoSettingsGroup settingsGroupGuard(m_settings, m_useNewDocking ? GetFancyViewPaneStateGroupName() : GetViewPaneStateGroupName());
+
+        if (!m_settings->contains(layoutName))
+        {
+            return false;
+        }
+
+        state = m_settings->value(layoutName).value<ViewLayoutState>();
     }
 
-    ViewLayoutState state = m_settings->value(layoutName).value<ViewLayoutState>();
+    // If we have the legacy UI disabled and are restoring the last user layout,
+    // if it doesn't contain the Entity Inspector and Outliner then we need to
+    // save their previous layout for them and switch them to the new default
+    // layout because they won't be able to do much without them
+    static const QString userLegacyLayout = "User Legacy Layout";
+    if (!m_enableLegacyCryEntities && layoutName == s_lastLayoutName && !HasLayout(userLegacyLayout))
+    {
+        bool layoutHasEntityInspector = false;
+        bool layoutHasEntityOutliner = false;
+        for (const QString& paneName : state.viewPanes)
+        {
+            if (paneName == LyViewPane::EntityInspector)
+            {
+                layoutHasEntityInspector = true;
+            }
+            else if (paneName == LyViewPane::EntityOutliner)
+            {
+                layoutHasEntityOutliner = true;
+            }
+        }
+
+        if (!layoutHasEntityInspector || !layoutHasEntityOutliner)
+        {
+            SaveStateToLayout(state, userLegacyLayout);
+
+            QMessageBox box(AzToolsFramework::GetActiveWindow());
+            box.addButton(QMessageBox::Ok);
+            box.setWindowTitle(tr("Layout Saved"));
+            box.setText(tr("Your layout has been automatically updated for the new Component-Entity workflows. Your old layout has been saved as \"%1\" and can be restored from the View -> Layouts menu.").arg(userLegacyLayout));
+            box.exec();
+
+            return false;
+        }
+    }
 
     if (!ClosePanesWithRollback(state.viewPanes))
     {

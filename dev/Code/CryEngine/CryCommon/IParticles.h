@@ -373,6 +373,13 @@ struct IParticleEffect
     virtual int FindChild(IParticleEffect* pEffect) const = 0;
 
     // Summary:
+    //   A cheap patch function to reorder children effects for this particle effect.
+    //   the reordering could happen when drag/drop particle items in Particle Editor.
+    // Arguments:
+    //   children - An array of children with proper order
+    virtual void ReorderChildren(const std::vector<IParticleEffect*> & children) = 0;
+
+    // Summary:
     //   Remove effect from current parent, and set new parent
     // Arguments:
     //   pParent: New parent, may be 0

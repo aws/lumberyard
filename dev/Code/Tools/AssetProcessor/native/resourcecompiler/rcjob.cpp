@@ -208,6 +208,11 @@ namespace AssetProcessor
         return m_jobDetails.m_jobEntry.m_absolutePathToFile;
     }
 
+    const AZ::Uuid& RCJob::GetInputFileUuid() const
+    {
+        return m_jobDetails.m_jobEntry.m_sourceFileUUID;
+    }
+
     QString RCJob::GetInputFileRelativePath() const
     {
         return m_jobDetails.m_jobEntry.m_relativePathToFile;
@@ -244,6 +249,7 @@ namespace AssetProcessor
 
         processJobRequest.m_builderGuid = GetBuilderGuid();
         processJobRequest.m_sourceFile = GetInputFileRelativePath().toUtf8().data();
+        processJobRequest.m_sourceFileUUID = GetInputFileUuid();
         processJobRequest.m_watchFolder = GetWatchFolder().toUtf8().data();
         processJobRequest.m_fullPath = GetInputFileAbsolutePath().toUtf8().data();
         processJobRequest.m_jobId = GetJobEntry().m_jobRunKey;

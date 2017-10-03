@@ -14,6 +14,9 @@
 #include <platform_impl.h>
 
 #include "Input.h"
+#include "InputNode.h"
+#include "InputLibrary.h"
+#include "LyToAzInputNameConversions.h"
 
 #include <AzCore/Module/Module.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -42,13 +45,10 @@ namespace StartingPointInput
 
         static void Reflect(AZ::ReflectContext* context)
         {
-            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-
-#ifdef SCRIPTCANVAS
             Input::InputLibrary::Reflect(context);
-#endif
-
             Input::Input::Reflect(context);
+
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
                 serializeContext->ClassDeprecate("SingleEventToAction", "{2C93824D-D011-459C-B12B-9F4A6148730C}", &ClassConverters::BaseClassDeprecator);
@@ -64,14 +64,12 @@ namespace StartingPointInput
 
         void Init() override
         {
-#ifdef SCRIPTCANVAS
             AZ::EnvironmentVariable<ScriptCanvas::NodeRegistry> nodeRegistryVariable = AZ::Environment::FindVariable<ScriptCanvas::NodeRegistry>(ScriptCanvas::s_nodeRegistryName);
             if (nodeRegistryVariable)
             {
                 ScriptCanvas::NodeRegistry& nodeRegistry = nodeRegistryVariable.Get();
                 Input::InputLibrary::InitNodeRegistry(nodeRegistry);
             }
-#endif
         }
         void Activate() override { }
         void Deactivate() override { }
@@ -90,13 +88,14 @@ namespace StartingPointInput
                 StartingPointInputDummyComponent::CreateDescriptor(),
             });
 
-#ifdef SCRIPTCANVAS
             AZStd::vector<AZ::ComponentDescriptor*> componentDescriptors(Input::InputLibrary::GetComponentDescriptors());
             m_descriptors.insert(m_descriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
-#endif
         }
 
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override { return AZ::ComponentTypeList({ StartingPointInputDummyComponent::RTTI_Type() }); }
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override
+        { 
+            return AZ::ComponentTypeList({ StartingPointInputDummyComponent::RTTI_Type() }); 
+        }
     };
 }
 
@@ -120,6 +119,11 @@ namespace ClassConverters
             singleInputToEvent.GetChildData(AZ::Crc32("Event Value Multiplier"), eventValueMultiplier);
             float deadZone;
             singleInputToEvent.GetChildData(AZ::Crc32("Dead Zone"), deadZone);
+
+            // convert the device and input names in case this data wasn't upgraded before the
+            // converter from Input v1->v2 was added in Input::ConvertInputVersion1To2 (Input.cpp)
+            deviceType = Input::ConvertInputDeviceName(deviceType);
+            inputName = Input::ConvertInputEventName(inputName);
 
             // convert the class
             classElement.Convert(context, AZ::AzTypeInfo<Input::Input>::Uuid());

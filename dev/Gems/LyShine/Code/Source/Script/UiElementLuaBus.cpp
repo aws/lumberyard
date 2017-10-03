@@ -74,7 +74,7 @@ void UiElementLuaProxy::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->Class<UiElementLuaProxy>("UiElementLuaProxy")
-            ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             ->Method("BusConnect", &UiElementLuaProxy::BusConnect)
             ->Method("IsEnabled", &UiElementLuaProxy::IsEnabled)

@@ -20,10 +20,16 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
+
 #include <MathConversion.h>
 
 #include <LyShine/IDraw2d.h>
 
+using namespace AzFramework;
 using namespace LYGame;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -112,6 +118,9 @@ namespace
 }
 
 //////////////////////////////////////////////////////////////////////////////
+const AZ::Crc32 FlyCameraInputComponent::UnknownInputChannelId("unknown_input_channel_id");
+
+//////////////////////////////////////////////////////////////////////////////
 void FlyCameraInputComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
 {
     required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
@@ -185,11 +194,7 @@ void FlyCameraInputComponent::Init()
 //////////////////////////////////////////////////////////////////////////////
 void FlyCameraInputComponent::Activate()
 {
-    if (gEnv && gEnv->pInput)
-    {
-        gEnv->pInput->AddEventListener(this);
-    }
-
+    InputChannelEventListener::Connect();
     AZ::TickBus::Handler::BusConnect();
     LYGame::FlyCameraInputBus::Handler::BusConnect(GetEntityId());
 }
@@ -199,11 +204,7 @@ void FlyCameraInputComponent::Deactivate()
 {
     LYGame::FlyCameraInputBus::Handler::BusDisconnect();
     AZ::TickBus::Handler::BusDisconnect();
-
-    if (gEnv && gEnv->pInput)
-    {
-        gEnv->pInput->RemoveEventListener(this);
-    }
+    InputChannelEventListener::Disconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -239,35 +240,35 @@ void FlyCameraInputComponent::OnTick(float deltaTime, AZ::ScriptTimePoint /*time
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool FlyCameraInputComponent::OnInputEvent(const SInputEvent& inputEvent)
+bool FlyCameraInputComponent::OnInputChannelEventFiltered(const InputChannel& inputChannel)
 {
     if (!m_isEnabled)
     {
         return false;
     }
 
-    switch (inputEvent.deviceType)
+    const InputDeviceId& deviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+    if (deviceId == InputDeviceMouse::Id)
     {
-    case eIDT_Mouse:
-    {
-        OnMouseEvent(inputEvent);
+        OnMouseEvent(inputChannel);
     }
-    break;
-    case eIDT_Keyboard:
+    else if (deviceId == InputDeviceKeyboard::Id)
     {
-        OnKeyboardEvent(inputEvent);
+        OnKeyboardEvent(inputChannel);
     }
-    break;
-    case eIDT_TouchScreen:
+    else if (deviceId == InputDeviceTouch::Id)
     {
-        OnTouchEvent(inputEvent);
+        const InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<InputChannel::PositionData2D>();
+        if (positionData2D)
+        {
+            const Vec2 screenPosition(positionData2D->m_normalizedPosition.GetX() * gEnv->pRenderer->GetWidth(),
+                                      positionData2D->m_normalizedPosition.GetY() * gEnv->pRenderer->GetHeight());
+            OnTouchEvent(inputChannel, screenPosition);
+        }
     }
-    break;
-    case eIDT_Gamepad:
+    else if (AzFramework::InputDeviceGamepad::IsGamepad(deviceId)) // Any gamepad
     {
-        OnGamepadEvent(inputEvent);
-    }
-    break;
+        OnGamepadEvent(inputChannel);
     }
 
     return false;
@@ -286,204 +287,175 @@ bool FlyCameraInputComponent::GetIsEnabled()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnMouseEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnMouseEvent(const InputChannel& inputChannel)
 {
-    switch (inputEvent.keyId)
+    const InputChannelId& channelId = inputChannel.GetInputChannelId();
+    if (channelId == InputDeviceMouse::Movement::X)
     {
-    case eKI_MouseX:
-    {
-        m_rotation.x = Snap_s360(inputEvent.value * m_mouseSensitivity);
+        m_rotation.x = Snap_s360(inputChannel.GetValue() * m_mouseSensitivity);
     }
-    break;
-    case eKI_MouseY:
+    else if (channelId == InputDeviceMouse::Movement::Y)
     {
-        m_rotation.y = Snap_s360(inputEvent.value * m_mouseSensitivity);
-    }
-    break;
+        m_rotation.y = Snap_s360(inputChannel.GetValue() * m_mouseSensitivity);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnKeyboardEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnKeyboardEvent(const InputChannel& inputChannel)
 {
     if (gEnv && gEnv->pConsole && gEnv->pConsole->IsOpened())
     {
         return;
     }
 
-    const float value = (inputEvent.state == eIS_Pressed || inputEvent.state == eIS_Down) ? 1.0f : 0.0f;
-    switch (inputEvent.keyId)
+    const InputChannelId& channelId = inputChannel.GetInputChannelId();
+    if (channelId == InputDeviceKeyboard::Key::AlphanumericW)
     {
-    case eKI_W:
-    {
-        m_movement.y = value;
+        m_movement.y = inputChannel.GetValue();
     }
-    break;
-    case eKI_A:
+    else if (channelId == InputDeviceKeyboard::Key::AlphanumericA)
     {
-        m_movement.x = -value;
+        m_movement.x = -inputChannel.GetValue();
     }
-    break;
-    case eKI_S:
+    else if (channelId == InputDeviceKeyboard::Key::AlphanumericS)
     {
-        m_movement.y = -value;
+        m_movement.y = -inputChannel.GetValue();
     }
-    break;
-    case eKI_D:
+    else if (channelId == InputDeviceKeyboard::Key::AlphanumericD)
     {
-        m_movement.x = value;
-    }
-    break;
+        m_movement.x = inputChannel.GetValue();
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnGamepadEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnGamepadEvent(const InputChannel& inputChannel)
 {
-    switch (inputEvent.keyId)
+    const InputChannelId& channelId = inputChannel.GetInputChannelId();
+    if (channelId == InputDeviceGamepad::ThumbStickAxis1D::LX)
     {
-    case eKI_XI_ThumbLX:
-    case eKI_Orbis_StickLX:
-    {
-        m_movement.x = inputEvent.value;
+        m_movement.x = inputChannel.GetValue();
     }
-    break;
-    case eKI_XI_ThumbLY:
-    case eKI_Orbis_StickLY:
+    else if (channelId == InputDeviceGamepad::ThumbStickAxis1D::LY)
     {
-        m_movement.y = inputEvent.value;
+        m_movement.y = inputChannel.GetValue();
     }
-    break;
-    case eKI_XI_ThumbRX:
-    case eKI_Orbis_StickRX:
+    else if (channelId == InputDeviceGamepad::ThumbStickAxis1D::RX)
     {
-        m_rotation.x = inputEvent.value;
+        m_rotation.x = inputChannel.GetValue();
     }
-    break;
-    case eKI_XI_ThumbRY:
-    case eKI_Orbis_StickRY:
+    else if (channelId == InputDeviceGamepad::ThumbStickAxis1D::RY)
     {
-        m_rotation.y = inputEvent.value;
-    }
-    break;
+        m_rotation.y = inputChannel.GetValue();
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnTouchEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnTouchEvent(const InputChannel& inputChannel, const Vec2& screenPosition)
 {
-    if (inputEvent.state == eIS_Pressed)
+    if (inputChannel.IsStateBegan())
     {
         const float screenCentreX = static_cast<float>(gEnv->pRenderer->GetWidth()) * 0.5f;
-        if (inputEvent.screenPosition.x <= screenCentreX)
+        if (screenPosition.x <= screenCentreX)
         {
-            if (m_leftFingerId == eKI_Unknown)
+            if (m_leftFingerId == UnknownInputChannelId)
             {
                 // Initiate left thumb-stick (movement)
-                m_leftDownPosition = inputEvent.screenPosition;
-                m_leftFingerId = inputEvent.keyId;
-                DrawThumbstick(m_leftDownPosition, inputEvent.screenPosition, m_thumbstickTextureId);
+                m_leftDownPosition = screenPosition;
+                m_leftFingerId = inputChannel.GetInputChannelId().GetNameCrc32();
+                DrawThumbstick(m_leftDownPosition, screenPosition, m_thumbstickTextureId);
             }
         }
         else
         {
-            if (m_rightFingerId == eKI_Unknown)
+            if (m_rightFingerId == UnknownInputChannelId)
             {
                 // Initiate right thumb-stick (rotation)
-                m_rightDownPosition = inputEvent.screenPosition;
-                m_rightFingerId = inputEvent.keyId;
-                DrawThumbstick(m_rightDownPosition, inputEvent.screenPosition, m_thumbstickTextureId);
+                m_rightDownPosition = screenPosition;
+                m_rightFingerId = inputChannel.GetInputChannelId().GetNameCrc32();
+                DrawThumbstick(m_rightDownPosition, screenPosition, m_thumbstickTextureId);
             }
         }
     }
-    else if (inputEvent.keyId == m_leftFingerId)
+    else if (inputChannel.GetInputChannelId().GetNameCrc32() == m_leftFingerId)
     {
         // Update left thumb-stick (movement)
-        OnVirtualLeftThumbstickEvent(inputEvent);
+        OnVirtualLeftThumbstickEvent(inputChannel, screenPosition);
     }
-    else if (inputEvent.keyId == m_rightFingerId)
+    else if (inputChannel.GetInputChannelId().GetNameCrc32() == m_rightFingerId)
     {
         // Update right thumb-stick (rotation)
-        OnVirtualRightThumbstickEvent(inputEvent);
+        OnVirtualRightThumbstickEvent(inputChannel, screenPosition);
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnVirtualLeftThumbstickEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnVirtualLeftThumbstickEvent(const InputChannel& inputChannel, const Vec2& screenPosition)
 {
-    if (inputEvent.keyId != m_leftFingerId)
+    if (inputChannel.GetInputChannelId().GetNameCrc32() != m_leftFingerId)
     {
         return;
     }
 
-    switch (inputEvent.state)
+    switch (inputChannel.GetState())
     {
-    case eIS_Released:
-    {
-        // Stop movement
-        m_leftFingerId = eKI_Unknown;
-        m_movement = ZERO;
-    }
-    break;
+        case InputChannel::State::Ended:
+        {
+            // Stop movement
+            m_leftFingerId = UnknownInputChannelId;
+            m_movement = ZERO;
+        }
+        break;
 
-    case eIS_Down:
-    {
-        DrawThumbstick(m_leftDownPosition, inputEvent.screenPosition, m_thumbstickTextureId);
-    }
-    break;
+        case InputChannel::State::Updated:
+        {
+            // Calculate movement
+            const float discRadius = (float)gEnv->pRenderer->GetWidth() * m_virtualThumbstickRadiusAsPercentageOfScreenWidth;
+            const float distScalar = 1.0f / discRadius;
 
-    case eIS_Changed:
-    {
-        // Calculate movement
-        const float discRadius = (float)gEnv->pRenderer->GetWidth() * m_virtualThumbstickRadiusAsPercentageOfScreenWidth;
-        const float distScalar = 1.0f / discRadius;
+            Vec2 dist = screenPosition - m_leftDownPosition;
+            dist *= distScalar;
 
-        Vec2 dist = inputEvent.screenPosition - m_leftDownPosition;
-        dist *= distScalar;
+            m_movement.x = CLAMP(dist.x, -1.0f, 1.0f);
+            m_movement.y = CLAMP(-dist.y, -1.0f, 1.0f);
 
-        m_movement.x = CLAMP(dist.x, -1.0f, 1.0f);
-        m_movement.y = CLAMP(-dist.y, -1.0f, 1.0f);
-    }
-    break;
+            DrawThumbstick(m_leftDownPosition, screenPosition, m_thumbstickTextureId);
+        }
+        break;
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void FlyCameraInputComponent::OnVirtualRightThumbstickEvent(const SInputEvent& inputEvent)
+void FlyCameraInputComponent::OnVirtualRightThumbstickEvent(const InputChannel& inputChannel, const Vec2& screenPosition)
 {
-    if (inputEvent.keyId != m_rightFingerId)
+    if (inputChannel.GetInputChannelId().GetNameCrc32() != m_rightFingerId)
     {
         return;
     }
 
-    switch (inputEvent.state)
+    switch (inputChannel.GetState())
     {
-    case eIS_Released:
-    {
-        // Stop rotation
-        m_rightFingerId = eKI_Unknown;
-        m_rotation = ZERO;
-    }
-    break;
+        case InputChannel::State::Ended:
+        {
+            // Stop rotation
+            m_rightFingerId = UnknownInputChannelId;
+            m_rotation = ZERO;
+        }
+        break;
 
-    case eIS_Down:
-    {
-        DrawThumbstick(m_rightDownPosition, inputEvent.screenPosition, m_thumbstickTextureId);
-    }
-    break;
+        case InputChannel::State::Updated:
+        {
+            // Calculate rotation
+            const float discRadius = (float)gEnv->pRenderer->GetWidth() * m_virtualThumbstickRadiusAsPercentageOfScreenWidth;
+            const float distScalar = 1.0f / discRadius;
 
-    case eIS_Changed:
-    {
-        // Calculate rotation
-        const float discRadius = (float)gEnv->pRenderer->GetWidth() * m_virtualThumbstickRadiusAsPercentageOfScreenWidth;
-        const float distScalar = 1.0f / discRadius;
+            Vec2 dist = screenPosition - m_rightDownPosition;
+            dist *= distScalar;
 
-        Vec2 dist = inputEvent.screenPosition - m_rightDownPosition;
-        dist *= distScalar;
+            m_rotation.x = CLAMP(dist.x, -1.0f, 1.0f);
+            m_rotation.y = CLAMP(dist.y, -1.0f, 1.0f);
 
-        m_rotation.x = CLAMP(dist.x, -1.0f, 1.0f);
-        m_rotation.y = CLAMP(dist.y, -1.0f, 1.0f);
-    }
-    break;
+            DrawThumbstick(m_rightDownPosition, screenPosition, m_thumbstickTextureId);
+        }
+        break;
     }
 }

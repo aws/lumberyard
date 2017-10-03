@@ -22,6 +22,9 @@
 #include <StaticData/StaticDataBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Module/ModuleManager.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
@@ -34,9 +37,11 @@ namespace CloudCanvas
 {
     namespace StaticData
     {
+        AZ::EntityId StaticDataManager::m_moduleEntity;
 
         StaticDataManager::StaticDataManager()
         {
+
             AddExtensionType(CSV_TAG, StaticDataType::CSV);
         }
 
@@ -74,6 +79,10 @@ namespace CloudCanvas
 
         void StaticDataManager::Activate()
         {
+            if (azrtti_istypeof<AZ::ModuleEntity>(GetEntity()))
+            {
+                m_moduleEntity = GetEntityId();
+            }
             StaticDataRequestBus::Handler::BusConnect(m_entity->GetId());
             CloudCanvas::DynamicContent::DynamicContentUpdateBus::Handler::BusConnect();
         }
@@ -82,6 +91,10 @@ namespace CloudCanvas
         {
             StaticDataRequestBus::Handler::BusDisconnect();
             CloudCanvas::DynamicContent::DynamicContentUpdateBus::Handler::BusDisconnect();
+            if (azrtti_istypeof<AZ::ModuleEntity>(GetEntity()))
+            {
+                m_moduleEntity.SetInvalid();
+            }
         }
 
         void StaticDataManager::Reflect(AZ::ReflectContext* context)
@@ -117,6 +130,9 @@ namespace CloudCanvas
                 behaviorContext->EBus<StaticDataUpdateBus>("StaticDataUpdateBus")
                     ->Handler<BehaviorStaticDataUpdateNotificationBusHandler>()
                     ;
+
+                behaviorContext->Class<StaticDataManager>("StaticData")
+                    ->Property("ModuleEntity", BehaviorValueGetter(&StaticDataManager::m_moduleEntity), nullptr);
             }
         }
 

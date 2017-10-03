@@ -21,12 +21,6 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// TEMP: On almost all platforms, only one system can process raw input. So while CryInput now uses
-// AzFramework/Input internally by default, this define can be removed to switch back to the legacy
-// CryInput system. In a near future release we will assume it to be defined and remove it entirely
-#define AZ_FRAMEWORK_INPUT_ENABLED
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
     class InputDeviceGamepad;
@@ -100,8 +94,10 @@ namespace AzFramework
         void DestroyEnabledInputDevices();
 
     private:
-
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Disable copy constructor
         InputSystemComponent(const InputSystemComponent&) = delete;
+
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Input Device Variables
         AZStd::vector<AZStd::unique_ptr<InputDeviceGamepad>> m_gamepads;        //!< Game-pad devices
@@ -148,6 +144,10 @@ namespace AzFramework
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Default destructor
             virtual ~Implementation() = default;
+
+            ////////////////////////////////////////////////////////////////////////////////////////////
+            //! Called once each frame prior to InputDeviceRequests::TickInputDevice being broadcast
+            virtual void PreTickInputDevices() {}
 
         protected:
             ////////////////////////////////////////////////////////////////////////////////////////

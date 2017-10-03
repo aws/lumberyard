@@ -49,9 +49,9 @@ namespace AzToolsFramework
             services.push_back(AZ_CRC("EditorDisabledCompositionService", 0x277e3445));
         }
 
-        AZStd::vector<AZ::Component*> EditorDisabledCompositionComponent::GetDisabledComponents()
+        void EditorDisabledCompositionComponent::GetDisabledComponents(AZStd::vector<AZ::Component*>& components)
         {
-            return m_disabledComponents;
+            components.insert(components.end(), m_disabledComponents.begin(), m_disabledComponents.end());
         }
 
         void EditorDisabledCompositionComponent::AddDisabledComponent(AZ::Component* componentToAdd)

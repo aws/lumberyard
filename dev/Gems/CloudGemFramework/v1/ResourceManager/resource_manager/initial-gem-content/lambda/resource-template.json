@@ -1,0 +1,100 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    },
+
+    "Parameters": {
+
+        "CloudCanvasStack": {
+            "Type": "String",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Default": "ResourceGroup"
+        },
+
+        "DeploymentStackArn": {
+            "Type": "String",
+            "Description": "ARN of the deployment stack that owns this resource group stack."
+        },
+
+        "DeploymentName": {
+            "Type": "String",
+            "Description": "Name of the resource group's deployment."
+        },
+
+        "ResourceGroupName": {
+            "Type": "String",
+            "Description": "Name of the resource group."
+        },
+
+        "ProjectResourceHandler": {
+            "Type": "String",
+            "Description": "Service token of the custom resource handler."
+        },
+
+        "ConfigurationBucket": {
+            "Type": "String",
+            "Description": "Bucket that contains configuration data."
+        },
+
+        "ConfigurationKey": {
+            "Type": "String",
+            "Description": "Location in the configuration bucket of configuration data."
+        }
+    },
+
+    "Resources": {
+        
+        "LambdaConfiguration": {
+            "Type": "Custom::LambdaConfiguration",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" },
+                "FunctionName": "Lambda",
+                "Runtime": "python2.7",
+                "Settings": {
+                }
+            }
+        },
+
+        "Lambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Function called by the game to perform some action.",
+                "Handler": "main.handler",
+                "Role": { "Fn::GetAtt": [ "LambdaConfiguration", "Role" ] },
+                "Runtime": { "Fn::GetAtt": [ "LambdaConfiguration", "Runtime" ] },
+                "Code": {
+                    "S3Bucket": { "Fn::GetAtt": [ "LambdaConfiguration", "ConfigurationBucket" ] },
+                    "S3Key": { "Fn::GetAtt": [ "LambdaConfiguration", "ConfigurationKey" ] }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "lambda:InvokeFunction"
+                        }                        
+                    ]
+                }
+            }
+        },
+        
+        "AccessControl": {
+            "Type": "Custom::AccessControl",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" }
+            },
+            "DependsOn": [ "Lambda" ]
+        }
+
+    }
+
+}

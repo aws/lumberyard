@@ -25,9 +25,12 @@ namespace HttpRequestor
 
     Manager::Manager()
     {
+        AZStd::thread_desc desc;
+        desc.m_name = s_loggingName;
         m_runThread = true;
+        Aws::Http::InitHttp();
         auto function = AZStd::bind(&Manager::ThreadFunction, this);
-        m_thread = AZStd::thread(function);
+        m_thread = AZStd::thread(function, &desc);
     }
 
     Manager::~Manager()
@@ -38,6 +41,9 @@ namespace HttpRequestor
         {
             m_thread.join();
         }
+
+        m_thread.detach();
+        Aws::Http::CleanupHttp();
     }
 
     void Manager::AddRequest(Parameters && httpRequestParameters)

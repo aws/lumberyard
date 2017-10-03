@@ -71,7 +71,6 @@ def load_clang_common_settings(v):
         # Disabled warnings (please do not disable any others without first consulting ly-warnings)
         '-Wno-#pragma-messages',
         '-Wno-absolute-value',
-        '-Wno-deprecated-declarations',
         '-Wno-dynamic-class-memaccess',
         '-Wno-format-security',
         '-Wno-inconsistent-missing-override',

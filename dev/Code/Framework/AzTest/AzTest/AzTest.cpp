@@ -32,6 +32,8 @@ namespace AZ
             }
         }
 
+        std::vector<TestEnvironmentRegistry*> TestEnvironmentRegistry::s_envs;
+
         //! Filter out integration tests from the test run
         void excludeIntegTests()
         {
@@ -107,11 +109,13 @@ namespace AZ
 
                 // Grab the test symbol to call
                 std::string symbol = GetParameterValue(argc, argv, "--symbol", true);
+#if !defined(AZ_MONOLITHIC_BUILD)
                 if (symbol.empty())
                 {
                     platform.Printf("ERROR: Must provide --symbol to run tests inside libs!\n");
                     return false;
                 }
+#endif // AZ_MONOLITHIC_BUILD
 
                 // Get the lib information
                 if (ContainsParameter(argc, argv, "--libs"))
@@ -151,7 +155,6 @@ namespace AZ
                 {
                     // Only one lib has been given
                     std::string lib = GetParameterValue(argc, argv, "--lib", true);
-
                     m_returnCode = RunTestsInLib(platform, lib, symbol, argc, argv);
                     platform.Printf("Test result from '%s': %d\n", lib.c_str(), m_returnCode);
                 }
@@ -178,14 +181,39 @@ namespace AZ
             return result;
         }
 
-        int AzUnitTestMain::RunTestsInLib(AZ::Test::Platform& platform, const std::string& lib, const std::string& symbol, int& argc, char** argv)
+        int RunTestsInLib(AZ::Test::Platform& platform, const std::string& lib, const std::string& symbol, int& argc, char** argv)
         {
+#if defined(AZ_MONOLITHIC_BUILD)
+            ::testing::InitGoogleMock(&argc, argv);
+
+            std::string lib_upper(lib);
+            std::transform(lib_upper.begin(), lib_upper.end(), lib_upper.begin(), ::toupper);
+            for (auto env : AZ::Test::TestEnvironmentRegistry::s_envs)
+            {
+                if (env->m_module_name == lib_upper)
+                {
+                    AZ::Test::addTestEnvironments(env->m_envs);
+                    ::testing::GTEST_FLAG(module) = lib_upper;
+
+                    platform.Printf("Found library: %s\n", lib_upper.c_str());
+                }
+                else
+                {
+                    platform.Printf("Available library %s does not match %s.\n", env->m_module_name.c_str(), lib_upper.c_str());
+                }
+            }
+
+            AZ::Test::excludeIntegTests();
+            AZ::Test::printUnusedParametersWarning(argc, argv);
+
+            return RUN_ALL_TESTS();
+#else // AZ_MONOLITHIC_BUILD
             int result = 0;
             std::shared_ptr<AZ::Test::IModuleHandle> module = platform.GetModule(lib);
             if (module->IsValid())
             {
                 platform.Printf("OKAY Library loaded: %s\n", lib.c_str());
-                
+
                 auto fn = module->GetFunction(symbol);
                 if (fn->IsValid())
                 {
@@ -207,6 +235,7 @@ namespace AZ
                 result = LIB_NOT_FOUND;
             }
             return result;
+#endif // AZ_MONOLITHIC_BUILD
         }
     } // Test
 } // AZ

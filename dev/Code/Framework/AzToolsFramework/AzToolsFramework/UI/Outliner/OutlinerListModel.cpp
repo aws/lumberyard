@@ -37,6 +37,7 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
@@ -47,832 +48,154 @@
 #include <AzToolsFramework/ToolsComponents/SelectionComponent.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 
-#define VISIBILITY_CHECK_BOX_STYLE_SHEET_PATH "Code/Framework/AzToolsFramework/AzToolsFramework/UI/Outliner/Resources/VisibilityCheckBox.qss"
-#define LOCK_CHECK_BOX_STYLE_SHEET_PATH "Code/Framework/AzToolsFramework/AzToolsFramework/UI/Outliner/Resources/LockCheckBox.qss"
-
 namespace AzToolsFramework
 {
-    // Cached entity data for each entry in Outliner
-    class OutlinerCache
-        : private AZ::EntityBus::Handler
-        , private EntitySelectionEvents::Bus::Handler
-        , private OutlinerCacheRequestBus::Handler
-        , private EditorLockComponentNotificationBus::Handler
-        , private EditorVisibilityNotificationBus::Handler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(OutlinerCache, AZ::SystemAllocator, 0);
-
-        OutlinerCache(AZ::EntityId, OutlinerListModel* model, OutlinerCache* parent = nullptr);
-        ~OutlinerCache();
-
-        OutlinerCache(const OutlinerCache&) = delete;
-        OutlinerCache& operator=(const OutlinerCache&) = delete;
-
-        bool IsValidCache() const { return m_entityId.IsValid(); }
-
-        /// Filter Visibility Methods
-        bool GetVisible() const { return m_isVisible; }
-        void SetVisible(bool visible);
-        //! A recursive call that evaluates the visibility all of its children, based on a filter.
-        //! Visible children will ensure that their parents are also visible, so that a QTreeView will show them.
-        void CalculateVisibility(const FilterByCategoryMap& visibilityFilter, FilterOperatorType filterOperator);
-
-        ////////////////////////////////////////////////////////////////////////
-        // EditorLockComponentNotificationBus::Handler
-        // Outliner ignores entities not owned by the editor context
-        ////////////////////////////////////////////////////////////////////////
-        void OnEntityLockChanged(bool /*locked*/);
-
-        ////////////////////////////////////////////////////////////////////////
-        // EditorVisibilityNotificationBus::Handler
-        // Outliner ignores entities not owned by the editor context
-        ////////////////////////////////////////////////////////////////////////
-        void OnEntityVisibilityFlagChanged(bool /*visibility*/);
-
-        ////////////////////////////////////////////////////////////////////////
-        // AZ::EntityBus
-        // Connect for each entity shown in the Outliner
-        ////////////////////////////////////////////////////////////////////////
-        void OnEntityNameChanged(const AZStd::string& name) override;
-
-        /// Hierarchy Methods
-        const OutlinerCache* GetChild(int row) const;
-        int GetChildCount() const;
-        int GetColumnCount() const { return 1; }
-        AZ::EntityId GetData() const { return m_entityId; }
-        int GetRow() const { return m_row; }
-        bool IsSelected() const { return m_selected; }
-
-        void SetParent(OutlinerCache* p);
-        const OutlinerCache* GetParent() const { return m_parentItem; }
-        OutlinerCache* GetParent() { return m_parentItem; }
-
-        void AppendChild(OutlinerCache* child);
-        void AdoptChildren(OutlinerCache* previousParent); //!< take children from previousParent
-        void RemoveChild(OutlinerCache* child);
-        void RenumberChildren();
-
-        /// Tree Node Methods
-        // Expansion state of the node in the hierarchy.
-        // Used when an object is deleted to store it's expansion state for use if the object is restored.
-        bool IsExpanded() const { return m_isExpanded; }
-
-        // Expansion State Tracking
-        void SetExpanded(bool expansionState);
-        void OnParentExpanded();
-        void OnParentCollapsed();
-
-        // Selection State Tracking
-        void OnDescendantSelected();
-        void OnDescendantDeselected();
-        bool HasSelectedChildren() const;
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzToolsFramework::EntitySelectionEvents::Handler
-        // Used to handle selection changes on a per-entity basis.
-        //////////////////////////////////////////////////////////////////////////
-        void OnSelected() override;                                 // Called when the entity associated with this cache is selected
-        void OnDeselected() override;                               // Called when the entity associated with this cache is deselected
-
-        // Resend the current selection information to the outliner
-        // This should be used when an object is moved around in the hierarchy and it's model index information changes.
-        void ResendSelectionInformation();
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzToolsFramework::OutlinerCacheRequestBus::Handler
-        // Used to handle requests made by the tree view.
-        //////////////////////////////////////////////////////////////////////////
-        void SelectOutlinerCache(QModelIndex index) override;
-        void DeselectOutlinerCache(QModelIndex index) override;
-
-        /// Entity Methods
-        const QString& GetEntityName() const { return m_entityName; }
-
-        /// Slice Information
-        void SetSliceInformation(QString name);
-        void ClearSliceInformation();
-        void SetAsSliceRoot(bool isSliceRoot) { m_isSliceRoot = isSliceRoot; }
-        bool IsSliceRoot() const { return m_isSliceRoot; }
-        bool IsSliceEntity() const { return m_isSliceEntity; }
-        const QString& GetSliceAssetName() const { return m_sliceAssetName; }
-
-    private:
-        void ResetEntityName();
-
-        bool m_isSliceRoot;
-        bool m_isSliceEntity;
-
-        AZ::EntityId m_entityId;
-        AZStd::vector<OutlinerCache*> m_children;
-        OutlinerCache* m_parentItem;
-        int m_row;
-
-        // Status Flags:
-        // Set to false if the item is hidden by a filter
-        bool m_isVisible;
-        // Set to true  if the item is selected
-        bool m_selected;
-        // Set to true if a parent in the hierarchy is collapsed
-        bool m_hiddenByHierarchy;
-        // A counter of the number of children of this item that are selected
-        unsigned int m_selectedDescendantCount;
-        // True if the item has children and is currently expanded in the tree to show them
-        bool m_isExpanded;
-
-        OutlinerListModel* m_model;
-
-        // cached entity data
-        QString m_entityName;
-        QString m_sliceAssetName;
-        QString m_filterString;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////
-    // OutlinerCache
-    ////////////////////////////////////////////////////////////////////////////
-
-    OutlinerCache::OutlinerCache(AZ::EntityId data, OutlinerListModel* model, OutlinerCache* parent)
-        : m_entityId(data)
-        , m_row(0)
-        , m_selectedDescendantCount(0)
-        , m_parentItem(parent)
-        , m_isVisible(true)
-        , m_selected(false)
-        , m_hiddenByHierarchy(false)
-        , m_isExpanded(true)            // When a new cache entry is created, it will be assigned children and then told to collapse. Initializing this to true guarantees that information will be propgated to children.
-        , m_isSliceEntity(false)
-        , m_isSliceRoot(false)
-        , m_model(model)
-    {
-        ResetEntityName();
-        OutlinerCacheRequestBus::Handler::BusConnect();
-
-        if (IsValidCache())
-        {
-            // Connect to various ebus interfaces to listen for information about selection and data changes
-            EditorLockComponentNotificationBus::Handler::BusConnect(m_entityId);
-            EntitySelectionEvents::Bus::Handler::BusConnect(m_entityId);
-            EditorVisibilityNotificationBus::Handler::BusConnect(m_entityId);
-            AZ::EntityBus::Handler::BusConnect(m_entityId);
-        }
-    }
-
-    OutlinerCache::~OutlinerCache()
-    {
-        OutlinerCacheRequestBus::Handler::BusDisconnect();
-
-        if (IsValidCache())
-        {
-            EntitySelectionEvents::Bus::Handler::BusDisconnect();
-            EditorLockComponentNotificationBus::Handler::BusDisconnect();
-            EditorVisibilityNotificationBus::Handler::BusDisconnect();
-            AZ::EntityBus::Handler::BusDisconnect(m_entityId);
-        }
-
-        for (size_t i = 0; i < m_children.size(); i++)
-        {
-            if (m_children[i] != nullptr)
-            {
-                delete m_children[i];
-            }
-        }
-    }
-
-    void OutlinerCache::SetSliceInformation(QString name)
-    {
-        m_sliceAssetName = name;
-        m_isSliceEntity = true;
-    }
-
-    void OutlinerCache::ClearSliceInformation()
-    {
-        m_sliceAssetName = "";
-        m_isSliceRoot = false;
-        m_isSliceEntity = false;
-    }
-
-    void OutlinerCache::SetVisible(bool visible)
-    {
-        if (m_entityId.IsValid())
-        {
-            if (m_isVisible != visible)
-            {
-                m_isVisible = visible;
-            }
-        }
-    }
-
-    void OutlinerCache::CalculateVisibility(const AzToolsFramework::FilterByCategoryMap& visibilityFilter, AzToolsFramework::FilterOperatorType filterOperator)
-    {
-        //  Set the visibility as a breadth-first search of the tree.
-        //  This will allow us to also set our parents visible if we are visible
-        //  without a later search overriding us.
-        bool matchesFilter = true;
-        OutlinerCache* visiblityParent = GetParent();
-        //  Only one OutlinerCache has no parent: the root. It must remain visible, no matter the filter.
-        //  The root item does not represent an actual entity, so this is okay.
-        if (visiblityParent)
-        {
-            //  It may look like more work to check these for every item, but the checks are needed anyway to keep from
-            //  attempting to use valid but empty filters.
-            bool validNameFilter = visibilityFilter.count("name") > 0 && !visibilityFilter.at("name").isEmpty();
-
-            //  "And" checks need to start out True so that one False will fail.
-            //  "Or" checks must start False so that any True will pass them.
-            //  But only start false if there are valid filters to check against, otherwise you will never pass.
-            if ((validNameFilter) && filterOperator == FilterOperatorType::Or)
-            {
-                matchesFilter = false;
-            }
-
-            if (validNameFilter)
-            {
-                QString assetName = GetEntityName();
-                bool matchesName = assetName.contains(visibilityFilter.at("name"));
-
-                if (filterOperator == FilterOperatorType::And)
-                {
-                    matchesFilter &= matchesName;
-                }
-                else
-                {
-                    matchesFilter |= matchesName;
-                }
-            }
-        }
-        SetVisible(matchesFilter);
-
-        if (matchesFilter && visiblityParent)
-        {
-            //  Set all parents to visible.
-            bool isVisible = visiblityParent->GetVisible();
-            while (!isVisible)    //  Checking isVisible gives us a short circuit for already visible items.
-            {
-                visiblityParent->SetVisible(true);
-                visiblityParent = visiblityParent->GetParent();
-
-                isVisible = visiblityParent ? visiblityParent->GetVisible() : true;
-            }
-        }
-
-        //  Recurse through the children
-        for (OutlinerCache* child : m_children)
-        {
-            child->CalculateVisibility(visibilityFilter, filterOperator);
-        }
-    }
-
-    void OutlinerCache::ResetEntityName()
-    {
-        if (m_entityId.IsValid())
-        {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
-            AZ_Assert(entity, "Outliner entry cannot locate its entity");
-
-            if (entity)
-            {
-                m_entityName = entity->GetName().c_str();
-            }
-        }
-        else
-        {
-            // For Debug Purposes
-            m_entityName = "Root";
-        }
-    }
-
-    void OutlinerCache::OnEntityLockChanged(bool /*locked*/)
-    {
-        if (IsValidCache())
-        {
-            OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-        }
-    }
-
-    void OutlinerCache::OnEntityVisibilityFlagChanged(bool /*visibility*/)
-    {
-        if (IsValidCache())
-        {
-            OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-        }
-    }
-
-    void OutlinerCache::OnEntityNameChanged(const AZStd::string& newName)
-    {
-        if (IsValidCache())
-        {
-            m_entityName = newName.c_str();
-            OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-        }
-    }
-
-    void OutlinerCache::AppendChild(OutlinerCache* child)
-    {
-        child->m_row = aznumeric_caster(m_children.size());
-        m_children.push_back(child);
-        child->SetParent(this);
-
-        // The model index for this item is changing.
-        // Make sure the outliner knows to maintain selection on this entity.
-        ResendSelectionInformation();
-
-        if (IsValidCache())
-        {
-            // Fix Child Selected values
-            if (child->IsSelected())
-            {
-                OnDescendantSelected();
-            }
-            for (unsigned i = 0; i < child->m_selectedDescendantCount; ++i)
-            {
-                OnDescendantSelected();
-            }
-
-            // If we've added our very first child, we need to invalidate.
-            if (m_children.size() == 1)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::AdoptChildren(OutlinerCache* previousParent)
-    {
-        size_t previousChildCount = m_children.size();
-
-        for (OutlinerCache* child : previousParent->m_children)
-        {
-            AppendChild(child);
-        }
-        previousParent->m_children.clear();
-
-        if (IsValidCache())
-        {
-            if (previousChildCount == 0)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::RemoveChild(OutlinerCache* child)
-    {
-        auto childIt = AZStd::find(m_children.begin(), m_children.end(), child);
-        if (childIt != m_children.end())
-        {
-            // erase child entry and renumber the 'm_row' of all subsequent children.
-            m_children.erase(childIt);
-            RenumberChildren();
-        }
-
-        child->SetParent(nullptr);
-        child->m_row = 0;
-
-        if (IsValidCache())
-        {
-            // Fix Child Selected values
-            if (child->IsSelected())
-            {
-                OnDescendantDeselected();
-            }
-            for (unsigned i = 0; i < child->m_selectedDescendantCount; ++i)
-            {
-                OnDescendantDeselected();
-            }
-
-            // Invalidation occurs when the number of children is reduced to zero.
-            if (m_children.empty())
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::RenumberChildren()
-    {
-        for (int i = 0; i < m_children.size(); ++i)
-        {
-            OutlinerCache* childCache = m_children[i];
-            childCache->m_row = i;
-        }
-    }
-
-    const OutlinerCache* OutlinerCache::GetChild(int row) const
-    {
-        if (row < 0 || row >= static_cast<int>(m_children.size()))
-        {
-            return nullptr;
-        }
-        return m_children[row];
-    }
-
-    int OutlinerCache::GetChildCount() const
-    {
-        return (int)m_children.size();
-    }
-
-    void OutlinerCache::SetParent(OutlinerCache* parent)
-    {
-        m_parentItem = parent;
-        if (parent)
-        {
-            if (m_parentItem->IsExpanded())
-            {
-                OnParentExpanded();
-            }
-            else
-            {
-                OnParentCollapsed();
-            }
-        }
-    }
-
-    void OutlinerCache::SetExpanded(bool expansionState)
-    {
-        if (m_isExpanded != expansionState)
-        {
-            m_isExpanded = expansionState;
-
-            for (OutlinerCache* child : m_children)
-            {
-                if (m_isExpanded)
-                {
-                    child->OnParentExpanded();
-                }
-                else
-                {
-                    child->OnParentCollapsed();
-                }
-            }
-        }
-    }
-
-    void OutlinerCache::OnParentExpanded()
-    {
-        if (m_entityId.IsValid())
-        {
-            m_hiddenByHierarchy = false;
-
-            // Only mark children if expanded if this node is expanded as well.
-            if (m_isExpanded)
-            {
-                for (OutlinerCache* child : m_children)
-                {
-                    child->OnParentExpanded();
-                }
-            }
-        }
-    }
-
-    void OutlinerCache::OnParentCollapsed()
-    {
-        if (m_entityId.IsValid())
-        {
-            m_hiddenByHierarchy = true;
-
-            for (OutlinerCache* child : m_children)
-            {
-                child->OnParentCollapsed();
-            }
-        }
-    }
-
-    void OutlinerCache::OnSelected()
-    {
-        if (m_entityId.IsValid())
-        {
-            if (m_selected)
-            {
-                return;
-            }
-
-            m_selected = true;
-            OutlinerCache* parent = GetParent();
-            if (parent->IsValidCache())
-            {
-                parent->OnDescendantSelected();
-            }
-
-            OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheSelectionRequest, m_entityId);
-            if (!m_hiddenByHierarchy && m_isVisible)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::OnDeselected()
-    {
-        if (m_entityId.IsValid())
-        {
-            if (!m_selected)
-            {
-                return;
-            }
-
-            m_selected = false;
-            OutlinerCache* parent = GetParent();
-            // The root is a special case.
-            if (parent->IsValidCache())
-            {
-                parent->OnDescendantDeselected();
-            }
-
-            OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheDeselectionRequest, m_entityId);
-            if (!m_hiddenByHierarchy && m_isVisible)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::ResendSelectionInformation()
-    {
-        if (m_entityId.IsValid())
-        {
-            // We only have to resend information for objects that are selected.
-            if (m_selected)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheSelectionRequest, m_entityId);
-
-                if (!m_hiddenByHierarchy && m_isVisible)
-                {
-                    OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-                }
-            }
-        }
-    }
-
-    void OutlinerCache::OnDescendantSelected()
-    {
-        if (m_entityId.IsValid())
-        {
-            ++m_selectedDescendantCount;
-
-            OutlinerCache* parent = GetParent();
-            // The root is a special case and is the only entry in the cache that has no parent.
-            // It isn't drawn and has no entity associated with it so we don't manage it's data.
-            if (parent->IsValidCache())
-            {
-                parent->OnDescendantSelected();
-            }
-
-            if (!m_isExpanded && m_selectedDescendantCount == 1)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    void OutlinerCache::OnDescendantDeselected()
-    {
-        if (m_entityId.IsValid())
-        {
-            AZ_Assert(m_selectedDescendantCount, "Trying to decrement a child selection count that's already zero on entity %s", m_entityName.toStdString().c_str());
-
-            --m_selectedDescendantCount;
-
-            OutlinerCache* parent = GetParent();
-            // The root is a special case.
-            if (parent->IsValidCache())
-            {
-                parent->OnDescendantDeselected();
-            }
-
-            if (!m_isExpanded && m_selectedDescendantCount == 0)
-            {
-                OutlinerCacheNotificationBus::Broadcast(&OutlinerCacheNotifications::EntityCacheChanged, m_entityId);
-            }
-        }
-    }
-
-    bool OutlinerCache::HasSelectedChildren() const
-    {
-        return m_selectedDescendantCount > 0;
-    }
-
-    void OutlinerCache::SelectOutlinerCache(QModelIndex index)
-    {
-        if (m_entityId.IsValid())
-        {
-            // Check to see if this is intended for us...
-            if (this == static_cast<OutlinerCache*>(index.internalPointer()))
-            {
-                // Check to see if the item is in a state to be selected
-                if (!m_selected)
-                {
-                    ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequests::MarkEntitySelected, m_entityId);
-                }
-            }
-        }
-    }
-
-    void OutlinerCache::DeselectOutlinerCache(QModelIndex index)
-    {
-        if (m_entityId.IsValid())
-        {
-            // Check to see if this is intended for us...
-            if (this == static_cast<OutlinerCache*>(index.internalPointer()))
-            {
-                // Check to see if the item is in a state to be deselected
-                if (m_selected)
-                {
-                    ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequests::MarkEntityDeselected, m_entityId);
-                }
-            }
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // OutlinerSliceHandle
-    // The Outliner Slice Handle is currently only used to store results
-    // when finding all the roots of a slice. It stores all the information
-    // needed when injecting an artificial entry into the outliner that
-    // behaves as a slice handle.
-    ////////////////////////////////////////////////////////////////////////////
-
-    OutlinerSliceHandle::OutlinerSliceHandle(const AZStd::string& name, const AZ::SliceComponent::SliceInstanceAddress& instanceId, SliceHandleAddress handleId)
-        : m_name(name)
-        , m_instance(instanceId)
-        , m_handleId(handleId)
-    {
-        m_parentEntity.SetInvalid();
-    }
-
-    OutlinerSliceHandle::OutlinerSliceHandle(OutlinerSliceHandle&& rhs)
-        : m_name(AZStd::move(rhs.m_name))
-        , m_instance(rhs.m_instance)
-        , m_handleId(rhs.m_handleId)
-        , m_parentEntity(rhs.m_parentEntity)
-        , m_rootEntities(AZStd::move(rhs.m_rootEntities))
-    {
-        rhs.m_instance = AZStd::make_pair(nullptr, nullptr);
-        m_handleId = SliceHandleAddress::CreateNull();
-        rhs.m_parentEntity.SetInvalid();
-        rhs.m_rootEntities.clear();
-    }
-
-    OutlinerSliceHandle& OutlinerSliceHandle::operator=(OutlinerSliceHandle&& rhs)
-    {
-        m_name = AZStd::move(rhs.m_name);
-        m_instance = rhs.m_instance;
-        m_handleId = rhs.m_handleId;
-        m_parentEntity = rhs.m_parentEntity;
-        m_rootEntities = AZStd::move(rhs.m_rootEntities);
-
-        rhs.m_instance = AZStd::make_pair(nullptr, nullptr);
-        m_handleId = SliceHandleAddress::CreateNull();
-        rhs.m_parentEntity.SetInvalid();
-        rhs.m_rootEntities.clear();
-
-        return *this;
-    }
-
-    const AZStd::string& OutlinerSliceHandle::GetName() const
-    {
-        return m_name;
-    }
-
-    const OutlinerSliceHandle::SliceHandleAddress& OutlinerSliceHandle::GetId() const
-    {
-        return m_handleId;
-    }
-
-    const AZ::SliceComponent::SliceInstanceId& OutlinerSliceHandle::GetInstanceId() const
-    {
-        return m_instance.second->GetId();
-    }
-
-
-    const EntityIdList& OutlinerSliceHandle::GetRootEntities() const
-    {
-        return m_rootEntities;
-    }
-
-    // Functions for building the slice handle information
-    void OutlinerSliceHandle::AddRootEntity(const AZ::EntityId& rootId)
-    {
-        AZ_Assert(AZStd::find(m_rootEntities.begin(), m_rootEntities.end(), rootId) == m_rootEntities.end(), "Attempting to add a root entity to a slice handle that is already registered as a root entity");
-        m_rootEntities.push_back(rootId);
-    }
-
-    void OutlinerSliceHandle::SetParentEntity(const AZ::EntityId& parentId)
-    {
-        m_parentEntity = parentId;
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     // OutlinerListModel
     ////////////////////////////////////////////////////////////////////////////
 
     OutlinerListModel::OutlinerListModel(QObject* parent)
         : QAbstractItemModel(parent)
-        , m_bufferProcessingPending(false)
+        , m_entitySelectQueue()
+        , m_entityExpandQueue()
+        , m_entityChangeQueue()
+        , m_entityChangeQueued(false)
+        , m_entityLayoutQueued(false)
+        , m_filtersRegExp()
+        , m_filterOperator()
+        , m_entityExpansionState()
+        , m_entityFilteredState()
     {
-        m_entitiesCacheRoot = aznew OutlinerCache(AZ::EntityId(), this);
     }
 
     OutlinerListModel::~OutlinerListModel()
     {
-        ToolsApplicationEvents::Bus::Handler::BusDisconnect();
+        EditorEntityInfoNotificationBus::Handler::BusDisconnect();
         EditorEntityContextNotificationBus::Handler::BusDisconnect();
-        OutlinerCacheNotificationBus::Handler::BusDisconnect();
-
-        if (m_entitiesCacheRoot)
-        {
-            delete m_entitiesCacheRoot;
-            m_entitiesCacheRoot = nullptr;
-        }
+        ToolsApplicationEvents::Bus::Handler::BusDisconnect();
     }
 
     void OutlinerListModel::Initialize()
     {
         ToolsApplicationEvents::Bus::Handler::BusConnect();
         EditorEntityContextNotificationBus::Handler::BusConnect();
-        OutlinerCacheNotificationBus::Handler::BusConnect();
-
-        RegisterExistingEntities();
+        EditorEntityInfoNotificationBus::Handler::BusConnect();
     }
 
     int OutlinerListModel::rowCount(const QModelIndex& parent) const
     {
-        const OutlinerCache* parentItem = GetValidCacheFromIndex(parent);
-        return parentItem ? parentItem->GetChildCount() : 0;
+        auto parentId = GetEntityFromIndex(parent);
+
+        AZStd::size_t childCount = 0;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childCount, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildCount);
+        return (int)childCount;
+    }
+
+    int OutlinerListModel::columnCount(const QModelIndex& /*parent*/) const
+    {
+        return ColumnCount;
     }
 
     QModelIndex OutlinerListModel::index(int row, int column, const QModelIndex& parent) const
     {
         // sanity check
-        if (!hasIndex(row, column, parent))
+        if (!hasIndex(row, column, parent) || (parent.isValid() && parent.column() != 0) || (row < 0 || row >= rowCount(parent)))
         {
             return QModelIndex();
         }
 
-        // can only be parented to first column
-        if (parent.isValid() && parent.column() != 0)
-        {
-            return QModelIndex();
-        }
+        auto parentId = GetEntityFromIndex(parent);
 
-        const OutlinerCache* parentItem = GetValidCacheFromIndex(parent);
-        const OutlinerCache* childItem = parentItem->GetChild(row);
-        return childItem ? GetIndexFromCache(childItem, column) : QModelIndex();
+        AZ::EntityId childId;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childId, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChild, row);
+        return GetIndexFromEntity(childId, column);
     }
 
     QVariant OutlinerListModel::data(const QModelIndex& index, int role) const
     {
-        const OutlinerCache* item = GetValidCacheFromIndex(index);
-        if (!item || (item == m_entitiesCacheRoot))
+        auto id = GetEntityFromIndex(index);
+        if (id.IsValid())
         {
-            return QVariant();
-        }
+            switch (index.column())
+            {
+            case ColumnName:
+                return dataForName(index, role);
 
-        switch (index.column())
-        {
-        case ColumnName:
-            return dataForName(index, role);
+            case ColumnVisibilityToggle:
+                return dataForVisibility(index, role);
 
-        case ColumnVisibilityToggle:
-            return dataForVisibility(index, role);
+            case ColumnLockToggle:
+                return dataForLock(index, role);
 
-        case ColumnLockToggle:
-            return dataForLock(index, role);
-
-        case ColumnSortIndex:
-            return dataForSortIndex(index, role);
-
-        case ColumnEntityId:    // Used for Sorting
-            return AZ::u64(GetEntityAtIndex(index));
-
-        case ColumnSliceMembership:
-            return (!item->IsSliceEntity());    // Used for Sorting (Slice entities should appear above non-slice entities for outliner clarity)
+            case ColumnSortIndex:
+                return dataForSortIndex(index, role);
+            }
         }
 
         return QVariant();
     }
 
+    QMap<int, QVariant> OutlinerListModel::itemData(const QModelIndex &index) const
+    {
+        QMap<int, QVariant> roles = QAbstractItemModel::itemData(index);
+        for (int i = Qt::UserRole; i < RoleCount; ++i)
+        {
+            QVariant variantData = data(index, i);
+            if (variantData.isValid())
+            {
+                roles.insert(i, variantData);
+            }
+        }
+
+        return roles;
+    }
+
     QVariant OutlinerListModel::dataForAll(const QModelIndex& index, int role) const
     {
-        const OutlinerCache* item = GetValidCacheFromIndex(index);
+        auto id = GetEntityFromIndex(index);
 
         switch (role)
         {
+        case EntityIdRole:
+            return (AZ::u64)id;
+
         case SliceBackgroundRole:
-            return item->IsSliceEntity() && item->IsSliceRoot();
+        {
+            bool isSliceRoot = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+            bool isSliceEntity = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+            return isSliceRoot && isSliceEntity;
+        }
 
         case SelectedRole:
-            return item->IsSelected();
+        {
+            bool isSelected = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSelected, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
+            return isSelected;
+        }
 
         case ChildSelectedRole:
-            return item->HasSelectedChildren();
+            return HasSelectedDescendant(id);
+
+        case PartiallyVisibleRole:
+            return !AreAllDescendantsSameVisibleState(id);
+
+        case PartiallyLockedRole:
+            return !AreAllDescendantsSameLockState(id);
+
+        case ChildCountRole:
+        {
+            AZStd::size_t childCount = 0;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childCount, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildCount);
+            return (int)childCount;
+        }
 
         case ExpandedRole:
-            return item->IsExpanded();
+            return IsExpanded(id);
 
         case VisibilityRole:
-            return item->GetVisible();
+            return !IsFiltered(id);
         }
 
         return QVariant();
@@ -880,42 +203,57 @@ namespace AzToolsFramework
 
     QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) const
     {
-        const OutlinerCache* item = GetValidCacheFromIndex(index);
+        auto id = GetEntityFromIndex(index);
 
         switch (role)
         {
-        case Qt::EditRole:
-            return item->GetEntityName();
-
         case Qt::DisplayRole:
-            return item->GetEntityName();
+        case Qt::EditRole:
+        {
+            AZStd::string name;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
+            return QString(name.data());
+        }
 
         case Qt::ToolTipRole:
-            if (!item->GetSliceAssetName().isEmpty())
-            {
-                return QObject::tr("Slice asset: %1").arg(item->GetSliceAssetName());
-            }
-
-            return QString("Slice asset: This entity is not part of a slice.");
+        {
+            AZStd::string sliceAssetName;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sliceAssetName, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetSliceAssetName);
+            return !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
+        }
 
         case EntityTypeRole:
-            if (item->IsSliceEntity())
+        {
+            bool isSliceRoot = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+            bool isSliceEntity = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+
+            if (isSliceEntity)
             {
-                return item->IsSliceRoot() ? SliceHandleType : SliceEntityType;
+                return isSliceRoot ? SliceHandleType : SliceEntityType;
             }
 
             // Guaranteed to return a valid type.
             return EntityType;
+        }
 
         case Qt::ForegroundRole:
         {
+            bool isSliceEntity = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+
             // We use the parent's palette because the GUI Application palette is returning the wrong colors
             auto parentWidgetPtr = static_cast<QWidget*>(QObject::parent());
-            return QBrush(parentWidgetPtr->palette().color(item->IsSliceEntity() ? QPalette::Link : QPalette::Text));
+            return QBrush(parentWidgetPtr->palette().color(isSliceEntity ? QPalette::Link : QPalette::Text));
         }
 
         case Qt::DecorationRole:
-            return QIcon(item->IsSliceEntity() ? ":/Icons/Slice_Entity_Icon.tif" : ":/Icons/Entity_Icon.tif");
+        {
+            bool isSliceEntity = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+            return QIcon(isSliceEntity ? ":/Icons/Slice_Entity_Icon.tif" : ":/Icons/Entity_Icon.tif");
+        }
         }
 
         return dataForAll(index, role);
@@ -923,13 +261,15 @@ namespace AzToolsFramework
 
     QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role) const
     {
+        auto id = GetEntityFromIndex(index);
+
         switch (role)
         {
         case Qt::CheckStateRole:
         {
-            bool visible = true;
-            AzToolsFramework::EditorVisibilityRequestBus::EventResult(visible, GetEntityAtIndex(index), &AzToolsFramework::EditorVisibilityRequests::GetCurrentVisibility);
-            return static_cast<int>(visible ? Qt::Checked : Qt::Unchecked);
+            bool isVisible = true;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisible, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+            return isVisible ? Qt::Checked : Qt::Unchecked;
         }
 
         case Qt::ToolTipRole:
@@ -941,13 +281,15 @@ namespace AzToolsFramework
 
     QVariant OutlinerListModel::dataForLock(const QModelIndex& index, int role) const
     {
+        auto id = GetEntityFromIndex(index);
+
         switch (role)
         {
         case Qt::CheckStateRole:
         {
-            bool locked = false;
-            AzToolsFramework::EditorLockComponentRequestBus::EventResult(locked, GetEntityAtIndex(index), &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-            return static_cast<int>(locked ? Qt::Checked : Qt::Unchecked);
+            bool isLocked = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+            return isLocked ? Qt::Checked : Qt::Unchecked;
         }
 
         case Qt::ToolTipRole:
@@ -959,13 +301,13 @@ namespace AzToolsFramework
 
     QVariant OutlinerListModel::dataForSortIndex(const QModelIndex& index, int role) const
     {
-        const OutlinerCache* item = GetValidCacheFromIndex(index);
+        auto id = GetEntityFromIndex(index);
 
         switch (role)
         {
         case Qt::DisplayRole:
             AZ::u64 sortIndex = 0;
-            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sortIndex, item->GetData(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::SiblingSortIndex);
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sortIndex, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetIndexForSorting);
             return sortIndex;
         }
 
@@ -974,6 +316,8 @@ namespace AzToolsFramework
 
     bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value, int role)
     {
+        auto id = GetEntityFromIndex(index);
+
         switch (role)
         {
         case Qt::CheckStateRole:
@@ -984,20 +328,16 @@ namespace AzToolsFramework
                 {
                 case ColumnVisibilityToggle:
                 {
-                    ToggleEditorVisibility(index);
+                    ToggleEditorVisibility(id);
                 }
                 break;
 
                 case ColumnLockToggle:
                 {
-                    ToggleEditorLockState(index);
+                    ToggleEditorLockState(id);
                 }
                 break;
                 }
-
-                // Explicitly let the outliner know that this particular entry in the tree has changed
-                // forcing the tree to redraw it
-                Q_EMIT dataChanged(index, index, { role });
             }
         }
         break;
@@ -1006,25 +346,26 @@ namespace AzToolsFramework
         {
             if (index.column() == ColumnName && !value.toString().isEmpty())
             {
-                OutlinerCache* item = static_cast<OutlinerCache*>(index.internalPointer());
-                if (item)
+                auto id = GetEntityFromIndex(index);
+                if (id.IsValid())
                 {
-                    AZ::EntityId id = item->GetData();
-                    if (id.IsValid())
+                    AZ::Entity* entity = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, id);
+
+                    if (entity)
                     {
-                        AZ::Entity* entity = nullptr;
-                        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, id);
-                        AZ_Assert(entity, "Outliner entry cannot locate entity with cached name: %s", item->GetEntityName().toStdString().c_str());
+                        ScopedUndoBatch undo("Rename Entity");
 
-                        if (entity)
-                        {
-                            ScopedUndoBatch undo("Rename Entity");
+                        entity->SetName(value.toString().toStdString().c_str());
+                        undo.MarkEntityDirty(entity->GetId());
 
-                            entity->SetName(value.toString().toStdString().c_str());
-                            undo.MarkEntityDirty(entity->GetId());
-
-                            EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
-                        }
+                        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
+                    }
+                    else
+                    {
+                        AZStd::string name;
+                        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
+                        AZ_Assert(entity, "Outliner entry cannot locate entity with name: %s", name);
                     }
                 }
             }
@@ -1037,89 +378,40 @@ namespace AzToolsFramework
 
     QModelIndex OutlinerListModel::parent(const QModelIndex& index) const
     {
-        if (!index.isValid())
+        auto id = GetEntityFromIndex(index);
+        if (id.IsValid())
         {
-            return QModelIndex();
+            AZ::EntityId parentId;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+            return GetIndexFromEntity(parentId, index.column());
         }
-
-        const OutlinerCache* childItem = GetValidCacheFromIndex(index);
-        const OutlinerCache* parentItem = childItem != nullptr ? childItem->GetParent() : nullptr;
-
-        if (parentItem == m_entitiesCacheRoot || parentItem == nullptr)
-        {
-            return QModelIndex();
-        }
-
-        return GetIndexFromCache(parentItem);
-    }
-
-    AZ::EntityId OutlinerListModel::GetEntityAtIndex(const QModelIndex& index) const
-    {
-        if (index.isValid())
-        {
-            // QModelIndex contains pointer to cache
-            OutlinerCache* item = static_cast<OutlinerCache*>(index.internalPointer());
-            if (item)
-            {
-                return item->GetData();
-            }
-        }
-        return AZ::EntityId();
+        return QModelIndex();
     }
 
     bool OutlinerListModel::IsSelected(const AZ::EntityId& entityId) const
     {
-        if (entityId.IsValid())
-        {
-            auto cache = GetCacheForEntity(entityId);
-
-            if (cache)
-            {
-                return cache->IsSelected();
-            }
-        }
-        return false;
-    }
-
-    bool OutlinerListModel::IsEligibleForDeselect(const AZ::EntityId& entityId) const
-    {
-        // If we're requesting a deselect but already have a register and select request, don't deselect this
-        // Because we queue up actions, this prevents us from deselecting something that should have ended up selected if processed serially
-        auto registerIt = m_entityRegistrationBuffer.find(entityId);
-        if (registerIt != m_entityRegistrationBuffer.end())
-        {
-            auto selectIt = m_selectionRequestBuffer.find(entityId);
-            if (selectIt != m_selectionRequestBuffer.end())
-            {
-                return false;
-            }
-        }
-
-        return true;
+        bool isSelected = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSelected, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
+        return isSelected;
     }
 
     Qt::ItemFlags OutlinerListModel::flags(const QModelIndex& index) const
     {
-        if (index.column() == ColumnVisibilityToggle || index.column() == ColumnLockToggle)
+        Qt::ItemFlags itemFlags = QAbstractItemModel::flags(index);
+        switch (index.column())
         {
-            return Qt::ItemIsEnabled | Qt::ItemIsEditable | Qt::ItemIsUserCheckable;
-        }
+        case ColumnVisibilityToggle:
+        case ColumnLockToggle:
+            itemFlags |= Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
+            break;
 
-        Qt::ItemFlags itemFlags = QAbstractItemModel::flags(index) | Qt::ItemIsDropEnabled | Qt::ItemIsEditable | Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+        case ColumnName:
+            itemFlags |= Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled | Qt::ItemIsDragEnabled | Qt::ItemIsEditable;
+            break;
 
-        AZ::EntityId entityId = GetEntityAtIndex(index);
-        if (entityId.IsValid())
-        {
-            bool entitySelectable = true;
-            EBUS_EVENT_RESULT(entitySelectable, AzToolsFramework::ToolsApplicationRequests::Bus, IsSelectable, entityId);
-            if (entitySelectable)
-            {
-                itemFlags |= Qt::ItemIsDragEnabled;
-            }
-            else
-            {
-                itemFlags &= ~(Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsEnabled);
-            }
+        default:
+            itemFlags |= Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled;
+            break;
         }
 
         return itemFlags;
@@ -1127,20 +419,20 @@ namespace AzToolsFramework
 
     Qt::DropActions OutlinerListModel::supportedDropActions() const
     {
-        return (Qt::MoveAction | Qt::CopyAction);
+        return Qt::CopyAction;
     }
 
     Qt::DropActions OutlinerListModel::supportedDragActions() const
     {
-        return (Qt::MoveAction | Qt::CopyAction);
+        return Qt::CopyAction;
     }
 
 
-    bool OutlinerListModel::canDropMimeData(const QMimeData* data, Qt::DropAction, int, int, const QModelIndex& index) const
+    bool OutlinerListModel::canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const
     {
         if (data)
         {
-            if (index.isValid())
+            if (parent.isValid() && row == -1 && column == -1)
             {
                 if (data->hasFormat(ComponentTypeMimeData::GetMimeType()) ||
                     data->hasFormat(ComponentAssetMimeDataContainer::GetMimeType()))
@@ -1149,7 +441,7 @@ namespace AzToolsFramework
                 }
             }
 
-            if (canDropMimeDataForEntityIds(data, index))
+            if (canDropMimeDataForEntityIds(data, action, row, column, parent))
             {
                 return true;
             }
@@ -1158,9 +450,13 @@ namespace AzToolsFramework
         return false;
     }
 
-    bool OutlinerListModel::canDropMimeDataForEntityIds(const QMimeData* data, const QModelIndex& index) const
+    bool OutlinerListModel::canDropMimeDataForEntityIds(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const
     {
-        if (!data || !data->hasFormat(EditorEntityIdContainer::GetMimeType()))
+        (void)action;
+        (void)column;
+        (void)row;
+
+        if (!data || !data->hasFormat(EditorEntityIdContainer::GetMimeType()) || column > 0)
         {
             return false;
         }
@@ -1173,8 +469,8 @@ namespace AzToolsFramework
             return false;
         }
 
-        AZ::EntityId dropTargetId = GetEntityAtIndex(index);
-        if (!CanReparentEntities(dropTargetId, entityIdListContainer.m_entityIds))
+        AZ::EntityId newParentId = GetEntityFromIndex(parent);
+        if (!CanReparentEntities(newParentId, entityIdListContainer.m_entityIds))
         {
             return false;
         }
@@ -1201,7 +497,7 @@ namespace AzToolsFramework
     //      Example: DragEntity and DragEntityChild dropped onto DragEntity:
     //          DragEntity has no change occur.
     //          DragEntityChild follows the rule "DragEntity onto DropEntity, DropEntity is DragEntity's parent"
-    bool OutlinerListModel::dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& dropModelIndex)
+    bool OutlinerListModel::dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
     {
         if (action == Qt::IgnoreAction)
         {
@@ -1211,31 +507,35 @@ namespace AzToolsFramework
         // Navigation triggered - Drag+Drop from Component Palette to Entity Outliner / Drag+Drop from File Browser to Entity Outliner
         EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
 
-        AZ::EntityId dropTargetId = GetEntityAtIndex(dropModelIndex);
-        if (dropTargetId.IsValid())
+        if (parent.isValid() && row == -1 && column == -1)
         {
             // Handle drop from the component palette window.
             if (data->hasFormat(ComponentTypeMimeData::GetMimeType()))
             {
-                return dropMimeDataComponentPalette(data, action, row, column, dropModelIndex, dropTargetId);
+                return dropMimeDataComponentPalette(data, action, row, column, parent);
             }
 
             if (data->hasFormat(ComponentAssetMimeDataContainer::GetMimeType()))
             {
-                return dropMimeDataComponentAssets(data, action, row, column, dropModelIndex, dropTargetId);
+                return dropMimeDataComponentAssets(data, action, row, column, parent);
             }
         }
 
         if (data->hasFormat(EditorEntityIdContainer::GetMimeType()))
         {
-            return dropMimeDataEntities(data, action, row, column, dropModelIndex, dropTargetId);
+            return dropMimeDataEntities(data, action, row, column, parent);
         }
 
-        return QAbstractItemModel::dropMimeData(data, action, row, column, dropModelIndex);
+        return QAbstractItemModel::dropMimeData(data, action, row, column, parent);
     }
 
-    bool OutlinerListModel::dropMimeDataComponentPalette(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& dropModelIndex, const AZ::EntityId& dropTargetId)
+    bool OutlinerListModel::dropMimeDataComponentPalette(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
     {
+        (void)action;
+        (void)row;
+        (void)column;
+
+        AZ::EntityId dropTargetId = GetEntityFromIndex(parent);
         EntityIdList entityIds{ dropTargetId };
 
         ComponentTypeMimeData::ClassDataContainer classDataContainer;
@@ -1268,11 +568,18 @@ namespace AzToolsFramework
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::InvalidatePropertyDisplay, Refresh_EntireTree_NewContent);
         }
 
-        return QAbstractItemModel::dropMimeData(data, action, row, column, dropModelIndex);
+        return false;
     }
 
-    bool OutlinerListModel::dropMimeDataComponentAssets(const QMimeData* data, Qt::DropAction /*action*/, int /*row*/, int /*column*/, const QModelIndex& /*dropModelIndex*/, const AZ::EntityId& dropTargetId)
+    bool OutlinerListModel::dropMimeDataComponentAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
     {
+        (void)action;
+        (void)row;
+        (void)column;
+
+        AZ::EntityId dropTargetId = GetEntityFromIndex(parent);
+        EntityIdList entityIds{ dropTargetId };
+
         ComponentAssetMimeDataContainer componentAssetContainer;
         if (componentAssetContainer.FromMimeData(data))    //  This returns false if the mime data doesn't contain the right type.
         {
@@ -1291,7 +598,7 @@ namespace AzToolsFramework
 
             // Add them all at once
             EntityCompositionRequests::AddComponentsOutcome addComponentsOutcome = AZ::Failure(AZStd::string(""));
-            EntityCompositionRequestBus::BroadcastResult(addComponentsOutcome, &EntityCompositionRequests::AddComponentsToEntities, EntityIdList{ dropTargetId }, componentsToAdd);
+            EntityCompositionRequestBus::BroadcastResult(addComponentsOutcome, &EntityCompositionRequests::AddComponentsToEntities, entityIds, componentsToAdd);
 
             if (!addComponentsOutcome.IsSuccess())
             {
@@ -1321,10 +628,7 @@ namespace AzToolsFramework
                 ++componentAddedIndex;
             }
 
-            EntityIdList selected;
-            EBUS_EVENT_RESULT(selected, ToolsApplicationRequests::Bus, GetSelectedEntities);
-            bool isSelected = (selected.end() != AZStd::find(selected.begin(), selected.end(), dropTargetId));
-            if (isSelected)
+            if (IsSelected(dropTargetId))
             {
                 EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree_NewContent);
             }
@@ -1334,13 +638,10 @@ namespace AzToolsFramework
         return false;
     }
 
-    bool OutlinerListModel::dropMimeDataEntities(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& dropModelIndex, const AZ::EntityId& dropTargetId)
+    bool OutlinerListModel::dropMimeDataEntities(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
     {
-        // these aren't used; don't want a warning
-        (void)dropModelIndex;
-        (void)column;
-        (void)row;
         (void)action;
+        (void)column;
 
         QByteArray arrayData = data->data(EditorEntityIdContainer::GetMimeType());
 
@@ -1350,11 +651,19 @@ namespace AzToolsFramework
             return false;
         }
 
-        return ReparentEntities(dropTargetId, entityIdListContainer.m_entityIds);
+        AZ::EntityId newParentId = GetEntityFromIndex(parent);
+        AZ::EntityId beforeEntityId = GetEntityFromIndex(index(row, 0, parent));
+        if (!ReparentEntities(newParentId, entityIdListContainer.m_entityIds, beforeEntityId))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, const AzToolsFramework::EntityIdList &selectedEntityIds) const
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         if (selectedEntityIds.empty())
         {
             return false;
@@ -1370,13 +679,13 @@ namespace AzToolsFramework
             {
                 return false;
             }
-        }
 
-        bool areEntitiesEditable = true;
-        EBUS_EVENT_RESULT(areEntitiesEditable, ToolsApplicationRequests::Bus, AreEntitiesEditable, selectedEntityIds);
-        if (!areEntitiesEditable)
-        {
-            return false;
+            bool isEntityEditable = true;
+            EBUS_EVENT_RESULT(isEntityEditable, ToolsApplicationRequests::Bus, IsEntityEditable, entityId);
+            if (!isEntityEditable)
+            {
+                return false;
+            }
         }
 
         //Only check the entity pointer if the entity id is valid because
@@ -1386,6 +695,14 @@ namespace AzToolsFramework
             AZ::Entity* newParentEntity = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(newParentEntity, &AZ::ComponentApplicationRequests::FindEntity, newParentId);
             if (!newParentEntity)
+            {
+                return false;
+            }
+
+            //move disallowing drop on locked entities check to allow feedback
+            bool isLocked = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, newParentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+            if (isLocked)
             {
                 return false;
             }
@@ -1406,28 +723,73 @@ namespace AzToolsFramework
         return true;
     }
 
-    bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const AzToolsFramework::EntityIdList &selectedEntityIds)
+    bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const AzToolsFramework::EntityIdList &selectedEntityIds, const AZ::EntityId& beforeEntityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         if (!CanReparentEntities(newParentId, selectedEntityIds))
         {
             return false;
         }
 
-        ScopedUndoBatch undo("Alter Hierarchy");
+        ScopedUndoBatch undo("Reparent Entities");
+        //capture child entity order before re-parent operation, which will automatically add order info if not present
+        EntityOrderArray entityOrderArray = AzToolsFramework::GetEntityChildOrder(newParentId);
 
-        for (const AZ::EntityId& entityId : selectedEntityIds)
+        // The new parent is dirty due to sort change(s)
+        undo.MarkEntityDirty(AzToolsFramework::GetEntityIdForSortInfo(newParentId));
+
         {
-            AZ::EntityId oldParentId;
-            EBUS_EVENT_ID_RESULT(oldParentId, entityId, AZ::TransformBus, GetParentId);
+            ScopedUndoBatch undo("Reparent Entities");
 
-            //  Guarding this to prevent the entity from being marked dirty when the parent doesn't change.
-            EBUS_EVENT_ID(entityId, AZ::TransformBus, SetParent, newParentId);
+            for (const AZ::EntityId& entityId : selectedEntityIds)
+            {
+                AZ::EntityId oldParentId;
+                EBUS_EVENT_ID_RESULT(oldParentId, entityId, AZ::TransformBus, GetParentId);
 
-            // Allow for metrics collection
-            EBUS_EVENT(EditorMetricsEventsBus, EntityParentChanged, entityId, newParentId, oldParentId);
+                //  Guarding this to prevent the entity from being marked dirty when the parent doesn't change.
+                EBUS_EVENT_ID(entityId, AZ::TransformBus, SetParent, newParentId);
 
-            undo.MarkEntityDirty(entityId);
+                // Allow for metrics collection
+                EBUS_EVENT(EditorMetricsEventsBus, UpdateTransformParentEntity, entityId, newParentId, oldParentId);
+
+                // The old parent is dirty due to sort change
+                undo.MarkEntityDirty(AzToolsFramework::GetEntityIdForSortInfo(oldParentId));
+
+                // The reparented entity is dirty due to parent change
+                undo.MarkEntityDirty(entityId);
+            }
         }
+
+        //search for the insertion entity in the order array
+        auto beforeEntityItr = AZStd::find(entityOrderArray.begin(), entityOrderArray.end(), beforeEntityId);
+
+        //replace order info matching selection with bad values rather than remove to preserve layout
+        for (auto& id : entityOrderArray)
+        {
+            if (AZStd::find(selectedEntityIds.begin(), selectedEntityIds.end(), id) != selectedEntityIds.end())
+            {
+                id = AZ::EntityId();
+            }
+        }
+
+        if (newParentId.IsValid())
+        {
+            //if adding to a valid parent entity, insert at the found entity location or at the head of the container
+            auto insertItr = beforeEntityItr != entityOrderArray.end() ? beforeEntityItr : entityOrderArray.begin();
+            entityOrderArray.insert(insertItr, selectedEntityIds.begin(), selectedEntityIds.end());
+        }
+        else
+        {
+            //if adding to an invalid parent entity (the root), insert at the found entity location or at the tail of the container
+            auto insertItr = beforeEntityItr != entityOrderArray.end() ? beforeEntityItr : entityOrderArray.end();
+            entityOrderArray.insert(insertItr, selectedEntityIds.begin(), selectedEntityIds.end());
+        }
+
+        //remove placeholder entity ids
+        entityOrderArray.erase(AZStd::remove(entityOrderArray.begin(), entityOrderArray.end(), AZ::EntityId()), entityOrderArray.end());
+
+        //update order array
+        AzToolsFramework::SetEntityChildOrder(newParentId, entityOrderArray);
 
         EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_Values);
         return true;
@@ -1435,6 +797,7 @@ namespace AzToolsFramework
 
     QMimeData* OutlinerListModel::mimeData(const QModelIndexList& indexes) const
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AZ::Uuid uuid1 = AZ::AzTypeInfo<AZ::Entity>::Uuid();
         AZ::Uuid uuid2 = AZ::AzTypeInfo<EditorEntityIdContainer>::Uuid();
 
@@ -1443,7 +806,7 @@ namespace AzToolsFramework
         {
             if (index.column() == 0) // ignore all but one cell in row
             {
-                AZ::EntityId entityId = GetEntityAtIndex(index);
+                AZ::EntityId entityId = GetEntityFromIndex(index);
                 if (entityId.IsValid())
                 {
                     entityIdList.m_entityIds.push_back(entityId);
@@ -1479,799 +842,275 @@ namespace AzToolsFramework
         return list;
     }
 
-    void OutlinerListModel::EntityDeregistered(AZ::EntityId entityId)
+    void OutlinerListModel::QueueEntityUpdate(AZ::EntityId entityId)
     {
-        // If this entity is pending registration, it has been created and destroyed in
-        // a single frame. We need to remove it from the registration buffer and
-        // ignore this deregistration request.
-        auto registrationIter = m_entityRegistrationBuffer.find(entityId);
-        if (registrationIter != m_entityRegistrationBuffer.end())
+        if (!m_entityChangeQueued)
         {
-            m_entityRegistrationBuffer.erase(registrationIter);
-            return;
+            m_entityChangeQueued = true;
+            QTimer::singleShot(0, this, &OutlinerListModel::ProcessEntityUpdates);
         }
-
-        // Ignore entities that don't have a corresponding cache in the outliner
-        auto entityIter = m_entityToCacheMap.find(entityId);
-        if (entityIter == m_entityToCacheMap.end())
-        {
-            return;
-        }
-
-        m_entityDeregistrationBuffer.insert(entityId);
-
-        RequestEventBufferProcessing();
+        m_entityChangeQueue.insert(entityId);
     }
 
-    void OutlinerListModel::ProcessDeregistrationBuffer()
+    void OutlinerListModel::QueueAncestorUpdate(AZ::EntityId entityId)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        for (const auto& entityId : m_entityDeregistrationBuffer)
-        {
-            auto iter = m_entityToCacheMap.find(entityId);
-            AZ_Assert(iter != m_entityToCacheMap.end(), "Trying to deregister an entity with no cach entry.");
-            OutlinerCache* entityCache = iter->second;
-
-            // Store the previous expansion state in case we need to restore this entity later
-            // or it's being de-registered as part of a slice operation.
-            m_removedExpansionState.insert(AZStd::make_pair(entityId, entityCache->IsExpanded()));
-
-            // m_entitiesCacheRoot adopts all of the entity's children
-            if (entityCache->GetChildCount() > 0)
-            {
-                BeginMoveRows(GetIndexFromCache(entityCache),
-                    0,
-                    entityCache->GetChildCount() - 1,
-                    GetIndexFromCache(m_entitiesCacheRoot),
-                    m_entitiesCacheRoot->GetChildCount()); // new children go to back of list
-
-                MarkChildrenAsOrphans(entityCache);
-
-                m_entitiesCacheRoot->AdoptChildren(entityCache);
-                EndMoveRows();
-            }
-
-            OutlinerCache* parentCache = entityCache->GetParent();
-            if (parentCache == nullptr)
-            {
-                parentCache = m_entitiesCacheRoot;
-            }
-
-            // The root node is a special case, and is the invalid model index.
-            QModelIndex parentIndex = GetIndexFromCache(parentCache);
-
-            // Remove entity
-            const int entityRow = entityCache->GetRow();
-            BeginRemoveRows(parentIndex, entityRow, entityRow);
-            parentCache->RemoveChild(entityCache);
-            m_entityToCacheMap.erase(entityId);
-            EndRemoveRows();
-
-            delete entityCache;
-        }
-
-        m_entityDeregistrationBuffer.clear();
-
-        InvalidateFilter();
-    }
-
-    void OutlinerListModel::EntityRegistered(AZ::EntityId entityId)
-    {
-        // If we already have a cache entry for this entity Id, verify that there
-        // is already a queued deregistration event. If there isn't, something went wrong.
-        if (m_entityToCacheMap.find(entityId) != m_entityToCacheMap.end())
-        {
-            if (m_entityDeregistrationBuffer.find(entityId) == m_entityDeregistrationBuffer.end())
-            {
-                AZ_Assert(false, "Outliner received an entity registration event for an existing entity ID.");
-                return;
-            }
-        }
-
-        // Ignore entities not owned by the editor context.
-        bool isEditorEntity = false;
-        EBUS_EVENT_RESULT(isEditorEntity, EditorEntityContextRequestBus, IsEditorEntity, entityId);
-        if (!isEditorEntity)
-        {
-            return;
-        }
-
-        m_entityRegistrationBuffer.insert(entityId);
-
-        RequestEventBufferProcessing();
-    }
-
-    void OutlinerListModel::ProcessRegistrationBuffer()
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        // Abort if no entities to register (could happen on rapid creation/removal)
-        if (m_entityRegistrationBuffer.empty())
-        {
-            return;
-        }
-
-        // Insert entity as child of root
-        // If the entity's Transform is parented to another entity
-        // we'll get an EntityParentChanged message about it later.
-        int newRowLocation = m_entitiesCacheRoot->GetChildCount();
-        BeginInsertRows(QModelIndex(), newRowLocation, newRowLocation + int(m_entityRegistrationBuffer.size() - 1));
-
-        for (const auto& entityId : m_entityRegistrationBuffer)
-        {
-            OutlinerCache* newEntity = aznew OutlinerCache(entityId, this, m_entitiesCacheRoot);
-            m_entityToCacheMap[entityId] = newEntity;
-            m_entitiesCacheRoot->AppendChild(newEntity);
-
-            // Now make sure this entity ends up at the proper place in the hierarchy
-            FindFamily(entityId);
-
-            // If this entity has been seen before and it's expansion state has been stored
-            // restore it.
-            auto expandStateIter = m_removedExpansionState.find(entityId);
-            // Restore the previous expanded state of the entity if it exists
-            if (expandStateIter != m_removedExpansionState.end())
-            {
-                newEntity->SetExpanded((*expandStateIter).second);
-                if (newEntity->IsExpanded())
-                {
-                    ExpandItemHierarchy(entityId);
-                }
-
-                m_removedExpansionState.erase(expandStateIter);
-            }
-            else
-            {
-                // Until we maintain the outliner hierarchy collapse state, collapse everything when it's created for now...
-                newEntity->SetExpanded(false);
-            }
-        }
-        EndInsertRows();
-
-        // Now go through all the newly created entities and process all the slices associated with them
-        for (const auto& entityId : m_entityRegistrationBuffer)
-        {
-            // We only care about cache entries that don't have slice information yet.
-            if (!GetCacheForEntity(entityId)->IsSliceEntity())
-            {
-                AZ::SliceComponent::SliceInstanceAddress sliceAddress;
-                AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
-
-                // If the entity is part of a slice...
-                if (sliceAddress.first && sliceAddress.second)
-                {
-                    // Process the discovered slice.
-                    MarkUpSliceEntities(sliceAddress.first->GetSliceAsset().GetId(), sliceAddress);
-                }
-            }
-        }
-
-        m_entityRegistrationBuffer.clear();
-
-        InvalidateFilter();
-    }
-
-    void OutlinerListModel::RegisterExistingEntities()
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        // If we don't have a cache entry for an entity, create one now.
-        EBUS_EVENT(AZ::ComponentApplicationBus, EnumerateEntities,
-            [this](AZ::Entity* entity)
-        {
-            if (nullptr == GetCacheForEntity(entity->GetId()))
-            {
-                EntityRegistered(entity->GetId());
-            }
-        });
-    }
-
-    void OutlinerListModel::BeginInsertRows(const QModelIndex& parent, int first, int last)
-    {
-        beginInsertRows(parent, first, last);
-        m_treeModificationUnderway = true;
-    }
-
-    void OutlinerListModel::EndInsertRows()
-    {
-        endInsertRows();
-        m_treeModificationUnderway = false;
-        ProcessRequestBuffers();
-    }
-
-    void OutlinerListModel::BeginMoveRows(const QModelIndex &sourceParent, int sourceFirst, int sourceLast, const QModelIndex &destinationParent, int destinationChild)
-    {
-        beginMoveRows(sourceParent, sourceFirst, sourceLast, destinationParent, destinationChild);
-        m_treeModificationUnderway = true;
-    }
-
-    void OutlinerListModel::EndMoveRows()
-    {
-        endMoveRows();
-        m_treeModificationUnderway = false;
-        ProcessRequestBuffers();
-    }
-
-    void OutlinerListModel::BeginRemoveRows(const QModelIndex &parent, int first, int last)
-    {
-        beginRemoveRows(parent, first, last);
-        m_treeModificationUnderway = true;
-    }
-
-    void OutlinerListModel::EndRemoveRows()
-    {
-        endRemoveRows();
-        m_treeModificationUnderway = false;
-        ProcessRequestBuffers();
-    }
-
-
-    QModelIndex OutlinerListModel::GetIndexForEntity(const AZ::EntityId& entityId) const
-    {
-        if (!entityId.IsValid())
-        {
-            return QModelIndex();
-        }
-
-        auto entityIter = m_entityToCacheMap.find(entityId);
-        if (entityIter == m_entityToCacheMap.end())
-        {
-            return QModelIndex();
-        }
-
-        return GetIndexFromCache(entityIter->second);
-    }
-
-    OutlinerCache* OutlinerListModel::GetCacheForEntity(const AZ::EntityId& entityId)
-    {
-        auto entityIter = m_entityToCacheMap.find(entityId);
-        return entityIter != m_entityToCacheMap.end() ? entityIter->second : nullptr;
-    }
-
-    const OutlinerCache* OutlinerListModel::GetCacheForEntity(const AZ::EntityId& entityId) const
-    {
-        auto entityIter = m_entityToCacheMap.find(entityId);
-        return entityIter != m_entityToCacheMap.end() ? entityIter->second : nullptr;
-    }
-
-    // Takes the ID of a newly created entity
-    // This function will find its parent and any existing children and make the appropriate parent-child links between them.
-    // If its parent doesn't exist yet, the relationship is stored for later.
-    void OutlinerListModel::FindFamily(const AZ::EntityId& entityId)
-    {
-        // Find out if the entity has a parent...
+        //primarily needed for ancestors that reflect child state (selected, locked, hidden)
         AZ::EntityId parentId;
-        AZ::TransformBus::EventResult(parentId, entityId, &AZ::TransformBus::Events::GetParentId);
-
-        if (parentId.IsValid())
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+        for (AZ::EntityId currentId = parentId; currentId.IsValid(); currentId = parentId)
         {
-            // Now determine if the entity's parent exists yet
-            auto parentCacheIter = m_entityToCacheMap.find(parentId);
-            if (parentCacheIter != m_entityToCacheMap.end())
+            QueueEntityUpdate(currentId);
+            parentId.SetInvalid();
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, currentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+        }
+    }
+
+    void OutlinerListModel::QueueEntityToExpand(AZ::EntityId entityId, bool expand)
+    {
+        m_entityExpansionState[entityId] = expand;
+        m_entityExpandQueue.insert(entityId);
+        QueueEntityUpdate(entityId);
+    }
+
+
+    void OutlinerListModel::ProcessEntityUpdates()
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        m_entityChangeQueued = false;
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:ExpandQueue");
+            for (auto entityId : m_entityExpandQueue)
             {
-                // The entity's parent has changed.
-                EntityParentChanged(entityId, parentId);
+                emit ExpandEntity(entityId, IsExpanded(entityId));
+            };
+            m_entityExpandQueue.clear();
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:SelectQueue");
+            for (auto entityId : m_entitySelectQueue)
+            {
+                emit SelectEntity(entityId, IsSelected(entityId));
+            };
+            m_entitySelectQueue.clear();
+        }
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
+            if (m_entityChangeQueue.size() < 50)
+            {
+                for (auto entityId : m_entityChangeQueue)
+                {
+                    auto startIndex = GetIndexFromEntity(entityId, ColumnName);
+                    auto endIndex = GetIndexFromEntity(entityId, ColumnCount - 1);
+                    if (startIndex.isValid() && endIndex.isValid())
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue:DataChanged");
+                        //refresh entire row...can optimize to queue update for specific columns and roles later if needed    
+                        emit dataChanged(startIndex, endIndex);
+                    }
+                };
             }
             else
             {
-                RegisterOrphan(entityId, parentId);
+                // There's a performance issue with calling dataChanged on a large number of elements (something wrong with the model
+                // implementation, being investigated) - there's an n^2 or worse update going on - deselecting 2,500 root level entities 
+                // which causes 2,500 dataChanges takes 2 minutes, 10,000 entities took much longer. Instead, just resetting the entire model
+                // takes 60ms vs 2 minutes.
+                OnEntityInfoResetBegin();
+                OnEntityInfoResetEnd();
             }
+            m_entityChangeQueue.clear();
         }
 
-        // Now find out if this entity has any orphaned children
-        auto absentParentIter = m_absentParentMap.find(entityId);
-        if (absentParentIter != m_absentParentMap.end())
         {
-            // If we do have orphaned children, reclaim them.
-            for (const auto& childId : absentParentIter->second)
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:LayoutChanged");
+            if (m_entityLayoutQueued)
             {
-                EntityParentChanged(childId, entityId);
+                emit layoutAboutToBeChanged();
+                emit layoutChanged();
             }
-
-            m_absentParentMap.erase(absentParentIter);
+            m_entityLayoutQueued = false;
         }
-    }
 
-    void OutlinerListModel::MarkChildrenAsOrphans(OutlinerCache* entityCache)
-    {
-        AZ::EntityId entityId = entityCache->GetData();
-        int childCount = entityCache->GetChildCount();
-
-        for (int i = 0; i < childCount; ++i)
         {
-            const OutlinerCache* childCache = entityCache->GetChild(i);
-            RegisterOrphan(childCache->GetData(), entityId);
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerListModel::ProcessEntityUpdates:InvalidateFilter");
+            InvalidateFilter();
         }
     }
 
-    void OutlinerListModel::RegisterOrphan(const AZ::EntityId& entityId, const AZ::EntityId& parentId)
+    void OutlinerListModel::OnEntityInfoResetBegin()
     {
-        m_absentParentMap[parentId].push_back(entityId);
+        emit EnableSelectionUpdates(false);
+        beginResetModel();
     }
 
-    void OutlinerListModel::EntityParentChanged(AZ::EntityId entityId, AZ::EntityId newParentId, AZ::EntityId /*oldParent*/)
-    {
-        OutlinerCache* entityCache = GetCacheForEntity(entityId); // might be null
-
-        // Ignore entities with no outliner entry
-        if (!entityCache)
-        {
-            return;
-        }
-
-        // We don't need any information about the old parent because we've already got it in the cache.
-        m_entityParentChangeBuffer.insert(AZStd::make_pair(entityId, newParentId));
-
-        RequestEventBufferProcessing();
-    }
-
-    void OutlinerListModel::EntityCreatedAsChild(AZ::EntityId /*entityId*/, AZ::EntityId parentId)
-    {
-        // When the user explicitly creates an entity as a child of another entity, expand the parent to display the child in the outliner.
-        auto parentCache = GetCacheForEntity(parentId);
-        AZ_Assert(parentCache, "Received child creation event for an entity that doesn't have a cache in the outliner");
-        if (parentCache && !parentCache->IsExpanded())
-        {
-            parentCache->SetExpanded(true);
-            ExpandItemHierarchy(parentId);
-        }
-    }
-
-    void OutlinerListModel::ProcessReparentingBuffer()
+    void OutlinerListModel::OnEntityInfoResetEnd()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        emit layoutAboutToBeChanged();
-        bool wasBlockingSignals = blockSignals(true);
-
-        for (auto childParentPair : m_entityParentChangeBuffer)
-        {
-            OutlinerCache* entityCache = GetCacheForEntity(childParentPair.first);
-
-            if (entityCache)
-            {
-                OutlinerCache* previousParentCache = entityCache->GetParent(); // might be root
-                OutlinerCache* newParentCache = GetCacheForEntity(childParentPair.second); // might be null
-
-                if (previousParentCache == nullptr)
-                {
-                    previousParentCache = m_entitiesCacheRoot;
-                }
-                if (newParentCache == nullptr)
-                {
-                    newParentCache = m_entitiesCacheRoot;
-                }
-                if (previousParentCache != newParentCache)
-                {
-                    QModelIndex previousParentIndex = GetIndexFromCache(previousParentCache);
-                    QModelIndex newParentIndex = GetIndexFromCache(newParentCache);
-                    const int previousEntityRow = entityCache->GetRow();
-                    const int newEntityRow = newParentCache->GetChildCount(); // will go to end of parent's child list
-
-                    BeginMoveRows(previousParentIndex, previousEntityRow, previousEntityRow, newParentIndex, newEntityRow);
-                    previousParentCache->RemoveChild(entityCache);
-                    newParentCache->AppendChild(entityCache);
-                    EndMoveRows();
-                }
-            }
-        }
-
-        blockSignals(wasBlockingSignals);
-        emit layoutChanged();
-
-        m_entityParentChangeBuffer.clear();
-
-        // Depending on how we want to handle entities with parents that don't exist in the future, we
-        // may want to keep the absent parent map around and keep it 
-        m_absentParentMap.clear();
-
-        InvalidateFilter();
+        endResetModel();
+        m_entityChangeQueued = false;
+        m_entitySelectQueue.clear();
+        m_entityExpandQueue.clear();
+        m_entityChangeQueue.clear();
+        //m_entityExpansionState.clear();
+        //m_entityFilteredState.clear();
+        QueueEntityUpdate(AZ::EntityId());
+        emit EnableSelectionUpdates(true);
     }
 
-    void OutlinerListModel::RequestEventBufferProcessing()
+    void OutlinerListModel::OnEntityInfoUpdatedAddChildBegin(AZ::EntityId parentId, AZ::EntityId childId)
     {
-        if (!m_bufferProcessingPending)
-        {
-            // Tell QT to execute our event buffer processing function during it's next event loop.
-            QTimer::singleShot(0, this, SLOT(ProcessEventBuffers()));
-            m_bufferProcessingPending = true;
-        }
+        //add/remove operations trigger selection change signals which assert and break undo/redo operations in progress in inspector etc.
+        //so disallow selection updates until change is complete
+        emit EnableSelectionUpdates(false);
+        auto parentIndex = GetIndexFromEntity(parentId);
+        auto childIndex = GetIndexFromEntity(childId);
+        beginInsertRows(parentIndex, childIndex.row(), childIndex.row());
     }
 
-    void OutlinerListModel::ProcessEventBuffers()
+    void OutlinerListModel::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId parentId, AZ::EntityId childId)
+    {
+        (void)parentId;
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        endInsertRows();
+
+        //expand ancestors if a new descendant is already selected
+        if (IsSelected(childId) || HasSelectedDescendant(childId))
+        {
+            ExpandAncestors(childId);
+        }
+
+        //restore selection and expansion state for previously registered entity ids (for the view/model only)
+        RestoreDescendantSelection(childId);
+        RestoreDescendantExpansion(childId);
+
+        //must refresh partial lock/visibility of parents
+        QueueAncestorUpdate(childId);
+        emit EnableSelectionUpdates(true);
+    }
+
+    void OutlinerListModel::OnEntityInfoUpdatedRemoveChildBegin(AZ::EntityId parentId, AZ::EntityId childId)
+    {
+        //add/remove operations trigger selection change signals which assert and break undo/redo operations in progress in inspector etc.
+        //so disallow selection updates until change is complete
+        emit EnableSelectionUpdates(false);
+        auto parentIndex = GetIndexFromEntity(parentId);
+        auto childIndex = GetIndexFromEntity(childId);
+        beginRemoveRows(parentIndex, childIndex.row(), childIndex.row());
+    }
+
+    void OutlinerListModel::OnEntityInfoUpdatedRemoveChildEnd(AZ::EntityId parentId, AZ::EntityId childId)
+    {
+        (void)childId;
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        endRemoveRows();
+
+        //must refresh partial lock/visibility of parents
+        QueueAncestorUpdate(parentId);
+        emit EnableSelectionUpdates(true);
+    }
+
+    void OutlinerListModel::OnEntityInfoUpdatedOrderBegin(AZ::EntityId parentId, AZ::EntityId childId, AZ::u64 index)
+    {
+        (void)parentId;
+        (void)childId;
+        (void)index;
+    }
+
+    void OutlinerListModel::OnEntityInfoUpdatedOrderEnd(AZ::EntityId parentId, AZ::EntityId childId, AZ::u64 index)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        if (!m_entityDeregistrationBuffer.empty())
-        {
-            ProcessDeregistrationBuffer();
-        }
-
-        if (!m_entityRegistrationBuffer.empty())
-        {
-            ProcessRegistrationBuffer();
-        }
-
-        if (!m_entityParentChangeBuffer.empty())
-        {
-            ProcessReparentingBuffer();
-        }
-
-        if (!m_selectionRequestBuffer.empty() || !m_deselectionRequestBuffer.empty())
-        {
-            ProcessSelectionChangeBuffers();
-        }
-
-        m_bufferProcessingPending = false;
+        (void)index;
+        m_entityLayoutQueued = true;
+        QueueEntityUpdate(parentId);
+        QueueEntityUpdate(childId);
     }
 
-    void OutlinerListModel::MarkUpSliceEntities(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
+    void OutlinerListModel::OnEntityInfoUpdatedSelection(AZ::EntityId entityId, bool selected)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //update all ancestors because they will show highlight if ancestor is selected
+        QueueAncestorUpdate(entityId);
 
-        // If we can get the prefab asset, we can get the slice component.
-        auto asset = AZ::Data::AssetManager::Instance().FindAsset(sliceAssetId);
-
-        AZStd::string sliceAssetPath;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceAssetId);
-
-        AZ_Assert(asset.IsReady(), "Asset must have been loaded for the slice to be instantiated");
-        // From the slice component, we can get all the entities that are part of the slice.
-        AZ::SliceComponent* sliceComponent = asset.GetAs<AZ::SliceAsset>()->GetComponent();
-
-        auto sliceEntityMap = sliceAddress.second->GetEntityIdMap();
-
-        // Now that we have all the entities that belong to this slice, we can mark them all as belonging to a slice
-        for (const auto& entityIdPair : sliceEntityMap)
+        //expand ancestors upon new selection
+        if (selected)
         {
-            auto cache = GetCacheForEntity(entityIdPair.second);
-
-            if (cache)
-            {
-                AZStd::string prefabPath;
-                AZ::Data::AssetCatalogRequestBus::BroadcastResult(prefabPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceAssetId);
-                cache->SetSliceInformation(QString(prefabPath.c_str()));
-            }
+            ExpandAncestors(entityId);
         }
 
-        // Build the information we need to insert slice handles into the hierarchy
-        // A list of slice handle hierarchy information to fill out
-
-        // Find the root of every slice referenced in the current prefab.
-        // We pass in the EntityIdMap of the instantiated prefab so that the discovered roots
-        // get mapped back to the live entities of our prefab instance.
-        FindAllRootEntities(*sliceComponent, sliceAddress, m_SliceHandles, sliceAddress.second->GetEntityIdMap());
-
-        auto newSliceHandleSetIter = m_SliceHandles.find(sliceAddress.second->GetId());
-        if (newSliceHandleSetIter != m_SliceHandles.end())
-        {
-            const auto& newSliceHandleSet = newSliceHandleSetIter->second;
-
-            // Process our new slice root structure.
-            // We now have all the roots for each prefab.
-            // We need to find the common parent of each root.
-
-            // Now that we have all the entities that belong to this slice, we can mark them all as belonging to a slice
-            for (const auto& sliceHandle : newSliceHandleSet)
-            {
-                for (const auto& rootId : sliceHandle.GetRootEntities())
-                {
-                    auto cache = GetCacheForEntity(rootId);
-
-                    if (cache)
-                    {
-                        AZStd::string entityName;
-                        AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationRequests::GetEntityName, rootId);
-                        AZStd::string prefabPath;
-                        AZ::Data::AssetCatalogRequestBus::BroadcastResult(prefabPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceAssetId);
-                        cache->SetAsSliceRoot(true);
-                    }
-                    else
-                    {
-                        AZStd::string entityName;
-                        AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationRequests::GetEntityName, rootId);
-                    }
-                }
-            }
-        }
+        //notify observers
+        emit SelectEntity(entityId, selected);
     }
 
-    // This will analyze the entire dependency hierarchy of nested prefabs that make up the given prefab and find the
-    // transform hierarchy root(s) of each one. The final result is a list of all of the asset entity IDs belonging to
-    // the given prefab which are root entities of the given prefab or inherited from the root entities of referenced prefabs.
-    // The final argument provides a mapping from entity IDs discovered here to those Entity IDs that the calling function is concerned about. No mapping takes place if the provided map is empty.
-    void OutlinerListModel::FindAllRootEntities(AZ::SliceComponent& sliceComponent, const AZ::SliceComponent::SliceInstanceAddress& sliceInstance, SliceHandleMap& roots, const AZ::SliceComponent::EntityIdToEntityIdMap& parentEntityMap)
+    void OutlinerListModel::OnEntityInfoUpdatedLocked(AZ::EntityId entityId, bool /*locked*/)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        AZ::SliceComponent::EntityList entities;
-        if (sliceComponent.GetEntities(entities))
-        {
-            bool wasCommonRootFound = false;
-
-            AZ::EntityId commonRootEntityId;
-
-            // A list of top-level entities just in case there are multiple roots.
-            EntityList topLevelEntities;
-
-            ToolsApplicationRequests::Bus::BroadcastResult(wasCommonRootFound, &ToolsApplicationRequests::FindCommonRootInactive, entities, commonRootEntityId, &topLevelEntities);
-
-
-            AZStd::string sliceAssetPath;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceComponent.GetMyAsset()->GetId());
-
-            if (!topLevelEntities.empty())
-            {
-                // There can be a multiple slice handles associate with a single instance. See if we have a container to store them and use that if we do.
-                auto instanceIter = roots.find(sliceInstance.second->GetId());
-                if (instanceIter == roots.end())
-                {
-                    // If we don't have a container, create a new one.
-                    auto emplaceResult = roots.emplace(AZStd::make_pair(sliceInstance.second->GetId(), SliceHandleList()));
-
-                    AZ_Assert(emplaceResult.second, "Slice Handle Instance Container Creation Failed for slice asset: %s", sliceAssetPath);
-                    instanceIter = emplaceResult.first;
-                }
-
-                // Add a new slice handle to the instance list
-                instanceIter->second.emplace_back(OutlinerSliceHandle(sliceAssetPath, sliceInstance));
-                auto& newHandle = instanceIter->second.back();
-
-                for (auto const& entity : topLevelEntities)
-                {
-                    if (!parentEntityMap.empty())
-                    {
-                        AZ_Assert(parentEntityMap.find(entity->GetId()) != parentEntityMap.end(), "Outliner Root Detection: The Provided Entity Map does not contain a mapping for entity: %s", entity->GetName().c_str());
-                        newHandle.AddRootEntity(parentEntityMap.at(entity->GetId()));
-                    }
-                    else
-                    {
-                        newHandle.AddRootEntity(entity->GetId());
-                    }
-                }
-            }
-        }
-
-        // Recurse down the hierarchy.
-        for (const auto& prefab : sliceComponent.GetSlices())
-        {
-            // Start by building a new map of parent entities so the deeper
-            // base prefab instances know which root-level entities theirs
-            // map to for the final list
-            for (const auto& instance : prefab.GetInstances())
-            {
-                AZ::SliceComponent::EntityIdToEntityIdMap nextLevelIDMapping;
-
-                for (const auto& idPair : instance.GetEntityIdMap())
-                {
-                    if (!parentEntityMap.empty())
-                    {
-                        if (parentEntityMap.find(idPair.second) != parentEntityMap.end())
-                        {
-                            nextLevelIDMapping.emplace(AZStd::make_pair(idPair.first, parentEntityMap.at(idPair.second)));
-                        }
-                    }
-                    else
-                    {
-                        nextLevelIDMapping.emplace(idPair);
-                    }
-                }
-
-                // Pass the corrected map to the next level of the slice hierarchy.
-                FindAllRootEntities(*(prefab.GetSliceAsset().Get()->GetComponent()), sliceInstance, roots, nextLevelIDMapping);
-            }
-        }
+        //update all ancestors because they will show partial state for descendants
+        QueueEntityUpdate(entityId);
+        QueueAncestorUpdate(entityId);
     }
 
-    void OutlinerListModel::ExpandItemHierarchy(const AZ::EntityId& entityId)
+    void OutlinerListModel::OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool /*visible*/)
     {
-        m_expansionRequestBuffer.insert(entityId);
-
-        // If we're not currently modifying the tree, process this request immediately
-        if (!m_treeModificationUnderway)
-        {
-            ProcessRequestBuffers();
-        }
+        //update all ancestors because they will show partial state for descendants
+        QueueEntityUpdate(entityId);
+        QueueAncestorUpdate(entityId);
     }
 
-    void OutlinerListModel::EntityCacheChanged(const AZ::EntityId& entityId)
+    void OutlinerListModel::OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& name)
     {
-        m_invalidationRequestBuffer.insert(entityId);
-
-        // If we're not currently modifying the tree, process this request immediately
-        if (!m_treeModificationUnderway)
-        {
-            ProcessRequestBuffers();
-        }
-    }
-    void OutlinerListModel::EntityCacheSelectionRequest(const AZ::EntityId&  entityId)
-    {
-        // Remove any previously queued up deselection requests since the last one in should always win
-        m_deselectionRequestBuffer.erase(entityId);
-
-        m_selectionRequestBuffer.insert(entityId);
-
-        RequestEventBufferProcessing();
-    }
-
-    void OutlinerListModel::EntityCacheDeselectionRequest(const AZ::EntityId&  entityId)
-    {
-        // Remove any previously queued up selection requests since the last one in should always win
-        m_selectionRequestBuffer.erase(entityId);
-
-        m_deselectionRequestBuffer.insert(entityId);
-
-        RequestEventBufferProcessing();
-    }
-
-    void OutlinerListModel::ProcessSelectionChangeBuffers()
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        OutlinerModelNotificationBus::Broadcast(&OutlinerModelNotifications::ModelEntitySelectionChanged, m_selectionRequestBuffer, m_deselectionRequestBuffer);
-
-        m_selectionRequestBuffer.clear();
-        m_deselectionRequestBuffer.clear();
-
-        InvalidateFilter();
-    }
-
-    // Processes and clears the invalidation buffer.
-    // Call at the end of any function that could invalidate items in the tree view.
-    void OutlinerListModel::ProcessRequestBuffers()
-    {
-        AZ_Assert(m_treeModificationUnderway == false, "Invalidatons must be unblocked to process the invalidation buffer.");
-
-        for (const auto& entityId : m_expansionRequestBuffer)
-        {
-            auto cache = GetCacheForEntity(entityId);
-            emit ExpandItem(GetIndexFromCache(cache));
-        }
-
-        m_expansionRequestBuffer.clear();
-
-        for (const auto& entityId : m_invalidationRequestBuffer)
-        {
-            auto modelIndex = GetIndexForEntity(entityId);
-            AZ_Assert(modelIndex.isValid(), "Received a cache changed event for an entity with no corresponding cache");
-            Q_EMIT dataChanged(modelIndex, modelIndex);
-        }
-
-        m_invalidationRequestBuffer.clear();
-    }
-
-    void OutlinerListModel::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        for (const auto& replacedPair : replacedEntitiesMap)
-        {
-            auto newItemCache = GetCacheForEntity(replacedPair.second);
-            auto expandStateIter = m_removedExpansionState.find(replacedPair.first);
-            if (expandStateIter != m_removedExpansionState.end())
-            {
-                newItemCache->SetExpanded((*expandStateIter).second);
-                if (newItemCache->IsExpanded())
-                {
-                    ExpandItemHierarchy(replacedPair.second);
-                }
-
-                m_removedExpansionState.erase(expandStateIter);
-            }
-        }
-    }
-
-
-    void OutlinerListModel::OnEditorEntitiesSliceOwnershipChanged(const AzToolsFramework::EntityIdList& entityIdList)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        if (entityIdList.empty())
-        {
-            return;
-        }
-
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityIdList.front(), &AzFramework::EntityIdContextQueries::GetOwningSlice);
-
-        // Remove the prefab information for all the given entities
-        for (const auto& entityId : entityIdList)
-        {
-            OutlinerCache* entityCache = GetCacheForEntity(entityId);
-            if (entityCache)
-            {
-                entityCache->ClearSliceInformation();
-            }
-        }
-
-        if (sliceAddress.first && sliceAddress.second)
-        {
-            // This will run through the slice and flag all the appropriate entities as part of a slice and as a slice root as appropriate.
-            // This includes the entities here.
-            OnSliceInstantiated(sliceAddress.first->GetSliceAsset().GetId(), sliceAddress, AzFramework::SliceInstantiationTicket());
-        }
-    }
-
-    QModelIndexList OutlinerListModel::GetEntityIndexList(const AZStd::vector<AZ::EntityId>& entities)
-    {
-        QModelIndexList list;
-        for (size_t searchIndex = 0; searchIndex < entities.size(); searchIndex++)
-        {
-            const OutlinerCache* cache = GetCacheForEntity(entities[searchIndex]);
-            if (cache != nullptr)
-            {
-                // select all columns in row
-                for (int column = 0; column < ColumnCount; ++column)
-                {
-                    list.append(GetIndexFromCache(cache, column));
-                }
-            }
-        }
-        return list;
+        (void)name;
+        QueueEntityUpdate(entityId);
     }
 
     QString OutlinerListModel::GetSliceAssetName(const AZ::EntityId& entityId) const
     {
-        const OutlinerCache* cache = GetCacheForEntity(entityId);
-        if (cache)
-        {
-            return cache->GetSliceAssetName();
-        }
-        else
-        {
-            return QString();
-        }
+        AZStd::string sliceAssetName;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sliceAssetName, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetSliceAssetName);
+        return QString(sliceAssetName.data());
     }
 
-    OutlinerCache* OutlinerListModel::GetValidCacheFromIndex(const QModelIndex& modelIndex) const
+    QModelIndex OutlinerListModel::GetIndexFromEntity(const AZ::EntityId& entityId, int column) const
     {
-        if (!modelIndex.isValid())
+        if (entityId.IsValid())
         {
-            return m_entitiesCacheRoot;
+            AZ::EntityId parentId;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+
+            AZStd::size_t row = 0;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(row, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildIndex, entityId);
+            return createIndex(static_cast<int>(row), column, static_cast<AZ::u64>(entityId));
         }
-        else
-        {
-            // QModelIndex contains pointer to cache
-            return static_cast<OutlinerCache*>(modelIndex.internalPointer());
-        }
+        return QModelIndex();
     }
 
-    QModelIndex OutlinerListModel::GetIndexFromCache(const OutlinerCache* cache, int column) const
+    AZ::EntityId OutlinerListModel::GetEntityFromIndex(const QModelIndex& index) const
     {
-        // The root is a special case.
-        // This seems to be standard practice in QTree tutorials, to create a root that
-        // doesn't actually show up in the tree.
-        if (cache == nullptr || cache == m_entitiesCacheRoot)
-        {
-            return QModelIndex();
-        }
-
-        // QModelIndex contains pointer to cache
-        return createIndex(cache->GetRow(), column, const_cast<void*>(static_cast<const void*>(cache)));
+        return index.isValid() ? AZ::EntityId(static_cast<AZ::u64>(index.internalId())) : AZ::EntityId();
     }
 
     void OutlinerListModel::SearchCriteriaChanged(QStringList& criteriaList, FilterOperatorType filterOperator)
     {
         m_filterOperator = filterOperator;
-        BuildFilter(criteriaList, m_filterOperator);
+        BuildFilter(criteriaList, filterOperator);
         InvalidateFilter();
     }
 
-    void OutlinerListModel::OnItemExpanded(const QModelIndex& index)
+    void OutlinerListModel::OnEntityExpanded(const AZ::EntityId& entityId)
     {
-        auto itemCache = GetValidCacheFromIndex(index);
-        itemCache->SetExpanded(true);
+        m_entityExpansionState[entityId] = true;
+        QueueEntityUpdate(entityId);
     }
 
-    void OutlinerListModel::OnItemCollapsed(const QModelIndex& index)
+    void OutlinerListModel::OnEntityCollapsed(const AZ::EntityId& entityId)
     {
-        auto itemCache = GetValidCacheFromIndex(index);
-        itemCache->SetExpanded(false);
+        m_entityExpansionState[entityId] = false;
+        QueueEntityUpdate(entityId);
     }
 
-    void OutlinerListModel::BuildFilter(QStringList& criteriaList, FilterOperatorType filterOperator)
+    void OutlinerListModel::BuildFilter(QStringList& criteriaList, FilterOperatorType m_filterOperator)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         ClearFilterRegExp();
 
         if (criteriaList.size() > 0)
@@ -2287,7 +1126,7 @@ namespace AzToolsFramework
 
                 filter = m_filtersRegExp[tag.toStdString().c_str()].pattern();
 
-                if (filterOperator == FilterOperatorType::Or)
+                if (m_filterOperator == FilterOperatorType::Or)
                 {
                     if (filter.isEmpty())
                     {
@@ -2298,7 +1137,7 @@ namespace AzToolsFramework
                         filter += "|" + text;
                     }
                 }
-                else if (filterOperator == FilterOperatorType::And)
+                else if (m_filterOperator == FilterOperatorType::And)
                 {
                     filter += "(?=.*" + text + ")"; //  Using Lookaheads to produce an "and" effect.
                 }
@@ -2330,55 +1169,288 @@ namespace AzToolsFramework
 
     void OutlinerListModel::InvalidateFilter()
     {
-        m_entitiesCacheRoot->CalculateVisibility(m_filtersRegExp, m_filterOperator);
+        FilterEntity(AZ::EntityId(), m_filtersRegExp["name"]);
     }
+
+    void OutlinerListModel::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
+    {
+        //the original entity was destroyed by now but the replacement may need to be refreshed
+        for (const auto& replacedPair : replacedEntitiesMap)
+        {
+            auto expansionIter = m_entityExpansionState.find(replacedPair.first);
+            QueueEntityToExpand(replacedPair.second, expansionIter != m_entityExpansionState.end() && expansionIter->second);
+        }
+    }
+
 
     //! Editor lock component interface to enable/disable selection capabilities in the viewport.
-    void OutlinerListModel::ToggleEditorLockState(const QModelIndex& index)
+    void OutlinerListModel::ToggleEditorLockState(const AZ::EntityId& entityId)
     {
-        bool locked = false;
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(locked, GetEntityAtIndex(index), &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-        SetEditorLockState(index, !locked);
-    }
-
-    void OutlinerListModel::SetEditorLockState(const QModelIndex& index, bool locked)
-    {
-        auto id = GetEntityAtIndex(index);
-        AzToolsFramework::EditorLockComponentRequestBus::Event(id, &AzToolsFramework::EditorLockComponentRequests::SetLocked, locked);
-        SetEditorLockStateOnAllChildren(index, locked);
-    }
-
-    void OutlinerListModel::SetEditorLockStateOnAllChildren(const QModelIndex& index, bool locked)
-    {
-        OutlinerCache* item = static_cast<OutlinerCache*>(index.internalPointer());
-        for (int childIndex = 0; childIndex < item->GetChildCount(); ++childIndex)
+        if (entityId.IsValid())
         {
-            SetEditorLockState(GetIndexFromCache(item->GetChild(childIndex)), locked);
+            // Begin work-around part 1
+            // Toggling lock state on loose entities with slice instances as children breaks synchronization between
+            // Outliner displayed selection state and actual editor selection state, so as low-risk workaround we save
+            // selection state before a lock state toggle, then restore it manually after toggling is finished
+            EntityIdList previouslySelectedEntityIds;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(previouslySelectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+            // End work-around part 1
+
+            bool isLocked = false;
+            AzToolsFramework::EditorLockComponentRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
+
+            if (IsSelected(entityId))
+            {
+                EntityIdList selectedEntityIds;
+                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+                for (auto selectedId : selectedEntityIds)
+                {
+                    SetEditorLockState(selectedId, !isLocked);
+                }
+            }
+            else
+            {
+                SetEditorLockState(entityId, !isLocked);
+            }
+
+            // Begin work-around part 2
+            // Toggling lock state on loose entities with slice instances as children breaks synchronization between
+            // Outliner displayed selection state and actual editor selection state, so as low-risk workaround we save
+            // selection state before a lock state toggle, then restore it manually after toggling is finished
+            EntityIdList noSelectedEntities;
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, noSelectedEntities);
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, previouslySelectedEntityIds);
+            // End work-around part 2
+        }
+    }
+
+    void OutlinerListModel::SetEditorLockState(const AZ::EntityId& entityId, bool isLocked)
+    {
+        if (entityId.IsValid())
+        {
+            AzToolsFramework::EditorLockComponentRequestBus::Event(entityId, &AzToolsFramework::EditorLockComponentRequests::SetLocked, isLocked);
+
+            EntityIdList children;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+
+            for (auto childId : children)
+            {
+                SetEditorLockState(childId, isLocked);
+            }
         }
     }
 
     //! Editor Visibility interface to enable/disable rendering in the viewport.
-    void OutlinerListModel::ToggleEditorVisibility(const QModelIndex& index)
+    void OutlinerListModel::ToggleEditorVisibility(const AZ::EntityId& entityId)
     {
-        bool visibleInEditor = false;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(visibleInEditor, GetEntityAtIndex(index), &AzToolsFramework::EditorVisibilityRequests::GetVisibilityFlag);
-        SetEditorVisibility(index, !visibleInEditor);
-    }
-
-    void OutlinerListModel::SetEditorVisibility(const QModelIndex& index, bool visibleInEditor)
-    {
-        auto id = GetEntityAtIndex(index);
-        AzToolsFramework::EditorVisibilityRequestBus::Event(id, &AzToolsFramework::EditorVisibilityRequests::SetVisibilityFlag, visibleInEditor);
-        SetEditorVisibilityOnAllChildren(index, visibleInEditor);
-    }
-
-    void OutlinerListModel::SetEditorVisibilityOnAllChildren(const QModelIndex& index, bool visibleInEditor)
-    {
-        OutlinerCache* item = static_cast<OutlinerCache*>(index.internalPointer());
-        for (int childIndex = 0; childIndex < item->GetChildCount(); ++childIndex)
+        if (entityId.IsValid())
         {
-            SetEditorVisibility(GetIndexFromCache(item->GetChild(childIndex)), visibleInEditor);
+            bool isVisible = false;
+            AzToolsFramework::EditorVisibilityRequestBus::EventResult(isVisible, entityId, &AzToolsFramework::EditorVisibilityRequests::GetVisibilityFlag);
+
+            if (IsSelected(entityId))
+            {
+                EntityIdList selectedEntityIds;
+                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+                for (AZ::EntityId selectedId : selectedEntityIds)
+                {
+                    SetEditorVisibility(selectedId, !isVisible);
+                }
+            }
+            else
+            {
+                SetEditorVisibility(entityId, !isVisible);
+            }
         }
+    }
+
+    void OutlinerListModel::SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible)
+    {
+        if (entityId.IsValid())
+        {
+            AzToolsFramework::EditorVisibilityRequestBus::Event(entityId, &AzToolsFramework::EditorVisibilityRequests::SetVisibilityFlag, isVisible);
+
+            EntityIdList children;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+            for (auto childId : children)
+            {
+                SetEditorVisibility(childId, isVisible);
+            }
+        }
+    }
+
+    void OutlinerListModel::ExpandAncestors(const AZ::EntityId& entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //typically to reveal selected entities, expand all parent entities
+        if (entityId.IsValid())
+        {
+            AZ::EntityId parentId;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+            QueueEntityToExpand(parentId, true);
+            ExpandAncestors(parentId);
+        }
+    }
+
+    bool OutlinerListModel::IsExpanded(const AZ::EntityId& entityId) const
+    {
+        auto expandedItr = m_entityExpansionState.find(entityId);
+        return expandedItr != m_entityExpansionState.end() && expandedItr->second;
+    }
+
+    void OutlinerListModel::RestoreDescendantExpansion(const AZ::EntityId& entityId)
+    {
+        //re-expand/collapse entities in the model that may have been previously removed or rearranged, resulting in new model indices
+        if (entityId.IsValid())
+        {
+            QueueEntityToExpand(entityId, IsExpanded(entityId));
+
+            EntityIdList children;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+            for (auto childId : children)
+            {
+                RestoreDescendantExpansion(childId);
+            }
+        }
+    }
+
+    void OutlinerListModel::RestoreDescendantSelection(const AZ::EntityId& entityId)
+    {
+        //re-select entities in the model that may have been previously removed or rearranged, resulting in new model indices
+        if (entityId.IsValid())
+        {
+            m_entitySelectQueue.insert(entityId);
+            QueueEntityUpdate(entityId);
+
+            EntityIdList children;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+            for (auto childId : children)
+            {
+                RestoreDescendantSelection(childId);
+            }
+        }
+    }
+
+    bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId, const QRegExp& regExp)
+    {
+        bool isFilterMatch = true;
+
+        if (entityId.IsValid() && regExp.isValid() && !regExp.isEmpty())
+        {
+            AZStd::string name;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
+
+            bool isMatch = QString::fromUtf8(name.data()).contains(regExp);
+            if (m_filterOperator == FilterOperatorType::And)
+            {
+                isFilterMatch &= isMatch;
+            }
+            else
+            {
+                isFilterMatch = isMatch;
+            }
+        }
+
+        EntityIdList children;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+        for (auto childId : children)
+        {
+            isFilterMatch |= FilterEntity(childId, regExp);
+        }
+
+        m_entityFilteredState[entityId] = !isFilterMatch;
+
+        return isFilterMatch;
+    }
+
+    void OutlinerListModel::FilterDescendants(const AZ::EntityId& entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //recursively hide all descendants in tree
+        if (entityId.IsValid())
+        {
+            m_entityFilteredState[entityId] = true;
+            // Emit data changed directly as it is immediately valid
+            auto modelIndex = GetIndexFromEntity(AZ::EntityId());
+            if (modelIndex.isValid())
+            {
+                emit dataChanged(modelIndex, modelIndex, { VisibilityRole });
+            }
+
+            EntityIdList children;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+            for (auto childId : children)
+            {
+                FilterDescendants(childId);
+            }
+        }
+    }
+
+    bool OutlinerListModel::IsFiltered(const AZ::EntityId& entityId) const
+    {
+        auto hiddenItr = m_entityFilteredState.find(entityId);
+        return hiddenItr != m_entityFilteredState.end() && hiddenItr->second;
+    }
+
+    bool OutlinerListModel::HasSelectedDescendant(const AZ::EntityId& entityId) const
+    {
+        //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
+        EntityIdList children;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+        for (auto childId : children)
+        {
+            bool isSelected = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSelected, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
+            if (isSelected || HasSelectedDescendant(childId))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool OutlinerListModel::AreAllDescendantsSameLockState(const AZ::EntityId& entityId) const
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
+        bool isLocked = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+
+        EntityIdList children;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+        for (auto childId : children)
+        {
+            bool isLockedChild = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLockedChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+            if (isLocked != isLockedChild || !AreAllDescendantsSameLockState(childId))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool OutlinerListModel::AreAllDescendantsSameVisibleState(const AZ::EntityId& entityId) const
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
+        bool isVisible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisible, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
+        EntityIdList children;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+        for (auto childId : children)
+        {
+            bool isVisibleChild = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisibleChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+            if (isVisible != isVisibleChild || !AreAllDescendantsSameLockState(childId))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -2388,26 +1460,8 @@ namespace AzToolsFramework
     OutlinerItemDelegate::OutlinerItemDelegate(QWidget* parent)
         : QStyledItemDelegate(parent)
     {
-        // Customizing the rendering of check boxes requires style sheets.
-        // Load them here to apply the custom style to a pair of check boxes
-        // used for rendering later.
-        QString eyeToggleStyleSheet;
-        QString lockToggleStyleSheet;
-
-        QFile visibileStyleFile(VISIBILITY_CHECK_BOX_STYLE_SHEET_PATH);
-        if (visibileStyleFile.open(QFile::ReadOnly))
-        {
-            eyeToggleStyleSheet = QLatin1String(visibileStyleFile.readAll());
-
-            m_visibilityCheckBox.setStyleSheet(eyeToggleStyleSheet);
-        }
-        QFile lockStyleFile(LOCK_CHECK_BOX_STYLE_SHEET_PATH);
-        if (lockStyleFile.open(QFile::ReadOnly))
-        {
-            lockToggleStyleSheet = QLatin1String(lockStyleFile.readAll());
-
-            m_lockCheckBox.setStyleSheet(lockToggleStyleSheet);
-        }
+        m_visibilityCheckBoxWithBorder.setObjectName("bordered");
+        m_lockCheckBoxWithBorder.setObjectName("bordered");
     }
 
     void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -2416,34 +1470,46 @@ namespace AzToolsFramework
         // We can set it right before we draw using information from the model data.
         if (index.column() == OutlinerListModel::ColumnVisibilityToggle)
         {
-            auto checkstate = index.data(Qt::CheckStateRole);
-
-            if (checkstate.canConvert<Qt::CheckState>())
-            {
-                m_visibilityCheckBox.setChecked(checkstate.value<Qt::CheckState>() == Qt::Checked);
-            }
-
             painter->save();
             painter->translate(option.rect.topLeft());
-            m_visibilityCheckBox.render(painter);
-            painter->restore();
 
-            return; // painted, maybe
+            bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+            m_visibilityCheckBoxWithBorder.setChecked(checked);
+            m_visibilityCheckBox.setChecked(checked);
+
+            if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>())
+            {
+                m_visibilityCheckBoxWithBorder.render(painter);
+            }
+            else
+            {
+                m_visibilityCheckBox.render(painter);
+            }
+
+            painter->restore();
+            return;
         }
 
         if (index.column() == OutlinerListModel::ColumnLockToggle)
         {
-            QVariant checkstate = index.data(Qt::CheckStateRole);
-            if (checkstate.canConvert<Qt::CheckState>())
-            {
-                m_lockCheckBox.setChecked(checkstate.value<Qt::CheckState>() == Qt::Checked);
-            }
-
             painter->save();
             painter->translate(option.rect.topLeft());
-            m_lockCheckBox.render(painter);
+
+            bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+            m_lockCheckBoxWithBorder.setChecked(checked);
+            m_lockCheckBox.setChecked(checked);
+
+            if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>())
+            {
+                m_lockCheckBoxWithBorder.render(painter);
+            }
+            else
+            {
+                m_lockCheckBox.render(painter);
+            }
+
             painter->restore();
-            return; // painted
+            return;
         }
 
         QStyleOptionViewItem customOptions{ option };
@@ -2482,7 +1548,8 @@ namespace AzToolsFramework
                 painter->drawPath(path);
                 painter->restore();
             }
-            // Draw a dashed line around any visible, collapsed entry in the outnliner that has
+
+            // Draw a dashed line around any visible, collapsed entry in the outliner that has
             // children underneath it currently selected.
             if (!index.data(OutlinerListModel::ExpandedRole).template value<bool>())
             {

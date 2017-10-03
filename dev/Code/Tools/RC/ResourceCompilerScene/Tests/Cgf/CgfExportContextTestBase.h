@@ -16,6 +16,7 @@
 #include <RC/ResourceCompilerScene/Cgf/CgfExportContexts.h>
 #include <SceneAPI/SceneCore/Events/CallProcessorBus.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Mocks/DataTypes/Groups/MockIMeshGroup.h>
 #include <gmock/gmock.h>
 
@@ -48,7 +49,7 @@ namespace AZ
                 , m_outContent(m_sampleOutputDirectory.c_str())
                 , m_sampleNodeIndex(m_stubScene.GetGraph().Find("InvalidNodeName"))
                 , m_stubContext(nullptr)
-                , m_stubMeshGroupExportContext(m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, GetParam().second)
+                , m_stubMeshGroupExportContext(m_productList, m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, GetParam().second)
                 , m_stubContainerExportContext(m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, m_outContent, GetParam().second)
                 , m_stubNodeExportContext(m_stubContainerExportContext, m_outNode, m_sampleNodeName, m_sampleNodeIndex, m_samplePhysGeomType, m_sampleRootBoneName, GetParam().second)
                 , m_stubMeshNodeExportContext(m_stubNodeExportContext, m_outMesh, GetParam().second)
@@ -92,6 +93,7 @@ namespace AZ
             }
 
             // Sample Context Data Payloads
+            AZ::SceneAPI::Events::ExportProductList m_productList;
             AZStd::string m_sampleSceneName = "SampleScene";
             SceneAPI::Containers::Scene m_stubScene;
             AZStd::string m_sampleOutputDirectory = "TEST:\\Sample\\Output";

@@ -37,7 +37,7 @@ namespace GridMate
         /*!
         * Called when GameLift service is failed to initialize
         */
-        virtual void OnGameLiftSessionServiceFailed(GameLiftClientService*) {}
+        virtual void OnGameLiftSessionServiceFailed(GameLiftClientService*, const AZStd::string&) {}
     };
     typedef AZ::EBus<GameLiftClientServiceEvents> GameLiftClientServiceEventsBus;
 }

@@ -81,6 +81,7 @@ Q_SIGNALS:
 
 protected Q_SLOTS:
     void FileChanged(QString path);
+    void DirectoryChanged(QString path);
     void ShowMessageBox(QString title, QString msg, bool isCritical);
     void ShowTrayIconMessage(QString msg);
 

@@ -109,7 +109,7 @@ namespace AZ
         {
         public:
             WorldMatrixExporterSimpleTests()
-                : m_cacheGenerationContext(m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, Phase::Construction)
+                : m_cacheGenerationContext(m_productList, m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, Phase::Construction)
             {
             }
             ~WorldMatrixExporterSimpleTests() override = default;

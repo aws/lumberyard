@@ -33,6 +33,7 @@ namespace Metastream
         if (behaviorContext)
         {
             behaviorContext->EBus<MetastreamRequestBus>("MetastreamRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("StartHTTPServer", &MetastreamRequestBus::Events::StartHTTPServer)
                 ->Event("StopHTTPServer", &MetastreamRequestBus::Events::StopHTTPServer)
 

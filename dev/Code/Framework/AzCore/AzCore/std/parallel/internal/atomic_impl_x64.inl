@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_PARALLEL_ATOMIC_IMPL_X64_INL
-#define AZSTD_PARALLEL_ATOMIC_IMPL_X64_INL 1
+#pragma once
 
 #include <intrin.h>
 #pragma intrinsic(_InterlockedExchange64)
@@ -306,6 +305,3 @@ namespace AZStd
         };
     }
 }
-
-#endif
-#pragma once

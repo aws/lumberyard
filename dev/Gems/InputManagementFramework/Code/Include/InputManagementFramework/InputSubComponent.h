@@ -30,8 +30,8 @@ namespace Input
         virtual ~InputSubComponent() = default;
 
         //////////////////////////////////////////////////////////////////////////
-        /// IInputSubComponents will share the life-cycle API's of components.
-        /// Any Component that contains an IInputSubComponent is expected to call
+        /// InputSubComponents will share the life-cycle API's of components.
+        /// Any Component that contains an InputSubComponent is expected to call
         /// these methods in their Activate/Deactivate methods
         virtual void Activate(const AZ::InputEventNotificationId& channel) = 0;
         virtual void Deactivate(const AZ::InputEventNotificationId& channel) = 0;

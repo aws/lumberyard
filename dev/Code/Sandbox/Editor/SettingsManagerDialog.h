@@ -19,7 +19,6 @@
 #include <QDialog>
 #include <QScopedPointer>
 
-#define SETTINGS_MANAGER_WINDOW_NAME QStringLiteral("Editor Settings Manager")
 
 class CSettingsManager;
 

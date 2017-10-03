@@ -18,22 +18,17 @@ def build(bld):
         target           = 'AzTest',
         vs_filter        = 'AZ Framework',
         file_list        = ['aztest.waf_files'],
-        platforms        = ['win', 'darwin_x64', 'android_armv7_gcc', 'durango'],
+        platforms        = ['win', 'darwin_x64', 'android_armv7_gcc', 'android_armv7_clang',
+	],
         configurations   = ['test_all'],
         disable_pch      = True,
+        use              = ['AzCore',
+                            'GMOCK'],
         includes         = ['..'],
         export_includes  = ['..'],
-        uselib           = ['GMOCK'],
         
+        uselib           = ['GMOCK'],
         win_file_list               = ['aztest_win.waf_files'],
         darwin_file_list            = ['aztest_osx.waf_files'],
         android_armv7_gcc_file_list = ['aztest_android.waf_files'],
-       
     )
-
-        
-        
-
-            
-
-

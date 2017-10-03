@@ -92,6 +92,8 @@ namespace Projects
     {
         /// The engine to create the project on. Required.
         Engines::EngineId m_engine;
+
+        AZStd::string m_templateName;
     };
 
     /**
@@ -141,10 +143,21 @@ namespace Projects
         *
         * \param[in] projectName    The name of the new project
         * \param[in] engineId       Engine Id to validate against
+        * \param[in] allowExisting  Allow existing project names for this validation.  Generally used to update existing projects
         *
         * \returns                  Void on success, error message on failure.
         */
-        virtual Lyzard::StringOutcome ValidateProjectName(const AZStd::string& projectName, const Engines::EngineId& engineId) const = 0;
+        virtual Lyzard::StringOutcome ValidateProjectName(const AZStd::string& projectName, const Engines::EngineId& engineId, bool allowExisting) const = 0;
+
+        /**
+        * Determine the location of the detailed log file that will capture the status/error logs from the CreateProject bus call. 
+        *
+        * \param[in] desc           The descriptor of the new Project to determine/create the log file
+        * \param[in] createOnDemand Create the log file if it does not exist
+        *
+        * \returns                  The full path to the log file if successful, error message on failure.
+        */
+        virtual AZ::Outcome<AZStd::string, AZStd::string> GetProjectCreationLogFile(const NewProjectDescriptor& desc, bool createOnDemand) const = 0;
 
     };
     using ProjectManagerRequestBus = AZ::EBus<ProjectManagerRequests>;
@@ -189,14 +202,13 @@ namespace Projects
         /**
         * Build the game project 
         *
-        * \param[in] projectName            The name of the new project
-        * \param[in] engineId               Engine Id to base the build on
+        * \param[in] desc                   The descriptor of the new project to build
         * \param[in] targetPlatform         The target platform to build the project against
         * \param[in] targetConfiguration    The build configuration to build the target against.
         *
         * \returns                  Void on success, error message on failure.
         */
-        virtual Lyzard::StringOutcome BuildProject(const AZStd::string& projectName, const Engines::EngineId& engineId, const AZStd::string& targetPlatform, const AZStd::string& targetConfiguration) const = 0;
+        virtual Lyzard::StringOutcome BuildProject(const NewProjectDescriptor& desc, const AZStd::string& targetPlatform, const AZStd::string& targetConfiguration) const = 0;
 
         /**
         * Get the default msvs version specified in _WAF_/user_settings.options

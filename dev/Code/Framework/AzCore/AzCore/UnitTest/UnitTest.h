@@ -220,10 +220,7 @@ namespace UnitTest
         UnitTest::TestRunner::Instance().ProcessAssert(#exp, __FILE__, __LINE__, UnitTest::AssertionExpr(exp)); \
     else GTEST_TEST_BOOLEAN_(exp, #exp, false, true, GTEST_NONFATAL_FAILURE_); }
 
-//#define AZ_TEST_ASSERT_CLOSE(_exp, _value, _eps) { UnitTest::TestRunner::Instance().ProcessAssert(#_exp " close to "#_value, __FILE__, __LINE__, std::abs((long)(_exp) - (_value)) >= (long)_eps ? false : true); }
-//#define AZ_TEST_FORMAT_CLOSE(format, _exp, _value, _eps) #_exp " close to "#_value
 #define AZ_TEST_ASSERT_CLOSE(_exp, _value, _eps) EXPECT_NEAR((double)_exp, (double)_value, (double)_eps)
-//#define AZ_TEST_ASSERT_FLOAT_CLOSE(_exp, _value) { UnitTest::TestRunner::Instance().ProcessAssert(#_exp " close to "#_value, __FILE__, __LINE__, fabsf((_exp) - (_value)) >= 0.002f ? false : true); }
 #define AZ_TEST_ASSERT_FLOAT_CLOSE(_exp, _value) EXPECT_NEAR(_exp, _value, 0.002f)
 
 #define AZ_TEST_STATIC_ASSERT(_Exp)                         AZ_STATIC_ASSERT(_Exp, "Test Static Assert")

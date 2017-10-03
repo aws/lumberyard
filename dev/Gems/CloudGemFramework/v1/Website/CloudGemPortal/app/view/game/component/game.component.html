@@ -1,8 +1,9 @@
 ﻿<div class="cgp-container">
     <cgp-nav></cgp-nav>   
-    <div class="">
+    <cgp-sidebar [sidebarState]="sidebarState" (sidebarStateChange)="updateSidebarState($event)"></cgp-sidebar>
+    <div class="cgp-content-container" [@containerMargin]="sidebarState" [ngClass]="sidebarState === 'Collapsed' ? 'collapsed' : 'expanded'">
         <router-outlet></router-outlet>
     </div>
     <div class="footer-push"></div>
 </div>
-<cgp-footer></cgp-footer>
+<cgp-footer [sidebarState]="sidebarState"></cgp-footer>

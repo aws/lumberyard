@@ -116,15 +116,18 @@ public:
 
     void RequestEditProjectSettings() override;
     void RequestEditDeploymentTemplate() override;
+    void RequestEditGemsFile() override;
 
     static void RequestUpdateSourceModel(QSharedPointer<IFileSourceControlModel> sourceModel, QSharedPointer<IFileContentModel> contentModel);
     static void RequestEditSourceModel(QSharedPointer<IFileSourceControlModel> sourceModel, QSharedPointer<IFileContentModel> contentModel);
 
     bool ProjectSettingsNeedsCheckout() const override;
     bool DeploymentTemplateNeedsCheckout() const override;
+    bool GemsFileNeedsCheckout() const override;
 
-    QSharedPointer<IFileSourceControlModel> GetProjectSettingsSourceModel() { return m_projectSettingsSourceControlModel; }
-    QSharedPointer<IFileSourceControlModel> GetDeploymentTemplateSourceModel() { return m_deploymentTemplateSourceControlModel; }
+    QSharedPointer<IFileSourceControlModel> GetProjectSettingsSourceModel()  override { return m_projectSettingsSourceControlModel; }
+    QSharedPointer<IFileSourceControlModel> GetDeploymentTemplateSourceModel()  override { return m_deploymentTemplateSourceControlModel; }
+    QSharedPointer<IFileSourceControlModel> GetGemsFileSourceModel()  override { return m_gemsFileSourceControlModel; }
 
     // Status
     void UpdateSourceControlStates() override;
@@ -237,6 +240,7 @@ private:
 
     QSharedPointer<IFileSourceControlModel> m_projectSettingsSourceControlModel;
     QSharedPointer<IFileSourceControlModel> m_deploymentTemplateSourceControlModel;
+    QSharedPointer<IFileSourceControlModel> m_gemsFileSourceControlModel;
     QString m_defaultDeploymentName;
 
     int m_operationsInProgress {0};

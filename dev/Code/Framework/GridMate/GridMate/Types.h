@@ -67,8 +67,8 @@ namespace GridMate
     enum ServiceType
     {
         ST_LAN,
-        ST_XLIVE,
-        ST_PSN,
+        ST_XLIVE, // ACCEPTED_USE
+        ST_PSN, // ACCEPTED_USE
         ST_STEAM,
 
         ST_MAX // MUST BE LAST

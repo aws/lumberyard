@@ -36,13 +36,13 @@
 #include <AzToolsFramework/ToolsComponents/EditorPendingCompositionComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIconComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
 #include <AzToolsFramework/Archive/SevenZipComponent.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzCore/Component/Component.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
@@ -53,6 +53,7 @@
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
+#include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
 
 #include <QtWidgets/QMessageBox>
 
@@ -96,35 +97,49 @@ namespace AzToolsFramework
             AZ_Assert(preemptiveUndoCache, "Failed to retrieve preemptive undo cache.");
             if (undoStack && preemptiveUndoCache)
             {
-                // In order to undo DeleteSelected, we have to create a selection command which selects nothing
+                // In order to undo DeleteSelected, we have to create a selection command which selects the current selection
                 // and then add the deletion as children.
                 // Commands always execute themselves first and then their children (when going forwards)
                 // and do the opposite when going backwards.
                 AzToolsFramework::EntityIdList selection;
                 EBUS_EVENT_RESULT(selection, ToolsApplicationRequests::Bus, GetSelectedEntities);
-                AzToolsFramework::SelectionCommand* selCommand = aznew AzToolsFramework::SelectionCommand(
-                    selection, "Delete Entities");
+                AzToolsFramework::SelectionCommand* selCommand = aznew AzToolsFramework::SelectionCommand(selection, "Delete Entities");
 
-                for (const auto& entityId : entityIds)
+                // We insert a "deselect all" command before we delete the entities. This ensures the delete operations aren't changing
+                // selection state, which triggers expensive UI updates. By deselecting up front, we are able to do those expensive
+                // UI updates once at the start instead of once for each entity.
                 {
-                    AZ::Entity* entity = NULL;
-                    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+                    AzToolsFramework::EntityIdList deselection;
+                    AzToolsFramework::SelectionCommand* deselectAllCommand = aznew AzToolsFramework::SelectionCommand(deselection, "Deselect Entities");
+                    deselectAllCommand->SetParent(selCommand);
+                }
 
-                    if (entity)
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "Internal::DeleteEntities:UndoCaptureAndPurgeEntities");
+                    for (const auto& entityId : entityIds)
                     {
-                        EntityDeleteCommand* command = aznew EntityDeleteCommand(static_cast<AZ::u64>(entityId));
-                        command->Capture(entity);
-                        command->SetParent(selCommand);
+                        AZ::Entity* entity = NULL;
+                        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+
+                        if (entity)
+                        {
+                            EntityDeleteCommand* command = aznew EntityDeleteCommand(static_cast<AZ::u64>(entityId));
+                            command->Capture(entity);
+                            command->SetParent(selCommand);
+                        }
+
+                        preemptiveUndoCache->PurgeCache(entityId);
+
+                        // send metrics event here for delete
+                        EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntityDeleted, entityId);
                     }
-
-                    preemptiveUndoCache->PurgeCache(entityId);
-
-                    // send metrics event here for delete
-                    EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntityDeleted, entityId);
                 }
 
                 selCommand->SetParent(currentUndoBatch);
-                selCommand->RunRedo();
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "Internal::DeleteEntities:RunRedo");
+                    selCommand->RunRedo();
+                }
             }
 
             if (createdUndo)
@@ -163,6 +178,7 @@ namespace AzToolsFramework
         RegisterComponentDescriptor(Components::ScriptEditorComponent::CreateDescriptor());
         RegisterComponentDescriptor(Components::EditorSelectionAccentSystemComponent::CreateDescriptor());
         RegisterComponentDescriptor(EditorEntityContextComponent::CreateDescriptor());
+        RegisterComponentDescriptor(SliceMetadataEntityContextComponent::CreateDescriptor());
         RegisterComponentDescriptor(Components::EditorEntityActionComponent::CreateDescriptor());
         RegisterComponentDescriptor(Components::EditorEntityIconComponent::CreateDescriptor());
         RegisterComponentDescriptor(Components::EditorInspectorComponent::CreateDescriptor());
@@ -183,15 +199,15 @@ namespace AzToolsFramework
 
         components.insert(components.end(), {
                 azrtti_typeid<EditorEntityContextComponent>(),
+                azrtti_typeid<SliceMetadataEntityContextComponent>(),
                 azrtti_typeid<Components::EditorEntityActionComponent>(),
                 azrtti_typeid<Components::GenericComponentUnwrapper>(),
                 azrtti_typeid<Components::PropertyManagerComponent>(),
                 azrtti_typeid<AzFramework::TargetManagementComponent>(),
                 azrtti_typeid<AssetSystem::AssetSystemComponent>(),
                 azrtti_typeid<PerforceComponent>(),
-                azrtti_typeid<AzToolsFramework::SevenZipComponent>()
-                // Re-enable once the EditorEntityModel is more complete
-                //azrtti_typeid<Components::EditorEntityModelComponent>()
+                azrtti_typeid<AzToolsFramework::SevenZipComponent>(),
+                azrtti_typeid<Components::EditorEntityModelComponent>()
             });
 
         return components;
@@ -217,32 +233,37 @@ namespace AzToolsFramework
             m_selectedEntities.set_capacity(0);
             m_highlightedEntities.set_capacity(0);
 
+            m_serializeContext->DestroyEditContext();
+
             Application::Stop();
         }
     }
 
-    void ToolsApplication::ReflectSerialize()
+    void ToolsApplication::CreateSerializeContext()
     {
-        if (m_serializeContext)
+        if (m_serializeContext == nullptr)
         {
-            m_serializeContext->CreateEditContext();
+            m_serializeContext = aznew AZ::SerializeContext(true, true); // create EditContext
         }
+    }
 
-        Application::ReflectSerialize();
+    void ToolsApplication::Reflect(AZ::ReflectContext* context)
+    {
+        Application::Reflect(context);
 
-        Components::EditorComponentBase::Reflect(m_serializeContext);
-        EditorAssetMimeDataContainer::Reflect(m_serializeContext);
-        ComponentAssetMimeDataContainer::Reflect(m_serializeContext);
+        Components::EditorComponentBase::Reflect(context);
+        EditorAssetMimeDataContainer::Reflect(context);
+        ComponentAssetMimeDataContainer::Reflect(context);
 
-        AssetBrowser::AssetBrowserEntry::Reflect(m_serializeContext);
-        AssetBrowser::RootAssetBrowserEntry::Reflect(m_serializeContext);
-        AssetBrowser::FolderAssetBrowserEntry::Reflect(m_serializeContext);
-        AssetBrowser::SourceAssetBrowserEntry::Reflect(m_serializeContext);
-        AssetBrowser::ProductAssetBrowserEntry::Reflect(m_serializeContext);
+        AssetBrowser::AssetBrowserEntry::Reflect(context);
+        AssetBrowser::RootAssetBrowserEntry::Reflect(context);
+        AssetBrowser::FolderAssetBrowserEntry::Reflect(context);
+        AssetBrowser::SourceAssetBrowserEntry::Reflect(context);
+        AssetBrowser::ProductAssetBrowserEntry::Reflect(context);
 
-        QTreeViewStateSaver::Reflect(m_serializeContext);
-        QWidgetSavedState::Reflect(m_serializeContext);
-        SliceUtilities::Reflect(m_serializeContext);
+        QTreeViewStateSaver::Reflect(context);
+        QWidgetSavedState::Reflect(context);
+        SliceUtilities::Reflect(context);
     }
 
     bool ToolsApplication::AddEntity(AZ::Entity* entity)
@@ -259,6 +280,8 @@ namespace AzToolsFramework
 
     bool ToolsApplication::RemoveEntity(AZ::Entity* entity)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         m_undoCache.PurgeCache(entity->GetId());
 
         MarkEntityDeselected(entity->GetId());
@@ -266,9 +289,12 @@ namespace AzToolsFramework
 
         EBUS_EVENT(ToolsApplicationEvents::Bus, EntityDeregistered, entity->GetId());
 
-        if (AzFramework::Application::RemoveEntity(entity))
         {
-            return true;
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ToolsApplication::RemoveEntity:CallApplicationRemoveEntity");
+            if (AzFramework::Application::RemoveEntity(entity))
+            {
+                return true;
+            }
         }
 
         return false;
@@ -349,6 +375,7 @@ namespace AzToolsFramework
 
     void ToolsApplication::MarkEntitySelected(AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AZ_Assert(entityId.IsValid(), "Invalid entity Id being marked as selected.");
 
         auto foundIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
@@ -366,9 +393,11 @@ namespace AzToolsFramework
 
     void ToolsApplication::MarkEntityDeselected(AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         auto foundIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
         if (foundIter != m_selectedEntities.end())
         {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ToolsApplication::MarkEntityDeselected:Deselect");
             EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeEntitySelectionChanged);
             m_selectedEntities.erase(foundIter);
 
@@ -379,6 +408,7 @@ namespace AzToolsFramework
 
     void ToolsApplication::SetEntityHighlighted(AZ::EntityId entityId, bool highlighted)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         AZ_Assert(entityId.IsValid(), "Attempting to mark an invalid entity as highlighted.");
 
         auto foundIter = AZStd::find(m_highlightedEntities.begin(), m_highlightedEntities.end(), entityId);
@@ -386,6 +416,7 @@ namespace AzToolsFramework
         {
             if (!highlighted)
             {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ToolsApplication::SetEntityHighlighted:RemoveHighlight");
                 ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntityHighlightingChanged);
                 m_highlightedEntities.erase(foundIter);
                 ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntityHighlightingChanged);
@@ -393,16 +424,17 @@ namespace AzToolsFramework
         }
         else if (highlighted)
         {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ToolsApplication::SetEntityHighlighted:AddHighlight");
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntityHighlightingChanged);
             m_highlightedEntities.push_back(entityId);
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntityHighlightingChanged);
         }
-
-        AzToolsFramework::Components::EditorSelectionAccentingRequestBus::Broadcast(&AzToolsFramework::Components::EditorSelectionAccentingRequests::ProcessQueuedSelectionAccents);
     }
 
     void ToolsApplication::SetSelectedEntities(const EntityIdList& selectedEntities)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         // We're setting the selection set as a batch from an external caller.
         // * Filter out any unselectable entities
         // * Calculate selection/deselection delta so we can notify specific entities only on change.
@@ -727,7 +759,6 @@ namespace AzToolsFramework
             {
                 m_isDuringUndoRedo = true;
                 EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeUndoRedo);
-
                 m_undoStack->Redo();
                 EBUS_EVENT(ToolsApplicationEvents::Bus, AfterUndoRedo);
                 m_isDuringUndoRedo = false;
@@ -737,6 +768,23 @@ namespace AzToolsFramework
 #endif
             }
         }
+    }
+
+    void ToolsApplication::FlushUndo()
+    {
+        if (m_undoStack)
+        {
+            m_undoStack->Reset();
+        }
+
+        if (m_currentBatchUndo)
+        {
+            delete m_currentBatchUndo;
+            m_currentBatchUndo = nullptr;
+        }
+
+        m_dirtyEntities.clear();
+        m_isDuringUndoRedo = false;
     }
 
     UndoSystem::URSequencePoint* ToolsApplication::BeginUndoBatch(const char* label)
@@ -753,6 +801,7 @@ namespace AzToolsFramework
             m_currentBatchUndo->SetParent(pCurrent);
         }
 
+        // notify Cry undo has started (SandboxIntegrationManager)
         EBUS_EVENT(ToolsApplicationEvents::Bus, OnBeginUndo, label);
 
         return m_currentBatchUndo;
@@ -789,10 +838,7 @@ namespace AzToolsFramework
     {
         AZ_Assert(m_currentBatchUndo, "Cannot end batch - no batch current");
 
-        CreateUndosForDirtyEntities();
-
-        AZ_Assert(m_currentBatchUndo, "Invalid EndUndoBatch on non-batch\n");
-
+        // notify Cry undo has ended (SandboxIntegrationManager)
         EBUS_EVENT(ToolsApplicationEvents::Bus, OnEndUndo, m_currentBatchUndo->GetName().c_str());
 
         if (m_currentBatchUndo->GetParent())
@@ -803,22 +849,25 @@ namespace AzToolsFramework
         else
         {
             // we're at root
-            if (m_currentBatchUndo->HasRealChildren())
+            
+            // only undo at bottom of scope (first invoked ScopedUndoBatch in 
+            // chain/hierarchy must go out of scope)
+            CreateUndosForDirtyEntities();
+            m_dirtyEntities.clear();
+            
+            // record each undo batch
+            if (m_undoStack)
             {
-                if (m_undoStack)
-                {
-                    m_undoStack->Post(m_currentBatchUndo);
-                }
-
-#if defined(ENABLE_UNDOCACHE_CONSISTENCY_CHECKS)
-                ConsistencyCheckUndoCache();
-#endif
+                m_undoStack->Post(m_currentBatchUndo);
             }
             else
             {
                 delete m_currentBatchUndo;
             }
 
+#if defined(ENABLE_UNDOCACHE_CONSISTENCY_CHECKS)
+            ConsistencyCheckUndoCache();
+#endif
             m_currentBatchUndo = nullptr;
         }
     }
@@ -829,13 +878,6 @@ namespace AzToolsFramework
         if (m_dirtyEntities.empty())
         {
             return;
-        }
-
-        bool createdCommand = false;
-        if (!m_currentBatchUndo)
-        {
-            BeginUndoBatch("Entity Properties Changed");
-            createdCommand = true;
         }
 
         for (auto it = m_dirtyEntities.begin(); it != m_dirtyEntities.end(); ++it)
@@ -851,20 +893,15 @@ namespace AzToolsFramework
                 {
                     pState = aznew EntityStateCommand(static_cast<AZ::u64>(*it));
                     pState->SetParent(m_currentBatchUndo);
+                    // capture initial state of entity (before undo)
                     pState->Capture(entity, true);
                 }
 
+                // capture last state of entity (after undo) - for redo
                 pState->Capture(entity, false);
             }
-           
+
             m_undoCache.UpdateCache(*it);
-        }
-
-        m_dirtyEntities.clear();
-
-        if (createdCommand)
-        {
-            EndUndoBatch();
         }
     }
 

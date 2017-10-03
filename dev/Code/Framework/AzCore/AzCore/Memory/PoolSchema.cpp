@@ -313,7 +313,7 @@ namespace AZ
 
     #   ifdef AZ_THREAD_LOCAL
         // NOTE we allow only one instance of a allocator, you need to subclass it for different versions.
-        // so for now it's safe to use static. We use TLS on a static because on PS3 set thread key is available
+        // so for now it's safe to use static. We use TLS on a static because on some platforms set thread key is available
         // only for pthread lib and we don't use it. I can't find other way to it, otherwise please switch this to
         // use TlsAlloc/TlsFree etc.
         ThreadPoolSchema::GetThreadPoolData m_threadPoolGetter;
@@ -1091,7 +1091,7 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
     : m_allocator(desc)
 #endif
 {
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
     // In memory allocation case (usually tools) we might have high contention,
     // using spin lock will improve performance.
     SetCriticalSectionSpinCount(m_mutex.native_handle(), 4000);

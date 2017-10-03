@@ -14,7 +14,6 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
-#include <LmbrAWS/IAWSClientManager.h>
 #include <mutex>
 
 #pragma warning(push)
@@ -26,6 +25,8 @@
 
 #include "AuthTokenGroup.h"
 #include <CloudGemPlayerAccount/CloudGemPlayerAccountBus.h>
+
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 /** This component provides the ability to manage user accounts via a Cognito User Pool.
     Users can register an account, recover their password, log in, update account details, etc.
@@ -43,7 +44,7 @@ namespace CloudGemPlayerAccount
     class CloudGemPlayerAccountSystemComponent
         : public AZ::Component
         , protected CloudGemPlayerAccountRequestBus::Handler
-        , public LmbrAWS::ClientManagerNotificationBus::Handler
+        , public CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler
     {
     public:
         static const char* COMPONENT_DISPLAY_NAME;
@@ -75,37 +76,39 @@ namespace CloudGemPlayerAccount
 
         ////////////////////////////////////////////////////////////////////////
         // CloudGemPlayerAccountRequestBus interface implementation
-        virtual void GetCurrentUser() override;
+        virtual AZ::u32 GetCurrentUser() override;
 
         virtual bool HasCachedCredentials(const AZStd::string& username) override;
 
-        virtual void SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes) override;
-        virtual void ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode) override;
-        virtual void ResendConfirmationCode(const AZStd::string& username) override;
+        virtual AZ::u32 SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes) override;
+        virtual AZ::u32 ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode) override;
+        virtual AZ::u32 ResendConfirmationCode(const AZStd::string& username) override;
 
-        virtual void ForgotPassword(const AZStd::string& username) override;
-        virtual void ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode) override;
+        virtual AZ::u32 ForgotPassword(const AZStd::string& username) override;
+        virtual AZ::u32 ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode) override;
 
-        virtual void InitiateAuth(const AZStd::string& username, const AZStd::string& password) override;
-        virtual void RespondToForceChangePasswordChallenge(const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword) override;
-        virtual void SignOut(const AZStd::string& username) override;
+        virtual AZ::u32 InitiateAuth(const AZStd::string& username, const AZStd::string& password) override;
+        virtual AZ::u32 RespondToForceChangePasswordChallenge(const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword) override;
+        virtual AZ::u32 SignOut(const AZStd::string& username) override;
 
         // Everything below requires the user to be signed in
-        virtual void ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword) override;
-        virtual void GlobalSignOut(const AZStd::string& username) override;
-        virtual void DeleteOwnAccount(const AZStd::string& username) override;
-        virtual void GetUser(const AZStd::string& username) override;
-        virtual void VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode) override;
-        virtual void DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete) override;
-        virtual void UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes) override;
+        virtual AZ::u32 ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword) override;
+        virtual AZ::u32 GlobalSignOut(const AZStd::string& username) override;
+        virtual AZ::u32 DeleteOwnAccount(const AZStd::string& username) override;
+        virtual AZ::u32 GetUser(const AZStd::string& username) override;
+        virtual AZ::u32 VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode) override;
+        virtual AZ::u32 DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete) override;
+        virtual AZ::u32 UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes) override;
 
-        virtual void GetPlayerAccount() override;
-        virtual void UpdatePlayerAccount(const PlayerAccount& playerAccount) override;
+        virtual AZ::u32 GetPlayerAccount() override;
+        virtual AZ::u32 UpdatePlayerAccount(const PlayerAccount& playerAccount) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
-        // ClientManagerNotificationBus interface implementation
-        void OnBeforeConfigurationChange() override;
+        // PlayerIdentityNotificationBus interface implementation
+        void OnBeforeIdentityUpdate() override;
+        void OnAfterIdentityUpdate() override {};
+
         ////////////////////////////////////////////////////////////////////////
 
         using AuthCallback = AZStd::function<void(const BasicResultInfo&)>;
@@ -119,11 +122,11 @@ namespace CloudGemPlayerAccount
 
         bool GetCachedUsernameForRefreshToken(AZStd::string& username, const AZStd::string& refreshToken);
         void AuthenticateWithRefreshToken(const AuthenticateWithRefreshTokenHandler& handler, const AZStd::string& refreshToken);
-        void GetUserForAcccessToken(const GetUserForAccessTokenHandler& handler, const AZStd::string& accessToken);
+        void GetUserForAcccessToken(AZ::u32 requestId, const GetUserForAccessTokenHandler& handler, const AZStd::string& accessToken);
 
-        void RespondToAuthChallenge(Model::ChallengeNameType challengeName, AZStd::string challengeType, const Model::InitiateAuthResult& result,
+        void RespondToAuthChallenge(AZ::u32 requestId, Model::ChallengeNameType challengeName, AZStd::string challengeType, const Model::InitiateAuthResult& result,
             const AZStd::string currentPassword, const AZStd::string newPassword, AuthCallback onComplete);
-        void CallInitiateAuth(const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword,
+        void CallInitiateAuth(AZ::u32 requestId, const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword,
             const AuthCallback& authCallback);
 
         void LocalSignOut(const AZStd::string& username);
@@ -132,8 +135,6 @@ namespace CloudGemPlayerAccount
 
         void RefreshAccessTokensIfExpired(const AZStd::string& username, const RefreshAccessTokensHandler& handler);
 
-        // All parameters are output parameters
-        LmbrAWS::CognitoIdentityProvider::IdentityProviderClient GetClient();
         AZStd::string GetPoolId();
         AZStd::string GetPoolRegion();
         AZStd::string GetClientId();
@@ -149,6 +150,8 @@ namespace CloudGemPlayerAccount
         std::mutex m_tokenAccessMutex;  // Used to make sure that access tokens aren't being read as they're being written to
 
         std::shared_ptr<Aws::Auth::AWSCredentialsProvider> m_anonymousCredentialsProvider;
+
+        AZStd::atomic_ulong m_nextRequestId{1};
     };
 
 } // namespace CloudGemPlayerAccount

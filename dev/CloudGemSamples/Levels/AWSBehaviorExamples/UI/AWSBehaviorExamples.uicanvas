@@ -6,6 +6,7 @@
 			</Class>
 			<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="UiCanvasEntity" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 			<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 			<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 				<Class name="UiCanvasComponent" field="element" type="{50B8CF6C-B19A-4D86-AFE9-96EFB820D422}" version="3" specializationTypeId="{50B8CF6C-B19A-4D86-AFE9-96EFB820D422}">
 					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -15,7 +16,7 @@
 					<Class name="EntityId" field="RootElement" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 						<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17573717978586945705" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					</Class>
-					<Class name="unsigned int" field="LastElement" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="66" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+					<Class name="unsigned int" field="LastElement" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="68" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 					<Class name="int" field="DrawOrder" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}" value="0" specializationTypeId="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
 					<Class name="Vector2" field="CanvasSize" type="{3D80F623-C85C-4741-90D0-E4E66164E6BF}" value="1280.0000000 720.0000000" specializationTypeId="{3D80F623-C85C-4741-90D0-E4E66164E6BF}"/>
 					<Class name="bool" field="IsSnapEnabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -47,8 +48,9 @@
 			</Class>
 			<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="17573717974291978409" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 			<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 			<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
-				<Class name="SliceComponent" field="element" type="{AFD304E4-1773-47C8-855A-8B622398934F}" version="1" specializationTypeId="{AFD304E4-1773-47C8-855A-8B622398934F}">
+				<Class name="SliceComponent" field="element" type="{AFD304E4-1773-47C8-855A-8B622398934F}" version="2" specializationTypeId="{AFD304E4-1773-47C8-855A-8B622398934F}">
 					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 						<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17909584918846239203" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					</Class>
@@ -59,6 +61,7 @@
 							</Class>
 							<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="_root" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 							<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							<Class name="bool" field="IsRuntimeActive" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 								<Class name="UiTransform2dComponent" field="element" type="{2751A5A5-3291-4A4D-9FC0-9CB0EB8D1DE6}" version="2" specializationTypeId="{2751A5A5-3291-4A4D-9FC0-9CB0EB8D1DE6}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -114,6 +117,9 @@
 										<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 											<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548864742133391" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
+										<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1869029717597" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+										</Class>
 									</Class>
 									<Class name="bool" field="IsVisibleInEditor" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 									<Class name="bool" field="IsSelectableInEditor" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -131,10 +137,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="221984773136" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="230574707728" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548508259847823" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="226279740432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -153,6 +183,10 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -162,6 +196,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{CE7A174C-2865-4D5E-80E7-FBF318345515}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="234869675024" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="243459609616" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="239164642320" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -177,6 +235,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC25C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC2D200000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430380000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -202,18 +276,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D425C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430380000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC2D200000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -223,6 +285,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{668AAA23-F8EC-43B8-A1EB-E351ADF09C7C}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="247754576912" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="256344511504" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="252049544208" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -238,6 +324,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D42FA00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D429600000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430350000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -263,18 +365,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC35700000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430350000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D429600000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -286,10 +376,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="260639478800" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="269229413392" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548632813899407" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="264934446096" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -308,6 +422,10 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -319,10 +437,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="273524380688" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="282114315280" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548383705796239" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="277819347984" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -341,6 +483,10 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -350,6 +496,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{317C489C-1CAB-4B91-A3B5-65F4AC0C24FC}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="286409282576" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="294999217168" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="290704249872" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -365,6 +535,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC31B00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC34D00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430370000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -390,18 +576,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D425C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430370000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC34D00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -413,10 +587,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="299294184464" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="307884119056" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548753072983695" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="303589151760" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -435,6 +633,99 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
+										<Class name="AZStd::unordered_map" field="EntityToDataFlags" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{CAB9E1F5-761E-54B8-916E-E7FB597E5EDE}"/>
+									</Class>
+								</Class>
+								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
+									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{05C157EF-775A-48CD-AB4F-68DE4879A0AA}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1869029717597" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="312179086352" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="316474053648" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="320769020944" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="DataPatch" field="DataPatch" type="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}" specializationTypeId="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}">
+										<Class name="AZ::Uuid" field="m_targetClassId" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{05038EF7-9EF7-40D8-A29B-503D85B85AF8}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+										<Class name="AZStd::unordered_map" field="m_patch" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{CF3B3C65-49C0-5199-B671-E75347EB25C2}">
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D420C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC17000000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430390000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC34300000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE00000000680A66C3D6B68879355792D4000000008C482AFD000000000200000000000000F833BB3800000000506739BF00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239D659793347CD4FC8B91163F3E2B0993AD659793347CD4FC8B91163F3E2B0993A08000001B42ADA365D0000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE00000000906FD4D4980B9D8CBAB197A1000000000000000000000000506739BF00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239D659793347CD4FC8B91163F3E2B0993AD659793347CD4FC8B91163F3E2B0993A08000001B42ADA365D0000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE00000000680A66C3D6B68879355792D40000000060BBD08800000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430390000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE00000000906FD4D4980B9D8C506739BF00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021C43DA906B7DEF4CA89790854106D3F98343DA906B7DEF4CA89790854106D3F983000000430000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D425C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -446,10 +737,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="325063988240" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="333653922832" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548263446711951" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="329358955536" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -468,6 +783,10 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -477,6 +796,22 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{9179E5D5-F6AF-40E4-9D32-71CBA5647BE4}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="337948890128" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="346538824720" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -491,6 +826,14 @@
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694546158912736911" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="342243857424" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -510,6 +853,14 @@
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC37F00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC39880000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430310000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC3E880000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
@@ -525,14 +876,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC35700000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430310000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC39880000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -542,6 +885,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{A8366CB3-7933-48E6-A2B5-B8CC29BB3A95}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="350833792016" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="359423726608" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="355128759312" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -557,6 +924,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC31B00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC34D00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430320000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -582,18 +965,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC35700000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430320000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC34D00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -605,10 +976,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="363718693904" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="372308628496" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548130302725775" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="368013661200" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -627,6 +1022,10 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -636,6 +1035,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{6B27715D-9DD9-42AE-9EA8-BB140B565D8E}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="376603595792" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="385193530384" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="380898563088" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -651,6 +1074,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC25C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC2D200000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430330000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -676,18 +1115,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC35700000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430330000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC2D200000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -697,6 +1124,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{8457ADDB-90C8-4888-869A-8EA055920203}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="389488497680" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="398078432272" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="393783464976" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -712,6 +1163,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D420C00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC17000000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430340000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -737,18 +1204,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC35700000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430340000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC17000000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -758,6 +1213,22 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{7731DE06-884E-453A-9B92-19CC7099DC08}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="402373399568" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="410963334160" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -772,6 +1243,14 @@
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17573717987176880297" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="406668366864" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -789,6 +1268,14 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD4F479AF9C00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="0000000002393D80F623C85C474190D0E4E66164E6BF3D80F623C85C474190D0E4E66164E6BF083F0000003F8000000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC24800000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40B62746E416C6C54657374730000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD49B93DD3500000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -818,14 +1305,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD49B93DD3500000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D3F4B391E0000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40B62746E416C6C54657374730000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC24800000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -835,6 +1314,30 @@
 								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
 									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{CE58FC5F-D4FD-4CB9-BD70-37061A3BEA6E}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="415258301456" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="423848236048" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="419553268752" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165428100931703432" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -850,6 +1353,22 @@
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000A4725F8900000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC37F00000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF32000000FDF548EE00000000CD54B5BF9DC3A696C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC39880000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430360000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
 											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D0000000068E7677A00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
@@ -875,18 +1394,6 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D000000001475CAB400000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93D423400000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE067E235E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="000000000239EF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A40962746E5465737430360000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EEFDF548EE0000000014DF03983275CBD41517849D00000000CA1FD91E00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021CEA2C3E90AFBE44D4A90DFAAF79BAF93DEA2C3E90AFBE44D4A90DFAAF79BAF93DC39880000000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
-											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
-												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
-											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -898,10 +1405,34 @@
 									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
 										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="428143203344" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="436733137936" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17694548869037100687" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="432438170640" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 											</Class>
 										</Class>
 									</Class>
@@ -920,6 +1451,71 @@
 												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
 											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
+										<Class name="AZStd::unordered_map" field="EntityToDataFlags" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{CAB9E1F5-761E-54B8-916E-E7FB597E5EDE}"/>
+									</Class>
+								</Class>
+								<Class name="SliceInstance" field="element" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}" version="3" specializationTypeId="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
+									<Class name="AZ::Uuid" field="Id" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{426B9446-D369-4E49-95B6-DBFB2961D232}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17165429629940060808" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1873324684893" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="213394838544" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="441028105232" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="217689805840" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="445323072528" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+											<Class name="EntityId" field="value1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="183330067472" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+											<Class name="EntityId" field="value2" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+												<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="449618039824" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="DataPatch" field="DataPatch" type="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}" specializationTypeId="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}">
+										<Class name="AZ::Uuid" field="m_targetClassId" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{05038EF7-9EF7-40D8-A29B-503D85B85AF8}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+										<Class name="AZStd::unordered_map" field="m_patch" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}" specializationTypeId="{CF3B3C65-49C0-5199-B671-E75347EB25C2}">
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EEFDF548EE000000001A95685107F56D69506739BF00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021C43DA906B7DEF4CA89790854106D3F98343DA906B7DEF4CA89790854106D3F983000000440000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A554DDB37EEFDF548EE0000000055C5CE3C46E5952AC7A78B3B00000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="00000000021EEF8FF807DDEE4EB0B6784CA3A2C490A4EF8FF807DDEE4EB0B6784CA3A2C490A47465737430390000" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="E564EC500000000088D28A55E9D937EE" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
+											<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}" specializationTypeId="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+												<Class name="AddressType" field="value1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}" value="6055D5B60000000010D452AF31000000FDF548EE000000007D51D65F18B56A42C695DCB5000000000000000000000000" specializationTypeId="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+												<Class name="ByteStream" field="value2" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}" value="" specializationTypeId="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+											</Class>
 										</Class>
 									</Class>
 									<Class name="DataFlagsPerEntity" field="DataFlags" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}" version="1" specializationTypeId="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
@@ -931,6 +1527,80 @@
 						</Class>
 					</Class>
 					<Class name="bool" field="IsDynamic" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					<Class name="AZ::Entity" field="MetadataEntity" type="{75651658-8663-478D-9090-2432DFCAFA44}" version="2" specializationTypeId="{75651658-8663-478D-9090-2432DFCAFA44}">
+						<Class name="EntityId" field="Id" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+							<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1619921614429" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+						</Class>
+						<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+							<Class name="SliceMetadataInfoComponent" field="element" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}" version="1" specializationTypeId="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="4498695479709374368" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="AZStd::unordered_set" field="AssociatedIds" type="{B04E902E-C6F7-4212-A166-1B52F7437D3C}" specializationTypeId="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="17573717978586945705" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="EntityId" field="ParentId" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1619921614429" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="AZStd::unordered_set" field="ChildrenIds" type="{B04E902E-C6F7-4212-A166-1B52F7437D3C}" specializationTypeId="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1671461221981" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1761655535197" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1851849848413" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1684346123869" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1774540437085" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1864734750301" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1697231025757" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1787425338973" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1710115927645" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1800310240861" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1723000829533" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1813195142749" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1735885731421" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1826080044637" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1748770633309" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="EntityId" field="element" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+										<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1838964946525" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="PersistenceFlag" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+						</Class>
+					</Class>
 				</Class>
 			</Class>
 		</Class>

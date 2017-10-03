@@ -127,6 +127,7 @@ namespace CloudCanvas
             mutable AZStd::mutex m_extensionToTypeMutex;
             mutable AZStd::mutex m_directoryToExtensionMutex;
 
+            static AZ::EntityId m_moduleEntity;
         };
     }
 }

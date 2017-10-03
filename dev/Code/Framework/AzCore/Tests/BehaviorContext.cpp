@@ -110,4 +110,61 @@ namespace UnitTest
         EXPECT_EQ(0, Counter0::s_copied);
         EXPECT_EQ(0, Counter0::s_moved);
     }
+
+    class ClassWithConstMethod
+    {
+    public:
+        AZ_TYPE_INFO(ClassWithConstMethod, "{39235130-3339-41F6-AC70-0D6EF6B5145D}");
+
+        void ConstMethod() const
+        {
+
+        }
+    };
+
+    using BehaviorContextConstTest = AllocatorsFixture;
+    TEST_F(BehaviorContextConstTest, BehaviorContext_BindConstMethods_Compiles)
+    {
+        AZ::BehaviorContext bc;
+        bc.Class<ClassWithConstMethod>()
+            ->Method("ConstMethod", &ClassWithConstMethod::ConstMethod)
+            ;
+    }
+
+    class EBusWithConstEvent
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual void ConstEvent() const = 0;
+    };
+    using EBusWithConstEventBus = AZ::EBus<EBusWithConstEvent>;
+
+    TEST_F(BehaviorContextConstTest, BehaviorContext_BindConstEvents_Compiles)
+    {
+        AZ::BehaviorContext bc;
+        bc.EBus<EBusWithConstEventBus>("EBusWithConstEventBus")
+            ->Event("ConstEvent", &EBusWithConstEvent::ConstEvent)
+            ;
+    }
+
+    void MethodAcceptingTemplate(const AZStd::string&)
+    { }
+
+    using BehaviorContext = AllocatorsFixture;
+    TEST_F(BehaviorContext, OnDemandReflection_Unreflect_IsRemoved)
+    {
+        AZ::BehaviorContext behaviorContext;
+
+        // Test reflecting with OnDemandReflection
+        behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
+        EXPECT_TRUE(behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
+        EXPECT_NE(behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), behaviorContext.m_typeToClassMap.end());
+
+        // Test unreflecting OnDemandReflection
+        behaviorContext.EnableRemoveReflection();
+        behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
+        behaviorContext.DisableRemoveReflection();
+        EXPECT_FALSE(behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
+        EXPECT_EQ(behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), behaviorContext.m_typeToClassMap.end());
+    }
 }

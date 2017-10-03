@@ -22,6 +22,7 @@
 #include "IGemManager.h"
 #include "ICrypto.h"
 #include <CrySystemBus.h>
+#include <ITimeDemoRecorder.h>
 #include <AzFramework/API/ApplicationAPI_win.h>
 
 
@@ -94,7 +95,7 @@
 #include "ThreadProfiler.h"
 #include "IDiskProfiler.h"
 #include "SystemEventDispatcher.h"
-#include "HardwareMouse.h"
+#include "IHardwareMouse.h"
 #include "ServerThrottle.h"
 #include "ILocalMemoryUsage.h"
 #include "ResourceManager.h"
@@ -118,12 +119,11 @@
 WATERMARKDATA(_m);
 
 #include "ImageHandler.h"
+#include <LyShine/Bus/UiCursorBus.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Input/Buses/Requests/InputSystemRequestBus.h>
 
 #include <ICrypto.h>
-
-#include "LmbrAWS/ILmbrAWS.h"
 
 #ifdef WIN32
 
@@ -253,6 +253,8 @@ SC_API struct SSystemGlobalEnvironment* gEnv = NULL;
 CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     : m_imageHandler(std::make_unique<ImageHandler>())
 {
+    CrySystemRequestBus::Handler::BusConnect();
+
     if (!pSharedEnvironment)
     {
         CryFatalError("No shared environment instance provided. "
@@ -389,7 +391,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_sys_job_system_enable = NULL;
     m_sys_job_system_profiler = NULL;
     m_sys_job_system_max_worker = NULL;
-    m_sys_spec = NULL;
+    m_sys_GraphicsQuality = NULL;
     m_sys_firstlaunch = NULL;
     m_sys_enable_budgetmonitoring = NULL;
     m_sys_preload = NULL;
@@ -429,7 +431,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_bGameFolderWritable = false;
 
     m_nServerConfigSpec = CONFIG_VERYHIGH_SPEC;
-    m_nMaxConfigSpec = CONFIG_MACOS_METAL;
+    m_nMaxConfigSpec = CONFIG_VERYHIGH_SPEC;
 
     //m_hPhysicsThread = INVALID_HANDLE_VALUE;
     //m_hPhysicsActive = INVALID_HANDLE_VALUE;
@@ -492,6 +494,8 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #if defined(WIN32) || defined(DURANGO)
     RegisterWindowMessageHandler(this);
 #endif
+
+    m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -791,7 +795,7 @@ void CSystem::ShutDown()
     SAFE_RELEASE(m_sys_job_system_enable);
     SAFE_RELEASE(m_sys_job_system_profiler);
     SAFE_RELEASE(m_sys_job_system_max_worker);
-    SAFE_RELEASE(m_sys_spec);
+    SAFE_RELEASE(m_sys_GraphicsQuality);
     SAFE_RELEASE(m_sys_firstlaunch);
     SAFE_RELEASE(m_sys_skip_input);
     SAFE_RELEASE(m_sys_enable_budgetmonitoring);
@@ -824,7 +828,6 @@ void CSystem::ShutDown()
     SAFE_DELETE(m_pGemManager);
     SAFE_DELETE(m_crypto);
     SAFE_DELETE(m_env.pOverloadSceneManager);
-    SAFE_RELEASE(m_env.pLmbrAWS);
 
 #ifdef DOWNLOAD_MANAGER
     SAFE_RELEASE(m_pDownloadManager);
@@ -946,6 +949,12 @@ void CSystem::SetIProcess(IProcess* process)
     m_pProcess = process;
     //if (m_pProcess)
     //m_pProcess->SetPMessage("");
+}
+
+//////////////////////////////////////////////////////////////////////////
+ISystem* CSystem::GetCrySystem()
+{
+    return this;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1311,7 +1320,9 @@ void CSystem::SleepIfInactive()
         if (gEnv->pGame && gEnv->pGame->GetIGameFramework())
         {
             // During the time demo, do not sleep even in inactive window.
-            if (gEnv->pGame->GetIGameFramework()->IsInTimeDemo())
+            bool isTimeDemoActive = false;
+            TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+            if (isTimeDemoActive)
             {
                 break;
             }
@@ -1672,12 +1683,6 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         m_pStreamEngine->Update();
     }
 
-    if (m_env.pLmbrAWS)
-    {
-        FRAME_PROFILER("ILmbrAws::PostCompletedRequests()", this, PROFILE_SYSTEM);
-        m_env.pLmbrAWS->PostCompletedRequests();
-    }
-
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
     if (m_bIgnoreUpdates)
     {
@@ -1751,6 +1756,12 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
         {
             int32 maxFPS = pSysMaxFPS->GetIVal();
             uint32 vSync = pVSync->GetIVal();
+
+            // force the max fps, if a force was enabled, if it's valid, and if the sys_MaxFPS variable wasn't specified
+            if (maxFPS == -1 && m_forceMaxFps && m_forcedMaxFps > 0)
+            {
+                maxFPS = m_forcedMaxFps;
+            }
 
             if (maxFPS == 0 && vSync == 0)
             {
@@ -2309,6 +2320,12 @@ bool CSystem::Update(int updateFlags, int nPauseMode)
     return !m_bQuit;
 }
 
+void CSystem::ForceMaxFps(bool enable, int maxFps)
+{
+    m_forceMaxFps = enable;
+    m_forcedMaxFps = maxFps;
+}
+
 
 bool CSystem::UpdateLoadtime()
 {
@@ -2821,9 +2838,9 @@ ESystemConfigSpec CSystem::GetConfigSpec(bool bClient)
 {
     if (bClient)
     {
-        if (m_sys_spec)
+        if (m_sys_GraphicsQuality)
         {
-            return (ESystemConfigSpec)m_sys_spec->GetIVal();
+            return (ESystemConfigSpec)m_sys_GraphicsQuality->GetIVal();
         }
         return CONFIG_VERYHIGH_SPEC; // highest spec.
     }
@@ -2834,13 +2851,14 @@ ESystemConfigSpec CSystem::GetConfigSpec(bool bClient)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CSystem::SetConfigSpec(ESystemConfigSpec spec, bool bClient)
+void CSystem::SetConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient)
 {
     if (bClient)
     {
-        if (m_sys_spec)
+        if (m_sys_GraphicsQuality)
         {
-            m_sys_spec->Set((int)spec);
+            SetConfigPlatform(platform);
+            m_sys_GraphicsQuality->Set(static_cast<int>(spec));
         }
     }
     else
@@ -2853,6 +2871,18 @@ void CSystem::SetConfigSpec(ESystemConfigSpec spec, bool bClient)
 ESystemConfigSpec CSystem::GetMaxConfigSpec() const
 {
     return m_nMaxConfigSpec;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSystem::SetConfigPlatform(const ESystemConfigPlatform platform)
+{
+    m_ConfigPlatform = platform;
+}
+
+//////////////////////////////////////////////////////////////////////////
+ESystemConfigPlatform CSystem::GetConfigPlatform() const
+{
+    return m_ConfigPlatform;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3350,11 +3380,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
     // Fall through intended
     case WM_ENTERMENULOOP:
     {
-        IHardwareMouse* const pMouse = GetIHardwareMouse();
-        if (pMouse)
-        {
-            pMouse->IncrementCounter();
-        }
+        UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
         return true;
     }
     case WM_CAPTURECHANGED:
@@ -3372,11 +3398,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
     // Fall through intended
     case WM_EXITMENULOOP:
     {
-        IHardwareMouse* const pMouse = GetIHardwareMouse();
-        if (pMouse)
-        {
-            pMouse->DecrementCounter();
-        }
+        UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
         return (uMsg != WM_CAPTURECHANGED);
     }
     case WM_SYSKEYUP:

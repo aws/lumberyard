@@ -44,10 +44,10 @@ struct SHideSpotInfo
         : type(eHST_INVALID)
         , pos(ZERO)
         , dir(ZERO) {}
-    SHideSpotInfo(EHideSpotType type, const Vec3& pos, const Vec3& dir)
-        : type(type)
-        , pos(pos)
-        , dir(dir) {}
+    SHideSpotInfo(EHideSpotType _type, const Vec3& _pos, const Vec3& _dir)
+        : type(_type)
+        , pos(_pos)
+        , dir(_dir) {}
 };
 
 

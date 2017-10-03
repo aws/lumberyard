@@ -107,18 +107,6 @@ namespace LuaRemoteDebugger.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string Ps3BinPath {
-            get {
-                return ((string)(this["Ps3BinPath"]));
-            }
-            set {
-                this["Ps3BinPath"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("9432")]
         public int Port {
             get {

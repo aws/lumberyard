@@ -78,6 +78,22 @@ namespace MaterialHelpers
     }
 
     //////////////////////////////////////////////////////////////////////////
+    static void AddRealNameToDescription(IVariable* pIVar, const SShaderParam* pParam)
+    {
+        // In order to help the user discover the true names of parameters, info they need using certain script functions,
+        // we embed the real parameter name in the description.
+        QString description = pIVar->GetDescription();
+        if (!description.isEmpty())
+        {
+            description += "\n";
+        }
+        description += "(Script Param Name = ";
+        description += pParam->m_Name;
+        description += ")";
+        pIVar->SetDescription(description);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
     CVarBlock* GetPublicVars(SInputShaderResources& pShaderResources)
     {
         if (pShaderResources.m_ShaderParams.empty())
@@ -132,6 +148,8 @@ namespace MaterialHelpers
                 {
                     ParsePublicParamsScript(pParam->m_Script.c_str(), pIVar);
                 }
+
+                AddRealNameToDescription(pIVar, pParam);
             }
         }
 

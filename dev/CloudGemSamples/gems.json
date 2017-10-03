@@ -38,6 +38,12 @@
             "_comment": "CloudGemDynamicContent"
         },
         {
+            "Path": "Gems/Maestro",
+            "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
+            "Version": "0.1.0",
+            "_comment": "Maestro"
+        },
+        {
             "Path": "Gems/StaticData",
             "Uuid": "4a4bf593603c4f329c76c2a10779311b",
             "Version": "1.0.0",
@@ -50,9 +56,15 @@
             "_comment": "UiBasics"
         },
         {
+            "Path": "Gems/CloudGemLex",
+            "Uuid": "6f2e05e82d6f4b76abaa18a70f25d7fe",
+            "Version": "0.1.0",
+            "_comment": "CloudGemLex"
+        },
+        {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
-            "Version": "1.0.0",
+            "Version": "1.1.1",
             "_comment": "CloudGemFramework"
         },
         {
@@ -68,10 +80,28 @@
             "_comment": "CloudGemLeaderboard"
         },
         {
+            "Path": "Gems/CloudGemTextToSpeech",
+            "Uuid": "bf49ab6b1b624e16854dcbaa94b1aa24",
+            "Version": "0.1.0",
+            "_comment": "CloudGemTextToSpeech"
+        },
+        {
             "Path": "Gems/UserLoginDefault",
             "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
             "Version": "0.1.0",
             "_comment": "UserLoginDefault"
+        },
+        {
+            "Path": "Gems/Microphone",
+            "Uuid": "e70dd59f02f14ea49e6b38434e86ebf1",
+            "Version": "0.1.0",
+            "_comment": "Microphone"
+        },
+        {
+            "Path": "Gems/CloudGemInGameSurvey",
+            "Uuid": "ec06978b23ce4c5294c43c1732f3f31d",
+            "Version": "0.1.0",
+            "_comment": "CloudGemInGameSurvey"
         },
         {
             "Path": "Gems/CloudGemAWSScriptBehaviors",

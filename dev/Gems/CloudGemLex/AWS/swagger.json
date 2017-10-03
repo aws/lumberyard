@@ -1,0 +1,422 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/postaudio": {
+            "post": {
+                "description": "Send audio to a specified AWS Lex bot for processing",
+                "parameters": [
+                    {
+                        "name": "post_audio",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PostAudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Intent information returned from AWS Lex bot for sent audio",
+                        "schema": {
+                            "$ref" : "#/definitions/PostAudioResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/service/posttext": {
+            "post": {
+                "description": "Send text to a specified AWS Lex bot for processing, useful for testing intents without the need for audio.",
+                "parameters": [
+                    {
+                        "name": "post_text",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PostTextRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Intent information returned from AWS Lex bot for sent audio",
+                        "schema": {
+                            "$ref" : "#/definitions/PostAudioResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/botdesc": {
+            "put": {
+                "description": "Use a bot description file to create or update a Lex bot",
+                "parameters": [
+                    {
+                        "name": "bot_desc",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PostBotDescRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Confirms bot description file post",
+                        "schema": {
+                            "$ref" : "#/definitions/BotStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/botdesc/{bot_name}": {
+            "get": {
+                "description": "Get a bot description file from an existing Lex bot",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "bot_name",
+                        "description": "The name of the bot to retrieve a description file for",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Get bot description file response",
+                        "schema": {
+                            "$ref" : "#/definitions/GetBotDescResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/listbots/{next_token}": {
+            "get": {
+                "description": "Retrieve a list of bots and bot information",
+                "parameters" : [
+                    {
+                        "in": "path",
+                        "name": "next_token",
+                        "description": "token returned from prior call to listbots to retrieve next page or empty string for first page",
+                        "required": true,
+                        "type":  "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JSON array of bot info tables which include bot name, current version, alias, status and update and creation time stamps",
+                        "schema": {
+                            "$ref" : "#/definitions/GetListBotsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/botstatus/{bot_name}": {
+            "get": {
+                "description": "Checks the creation status of a bot. Returns 'READY' when the bot is available for publishing and testing",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "bot_name",
+                        "description": "the bot for which to get status info",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'READY' if the bot is available for testing/publishing, otherwise any other state defined by the Lex putbot API",
+                        "schema": {
+                            "$ref" : "#/definitions/BotStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/deletebot/{bot_name}": {
+            "delete": {
+                "description": "Deletes the specified bot",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "bot_name",
+                        "description": "the name of the bot to delete",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'DELETED' or an error message",
+                        "schema": {
+                            "$ref" : "#/definitions/BotStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/publishbot/{bot_name}/{bot_version}": {
+            "put": {
+                "description": "Publishes the bot for use by the client and assigns a version name",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "bot_name",
+                        "description": "name of bot to publish",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "bot_version",
+                        "description": "version to assign this bot (if not specified, defaults to \\$LATEST)",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "'READY' if successfully published or an contains an error message",
+                        "schema": {
+                            "$ref" : "#/definitions/BotStatusResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "PostAudioRequest": {
+            "description": "Parameters for the Amazon Lex PostContent function, used to send an utterance to Amazon Lex",
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "The ID of the client application user. Amazon Lex uses this to identify a user's conversation with your bot. Example would be a GUID for your user or unique user name.",
+                    "type": "string"
+                },
+                "bot_name": {
+                    "description": "Name of the Amazon Lex bot that will process the utterance. Example: MapPingBot",
+                    "type": "string"
+                },
+                "bot_alias": {
+                    "description": "Alias of the Amazon Lex bot that will process the utterance, typical examples would be PROD, DEV, etc.",
+                    "type": "string"
+                },
+                "audio": {
+                    "description": "PCM audio data, must include a WAV header and be in 16 bit, 16000 Hz, 1 channel format. This is binary data stored as a string with base64 encoding.",
+                    "type": "string",
+                    "format": "byte"
+                },
+                "session_attributes": {
+                    "description": "A JSON string which will be passed untouched as a return value from PostContent. This allows passing in user specific context in the request. ",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user_id",
+                "bot_name",
+                "bot_alias",
+                "audio"
+            ]
+        },
+        "PostTextRequest": {
+            "description": "Parameters for the Amazon Lex PostText function, used to send an utterance to Amazon Lex in text form, usually for intent debugging",
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "The ID of the client application user. Amazon Lex uses this to identify a user's conversation with your bot. Example would be a GUID for your user or unique user name.",
+                    "type": "string"
+                },
+                "bot_name": {
+                    "description": "Name of the Amazon Lex bot that will process the utterance. Example: MapPingBot",
+                    "type": "string"
+                },
+                "bot_alias": {
+                    "description": "Alias of the Amazon Lex bot that will process the utterance, typical examples would be PROD, DEV, etc.",
+                    "type": "string"
+                },
+                "text": {
+                    "description": "The text utterance to be processed",
+                    "type": "string"
+                },
+                "session_attributes": {
+                    "description": "A JSON string which will be passed untouched as a return value from PostText. This allows passing in user specific context in the request",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user_id",
+                "bot_name",
+                "bot_alias",
+                "text"
+            ]
+        },
+        "PostAudioResponse": {
+            "description": "Parameters returned from either PostContent or PostText",
+            "type": "object",
+            "properties": {
+
+                "intent": {
+                    "description": "Current user intent that Amazon Lex is aware of, if one has been identified from the utterance",
+                    "type": "string"
+                },
+                "dialog_state": {
+                    "description": "Identifies the current state of the user interaction. Please see http://docs.aws.amazon.com/lex/latest/dg/API_runtime_PostContent.html#API_runtime_PostContent_ResponseSyntax for more information",
+                    "type": "string"
+                },
+                "input_transcript": {
+                    "description": "If the input was an audio stream, contains the literal words recognized by Amazon Lex (rather than the intent)",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message to convey to the user if any (typically set with one of the dialog states)",
+                    "type": "string"
+                },
+                "session_attributes": {
+                    "description": "The JSON string passed through the function to provide user specific context",
+                    "type": "string"
+                },
+                "slots": {
+                    "description": "JSON map of slot names and values detected by Amazon Lex",
+                    "type": "string"
+                },
+                "slot_to_elicit": {
+                    "description": "If the dialogState value is ElicitSlot, returns the name of the slot for which Amazon Lex is eliciting a value",
+                    "type": "string"
+                }
+            }
+        },
+        "PostBotDescRequest": {
+            "type": "object",
+            "properties": {
+                "desc_file" : {
+                    "description": "The bot description JSON file, describing the bot to create",
+                    "type": "object"
+                }
+            }
+        },
+        "GetBotDescResponse" : {
+            "type": "object",
+            "properties": {
+                "desc_file" : {
+                    "description": "A bot description file for the requested bot",
+                    "type": "object"
+                }
+            }
+        },
+        "GetListBotsResponse" : {
+            "type": "object",
+            "properties": {
+                "bots" : {
+                    "description": "Array of bot information, see ListBotsEntry for details on items",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ListBotsEntry"
+                    }
+                },
+                "nextToken" : {
+                    "description": "The list of bots is paginated, if there are more entries to retrieve, this token is used in the next call to retrieve those entries",
+                    "type": "string"
+                }
+            }
+        },
+        "ListBotsEntry" : {
+            "type": "object",
+            "properties": {
+                "bot_name": {
+                    "description": "The name of the bot",
+                    "type": "string"
+                },
+                "current_version": {
+                    "description": "The latest version number of the bot",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Current status of the bot. Valid values are BUILDING | READY | FAILED | NOT_BUILT",
+                    "type": "string"
+                },
+                "updated": {
+                    "description": "The last date the bot was updated",
+                    "type": "string"
+                },
+                "created": {
+                    "description": "The date the bot was created",
+                    "type": "string"
+                }
+            }
+        },
+        "BotStatusResponse" : {
+            "type": "object",
+            "properties": {
+                "status" : {
+                    "description": "Current status of the bot. Valid values are BUILDING | READY | FAILED | NOT_BUILT | DELETED",
+                    "type": "string"
+                }
+            }
+        },
+        "ServiceStatus": {
+            "description": "",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "If the service is live, returns the string 'online'",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "description": "",
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "description": "HTTP status code of the error",
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "description": "Descriptive string of the error",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        }
+    }
+}

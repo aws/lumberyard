@@ -65,6 +65,9 @@ namespace AzToolsFramework
 
         class AssetJobsInfoRequest;
         class AssetJobsInfoResponse;
+
+        class SourceFileInfoRequest;
+        class SourceFileInfoResponse;
     } // namespace AssetSystem
 } // namespace AzToolsFramework
 
@@ -84,12 +87,15 @@ namespace AssetProcessor
         , public AzToolsFramework::AssetSystemRequestBus::Handler
     {
         using BaseAssetProcessorMessage = AzFramework::AssetSystem::BaseAssetProcessorMessage;
+        using ToolsSourceFileInfo = AzToolsFramework::AssetSystem::SourceFileInfo;
         using AssetJobsInfoRequest = AzToolsFramework::AssetSystem::AssetJobsInfoRequest;
         using AssetJobsInfoResponse = AzToolsFramework::AssetSystem::AssetJobsInfoResponse;
         using JobInfo = AzToolsFramework::AssetSystem::JobInfo;
         using JobStatus = AzToolsFramework::AssetSystem::JobStatus;
         using AssetJobLogRequest = AzToolsFramework::AssetSystem::AssetJobLogRequest;
         using AssetJobLogResponse = AzToolsFramework::AssetSystem::AssetJobLogResponse;
+        using SourceFileInfoRequest = AzToolsFramework::AssetSystem::SourceFileInfoRequest;
+        using SourceFileInfoResponse = AzToolsFramework::AssetSystem::SourceFileInfoResponse;
         using GetRelativeProductPathFromFullSourceOrProductPathRequest = AzFramework::AssetSystem::GetRelativeProductPathFromFullSourceOrProductPathRequest;
         using GetRelativeProductPathFromFullSourceOrProductPathResponse = AzFramework::AssetSystem::GetRelativeProductPathFromFullSourceOrProductPathResponse;
         using GetFullSourcePathFromRelativeProductPathRequest = AzFramework::AssetSystem::GetFullSourcePathFromRelativeProductPathRequest;
@@ -154,7 +160,7 @@ namespace AssetProcessor
         };
 
     public:
-        explicit AssetProcessorManager(AssetProcessor::PlatformConfiguration* config, QObject* parent = 0);
+        explicit AssetProcessorManager(AssetProcessor::PlatformConfiguration* config, QObject* parent = nullptr);
         virtual ~AssetProcessorManager();
         bool IsIdle();
         bool HasProcessedCriticalAssets() const;
@@ -173,6 +179,7 @@ namespace AssetProcessor
         bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) override;
         void UpdateQueuedEvents() override;
         bool GetSourceAssetInfoById(const AZ::Uuid& guid, AZStd::string& watchFolder, AZStd::string& relativePath) override;
+        bool GetSourceFileInfoByPath(ToolsSourceFileInfo& result, const char* sourcePath) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
@@ -236,6 +243,9 @@ Q_SIGNALS:
         //! A network request came in, Given a JOB ID (from the above Job Request), asking for the actual log for that job.
         void ProcessGetAssetJobLogRequest(NetworkRequestID requestId, BaseAssetProcessorMessage* message, bool fencingFailed = false);
 
+        //! A network request came in, given a source file path/guid asking for the file information.
+        void ProcessSourceFileInfoRequest(NetworkRequestID requestId, BaseAssetProcessorMessage* message, bool fencingFailed = false);
+
         // given some absolute path, please respond with its relative product path.  For now, this will be a
         // string like 'textures/blah.tif' (we don't care about extensions), but eventually, this will
         // be an actual asset UUID.
@@ -258,6 +268,7 @@ Q_SIGNALS:
         void CheckMissingFiles();
         void ProcessGetAssetJobsInfoRequest(AssetJobsInfoRequest& request, AssetJobsInfoResponse& response);
         void ProcessGetAssetJobLogRequest(const AssetJobLogRequest& request, AssetJobLogResponse& response);
+        void ProcessGetAssetJobLogRequest(const SourceFileInfoRequest& request, SourceFileInfoResponse& response);
         void ScheduleNextUpdate();
 
     private:
@@ -371,7 +382,6 @@ Q_SIGNALS:
         QString m_normalizedCacheRootPath;
         char m_absoluteDevFolderPath[AZ_MAX_PATH_LEN];
         char m_absoluteDevGameFolderPath[AZ_MAX_PATH_LEN];
-        QStringList m_commandLinePlatformsList;
         QDir m_cacheRootDir;
         bool m_isCurrentlyScanning = false;
         bool m_quitRequested = false;

@@ -73,7 +73,7 @@ void AWSImporterModel::ProcessOutputImportableResourceList(const QVariant& value
         rowItems[ArnColumn]->setText(resourceArn);
         rowItems[ArnColumn]->setEditable(false);
 
-        rowItems[NameColumn]->setText(list[row].toMap()["Name"].toString());
+        rowItems[NameColumn]->setText("");
         //Set the background color to remind users that it needs to be edited
         rowItems[NameColumn]->setBackground(QBrush(QColor("#303030")));
 

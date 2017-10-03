@@ -49,7 +49,7 @@ AzToLyInputDeviceKeyboard::AzToLyInputDeviceKeyboard(IInput& input)
     MapSymbol(InputDeviceKeyboard::Key::PunctuationBracketL.GetNameCrc32(), eKI_LBracket, "lbracket");
     MapSymbol(InputDeviceKeyboard::Key::PunctuationBracketR.GetNameCrc32(), eKI_RBracket, "rbracket");
     MapSymbol(InputDeviceKeyboard::Key::EditEnter.GetNameCrc32(), eKI_Enter, "enter");
-    MapSymbol(InputDeviceKeyboard::Key::ModifierControlL.GetNameCrc32(), eKI_LCtrl, "lctrl", SInputSymbol::Button, eMM_LCtrl);
+    MapSymbol(InputDeviceKeyboard::Key::ModifierCtrlL.GetNameCrc32(), eKI_LCtrl, "lctrl", SInputSymbol::Button, eMM_LCtrl);
     MapSymbol(InputDeviceKeyboard::Key::AlphanumericA.GetNameCrc32(), eKI_A, "a");
     MapSymbol(InputDeviceKeyboard::Key::AlphanumericS.GetNameCrc32(), eKI_S, "s");
     MapSymbol(InputDeviceKeyboard::Key::AlphanumericD.GetNameCrc32(), eKI_D, "d");
@@ -112,7 +112,7 @@ AzToLyInputDeviceKeyboard::AzToLyInputDeviceKeyboard(IInput& input)
     //MapSymbol(???, eKI_Colon, "colon");
     //MapSymbol(???, eKI_Underline, "underline");
     MapSymbol(InputDeviceKeyboard::Key::NumPadEnter.GetNameCrc32(), eKI_NP_Enter, "np_enter");
-    MapSymbol(InputDeviceKeyboard::Key::ModifierControlR.GetNameCrc32(),  eKI_RCtrl, "rctrl", SInputSymbol::Button, eMM_RCtrl);
+    MapSymbol(InputDeviceKeyboard::Key::ModifierCtrlR.GetNameCrc32(),  eKI_RCtrl, "rctrl", SInputSymbol::Button, eMM_RCtrl);
     MapSymbol(InputDeviceKeyboard::Key::NumPadDivide.GetNameCrc32(), eKI_NP_Divide, "np_divide");
     MapSymbol(InputDeviceKeyboard::Key::WindowsSystemPrint.GetNameCrc32(), eKI_Print, "print");
     MapSymbol(InputDeviceKeyboard::Key::ModifierAltR.GetNameCrc32(), eKI_RAlt,  "ralt", SInputSymbol::Button, eMM_RAlt);

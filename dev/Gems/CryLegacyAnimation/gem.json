@@ -1,0 +1,15 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "b4807336b070494d974275a581593ed8",
+    "Name": "CryLegacyAnimation",
+    "DisplayName": "CryLegacyAnimation",
+    "Version": "0.1.0",
+    "Summary": "This Gem enables the legacy animation runtime and tools (Geppetto and Mannequin)",
+    "Tags": ["Animation"],
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ]
+}

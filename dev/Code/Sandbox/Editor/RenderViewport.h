@@ -26,11 +26,16 @@
 #include "Objects/DisplayContext.h"
 #include "Undo/Undo.h"
 #include "Util/PredefinedAspectRatios.h"
+
 #include <AzCore/Component/EntityId.h>
+
+#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_win.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorCameraBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_win.h>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
+
 
 // forward declarations.
 class CBaseObject;
@@ -38,6 +43,11 @@ class QMenu;
 class QKeyEvent;
 struct IPhysicalEntity;
 typedef IPhysicalEntity* PIPhysicalEntity;
+
+namespace AzToolsFramework
+{
+    class ManipulatorManager;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // CRenderViewport window
@@ -49,9 +59,13 @@ class SANDBOX_API CRenderViewport
     , public Camera::EditorCameraRequestBus::Handler
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AzFramework::RawInputRequestBusWin::Handler
+    , public AzToolsFramework::ViewportInteractionRequestBus::Handler
 {
     Q_OBJECT
 public:
+    using MouseInteraction = AzToolsFramework::ViewportInteraction::MouseInteraction;
+    using Modifiers = AzToolsFramework::ViewportInteraction::Modifiers;
+
     struct SResolution
     {
         SResolution()
@@ -146,7 +160,8 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     /// Camera::CameraEditorRequests::Handler
-    virtual void SetViewFromEntityPerspective(const AZ::EntityId& entityId) { SetEntityAsCamera(entityId); }
+    void SetViewFromEntityPerspective(const AZ::EntityId& entityId) override { SetEntityAsCamera(entityId); }
+    AZ::EntityId GetCurrentViewEntityId() { return m_viewEntityId; }
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -154,6 +169,14 @@ public:
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
     //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    /// AzToolsFramework::ViewportInteractionRequestBus::Handler
+    AzToolsFramework::ViewportInteraction::CameraState GetCameraState() override;
+    //////////////////////////////////////////////////////////////////////////
+
+    void ConnectViewportInteractionRequestBus();
+    void DisconnectViewportInteractionRequestBus();
 
     void ActivateWindowAndSetFocus();
 
@@ -265,14 +288,6 @@ public:
 
 protected:
     struct SScopedCurrentContext;
-    struct SPreviousContext
-    {
-        CCamera rendererCamera;
-        HWND window;
-        int width;
-        int height;
-        bool mainViewport;
-    };
 
     void SetViewTM(const Matrix34& tm, bool bMoveOnly);
 
@@ -303,12 +318,40 @@ protected:
     void DrawBackground();
     void InitDisplayContext();
 
+    struct SPreviousContext
+    {
+        CCamera rendererCamera;
+        HWND window;
+        int width;
+        int height;
+        bool mainViewport;
+    };
+
+    SPreviousContext m_preWidgetContext;
+
     // Create an auto-sized render context that is sized based on the Editor's current
     // viewport.
     SPreviousContext SetCurrentContext() const;
 
     SPreviousContext SetCurrentContext(int newWidth, int newHeight) const;
     void RestorePreviousContext(const SPreviousContext& x) const;
+
+    void PreWidgetRendering() override 
+    { 
+        m_preWidgetContext = SetCurrentContext(); 
+#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
+        AZ_Assert(m_cameraSetForWidgetRendering == false, "PreWidgetRendering called but widget rendering camera was already set!");
+        m_cameraSetForWidgetRendering = true;
+#endif
+    }
+    void PostWidgetRendering() override 
+    { 
+#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
+        AZ_Assert(m_cameraSetForWidgetRendering == true, "PostWidgetRendering called but widget rendering camera was already reset!");
+        m_cameraSetForWidgetRendering = false;
+#endif
+        RestorePreviousContext(m_preWidgetContext); 
+    }
 
     // Update the safe frame, safe action, safe title, and borders rectangles based on
     // viewport size and target aspect ratio.
@@ -354,6 +397,10 @@ protected:
         ViewSourceTypesCount,
     };
     void ResetToViewSourceType(const ViewSourceType& viewSourType);
+
+#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
+    bool m_cameraSetForWidgetRendering = false;
+#endif
 
     //! Assigned renderer.
     IRenderer*  m_renderer = nullptr;
@@ -499,7 +546,9 @@ protected:
     void OnMButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point) override;
     void OnRButtonDown(Qt::KeyboardModifiers modifiers, const QPoint& point) override;
     void OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point) override;
+    void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point) override;
     void OnMouseWheel(Qt::KeyboardModifiers modifiers, short zDelta, const QPoint& pt) override;
+    MouseInteraction BuildMouseInteraction(Modifiers button, Qt::KeyboardModifiers modifiers, const QPoint& point);
     bool event(QEvent* event) override;
     void OnDestroy();
 
@@ -523,6 +572,8 @@ private:
     QSet<int> m_keyDown;
 
     bool m_freezeViewportInput = false;
+
+    AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager;
 };
 
 /////////////////////////////////////////////////////////////////////////////

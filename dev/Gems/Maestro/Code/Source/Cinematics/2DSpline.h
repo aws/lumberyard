@@ -19,7 +19,7 @@
 #define CRYINCLUDE_CRYMOVIE_2DSPLINE_H
 #pragma once
 
-
+#include <AzCore/Serialization/SerializeContext.h>
 #include <ISplines.h>
 
 namespace spline
@@ -42,6 +42,8 @@ namespace spline
         SplineKeyEx()
             : theta_from_dd_to_ds(gf_PI)
             , scale_from_dd_to_ds(1.0f) {}
+
+        static void Reflect(AZ::SerializeContext* serializeContext) {}
     };
 
     inline void ComputeUnifiedTangent(Vec2& destTan, float angle, float length)
@@ -103,6 +105,13 @@ namespace spline
         ComputeUnifiedTangent(ds, inAngle, inLength);
     }
 
+    template<>
+    inline void SplineKeyEx<Vec2>::Reflect(AZ::SerializeContext* serializeContext)
+    {
+        serializeContext->Class<SplineKeyEx<Vec2>, SplineKey<Vec2> >()
+            ->Version(1);
+    }
+
     template <class T>
     class TrackSplineInterpolator;
 
@@ -111,6 +120,8 @@ namespace spline
         : public spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >
     {
     public:
+        AZ_CLASS_ALLOCATOR(TrackSplineInterpolator<Vec2>, AZ::SystemAllocator, 0);
+
         virtual int GetNumDimensions()
         {
             // It's actually one-dimensional since the x component curve is for a time-warping.
@@ -567,6 +578,12 @@ namespace spline
                 ConstrainInTangentsOf(keyIndex + 1);
             }
             return keyIndex;
+        }
+
+        inline static void Reflect(AZ::SerializeContext* serializeContext)
+        {
+            serializeContext->Class<TrackSplineInterpolator<Vec2>,spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >()
+                ->Version(1);
         }
     };
 }; // namespace spline

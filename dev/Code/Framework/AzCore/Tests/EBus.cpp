@@ -77,9 +77,9 @@ namespace UnitTest
             {
                 // We will bind at construction time to the bus. Disconnect is automatic when the object is
                 // destroyed or we can call BusDisconnect()
-                AZ_TEST_ASSERT(BusIsConnected() == false);
+                EXPECT_FALSE(BusIsConnected());
                 BusConnect();
-                AZ_TEST_ASSERT(BusIsConnected() == true);
+                EXPECT_TRUE(BusIsConnected());
             }
             //////////////////////////////////////////////////////////////////////////
             // Implement some action on the events...
@@ -197,36 +197,36 @@ namespace UnitTest
 
             // Signal OnAction event
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(1, meh.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
 
             // Signal OnSum event
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
+            EXPECT_EQ(1, meh.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
 
             // How about we want to store the event result?
             // We can just store the last value (\note many assignments will happen)
             float lastResult = 0.0f;
             EBUS_EVENT_RESULT(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 2);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(2, meh.sumCalls);
+            EXPECT_EQ(2, meh1.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             // How about if we want to store all the results...
             EBusAggregateResults<float> allResults;
             EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(meh.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 3);
-            AZ_TEST_ASSERT(allResults.values.size() == 2); // we should have 2 results
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
+            EXPECT_EQ(3, meh.sumCalls);
+            EXPECT_EQ(3, meh1.sumCalls);
+            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
 
             meh.BusDisconnect(); // we disconnect from receiving events.
 
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            AZ_TEST_ASSERT(meh.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2); // not disconnected
+            EXPECT_EQ(1, meh.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls); // not disconnected
         }
 
         {
@@ -235,21 +235,21 @@ namespace UnitTest
             MyEventHandler* handler2 = aznew MyEventHandler();
             (void)handler1; (void)handler2;
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             // Test removing handlers while in messages - reverse iterator
             handler1 = aznew MyEventHandler();
             handler2 = aznew MyEventHandler();
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
         }
     }
 
@@ -338,85 +338,85 @@ namespace UnitTest
             // Signal OnAction event
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(1, meh.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
 
             // Signal OnAction event in reverse order
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBUS_EVENT_REVERSE(MyEventGroupBus, OnAction, 3.0f, 4.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(meh.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(2, meh.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
 
             // Signal OnSum event
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(1, meh.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
 
             // Signal OnSum event in reverse order
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBUS_EVENT_REVERSE(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(meh.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 2);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(2, meh.sumCalls);
+            EXPECT_EQ(2, meh1.sumCalls);
 
             // How about we want to store the event result? Let's try with the last result.
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             float lastResult = 0.0f;
             EBUS_EVENT_RESULT(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 3);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(3, meh.sumCalls);
+            EXPECT_EQ(3, meh1.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             // How about we want to store the event result? Let's try with the last result. Execute in reverse order
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             lastResult = 0.0f;
             EBUS_EVENT_RESULT_REVERSE(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(meh.sumCalls == 4);
-            AZ_TEST_ASSERT(meh1.sumCalls == 4);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(4, meh.sumCalls);
+            EXPECT_EQ(4, meh1.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             // How about if we want to store all the results...
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBusAggregateResults<float> allResults;
             EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.sumCalls == 5);
-            AZ_TEST_ASSERT(meh1.sumCalls == 5);
-            AZ_TEST_ASSERT(allResults.values.size() == 2); // we should have 2 results
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(5, meh.sumCalls);
+            EXPECT_EQ(5, meh1.sumCalls);
+            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
 
             // How about if we want to store all the results... in reverse order
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             allResults.values.clear();
             EBUS_EVENT_RESULT_REVERSE(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(meh.sumCalls == 6);
-            AZ_TEST_ASSERT(meh1.sumCalls == 6);
-            AZ_TEST_ASSERT(allResults.values.size() == 2); // we should have 2 results
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(6, meh.sumCalls);
+            EXPECT_EQ(6, meh1.sumCalls);
+            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
 
             meh1.BusDisconnect(); // we disconnect from receiving events.
 
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
-            AZ_TEST_ASSERT(meh.actionCalls == 3); // not disconnected
+            EXPECT_EQ(2, meh1.actionCalls);
+            EXPECT_EQ(3, meh.actionCalls); // not disconnected
         }
     }
 
@@ -501,30 +501,30 @@ namespace UnitTest
             MyEventHandler meh1(1);  /// <-- Bind to bus 1
 
             // Test handlers' enumeration functionality
-            AZ_TEST_ASSERT(MyEventGroupBus::FindFirstHandler(0) == &meh0);
-            AZ_TEST_ASSERT(MyEventGroupBus::FindFirstHandler(1) == &meh1);
-            AZ_TEST_ASSERT(MyEventGroupBus::FindFirstHandler(3) == nullptr);
-            //AZ_TEST_ASSERT(MyEventGroupBus::FindFirstHandler() == &meh0 || MyEventGroupBus::FindFirstHandler() == &meh1);
+            EXPECT_EQ(&meh0, MyEventGroupBus::FindFirstHandler(0));
+            EXPECT_EQ(&meh1, MyEventGroupBus::FindFirstHandler(1));
+            EXPECT_EQ(nullptr, MyEventGroupBus::FindFirstHandler(3));
+            //EXPECT_TRUE(MyEventGroupBus::FindFirstHandler() == &meh0 || MyEventGroupBus::FindFirstHandler() == &meh1);
 
             // Signal OnAction event on all buses
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(1, meh0.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
 
             // Signal OnSum event
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
+            EXPECT_EQ(1, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
 
             // Signal OnAction event on bus 0
             EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
 
             // Signal OnAction event on bus 1
             EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
 
             // When you call event very often... you can cache the the BUS pointer.
             // This is recommended only for performance critical systems, all you save is
@@ -533,35 +533,35 @@ namespace UnitTest
             MyEventGroupBus::Bind(busPtr, 1);
             // Now signal this event on the specified bus.
             EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 3);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(3, meh1.actionCalls);
 
             //// How about we want to store the event result? Let's try with the last result.
             float lastResult = 0.0f;
             EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 2);
-            AZ_TEST_ASSERT(lastResult == 11.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(2, meh1.sumCalls);
+            EXPECT_EQ(11.0f, lastResult);
 
             // How about if we want to store all the results...
             EBusAggregateResults<float> allResults;
             EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 3);
-            AZ_TEST_ASSERT(allResults.values.size() == 2); // we should have 2 results
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
+            EXPECT_EQ(3, meh0.sumCalls);
+            EXPECT_EQ(3, meh1.sumCalls);
+            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
 
             meh0.BusDisconnect(); // we disconnect from receiving events.
 
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 4); // not disconnected
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(4, meh1.actionCalls); // not disconnected
         }
 
         {
@@ -570,21 +570,21 @@ namespace UnitTest
             MyEventHandler* handler2 = aznew MyEventHandler(1);
             (void)handler1; (void)handler2;
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             // Test removing handlers while in messages - reverse iterator
             handler1 = aznew MyEventHandler(0);
             handler2 = aznew MyEventHandler(1);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
         }
     }
 
@@ -662,27 +662,27 @@ namespace UnitTest
 
             // Signal OnAction event on all buses
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
-            AZ_TEST_ASSERT(meh2.actionCalls == 1);
+            EXPECT_EQ(1, meh0.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
+            EXPECT_EQ(1, meh2.actionCalls);
 
             // Signal OnSum event
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
-            AZ_TEST_ASSERT(meh2.sumCalls == 1);
+            EXPECT_EQ(1, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
+            EXPECT_EQ(1, meh2.sumCalls);
 
             // Signal OnAction event on bus 0
             EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
-            AZ_TEST_ASSERT(meh2.actionCalls == 1);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
+            EXPECT_EQ(1, meh2.actionCalls);
 
             // Signal OnAction event on bus 1
             EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
-            AZ_TEST_ASSERT(meh2.actionCalls == 2);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
+            EXPECT_EQ(2, meh2.actionCalls);
 
             // When you call event very often... you can cache the the BUS pointer.
             // This is recommended only for performance critical systems, all you save is
@@ -693,51 +693,51 @@ namespace UnitTest
             // \note EBusMyEventGroup has decorative role (we know that from the bus pointer, but it make
             // the code more readable.
             EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 3);
-            AZ_TEST_ASSERT(meh1.actionCalls == 3);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(3, meh1.actionCalls);
+            EXPECT_EQ(3, meh1.actionCalls);
 
             // How about we want to store the event result? Let's try with the last result.
             float lastResult = 0.0f;
             EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
-            AZ_TEST_ASSERT(meh2.sumCalls == 1);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
+            EXPECT_EQ(1, meh2.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 2);
-            AZ_TEST_ASSERT(meh2.sumCalls == 2);
-            AZ_TEST_ASSERT(lastResult == 11.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(2, meh1.sumCalls);
+            EXPECT_EQ(2, meh2.sumCalls);
+            EXPECT_EQ(11.0f, lastResult);
 
             // How about if we want to store all the results...
             EBusAggregateResults<float> allResults;
             EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 3);
-            AZ_TEST_ASSERT(meh2.sumCalls == 3);
-            AZ_TEST_ASSERT(allResults.values.size() == 3);
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[2] == 5.0f);
+            EXPECT_EQ(3, meh0.sumCalls);
+            EXPECT_EQ(3, meh1.sumCalls);
+            EXPECT_EQ(3, meh2.sumCalls);
+            EXPECT_EQ(3, allResults.values.size());
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
+            EXPECT_EQ(5.0f, allResults.values[2]);
 
             allResults.values.clear();
 
             EBUS_EVENT_ID_RESULT(allResults, 1, MyEventGroupBus, OnSum, 3.0f, 3.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 4);
-            AZ_TEST_ASSERT(meh2.sumCalls == 4);
-            AZ_TEST_ASSERT(allResults.values.size() == 2);
-            AZ_TEST_ASSERT(allResults.values[0] == 6.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 6.0f);
+            EXPECT_EQ(3, meh0.sumCalls);
+            EXPECT_EQ(4, meh1.sumCalls);
+            EXPECT_EQ(4, meh2.sumCalls);
+            EXPECT_EQ(2, allResults.values.size());
+            EXPECT_EQ(6.0f, allResults.values[0]);
+            EXPECT_EQ(6.0f, allResults.values[1]);
 
             meh2.BusDisconnect(); // we disconnect from receiving events.
 
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            AZ_TEST_ASSERT(meh0.actionCalls == 3);
-            AZ_TEST_ASSERT(meh1.actionCalls == 4);
-            AZ_TEST_ASSERT(meh2.actionCalls == 3);  // not connected
+            EXPECT_EQ(3, meh0.actionCalls);
+            EXPECT_EQ(4, meh1.actionCalls);
+            EXPECT_EQ(3, meh2.actionCalls);  // not connected
         }
     }
     
@@ -842,43 +842,43 @@ namespace UnitTest
             // Signal OnAction event on all buses
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh2);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[2] == &meh0);
-            AZ_TEST_ASSERT(meh0.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
-            AZ_TEST_ASSERT(meh2.actionCalls == 1);
+            EXPECT_EQ(&meh2, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(&meh0, MyEventHandler::s_eventOrder[2]);
+            EXPECT_EQ(1, meh0.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
+            EXPECT_EQ(1, meh2.actionCalls);
 
             // Signal OnAction event on all buses in reverse order
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT_REVERSE(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh0);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[2] == &meh2);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
-            AZ_TEST_ASSERT(meh2.actionCalls == 2);
+            EXPECT_EQ(&meh0, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(&meh2, MyEventHandler::s_eventOrder[2]);
+            EXPECT_EQ(2, meh0.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
+            EXPECT_EQ(2, meh2.actionCalls);
 
             // Signal OnSum event
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
-            AZ_TEST_ASSERT(meh2.sumCalls == 1);
+            EXPECT_EQ(1, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
+            EXPECT_EQ(1, meh2.sumCalls);
 
             // Signal OnAction event on bus 0
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 3);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
-            AZ_TEST_ASSERT(meh2.actionCalls == 2);
+            EXPECT_EQ(3, meh0.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
+            EXPECT_EQ(2, meh2.actionCalls);
 
             // Signal OnAction event on bus 1
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 3);
-            AZ_TEST_ASSERT(meh1.actionCalls == 3);
-            AZ_TEST_ASSERT(meh2.actionCalls == 3);
+            EXPECT_EQ(3, meh0.actionCalls);
+            EXPECT_EQ(3, meh1.actionCalls);
+            EXPECT_EQ(3, meh2.actionCalls);
 
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             // When you call event very often... you can cache the the BUS pointer.
@@ -890,55 +890,55 @@ namespace UnitTest
             // \note EBusMyEventGroup has decorative role (we know that from the bus pointer, but it make
             // the code more readable.
             EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 3);
-            AZ_TEST_ASSERT(meh1.actionCalls == 4);
-            AZ_TEST_ASSERT(meh1.actionCalls == 4);
+            EXPECT_EQ(3, meh0.actionCalls);
+            EXPECT_EQ(4, meh1.actionCalls);
+            EXPECT_EQ(4, meh1.actionCalls);
 
             // How about we want to store the event result? Let's try with the last result.
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             float lastResult = 0.0f;
             EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
-            AZ_TEST_ASSERT(meh2.sumCalls == 1);
-            AZ_TEST_ASSERT(lastResult == 7.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
+            EXPECT_EQ(1, meh2.sumCalls);
+            EXPECT_EQ(7.0f, lastResult);
 
             EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
-            AZ_TEST_ASSERT(meh1.sumCalls == 2);
-            AZ_TEST_ASSERT(meh2.sumCalls == 2);
-            AZ_TEST_ASSERT(lastResult == 11.0f);
+            EXPECT_EQ(2, meh0.sumCalls);
+            EXPECT_EQ(2, meh1.sumCalls);
+            EXPECT_EQ(2, meh2.sumCalls);
+            EXPECT_EQ(11.0f, lastResult);
 
             // How about if we want to store all the results...
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBusAggregateResults<float> allResults;
             EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 3);
-            AZ_TEST_ASSERT(meh2.sumCalls == 3);
-            AZ_TEST_ASSERT(allResults.values.size() == 3);
-            AZ_TEST_ASSERT(allResults.values[0] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 5.0f);
-            AZ_TEST_ASSERT(allResults.values[2] == 5.0f);
+            EXPECT_EQ(3, meh0.sumCalls);
+            EXPECT_EQ(3, meh1.sumCalls);
+            EXPECT_EQ(3, meh2.sumCalls);
+            EXPECT_EQ(3, allResults.values.size());
+            EXPECT_EQ(5.0f, allResults.values[0]);
+            EXPECT_EQ(5.0f, allResults.values[1]);
+            EXPECT_EQ(5.0f, allResults.values[2]);
 
             allResults.values.clear();
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
 
             EBUS_EVENT_ID_RESULT(allResults, 1, MyEventGroupBus, OnSum, 3.0f, 3.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 3);
-            AZ_TEST_ASSERT(meh1.sumCalls == 4);
-            AZ_TEST_ASSERT(meh2.sumCalls == 4);
-            AZ_TEST_ASSERT(allResults.values.size() == 2);
-            AZ_TEST_ASSERT(allResults.values[0] == 6.0f);
-            AZ_TEST_ASSERT(allResults.values[1] == 6.0f);
+            EXPECT_EQ(3, meh0.sumCalls);
+            EXPECT_EQ(4, meh1.sumCalls);
+            EXPECT_EQ(4, meh2.sumCalls);
+            EXPECT_EQ(2, allResults.values.size());
+            EXPECT_EQ(6.0f, allResults.values[0]);
+            EXPECT_EQ(6.0f, allResults.values[1]);
 
             meh2.BusDisconnect(); // we disconnect from receiving events.
 
             MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            AZ_TEST_ASSERT(meh0.actionCalls == 4);
-            AZ_TEST_ASSERT(meh1.actionCalls == 5);
-            AZ_TEST_ASSERT(meh2.actionCalls == 4);  // not connected
+            EXPECT_EQ(4, meh0.actionCalls);
+            EXPECT_EQ(5, meh1.actionCalls);
+            EXPECT_EQ(4, meh2.actionCalls);  // not connected
         }
 
         {
@@ -947,21 +947,21 @@ namespace UnitTest
             MyEventHandler* handler2 = aznew MyEventHandler(1, 10);
             (void)handler1; (void)handler2;
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             // Test removing handlers while in messages - reverse iterator
             handler1 = aznew MyEventHandler(0, 0);
             handler2 = aznew MyEventHandler(1, 10);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 2);
+            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
 
             EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
 
-            AZ_TEST_ASSERT(MyEventGroupBus::GetTotalNumOfEventHandlers() == 0);
+            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
         }
     }
 
@@ -1062,46 +1062,46 @@ namespace UnitTest
 #else
             EBUS_QUEUE_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
 #endif
-            AZ_TEST_ASSERT(meh.actionCalls == 0);
-            AZ_TEST_ASSERT(meh1.actionCalls == 0);
+            EXPECT_EQ(0, meh.actionCalls);
+            EXPECT_EQ(0, meh1.actionCalls);
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             MyEventGroupBus::ExecuteQueuedEvents();
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(1, meh.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
 
             // Queue OnAction event in reverse order
             EBUS_QUEUE_EVENT_REVERSE(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh.actionCalls == 1);
-            AZ_TEST_ASSERT(meh1.actionCalls == 1);
+            EXPECT_EQ(1, meh.actionCalls);
+            EXPECT_EQ(1, meh1.actionCalls);
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             MyEventGroupBus::ExecuteQueuedEvents();
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh1);
-            AZ_TEST_ASSERT(meh.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(2, meh.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
 
             // Signal OnSum event
             EBUS_QUEUE_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh.sumCalls == 0);
-            AZ_TEST_ASSERT(meh1.sumCalls == 0);
+            EXPECT_EQ(0, meh.sumCalls);
+            EXPECT_EQ(0, meh1.sumCalls);
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             MyEventGroupBus::ExecuteQueuedEvents();
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[0] == &meh1);
-            AZ_TEST_ASSERT(MyEventHandler::s_eventOrder[1] == &meh);
-            AZ_TEST_ASSERT(meh.sumCalls == 1);
-            AZ_TEST_ASSERT(meh1.sumCalls == 1);
+            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
+            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
+            EXPECT_EQ(1, meh.sumCalls);
+            EXPECT_EQ(1, meh1.sumCalls);
 
             meh.BusDisconnect(); // we disconnect from receiving events.
 
             EBUS_QUEUE_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 2);
+            EXPECT_EQ(2, meh.actionCalls);
+            EXPECT_EQ(2, meh1.actionCalls);
             MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
             MyEventGroupBus::ExecuteQueuedEvents();
-            AZ_TEST_ASSERT(meh.actionCalls == 2);
-            AZ_TEST_ASSERT(meh1.actionCalls == 3); // not disconnected
+            EXPECT_EQ(2, meh.actionCalls);
+            EXPECT_EQ(3, meh1.actionCalls); // not disconnected
         }
     }
 
@@ -1175,24 +1175,24 @@ namespace UnitTest
 
             // Signal OnAction event on all buses
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 2);
+            EXPECT_EQ(2, meh0.actionCalls);
 
             // Signal OnSum event
             EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            AZ_TEST_ASSERT(meh0.sumCalls == 2);
+            EXPECT_EQ(2, meh0.sumCalls);
 
             // Signal OnAction event on bus 0
             EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 3);
+            EXPECT_EQ(3, meh0.actionCalls);
 
             // Signal OnAction event on bus 1
             EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            AZ_TEST_ASSERT(meh0.actionCalls == 4);
+            EXPECT_EQ(4, meh0.actionCalls);
 
             meh0.BusDisconnect(1); // we disconnect from receiving events on bus 1
 
             EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger only one call
-            AZ_TEST_ASSERT(meh0.actionCalls == 5);
+            EXPECT_EQ(5, meh0.actionCalls);
         }
     }
     
@@ -1307,12 +1307,12 @@ namespace UnitTest
         // the same as m_multiHandler.BusDisconnect(); but dalayed until QueueTestMultiBus::ExecuteQueuedEvents();
         EBUS_QUEUE_FUNCTION(QueueTestMultiBus, static_cast<void(QueueTestMultiBus::Handler::*)()>(&QueueTestMultiBus::Handler::BusDisconnect), &m_multiHandler);
 
-        AZ_TEST_ASSERT(QueueTestSingleBus::GetTotalNumOfEventHandlers() == 1);
-        AZ_TEST_ASSERT(QueueTestMultiBus::GetTotalNumOfEventHandlers() == 1);
+        EXPECT_EQ(1, QueueTestSingleBus::GetTotalNumOfEventHandlers());
+        EXPECT_EQ(1, QueueTestMultiBus::GetTotalNumOfEventHandlers());
         QueueTestSingleBus::ExecuteQueuedEvents();
         QueueTestMultiBus::ExecuteQueuedEvents();
-        AZ_TEST_ASSERT(QueueTestSingleBus::GetTotalNumOfEventHandlers() == 0);
-        AZ_TEST_ASSERT(QueueTestMultiBus::GetTotalNumOfEventHandlers() == 0);
+        EXPECT_EQ(0, QueueTestSingleBus::GetTotalNumOfEventHandlers());
+        EXPECT_EQ(0, QueueTestMultiBus::GetTotalNumOfEventHandlers());
 
         // Cleanup
         m_multiPtr = nullptr;
@@ -1474,33 +1474,33 @@ namespace UnitTest
     TEST_F(EBus, DisconnectInDispatch)
     {
         ConnectDisconnectHandler child(nullptr);
-        AZ_TEST_ASSERT(ConnectDisconnectBus::GetTotalNumOfEventHandlers() == 0);
+        EXPECT_EQ(0, ConnectDisconnectBus::GetTotalNumOfEventHandlers());
         ConnectDisconnectHandler l(&child);
-        AZ_TEST_ASSERT(ConnectDisconnectBus::GetTotalNumOfEventHandlers() == 1);
+        EXPECT_EQ(1, ConnectDisconnectBus::GetTotalNumOfEventHandlers());
         // Test connect in the during the message call
         EBUS_EVENT(ConnectDisconnectBus, OnConnectChild); // connect the child object
 
-        AZ_TEST_ASSERT(ConnectDisconnectBus::GetTotalNumOfEventHandlers() == 2);
+        EXPECT_EQ(2, ConnectDisconnectBus::GetTotalNumOfEventHandlers());
         EBUS_EVENT(ConnectDisconnectBus, OnDisconnectAll); // Disconnect all members during a message
-        AZ_TEST_ASSERT(ConnectDisconnectBus::GetTotalNumOfEventHandlers() == 0);
+        EXPECT_EQ(0, ConnectDisconnectBus::GetTotalNumOfEventHandlers());
 
 
         ConnectDisconnectIdOrderedHandler ch10(10, 1, nullptr);
         ConnectDisconnectIdOrderedHandler ch5(5, 20, nullptr);
-        AZ_TEST_ASSERT(ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers() == 0);
+        EXPECT_EQ(0, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
         ConnectDisconnectIdOrderedHandler pa10(10, 10, &ch10);
         ConnectDisconnectIdOrderedHandler pa20(20, 20, &ch5);
-        AZ_TEST_ASSERT(ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers() == 2);
+        EXPECT_EQ(2, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
         EBUS_EVENT(ConnectDisconnectIdOrderedBus, OnConnectChild); // connect the child object
-        AZ_TEST_ASSERT(ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers() == 4);
+        EXPECT_EQ(4, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
 
         // Disconnect all members from bus 10 (it will be sorted first)
         // This we we can test a bus removal while traversing
         EBUS_EVENT(ConnectDisconnectIdOrderedBus, OnDisconnectAll, 10);
-        AZ_TEST_ASSERT(ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers() == 2);
+        EXPECT_EQ(2, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
         // Now disconnect all buses
         EBUS_EVENT(ConnectDisconnectIdOrderedBus, OnDisconnectAll, -1);
-        AZ_TEST_ASSERT(ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers() == 0);
+        EXPECT_EQ(0, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
     }
 
     /**
@@ -1540,8 +1540,8 @@ namespace UnitTest
             void OnAction() override
             {
                 const unsigned int* currentIdPtr = MyEventBus::GetCurrentBusId();
-                AZ_TEST_ASSERT(currentIdPtr != nullptr);
-                AZ_TEST_ASSERT(m_expectedCurrentId == *currentIdPtr);
+                EXPECT_NE(nullptr, currentIdPtr);
+                EXPECT_EQ(*currentIdPtr, m_expectedCurrentId);
                 ++m_numCalls;
             }
 
@@ -1559,29 +1559,29 @@ namespace UnitTest
 
         // test copy handlers and make sure they attached to the same bus
         MultiHandler mlCopy = ml;
-        AZ_TEST_ASSERT(mlCopy.m_numCalls == 0);
+        EXPECT_EQ(0, mlCopy.m_numCalls);
 
         // Called outside of an even it should always return nullptr
-        AZ_TEST_ASSERT(MyEventBus::GetCurrentBusId() == nullptr);
+        EXPECT_EQ(nullptr, MyEventBus::GetCurrentBusId());
 
         EBUS_EVENT_ID(1, MyEventBus, OnAction);  // this should not trigger a call
-        AZ_TEST_ASSERT(ml.m_numCalls == 0);
+        EXPECT_EQ(0, ml.m_numCalls);
 
         // Issues calls which we listen for
         ml.m_expectedCurrentId = 10;
         mlCopy.m_expectedCurrentId = 10;
         EBUS_EVENT_ID(10, MyEventBus, OnAction);
-        AZ_TEST_ASSERT(ml.m_numCalls == 1);
-        AZ_TEST_ASSERT(mlCopy.m_numCalls == 1);  // make sure the handler copy is connected
+        EXPECT_EQ(1, ml.m_numCalls);
+        EXPECT_EQ(1, mlCopy.m_numCalls);  // make sure the handler copy is connected
         mlCopy.BusDisconnect();
 
         ml.m_expectedCurrentId = 12;
         EBUS_EVENT_ID(12, MyEventBus, OnAction);
-        AZ_TEST_ASSERT(ml.m_numCalls == 2);
+        EXPECT_EQ(2, ml.m_numCalls);
 
         ml.m_expectedCurrentId = 13;
         EBUS_EVENT_ID(13, MyEventBus, OnAction);
-        AZ_TEST_ASSERT(ml.m_numCalls == 3);
+        EXPECT_EQ(3, ml.m_numCalls);
     }
     
     // Non intrusive EBusTraits
@@ -1697,15 +1697,15 @@ namespace UnitTest
 
         // test copy of handler
         Handler1 h1Copy = h1;
-        AZ_TEST_ASSERT(h1Copy.m_calls == 0);
+        EXPECT_EQ(0, h1Copy.m_calls);
 
         EBUS_EVENT(My3rdPartyBus1, SomeEvent, 1);
-        AZ_TEST_ASSERT(h1.m_calls == 1);
-        AZ_TEST_ASSERT(h1Copy.m_calls == 1);  // check that the copy works too
+        EXPECT_EQ(1, h1.m_calls);
+        EXPECT_EQ(1, h1Copy.m_calls);  // check that the copy works too
         EBUS_EVENT(My3rdPartyBus2, SomeEvent, 2);
-        AZ_TEST_ASSERT(h2.m_calls == 1);
+        EXPECT_EQ(1, h2.m_calls);
         EBUS_EVENT(MyEBusInterface, Event, 3);
-        AZ_TEST_ASSERT(h3.m_calls == 1);
+        EXPECT_EQ(1, h3.m_calls);
     }
 
     /**
@@ -1718,14 +1718,14 @@ namespace UnitTest
             AZ::EBusLogicalResult<bool, AZStd::logical_or<bool> > or_false_false(false);
             or_false_false = false;
             or_false_false = false;
-            AZ_TEST_ASSERT(!or_false_false.value);
+            EXPECT_FALSE(or_false_false.value);
         }
 
         {
             AZ::EBusLogicalResult<bool, AZStd::logical_or<bool> > or_true_false(false);
             or_true_false = true;
             or_true_false = false;
-            AZ_TEST_ASSERT(or_true_false.value);
+            EXPECT_TRUE(or_true_false.value);
         }
 
         // Test the result logical aggregator for AND
@@ -1733,14 +1733,14 @@ namespace UnitTest
             AZ::EBusLogicalResult<bool, AZStd::logical_and<bool> > and_true_false(true);
             and_true_false = true;
             and_true_false = false;
-            AZ_TEST_ASSERT(!and_true_false.value);
+            EXPECT_FALSE(and_true_false.value);
         }
 
         {
             AZ::EBusLogicalResult<bool, AZStd::logical_and<bool> > and_true_true(true);
             and_true_true = true;
             and_true_true = true;
-            AZ_TEST_ASSERT(and_true_true.value);
+            EXPECT_TRUE(and_true_true.value);
         }
     }
 
@@ -1783,12 +1783,12 @@ namespace UnitTest
                     if (!m_policy->m_isOnEventRouting)
                     {
                         m_policy->m_isOnEventRouting = true;
-                        ForwardEvent<EBusVersion1>(&EBusVersion1::Events::OnEvent, a + b);
+                        this->template ForwardEvent<EBusVersion1>(&EBusVersion1::Events::OnEvent, a + b);
                         m_policy->m_isOnEventRouting = false;
                     }
                 }
 
-                RouterPolicy* m_policy = nullptr;
+                typename Bus::RouterPolicy* m_policy = nullptr;
             };
 
             struct V1toV2Router : public EBusVersion1::Router
@@ -1798,25 +1798,25 @@ namespace UnitTest
                     if(!m_policy->m_isOnEventRouting)
                     {
                         m_policy->m_isOnEventRouting = true;
-                        ForwardEvent<Bus>(&Bus::Events::OnEvent, a, 0);
+                        this->template ForwardEvent<Bus>(&Bus::Events::OnEvent, a, 0);
                         m_policy->m_isOnEventRouting = false;
                     }
                 }
 
-                RouterPolicy* m_policy = nullptr;
+                typename Bus::RouterPolicy* m_policy = nullptr;
             };
 
             RouterPolicy()
             {
                 m_v2toV1Router.m_policy = this;
                 m_v1toV2Router.m_policy = this;
-                m_v2toV1Router.BusRouterConnect(m_routers);
+                m_v2toV1Router.BusRouterConnect(this->m_routers);
                 m_v1toV2Router.BusRouterConnect();
             }
 
             ~RouterPolicy()
             {
-                m_v2toV1Router.BusRouterDisconnect(m_routers);
+                m_v2toV1Router.BusRouterDisconnect(this->m_routers);
                 m_v1toV2Router.BusRouterDisconnect();
             }
 
@@ -1846,7 +1846,7 @@ namespace UnitTest
         public:
             void OnEvent(int a) override
             {
-                AZ_TEST_ASSERT(a == 1020);
+                EXPECT_EQ(1020, a);
                 m_numOnEvent++;
             }
 
@@ -1902,14 +1902,14 @@ namespace UnitTest
         driller.BusRouterConnect();
 
         EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 1020);
-        AZ_TEST_ASSERT(driller.m_numOnEvent == 1);
-        AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 1);
+        EXPECT_EQ(1, driller.m_numOnEvent);
+        EXPECT_EQ(1, v1Handler.m_numOnEvent);
 
         driller.BusRouterDisconnect();
 
         EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 1020);
-        AZ_TEST_ASSERT(driller.m_numOnEvent == 1);
-        AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 2);
+        EXPECT_EQ(1, driller.m_numOnEvent);
+        EXPECT_EQ(2, v1Handler.m_numOnEvent);
 
         // routing events
         {
@@ -1920,8 +1920,8 @@ namespace UnitTest
             v1Router.BusRouterConnect();
 
             EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 1020);
-            AZ_TEST_ASSERT(v1Router.m_numOnEvent == 1);
-            AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 0);
+            EXPECT_EQ(1, v1Router.m_numOnEvent);
+            EXPECT_EQ(0, v1Handler.m_numOnEvent);
 
             v1Router.BusRouterDisconnect();
         }
@@ -1936,17 +1936,17 @@ namespace UnitTest
             v1RouterSecond.BusRouterConnect();
 
             EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 1020);
-            AZ_TEST_ASSERT(v1RouterFirst.m_numOnEvent == 1);
-            AZ_TEST_ASSERT(v1RouterSecond.m_numOnEvent == 1);
-            AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 0);
+            EXPECT_EQ(1, v1RouterFirst.m_numOnEvent);
+            EXPECT_EQ(1, v1RouterSecond.m_numOnEvent);
+            EXPECT_EQ(0, v1Handler.m_numOnEvent);
 
             // now instruct router 1 to block any further event processing
             v1RouterFirst.m_processingState = EBusVersion1::RouterProcessingState::SkipListenersAndRouters;
 
             EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 1020);
-            AZ_TEST_ASSERT(v1RouterFirst.m_numOnEvent == 2);
-            AZ_TEST_ASSERT(v1RouterSecond.m_numOnEvent == 1);
-            AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 0);
+            EXPECT_EQ(2, v1RouterFirst.m_numOnEvent);
+            EXPECT_EQ(1, v1RouterSecond.m_numOnEvent);
+            EXPECT_EQ(0, v1Handler.m_numOnEvent);
         }
 
         // test bridging two EBus by using routers. This can be used to handle different bus versions.
@@ -1958,12 +1958,12 @@ namespace UnitTest
             v1Handler.m_numOnEvent = 0;
 
             EBusVersion2::Broadcast(&EBusVersion2::Events::OnEvent, 10, 20);
-            AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 1);
-            AZ_TEST_ASSERT(v2Handler.m_numOnEvent == 1);
+            EXPECT_EQ(1, v1Handler.m_numOnEvent);
+            EXPECT_EQ(1, v2Handler.m_numOnEvent);
 
             EBusVersion1::Broadcast(&EBusVersion1::Events::OnEvent, 30);
-            AZ_TEST_ASSERT(v1Handler.m_numOnEvent == 2);
-            AZ_TEST_ASSERT(v2Handler.m_numOnEvent == 2);
+            EXPECT_EQ(2, v1Handler.m_numOnEvent);
+            EXPECT_EQ(2, v2Handler.m_numOnEvent);
         }
 
         // We can test Queue and Event routing separately,
@@ -1978,9 +1978,45 @@ namespace UnitTest
         EXPECT_FALSE(MultBusMultHand::MyEventGroupBus::HasHandlers());
     }
 
-    /**
-    *
-    */
+    struct LocklessEvents
+        : public AZ::EBusTraits
+    {
+        using MutexType = AZStd::mutex;
+        static const bool LocklessDispatch = true;
+
+        virtual ~LocklessEvents() = default;
+        virtual void RemoveMe() = 0;
+    };
+
+    using LocklessBus = AZ::EBus<LocklessEvents>;
+
+    struct LocklessImpl
+        : public LocklessBus::Handler
+    {
+        LocklessImpl()
+        {
+            BusConnect();
+        }
+        void RemoveMe() override
+        {
+            BusDisconnect();
+        }
+    };
+
+    TEST_F(EBus, DisconnectInLocklessDispatch)
+    {
+        LocklessImpl handler;
+        AZ_TEST_START_ASSERTTEST;
+        LocklessBus::Broadcast(&LocklessBus::Events::RemoveMe);
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    //-------------------------------------------------------------------------
+    // PERF TESTS
+    //-------------------------------------------------------------------------
+
+    using EBusPerformance = EBus;
+
     namespace PerformanceTest
     {
         class BlahBlah
@@ -1994,6 +2030,8 @@ namespace UnitTest
             : public AZ::EBusTraits
             , public BlahBlah
         {
+        public:
+            static const bool EnableEventQueue = true;
         };
 
         struct ById : public AZ::EBusTraits
@@ -2001,6 +2039,7 @@ namespace UnitTest
             using BusIdType = int;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+            static const bool EnableEventQueue = true;
         };
 
         class BlaEventGroupById
@@ -2045,84 +2084,311 @@ namespace UnitTest
                 return x;
             }
         };
+
+        const int samples = 100000;
     }
 
-    TEST_F(EBus, PerformanceTest)
+    class Benchmarker
+    {
+    public:
+        Benchmarker(int numSamples, const char* eventName)
+            : m_numSamples(numSamples)
+            , m_eventName(eventName)
+        {
+            m_timeStart = AZStd::chrono::system_clock::now();
+        }
+
+        // Disallow copying and moving
+        Benchmarker(const Benchmarker&) = delete;
+        Benchmarker(Benchmarker&&) = delete;
+        Benchmarker& operator=(const Benchmarker&) = delete;
+        Benchmarker& operator=(Benchmarker&&) = delete;
+
+        ~Benchmarker()
+        {
+            AZStd::chrono::system_clock::time_point timeEnd = AZStd::chrono::system_clock::now();
+            AZStd::chrono::microseconds elapsed = timeEnd - m_timeStart;
+
+            float timePerSample = elapsed.count() / float(m_numSamples);
+            printf("Time %s: %lld Ms, avg: %0.5f Ms/call\n", m_eventName, elapsed.count(), timePerSample);
+        }
+
+    private:
+        const int m_numSamples = 0;
+        const char* m_eventName = nullptr;
+        AZStd::chrono::microseconds* m_outElapsed = nullptr;
+        float* m_outTimePerSample = nullptr;
+        AZStd::chrono::system_clock::time_point m_timeStart;
+    };
+
+    TEST_F(EBusPerformance, SingleThread)
     {
         using namespace PerformanceTest;
         BlaEventHandler sdr;
         BlaEventHandler1 handler1;
-        const int samples = 10000000;
         {
             BlaEventGroup& ptr = sdr;
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "raw call");
             for (int i = 0; i < samples; ++i)
             {
                 ptr.OnBlaBla();
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time raw call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "broadcast call");
             for (int i = 0; i < samples; ++i)
             {
                 BlaEventGroupBus::Broadcast(&BlaEventGroupBus::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time broadcast call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "broadcast result call");
             for (int i = 0; i < samples; ++i)
             {
                 int result = 0;
                 BlaEventGroupBus::BroadcastResult(result, &BlaEventGroupBus::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time broadcast result call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "event id call");
             for (int i = 0; i < samples; ++i)
             {
                 BlaEventGroupBusById::Event(1, &BlaEventGroupBusById::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time event id call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "event id result call");
             for (int i = 0; i < samples; ++i)
             {
                 int result = 0;
                 BlaEventGroupBusById::EventResult(result, 1, &BlaEventGroupBusById::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time event id result call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
             BlaEventGroupBusById::BusPtr cachedPtr;
             BlaEventGroupBusById::Bind(cachedPtr, 1);
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "cached event id call");
             for (int i = 0; i < samples; ++i)
             {
                 BlaEventGroupBusById::Event(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time cached event id call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
         }
         {
             BlaEventGroupBusById::BusPtr cachedPtr;
             BlaEventGroupBusById::Bind(cachedPtr, 1);
-            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            Benchmarker bench(samples, "cached event id result call");
             for (int i = 0; i < samples; ++i)
             {
                 int result = 0;
                 BlaEventGroupBusById::EventResult(result, cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
             }
-            AZStd::chrono::microseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
-            printf("Time cached event id result call: %lld Ms, avg: %0.5f Ms/call\n", elapsed.count(), elapsed.count() / float(samples));
+        }
+    }
+
+    TEST_F(EBusPerformance, Queue)
+    {
+        using namespace PerformanceTest;
+        BlaEventHandler sdr;
+        BlaEventHandler1 handler1;
+        const int samples = 10000; // Must be lower than the others so that the message queues don't exceed the SystemAllocator's capacity.
+
+        {
+            Benchmarker bench(samples, "broadcast queue");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBus::QueueBroadcast(&BlaEventGroupBus::Events::OnBlaBla);
+            }
+        }
+        {
+            Benchmarker bench(samples, "broadcast execute");
+            BlaEventGroupBus::ExecuteQueuedEvents();
+        }
+
+        {
+            Benchmarker bench(samples, "event id queue");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBusById::QueueEvent(1, &BlaEventGroupBusById::Events::OnBlaBla);
+            }
+        }
+        {
+            Benchmarker bench(samples, "event id execute");
+            BlaEventGroupBusById::ExecuteQueuedEvents();
+        }
+
+        {
+            BlaEventGroupBusById::BusPtr cachedPtr;
+            BlaEventGroupBusById::Bind(cachedPtr, 1);
+            Benchmarker bench(samples, "cached event id queue");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBusById::QueueEvent(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
+            }
+        }
+        {
+            Benchmarker bench(samples, "cached event id execute");
+            BlaEventGroupBusById::ExecuteQueuedEvents();
+        }
+    }
+
+    TEST_F(EBusPerformance, QueueExecute)
+    {
+        using namespace PerformanceTest;
+        BlaEventHandler sdr;
+        BlaEventHandler1 handler1;
+
+        {
+            Benchmarker bench(samples, "broadcast queue/execute");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBus::QueueBroadcast(&BlaEventGroupBus::Events::OnBlaBla);
+                BlaEventGroupBus::ExecuteQueuedEvents();
+            }
+        }
+        {
+            Benchmarker bench(samples, "event id queue/execute");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBusById::QueueEvent(1, &BlaEventGroupBusById::Events::OnBlaBla);
+                BlaEventGroupBusById::ExecuteQueuedEvents();
+            }
+        }
+        {
+            BlaEventGroupBusById::BusPtr cachedPtr;
+            BlaEventGroupBusById::Bind(cachedPtr, 1);
+            Benchmarker bench(samples, "cached event id queue/execute");
+            for (int i = 0; i < samples; ++i)
+            {
+                BlaEventGroupBusById::QueueEvent(cachedPtr, &BlaEventGroupBusById::Events::OnBlaBla);
+                BlaEventGroupBusById::ExecuteQueuedEvents();
+            }
+        }
+    }
+
+    namespace MultiThread
+    {
+        const int waitTimeMS = 100;
+        struct FakeJobInterface
+        {
+            virtual ~FakeJobInterface() = default;
+            virtual void DoTheThing() = 0;
+        };
+        
+        struct FakeJobEvents
+            : public AZ::EBusTraits
+            , public FakeJobInterface
+        {
+            using MutexType = AZStd::mutex;  
+        };
+
+        struct FakeJobEventsLockless
+            : public FakeJobEvents
+        {
+            static const bool LocklessDispatch = true;
+        };
+
+        using FakeJobBus = AZ::EBus<FakeJobEvents>;
+        using FakeJobBusLockless = AZ::EBus<FakeJobEventsLockless>;
+
+        template <class Bus>
+        struct FakeJobImpl
+            : public Bus::Handler
+        {
+            FakeJobImpl()
+            {
+                Bus::Handler::BusConnect();
+            }
+            ~FakeJobImpl()
+            {
+                Bus::Handler::BusDisconnect();
+            }
+            void DoTheThing() override
+            {
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(waitTimeMS));
+            }
+        };
+
+        using FakeJobImplLocks = FakeJobImpl<FakeJobBus>;
+        using FakeJobImplLockless = FakeJobImpl<FakeJobBusLockless>;
+    }
+
+    TEST_F(EBusPerformance, MultiThreadedWithLocks)
+    {
+        using namespace MultiThread;
+        const int numSamples = 20;
+        const int numThreads = 8;
+
+        FakeJobImplLocks job;
+
+        auto runJobs = [numSamples]()
+        {
+            for (int i = 0; i < numSamples; ++i)
+            {
+                FakeJobBus::Broadcast(&FakeJobBus::Events::DoTheThing);
+            }
+        };
+
+        {
+            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            runJobs();
+            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
+            printf("Time single-threaded broadcast: %lld ms, avg: %0.5f ms/call\n", elapsed.count(), elapsed.count() / float(numSamples));
+        }
+
+        {
+            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            AZStd::thread threads[numThreads];
+            for (int t = 0; t < numThreads; ++t)
+            {
+                threads[t] = AZStd::thread(runJobs);
+            }
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
+            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
+            AZ::u64 ideal = numSamples * waitTimeMS;
+            printf("Time multi-threaded broadcast: actual: %lld ms, ideal: %lld ms\n", elapsed.count(), ideal);
+        }
+    }
+
+    TEST_F(EBusPerformance, MultiThreadedLocklessDispatch)
+    {
+        using namespace MultiThread;
+        const int numSamples = 20;
+        const int numThreads = 8;
+
+        FakeJobImplLockless job;
+
+        auto runJobs = [numSamples]()
+        {
+            for (int i = 0; i < numSamples; ++i)
+            {
+                FakeJobBusLockless::Broadcast(&FakeJobBusLockless::Events::DoTheThing);
+            }
+        };
+
+        {
+            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            runJobs();
+            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
+            printf("Time single-threaded broadcast: %lld ms, avg: %0.5f ms/call\n", elapsed.count(), elapsed.count() / float(numSamples));
+        }
+
+        {
+            AZStd::chrono::system_clock::time_point timeStart = AZStd::chrono::system_clock::now();
+            AZStd::thread threads[numThreads];
+            for (int t = 0; t < numThreads; ++t)
+            {
+                threads[t] = AZStd::thread(runJobs);
+            }
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
+            AZStd::chrono::milliseconds elapsed = AZStd::chrono::system_clock::now() - timeStart;
+            AZ::u64 ideal = numSamples * waitTimeMS;
+            printf("Time multi-threaded broadcast: actual: %lld ms, ideal: %lld ms\n", elapsed.count(), ideal);
         }
     }
 } // UnitTest

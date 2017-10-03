@@ -35,7 +35,7 @@ struct SMinimapInfo
 
 /*!
         CMission represent single Game Mission on same map.
-        Multiple Missions share same map, and stored in one .cry file.
+        Multiple Missions share same map, and stored in one .cry or .ly file.
 
  */
 class CMission

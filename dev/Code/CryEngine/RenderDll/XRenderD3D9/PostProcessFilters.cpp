@@ -258,7 +258,6 @@ void CImageGhosting::Render()
 
     GetUtils().ShEndPass();
 
-    // todo: on x360 use msaa (0.1ms overall)
     GetUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);         // 0.25ms / 0.4 ms
     GetUtils().StretchRect(CTexture::s_ptexBackBuffer, pPrevFrame); // 0.25ms
 }
@@ -305,8 +304,8 @@ void CUberGamePostProcess::Render()
     static CCryNameR pParamNamePS0("UberPostParams0");
     static CCryNameR pParamNamePS1("UberPostParams1");
     static CCryNameR pParamNamePS2("UberPostParams2");
-    static CCryNameR pParamNamePS3("UberPostParams3");
-    static CCryNameR pParamNamePS4("UberPostParams4");
+    static CCryNameR pParamNamePS3("UberPostParams3"); // ACCEPTED_USE
+    static CCryNameR pParamNamePS4("UberPostParams4"); // ACCEPTED_USE
     static CCryNameR pParamNamePS5("UberPostParams5");
 
     Vec4 vParamsPS[6] =
@@ -323,8 +322,8 @@ void CUberGamePostProcess::Render()
     CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS0, &vParamsPS[0], 1);
     CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS1, &vParamsPS[1], 1);
     CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS2, &vParamsPS[2], 1);
-    CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS3, &vParamsPS[3], 1);
-    CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS4, &vParamsPS[4], 1);
+    CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS3, &vParamsPS[3], 1); // ACCEPTED_USE
+    CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS4, &vParamsPS[4], 1); // ACCEPTED_USE
     CShaderMan::s_shPostEffectsGame->FXSetPSFloat(pParamNamePS5, &vParamsPS[5], 1);
 
 

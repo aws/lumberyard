@@ -135,7 +135,7 @@ public:
             //If we are here then the node is active, decrease the alignment time until it hits zero
             m_currentTime = max(0.0f, m_currentTime - gEnv->pTimer->GetFrameTime());
 
-            //Check skeleton status, if it does not meet the criteria, then reset the alignment time and warn the user
+            //Check skeleton status, if it doesn't meet the criteria, then reset the alignment time and warn the user
             //Have a decent alignment, saved the distances as defaults
             if (IKinectInput* pKinectInput = gEnv->pSystem->GetIInput()->GetKinectInput())
             {

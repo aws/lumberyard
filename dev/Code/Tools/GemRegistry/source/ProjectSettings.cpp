@@ -321,7 +321,7 @@ namespace Gems
                 nullptr);
 #else
             azstrerror_s(errorBuffer, MAX_ERROR_STRING_SIZE, errno);
-#endif // Windows/Xbone
+#endif // defined(AZ_PLATFORM_WINDOWS)
             return AZ::Failure(AZStd::string::format("Failed to open %s for write: %s", m_settingsFilePath.c_str(), errorBuffer));
         }
     }

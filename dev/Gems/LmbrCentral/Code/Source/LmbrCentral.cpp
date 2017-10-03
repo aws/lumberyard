@@ -32,15 +32,15 @@
 #include "Audio/AudioRtpcComponent.h"
 #include "Audio/AudioSwitchComponent.h"
 #include "Audio/AudioTriggerComponent.h"
-#include "Cinematics/SequenceComponent.h"
-#include "Cinematics/SequenceAgentComponent.h"
 #include "Rendering/DecalComponent.h"
 #include "Rendering/StereoRendererComponent.h"
 #include "Scripting/FlowGraphComponent.h"
 #include "Rendering/LensFlareComponent.h"
 #include "Rendering/LightComponent.h"
-#include "Rendering/StaticMeshComponent.h"
+#include "Rendering/HighQualityShadowComponent.h"
+#include "Rendering/MeshComponent.h"
 #include "Rendering/SkinnedMeshComponent.h"
+#include "Rendering/FogVolumeComponent.h"
 #include "Ai/BehaviorTreeComponent.h"
 #include "Ai/NavigationComponent.h"
 #include "Rendering/ParticleComponent.h"
@@ -50,6 +50,8 @@
 #include "Physics/RagdollComponent.h"
 #include "Physics/RigidPhysicsComponent.h"
 #include "Physics/StaticPhysicsComponent.h"
+#include "Physics/WindVolumeComponent.h"
+#include "Physics/ForceVolumeComponent.h"
 #include "Animation/SimpleAnimationComponent.h"
 #include "Scripting/TagComponent.h"
 #include "Scripting/TriggerAreaComponent.h"
@@ -107,6 +109,7 @@
 #include <LmbrCentral/Rendering/LensFlareAsset.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
 #include <LmbrCentral/Rendering/ParticleAsset.h>
+#include <LmbrCentral/Rendering/MaterialHandle.h>
 #include <LmbrCentral/Animation/MannequinAsset.h>
 
 // Asset handlers
@@ -124,6 +127,8 @@
 #include "Shape/CylinderShapeComponent.h"
 #include "Shape/CapsuleShapeComponent.h"
 #include "Shape/CompoundShapeComponent.h"
+#include "Shape/SplineComponent.h"
+#include "Shape/PolygonPrismShapeComponent.h"
 
 // Cry interfaces.
 #include <ICryAnimation.h>
@@ -159,7 +164,8 @@ namespace LmbrCentral
             LensFlareComponent::CreateDescriptor(),
             LightComponent::CreateDescriptor(),
             LmbrCentralSystemComponent::CreateDescriptor(),
-            StaticMeshComponent::CreateDescriptor(),
+            HighQualityShadowComponent::CreateDescriptor(),
+            MeshComponent::CreateDescriptor(),
             SkinnedMeshComponent::CreateDescriptor(),
             NavigationComponent::CreateDescriptor(),
             ParticleComponent::CreateDescriptor(),
@@ -171,6 +177,8 @@ namespace LmbrCentral
             SimpleStateComponent::CreateDescriptor(),
             SpawnerComponent::CreateDescriptor(),
             StaticPhysicsComponent::CreateDescriptor(),
+            WindVolumeComponent::CreateDescriptor(),
+            ForceVolumeComponent::CreateDescriptor(),
             LookAtComponent::CreateDescriptor(),
             TriggerAreaComponent::CreateDescriptor(),
             TagComponent::CreateDescriptor(),
@@ -184,15 +192,16 @@ namespace LmbrCentral
             CylinderShapeComponent::CreateDescriptor(),
             CapsuleShapeComponent::CreateDescriptor(),
             PrimitiveColliderComponent::CreateDescriptor(),
-            SequenceComponent::CreateDescriptor(),
-            SequenceAgentComponent::CreateDescriptor(),
             CompoundShapeComponent::CreateDescriptor(),
+            SplineComponent::CreateDescriptor(),
+            PolygonPrismShapeComponent::CreateDescriptor(),
             StereoRendererComponent::CreateDescriptor(),
             NavigationSystemComponent::CreateDescriptor(),
+            FogVolumeComponent::CreateDescriptor(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            LoadScreenComponent::CreateDescriptor(),
+                LoadScreenComponent::CreateDescriptor(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
-        });
+            });
 
         // This is an internal Amazon gem, so register it's components for metrics tracking, otherwise the name of the component won't get sent back.
         // IF YOU ARE A THIRDPARTY WRITING A GEM, DO NOT REGISTER YOUR COMPONENTS WITH EditorMetricsComponentRegistrationBus
@@ -210,13 +219,13 @@ namespace LmbrCentral
     AZ::ComponentTypeList LmbrCentralModule::GetRequiredSystemComponents() const
     {
         return {
-            azrtti_typeid<LmbrCentralSystemComponent>(),
-            azrtti_typeid<PhysicsSystemComponent>(),
-            azrtti_typeid<CharacterAnimationManagerComponent>(),
-            azrtti_typeid<StereoRendererComponent>(),
-            azrtti_typeid<NavigationSystemComponent>(),
+                   azrtti_typeid<LmbrCentralSystemComponent>(),
+                   azrtti_typeid<PhysicsSystemComponent>(),
+                   azrtti_typeid<CharacterAnimationManagerComponent>(),
+                   azrtti_typeid<StereoRendererComponent>(),
+                   azrtti_typeid<NavigationSystemComponent>(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-            azrtti_typeid<LoadScreenComponent>(),
+                   azrtti_typeid<LoadScreenComponent>(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
         };
     }
@@ -243,15 +252,16 @@ namespace LmbrCentral
                 editContext->Class<LmbrCentralSystemComponent>(
                     "LmbrCentral", "Coordinates initialization of systems within LmbrCentral")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Game")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                    ;
+                    ->Attribute(AZ::Edit::Attributes::Category, "Game")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                ;
             }
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             ReflectScriptableEvents::Reflect(behaviorContext);
+            MaterialHandle::Reflect(behaviorContext);
         }
     }
 
@@ -284,9 +294,9 @@ namespace LmbrCentral
         lensFlareAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(lensFlareAssetHandler);
 
-        auto staticMeshAssetHandler = aznew StaticMeshAssetHandler();
-        staticMeshAssetHandler->Register(); // registers self with AssetManager
-        m_assetHandlers.emplace_back(staticMeshAssetHandler);
+        auto meshAssetHandler = aznew MeshAssetHandler();
+        meshAssetHandler->Register(); // registers self with AssetManager
+        m_assetHandlers.emplace_back(meshAssetHandler);
 
         auto characterDefinitionAssetHandler = aznew CharacterDefinitionAssetHandler();
         characterDefinitionAssetHandler->Register(); // registers self with AssetManager
@@ -307,7 +317,7 @@ namespace LmbrCentral
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<LensFlareAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialAsset>::Uuid());
-            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<StaticMeshAsset>::Uuid());
+            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<ParticleAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<BehaviorTreeAsset>::Uuid());

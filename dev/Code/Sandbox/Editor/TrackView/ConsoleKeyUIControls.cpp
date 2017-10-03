@@ -68,7 +68,7 @@ bool CConsoleKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
             IConsoleKey consoleKey;
             keyHandle.GetKey(&consoleKey);
 
-            mv_command = ((QString)consoleKey.command).toLatin1().data();
+            mv_command = ((QString)consoleKey.command.c_str()).toLatin1().data();
 
             bAssigned = true;
         }
@@ -98,7 +98,7 @@ void CConsoleKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
 
             if (pVar == mv_command.GetVar())
             {
-                cry_strcpy(consoleKey.command, ((QString)mv_command).toLatin1().data());
+                consoleKey.command = ((QString)mv_command).toLatin1().data();
             }
 
             CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));

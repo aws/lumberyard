@@ -27,6 +27,7 @@ def build(bld):
         pch                 = 'StdAfx.cpp',
         includes            = [bld.Path('Code/SDKs'),
                                bld.Path('Code/CryEngine/CryAction')],
+        defines             = ['ENGINE_EXPORTS'],
         use                 = ['GridMate','AzFramework' ],
 
         # Platform Specific

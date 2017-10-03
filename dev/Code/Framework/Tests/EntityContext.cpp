@@ -33,8 +33,6 @@ namespace UnitTest
     {
     public:
 
-        SerializeContext m_serializeContext;
-
         EntityContextBasicTest()
             : AllocatorsFixture(15, false)
         {
@@ -43,18 +41,10 @@ namespace UnitTest
 
             Data::AssetManager::Descriptor desc;
             Data::AssetManager::Create(desc);
-            Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(&m_serializeContext), AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
-
-            Entity::Reflect(&m_serializeContext);
-
-            ComponentDescriptor* prefabDescriptor = SliceComponent::CreateDescriptor();
-            prefabDescriptor->Reflect(&m_serializeContext);
         }
 
         ~EntityContextBasicTest()
         {
-            delete SliceComponent::CreateDescriptor();
-
             Data::AssetManager::Destroy();
 
             AllocatorInstance<PoolAllocator>::Destroy();
@@ -68,9 +58,11 @@ namespace UnitTest
             desc.m_useExistingAllocator = true;
             app.Create(desc);
 
-            EntityContext context(AZ::Uuid::CreateRandom(), &m_serializeContext);
+            Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(app.GetSerializeContext()), AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
+
+            EntityContext context(AZ::Uuid::CreateRandom(), app.GetSerializeContext());
             context.InitContext();
-            context.GetRootSlice()->SetSerializeContext(&m_serializeContext);
+            context.GetRootSlice()->SetSerializeContext(app.GetSerializeContext());
 
             EntityContextEventBus::Handler::BusConnect(context.GetContextId());
 
@@ -94,7 +86,7 @@ namespace UnitTest
 
             AZ::Entity* sliceEntity = aznew AZ::Entity();
             AZ::SliceComponent* sliceComponent = sliceEntity->CreateComponent<AZ::SliceComponent>();
-            sliceComponent->SetSerializeContext(&m_serializeContext);
+            sliceComponent->SetSerializeContext(app.GetSerializeContext());
             sliceComponent->AddEntity(aznew AZ::Entity());
 
             Data::Asset<SliceAsset> sliceAssetHolder = Data::AssetManager::Instance().CreateAsset<SliceAsset>(Data::AssetId(Uuid::CreateRandom()));

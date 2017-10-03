@@ -33,9 +33,6 @@ namespace AZ
             , m_pauseOnFrame(0)
             , m_currentThreadData(NULL)
         {
-            // Even it's not critical we should tick last to capture the current frame
-            // so TICK_LAST (since it's not the last int +1 is a valid assumption)
-            TickBus::Handler::m_tickOrder = TICK_LAST + 1;
         }
 
         //=========================================================================
@@ -126,6 +123,13 @@ namespace AZ
 
             // send an even to whomever cares
             EBUS_EVENT(FrameProfilerBus, OnFrameProfilerData, m_threads);
+        }
+
+        int FrameProfilerComponent::GetTickOrder()
+        {
+            // Even it's not critical we should tick last to capture the current frame
+            // so TICK_LAST (since it's not the last int +1 is a valid assumption)
+            return TICK_LAST + 1;
         }
 
         //=========================================================================

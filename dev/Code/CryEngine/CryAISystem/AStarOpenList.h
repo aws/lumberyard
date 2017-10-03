@@ -195,8 +195,8 @@ typedef std::vector<AStarSearchNode*> AStarSearchNodeVector;
 class CAStarNodeListManager
 {
 public:
-    CAStarNodeListManager(CGraphNodeManager& nodeManager)
-        :   nodeManager(nodeManager)
+    CAStarNodeListManager(CGraphNodeManager& _nodeManager)
+        :   nodeManager(_nodeManager)
     {
     }
 

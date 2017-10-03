@@ -1,0 +1,10 @@
+
+
+def build(bld):
+
+    bld.DefineGem(
+        # Add custom build options here
+        includes            = [bld.Path('Code/CryEngine/CryAction')],
+        export_defines      = ['ENABLE_LEGACY_ANIMATION'],
+        win_features        = ['crcfix']
+    )

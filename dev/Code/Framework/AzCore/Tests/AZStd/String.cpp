@@ -12,7 +12,7 @@
 #include "UserTypes.h"
 
 #include <AzCore/std/string/string.h>
-#include <AzCore/std/string/const_string.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/string/tokenize.h>
 #include <AzCore/std/string/alphanum.h>
@@ -1093,39 +1093,41 @@ namespace UnitTest
 
     TEST_F(String, ConstString)
     {
-        const_string cstr1;
+        string_view cstr1;
         AZ_TEST_ASSERT(cstr1.data()==nullptr);
         AZ_TEST_ASSERT(cstr1.size() == 0);
         AZ_TEST_ASSERT(cstr1.length() == 0);
         AZ_TEST_ASSERT(cstr1.begin() == cstr1.end());
-        AZ_TEST_ASSERT(cstr1 == const_string());
+        AZ_TEST_ASSERT(cstr1 == string_view());
         AZ_TEST_ASSERT(cstr1.empty());
 
-        const_string cstr2("Test");
+        string_view cstr2("Test");
         AZ_TEST_ASSERT(cstr2.data() != nullptr);
         AZ_TEST_ASSERT(cstr2.size() == 4);
         AZ_TEST_ASSERT(cstr2.length() == 4);
         AZ_TEST_ASSERT(cstr2.begin() != cstr2.end());
         AZ_TEST_ASSERT(cstr2 != cstr1);
-        AZ_TEST_ASSERT(cstr2 == const_string("Test"));
+        AZ_TEST_ASSERT(cstr2 == string_view("Test"));
         AZ_TEST_ASSERT(cstr2 == "Test");
         AZ_TEST_ASSERT(cstr2 != "test");
         AZ_TEST_ASSERT(cstr2[2] == 's');
         AZ_TEST_ASSERT(cstr2.at(2) == 's');
+        AZ_TEST_START_ASSERTTEST;
         AZ_TEST_ASSERT(cstr2.at(7) == 0);
+        AZ_TEST_STOP_ASSERTTEST(1);
         AZ_TEST_ASSERT(!cstr2.empty());
         AZ_TEST_ASSERT(cstr2.to_string() == string("Test"));
         AZ_TEST_ASSERT((string)cstr2 == string("Test"));
 
-        const_string cstr3 = cstr2;
+        string_view cstr3 = cstr2;
         AZ_TEST_ASSERT(cstr3 == cstr2);
 
         cstr3.swap(cstr1);
-        AZ_TEST_ASSERT(cstr3 == const_string());
+        AZ_TEST_ASSERT(cstr3 == string_view());
         AZ_TEST_ASSERT(cstr1 == cstr2);
 
         cstr1.erase();
-        AZ_TEST_ASSERT(cstr1 == const_string());
+        AZ_TEST_ASSERT(cstr1 == string_view());
         AZ_TEST_ASSERT(cstr1.size() == 0);
         AZ_TEST_ASSERT(cstr1.length() == 0);
 
@@ -1135,11 +1137,231 @@ namespace UnitTest
         AZ_TEST_ASSERT(cstr1 == cstr2);
 
         // check hashing
-        AZStd::hash<const_string> h;
+        AZStd::hash<string_view> h;
         AZStd::size_t value = h(cstr1);
         AZ_TEST_ASSERT(value != 0);
     }
 
+    TEST_F(String, StringViewModifierTest)
+    {
+        string_view emptyView1;
+        string_view view2("Needle in Haystack");
 
+        // front
+        EXPECT_EQ('N', view2.front());
+        // back
+        EXPECT_EQ('k', view2.back());
 
+        AZStd::string findStr("Hay");
+        string_view view3(findStr);
+        string_view nullptrView4(nullptr);
+
+        EXPECT_EQ(emptyView1, nullptrView4);
+
+        // copy
+        const size_t destBufferSize = 32;
+        char dest[destBufferSize] = { 0 };
+        AZStd::size_t copyResult = view2.copy(dest, destBufferSize, 1);
+        EXPECT_EQ(view2.size() - 1, copyResult);
+
+        char assertDest[destBufferSize] = { 0 };
+        AZ_TEST_START_ASSERTTEST;
+        view2.copy(assertDest, destBufferSize, view2.size() + 1);
+        AZ_TEST_STOP_ASSERTTEST(1);
+
+        // substr
+        string_view subView2 = view2.substr(10);
+        EXPECT_EQ("Haystack", subView2);
+        AZ_TEST_START_ASSERTTEST;
+        string_view assertSubView = view2.substr(view2.size() + 1);
+        AZ_TEST_STOP_ASSERTTEST(1);
+
+        // compare
+        AZStd::size_t compareResult = view2.compare(1, view2.size() - 1, dest, copyResult);
+        EXPECT_EQ(0, compareResult);
+        
+        string_view compareView = "Stackhay in Needle";
+        compareResult = compareView.compare(view2);
+        EXPECT_NE(0, compareResult);
+        
+        compareResult = compareView.compare(12, 6, view2, 0, 6);
+        EXPECT_EQ(0, compareResult);
+
+        compareResult = compareView.compare(9, 2, view2, 7, 2);
+        EXPECT_EQ(0, compareResult);
+
+        compareResult = compareView.compare("Stackhay in Needle");
+        EXPECT_EQ(0, compareResult);
+
+        // find
+        AZStd::size_t findResult = view2.find(view3, 0);
+        EXPECT_NE(0, findResult);
+        EXPECT_EQ(10, findResult);
+
+        findResult = compareView.find("Random String");
+        EXPECT_EQ(string_view::npos, findResult);
+
+        findResult = view3.find('y', 2);
+        EXPECT_EQ(2, findResult);
+
+        // rfind
+        AZStd::size_t rfindResult = view3.rfind('a', 2);
+        EXPECT_EQ(1, rfindResult);
+
+        rfindResult = nullptrView4.rfind("");
+        EXPECT_EQ(0, rfindResult);
+
+        rfindResult = emptyView1.rfind("");
+        EXPECT_EQ(0, rfindResult);
+
+        rfindResult = view2.rfind("z");
+        EXPECT_EQ(string_view::npos, rfindResult);
+
+        // find_first_of
+        string_view repeatString = "abcdefabcfedghiabcdef";
+        AZStd::size_t findFirstOfResult = repeatString.find_first_of('f');
+        EXPECT_EQ(5, findFirstOfResult);
+
+        findFirstOfResult = repeatString.find_first_of("def");
+        EXPECT_EQ(3, findFirstOfResult);
+
+        findFirstOfResult = repeatString.find_first_of("def", 6);
+        EXPECT_EQ(9, findFirstOfResult);
+
+        AZStd::string notFoundStr = "zzz";
+        AZStd::string foundStr = "ghi";
+        findFirstOfResult = repeatString.find_first_of(notFoundStr);
+        EXPECT_EQ(string_view::npos, findFirstOfResult);
+
+        findFirstOfResult = repeatString.find_first_of(foundStr);
+        EXPECT_EQ(12, findFirstOfResult);
+
+        // find_last_of
+        AZStd::size_t findLastOfResult = repeatString.find_last_of('f');
+        EXPECT_EQ(20, findLastOfResult);
+
+        findLastOfResult = repeatString.find_last_of("bcd");
+        EXPECT_EQ(18, findLastOfResult);
+
+        findLastOfResult = repeatString.find_last_of("bcd", 3);
+        EXPECT_EQ(3, findLastOfResult);
+
+        findLastOfResult = repeatString.find_last_of(notFoundStr);
+        EXPECT_EQ(string_view::npos, findLastOfResult);
+
+        findLastOfResult = repeatString.find_last_of(foundStr);
+        EXPECT_EQ(14, findLastOfResult);
+
+        // find_first_not_of
+        AZStd::size_t findFirstNotOfResult = repeatString.find_first_not_of('a');
+        EXPECT_EQ(1, findFirstNotOfResult);
+
+        findFirstNotOfResult = repeatString.find_first_not_of("abcdef");
+        EXPECT_EQ(12, findFirstNotOfResult);
+
+        findFirstNotOfResult = repeatString.find_first_not_of("abc", 6);
+        EXPECT_EQ(9, findFirstNotOfResult);
+
+        findFirstNotOfResult = repeatString.find_first_not_of(notFoundStr);
+        EXPECT_EQ(0, findFirstNotOfResult);
+
+        findFirstNotOfResult = repeatString.find_first_not_of(foundStr, 12);
+        EXPECT_EQ(15, findFirstNotOfResult);
+
+        // find_last_not_of
+        AZStd::size_t findLastNotOfResult = repeatString.find_last_not_of('a');
+        EXPECT_EQ(20, findLastNotOfResult);
+
+        findLastNotOfResult = repeatString.find_last_not_of("abcdef");
+        EXPECT_EQ(14, findLastNotOfResult);
+
+        findLastNotOfResult = repeatString.find_last_not_of("abcf", 9);
+        EXPECT_EQ(4, findLastNotOfResult);
+
+        findLastNotOfResult = repeatString.find_last_not_of(notFoundStr);
+        EXPECT_EQ(20, findLastNotOfResult);
+
+        findLastNotOfResult = repeatString.find_last_not_of(foundStr, 14);
+        EXPECT_EQ(11, findLastNotOfResult);
+
+        // remove_prefix
+        string_view prefixRemovalView = view2;
+        prefixRemovalView.remove_prefix(6);
+        EXPECT_EQ(" in Haystack", prefixRemovalView);
+        
+        // remove_suffix
+        string_view suffixRemovalView = view2;
+        suffixRemovalView.remove_suffix(8);
+        EXPECT_EQ("Needle in ", suffixRemovalView);
+    }
+
+    TEST_F(String, StringViewCmpOperatorTest)
+    {
+        string_view view1("The quick brown fox jumped over the lazy dog");
+        string_view view2("Needle in Haystack");
+        string_view nullBeaverView(nullptr);
+        string_view emptyBeaverView;
+        string_view superEmptyBeaverView("");
+        
+        EXPECT_EQ(nullBeaverView, emptyBeaverView);
+        EXPECT_EQ(superEmptyBeaverView, nullBeaverView);
+        EXPECT_EQ(emptyBeaverView, superEmptyBeaverView);
+        EXPECT_EQ(nullBeaverView, "");
+        EXPECT_EQ(nullBeaverView, nullptr);
+        EXPECT_EQ("", emptyBeaverView);
+        EXPECT_EQ(nullptr, superEmptyBeaverView);
+
+        EXPECT_EQ("The quick brown fox jumped over the lazy dog", view1);
+        EXPECT_NE("The slow brown fox jumped over the lazy dog", view1);
+        EXPECT_EQ(view2, "Needle in Haystack");
+        EXPECT_NE(view2, "Needle in Hayqueue");
+
+        string_view compareView(view2);
+        EXPECT_EQ(view2, compareView);
+        EXPECT_NE(view2, view1);
+
+        AZStd::string compareStr("Busy Beaver");
+        string_view notBeaverView("Lumber Beaver");
+        string_view beaverView("Busy Beaver");
+        EXPECT_EQ(compareStr, beaverView);
+        EXPECT_NE(compareStr, notBeaverView);
+
+        AZStd::string microBeaverStr("Micro Beaver");
+
+        EXPECT_LT(view2, view1);
+        EXPECT_LT(notBeaverView, "Super Lumber Beaver");
+        EXPECT_LT("Disgruntled Beaver", notBeaverView);
+        EXPECT_LT(notBeaverView, microBeaverStr);
+        EXPECT_LT(compareStr, notBeaverView);
+
+        EXPECT_GT(view1, view2);
+        EXPECT_GT(notBeaverView, "Disgruntled Beaver");
+        EXPECT_GT("Super Lumber Beaver", notBeaverView);
+        EXPECT_GT(microBeaverStr, notBeaverView);
+        EXPECT_GT(notBeaverView, compareStr);
+
+        AZStd::string lowerBeaverStr("busy Beaver");
+        EXPECT_LE(view2, view1);
+        EXPECT_LE(compareView, compareView);
+        EXPECT_LE(beaverView, "Rocket Beaver");
+        EXPECT_LE(beaverView, "Busy Beaver");
+        EXPECT_LE("Likable Beaver", notBeaverView);
+        EXPECT_LE("Busy Beaver", beaverView);
+        EXPECT_LE(nullBeaverView, nullBeaverView);
+        EXPECT_LE(nullBeaverView, lowerBeaverStr);
+        EXPECT_LE(microBeaverStr, view1);
+        EXPECT_LE(compareStr, beaverView);
+        
+        AZStd::string bigBeaver("Big Beaver");
+        EXPECT_GE(view1, view2);
+        EXPECT_GE(view1, view1);
+        EXPECT_GE(beaverView, "Busy Beave");
+        EXPECT_GE(beaverView, "Busy Beaver");
+        EXPECT_GE("Busy Beaver", beaverView);
+        EXPECT_GE("Busy Beaver1", beaverView);
+        EXPECT_GE(beaverView, compareStr);
+        EXPECT_GE(beaverView, bigBeaver);
+        EXPECT_GE(compareStr, beaverView);
+        EXPECT_GE(microBeaverStr, beaverView);
+    }
 }

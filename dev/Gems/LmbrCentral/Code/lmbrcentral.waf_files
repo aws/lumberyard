@@ -10,7 +10,9 @@
     "auto": {
         "Include/Ai": [
             "include/LmbrCentral/Ai/NavigationComponentBus.h",
+            "include/LmbrCentral/Ai/NavigationAreaBus.h",
             "include/LmbrCentral/Ai/NavigationSystemBus.h",
+            "include/LmbrCentral/Ai/NavigationSeedBus.h",
             "include/LmbrCentral/Ai/BehaviorTreeComponentBus.h",
             "include/LmbrCentral/Ai/BehaviorTreeAsset.h"
         ],
@@ -28,14 +30,8 @@
             "include/LmbrCentral/Audio/AudioListenerComponentBus.h",
             "include/LmbrCentral/Audio/AudioProxyComponentBus.h",
             "include/LmbrCentral/Audio/AudioRtpcComponentBus.h",
-            "include/LmbrCentral/AUdio/AudioSwitchComponentBus.h",
+            "include/LmbrCentral/Audio/AudioSwitchComponentBus.h",
             "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
-        ],
-        "Include/Cinematics": [
-            "include/LmbrCentral/Cinematics/EditorSequenceAgentComponentBus.h",
-            "include/LmbrCentral/Cinematics/EditorSequenceComponentBus.h",
-            "include/LmbrCentral/Cinematics/SequenceAgentComponentBus.h",
-            "include/LmbrCentral/Cinematics/SequenceComponentBus.h"
         ],
         "Include/Physics": [
             "include/LmbrCentral/Physics/RagdollPhysicsBus.h",
@@ -44,7 +40,9 @@
             "include/LmbrCentral/Physics/PhysicsComponentBus.h",
             "include/LmbrCentral/Physics/PhysicsSystemComponentBus.h",
             "include/LmbrCentral/Physics/PhysicsSystemComponentBus.inl",
-            "include/LmbrCentral/Physics/CryCharacterPhysicsBus.h"
+            "include/LmbrCentral/Physics/CryCharacterPhysicsBus.h",
+            "include/LmbrCentral/Physics/WindVolumeRequestBus.h",
+            "include/LmbrCentral/Physics/ForceVolumeRequestBus.h"
         ],
         "Include/Rendering": [
             "include/LmbrCentral/Rendering/DecalComponentBus.h",
@@ -52,13 +50,18 @@
             "include/LmbrCentral/Rendering/LensFlareComponentBus.h",
             "include/LmbrCentral/Rendering/LightComponentBus.h",
             "include/LmbrCentral/Rendering/MaterialAsset.h",
+            "include/LmbrCentral/Rendering/MaterialHandle.h",
+            "include/LmbrCentral/Rendering/MaterialOwnerBus.h",
             "include/LmbrCentral/Rendering/MeshAsset.h",
             "include/LmbrCentral/Rendering/MeshComponentBus.h",
             "include/LmbrCentral/Rendering/ParticleAsset.h",
             "include/LmbrCentral/Rendering/ParticleComponentBus.h",
-            "include/LmbrCentral/Rendering/RenderNodeBus.h"
+            "include/LmbrCentral/Rendering/RenderNodeBus.h",
+            "include/LmbrCentral/Rendering/FogVolumeComponentBus.h",
+            "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h"
         ],
         "Include/Scripting": [
+            "include/LmbrCentral/Scripting/EditorTagComponentBus.h",
             "include/LmbrCentral/Scripting/SimpleStateComponentBus.h",
             "include/LmbrCentral/Scripting/SpawnerComponentBus.h",
             "include/LmbrCentral/Scripting/TagComponentBus.h",
@@ -67,12 +70,15 @@
             "include/LmbrCentral/Scripting/FlowGraphSerialization.inl"
         ],
         "Include/Shape": [
+            "include/LmbrCentral/Shape/EditorShapeComponentBus.h",
             "include/LmbrCentral/Shape/ShapeComponentBus.h",
             "include/LmbrCentral/Shape/SphereShapeComponentBus.h",
             "include/LmbrCentral/Shape/BoxShapeComponentBus.h",
             "include/LmbrCentral/Shape/CylinderShapeComponentBus.h",
             "include/LmbrCentral/Shape/CapsuleShapeComponentBus.h",
-            "include/LmbrCentral/Shape/CompoundShapeComponentBus.h"
+            "include/LmbrCentral/Shape/CompoundShapeComponentBus.h",
+            "include/LmbrCentral/Shape/SplineComponentBus.h",
+            "include/LmbrCentral/Shape/PolygonPrismShapeComponentBus.h"
         ],
         "Source/Ai": [
             "Source/Ai/BehaviorTreeAssetHandler.h",
@@ -115,14 +121,6 @@
             "Source/Audio/AudioTriggerComponent.h",
             "Source/Audio/AudioTriggerComponent.cpp"
         ],
-        "Source/Cinematics": [
-            "Source/Cinematics/SequenceComponent.h",
-            "Source/Cinematics/SequenceComponent.cpp",
-            "Source/Cinematics/SequenceAgent.h",
-            "Source/Cinematics/SequenceAgent.cpp",
-            "Source/Cinematics/SequenceAgentComponent.h",
-            "Source/Cinematics/SequenceAgentComponent.cpp"
-        ],
         "Source/Events": [
             "Source/Events/ReflectScriptableEvents.h",
             "Source/Events/ReflectScriptableEvents.cpp"
@@ -142,7 +140,11 @@
             "Source/Physics/RigidPhysicsComponent.h",
             "Source/Physics/RigidPhysicsComponent.cpp",
             "Source/Physics/StaticPhysicsComponent.h",
-            "Source/Physics/StaticPhysicsComponent.cpp"
+            "Source/Physics/StaticPhysicsComponent.cpp",
+            "Source/Physics/WindVolumeComponent.h",
+            "Source/Physics/WindVolumeComponent.cpp",
+            "Source/Physics/ForceVolumeComponent.h",
+            "Source/Physics/ForceVolumeComponent.cpp"
         ],
         "Source/Physics/Colliders": [
             "Source/Physics/Colliders/MeshColliderComponent.h",
@@ -163,16 +165,27 @@
             "Source/Rendering/LightComponent.cpp",
             "Source/Rendering/LightInstance.h",
             "Source/Rendering/LightInstance.cpp",
+            "Source/Rendering/MaterialHandle.cpp",
+            "Source/Rendering/MaterialOwnerRequestBusHandlerImpl.h",
+            "Source/Rendering/MaterialOwnerRequestBusHandlerImpl.cpp",
+            "Source/Rendering/FogVolumeComponent.h",
+            "Source/Rendering/FogVolumeComponent.cpp",
+            "Source/Rendering/FogVolumeCommon.h",
+            "Source/Rendering/FogVolumeCommon.cpp",
+            "Source/Rendering/FogVolumeRequestsHandler.h",
+            "Source/Rendering/FogVolumeRequestsHandler.cpp",
             "Source/Rendering/MeshAssetHandler.h",
             "Source/Rendering/MeshAssetHandler.cpp",
-            "Source/Rendering/StaticMeshComponent.h",
-            "Source/Rendering/StaticMeshComponent.cpp",
-            "Source/Rendering/SkinnedMeshComponent.h",
-            "Source/Rendering/SkinnedMeshComponent.cpp",
             "Source/Rendering/ParticleAssetHandler.h",
             "Source/Rendering/ParticleAssetHandler.cpp",
+            "Source/Rendering/MeshComponent.h",
+            "Source/Rendering/MeshComponent.cpp",
+            "Source/Rendering/SkinnedMeshComponent.h",
+            "Source/Rendering/SkinnedMeshComponent.cpp",
             "Source/Rendering/StereoRendererComponent.h",
-            "Source/Rendering/StereoRendererComponent.cpp"
+            "Source/Rendering/StereoRendererComponent.cpp",
+            "Source/Rendering/HighQualityShadowComponent.h",
+            "Source/Rendering/HighQualityShadowComponent.cpp"
         ],
         "Source/Scripting": [
             "Source/Scripting/FlowGraphComponent.h",
@@ -190,16 +203,28 @@
         ],
         "Source/Shape": [
             "Source/Shape/ShapeComponent.cpp",
+            "Source/Shape/SphereShape.h",
+            "Source/Shape/SphereShape.cpp",
             "Source/Shape/SphereShapeComponent.h",
             "Source/Shape/SphereShapeComponent.cpp",
+            "Source/Shape/BoxShape.h",
+            "Source/Shape/BoxShape.cpp",
             "Source/Shape/BoxShapeComponent.h",
             "Source/Shape/BoxShapeComponent.cpp",
+            "Source/Shape/CylinderShape.h",
+            "Source/Shape/CylinderShape.cpp",
             "Source/Shape/CylinderShapeComponent.h",
             "Source/Shape/CylinderShapeComponent.cpp",
+            "Source/Shape/CapsuleShape.h",
+            "Source/Shape/CapsuleShape.cpp",
             "Source/Shape/CapsuleShapeComponent.h",
             "Source/Shape/CapsuleShapeComponent.cpp",
             "Source/Shape/CompoundShapeComponent.h",
-            "Source/Shape/CompoundShapeComponent.cpp"
+            "Source/Shape/CompoundShapeComponent.cpp",
+            "Source/Shape/SplineComponent.h",
+            "Source/Shape/SplineComponent.cpp",
+            "Source/Shape/PolygonPrismShapeComponent.h",
+            "Source/Shape/PolygonPrismShapeComponent.cpp"
         ],
         "Source/Unhandled/Animation": [
             "Source/Unhandled/Animation/AnimationEventsAssetTypeInfo.cpp",

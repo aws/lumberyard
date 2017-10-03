@@ -130,6 +130,7 @@ def run_bootstrap_tool(ctx, ly_params, setup_assistant_third_party_override):
         setup_symlinks_arg.thirdPartyPath = set_3p_folder_path
         setup_symlinks_arg.verbose = verbose_mode
         setup_symlinks_arg.disableDefaultDevCapabilities = False
+        setup_symlinks_arg.saveCurrentCapabilities = True
         setup_symlinks_arg.mode = "create"
         setup_symlinks_arg.singleThread = False
 

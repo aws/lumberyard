@@ -23,8 +23,6 @@ update_call_file_paths = []
 
 class IntegrationTest_CloudGemFramework_ResourceManager_UploaderHooks(lmbr_aws_test_support.lmbr_aws_TestCase):
 
-    TEST_GEM_NAME = 'TestGem'
-
     PROJECT_HOOK_NAME = 'Project'
 
     TEST_RESOURCE_GROUP_NAME_1 = 'TestResourceGroup1'
@@ -180,11 +178,6 @@ def after_project_updated(hook, project_uploader):
         update_call_file_paths.append(os.path.join(plugin_path, 'before_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_RESOURCE_GROUP_NAME_1)))
         update_call_file_paths.append(os.path.join(plugin_path, 'after_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_RESOURCE_GROUP_NAME_1)))
 
-        update_call_file_paths.append(os.path.join(plugin_path, 'before_this_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_GEM_NAME)))
-        update_call_file_paths.append(os.path.join(plugin_path, 'after_this_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_GEM_NAME)))
-        update_call_file_paths.append(os.path.join(plugin_path, 'before_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_GEM_NAME)))
-        update_call_file_paths.append(os.path.join(plugin_path, 'after_resource_group_updated_{HOOK_NAME}_{RESOURCE_GROUP_NAME}.txt'.format(HOOK_NAME=hook_name, RESOURCE_GROUP_NAME=self.TEST_GEM_NAME)))
-
         update_call_file_paths.append(os.path.join(plugin_path, 'before_project_updated_{HOOK_NAME}.txt'.format(HOOK_NAME=hook_name)))
         update_call_file_paths.append(os.path.join(plugin_path, 'after_project_updated_{HOOK_NAME}.txt'.format(HOOK_NAME=hook_name)))
 
@@ -226,23 +219,29 @@ def after_project_updated(hook, project_uploader):
         self.lmbr_aws('project', 'create', '--files-only', '--region', lmbr_aws_test_support.REGION)
 
     def __020_create_resource_groups(self):
-        self.lmbr_aws('resource-group', 'add', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_1)
-        self.lmbr_aws('resource-group', 'add', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_2)
+
+        self.lmbr_aws(
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME_1,
+            '--initial-content', 'no-resources',
+            '--enable')
+
+        self.lmbr_aws(
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME_2,
+            '--initial-content', 'no-resources',
+            '--enable')
 
     def __030_create_update_hooks(self):
 
-        test_gem_path = self.create_test_gem(self.TEST_GEM_NAME)
-
         # Uploader hooks were deprecated in 1.9. TODO: Remove tests when support is removed.
         self.__create_uploader_hook(self.AWS_DIR)
-        self.__create_uploader_hook(os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME_1))
-        self.__create_uploader_hook(os.path.join(test_gem_path, 'AWS'))
+        self.__create_uploader_hook(self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME_1))
         resource_manager.uploader._uploader_hook_modules = None
 
         self.__create_update_hooks(self.AWS_DIR, self.PROJECT_HOOK_NAME)
-        self.__create_update_hooks(os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME_1), self.TEST_RESOURCE_GROUP_NAME_1)
-        self.__create_update_hooks(os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME_2), self.TEST_RESOURCE_GROUP_NAME_2)
-        self.__create_update_hooks(os.path.join(test_gem_path, 'AWS'), self.TEST_GEM_NAME)
+        self.__create_update_hooks(self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME_1), self.TEST_RESOURCE_GROUP_NAME_1)
+        self.__create_update_hooks(self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME_2), self.TEST_RESOURCE_GROUP_NAME_2)
 
     def __040_create_project_stack(self):
         self.__delete_uploader_call_files() # deprecated
@@ -250,8 +249,8 @@ def after_project_updated(hook, project_uploader):
         self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
         self.__assert_uploader_call_files(['project_content_pre','project_content_post'])        
         self.__assert_update_call_files(
-            self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ]),
-            self.__get_update_call_file_list('after_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ])
+            self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ]),
+            self.__get_update_call_file_list('after_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ])
         )
 
     def __050_create_deployment_stack(self):
@@ -267,16 +266,16 @@ def after_project_updated(hook, project_uploader):
             self.__get_update_call_file_list('before_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
             self.__get_update_call_file_list('after_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
 
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2)
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2)
 
         )        
 
-    def __060_remove_resource_group(self):
-        self.lmbr_aws('resource-group', 'remove', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_1)
+    def __060_disable_resource_group(self):
+        self.lmbr_aws('resource-group', 'disable', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_1)
 
     def __070_delete_resource_group_stack(self):
         self.__delete_update_call_files()
@@ -285,8 +284,8 @@ def after_project_updated(hook, project_uploader):
             # no hooks should have been called when deleting
         ) 
 
-    def __080_readd_resource_group(self):
-        self.lmbr_aws('add-resource-group', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_1)
+    def __080_enable_resource_group(self):
+        self.lmbr_aws('resource-group', 'enable', '--resource-group', self.TEST_RESOURCE_GROUP_NAME_1)
 
     def __090_recreate_resource_group_stack(self):
         self.__delete_uploader_call_files()
@@ -300,8 +299,8 @@ def after_project_updated(hook, project_uploader):
             self.__get_update_call_file_list('before_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_1 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
             self.__get_update_call_file_list('after_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_1 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
         )
 
@@ -311,8 +310,8 @@ def after_project_updated(hook, project_uploader):
         self.lmbr_aws('project', 'update', '--confirm-aws-usage', '--confirm-security-change')
         self.__assert_uploader_call_files(['project_content_pre','project_content_post'])        
         self.__assert_update_call_files(
-            self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ]),
-            self.__get_update_call_file_list('after_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ])
+            self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ]),
+            self.__get_update_call_file_list('after_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ])
         )
 
     def __110_deployment_updates(self):
@@ -328,11 +327,11 @@ def after_project_updated(hook, project_uploader):
             self.__get_update_call_file_list('before_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
             self.__get_update_call_file_list('after_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
             
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2)
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_2)
 
         )        
 
@@ -348,8 +347,8 @@ def after_project_updated(hook, project_uploader):
             self.__get_update_call_file_list('before_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_1 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
             self.__get_update_call_file_list('after_this_resource_group_updated', hook_names = [ self.TEST_RESOURCE_GROUP_NAME_1 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
-            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
-            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2, self.TEST_GEM_NAME ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('before_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
+            self.__get_update_call_file_list('after_resource_group_updated', hook_names = [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ], resource_group_name = self.TEST_RESOURCE_GROUP_NAME_1),
 
         )
 

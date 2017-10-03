@@ -136,7 +136,7 @@ bool CPlayerProfile::IsDefault() const
 // override values with console player profile defaults
 void CPlayerProfile::LoadGamerProfileDefaults()
 {
-    ICVar* pSysSpec = gEnv->pConsole->GetCVar("sys_spec");
+    ICVar* pSysSpec = gEnv->pConsole->GetCVar("r_GraphicsQuality");
     if (pSysSpec && !(pSysSpec->GetFlags() & VF_WASINCONFIG))
     {
         gEnv->pSystem->AutoDetectSpec(true);

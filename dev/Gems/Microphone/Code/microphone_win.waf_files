@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "Source":
+        [
+            "Source/MicrophoneSystemComponent_windows.inl"
+        ]
+    }
+}

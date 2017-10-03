@@ -13,77 +13,44 @@
 
 #include <Cry_Geo.h>
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TransformBus.h>
-#include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <LmbrCentral/Shape/BoxShapeComponentBus.h>
+#include "BoxShape.h"
 
 namespace LmbrCentral
 {
     class BoxShapeComponent
         : public AZ::Component
-        , private ShapeComponentRequestsBus::Handler
-        , private BoxShapeComponentRequestsBus::Handler
-        , private AZ::TransformNotificationBus::Handler
+        , public BoxShape
     {
     public:
-
-        friend class EditorBoxShapeComponent;
-
-        AZ_COMPONENT(BoxShapeComponent, "{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}");
+        AZ_COMPONENT(BoxShapeComponent, BoxShapeComponentTypeId);
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
-        //////////////////////////////////////////////////////////////////////////
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override
-        {
-            return AZ::Crc32("Box");
-        }
-
-        AZ::Aabb GetEncompassingAabb() override;
-
-        bool IsPointInside(const AZ::Vector3& point) override;
-
-        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // ShapeBoxComponentRequestBus::Handler implementation
-        BoxShapeConfiguration GetBoxConfiguration() override
-        {
-            return m_configuration;
-        }
-
-        void SetBoxDimensions(AZ::Vector3) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////////////
-        // Transform notification bus listener
-        /// Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
-        //////////////////////////////////////////////////////////////////////////////////
+        // BoxShape
+        BoxShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("ShapeService"));
-            provided.push_back(AZ_CRC("BoxShapeService"));
+            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            provided.push_back(AZ_CRC("BoxShapeService", 0x946a0032));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("ShapeService"));
-            incompatible.push_back(AZ_CRC("BoxShapeService"));
+            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            incompatible.push_back(AZ_CRC("BoxShapeService", 0x946a0032));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("TransformService"));
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
         static void Reflect(AZ::ReflectContext* context);
@@ -91,55 +58,6 @@ namespace LmbrCentral
     private:
 
         //! Stores configuration of a box for this component
-        BoxShapeConfiguration m_configuration;
-
-        //////////////////////////////////////////////////////////////////////////
-        // Runtime data 
-        class BoxIntersectionDataCache : public IntersectionTestDataCache<BoxShapeConfiguration>
-        {
-        public:
-            void UpdateIntersectionParams(const AZ::Transform& currentTransform,
-                                          const BoxShapeConfiguration& configuration) override;
-
-            AZ_INLINE const AABB& GetAABB() const
-            {
-                AZ_Warning("Box Shape Component", m_isAxisAligned, "Fetching AABB of a non axis aligned box, Use GetOBB instead");
-                return m_aabb;
-            }
-
-            AZ_INLINE const OBB& GetOBB() const
-            {
-                AZ_Warning("Box Shape Component", !m_isAxisAligned, "Fetching OBB of an axis aligned box, Use GetAABB instead");
-                return m_obb;
-            }
-
-            AZ_INLINE const AZ::Vector3& GetCurrentPosition() const
-            {
-                return m_currentPosition;
-            }
-
-            AZ_INLINE bool IsAxisAligned() const
-            {
-                return m_isAxisAligned;
-            }
-
-        private:
-
-            //! Indicates whether the box is axis or object aligned
-            bool m_isAxisAligned = true;
-
-            //! AABB representing this Box
-            AABB m_aabb;
-            OBB m_obb;
-
-            // Position of the Box
-            AZ::Vector3 m_currentPosition;
-        };
-
-        // Caches transient intersection data
-        BoxIntersectionDataCache m_intersectionDataCache;
-
-        //! Caches the current transform for the entity on which this component lives
-        AZ::Transform m_currentTransform;
+        BoxShapeConfig m_configuration;
     };
 } // namespace LmbrCentral

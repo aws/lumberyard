@@ -22,24 +22,24 @@
 //  console enums taken from d3d9types.h
 //
 
-enum X360AddressModes
+enum X360AddressModes // ACCEPTED_USE
 {
-    X360TADDRESS_WRAP                    = 0,
-    X360TADDRESS_MIRROR                  = 1,
-    X360TADDRESS_CLAMP                   = 2,
-    X360TADDRESS_MIRRORONCE              = 3,
-    X360TADDRESS_BORDER_HALF             = 4,
-    X360TADDRESS_MIRRORONCE_BORDER_HALF  = 5,
-    X360TADDRESS_BORDER                  = 6,
-    X360TADDRESS_MIRRORONCE_BORDER       = 7,
+    X360TADDRESS_WRAP                    = 0, // ACCEPTED_USE // ACCEPTED_USE
+    X360TADDRESS_MIRROR                  = 1, // ACCEPTED_USE
+    X360TADDRESS_CLAMP                   = 2, // ACCEPTED_USE
+    X360TADDRESS_MIRRORONCE              = 3, // ACCEPTED_USE
+    X360TADDRESS_BORDER_HALF             = 4, // ACCEPTED_USE
+    X360TADDRESS_MIRRORONCE_BORDER_HALF  = 5, // ACCEPTED_USE
+    X360TADDRESS_BORDER                  = 6, // ACCEPTED_USE
+    X360TADDRESS_MIRRORONCE_BORDER       = 7, // ACCEPTED_USE
 };
 
-enum X360FilterType
+enum X360FilterType // ACCEPTED_USE
 {
-    X360TEXF_NONE            = 2,
-    X360TEXF_POINT           = 0,
-    X360TEXF_LINEAR          = 1,
-    X360TEXF_ANISOTROPIC     = 4,
+    X360TEXF_NONE            = 2, // ACCEPTED_USE
+    X360TEXF_POINT           = 0, // ACCEPTED_USE
+    X360TEXF_LINEAR          = 1, // ACCEPTED_USE
+    X360TEXF_ANISOTROPIC     = 4, // ACCEPTED_USE
 };
 
 inline void sAlignData(TArray<byte>& Dst, uint32 align)

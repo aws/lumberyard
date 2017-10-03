@@ -24,8 +24,6 @@
 
 #include <GridMate/Serialize/UtilityMarshal.h>
 
-// TEMP to enable XBone chat DLL
-#define AZ_XBONE_CHAT_DLL
 
 namespace GridMate
 {
@@ -50,10 +48,10 @@ namespace GridMate
         virtual MemberIDCompact Compact() const = 0;
         virtual bool IsValid() const = 0;
 
-        AZ_FORCE_INLINE bool operator==(const MemberID& rhs) const { return ToString() == rhs.ToString();  }
-        AZ_FORCE_INLINE bool operator!=(const MemberID& rhs) const { return ToString() != rhs.ToString();  }
-        AZ_FORCE_INLINE bool operator==(const MemberIDCompact& rhs) const { return Compact() == rhs;  }
-        AZ_FORCE_INLINE bool operator!=(const MemberIDCompact& rhs) const { return Compact() != rhs;  }
+        AZ_FORCE_INLINE bool operator==(const MemberID& rhs) const { return ToString() == rhs.ToString(); }
+        AZ_FORCE_INLINE bool operator!=(const MemberID& rhs) const { return ToString() != rhs.ToString(); }
+        AZ_FORCE_INLINE bool operator==(const MemberIDCompact& rhs) const { return Compact() == rhs; }
+        AZ_FORCE_INLINE bool operator!=(const MemberIDCompact& rhs) const { return Compact() != rhs; }
     };
 
     typedef string SessionID;
@@ -134,6 +132,7 @@ namespace GridMate
         unsigned int        m_hostMigrationTimeout;     ///< Timeout for a host migration procedure in milliseconds. If it takes more time we will leave the session.
         unsigned int        m_hostMigrationVotingTime;  ///< Minimum time that will spend voting (unless everybody voted - we have all the results) before we check the winner. IMPORTANT: value is clamped to less than 1/2 of m_hostMigrationTimeout.
         unsigned int        m_numPublicSlots;           ///< Number of slots for players this session will have.
+
         unsigned int        m_numPrivateSlots;
         unsigned char       m_flags;
         unsigned int        m_numParams;
@@ -223,7 +222,7 @@ namespace GridMate
     public:
         virtual ~GridSessionCallbacks() {}
         /// Callback that is called when the Session service is ready to process sessions.
-        virtual void OnSessionServiceReady()               {}
+        virtual void OnSessionServiceReady() {}
 
         //virtual OnCommucationChanged() = 0  Callback that notifies the title when a member's communication settings change.
 
@@ -241,7 +240,7 @@ namespace GridMate
         // \todo a better way will be (after we solve migration) is to supply a reason to OnMemberLeaving... like the member was kicked.
         // this will require that we actually remove the replica at the same moment.
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member) { (void)session; (void)member; }
+        virtual void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) { (void)session; (void)member; (void)reason; }
         /// Called when new session is created. Client session might not sync yet at this point.
         virtual void OnSessionCreated(GridSession* session) { (void)session; }
         /// After this callback it is safe to access session features. Host session is fully operational
@@ -370,7 +369,7 @@ namespace GridMate
 
         //////////////////////////////////////////////////////////////////////////
         // RPC
-        bool OnKick(const RpcContext& rc);
+        bool OnKick(AZ::u8 reason, const RpcContext& rc);
         //////////////////////////////////////////////////////////////////////////
 
         void SetHost(bool isHost);
@@ -388,7 +387,7 @@ namespace GridMate
         DataSet<bool> m_isHost;
         DataSet<bool> m_isInvited;
         DataSet<RemotePeerMode> m_peerMode; // topology used by the client
-        Rpc<>::BindInterface<GridMember, & GridMember::OnKick, RpcAuthoritativeTraits> KickRpc;
+        Rpc<RpcArg<AZ::u8>>::BindInterface<GridMember, &GridMember::OnKick> KickRpc;
     };
 
     /**
@@ -425,14 +424,21 @@ namespace GridMate
 
         const SessionID& GetId() const { return m_sessionId; }
         unsigned int GetNumberOfMembers() const { return static_cast<unsigned int>(m_members.size()); }
-        GridMember* GetMemberByIndex(unsigned int index) const { return m_members[index]; }
+        GridMember* GetMemberByIndex(unsigned int index) const
+        {
+            if(m_members.size() <= index)
+            {
+                return nullptr;
+            }
+            return m_members[index];
+        }
         GridMember* GetMemberById(const MemberID& id) const;
         GridMember* GetMemberById(const MemberIDCompact& id) const;
         GridMember* GetHost() const;
         GridMember* GetMyMember() const { return m_myMember; }
 
-        Result KickMember(GridMember* member);
-        Result BanMember(GridMember* member);
+        Result KickMember(GridMember* member, AZ::u8 reason = 0);
+        Result BanMember(GridMember* member, AZ::u8 reason = 0);
 
         // not supported yet
         virtual Result LockSession() { return GS_ERROR; }
@@ -605,7 +611,7 @@ namespace GridMate
         };
         typedef vector<NotFullyConnectedMember> NotConnectedArrayType;
         NotConnectedArrayType m_membersNotFullyConnected;
-        /*SessionTime*/ TimeStamp m_lastConnectivityUpdate;
+        /*SessionTime*/TimeStamp m_lastConnectivityUpdate;
 
         //////////////////////////////////////////////////////////////////////////
         // State machine
@@ -725,6 +731,8 @@ namespace GridMate
 
         AZ::HSM m_sm; ///< Hierarchical state machine for the session management;
         //////////////////////////////////////////////////////////////////////////
+        AZStd::chrono::milliseconds     m_disconnectKickedPlayersDelay; ///< number of milliseconds before forcing kicked player to disconnect
+        GridMate::vector<AZStd::pair<TimeStamp, MemberIDCompact>> m_futureKickedPlayers;
     };
 
     /**
@@ -793,7 +801,7 @@ namespace GridMate
         virtual ~GridSearch() {}
 
         /// Return true if the search has finished, otherwise false.
-        bool IsDone() const  { return m_isDone; }
+        bool IsDone() const { return m_isDone; }
 
         virtual unsigned int GetNumResults() const = 0;
         virtual const SearchInfo* GetResult(unsigned int index) const = 0;
@@ -911,7 +919,7 @@ namespace GridMate
             typedef vector<MemberIDCompact> MuteListType;
             typedef DataSet<MuteListType, ContainerMarshaler<MuteListType> > MuteDataSetType;
 
-            Rpc<RpcArg<const SessionID&> >::BindInterface<GridMemberStateReplica, & GridMemberStateReplica::OnNewHost, RpcAuthoritativeTraits> OnNewHostRpc;
+            Rpc<RpcArg<const SessionID&> >::BindInterface<GridMemberStateReplica, &GridMemberStateReplica::OnNewHost, RpcAuthoritativeTraits> OnNewHostRpc;
 
             DataSet<AZ::u8> m_numConnections;
             DataSet<NatType> m_natType;

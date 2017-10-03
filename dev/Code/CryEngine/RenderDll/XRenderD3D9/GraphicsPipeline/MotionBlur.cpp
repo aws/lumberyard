@@ -129,50 +129,61 @@ void CMotionBlur::RenderObjectsVelocity()
 {
     PROFILE_LABEL_SCOPE("OBJECTS VELOCITY");
 
-    // Render object velocities
-    gcpRendD3D->FX_PushRenderTarget(0, GetUtils().GetVelocityObjectRT(), &gcpRendD3D->m_DepthBufferOrig);
+    auto renderTarget = GetUtils().GetVelocityObjectRT();
+    auto depthTarget = &gcpRendD3D->m_DepthBufferOrig;
 
-    uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
-    int iTempX, iTempY, iWidth, iHeight;
-    gcpRendD3D->GetViewport(&iTempX, &iTempY, &iWidth, &iHeight);
-    const bool bAllowMotionVectors = CRenderer::CV_r_MotionVectors > 0;
-    if (bAllowMotionVectors)
+    // Make sure the depth target is at least as large as the render target.
+    // Since the render target lags behind by a frame this might not be the case
+    // when resolution is changed from higher res to lower res.
+    if (renderTarget != nullptr && depthTarget != nullptr &&
+        renderTarget->GetWidth() <= depthTarget->nWidth &&
+        renderTarget->GetHeight() <= depthTarget->nHeight)
     {
-        uint32 nBatchMask = 0;
-        // Check for moving geometry
-        if (!CRenderer::CV_r_MotionBlurGBufferVelocity)
+        // Render object velocities
+        gcpRendD3D->FX_PushRenderTarget(0, renderTarget, depthTarget);
+
+        uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
+        int iTempX, iTempY, iWidth, iHeight;
+        gcpRendD3D->GetViewport(&iTempX, &iTempY, &iWidth, &iHeight);
+        const bool bAllowMotionVectors = CRenderer::CV_r_MotionVectors > 0;
+        if (bAllowMotionVectors)
         {
-            nBatchMask |= SRendItem::BatchFlags(EFSLIST_GENERAL, gRenDev->m_RP.m_pRLD);
-            nBatchMask |= SRendItem::BatchFlags(EFSLIST_SKIN, gRenDev->m_RP.m_pRLD);
-        }
-
-        nBatchMask |= SRendItem::BatchFlags(EFSLIST_TRANSP, gRenDev->m_RP.m_pRLD);
-        if (nBatchMask & FB_MOTIONBLUR)
-        {
-            CRendElementBase* pPrevRE = gRenDev->m_RP.m_pRE;
-            gRenDev->m_RP.m_pRE = NULL;
-
-            if (!gcpRendD3D->FX_MotionVectorGeneration(true))
-            {
-                return;
-            }
-
+            uint32 nBatchMask = 0;
+            // Check for moving geometry
             if (!CRenderer::CV_r_MotionBlurGBufferVelocity)
             {
-                gcpRendD3D->FX_ProcessRenderList(EFSLIST_GENERAL, FB_MOTIONBLUR);
-                gcpRendD3D->FX_ProcessRenderList(EFSLIST_SKIN, FB_MOTIONBLUR);
+                nBatchMask |= SRendItem::BatchFlags(EFSLIST_GENERAL, gRenDev->m_RP.m_pRLD);
+                nBatchMask |= SRendItem::BatchFlags(EFSLIST_SKIN, gRenDev->m_RP.m_pRLD);
             }
 
-            gcpRendD3D->FX_ProcessRenderList(EFSLIST_TRANSP, FB_MOTIONBLUR);
+            nBatchMask |= SRendItem::BatchFlags(EFSLIST_TRANSP, gRenDev->m_RP.m_pRLD);
+            if (nBatchMask & FB_MOTIONBLUR)
+            {
+                CRendElementBase* pPrevRE = gRenDev->m_RP.m_pRE;
+                gRenDev->m_RP.m_pRE = NULL;
 
-            gcpRendD3D->FX_MotionVectorGeneration(false);
+                if (!gcpRendD3D->FX_MotionVectorGeneration(true))
+                {
+                    return;
+                }
 
-            gRenDev->m_RP.m_pRE = pPrevRE;
+                if (!CRenderer::CV_r_MotionBlurGBufferVelocity)
+                {
+                    gcpRendD3D->FX_ProcessRenderList(EFSLIST_GENERAL, FB_MOTIONBLUR);
+                    gcpRendD3D->FX_ProcessRenderList(EFSLIST_SKIN, FB_MOTIONBLUR);
+                }
+
+                gcpRendD3D->FX_ProcessRenderList(EFSLIST_TRANSP, FB_MOTIONBLUR);
+
+                gcpRendD3D->FX_MotionVectorGeneration(false);
+
+                gRenDev->m_RP.m_pRE = pPrevRE;
+            }
         }
-    }
 
-    gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
-    gcpRendD3D->FX_PopRenderTarget(0);
+        gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
+        gcpRendD3D->FX_PopRenderTarget(0);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

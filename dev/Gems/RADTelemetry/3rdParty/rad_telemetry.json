@@ -2,13 +2,14 @@
 	"name": "rad_telemetry",
 	"source": "@GEM@",
 	"description": "RAD Telemetry libraries (internal only - not for distribution)",
-	"defines": ["AZ_PROFILE_TELEMETRY"],
 	"non_release_only": "True",
 	"lib_required": "True",
 	"includes": ["Code/Include", "External/Include"],
-	"sharedlibpath": ["External/Dll"],
 	"platform": {
 		"win_x64_vs2013": {
+			"sharedlibpath": [
+				"External/Dll"
+			],
 			"importlibpath": [
 				"External/Lib"
 			],

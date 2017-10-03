@@ -23,6 +23,7 @@
 
 #include <IEntityRenderState.h>
 
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
@@ -30,31 +31,36 @@
 
 namespace LmbrCentral
 {
+    class MaterialOwnerRequestBusHandlerImpl;
+
     /*!
     * RenderNode implementation responsible for integrating with the renderer.
     * The node owns render flags, the mesh instance, and the render transform.
     */
-    class StaticMeshComponentRenderNode
+    class MeshComponentRenderNode
         : public IRenderNode
         , public AZ::TransformNotificationBus::Handler
         , public AZ::Data::AssetBus::Handler
         , public AzFramework::LegacyAssetEventBus::Handler
     {
-        friend class EditorStaticMeshComponent;
+        friend class EditorMeshComponent;
     public:
         using MaterialPtr = _smart_ptr < IMaterial > ;
         using MeshPtr = _smart_ptr < IStatObj > ;
 
-        AZ_TYPE_INFO(StaticMeshComponentRenderNode, "{46FF2BC4-BEF9-4CC4-9456-36C127C310D7}");
+        AZ_TYPE_INFO(MeshComponentRenderNode, "{46FF2BC4-BEF9-4CC4-9456-36C127C310D7}");
 
-        StaticMeshComponentRenderNode();
-        ~StaticMeshComponentRenderNode() override;
+        MeshComponentRenderNode();
+        ~MeshComponentRenderNode() override;
 
-        void CopyPropertiesTo(StaticMeshComponentRenderNode& rhs) const;
+        void CopyPropertiesTo(MeshComponentRenderNode& rhs) const;
 
         //! Notifies render node which entity owns it, for subscribing to transform
         //! bus, etc.
         void AttachToEntity(AZ::EntityId id);
+
+        //! Returns true after all required assets are loaded
+        bool IsReady() const override;
 
         //! Instantiate mesh instance.
         void CreateMesh();
@@ -69,7 +75,7 @@ namespace LmbrCentral
         void SetMeshAsset(const AZ::Data::AssetId& id);
 
         //! Get the mesh asset
-        AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() { return m_staticMeshAsset; }
+        AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() { return m_meshAsset; }
 
         //! Invoked in the editor when the user assigns a new asset.
         void OnAssetPropertyChanged();
@@ -117,7 +123,9 @@ namespace LmbrCentral
         ICharacterInstance* GetEntityCharacter(unsigned int nSlot = 0, Matrix34A* pMatrix = nullptr, bool bReturnOnlyVisible = false) override;
         float GetMaxViewDist() override;
         void GetMemoryUsage(class ICrySizer* pSizer) const override;
-        AZ::EntityId GetEntityId() override { return m_attachedToEntityId; }
+        AZ::EntityId GetEntityId() override { return m_renderOptions.m_attachedToEntityId; }
+        float GetUniformScale() override;
+        float GetColumnScale(int column) override;
         //////////////////////////////////////////////////////////////////////////
 
         //! Invoked in the editor when a property requiring render state refresh
@@ -135,11 +143,15 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         static float GetDefaultMaxViewDist();
-        static AZ::Uuid GetRenderOptionsUuid() { return AZ::AzTypeInfo<StaticMeshRenderOptions>::Uuid(); }
+        static AZ::Uuid GetRenderOptionsUuid() { return AZ::AzTypeInfo<MeshRenderOptions>::Uuid(); }
 
         //! Registers or unregisters our render node with the render.
         void RegisterWithRenderer(bool registerWithRenderer);
         bool IsRegisteredWithRenderer() const { return m_isRegisteredWithRenderer; }
+
+        //! This function caches off the static flag stat of the transform;
+        void SetTransformStaticState(bool isStatic);
+
     protected:
 
         //! Calculates base LOD distance based on mesh characteristics.
@@ -166,38 +178,47 @@ namespace LmbrCentral
         void OnFileChanged(AZStd::string assetPath) override;
         void OnFileRemoved(AZStd::string assetPath) override;
 
-        class StaticMeshRenderOptions
+        class MeshRenderOptions
         {
         public:
 
-            AZ_TYPE_INFO(StaticMeshRenderOptions, "{EFF77BEB-CB99-44A3-8F15-111B0200F50D}")
+            AZ_TYPE_INFO(MeshRenderOptions, "{EFF77BEB-CB99-44A3-8F15-111B0200F50D}")
 
-            StaticMeshRenderOptions();
+            MeshRenderOptions();
 
             float m_opacity; //!< Alpha/opacity value for rendering.
             float m_maxViewDist; //!< Maximum draw distance.
             float m_viewDistMultiplier; //!< Adjusts max view distance. If 1.0 then default max view distance is used.
             AZ::u32 m_lodRatio; //!< Controls LOD distance ratio.
             bool m_useVisAreas; //!< Allow VisAreas to control this component's visibility.
-            bool m_castShadows; //!< Casts dynamic shadows.
-            bool m_castLightmap; //!< Casts shadows in lightmap.
+            bool m_castShadows; //!< Casts shadows.
             bool m_rainOccluder; //!< Occludes raindrops.
             bool m_affectNavmesh; //!< Cuts out of the navmesh.
             bool m_affectDynamicWater; //!< Affects dynamic water (ripples).
             bool m_acceptDecals; //!< Accepts decals.
             bool m_receiveWind; //!< Receives wind.
             bool m_visibilityOccluder; //!< Appropriate for visibility occluding.
+            bool m_dynamicMesh; // Mesh can change or deform independent of transform
+            bool m_hasStaticTransform;
+
+            //! The Id of the entity we're associated with, for bus subscription.
+            //Moved from render mesh to this struct for serialization/reflection utility
+            AZ::EntityId m_attachedToEntityId;
 
             AZStd::function<void()> m_changeCallback;
 
-            void OnChanged()
+            AZ::u32 OnChanged()
             {
                 if (m_changeCallback)
                 {
                     m_changeCallback();
                 }
+                return AZ::Edit::PropertyRefreshLevels::EntireTree;
             }
 
+            //Returns true if the transform is static and the mesh is not deformable.
+            bool IsStatic() const;
+            AZ::Crc32 StaticPropertyVisibility() const;
             static void Reflect(AZ::ReflectContext* context);
 
         private:
@@ -212,13 +233,10 @@ namespace LmbrCentral
         AzFramework::SimpleAssetReference<MaterialAsset> m_material;
 
         //! Render flags/options.
-        StaticMeshRenderOptions m_renderOptions;
+        MeshRenderOptions m_renderOptions;
 
         //! Currently-assigned material. Null if no material is manually assigned.
         MaterialPtr m_materialOverride;
-
-        //! The Id of the entity we're associated with, for bus subscription.
-        AZ::EntityId m_attachedToEntityId;
 
         //! World and render transforms.
         //! These are equivalent, but for different math libraries.
@@ -236,7 +254,7 @@ namespace LmbrCentral
         uint32 m_auxiliaryRenderFlagsHistory;
 
         //! Reference to current asset
-        AZ::Data::Asset<StaticMeshAsset> m_staticMeshAsset;
+        AZ::Data::Asset<MeshAsset> m_meshAsset;
         MeshPtr m_statObj;
 
         //! Computed LOD distance.
@@ -251,19 +269,20 @@ namespace LmbrCentral
 
 
 
-    class StaticMeshComponent
+    class MeshComponent
         : public AZ::Component
         , public MeshComponentRequestBus::Handler
-        , public MaterialRequestBus::Handler
+        , public MaterialOwnerRequestBus::Handler
         , public RenderNodeRequestBus::Handler
-        , public StaticMeshComponentRequestBus::Handler
+        , public LegacyMeshComponentRequestBus::Handler
     {
     public:
-        friend class EditorStaticMeshComponent;
+        friend class EditorMeshComponent;
 
-        AZ_COMPONENT(StaticMeshComponent, "{2F4BAD46-C857-4DCB-A454-C412DE67852A}");
+        AZ_COMPONENT(MeshComponent, "{2F4BAD46-C857-4DCB-A454-C412DE67852A}");
 
-        ~StaticMeshComponent() override = default;
+        MeshComponent();
+        ~MeshComponent() override;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
@@ -276,15 +295,26 @@ namespace LmbrCentral
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
-        AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_staticMeshRenderNode.GetMeshAsset(); }
+        AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_meshRenderNode.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MaterialRequestBus interface implementation
+        // MaterialOwnerRequestBus interface implementation
+        bool IsMaterialOwnerReady() override;
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
+        void SetMaterialHandle(MaterialHandle) override;
+        MaterialHandle GetMaterialHandle() override;
+        void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) override;
+        void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) override;
+        void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/) override;
+        void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/) override;
+        AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/) override;
+        AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/) override;
+        AZ::Color   GetMaterialParamColor(const AZStd::string& /*name*/) override;
+        float       GetMaterialParamFloat(const AZStd::string& /*name*/) override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -295,7 +325,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // StaticMeshComponentRequestBus interface implementation
+        // MeshComponentRequestBus interface implementation
         IStatObj* GetStatObj() override;
         ///////////////////////////////////
     protected:
@@ -303,13 +333,13 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("MeshService", 0x71d8a455));
-            provided.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+            provided.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("MeshService", 0x71d8a455));
-            incompatible.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+            incompatible.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -322,7 +352,8 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // Reflected Data
-        StaticMeshComponentRenderNode m_staticMeshRenderNode;
+        MeshComponentRenderNode m_meshRenderNode;
+        MaterialOwnerRequestBusHandlerImpl* m_materialBusHandler;
     };
 
 } // namespace LmbrCentral

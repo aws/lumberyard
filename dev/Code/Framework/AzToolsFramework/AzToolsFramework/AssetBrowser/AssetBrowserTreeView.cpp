@@ -10,25 +10,27 @@
 *
 */
 
-#include <QMenu.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailDelegate.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
+
+#include <QMenu>
 
 namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
         AssetBrowserTreeView::AssetBrowserTreeView(QWidget* parent)
-            : AzToolsFramework::QTreeViewWithStateSaving(parent)
+            : QTreeViewWithStateSaving(parent)
             , m_assetBrowserModel(nullptr)
             , m_assetBrowserSortFilterProxyModel(nullptr)
+            , m_delegate(new Thumbnailer::ThumbnailDelegate)
         {
             setSortingEnabled(true);
-
-            BusConnect();
+            setItemDelegate(m_delegate.data());
 
             setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -37,7 +39,6 @@ namespace AzToolsFramework
 
         AssetBrowserTreeView::~AssetBrowserTreeView()
         {
-            BusDisconnect();
         }
 
         void AssetBrowserTreeView::LoadState(const QString& name)
@@ -79,6 +80,11 @@ namespace AzToolsFramework
             SelectProduct(QModelIndex(), assetID);
         }
 
+        void AssetBrowserTreeView::SetThumbnailContext(const char* thumbnailContext) const
+        {
+            m_delegate->SetThumbnailContext(thumbnailContext);
+        }
+
         bool AssetBrowserTreeView::SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID)
         {
             int elements = model()->rowCount(idxParent);
@@ -118,7 +124,7 @@ namespace AzToolsFramework
         void AssetBrowserTreeView::selectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
         {
             QTreeView::selectionChanged(selected, deselected);
-            emit selectionChangedSignal(selected, deselected);
+            Q_EMIT selectionChangedSignal(selected, deselected);
         }
 
         void AssetBrowserTreeView::startDrag(Qt::DropActions supportedActions)

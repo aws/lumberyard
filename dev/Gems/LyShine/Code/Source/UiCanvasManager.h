@@ -11,8 +11,6 @@
 */
 #pragma once
 
-#include <IInput.h>
-#include <IHardwareMouse.h>
 #include <IGameFramework.h>
 
 #include <AzCore/Component/Component.h>
@@ -34,6 +32,11 @@
 namespace AZ
 {
     class SerializeContext;
+}
+
+namespace AzFramework
+{
+    class InputChannel;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,8 +79,8 @@ public: // member functions
     void DestroyLoadedCanvases(bool keepCrossLevelCanvases);
 
     // These functions handle events for all canvases loaded in the game
-    bool HandleInputEventForLoadedCanvases(const SInputEvent& event);
-    bool HandleKeyboardEventForLoadedCanvases(const SUnicodeEvent& event);
+    bool HandleInputEventForLoadedCanvases(const AzFramework::InputChannel& inputChannel);
+    bool HandleTextEventForLoadedCanvases(const AZStd::string& textUTF8);
 
 private: // member functions
 
@@ -88,7 +91,7 @@ private: // member functions
     UiCanvasComponent* FindCanvasComponentByPathname(const string& name);
     UiCanvasComponent* FindEditorCanvasComponentByPathname(const string& name);
 
-    bool HandleInputEventForInWorldCanvases(const SInputEvent& event);
+    bool HandleInputEventForInWorldCanvases(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AZ::Vector2& viewportPos);
 
     AZ::EntityId LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext);
 

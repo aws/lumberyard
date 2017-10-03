@@ -99,6 +99,7 @@ namespace AzToolsFramework
         void UpdateAssetDisplay();
         void OnEditButtonClicked();
         void SetEnableEdit(bool enabled);
+        void ShowContextMenu(const QPoint& pos);
     };
 
     class AssetPropertyHandlerDefault

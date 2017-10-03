@@ -1118,7 +1118,7 @@ void CLayersListBox::StartFileAttributeUpdateJob(QString layerName, SCacheLayerA
         }
         else
         {
-            request.layerPath = AZStd::string::format("%s\\%s.cry", pEngine->GetLevelPath().toUtf8().data(), pEngine->GetLevelName().toUtf8().data());
+            request.layerPath = AZStd::string::format("%s\\%s%s", pEngine->GetLevelPath().toUtf8().data(), pEngine->GetLevelName().toUtf8().data(), pEngine->GetLevelExtension().toUtf8().data());
         }
 
         m_layerRequestQueue.push(request);

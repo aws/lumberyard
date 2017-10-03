@@ -17,6 +17,25 @@
 #include "I3DEngine.h"
 #include "../Common/ReverseDepth.h"
 
+
+enum class ToneMapOperators : int
+{
+    FilmicCurveUC2 = 0,
+    Linear = 1,
+    Exponential = 2,
+    Reinhard = 3,
+    FilmicCurveALU = 4
+};
+
+
+
+enum class Exposuretype : int
+{
+    Auto = 0,  //Any other variations of AUTO will go here.
+    Manual = 1
+};
+
+
 //  render targets info - first gather list of hdr targets, sort by size and create after
 struct SRenderTargetInfo
 {
@@ -86,7 +105,9 @@ public:
     void ToneMappingDebug();
     void CalculateDolbyDynamicMetadata(CTexture* pSunShaftsRT);
     void DrawDebugViews();
-
+    void SetExposureTypeShaderFlags();
+    CCryNameTSCRC GetTonemapTechnique() const;
+    
     void EncodeDolbyVision(CTexture* source);
 
     void Begin();
@@ -200,7 +221,7 @@ void CTexture::GenerateHDRMaps()
     // It gets set in CDeferredShading::CreateDeferredMaps()
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
-        pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, nHDRFormat, 1.0f, "$HDRTarget", &s_ptexHDRTarget, nHDRTargetFlagsUAV);
+        pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, r->UseHalfFloatRenderTargets() ? nHDRFormat : nHDRReducedFormat, 1.0f, "$HDRTarget", &s_ptexHDRTarget, nHDRTargetFlagsUAV);
     }
 
     //  Confetti BEGIN: Igor Lobanchikov :END
@@ -276,7 +297,6 @@ void CTexture::GenerateHDRMaps()
         pHDRPostProcess->AddRenderTarget((r->m_dwHDRCropWidth >> 1) / (i + 1), (r->m_dwHDRCropHeight >> 1) / (i + 1), Clr_Unknown, eTF_R16G16F, 0.1f, szName, &s_ptexSceneCoC[i], FT_DONT_RELEASE, -1, true);
 #endif
         //  Confetti End: Igor Lobanchikov
-
     }
 
     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -402,7 +422,7 @@ void DrawQuad3D(float s0, float t0, float s1, float t1)
 // deprecated
 void DrawFullScreenQuadTR(float xpos, float ypos, float w, float h)
 {
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(4);
     SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -469,7 +489,7 @@ bool DrawFullScreenQuad(float fLeftU, float fTopV, float fRightU, float fBottomV
     fHeight5 = fHeight5 - 0.5f;
 
     // Draw the quad
-    TempDynVB<SVF_TP3F_C4B_T2F> vb;
+    TempDynVB<SVF_TP3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(4);
     SVF_TP3F_C4B_T2F* Verts = vb.Lock();
     {
@@ -606,6 +626,13 @@ void CHDRPostProcess::SetShaderParams()
     static CCryNameR szHDRBloomColor("HDRBloomColor");
     const Vec4 vHDRBloomColor = vHDRSetupParams[1] * Vec4(Vec3((1.0f / 8.0f)), 1.0f);   // division by 8.0f was done in shader before, remove this at some point
     m_shHDR->FXSetPSFloat(szHDRBloomColor, &vHDRBloomColor, 1);
+    
+    if (CRenderer::CV_r_ToneMapExposureType == static_cast<int>(Exposuretype::Manual))
+    {
+        static CCryNameR tonemapParams("HDRTonemapParams");
+        Vec4 v = Vec4(CRenderer::CV_r_ToneMapManualExposureValue, 0, 0, 0);
+        m_shHDR->FXSetPSFloat(tonemapParams, &v, 1);
+    }
 }
 
 
@@ -901,8 +928,9 @@ void CHDRPostProcess::EyeAdaptation()
     pTexPrev->Apply(0, nTexStatePoint);
     CTexture::s_ptexHDRToneMaps[0]->Apply(1, nTexStatePoint);
 
-    // Draw a fullscreen quad to sample the RT
-    DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+        // Draw a fullscreen quad to sample the RT
+        DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+    
 
     m_shHDR->FXEndPass();
 
@@ -1140,10 +1168,11 @@ void CHDRPostProcess::ProcessLensOptics()
 
             CTexture* pLensOpticsComposite = CTexture::s_ptexBackBufferScaledTemp[0];
             pLensOpticsComposite = CTexture::s_ptexSceneTargetR11G11B10F[0];
-            gcpRendD3D->FX_ClearTarget(pLensOpticsComposite, Clr_Transparent);
-            gcpRendD3D->FX_PushRenderTarget(0, pLensOpticsComposite, 0);
+            
+            gcpRendD3D->FX_PushRenderTarget(0, pLensOpticsComposite, 0);            
+            gcpRendD3D->FX_SetColorDontCareActions(0, false, false);
+            gcpRendD3D->FX_ClearTarget(pLensOpticsComposite, Clr_Transparent);            
 
-            gcpRendD3D->FX_SetColorDontCareActions(0, true, false);
             gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_NOPOSTAA | RBPF2_LENS_OPTICS_COMPOSITE;
 
             GetUtils().Log(" +++ Begin lens-optics scene +++ \n");
@@ -1210,7 +1239,7 @@ void CHDRPostProcess::ToneMapping()
     bool bColorGrading = false;
 
     SColorGradingMergeParams pMergeParams;
-    if (CRenderer::CV_r_colorgrading && CRenderer::CV_r_colorgrading_charts)
+    if (CRenderer::CV_r_colorgrading && CRenderer::CV_r_colorgrading_charts && CRenderer::CV_r_ToneMapTechnique== static_cast<int>(ToneMapOperators::FilmicCurveUC2)) //color grading is only supported for Uncharted2 filmic curve
     {
         CColorGrading* pColorGrad = 0;
         if (!PostEffectMgr()->GetEffects().empty())
@@ -1232,12 +1261,14 @@ void CHDRPostProcess::ToneMapping()
     PROFILE_LABEL_SCOPE("TONEMAPPING");
 
     // Enable corresponding shader variation
-    rRP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_SAMPLE4]);
+    rRP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
     if (CRenderer::CV_r_HDREyeAdaptationMode == 2)
     {
         rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
     }
+
+    SetExposureTypeShaderFlags();
 
     if (bColorGrading && pTexColorChar)
     {
@@ -1254,7 +1285,9 @@ void CHDRPostProcess::ToneMapping()
     {
         rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
-
+    
+    PostProcessUtils().SetSRGBShaderFlags();
+    
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetStencilDontCareActions(0, true, true);
     rd->FX_SetDepthDontCareActions(0, true, true);
@@ -1300,11 +1333,11 @@ void CHDRPostProcess::ToneMapping()
 
         uint32 nPasses;
         static CCryNameTSCRC TechFinalName("HDRFinalPass");
-        static CCryNameTSCRC TechFinalDolbyName("HDRFinalPassDolby");
+        static CCryNameTSCRC TechFinalDolbyName("HDRFinalPassDolby");        
         switch (DolbyCvarValue)
         {
         case eDVM_Disabled:
-            m_shHDR->FXSetTechnique(TechFinalName);
+            m_shHDR->FXSetTechnique(GetTonemapTechnique());           
             break;
         case eDVM_RGBPQ:
         case eDVM_Vision:
@@ -1497,10 +1530,61 @@ void CHDRPostProcess::EncodeDolbyVision(CTexture* source)
     }
 }
 
+CCryNameTSCRC CHDRPostProcess::GetTonemapTechnique() const
+{
+    ToneMapOperators toneMapTech = static_cast<ToneMapOperators>(CRenderer::CV_r_ToneMapTechnique);
+    switch(toneMapTech)
+    {
+        case ToneMapOperators::Linear:
+            return CCryNameTSCRC("HDRToneMapLinear");
+        case ToneMapOperators::Exponential:
+            return CCryNameTSCRC("HDRToneMapExponential");
+        case ToneMapOperators::Reinhard:
+            return CCryNameTSCRC("HDRToneMapReinhard");
+        case ToneMapOperators::FilmicCurveALU:
+            return CCryNameTSCRC("HDRToneMapFilmicALU");
+        case ToneMapOperators::FilmicCurveUC2:
+            return CCryNameTSCRC("HDRFinalPass");       
+        default:
+        {
+            CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_WARNING, "Tonemap technique not supported");
+            return CCryNameTSCRC("HDRFinalPass");
+        }            
+    }    
+}
+  
+void CHDRPostProcess::SetExposureTypeShaderFlags()
+{
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE5]);
+    Exposuretype expType = static_cast<Exposuretype>(CRenderer::CV_r_ToneMapExposureType);
+    switch(expType)
+    {
+        case Exposuretype::Auto:
+        {
+            gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
+            return;
+        }
+        case Exposuretype::Manual:
+        {
+            //Don't need to do anything as it will default to manual.
+            return;
+        }
+        default:
+        {
+            CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_WARNING, "Exposure type not supported");
+        }
+    }
+}
+
 void CHDRPostProcess::ToneMappingDebug()
 {
     CD3D9Renderer* rd = gcpRendD3D;
     Vec4 avSampleOffsets[4];
+    PROFILE_LABEL_SCOPE("TONEMAPPINGDEBUG");
+
+    // Enable corresponding shader variation
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+
 
     if (CRenderer::CV_r_HDRDebug == 1)
     {
@@ -1510,6 +1594,13 @@ void CHDRPostProcess::ToneMappingDebug()
     {
         gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_DEBUG0];
     }
+
+    if (CRenderer::CV_r_HDREyeAdaptationMode == 2)
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+
+    SetExposureTypeShaderFlags();
 
     uint32 nPasses;
     static CCryNameTSCRC techName("HDRFinalDebugPass");
@@ -1659,14 +1750,14 @@ void CHDRPostProcess::DrawDebugViews()
         float fLuminance = -1;
         float fIlluminance = -1;
 
-        CDeviceTexture *pSrcDevTex = CTexture::s_ptexHDRToneMaps[0]->GetDevTexture();
+        CDeviceTexture* pSrcDevTex = CTexture::s_ptexHDRToneMaps[0]->GetDevTexture();
         pSrcDevTex->DownloadToStagingResource(0, [&](void* pData, uint32 rowPitch, uint32 slicePitch)
-        {
-            CryHalf* pRawPtr = reinterpret_cast<CryHalf*>(pData);
-            fLuminance = CryConvertHalfToFloat(pRawPtr[0]);
-            fIlluminance = CryConvertHalfToFloat(pRawPtr[1]);
-            return true;
-        });
+            {
+                CryHalf* pRawPtr = reinterpret_cast<CryHalf*>(pData);
+                fLuminance = CryConvertHalfToFloat(pRawPtr[0]);
+                fIlluminance = CryConvertHalfToFloat(pRawPtr[1]);
+                return true;
+            });
 
         char str[256];
         SDrawTextInfo ti;
@@ -1844,7 +1935,7 @@ void CHDRPostProcess::End()
 
     PostProcessUtils().SetFillModeSolid(false);
 
-    // (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set
+    // (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
     gcpRendD3D->FX_SetActiveRenderTargets();
 }
 
@@ -1893,7 +1984,8 @@ void CHDRPostProcess::Render()
 
         const bool bSolidModeEnabled = gcpRendD3D->GetWireframeMode() == R_SOLID_MODE;
         const bool bDepthOfFieldEnabled = CRenderer::CV_r_dof >= 1 && bSolidModeEnabled;
-        const bool bMotionBlurEnabled = CRenderer::CV_r_MotionBlur && bSolidModeEnabled;
+        const bool takingScreenShot = (gcpRendD3D->m_screenShotType != 0);
+        const bool bMotionBlurEnabled = CRenderer::CV_r_MotionBlur && bSolidModeEnabled && (!takingScreenShot || CRenderer::CV_r_MotionBlurScreenShot);
 
         DepthOfFieldParameters depthOfFieldParameters;
 
@@ -1906,6 +1998,7 @@ void CHDRPostProcess::Render()
 
         if (CRenderer::CV_r_AntialiasingMode == eAT_TAA)
         {
+            CRY_ASSERT_MESSAGE(CRenderer::CV_r_ToneMapExposureType==static_cast<int>(Exposuretype::Auto), "TAA needs auto exposure");
             GetUtils().StretchRect(CTexture::s_ptexHDRTarget, CTexture::s_ptexSceneTarget);
             graphicsPipeline.RenderTemporalAA(CTexture::s_ptexSceneTarget, CTexture::s_ptexHDRTarget, depthOfFieldParameters);
         }
@@ -1943,29 +2036,31 @@ void CHDRPostProcess::Render()
             }
         }
 
+        //Render passes for auto exposure. Used for tonemapping or Bloom generation
+        if (CRenderer::CV_r_ToneMapExposureType == static_cast<int>(Exposuretype::Auto) || CRenderer::CV_r_HDRBloom)
         {
             HalfResDownsampleHDRTarget();
             gcpRendD3D->SetCurDownscaleFactor(Vec2(1, 1));
             QuarterResDownsampleHDRTarget();
+            
+            gcpRendD3D->FX_ApplyShaderQuality(eST_PostProcess);
+            
+            // Update eye adaptation
+            if (CRenderer::CV_r_EnableGMEMPostProcCS)
+            {
+                MeasureLumEyeAdaptationUsingCompute();
+            }
+            else
+            {
+                MeasureLuminance();
+                EyeAdaptation();
+            }
         }
-    }
 
-    gcpRendD3D->FX_ApplyShaderQuality(eST_PostProcess);
-
-    // Update eye adaptation
-    if (CRenderer::CV_r_EnableGMEMPostProcCS)
-    {
-        MeasureLumEyeAdaptationUsingCompute();
-    }
-    else
-    {
-        MeasureLuminance();
-        EyeAdaptation();
-    }
-
-    if (CRenderer::CV_r_HDRBloom && CRenderer::CV_r_PostProcess)
-    {
-        BloomGeneration();
+        if (CRenderer::CV_r_HDRBloom)
+        {
+            BloomGeneration();
+        }
     }
 
     gcpRendD3D->SetCurDownscaleFactor(gcpRendD3D->m_CurViewportScale);

@@ -453,21 +453,21 @@ case _D3D11FilterID:                                                            
                 [desc release];
                 return false;
             }
-            desc.rAddressMode = addressMode;
+            desc.sAddressMode = addressMode;
 
             if (!DX11ToMetalTextureAddressMode(kDesc.AddressV, addressMode))
             {
                 [desc release];
                 return false;
             }
-            desc.sAddressMode = addressMode;
+            desc.tAddressMode = addressMode;
 
             if (!DX11ToMetalTextureAddressMode(kDesc.AddressW, addressMode))
             {
                 [desc release];
                 return false;
             }
-            desc.tAddressMode = addressMode;
+            desc.rAddressMode = addressMode;
         }
 
         if (kDesc.MipLODBias)

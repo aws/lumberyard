@@ -15,6 +15,9 @@
 #include <aws/sqs/model/GetQueueUrlRequest.h>
 #include <aws/sqs/model/GetQueueUrlResult.h>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 namespace LmbrAWS
 {
     static const char* CLASS_TAG = "AWS:Primitive:SQS:SQSPush";
@@ -28,7 +31,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Push"),
-            m_queueClientPort.GetConfiguration("QueueName", _HELP("Name of the SQS queue that has already been created")),
+            InputPortConfig<string>("QueueName", _HELP("Name of the SQS queue that has already been created")),
             InputPortConfig<string>("Message", _HELP("Message to send"))
         };
 
@@ -46,19 +49,13 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(activationInfo, EIP_Push))
         {
-            auto client = m_queueClientPort.GetClient(activationInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(activationInfo->pGraph, activationInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto queueName = client.GetQueueName();
+            AZStd::string queueName = GetPortString(activationInfo, EIP_QueueClient).c_str();
+            EBUS_EVENT_RESULT(queueName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, queueName);
             auto messageBody = GetPortString(activationInfo, EIP_Message);
 
 
             Aws::SQS::Model::SendMessageRequest sendMessageRequest;
-            sendMessageRequest.SetQueueUrl(queueName);
+            sendMessageRequest.SetQueueUrl(queueName.c_str());
             sendMessageRequest.SetMessageBody(messageBody);
             auto context = std::make_shared<FlowGraphContext>(activationInfo->pGraph, activationInfo->myID);
 

@@ -1,0 +1,125 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#ifndef __EMSTUDIO_RENDERVIEWWIDGET_H
+#define __EMSTUDIO_RENDERVIEWWIDGET_H
+
+#include "../EMStudioConfig.h"
+#include "../PreferencesWindow.h"
+#include "RenderWidget.h"
+#include <QWidget>
+#include <QMenu>
+#include <QMenuBar>
+#include <QSettings>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QContextMenuEvent>
+
+
+namespace EMStudio
+{
+    // forward declaration
+    class OpenGLRenderPlugin;
+    class PreferencesWindow;
+
+    class EMSTUDIO_API RenderViewWidget
+        : public QWidget
+    {
+        Q_OBJECT
+                       MCORE_MEMORYOBJECTCATEGORY(RenderViewWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
+
+    public:
+        RenderViewWidget(RenderPlugin* parentPlugin, QWidget* parentWidget);
+        virtual ~RenderViewWidget();
+
+        enum ERenderFlag
+        {
+            RENDER_SOLID                    = 0,
+            RENDER_WIREFRAME                = 1,
+            RENDER_LIGHTING                 = 2,
+            RENDER_TEXTURING                = 3,
+            RENDER_SHADOWS                  = 4,
+            RENDER_FACENORMALS              = 5,
+            RENDER_VERTEXNORMALS            = 6,
+            RENDER_TANGENTS                 = 7,
+            RENDER_AABB                     = 8,
+            RENDER_OBB                      = 9,
+            RENDER_COLLISIONMESHES          = 10,
+            RENDER_SKELETON                 = 11,
+            RENDER_LINESKELETON             = 12,
+            RENDER_NODEORIENTATION          = 13,
+            RENDER_NODENAMES                = 14,
+            RENDER_GRID                     = 15,
+            RENDER_BACKFACECULLING          = 16,
+            RENDER_ACTORBINDPOSE            = 17,
+            RENDER_PHYSICS                  = 18,
+            RENDER_USE_GRADIENTBACKGROUND   = 19,
+            RENDER_MOTIONEXTRACTION         = 20,
+            NUM_RENDER_OPTIONS              = 21
+        };
+
+        MCORE_INLINE bool GetRenderFlag(ERenderFlag option)     { return mActions[(uint32)option]->isChecked(); }
+        void SetRenderFlag(ERenderFlag option, bool isEnabled);
+        uint32 FindActionIndex(QAction* action);
+        RenderWidget* GetRenderWidget() const                   { return mRenderWidget; }
+        QMenu* GetCameraMenu() const                            { return mCameraMenu; }
+
+        void SaveOptions(QSettings* settings);
+        void LoadOptions(QSettings* settings);
+
+        bool GetIsCharacterFollowModeActive()                   { return mFollowCharacterAction->isChecked(); }
+        void SetCharacterFollowModeActive(bool active);
+
+        void OnContextMenuEvent(QWidget* renderWidget, bool ctrlPressed, int32 localMouseX, int32 localMouseY, QPoint globalMousePos, RenderPlugin* plugin, MCommon::Camera* camera);
+
+    public slots:
+        void OnOptions();
+        void OnOrbitCamera()                                    { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_ORBIT); }
+        void OnFirstPersonCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FIRSTPERSON); }
+        void OnOrthoFrontCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_FRONT); }
+        void OnOrthoBackCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BACK); }
+        void OnOrthoLeftCamera()                                { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_LEFT); }
+        void OnOrthoRightCamera()                               { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_RIGHT); }
+        void OnOrthoTopCamera()                                 { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_TOP); }
+        void OnOrthoBottomCamera()                              { mRenderWidget->SwitchCamera(RenderWidget::CAMMODE_BOTTOM); }
+        void OnResetCamera(float flightTime = 1.0f)
+        {
+            MCommon::Camera* camera = mRenderWidget->GetCamera();
+            if (camera)
+            {
+                camera->Reset(flightTime);
+            }
+        }
+        void OnShowSelected();
+        void OnShowEntireScene();
+        void OnFollowCharacter();
+        void OnReset()                                          { Reset(); }
+        void UpdateToolBarButton(bool checked);
+
+    private:
+        void CreateEntry(QMenu* menu, const char* menuEntryName, const char* toolbarIconFileName, int32 actionIndex, bool visible = true);
+        void Reset();
+
+        QMenuBar*                           mMenu;
+        QMenu*                              mCameraMenu;
+        QHBoxLayout*                        mToolbarLayout;
+        RenderWidget*                       mRenderWidget;
+        QAction*                            mActions[NUM_RENDER_OPTIONS];
+        QAction*                            mFollowCharacterAction;
+        QPushButton*                        mToolbarButtons[NUM_RENDER_OPTIONS];
+        RenderPlugin*                       mPlugin;
+        PreferencesWindow*                  mRenderOptionsWindow;
+    };
+} // namespace EMStudio
+
+
+#endif

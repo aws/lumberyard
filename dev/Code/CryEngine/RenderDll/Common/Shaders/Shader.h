@@ -594,24 +594,22 @@ enum EHWSRMaskBit
     HWSR_ALPHATEST,
     HWSR_ALPHABLEND,
 
-    HWSR_MSAA_QUALITY,
-    HWSR_MSAA_QUALITY1,
-    HWSR_MSAA_SAMPLEFREQ_PASS,
-
     HWSR_HDR_MODE,      // deprecated: this flag is redundant and can be dropped, since rendering always HDR since CE3
     HWSR_HDR_ENCODE,
 
     HWSR_INSTANCING_ATTR,
 
     HWSR_VERTEX_VELOCITY,
-    HWSR_SKELETON_SSD,
-    HWSR_SKELETON_SSD_LINEAR,
+    HWSR_SKINNING_DUAL_QUAT,
+    HWSR_SKINNING_DQ_LINEAR,
+    HWSR_SKINNING_MATRIX,
 
     HWSR_OBJ_IDENTITY,
     HWSR_DETAIL_OVERLAY,
     HWSR_NEAREST,
     HWSR_NOZPASS,
     HWSR_DISSOLVE,
+    HWSR_APPLY_TOON_SHADING,
     HWSR_NO_TESSELLATION,
     HWSR_PER_INSTANCE_CB_TEMP,
 
@@ -635,14 +633,12 @@ enum EHWSRMaskBit
     HWSR_DECAL_TEXGEN_2D,
 
     HWSR_SHADOW_MIXED_MAP_G16R16,
-    HWSR_GSM_COMBINED,
     HWSR_HW_PCF_COMPARE,
     HWSR_SHADOW_JITTERING,
     HWSR_POINT_LIGHT,
     HWSR_LIGHT_TEX_PROJ,
 
     HWSR_BLEND_WITH_TERRAIN_COLOR,
-    HWSR_AMBIENT_OCCLUSION,
 
     HWSR_PARTICLE_SHADOW,
     HWSR_SOFT_PARTICLE,
@@ -680,7 +676,12 @@ enum EHWSRMaskBit
 
     HWSR_MULTI_LAYER_ALPHA_BLEND,
     HWSR_ADDITIVE_BLENDING,
-
+    HWSR_APPLY_SSDO,
+    
+    HWSR_SRGB0,
+    HWSR_SRGB1,
+    HWSR_SRGB2,
+    
 
     HWSR_MAX
 };
@@ -1335,16 +1336,17 @@ public:
     virtual const char* GetName() const { return m_NameShader.c_str(); }
 
     // D3D Effects interface
-    bool FXSetTechnique(const CCryNameTSCRC& Name);
-    bool FXSetPSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams);
-    bool FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams);
-    bool FXSetVSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams);
-    bool FXSetGSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams);
-    bool FXBegin(uint32* uiPassCount, uint32 nFlags);
-    bool FXBeginPass(uint32 uiPass);
-    bool FXCommit(const uint32 nFlags);
-    bool FXEndPass();
-    bool FXEnd();
+    virtual bool FXSetTechnique(const CCryNameTSCRC& Name);
+    virtual bool FXSetPSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetVSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
+    virtual bool FXSetGSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) override;
+
+    virtual bool FXBegin(uint32* uiPassCount, uint32 nFlags) override;
+    virtual bool FXBeginPass(uint32 uiPass) override;
+    virtual bool FXCommit(const uint32 nFlags) override;
+    virtual bool FXEndPass() override;
+    virtual bool FXEnd() override;
 
     virtual int GetFlags() const { return m_Flags; }
     virtual int GetFlags2() const { return m_Flags2; }

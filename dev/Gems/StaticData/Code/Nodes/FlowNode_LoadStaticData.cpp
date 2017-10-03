@@ -11,12 +11,9 @@
 */
 #include <StdAfx.h>
 #include <Nodes/FlowNode_LoadStaticData.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
 #include <StaticData/StaticDataBus.h>
 
 using namespace Aws;
-using namespace Aws::Lambda;
 using namespace Aws::Client;
 
 namespace LmbrAWS

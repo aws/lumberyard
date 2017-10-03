@@ -48,7 +48,9 @@
         "Importers/Utilities": 
         [
             "Importers/Utilities/FbxMeshImporterUtilities.h",
-            "Importers/Utilities/FbxMeshImporterUtilities.cpp"
+            "Importers/Utilities/FbxMeshImporterUtilities.cpp",
+            "Importers/Utilities/RenamedNodesMap.h",
+            "Importers/Utilities/RenamedNodesMap.cpp"
         ],
         "FbxSDKWrapper" :
         [

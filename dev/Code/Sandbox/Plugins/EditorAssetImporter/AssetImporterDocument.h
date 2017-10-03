@@ -58,6 +58,7 @@ public:
 
     bool LoadScene(const AZStd::string& sceneFullPath);
     void SaveScene(AZStd::shared_ptr<AZ::ActionOutput>& output, AZ::SaveCompleteCallback onSaveComplete);
+    void ClearScene();
 
     AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& GetScene();
     

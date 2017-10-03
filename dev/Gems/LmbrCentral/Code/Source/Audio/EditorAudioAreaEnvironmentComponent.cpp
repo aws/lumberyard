@@ -41,10 +41,11 @@ namespace LmbrCentral
                 editContext->Class<EditorAudioAreaEnvironmentComponent>("Audio Area Environment", "The Audio Area Environment component enables entities that are moving around and throughout a shape to have environment effects applied to any sounds that they trigger")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioAreaEnvironment")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioAreaEnvironment.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioAreaEnvironment.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-area-environment.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAudioAreaEnvironmentComponent::m_broadPhaseTriggerArea,
                         "Broad-phase trigger area", "The entity that contains a Trigger Area component for broad-phase checks")
                         ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ProximityTriggerService", 0x561f262c))

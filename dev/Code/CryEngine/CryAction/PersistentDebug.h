@@ -137,8 +137,8 @@ private:
 
     struct SObjFinder
     {
-        SObjFinder(EntityId entityId)
-            : entityId(entityId) {}
+        SObjFinder(EntityId _entityId)
+            : entityId(_entityId) {}
         bool operator()(const SObj& obj) {return obj.obj == eOT_EntityTag && obj.entityId == entityId; }
         EntityId entityId;
     };

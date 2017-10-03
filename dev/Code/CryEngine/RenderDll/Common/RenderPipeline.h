@@ -211,14 +211,11 @@ struct SRendItem
     // Free all renditem lists. Renderer must be flushed.
     static CThreadSafeWorkerContainer<SRendItem>& RendItems(int threadIndex, int listOrder, int listNum);
 
-    static int m_RecurseLevel[RT_COMMAND_BUF_COUNT];
-
+    ENGINE_API static int m_RecurseLevel[RT_COMMAND_BUF_COUNT];
     static int m_StartFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
     static int m_EndFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
     static int m_ShadowsStartRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
     static int m_ShadowsEndRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
-
-    static int m_nSortGroups;
 };
 
 //==================================================================
@@ -1167,11 +1164,13 @@ struct SCompareItem_Terrain
 {
     bool operator()(const SRendItem& a, const SRendItem& b) const
     {
-        CRendElementBase *pREa = a.pElem;
-        CRendElementBase *pREb = b.pElem;
+        CRendElementBase* pREa = a.pElem;
+        CRendElementBase* pREb = b.pElem;
 
         if (pREa->m_CustomTexBind[0] != pREb->m_CustomTexBind[0])
+        {
             return pREa->m_CustomTexBind[0] < pREb->m_CustomTexBind[0];
+        }
 
         return a.ObjSort < b.ObjSort;
     }

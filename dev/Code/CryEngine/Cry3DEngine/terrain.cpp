@@ -83,8 +83,8 @@ CTerrain::CTerrain(const STerrainInfo& TerrainInfo)
 
     Get3DEngine()->SetObjectTree(COctreeNode::Create(DEFAULT_SID, AABB(Vec3(0), Vec3((float)GetTerrainSize())), NULL));
 
-    GetObjManager()->m_lstStaticTypes.PreAllocate(1, 1);
-    GetObjManager()->m_lstStaticTypes[DEFAULT_SID].Reset();
+    GetObjManager()->GetListStaticTypes().PreAllocate(1, 1);
+    GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Reset();
 
     InitHeightfieldPhysics();
 
@@ -278,9 +278,9 @@ void CTerrain::ClearVisSectors()
 void CTerrain::ClearTextureSets()
 {
     TraverseTree([](CTerrainNode* node)
-    {
-        node->m_TextureSet = SSectorTextureSet(0);
-    });
+        {
+            node->m_TextureSet = SSectorTextureSet(0);
+        });
 }
 
 int __cdecl CmpTerrainNodesDistance(const void* v1, const void* v2)

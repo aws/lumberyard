@@ -172,14 +172,13 @@ void ReflectedVarEnumAdapter::SetVariable(IVariable *pVariable)
     m_enumList = desc.m_enumList;
     m_reflectedVar.reset(new CReflectedVarEnum<AZStd::string>(pVariable->GetHumanName().toLatin1().data()));
     m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
-    updateReflectedVarEnums();
+    UpdateReflectedVarEnums();
 }
 
-
-void ReflectedVarEnumAdapter::updateReflectedVarEnums()
+bool ReflectedVarEnumAdapter::UpdateReflectedVarEnums()
 {
     if (!m_pVariable)
-        return;
+        return false;
 
     m_updatingEnums = true;
     //Allow derived classes to populate the IVariable's enumList (used by AIWave and AITerritory)
@@ -187,19 +186,29 @@ void ReflectedVarEnumAdapter::updateReflectedVarEnums()
     m_enumList = m_pVariable->GetEnumList();
     m_updatingEnums = false;
 
+    bool changed = false;
     //Copy the updated enums to the ReflecteVar
     if (m_enumList)
     {
-        const AZStd::string oldValue = m_reflectedVar->m_value;
+        const AZStd::vector<AZStd::string> oldEnums = m_reflectedVar->GetEnums();
+
         AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>> enums;
         for (uint i = 0; !m_enumList->GetItemName(i).isNull(); i++)
         {
             QString sEnumName = m_enumList->GetItemName(i);
             enums.push_back(AZStd::pair<AZStd::string, AZStd::string>(sEnumName.toLatin1().data(), sEnumName.toLatin1().data()));
+
         }
         m_reflectedVar->setEnums(enums);
-        m_reflectedVar->setEnumValue(oldValue);
+
+        changed = m_reflectedVar->GetEnums() != oldEnums;
+        if (changed)
+        {
+            // set the current enum value from the IVariable
+            SyncReflectedVarToIVar(m_pVariable);
+        }
     }
+    return changed;
 }
 
 void ReflectedVarEnumAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
@@ -219,7 +228,7 @@ void ReflectedVarEnumAdapter::OnVariableChange(IVariable* pVariable)
     //setting the enums on the pVariable will cause the variable to change getting us back here
     //The original property editor did need to update things immediately because it did so when creating the in-place editing control
     if (!m_updatingEnums)
-        updateReflectedVarEnums();
+        UpdateReflectedVarEnums();
 }
 
 
@@ -287,7 +296,7 @@ void ReflectedVarAITerritoryAdapter::updateIVariableEnumList(IVariable *pIVariab
 void ReflectedVarAIWaveAdapter::SetCurrentTerritory(const QString &territory)
 {
     m_currentTerritory = territory;
-    updateReflectedVarEnums();
+    UpdateReflectedVarEnums();
 }
 
 //Ported from CPropertyItem::PopulateAIWavesList 

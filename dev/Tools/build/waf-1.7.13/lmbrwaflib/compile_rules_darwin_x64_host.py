@@ -25,12 +25,18 @@ def load_darwin_x64_host_settings(conf):
 
     global PLATFORM
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/osx').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/osx')
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = ['/System/Library/Frameworks/Python.framework/Versions/2.7', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7', '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload', 'Code/SDKs/markupsafe/x64', 'Code/SDKs/jinja2/x64']
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = ['Code/SDKs/markupsafe/x64', 'Code/SDKs/jinja2/x64']
+    v['CODE_GENERATOR_PYTHON_PATHS'] = ['/System/Library/Frameworks/Python.framework/Versions/2.7',
+                                        '/System/Library/Frameworks/Python.framework/Versions/2.7/lib',
+                                        '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7',
+                                        '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload',
+                                        conf.Path('Code/SDKs/markupsafe/x64'),
+                                        conf.Path('Code/SDKs/jinja2/x64')]
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Code/SDKs/markupsafe/x64'),
+                                              conf.Path('Code/SDKs/jinja2/x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
 

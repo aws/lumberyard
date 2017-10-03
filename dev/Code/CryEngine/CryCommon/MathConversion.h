@@ -21,6 +21,7 @@
 #include <AzCore/Component/EntityId.h>
 #include <Cry_Math.h>
 #include <Cry_Geo.h>
+#include <Cry_Color.h>
 
 inline AZ::Vector3 LYVec3ToAZVec3(const Vec3& source)
 {
@@ -40,6 +41,16 @@ inline AZ::Color LYVec3ToAZColor(const Vec3& source)
 inline Vec3 AZColorToLYVec3(const AZ::Color& source)
 {
     return Vec3(source.GetR(), source.GetG(), source.GetB());
+}
+
+inline ColorF AZColorToLYColorF(const AZ::Color& source)
+{
+    return ColorF(source.ToU32());
+}
+
+inline AZ::Color LYColorFToAZColor(const ColorF& source)
+{
+    return AZ::Color(source.r, source.g, source.b, source.a);
 }
 
 inline AZ::Quaternion LYQuaternionToAZQuaternion(const Quat& source)

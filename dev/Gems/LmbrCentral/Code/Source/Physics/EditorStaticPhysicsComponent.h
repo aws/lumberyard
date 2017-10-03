@@ -19,12 +19,14 @@ namespace LmbrCentral
     /**
      * Configuration data for EditorStaticPhysicsComponent.
      */
-    struct EditorStaticPhysicsConfiguration
-        : public StaticPhysicsConfiguration
+    struct EditorStaticPhysicsConfig
+        : public StaticPhysicsConfig
     {
-        AZ_CLASS_ALLOCATOR(EditorStaticPhysicsConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(EditorStaticPhysicsConfiguration, "{3A2ADB05-DB14-4ED5-9F16-C63E075401F1}", StaticPhysicsConfiguration);
+        AZ_CLASS_ALLOCATOR(EditorStaticPhysicsConfig, AZ::SystemAllocator, 0);
+        AZ_RTTI(EditorStaticPhysicsConfig, "{8309995F-A628-57DA-AAFE-2E04A257EC40}", StaticPhysicsConfig);
         static void Reflect(AZ::ReflectContext* context);
+
+        // currently, there's no difference between EditorStaticPhysicsConfig and its base class.
     };
 
     /**
@@ -34,12 +36,10 @@ namespace LmbrCentral
         : public EditorPhysicsComponent
     {
     public:
-        AZ_EDITOR_COMPONENT(EditorStaticPhysicsComponent, "{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}", EditorPhysicsComponent);
+        AZ_EDITOR_COMPONENT(EditorStaticPhysicsComponent, EditorStaticPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorStaticPhysicsComponent() = default;
-        explicit EditorStaticPhysicsComponent(const EditorStaticPhysicsConfiguration& configuration);
-
         ~EditorStaticPhysicsComponent() override = default;
 
         ////////////////////////////////////////////////////////////////////////
@@ -47,10 +47,13 @@ namespace LmbrCentral
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         ////////////////////////////////////////////////////////////////////////
 
-        const EditorStaticPhysicsConfiguration& GetConfiguration() const { return m_configuration; }
-
     private:
+        ////////////////////////////////////////////////////////////////////////
+        // Component
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+        ////////////////////////////////////////////////////////////////////////
 
-        EditorStaticPhysicsConfiguration m_configuration;
+        EditorStaticPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral

@@ -57,6 +57,6 @@ namespace CharacterTool
         : IEntryLoader
     {
         bool Load(EntryBase* entry, const char* filename, LoaderContext* context) override;
-        bool Save(EntryBase* entry, const char* filename, LoaderContext* context) override { return false; }
+        bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) override { return false; }
     };
 }

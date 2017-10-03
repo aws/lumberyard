@@ -15,44 +15,6 @@ from waflib.Configure import conf, Logs
 
 PLATFORM = 'win_x64_vs2015'
 
-DX12_INCLUDE_DIR = None
-DX12_LIB_DIR = None
-def find_dx12(conf):
-    global DX12_INCLUDE_DIR
-    global DX12_LIB_DIR
-    if (DX12_INCLUDE_DIR is None) or (DX12_LIB_DIR is None):
-        DX12_INCLUDE_DIR = []   # set to empty, will prevent this part of the function from running more than once even if nothing is found
-        DX12_LIB_DIR = []
-        v = conf.env
-        includes = v['INCLUDES']
-        libs = v['LIBPATH']
-
-        for path in includes:
-            for root, dirs, files in os.walk(path):
-                if 'd3d12.h' in files:
-                    DX12_INCLUDE_DIR = root
-                    break
-            if DX12_INCLUDE_DIR:
-                break
-
-        # this is expensive, so only do it if the include was also found
-        if DX12_INCLUDE_DIR:
-            for path in libs:
-                for root, dirs, files in os.walk(path):
-                    if 'd3d12.lib' in files:
-                        Logs.warn('[DX12] libraries found, can compile for DX12')
-                        DX12_LIB_DIR = root
-                        break
-                if DX12_LIB_DIR:
-                    break
-    conf.env['DX12_INCLUDES'] = DX12_INCLUDE_DIR
-    conf.env['DX12_LIBPATH'] = DX12_LIB_DIR
-
-@conf
-def has_dx12(conf):
-    if conf.env['DX12_INCLUDES'] and conf.env['DX12_LIBPATH']:
-        return True
-    return False
 
 @conf
 def load_win_x64_win_x64_vs2015_common_settings(conf):
@@ -71,10 +33,11 @@ def load_win_x64_win_x64_vs2015_common_settings(conf):
         return
 
     # Attempt to detect the C++ compiler for VS 2015 ( msvs version 14.0 )
+    windows_kit = conf.options.win_vs2015_winkit
     try:
-        conf.auto_detect_msvc_compiler('msvc 14.0', 'x64')
+        conf.auto_detect_msvc_compiler('msvc 14.0', 'x64', windows_kit)
     except:
-        Logs.warn('Unable to detect find the C++ compiler for Visual Studio 2015, removing build target')
+        Logs.warn('Unable to find Visual Studio 2015 C++ compiler and/or Windows Kit {}, removing build target'.format(windows_kit))
         conf.mark_supported_platform_for_removal(PLATFORM)
         return
 
@@ -97,17 +60,17 @@ def load_win_x64_win_x64_vs2015_common_settings(conf):
         v['CFLAGS'] += ['/bigobj']
         v['CXXFLAGS'] += ['/bigobj']
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/vc140').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
     if not os.path.exists(azcg_dir):
         conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have VS2015 AzCodeGenerator binaries available')
     v['CODE_GENERATOR_PATH'] = [azcg_dir]
 
-    crcfix_dir = conf.srcnode.make_node('Tools/crcfix/bin/vc140').abspath()
+    crcfix_dir = conf.Path('Tools/crcfix/bin/vc140')
     if not os.path.exists(crcfix_dir):
         Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2015 crcfix binaries available')
     v['CRCFIX_PATH'] = [crcfix_dir]
 
-    find_dx12(conf)
+    conf.find_dx12(windows_kit)
 
 @conf
 def load_debug_win_x64_win_x64_vs2015_settings(conf):
@@ -115,13 +78,12 @@ def load_debug_win_x64_win_x64_vs2015_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'debug' configuration
     """
-    v = conf.env
+    conf.load_debug_msvc_settings()
+    conf.load_debug_windows_settings()
     conf.load_win_x64_win_x64_vs2015_common_settings()
 
     # Load additional shared settings
     conf.load_debug_cryengine_settings()
-    conf.load_debug_msvc_settings()
-    conf.load_debug_windows_settings()
 
 
 @conf
@@ -130,12 +92,12 @@ def load_profile_win_x64_win_x64_vs2015_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'profile' configuration
     """
+    conf.load_profile_msvc_settings()
+    conf.load_profile_windows_settings()
     conf.load_win_x64_win_x64_vs2015_common_settings()
 
     # Load additional shared settings
     conf.load_profile_cryengine_settings()
-    conf.load_profile_msvc_settings()
-    conf.load_profile_windows_settings()
 
 
 @conf
@@ -144,13 +106,12 @@ def load_performance_win_x64_win_x64_vs2015_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'performance' configuration
     """
-    v = conf.env
+    conf.load_performance_msvc_settings()
+    conf.load_performance_windows_settings()
     conf.load_win_x64_win_x64_vs2015_common_settings()
 
     # Load additional shared settings
     conf.load_performance_cryengine_settings()
-    conf.load_performance_msvc_settings()
-    conf.load_performance_windows_settings()
 
 
 @conf
@@ -159,11 +120,10 @@ def load_release_win_x64_win_x64_vs2015_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'release' configuration
     """
-    v = conf.env
+    conf.load_release_msvc_settings()
+    conf.load_release_windows_settings()
     conf.load_win_x64_win_x64_vs2015_common_settings()
 
     # Load additional shared settings
     conf.load_release_cryengine_settings()
-    conf.load_release_msvc_settings()
-    conf.load_release_windows_settings()
 

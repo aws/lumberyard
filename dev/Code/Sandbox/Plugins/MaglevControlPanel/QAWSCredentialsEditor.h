@@ -85,7 +85,7 @@ public:
 
     static WinWidgetId GetWWId() { return WinWidgetId::PROFILE_SELECTOR; }
 
-    static void OpenAddProfileDialog(QWidget* parentWidget);
+    static QString OpenAddProfileDialog(QWidget* parentWidget);
     static void OpenEditProfileDialog(const QString& selectedText, QWidget* parentWidget);
 
     static const char* GetPaneName() { return "Credentials Manager"; }
@@ -119,6 +119,10 @@ private:
     QLabel* m_editLabel {
         nullptr
     };
+
+    QString m_addedProfile;
+    QString m_selectedButtonText;
+
 };
 
 class AddProfileDialog
@@ -149,6 +153,11 @@ public:
             0xdf262dae, 0xd34c, 0x470e, { 0x81, 0x3d, 0x8e, 0x2b, 0x8b, 0x57, 0x22, 0x6d }
         };
         return guid;
+    }
+
+    const QString& AddedProfile() 
+    {
+        return m_addedProfile;
     }
 
 public slots:
@@ -206,6 +215,9 @@ private:
     QLabel m_secretKeyLabel;
 
     QString m_editProfile;
+
+    QString m_addedProfile;
+
 };
 
 class EditProfileDialog

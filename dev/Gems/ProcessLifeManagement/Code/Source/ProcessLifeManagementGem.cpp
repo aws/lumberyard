@@ -17,6 +17,11 @@
 #include <LyShine/Bus/UiTextBus.h>
 #include <LyShine/Bus/UiCanvasBus.h>
 
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
+
 using namespace AzFramework;
 using namespace ProcessLifeManagement;
 
@@ -79,41 +84,35 @@ void ProcessLifeManagementGem::OnApplicationUnconstrained(ApplicationLifecycleEv
     if (m_pausedCanvasId.IsValid())
     {
         // Exclusively capture all input.
-        gEnv->pInput->SetExclusiveListener(this);
+        InputChannelEventNotificationBus::Handler::BusConnect();
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool ProcessLifeManagementGem::OnInputEvent(const SInputEvent& inputEvent)
+void ProcessLifeManagementGem::OnInputChannelEvent(const InputChannel& inputChannel, bool& o_hasBeenConsumed)
 {
+    // Set this to true so that other listeners will not try and process the event.
+    o_hasBeenConsumed = true;
+
     bool shouldUnpause = false;
-    switch (inputEvent.deviceType)
-    {
-    case eIDT_Keyboard:
-    case eIDT_TouchScreen:
+    const InputChannelId inputChannelId = inputChannel.GetInputChannelId();
+    const InputDeviceId inputDeviceId = inputChannel.GetInputDevice().GetInputDeviceId();
+    if (inputDeviceId == InputDeviceKeyboard::Id ||
+        inputDeviceId == InputDeviceTouch::Id)
     {
         shouldUnpause = true;
     }
-    break;
-    case eIDT_Mouse:
+    else if (inputDeviceId == InputDeviceMouse::Id)
     {
-        if (inputEvent.keyId >= eKI_Mouse1 &&
-            inputEvent.keyId <= eKI_Mouse8)
-        {
-            shouldUnpause = true;
-        }
+        shouldUnpause = AZStd::find(InputDeviceMouse::Button::All.begin(),
+                                    InputDeviceMouse::Button::All.end(),
+                                    inputChannelId) != InputDeviceMouse::Button::All.end();
     }
-    break;
-    case eIDT_Gamepad:
+    else
     {
-        if ((inputEvent.keyId >= eKI_XI_DPadUp && inputEvent.keyId <= eKI_XI_TriggerR) ||
-            (inputEvent.keyId >= eKI_XI_TriggerLBtn && inputEvent.keyId <= eKI_XI_TriggerRBtn) ||
-            (inputEvent.keyId >= eKI_Orbis_Options && inputEvent.keyId <= eKI_Orbis_Square))
-        {
-            shouldUnpause = true;
-        }
-    }
-    break;
+        shouldUnpause = AZStd::find(InputDeviceGamepad::Button::All.begin(),
+                                    InputDeviceGamepad::Button::All.end(),
+                                    inputChannelId) != InputDeviceGamepad::Button::All.end();
     }
 
     if (shouldUnpause)
@@ -122,18 +121,15 @@ bool ProcessLifeManagementGem::OnInputEvent(const SInputEvent& inputEvent)
         gEnv->pGame->GetIGameFramework()->PauseGame(false, false);
 
         // Stop exclusively capturing input.
-        gEnv->pInput->SetExclusiveListener(nullptr);
+        InputChannelEventNotificationBus::Handler::BusDisconnect();
 
         // Unload/hide the modal pause screen.
         gEnv->pLyShine->ReleaseCanvas(m_pausedCanvasId, false);
         m_pausedCanvasId.SetInvalid();
 
-        // Return false so that this input is forwarded through to other listeners now that we're unpaused.
-        return false;
+        // Set this to false so that other listeners can process the event.
+        o_hasBeenConsumed = false;
     }
-
-    // Return true to prevent any other systems receiving this input event.
-    return true;
 }
 
 AZ_DECLARE_MODULE_CLASS(ProcessLifeManagement_698948526ada4d13bada933e2d7ee463, ProcessLifeManagement::ProcessLifeManagementGem)

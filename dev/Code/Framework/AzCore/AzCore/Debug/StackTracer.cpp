@@ -15,10 +15,6 @@
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <AzCore/Debug/StackTracerWinCpp.inl>
-#elif defined(AZ_PLATFORM_X360)
-#   include <AzCore/Debug/StackTracerX360Cpp.inl>
-#elif defined(AZ_PLATFORM_WII)
-#   include <AzCore/Debug/StackTracerWiiCpp.inl>
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
 #   include <AzCore/Debug/StackTracerLinux.inl>
 #else // DEFAULT NOT STACK TRACE SUPPORT

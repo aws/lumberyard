@@ -62,6 +62,7 @@ namespace Audio
         : m_pGlobalAudioObject(nullptr)
         , m_nGlobalAudioObjectID(GLOBAL_AUDIO_OBJECT_ID)
         , m_nTriggerInstanceIDCounter(1)
+        , m_nextSourceId(INVALID_AUDIO_SOURCE_ID)
         , m_oAudioEventMgr()
         , m_oAudioObjectMgr(m_oAudioEventMgr)
         , m_oAudioListenerMgr()
@@ -326,15 +327,28 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     TAudioSourceId CAudioTranslationLayer::CreateAudioSource(const SAudioInputConfig& sourceConfig)
     {
-        TAudioSourceId sourceId = INVALID_AUDIO_SOURCE_ID;
-        AudioSystemImplementationRequestBus::BroadcastResult(sourceId, &AudioSystemImplementationRequestBus::Events::CreateAudioSource, sourceConfig);
+        AZ_Assert(sourceConfig.m_sourceId == INVALID_AUDIO_SOURCE_ID, "ATL - Request to CreateAudioSource already contains a valid source Id.\n");
+
+        TAudioSourceId sourceId = ++m_nextSourceId;
+        SAudioRequest request;
+        SAudioManagerRequestData<eAMRT_CREATE_SOURCE> requestData(sourceConfig);
+        requestData.m_sourceConfig.m_sourceId = sourceId;
+        request.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
+        request.pData = &requestData;
+
+        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, request);
         return sourceId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioTranslationLayer::DestroyAudioSource(TAudioSourceId sourceId)
     {
-        AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DestroyAudioSource, sourceId);
+        SAudioRequest request;
+        SAudioManagerRequestData<eAMRT_DESTROY_SOURCE> requestData(sourceId);
+        request.nFlags = (eARF_PRIORITY_NORMAL);
+        request.pData = &requestData;
+
+        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -447,6 +461,21 @@ namespace Audio
                 {
                     auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_REMOVE_REQUEST_LISTENER>*>(rRequest.pData.get());
                     eResult = m_oAudioEventListenerMgr.RemoveRequestListener(pRequestData->func, pRequestData->pObjectToListenTo);
+                    break;
+                }
+                case eAMRT_CREATE_SOURCE:
+                {
+                    auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_CREATE_SOURCE>*>(rRequest.pData.get());
+                    bool result = false;
+                    AudioSystemImplementationRequestBus::BroadcastResult(result, &AudioSystemImplementationRequestBus::Events::CreateAudioSource, pRequestData->m_sourceConfig);
+                    eResult = BoolToARS(result);
+                    break;
+                }
+                case eAMRT_DESTROY_SOURCE:
+                {
+                    auto const pRequestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_DESTROY_SOURCE>*>(rRequest.pData.get());
+                    AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DestroyAudioSource, pRequestData->m_sourceId);
+                    eResult = eARS_SUCCESS;
                     break;
                 }
                 case eAMRT_INIT_AUDIO_IMPL:
@@ -1406,13 +1435,11 @@ namespace Audio
             }
         }
 
-        if (eResult == eARS_SUCCESS)
-        {
-            // Removes the eATS_STARTING flag on this trigger instance.
-            pAudioObject->ReportStartedTriggerInstance(m_nTriggerInstanceIDCounter++, pOwner, pUserData, pUserDataOwner, nFlags);
-        }
+        // Either removes the eATS_STARTING flag on this trigger instance or removes it if no event was started.
+        pAudioObject->ReportStartedTriggerInstance(m_nTriggerInstanceIDCounter++, pOwner, pUserData, pUserDataOwner, nFlags);
+
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        else
+        if (eResult != eARS_SUCCESS)
         {
             // No TriggerImpl generated an active event.
             g_audioLogger.Log(eALT_WARNING, "Trigger \"%s\" failed on AudioObject \"%s\" (ID: %u)", m_oDebugNameStore.LookupAudioTriggerName(nATLTriggerID), m_oDebugNameStore.LookupAudioObjectName(pAudioObject->GetID()), pAudioObject->GetID());
@@ -2119,13 +2146,13 @@ namespace Audio
             const float* fColorNumbers = fColorBlue;
 
             uint32 activeListenerID = 0;
-            if (CATLListenerObject* listener = m_oAudioListenerMgr.LookupID(m_oAudioListenerMgr.GetOverrideListenerID()))
+            if (CATLListenerObject* overrideListener = m_oAudioListenerMgr.LookupID(m_oAudioListenerMgr.GetOverrideListenerID()))
             {
-                activeListenerID = listener->GetID();
+                activeListenerID = overrideListener->GetID();
             }
-            else if (CATLListenerObject* listener = m_oAudioListenerMgr.LookupID(m_oAudioListenerMgr.GetDefaultListenerID()))
+            else if (CATLListenerObject* defaultListener = m_oAudioListenerMgr.LookupID(m_oAudioListenerMgr.GetDefaultListenerID()))
             {
-                activeListenerID = listener->GetID();
+                activeListenerID = defaultListener->GetID();
             }
 
             fPosY += fLineHeight;

@@ -9,20 +9,21 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <AssetBrowser/Search/ui_SearchAssetTypeSelectorWidget.h>
+
+#include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzCore/std/containers/vector.h>
 
 #include <AzToolsFramework/AssetBrowser/Search/SearchAssetTypeSelectorWidget.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <AzToolsFramework/AssetBrowser/Search/FilterByWidget.h>
 
-#include <AzCore/Asset/AssetManagerBus.h>
-#include <AzCore/std/containers/vector.h>
-#include <algorithm>
+#include <AssetBrowser/Search/ui_SearchAssetTypeSelectorWidget.h>
 
 #include <QPushButton>
 #include <QMenu>
 #include <QCheckBox>
 #include <QWidgetAction>
+#include <algorithm>
 
 namespace AzToolsFramework
 {
@@ -42,7 +43,7 @@ namespace AzToolsFramework
                     }
                 }
             };
-            
+
             struct EBusAggregateAssetTypesIfBelongsToGroup
             {
                 EBusAggregateAssetTypesIfBelongsToGroup(const QString& group)
@@ -51,7 +52,7 @@ namespace AzToolsFramework
                 }
 
                 EBusAggregateAssetTypesIfBelongsToGroup& operator=(const EBusAggregateAssetTypesIfBelongsToGroup&) = delete;
-                
+
                 AZStd::vector<AZ::Data::AssetType> values;
 
                 AZ_FORCE_INLINE void operator=(const AZ::Data::AssetType& assetType)
@@ -106,19 +107,39 @@ namespace AzToolsFramework
             m_ui->m_showSelectionButton->setMenu(menu);
 
             m_filter->SetTag("AssetTypes");
+            m_filter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
         }
 
         SearchAssetTypeSelectorWidget::~SearchAssetTypeSelectorWidget()
         {
         }
 
+        void SearchAssetTypeSelectorWidget::UpdateFilterByWidget() const
+        {
+            for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
+            {
+                if (assetTypeCheckbox->isChecked())
+                {
+                    m_filterByWidget->ToggleClearButton(true);
+                    return;
+                }
+            }
+            m_filterByWidget->ToggleClearButton(false);
+        }
+
         void SearchAssetTypeSelectorWidget::ClearAll() const
         {
-            if (m_locked || m_allCheckbox->isChecked())
+            // check all other asset types
+            for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
             {
-                return;
+                if (assetTypeCheckbox->isChecked())
+                {
+                    assetTypeCheckbox->setChecked(false);
+                }
             }
-            m_allCheckbox->click();
+            m_filter->RemoveAllFilters();
+            m_filter->SetEmptyResult(true);
+            UpdateFilterByWidget();
         }
 
         FilterConstType SearchAssetTypeSelectorWidget::GetFilter() const
@@ -139,7 +160,6 @@ namespace AzToolsFramework
             if (!results.values.empty())
             {
                 QCheckBox* checkbox = new QCheckBox(group, menu);
-                checkbox->setChecked(true);
                 QWidgetAction* action = new QWidgetAction(menu);
                 action->setDefaultWidget(checkbox);
                 menu->addAction(action);
@@ -155,88 +175,25 @@ namespace AzToolsFramework
                     {
                         if (checked)
                         {
-                            bool allChecked = true;
-                            // if all filter types are checked, then check "all" button
-                            for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
-                            {
-                                if (!assetTypeCheckbox->isChecked())
-                                {
-                                    allChecked = false;
-                                    break;
-                                }
-                            }
-                            // easiest to filter for all asset types is to remove filters altogether
-                            if (allChecked)
-                            {
-                                m_allCheckbox->click();
-                            }
-                            else
-                            {
-                                m_filter->AddFilter(m_actionFiltersMapping[checkbox]);
-                            }
+                            m_filter->AddFilter(m_actionFiltersMapping[checkbox]);
                         }
                         else
                         {
-                            // if all is checked then asset filters need to be repopulated
-                            if (m_allCheckbox->isChecked())
-                            {
-                                for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
-                                {
-                                    if (assetTypeCheckbox != checkbox)
-                                    {
-                                        m_filter->AddFilter(m_actionFiltersMapping[assetTypeCheckbox]);
-                                    }
-                                }
-                                m_filter->SetEmptyResult(false);
-                                m_allCheckbox->setChecked(false);
-                            }
-                            else
-                            {
-                                m_filter->RemoveFilter(m_actionFiltersMapping[checkbox]);
-                            }
+                            m_filter->RemoveFilter(m_actionFiltersMapping[checkbox]);
                         }
+                        UpdateFilterByWidget();
                     });
             }
         }
 
         void SearchAssetTypeSelectorWidget::AddAllAction(QMenu* menu)
         {
-            m_allCheckbox = new QCheckBox("All", menu);
+            m_filterByWidget = new FilterByWidget(menu);
             auto action = new QWidgetAction(menu);
-            action->setDefaultWidget(m_allCheckbox);
+            action->setDefaultWidget(m_filterByWidget);
             menu->addAction(action);
-            m_allCheckbox->setChecked(true);
-            connect(m_allCheckbox, &QCheckBox::clicked,
-                [=](bool checked)
-                {
-                    if (checked)
-                    {
-                        // check all other asset types
-                        for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
-                        {
-                            if (!assetTypeCheckbox->isChecked())
-                            {
-                                assetTypeCheckbox->setChecked(true);
-                            }
-                        }
-                        m_filter->RemoveAllFilters();
-                        m_filter->SetEmptyResult(true);
-                    }
-                    else
-                    {
-                        // uncheck all asset types
-                        for (auto assetTypeCheckbox : m_assetTypeCheckboxes)
-                        {
-                            if (assetTypeCheckbox->isChecked())
-                            {
-                                // click even is used to dispatch QCheckBox::clicked signal
-                                assetTypeCheckbox->click();
-                            }
-                        }
-                        m_filter->SetEmptyResult(false);
-                    }
-                });
+            connect(m_filterByWidget, &FilterByWidget::ClearSignal, this, &SearchAssetTypeSelectorWidget::ClearAll);
         }
-    }                                                              // namespace AssetBrowser
-}                                                                  // namespace AzToolsFramework
+    } // namespace AssetBrowser
+} // namespace AzToolsFramework
 #include <AssetBrowser/Search/SearchAssetTypeSelectorWidget.moc>

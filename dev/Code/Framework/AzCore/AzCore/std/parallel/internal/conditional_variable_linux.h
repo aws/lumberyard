@@ -62,7 +62,7 @@ namespace AZStd
     template <class Clock, class Duration>
     inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
+        const auto now = chrono::system_clock::now();
         if (now < abs_time)
         {
             return wait_for(lock, abs_time - now);
@@ -73,7 +73,7 @@ namespace AZStd
     template <class Clock, class Duration, class Predicate>
     inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
+        const auto now = chrono::system_clock::now();
         if (now < abs_time)
         {
             return wait_for(lock, abs_time - now, pred);

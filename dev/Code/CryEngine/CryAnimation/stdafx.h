@@ -15,8 +15,6 @@
 #define CRYINCLUDE_CRYANIMATION_STDAFX_H
 
 //#define NOT_USE_CRY_MEMORY_MANAGER
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Animation
 #define CRYANIMATION_EXPORTS
 
 //#define DEFINE_MODULE_NAME "CryAnimation"

@@ -1152,8 +1152,6 @@ namespace UnitTest
     public:
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         static const size_t numElementsScale = 1;
-#elif defined(AZ_PLATFORM_X360)
-        static const size_t numElementsScale = 2;
 #endif
 
 #ifdef _DEBUG

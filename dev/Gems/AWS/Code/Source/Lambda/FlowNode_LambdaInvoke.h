@@ -52,10 +52,6 @@ namespace LmbrAWS
             EOP_ResponseBody = EOP_StartIndex
         };
 
-        LmbrAWS::Lambda::FunctionClientInputPort m_functionClientPort {
-            EIP_FunctionClient
-        };
-
         void ApplyResult(const Aws::Lambda::Model::InvokeRequest& request,
             const Aws::Lambda::Model::InvokeOutcome& outcome,
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context);

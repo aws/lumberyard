@@ -15,9 +15,11 @@
 #define CRYINCLUDE_CRY3DENGINE_3DENGINE_H
 #pragma once
 
+#include <CryEngineAPI.h>
 #include <CryThreadSafeRendererContainer.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/IO/SystemFile.h>
 
 #ifdef DrawText
 #undef DrawText
@@ -183,8 +185,8 @@ struct CRNTmpData
         uint16 nCubeMapId;
         uint16 nCubeMapIdCacheClearCounter;
         uint8 nWantedLod;
-        CRenderObject *m_pRenderObject[MAX_STATOBJ_LODS_NUM];
-        CRenderObject *m_arrPermanentRenderObjects[MAX_STATOBJ_LODS_NUM];
+        CRenderObject* m_pRenderObject[MAX_STATOBJ_LODS_NUM];
+        CRenderObject* m_arrPermanentRenderObjects[MAX_STATOBJ_LODS_NUM];
     } userData;
 
     CRNTmpData() { memset(this, 0, sizeof(*this)); assert((void*)this == (void*)&this->userData); nPhysAreaChangedProxyId = ~0; }
@@ -643,13 +645,16 @@ public:
     virtual IStatObj* LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
     virtual _smart_ptr<IStatObj> LoadStatObjAutoRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
 
+    virtual const IObjManager* GetObjectManager() const;
+    virtual IObjManager* GetObjectManager();
+
     virtual IStatObj* FindStatObjectByFilename(const char* filename);
     virtual void RegisterEntity(IRenderNode* pEnt, int nSID = -1, int nSIDConsideredSafe = -1);
     virtual bool IsSunShadows(){ return m_bSunShadows; };
     virtual void SelectEntity(IRenderNode* pEnt);
     virtual void LoadEmptyLevel() override;
 
-    virtual void LoadStatObjAsync(LoadStaticObjectAsyncResult resultCallback, const char *szFileName, const char *szGeomName = nullptr, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
+    virtual void LoadStatObjAsync(LoadStaticObjectAsyncResult resultCallback, const char* szFileName, const char* szGeomName = nullptr, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
     virtual void ProcessAsyncStaticObjectLoadRequests() override;
 
 #ifndef _RELEASE
@@ -690,6 +695,7 @@ public:
     virtual void GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const;
     virtual void GetHDRSetupParams(Vec4 pParams[5]) const;
     virtual void CreateDecal(const CryEngineDecalInfo& Decal);
+    virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const override;
     virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
     virtual float GetTerrainElevation3D(Vec3 vPos);
     virtual float GetTerrainZ(int x, int y);
@@ -758,7 +764,6 @@ public:
     virtual Vec3 GetSunColor() const;
     virtual float GetSSAOAmount() const;
     virtual float GetSSAOContrast() const;
-    virtual float GetTerrainTextureMultiplier(int nSID) const;
 
     virtual void FreeRenderNodeState(IRenderNode* pEnt);
     virtual const char* GetLevelFilePath(const char* szFileName);
@@ -824,6 +829,11 @@ public:
     // Materials access.
     virtual IMaterialHelpers& GetMaterialHelpers();
     virtual IMaterialManager* GetMaterialManager();
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // ObjManager access.
+    virtual IObjManager* GetObjManager() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -951,6 +961,9 @@ public:
     C3DEngine(ISystem* pSystem);
     ~C3DEngine();
 
+    const float GetGSMRange() override { return m_fGsmRange; }
+    const float GetGSMRangeStep() override { return m_fGsmRangeStep; }
+
     void UpdatePreRender(const SRenderingPassInfo& passInfo);
     void UpdatePostRender(const SRenderingPassInfo& passInfo);
 
@@ -965,7 +978,7 @@ public:
     int GetStreamingFramesSinceLevelStart() { return m_nStreamingFramesSinceLevelStart; }
     int GetRenderFramesSinceLevelStart() { return m_nFramesSinceLevelStart; }
 
-    bool CreateDecalInstance(const CryEngineDecalInfo&DecalInfo, class CDecal * pCallerManagedDecal);
+    bool CreateDecalInstance(const CryEngineDecalInfo&DecalInfo, class CDecal* pCallerManagedDecal);
     //void CreateDecalOnCharacterComponents(ICharacterInstance * pChar, const struct CryEngineDecalInfo & decal);
     Vec3 GetTerrainSurfaceNormal(Vec3 vPos);
     void LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID);
@@ -975,7 +988,7 @@ public:
     void LoadDefaultAssets();
 
     // access to components
-    ILINE static CVars* GetCVars() { return m_pCVars; }
+    ENGINE_API static CVars* GetCVars() { return m_pCVars; }
     ILINE CVisAreaManager* GetVisAreaManager() { return m_pVisAreaManager; }
     ILINE CClipVolumeManager* GetClipVolumeManager() { return m_pClipVolumeManager; }
     ILINE PodArray<ILightSource*>* GetLightEntities() { return &m_lstStaticLights; }
@@ -1224,8 +1237,8 @@ public:
 
     virtual ITerrain* CreateTerrain(const STerrainInfo& TerrainInfo);
     void DeleteTerrain();
-    bool LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, int nSID);
-    bool LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable);
+    bool LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, int nSID);
+    bool LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable);
     bool LoadUsedShadersList();
     bool PrecreateDecals();
     void LoadPhysicsData();
@@ -1440,7 +1453,7 @@ private:
 
     int m_nBlackTexID;
     int m_nBlackCMTexID;
-    char m_sGetLevelFilePathTmpBuff[MAX_PATH_LENGTH];
+    char m_sGetLevelFilePathTmpBuff[AZ_MAX_PATH_LEN];
     char m_szLevelFolder[_MAX_PATH];
 
     bool m_bOcean; // todo: remove

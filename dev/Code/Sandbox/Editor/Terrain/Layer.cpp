@@ -419,8 +419,6 @@ bool CLayer::LoadTexture(const QString& lpBitmapName, UINT iWidth, UINT iHeight)
     // no alpha-channel wanted
     std::transform(m_texture.GetData(), m_texture.GetData() + 128 * 128, m_texture.GetData(), [](unsigned int i) { return 0x00ffffff & i; });
 
-    // Convert from BGR tp RGB
-    BGRToQColor();
     return true;
 }
 
@@ -482,18 +480,7 @@ bool CLayer::LoadTextureFromPath()
     // Store the size
     m_cTextureDimensions = QSize(m_texture.GetWidth(), m_texture.GetHeight());
 
-    CImageEx inverted;
-    inverted.Allocate(m_texture.GetWidth(), m_texture.GetHeight());
-    for (int y = 0; y < m_texture.GetHeight(); y++)
-    {
-        for (int x = 0; x < m_texture.GetWidth(); x++)
-        {
-            uint32 val = m_texture.ValueAt(x, y);
-            inverted.ValueAt(x, y) = 0xFF000000 | RGB(GetBValue(val), GetGValue(val), GetRValue(val));
-        }
-    }
-
-    QImage bmpLoad(reinterpret_cast<uchar*>(inverted.GetData()), m_texture.GetWidth(), m_texture.GetHeight(), QImage::Format_RGBA8888);
+    QImage bmpLoad(reinterpret_cast<uchar*>(m_texture.GetData()), m_texture.GetWidth(), m_texture.GetHeight(), QImage::Format_RGBA8888);
 
     // Copy it to the preview bitmap
     QPainter painter(&m_bmpLayerTexPrev);
@@ -528,8 +515,6 @@ bool CLayer::LoadTexture(DWORD* pBitmapData, UINT iWidth, UINT iHeight)
     // Load a texture from an array into the layer
     ////////////////////////////////////////////////////////////////////////
 
-    DWORD* pPixData = NULL, * pPixDataEnd = NULL;
-
     if (iWidth == 0 || iHeight == 0)
     {
         return false;
@@ -546,18 +531,6 @@ bool CLayer::LoadTexture(DWORD* pBitmapData, UINT iWidth, UINT iHeight)
     // Generate the texture preview
     ////////////////////////////////////////////////////////////////////////
 
-    // Set the loop pointers
-    pPixData = pBitmapData;
-    pPixDataEnd = &pBitmapData[GetTextureWidth() * GetTextureHeight()];
-
-    // Switch R and B
-    while (pPixData != pPixDataEnd)
-    {
-        // Extract the bits, shift them, put them back and advance to the next pixel
-        *pPixData = ((*pPixData & 0x00FF0000) >> 16) |
-            (*pPixData & 0x0000FF00) | ((*pPixData & 0x000000FF) << 16);
-        ++pPixData;
-    }
 
     // Create the matching bitmap
     QImage bmpLoad(reinterpret_cast<uchar*>(pBitmapData), iWidth, iHeight, QImage::Format_RGBA8888);
@@ -575,59 +548,24 @@ bool CLayer::LoadTexture(DWORD* pBitmapData, UINT iWidth, UINT iHeight)
 }
 
 
-void CLayer::BGRToQColor()
-{
-    ////////////////////////////////////////////////////////////////////////
-    // Convert the layer data from BGR to RGB
-    ////////////////////////////////////////////////////////////////////////
-    PrecacheTexture();
-
-    DWORD* pPixData = NULL, * pPixDataEnd = NULL;
-
-    // Set the loop pointers
-    pPixData = (DWORD*)m_texture.GetData();
-    pPixDataEnd = pPixData + (m_texture.GetWidth() * m_texture.GetHeight());
-
-    // Switch R and B
-    while (pPixData != pPixDataEnd)
-    {
-        // Extract the bits, shift them, put them back and advance to the next pixel
-        *pPixData = ((*pPixData & 0x00FF0000) >> 16) |
-            (*pPixData & 0x0000FF00) | ((*pPixData & 0x000000FF) << 16);
-        ++pPixData;
-    }
-}
-
-void CLayer::ExportTexture(QString strFileName)
+bool CLayer::ExportTexture(QString strFileName)
 {
     ////////////////////////////////////////////////////////////////////////
     // Save the texture data of this layer into a BMP file
     ////////////////////////////////////////////////////////////////////////
 
-    DWORD* pTempBGR = NULL;
-    DWORD* pPixData = NULL, * pPixDataEnd = NULL;
 
-    CLogFile::WriteLine("Exporting texture from layer data to BMP...");
+    CLogFile::WriteLine("Exporting texture from layer data...");
 
     PrecacheTexture();
 
     if (!m_texture.IsValid())
     {
-        return;
+        return false;
     }
 
-    // Make a copy of the layer data
-    CImageEx image;
-    image.Allocate(GetTextureWidth(), GetTextureHeight());
-    pTempBGR = (DWORD*)image.GetData();
-    memcpy(pTempBGR, m_texture.GetData(), m_texture.GetSize());
-
-    // Set the loop pointers
-    pPixData = pTempBGR;
-    pPixDataEnd = &pTempBGR[GetTextureWidth() * GetTextureHeight()];
-
     // Write the bitmap
-    CImageUtil::SaveImage(strFileName, image);
+    return CImageUtil::SaveImage(strFileName, m_texture);
 }
 
 void CLayer::ReleaseTempResources()

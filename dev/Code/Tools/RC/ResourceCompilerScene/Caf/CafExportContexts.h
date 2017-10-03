@@ -25,6 +25,10 @@ namespace AZ
         {
             class IAnimationGroup;
         }
+        namespace Events
+        {
+            class ExportProductList;
+        }
     }
 
     namespace RC
@@ -37,14 +41,15 @@ namespace AZ
 
             CafGroupExportContext(SceneAPI::Events::ExportEventContext& parent,
                 const SceneAPI::DataTypes::IAnimationGroup& group, Phase phase);
-            CafGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-                const SceneAPI::DataTypes::IAnimationGroup& group, Phase phase);
+            CafGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, 
+                const AZStd::string& outputDirectory, const SceneAPI::DataTypes::IAnimationGroup& group, Phase phase);
             CafGroupExportContext(const CafGroupExportContext& copyContent, Phase phase);
             CafGroupExportContext(const CafGroupExportContext& copyContent) = delete;
             ~CafGroupExportContext() override = default;
 
             CafGroupExportContext& operator=(const CafGroupExportContext& other) = delete;
 
+            SceneAPI::Events::ExportProductList& m_products;
             const SceneAPI::Containers::Scene& m_scene;
             const AZStd::string& m_outputDirectory;
             const SceneAPI::DataTypes::IAnimationGroup& m_group;

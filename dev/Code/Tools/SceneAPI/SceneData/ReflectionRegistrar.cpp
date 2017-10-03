@@ -27,21 +27,17 @@
 
 #include <SceneAPI/SceneData/ManifestBase/SceneNodeSelectionList.h>
 
+#include <SceneAPI/SceneData/GraphData/AnimationData.h>
+#include <SceneAPI/SceneData/GraphData/BlendShapeData.h>
 #include <SceneAPI/SceneData/GraphData/BoneData.h>
 #include <SceneAPI/SceneData/GraphData/MaterialData.h>
+#include <SceneAPI/SceneData/GraphData/MeshData.h>
+#include <SceneAPI/SceneData/GraphData/MeshVertexColorData.h>
+#include <SceneAPI/SceneData/GraphData/MeshVertexUVData.h>
 #include <SceneAPI/SceneData/GraphData/RootBoneData.h>
+#include <SceneAPI/SceneData/GraphData/SkinMeshData.h>
+#include <SceneAPI/SceneData/GraphData/SkinWeightData.h>
 #include <SceneAPI/SceneData/GraphData/TransformData.h>
-
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-#include <SceneAPI/SceneData/EMotionFX/Rules/MetaDataRule.h>
-#include <SceneAPI/SceneData/Groups/ActorGroup.h>
-#include <SceneAPI/SceneData/Groups/EFXMotionGroup.h>
-#include <SceneAPI/SceneData/Rules/EFXMeshRule.h>
-#include <SceneAPI/SceneData/Rules/EFXSkinRule.h>
-#include <SceneAPI/SceneData/Rules/EFXMotionCompressionSettingsRule.h>
-#include <SceneAPI/SceneData/Rules/EFXMotionScaleRule.h>
-#include <SceneAPI/SceneData/Rules/EFXActorScaleRule.h>
-#endif
 
 #include <AzCore/Serialization/SerializeContext.h>
 
@@ -64,10 +60,6 @@ namespace AZ
             SceneData::SkeletonGroup::Reflect(context);
             SceneData::SkinGroup::Reflect(context);
             SceneData::AnimationGroup::Reflect(context);
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-            SceneData::ActorGroup::Reflect(context);
-            SceneData::EFXMotionGroup::Reflect(context);
-#endif
 
             // Rules
             SceneData::BlendShapeRule::Reflect(context);
@@ -79,22 +71,21 @@ namespace AZ
             SceneData::PhysicsRule::Reflect(context);
             SceneData::SkeletonProxyRule::Reflect(context);
             SceneData::SkinMeshAdvancedRule::Reflect(context);
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-            SceneData::MetaDataRule::Reflect(context);
 
-            SceneData::EFXMeshRule::Reflect(context);
-            SceneData::EFXSkinRule::Reflect(context);
-            SceneData::EFXMotionCompressionSettingsRule::Reflect(context);
-            SceneData::EFXMotionScaleRule::Reflect(context);
-            SceneData::EFXActorScaleRule::Reflect(context);
-#endif
             // Utility
             SceneData::SceneNodeSelectionList::Reflect(context);
 
             // Graph objects
+            context->Class<AZ::SceneData::GraphData::AnimationData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::BlendShapeData>()->Version(1);
             AZ::SceneData::GraphData::BoneData::Reflect(context);
             AZ::SceneData::GraphData::MaterialData::Reflect(context);
+            context->Class<AZ::SceneData::GraphData::MeshData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::MeshVertexColorData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::MeshVertexUVData>()->Version(1);
             AZ::SceneData::GraphData::RootBoneData::Reflect(context);
+            context->Class<AZ::SceneData::GraphData::SkinMeshData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::SkinWeightData>()->Version(1);
             AZ::SceneData::GraphData::TransformData::Reflect(context);
         }
     } // namespace SceneAPI

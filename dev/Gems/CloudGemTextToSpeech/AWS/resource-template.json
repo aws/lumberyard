@@ -1,0 +1,505 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "The size of the Cache Cluster for the service API.",
+            "Type": "String"
+        },
+        "SpeechLibTableReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "SpeechLibTableWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "ttscache",
+                "Polly",
+                "ServiceApi",
+                "ServiceLambda",
+                "SpeechLibTable",
+                "characterdefs",
+                "PackageVoiceLinesConfiguration",
+                "PackageVoiceLines",
+                "packagedvoicelines"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "PackageVoiceLines": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "PackageVoiceLinesConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "PackageVoiceLinesConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "package_speeches.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "PackageVoiceLinesConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "PackageVoiceLinesConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 200
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "PackageVoiceLinesConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "PackageVoiceLines",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "SpeechLibTable": {
+                        "Ref": "SpeechLibTable"
+                    },
+                    "characterdefs": {
+                        "Ref": "characterdefs"
+                    },
+                    "packagedvoicelines": {
+                        "Ref": "packagedvoicelines"
+                    },
+                    "ttscache": {
+                        "Ref": "ttscache"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "Polly": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "polly:SynthesizeSpeech"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "polly:DescribeVoices"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": "polly:SynthesizeSpeech"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::Polly"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/POST/tts/voiceline",
+                            "/api/POST/tts/speechmarks"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 10
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "PackageVoiceLines": {
+                        "Ref": "PackageVoiceLines"
+                    },
+                    "SpeechLibTable": {
+                        "Ref": "SpeechLibTable"
+                    },
+                    "characterdefs": {
+                        "Ref": "characterdefs"
+                    },
+                    "packagedvoicelines": {
+                        "Ref": "packagedvoicelines"
+                    },
+                    "ttscache": {
+                        "Ref": "ttscache"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "SpeechLibTable": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "character",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "line",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "character",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "line",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "SpeechLibTableReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "SpeechLibTableWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "characterdefs": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "s3:ListBucket"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": "s3:ListBucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status" : "Enabled"
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "packagedvoicelines": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "s3:ListBucket"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": "s3:ListBucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "LifecycleConfiguration": {
+                    "Rules": [
+                        {
+                            "ExpirationInDays": 1,
+                            "Prefix": "idPackages/",
+                            "Status": "Enabled"
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "ttscache": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject",
+                                "s3:PutObjectTagging"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:ListBucket",
+                                "s3:GetLifecycleConfiguration",
+                                "s3:PutLifecycleConfiguration"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "PackageVoiceLines",
+                            "Action": "s3:ListBucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "CorsConfiguration": {
+                    "CorsRules": [
+                        {
+                            "AllowedMethods": [
+                                "GET"
+                            ],
+                            "AllowedOrigins": [
+                                "*"
+                            ],
+                            "Id": "AllowCGP",
+                            "MaxAge": 3000
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        }
+    }
+}

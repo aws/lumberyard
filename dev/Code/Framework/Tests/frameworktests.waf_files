@@ -4,12 +4,15 @@
             "../AzCore/Tests/Main.cpp"
         ],
         "Framework" : [
+            "BehaviorEntityTests.cpp",
             "CommandLineTests.cpp",
+            "BinToTextEncode.cpp",
             "ComponentAddRemove.cpp",
             "EntityContext.cpp",
             "EntityReference.cpp",
             "EntityTestbed.h",
             "FileIO.cpp",
+            "FrameworkApplicationFixture.h",
             "GenAppDescriptors.cpp",
             "GenericComponentWrapperTest.cpp",
             "InstanceDataHierarchy.cpp",

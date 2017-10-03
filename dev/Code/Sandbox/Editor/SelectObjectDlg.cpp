@@ -359,6 +359,9 @@ void CSelectObjectDlg::ApplyListSelectionToObjectManager()
                 }
                 else
                 {
+                    // Cancel any active tool (terrain modification, etc.) & return to select/move/etc.
+                    CCryEditApp::instance()->OnEditEscape();
+
                     CPrefabObject* pPrefabObject = obj->GetPrefab();
                     bool bIsClosedPrefab = (pPrefabObject && !pPrefabObject->IsOpen());
 
@@ -920,12 +923,13 @@ void CSelectObjectDlg::OnObjectEvent(CBaseObject* pObject, int ev)
 
 void CSelectObjectDlg::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.paneRect = QRect(0, 0, 750, 780);
     opts.shortcut = QKeySequence(Qt::CTRL + Qt::Key_T);
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    opts.isLegacy = true;
 
-    RegisterQtViewPane<CSelectObjectDlg>(GetIEditor(), LyViewPane::LegacyObjectSelector, LyViewPane::CategoryTools, opts);
+    AzToolsFramework::RegisterViewPane<CSelectObjectDlg>(LyViewPane::LegacyObjectSelector, LyViewPane::CategoryTools, opts);
 }
 
 #include <SelectObjectDlg.moc>

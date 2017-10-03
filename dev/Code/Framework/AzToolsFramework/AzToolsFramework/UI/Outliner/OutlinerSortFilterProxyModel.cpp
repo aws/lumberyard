@@ -25,21 +25,6 @@ namespace AzToolsFramework
     {
     }
 
-    void OutlinerSortFilterProxyModel::OnItemExpanded(const QModelIndex& index)
-    {
-        emit ItemExpanded(mapToSource(index));
-    }
-
-    void OutlinerSortFilterProxyModel::OnItemCollapsed(const QModelIndex& index)
-    {
-        emit ItemCollapsed(mapToSource(index));
-    }
-
-    void OutlinerSortFilterProxyModel::OnExpandItem(const QModelIndex& index)
-    {
-        emit ExpandItem(mapFromSource(index));
-    }
-
     void OutlinerSortFilterProxyModel::UpdateFilter()
     {
         invalidateFilter();
@@ -54,38 +39,13 @@ namespace AzToolsFramework
 
     bool OutlinerSortFilterProxyModel::lessThan(const QModelIndex& leftIndex, const QModelIndex& rightIndex) const
     {
-        // compare data in these columns until something is lessThan
-        const int sortColumns[] = {
-            OutlinerListModel::ColumnSliceMembership,
-            OutlinerListModel::ColumnName,
-            OutlinerListModel::ColumnEntityId
-        };
-
-        for (int column : sortColumns)
-        {
-            // get data from desired column
-            QVariant leftData = sourceModel()->data(leftIndex.sibling(leftIndex.row(), column));
-            QVariant rightData = sourceModel()->data(rightIndex.sibling(rightIndex.row(), column));
-
-            if (leftData < rightData)
-            {
-                return true;
-            }
-            else if (leftData > rightData)
-            {
-                return false;
-            }
-            // else they're equal so continue
-        }
-
-        // tie, left is not less than right.
-        return false;
+        return sourceModel()->data(leftIndex) < sourceModel()->data(rightIndex);
     }
 
     void OutlinerSortFilterProxyModel::sort(int /*column*/, Qt::SortOrder /*order*/)
     {
         // override any attempts to change sort
-        QSortFilterProxyModel::sort(0, Qt::SortOrder::AscendingOrder);
+        QSortFilterProxyModel::sort(OutlinerListModel::ColumnSortIndex, Qt::SortOrder::AscendingOrder);
     }
 }
 

@@ -99,9 +99,9 @@ public:
 
     struct SSpan
     {
-        SSpan(float smin, float smax)
-            : smin(smin)
-            , smax(smax) {}
+        SSpan(float _smin, float _smax)
+            : smin(_smin)
+            , smax(_smax) {}
         float smin, smax;
     };
     inline unsigned GetSpanCount() const { return m_spans.size(); }

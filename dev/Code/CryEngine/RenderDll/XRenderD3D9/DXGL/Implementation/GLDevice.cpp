@@ -19,6 +19,7 @@
 #include <StdAfx.h>
 #include "GLDevice.hpp"
 #include "GLResource.hpp"
+#include <Common/RenderCapabilities.h>
 
 #if defined(DXGL_ANDROID_GL)
 #include <EGL/egl.h>
@@ -26,6 +27,8 @@
 #if defined(APPLE)
 #include "AppleGPUInfoUtils.h"
 #endif
+
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 #if defined(DXGL_USE_SDL)
 #define HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(result) if (result < 0) {DXGL_ERROR("Failed to set GL attribute: %s", SDL_GetError()); return false; }
@@ -220,6 +223,11 @@ namespace NCryOpenGL
         iResult = SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, kPixelFormatSpec.m_pLayout->m_uAlphaBits);
         HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
 
+        iResult = SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, kPixelFormatSpec.m_pLayout->m_uDepthBits);
+        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
+        iResult = SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, kPixelFormatSpec.m_pLayout->m_uStencilBits);
+        HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
+
         iResult = SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, kPixelFormatSpec.m_pLayout->GetColorBits());
         HANDLE_SDL_ATTRIBUTE_ERROR_BOOL(iResult);
 
@@ -264,7 +272,7 @@ namespace NCryOpenGL
     //  Igor: this function is declared in SDL2/Android build.
     extern "C"
     {
-    void Android_JNI_setSurfaceFixedSize(int vertResolution, int horizResolution);
+        void Android_JNI_setSurfaceFixedSize(int vertResolution, int horizResolution);
     }
 #endif
     //  Confetti End: Igor Lobanchikov
@@ -285,7 +293,7 @@ namespace NCryOpenGL
 #endif
         }
 
-        kWindowContext = SDL_CreateWindow(szTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, uWidth, uHeight, uWindowFlags);
+        SDL_Window* sdlWindow = SDL_CreateWindow(szTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, uWidth, uHeight, uWindowFlags);
 
         //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
@@ -296,9 +304,9 @@ namespace NCryOpenGL
         //  Confetti End: Igor Lobanchikov
 
 #if !defined(_DEBUG)
-        SDL_SetWindowGrab(kWindowContext, SDL_TRUE);
+        SDL_SetWindowGrab(sdlWindow, SDL_TRUE);
 #endif
-        if (!kWindowContext)
+        if (!sdlWindow)
         {
             DXGL_ERROR("Failed to create SDL Window %s", SDL_GetError());
             return false;
@@ -313,17 +321,165 @@ namespace NCryOpenGL
             SDL_DisplayMode kDisplayMode;
             SDL_zero(kDisplayMode);
 
-            if (SDL_SetWindowDisplayMode(kWindowContext, &kDisplayMode) != 0)
+            if (SDL_SetWindowDisplayMode(sdlWindow, &kDisplayMode) != 0)
             {
                 DXGL_ERROR("Failed to set display mode: %s", SDL_GetError());
                 return false;
             }
 
-            SDL_ShowWindow(kWindowContext);
+            SDL_ShowWindow(sdlWindow);
         }
 
+        kWindowContext = AZStd::make_shared<SDLWindowContext>(sdlWindow);
         return true;
     }
+
+    SDLWindowContext::SDLWindowContext(SDL_Window* window)
+        : m_window(window)
+    {
+        AZ_Assert(m_window, "Null SDL_Window");
+    }
+
+    SDLWindowContext::~SDLWindowContext()
+    {
+        if (m_window)
+        {
+            SDL_DestroyWindow(m_window);
+        }
+    }
+
+    bool SDLWindowContext::MakeCurrent(const TRenderingContext context) const
+    {
+        if (!m_window)
+        {
+            return false;
+        }
+
+        return SDL_GL_MakeCurrent(m_window, context) == 0;
+    }
+
+    bool SDLWindowContext::SwapBuffers() const 
+    { 
+        if (!m_window)
+        {
+            return false;
+        }
+
+        // Check to see if the EGL surface has changed. This could mean that the windows was destroyed/recreated or it changed dimensions.
+        // Either way we need to bind the surface again before swapping it.
+        if (SDL_HasEvent(SDL_RENDER_TARGETS_RESET))
+        {
+            SDL_GLContext currentContext = SDL_GL_GetCurrentContext();
+            // SDL has an internal cache that compares the SDL_Window and the SDL_GLContext before calling EGL.
+            // Because both of them are the same (only the EGL surface changed), SDL will not process this call.
+            // So we set to NULL first and then back to the window and context to force the binding of the new surface.
+            SDL_GL_MakeCurrent(nullptr, nullptr);
+            SDL_GL_MakeCurrent(m_window, currentContext);
+            // Remove the event because we already process it.
+            SDL_FlushEvent(SDL_RENDER_TARGETS_RESET);
+        }
+
+        SDL_GL_SwapWindow(m_window); 
+        return true;
+    }
+
+    TRenderingContext SDLWindowContext::CreateGLContext(const TRenderingContext sharedContext) const
+    {
+        if (!m_window)
+        {
+            return nullptr;
+        }
+
+        SDL_GL_MakeCurrent(m_window, sharedContext);
+        return SDL_GL_CreateContext(m_window);
+    }
+
+#ifdef AZ_PLATFORM_ANDROID
+    EGLPBufferWindowContext::EGLPBufferWindowContext(EGLint width, EGLint height, const SPixelFormatSpec& pixelFormat)
+        : m_surface(EGL_NO_SURFACE)
+        , m_display(EGL_NO_DISPLAY)
+        , m_config(nullptr)
+    {
+        const EGLint surfaceAttributes[] = {
+            EGL_WIDTH, width,
+            EGL_HEIGHT, height,
+            EGL_NONE
+        };
+
+        m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        if (m_display == EGL_NO_DISPLAY || !eglInitialize(m_display, NULL, NULL))
+        {
+            AZ_Assert(false, "Failed to initialize display");
+            return;
+        }
+
+        // Use the same attributes as the SDL context so the surface is compatible.
+        EGLint aiAttributes[] =
+        {
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, // SDL context creation uses openGLES 2.0 because of a bug in the library, so we use the same.
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            EGL_RED_SIZE, pixelFormat.m_pLayout->m_uRedBits,
+            EGL_GREEN_SIZE, pixelFormat.m_pLayout->m_uGreenBits,
+            EGL_BLUE_SIZE, pixelFormat.m_pLayout->m_uBlueBits,
+            EGL_ALPHA_SIZE, pixelFormat.m_pLayout->m_uAlphaBits,
+            EGL_BUFFER_SIZE, pixelFormat.m_pLayout->GetColorBits(),
+            EGL_DEPTH_SIZE, pixelFormat.m_pLayout->m_uDepthBits,
+            EGL_STENCIL_SIZE, pixelFormat.m_pLayout->m_uStencilBits,
+            EGL_SAMPLE_BUFFERS, pixelFormat.m_uNumSamples > 1 ? 1 : 0,
+            EGL_SAMPLES, pixelFormat.m_uNumSamples > 1 ? pixelFormat.m_uNumSamples : 0,
+            EGL_NONE
+        };
+
+        EGLint iNumConfigs;
+        if (!eglChooseConfig(m_display, aiAttributes, &m_config, 1, &iNumConfigs) || iNumConfigs == 0 || !m_config)
+        {
+            eglTerminate(m_display);
+            m_display = EGL_NO_DISPLAY;
+            AZ_Assert(false, "Failed to choose EGL config");
+            return;
+        }
+
+        m_surface = eglCreatePbufferSurface(m_display, m_config, surfaceAttributes);
+        if (m_surface == EGL_NO_SURFACE)
+        {
+            eglTerminate(m_display);
+            m_display = EGL_NO_DISPLAY;
+            AZ_Assert(false, "Failed to create PBuffer surface");
+            return;
+        }
+    }
+
+    EGLPBufferWindowContext::~EGLPBufferWindowContext()
+    {
+        if (m_surface != EGL_NO_SURFACE)
+        {
+            eglDestroySurface(m_display, m_surface);
+        }
+
+        if (m_display != EGL_NO_DISPLAY)
+        {
+            eglTerminate(m_display);
+        }
+    }
+
+    bool EGLPBufferWindowContext::MakeCurrent(const TRenderingContext context) const
+    {
+        EGLSurface surface = context ? m_surface : EGL_NO_SURFACE;
+        return eglMakeCurrent(m_display, surface, surface, context) == EGL_TRUE;
+    }
+
+    bool EGLPBufferWindowContext::SwapBuffers() const
+    {
+        return eglSwapBuffers(m_display, m_surface) == EGL_TRUE;
+    }
+
+    TRenderingContext EGLPBufferWindowContext::CreateGLContext(const TRenderingContext sharedContext) const
+    {
+        static const EGLint aiContextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+        return eglCreateContext(m_display, m_config, sharedContext, aiContextAttributes);
+    }
+
+#endif // AZ_PLATFORM_ANDROID
 
 #elif defined(WIN32)
 
@@ -719,7 +875,7 @@ namespace NCryOpenGL
                 return false;
             }
 
-            m_kNativeDisplay = new TWindowContext(pWindow);
+            m_kNativeDisplay = new TWindowContext(new SDLWindowContext(pWindow));
 #elif defined(WIN32)
             WNDCLASSW kWndClass;
             kWndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -757,10 +913,6 @@ namespace NCryOpenGL
 #if defined(DXGL_USE_SDL)
             if (m_kNativeDisplay)
             {
-                if (*m_kNativeDisplay)
-                {
-                    SDL_DestroyWindow(*m_kNativeDisplay);
-                }
                 delete m_kNativeDisplay;
             }
 #elif defined(WIN32)
@@ -846,6 +998,7 @@ namespace NCryOpenGL
         TWindowContext* pWindowContext = new TWindowContext();
         if (!CreateSDLWindowContext(*pWindowContext, szTitle, uWidth, uHeight, bFullScreen))
         {
+            delete pWindowContext;
             return false;
         }
         *pHandle = reinterpret_cast<HWND>(pWindowContext);
@@ -856,13 +1009,13 @@ namespace NCryOpenGL
     void CDevice::DestroySDLWindow(HWND kHandle)
     {
         TWindowContext* pWindowContext = reinterpret_cast<TWindowContext*>(kHandle);
-        if (*pWindowContext)
+        if (pWindowContext)
         {
-            SDL_DestroyWindow(*pWindowContext);
+            *pWindowContext = nullptr;
+#ifndef DXGL_SINGLEWINDOW
+            delete pWindowContext;
+#endif // !DXGL_SINGLEWINDOW
         }
-#if !defined(DXGL_SINGLEWINDOW)
-        delete pWindowContext;
-#endif // !defined(DXGL_SINGLEWINDOW)
     }
 
 #endif //defined(DXGL_USE_SDL)
@@ -900,9 +1053,18 @@ namespace NCryOpenGL
         for (uContext = 0; uContext < kRenderingContexts.size(); ++uContext)
         {
             const TRenderingContext& kRenderingContext(kRenderingContexts.at(uContext));
+            TWindowContext windowContext = m_kDefaultWindowContext;
+            CContext::ContextType type = uContext == 0 ? CContext::RenderingType : CContext::ResourceType;
+#ifdef AZ_PLATFORM_ANDROID
+            // We use the window's surface for the context that will do the actual rendering and 1x1 PBuffer surfaces for the loading threads.
+            if (uContext > 0)
+            {
+                windowContext = AZStd::make_shared<EGLPBufferWindowContext>(1, 1, m_kPixelFormatSpec);
+            }
+#endif // ANDROID
 
-            CContext* pContext(new CContext(this, kRenderingContext, m_kDefaultWindowContext, uContext));
-            MakeCurrent(m_kDefaultWindowContext, kRenderingContext);
+            CContext* pContext(new CContext(this, kRenderingContext, windowContext, uContext, type));
+            MakeCurrent(windowContext, kRenderingContext);
 
             if (uContext == 0)
             {
@@ -915,7 +1077,7 @@ namespace NCryOpenGL
                 return false;
             }
 
-            m_kFreeContexts.Push(*pContext);
+            m_kFreeContexts[pContext->GetType()].Push(*pContext);
             m_kContexts.push_back(pContext);
         }
 
@@ -955,7 +1117,6 @@ namespace NCryOpenGL
         }
 
 #if defined(DXGL_USE_SDL)
-        SDL_DestroyWindow(m_kDefaultWindowContext);
         SDL_Quit();
 #endif //defined(DXGL_USE_SDL)
     }
@@ -965,8 +1126,7 @@ namespace NCryOpenGL
 #if DXGL_USE_ES_EMULATOR
         return eglSwapBuffers(kTargetWindowContext->m_kDisplay, kTargetWindowContext->m_kSurface) == EGL_TRUE;
 #elif defined(DXGL_USE_SDL)
-        SDL_GL_SwapWindow(kTargetWindowContext);
-        return true;
+        return kTargetWindowContext->SwapBuffers();
 #elif defined(WIN32)
         return SwapBuffers(kTargetWindowContext) == TRUE;
 #else
@@ -1023,9 +1183,9 @@ namespace NCryOpenGL
         }
     }
 
-    CContext* CDevice::AllocateContext()
+    CContext* CDevice::AllocateContext(CContext::ContextType type /*= CContext::ResourceType*/)
     {
-        CContext* pContext(static_cast<CContext*>(m_kFreeContexts.Pop()));
+        CContext* pContext(static_cast<CContext*>(m_kFreeContexts[type].Pop()));
         if (pContext == NULL)
         {
             DXGL_ERROR("CDevice::AllocateContext failed - no free context available. Please increase the number of contexts at initialization time (currently %d).", (int)m_kContexts.size());
@@ -1035,7 +1195,7 @@ namespace NCryOpenGL
 
     void CDevice::FreeContext(CContext* pContext)
     {
-        m_kFreeContexts.Push(*pContext);
+        m_kFreeContexts[pContext->GetType()].Push(*pContext);
     }
 
     void CDevice::BindContext(CContext* pContext)
@@ -1134,17 +1294,7 @@ namespace NCryOpenGL
             }
             TRenderingContext kRenderingContext(eglCreateContext(kWindowContext->m_kDisplay, kWindowContext->m_kConfig, kSharedRenderingContext, aiContextAttributes));
 #elif defined(DXGL_USE_SDL)
-            if (uContext > 0)
-            {
-                // This is required because SDL_GL_CreateContext implicitly shares the new context
-                // with the current context.
-                if (SDL_GL_MakeCurrent(kWindowContext, kRenderingContexts.at(0)) != 0)
-                {
-                    DXGL_ERROR("Failed to set current context: %s", SDL_GetError());
-                    return false;
-                }
-            }
-            TRenderingContext kRenderingContext(SDL_GL_CreateContext(kWindowContext));
+            TRenderingContext kRenderingContext(kWindowContext->CreateGLContext(uContext == 0 ? nullptr : kRenderingContexts.at(0)));
     #if !(defined(IOS) || defined(APPLETV))
             // Cannot override vsync in iOS
             if (SDL_GL_SetSwapInterval(0) != 0)
@@ -1224,7 +1374,8 @@ namespace NCryOpenGL
             DXGL_NOT_IMPLEMENTED;
             return false;
         }
-        SDL_SetWindowFullscreen(m_kDefaultWindowContext, bFullScreen ? SDL_WINDOW_FULLSCREEN : 0);
+        SDL_Window* window = AZStd::static_pointer_cast<SDLWindowContext>(m_kDefaultWindowContext)->GetWindow();
+        SDL_SetWindowFullscreen(window, bFullScreen ? SDL_WINDOW_FULLSCREEN : 0);
         return true;
 #elif defined(WIN32)
         if (bFullScreen)
@@ -1292,6 +1443,7 @@ namespace NCryOpenGL
         }
 
 #if defined(DXGL_USE_SDL)
+        SDL_Window* window = AZStd::static_pointer_cast<SDLWindowContext>(m_kDefaultWindowContext)->GetWindow();
         if (m_spFullScreenOutput != NULL)
         {
             SDL_DisplayMode kSDLTargetMode;
@@ -1302,13 +1454,13 @@ namespace NCryOpenGL
 
             // SDL2 does not update the display mode of a window that is already fullscreen
             // we have to make it windowed, change and then fullscreen again
-            SDL_SetWindowFullscreen(m_kDefaultWindowContext, 0);
-            SDL_SetWindowDisplayMode(m_kDefaultWindowContext, &kSDLTargetMode);
-            SDL_SetWindowFullscreen(m_kDefaultWindowContext, SDL_WINDOW_FULLSCREEN);
+            SDL_SetWindowFullscreen(window, 0);
+            SDL_SetWindowDisplayMode(window, &kSDLTargetMode);
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
         }
         else
         {
-            SDL_SetWindowSize(m_kDefaultWindowContext, kTargetMode.m_uWidth, kTargetMode.m_uHeight);
+            SDL_SetWindowSize(window, kTargetMode.m_uWidth, kTargetMode.m_uHeight);
         }
         return true;
 #elif defined(WIN32)
@@ -1345,7 +1497,15 @@ namespace NCryOpenGL
         EGLSurface kSurface(kRenderingContext == EGL_NO_CONTEXT ? EGL_NO_SURFACE : kWindowContext->m_kSurface);
         return eglMakeCurrent(kWindowContext->m_kDisplay, kSurface, kSurface, kRenderingContext) == EGL_TRUE;
 #elif defined(DXGL_USE_SDL)
-        return SDL_GL_MakeCurrent(kRenderingContext == NULL ? NULL : kWindowContext, kRenderingContext) == 0;
+        // SDL has an internal cache that saves the current window and context per thread. Because of this we need
+        // to "clear" that cache before setting a new window/context (that may not be of the SDL type) or SDL will think that 
+        // the current one is still bound in that thread. This is not ideal, but this call only happens a couple of times at initialization.
+        bool result = SDL_GL_MakeCurrent(nullptr, nullptr) == 0;
+        if (kWindowContext)
+        {
+            result &= kWindowContext->MakeCurrent(kRenderingContext);
+        }
+        return result;
 #elif defined(WIN32)
         return wglMakeCurrent(kRenderingContext == NULL ? NULL : kWindowContext, kRenderingContext) == TRUE;
 #else
@@ -1593,14 +1753,15 @@ namespace NCryOpenGL
                 return false;
             }
 #elif defined(DXGL_USE_SDL)
-            m_kRenderingContext = SDL_GL_CreateContext(*m_kDummyWindow.m_kNativeDisplay);
+            TWindowContext windowContext = (*m_kDummyWindow.m_kNativeDisplay);
+            m_kRenderingContext = windowContext->CreateGLContext(nullptr);
             if (m_kRenderingContext == NULL)
             {
                 DXGL_ERROR("Dummy DXGL context creation failed %s", SDL_GetError());
                 return false;
             }
 
-            if (SDL_GL_MakeCurrent(*m_kDummyWindow.m_kNativeDisplay, m_kRenderingContext) != 0)
+            if (!windowContext->MakeCurrent(m_kRenderingContext))
             {
                 DXGL_ERROR("Failed to set DXGL dummy context as current");
                 return false;
@@ -1793,11 +1954,13 @@ namespace NCryOpenGL
         return true;
     }
 
-    void ReleaseWindowContext(const TWindowContext& kWindowContext)
+    void ReleaseWindowContext(TWindowContext& kWindowContext)
     {
 #if DXGL_USE_ES_EMULATOR
         eglDestroySurface(kWindowContext->m_kDisplay, kWindowContext->m_kSurface);
         eglTerminate(kWindowContext->m_kDisplay);
+#elif defined(DXGL_USE_SDL)
+        kWindowContext = nullptr;
 #endif //DXGL_USE_ES_EMULATOR
     }
 
@@ -2051,7 +2214,7 @@ namespace NCryOpenGL
         glGetIntegerv(aeMaxUnits[eST_NUM], &pCapabilities->m_aiMaxTotal);
     }
 
-    void DetectContextFeatures(TFeatures& kFeatures, const SCapabilities& kCapabilities, const SVersion& version)
+    void DetectContextFeatures(TFeatures& kFeatures, const SCapabilities& kCapabilities, const SVersion& version, const unsigned int driverVendor)
     {
         uint32 glVersion = version.ToUint();
 #if DXGLES || defined(DXGL_ES_SUBSET)
@@ -2069,6 +2232,10 @@ namespace NCryOpenGL
         kFeatures.Set(eF_TextureViews, gles30orHigher && DXGL_GL_EXTENSION_SUPPORTED(EXT_texture_view) && !DXGL_SUPPORT_NSIGHT_SINCE(4_1) && !DXGL_SUPPORT_VOGL);
         kFeatures.Set(eF_SeparablePrograms, gles31orHigher || DXGL_GL_EXTENSION_SUPPORTED(EXT_separate_shader_objects));
         kFeatures.Set(eF_ComputeShader, gles31orHigher);
+        kFeatures.Set(eF_DualSourceBlending, false);
+        // OpenGLES doesn't support depth clamping but we emulate it by writing the depth in the pixel shader.
+        // Unfortunately Qualcomm OpenGL ES 3.0 drivers have a bug and they don't support modifying the depth in the pixel shader.
+        kFeatures.Set(eF_DepthClipping, !(glVersion == DXGLES_VERSION_30 && driverVendor == RenderCapabilities::s_gpuVendorIdQualcomm));
 
         bool textureBorderClamp = false;
 #if defined(DXGL_ES_SUBSET)
@@ -2101,6 +2268,17 @@ namespace NCryOpenGL
         kFeatures.Set(eF_DebugOutput, gl43orHigher || DXGL_GL_EXTENSION_SUPPORTED(KHR_debug));
         kFeatures.Set(eF_ComputeShader, gl43orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_compute_shader));
         kFeatures.Set(eF_BufferStorage, gl44orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_buffer_storage));
+#if DXGL_GLSL_FROM_HLSLCROSSCOMPILER
+        // Technically dual source blending is supported since OpenGL 3.3 but you need to declare the fragment shader output with the 
+        // position and the index (for OpenGL < 4.4): 
+        // layout(location = 0, index = 1) out vec4 diffuseColor1; <== SR1 for dual source blending      
+        // Unfortunately the DX shader bytecode doesn't distinguish between a normal COLOR1 output or a COLOR1 for dual blending so the HLSL cross compiler
+        // doesn't know that it needs to generate a different declaration.
+        kFeatures.Set(eF_DualSourceBlending, gl44orHigher);
+#else
+        kFeatures.Set(eF_DualSourceBlending, gl41orHigher);
+#endif // DXGL_GLSL_FROM_HLSLCROSSCOMPILER
+
 #endif //#if DXGLES || defined(DXGL_ES_SUBSET)
 
 #if DXGL_GLSL_FROM_HLSLCROSSCOMPILER
@@ -2121,7 +2299,7 @@ namespace NCryOpenGL
         kFeatures.Set(eF_MultiBind, false);
     }
 
-    bool DetectFeaturesAndCapabilities(TFeatures& kFeatures, SCapabilities& kCapabilities, const SVersion& version)
+    bool DetectFeaturesAndCapabilities(TFeatures& kFeatures, SCapabilities& kCapabilities, const SVersion& version, const unsigned int driverVendor)
     {
         glGetIntegerv(GL_MAX_SAMPLES, &kCapabilities.m_iMaxSamples);
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &kCapabilities.m_iMaxVertexAttribs);
@@ -2136,7 +2314,7 @@ namespace NCryOpenGL
 #if DXGL_SUPPORT_SHADER_STORAGE_BLOCKS
         DetectResourceUnitCapabilities(&kCapabilities.m_akResourceUnits[eRUT_StorageBuffer], g_aeMaxStorageBufferUnits);
 #endif
-        DetectContextFeatures(kFeatures, kCapabilities, version);
+        DetectContextFeatures(kFeatures, kCapabilities, version, driverVendor);
 #if DXGL_SUPPORT_SHADER_IMAGES
         if (kFeatures.Get(eF_ShaderImages))
         {
@@ -2203,33 +2381,36 @@ namespace NCryOpenGL
 #endif
     }
 
-    EDriverVendor DetectDriverVendor(const char* szVendorName)
+    unsigned int DetectDriverVendor(const char* szVendorName)
     {
         struct
         {
-            EDriverVendor eDriverVendor;
-            const char* szName;
+            uint16 m_uPCIID;
+            const char* m_szName;
         } akKnownVendors[] =
         {
-            {eDV_NVIDIA,   "NVIDIA Corporation"},
-            {eDV_NOUVEAU,  "Nouveau"},
-            {eDV_NOUVEAU,  "nouveau"},
-            {eDV_ATI,      "ATI Technologies Inc."},
-            {eDV_AMD,      "Advanced Micro Devices, Inc."},
-            {eDV_INTEL,    "Intel"},
-            {eDV_INTEL,    "Intel Inc."},
-            {eDV_INTEL,    "Intel Corporation"},
-            {eDV_INTEL_OS, "Intel Open Source Technology Center"},
+            { RenderCapabilities::s_gpuVendorIdNVIDIA, "NVIDIA Corporation" },
+            { RenderCapabilities::s_gpuVendorIdNVIDIA, "Nouveau" },
+            { RenderCapabilities::s_gpuVendorIdAMD, "ATI Technologies Inc." },
+            { RenderCapabilities::s_gpuVendorIdAMD, "Advanced Micro Devices, Inc." },
+            { RenderCapabilities::s_gpuVendorIdIntel, "Intel" },
+            { RenderCapabilities::s_gpuVendorIdIntel, "Intel Inc." },
+            { RenderCapabilities::s_gpuVendorIdIntel, "Intel Corporation" },
+            { RenderCapabilities::s_gpuVendorIdIntel, "Intel Open Source Technology Center" },
+            { RenderCapabilities::s_gpuVendorIdQualcomm, "Qualcomm" },
+            { RenderCapabilities::s_gpuVendorIdARM, "ARM" },
+            // Rally US2888 - VendorID detection for Imagination, Samsung, etc.
         };
 
         for (uint32 uVendor = 0; uVendor < DXGL_ARRAY_SIZE(akKnownVendors); ++uVendor)
         {
-            if (strcmp(szVendorName, akKnownVendors[uVendor].szName) == 0)
+            if (azstricmp(szVendorName, akKnownVendors[uVendor].m_szName) == 0)
             {
-                return akKnownVendors[uVendor].eDriverVendor;
+                return akKnownVendors[uVendor].m_uPCIID;
             }
         }
-        return eDV_UNKNOWN;
+
+        return 0;
     }
 
 #if DXGL_EXTENSION_LOADER
@@ -2400,7 +2581,7 @@ namespace NCryOpenGL
                 result = ParseExtensions(spAdapter);
                 AZ_Warning("Renderer", result, "Failed to parse OpenGL Extensions for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
 
-                if (!DetectFeaturesAndCapabilities(spAdapter->m_kFeatures, spAdapter->m_kCapabilities, spAdapter->m_sVersion))
+                if (!DetectFeaturesAndCapabilities(spAdapter->m_kFeatures, spAdapter->m_kCapabilities, spAdapter->m_sVersion, spAdapter->m_eDriverVendor))
                 {
                     return false;
                 }
@@ -2702,12 +2883,16 @@ namespace NCryOpenGL
             eLogSeverity = eLS_Info;
             break;
         }
-
+        
+        //Anyone needing more information on OpenGL rendering in non-debug builds should enable this section of code for additional information
+        //It's DEBUG only to help obtain a cleaner log on some Android devices which would otherwise be inundated with messages from this section of code
+#if defined(DEBUG) 
         if (eLogSeverity != eLS_Info)
         {
             errorMessage.Format("OpenGLError:\nSource: %s\nType: %s\nId: %i\nSeverity: %s\nMessage: %s\n", sourceStr.c_str(), typeStr.c_str(), id, severityStr.c_str(), message);
             NCryOpenGL::LogMessage(eLogSeverity,  errorMessage.c_str());
         }
+#endif
     }
 
 #endif //DXGL_DEBUG_OUTPUT_VERBOSITY

@@ -73,8 +73,6 @@ PLATFORM_SHORTCUT_ALIASES = {
         'appletv',
         'win_x64_vs2015',
         'win_x64_vs2013',
-        'durango',
-        'orbis',
         'android_armv7_gcc',
         'android_armv7_clang'
     ]
@@ -86,8 +84,6 @@ PLATFORM_SHORTCUT_ALIASES = {
 MSVS_PLATFORM_VERSION = {
     'win_x64_vs2015'     : ['14'],
     'win_x64_vs2013'     : ['2013'],
-    'durango'            : ['14'],
-    'orbis'              : ['14'],
     'android_armv7_clang': ['2013', '14']
 }
 
@@ -96,8 +92,6 @@ WAF_PLATFORM_TO_VS_PLATFORM_PREFIX_AND_TOOL_SET_DICT = {
     'win_x86'               :   ('Win32', 'win', ['v120']),
     'win_x64_vs2015'        :   ('x64 vs2015', 'win', ['v140']),
     'win_x64_vs2013'        :   ('x64 vs2013', 'win', ['v120']),
-    'durango'               :   ('Durango', 'durango', ['v140']),
-    'orbis'                 :   ('ORBIS', 'orbis', ['v140']),
     'android_armv7_clang'   :   ('ARM', 'android', ['v120', 'v140']),
 }
 
@@ -612,7 +606,7 @@ def is_target_enabled(ctx, target):
     Check if the target is enabled for the build based on whether a spec file was specified
     """
     if is_project_spec_specified(ctx):
-        return (target in ctx.spec_modules()) or (target in ctx.get_all_module_uses())
+        return (target in ctx.spec_modules(ctx.options.project_spec)) or (target in ctx.get_all_module_uses(ctx.options.project_spec))
     else:
         # No spec means all projects are enabled
         return True

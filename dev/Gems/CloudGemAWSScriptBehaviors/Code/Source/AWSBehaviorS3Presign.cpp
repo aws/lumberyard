@@ -14,15 +14,15 @@
 
 #include "AWSBehaviorS3Presign.h"
 
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudGemFramework/AwsApiClientJobConfig.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(push)
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
 #include <aws/s3/S3Client.h>
 #pragma warning(pop)
-
-#include <LmbrAWS/IAWSClientManager.h>
 
 #include <aws/core/http/HttpTypes.h>
 
@@ -110,10 +110,10 @@ namespace CloudGemAWSScriptBehaviors
         }
 
         AZStd::string bucketName;
-        EBUS_EVENT_RESULT(bucketName, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
+        EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
 
-        LmbrAWS::S3::BucketClient s3Client;
-        EBUS_EVENT_RESULT(s3Client, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetBucketClient, bucketName);
+        CloudGemFramework::AwsApiClientJobConfig<Aws::S3::S3Client> clientConfig;
+        auto s3Client = clientConfig.GetClient();
 
         Aws::String url = s3Client->GeneratePresignedUrl(bucketName.c_str(), m_keyName.c_str(), httpMethod);
         if (!url.empty())

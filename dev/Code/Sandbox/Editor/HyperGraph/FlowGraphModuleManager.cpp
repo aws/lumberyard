@@ -17,6 +17,8 @@
 #include "../HyperGraph/FlowGraphManager.h"
 #include "HyperGraphDialog.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include <IFlowGraphDebugger.h>
 
 #include <QPushButton>
@@ -176,7 +178,7 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
 
     if (IFlowGraphModule* pModule = pModuleManager->GetModule(moduleName.toLatin1().data()))
     {
-        QMessageBox::warning(nullptr,
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
             QObject::tr("Can not create Flowgraph Module"),
             QObject::tr("Flowgraph Module: %1 already exists. %2 Module")
                 .arg(moduleName)

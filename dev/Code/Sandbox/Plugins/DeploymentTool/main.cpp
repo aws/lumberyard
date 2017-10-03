@@ -13,15 +13,16 @@
 
 #include "stdafx.h"
 
-// you must include platform_impl in exactlyt one of your source files to provide implementations
+// you must include platform_impl in exactly one of your source files to provide implementations
 // of platform functionality such as CryAssert.
 
 #include <platform_impl.h>
 
-#include "../Editor/QtViewPaneManager.h"
 #include "DeploymentToolWindow.h"
 
-
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ViewPaneOptions.h>
+#include "../Editor/LyViewPaneNames.h"
 
 class MyPlugin
     : public IPlugin
@@ -29,14 +30,16 @@ class MyPlugin
 public:
     MyPlugin(IEditor* editor)
     {
-        RegisterQtViewPane<DeploymentToolWindow>(editor, "Deployment Tool", LyViewPane::CategoryOther);
+        AzToolsFramework::ViewPaneOptions options;
+        options.showInMenu = false;
+        AzToolsFramework::RegisterViewPane<DeploymentToolWindow>(LyViewPane::DeploymentTool, LyViewPane::CategoryOther, options);
     }
 
     void Release() override
     {
         // called directly from the editor to release your plugin.
         // after this returns, the plugin will be unloaded.
-        UnregisterQtViewPane<DeploymentToolWindow>();
+        AzToolsFramework::UnregisterViewPane(LyViewPane::DeploymentTool);
         delete this;
     }
 

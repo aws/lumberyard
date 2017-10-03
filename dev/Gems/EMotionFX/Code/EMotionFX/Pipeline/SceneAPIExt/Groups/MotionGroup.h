@@ -9,62 +9,66 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/std/containers/vector.h>
 #include <SceneAPI/SceneCore/Containers/RuleContainer.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IEFXMotionGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneData/SceneDataConfiguration.h>
 
+#include <SceneAPIExt/Groups/IMotionGroup.h>
 
 namespace AZ
 {
     class ReflectContext;
+}
 
-    namespace SceneAPI
+namespace EMotionFX
+{
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Group
         {
-            class EFXMotionGroup
-                : public DataTypes::IEFXMotionGroup
+            class MotionGroup
+                : public IMotionGroup
             {
             public:
-                AZ_RTTI(EFXMotionGroup, "{1B0ABB1E-F6DF-4534-9A35-2DD8244BF58C}", DataTypes::IEFXMotionGroup);
+                AZ_RTTI(MotionGroup, "{1B0ABB1E-F6DF-4534-9A35-2DD8244BF58C}", IMotionGroup);
                 AZ_CLASS_ALLOCATOR_DECL
                 
-                EFXMotionGroup();
-                ~EFXMotionGroup() override = default;
+                MotionGroup();
+                ~MotionGroup() override = default;
                 void SetName(const AZStd::string& name);
                 void SetName(AZStd::string&& name);
+                const AZ::Uuid& GetId() const override;
+                void OverrideId(const AZ::Uuid& id);
 
-                Containers::RuleContainer& GetRuleContainer();
-                const Containers::RuleContainer& GetRuleContainerConst() const;
+                AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer();
+                const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const;
 
-                // IEFXMotionGroup overrides
+                // IMotionGroup overrides
                 const AZStd::string& GetSelectedRootBone() const override;
-                uint32_t GetStartFrame() const override;
-                uint32_t GetEndFrame() const override;
+                AZ::u32 GetStartFrame() const override;
+                AZ::u32 GetEndFrame() const override;
                 void SetSelectedRootBone(const AZStd::string& selectedRootBone)  override;
-                void SetStartFrame(uint32_t frame) override;
-                void SetEndFrame(uint32_t frame) override;
+                void SetStartFrame(AZ::u32 frame) override;
+                void SetEndFrame(AZ::u32 frame) override;
 
                 // IGroup overrides
                 const AZStd::string& GetName() const override;
 
-                static void Reflect(ReflectContext* context);
+                static void Reflect(AZ::ReflectContext* context);
+                static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
             protected:
-                Containers::RuleContainer   m_rules;
-                AZStd::string               m_name;
-                AZStd::string               m_selectedRootBone;
-                uint32_t                    m_startFrame;
-                uint32_t                    m_endFrame;
+                AZ::SceneAPI::Containers::RuleContainer   m_rules;
+                AZStd::string                             m_name;
+                AZStd::string                             m_selectedRootBone;
+                AZ::Uuid                                  m_id;
+                AZ::u32                                   m_startFrame;
+                AZ::u32                                   m_endFrame;
             };
         }
     }
 }
-#endif //MOTIONCANVAS_GEM_ENABLED

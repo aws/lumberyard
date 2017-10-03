@@ -194,7 +194,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("ConstraintService"));
+        provided.push_back(AZ_CRC("ConstraintService", 0xa9a63349));
     }
 
     //=========================================================================
@@ -202,7 +202,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("TransformService"));
+        required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
     }
 
     //=========================================================================
@@ -210,7 +210,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-        dependent.push_back(AZ_CRC("PhysicsService"));
+        dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
     }
 
     //=========================================================================
@@ -356,9 +356,9 @@ namespace LmbrCentral
             return;
         }
 
-        IPhysicalEntity* physEntity = nullptr;
-        EBUS_EVENT_ID_RESULT(physEntity, m_config.m_owningEntity, CryPhysicsComponentRequestBus, GetPhysicalEntity);
-        if (!physEntity)
+        m_physEntity = nullptr;
+        EBUS_EVENT_ID_RESULT(m_physEntity, m_config.m_owningEntity, CryPhysicsComponentRequestBus, GetPhysicalEntity);
+        if (!m_physEntity)
         {
             AZ_Error("ConstraintComponent", false, "Failed to get physical entity for entity %llu", m_config.m_owningEntity);
             return;
@@ -367,43 +367,43 @@ namespace LmbrCentral
         // The owner needs to be awake
         pe_action_awake actionAwake;
         actionAwake.minAwakeTime = 0.1f;
-        physEntity->Action(&actionAwake);
+        m_physEntity->Action(&actionAwake);
 
-        IPhysicalEntity* physBuddy = nullptr;
+        m_physBuddy = nullptr;
         if (m_config.m_targetEntity.IsValid())
         {
-            EBUS_EVENT_ID_RESULT(physBuddy, m_config.m_targetEntity, CryPhysicsComponentRequestBus, GetPhysicalEntity);
-            if (!physBuddy)
+            EBUS_EVENT_ID_RESULT(m_physBuddy, m_config.m_targetEntity, CryPhysicsComponentRequestBus, GetPhysicalEntity);
+            if (!m_physBuddy)
             {
                 AZ_Error("ConstraintComponent", false, "Failed to get physical entity for target entity %llu on owning entity %llu", m_config.m_targetEntity, m_config.m_owningEntity);
                 return;
             }
 
             // Ensure the buddy is awake as well
-            pe_action_awake actionAwake;
-            actionAwake.minAwakeTime = 0.1f;
-            physBuddy->Action(&actionAwake);
+            pe_action_awake wakeBuddy;
+            wakeBuddy.minAwakeTime = 0.1f;
+            m_physBuddy->Action(&wakeBuddy);
         }
         else
         {
-            physBuddy = WORLD_ENTITY;
+            m_physBuddy = WORLD_ENTITY;
         }
 
-        pe_action_add_constraint aac;
-        aac.pBuddy = physBuddy;
+        m_action_add_constraint = pe_action_add_constraint();
+        m_action_add_constraint.pBuddy = m_physBuddy;
 
-        SetupPivotsAndFrame(aac);
+        SetupPivotsAndFrame(m_action_add_constraint);
 
         switch (m_config.m_constraintType)
         {
             case ConstraintConfiguration::ConstraintType::Hinge :
             {
-                aac.yzlimits[0] = 0.0f;
-                aac.yzlimits[1] = 0.0f;
+                m_action_add_constraint.yzlimits[0] = 0.0f;
+                m_action_add_constraint.yzlimits[1] = 0.0f;
                 if (m_config.m_enableRotationLimits)
                 {
-                    aac.xlimits[0] = AZ::DegToRad(m_config.m_xmin);
-                    aac.xlimits[1] = AZ::DegToRad(m_config.m_xmax);
+                    m_action_add_constraint.xlimits[0] = AZ::DegToRad(m_config.m_xmin);
+                    m_action_add_constraint.xlimits[1] = AZ::DegToRad(m_config.m_xmax);
                 }
                 break;
             }
@@ -411,28 +411,28 @@ namespace LmbrCentral
             {
                 if (m_config.m_enableRotationLimits)
                 {
-                    aac.xlimits[0] = 0.0f;
-                    aac.xlimits[1] = 0.0f;
-                    aac.yzlimits[0] = 0.0f;
-                    aac.yzlimits[1] = AZ::DegToRad(m_config.m_yzmax);
+                    m_action_add_constraint.xlimits[0] = 0.0f;
+                    m_action_add_constraint.xlimits[1] = 0.0f;
+                    m_action_add_constraint.yzlimits[0] = 0.0f;
+                    m_action_add_constraint.yzlimits[1] = AZ::DegToRad(m_config.m_yzmax);
                 }
                 break;
             }
             case ConstraintConfiguration::ConstraintType::Slider :
             {
-                aac.yzlimits[0] = 0.0f;
-                aac.yzlimits[1] = 0.0f;
+                m_action_add_constraint.yzlimits[0] = 0.0f;
+                m_action_add_constraint.yzlimits[1] = 0.0f;
                 if (m_config.m_enableRotationLimits)
                 {
-                    aac.xlimits[0] = m_config.m_xmin;
-                    aac.xlimits[1] = m_config.m_xmax;
+                    m_action_add_constraint.xlimits[0] = m_config.m_xmin;
+                    m_action_add_constraint.xlimits[1] = m_config.m_xmax;
                 }
-                aac.flags |= constraint_line;
+                m_action_add_constraint.flags |= constraint_line;
                 break;
             }
             case ConstraintConfiguration::ConstraintType::Plane :
             {
-                aac.flags |= constraint_plane;
+                m_action_add_constraint.flags |= constraint_plane;
                 break;
             }
             case ConstraintConfiguration::ConstraintType::Magnet :
@@ -441,13 +441,13 @@ namespace LmbrCentral
             }
             case ConstraintConfiguration::ConstraintType::Fixed :
             {
-                aac.flags |= constraint_no_rotation;
+                m_action_add_constraint.flags |= constraint_no_rotation;
                 break;
             }
             case ConstraintConfiguration::ConstraintType::Free :
             {
-                aac.flags |= constraint_free_position;
-                aac.flags |= constraint_no_rotation;
+                m_action_add_constraint.flags |= constraint_free_position;
+                m_action_add_constraint.flags |= constraint_no_rotation;
                 break;
             }
             default:
@@ -459,55 +459,65 @@ namespace LmbrCentral
 
         if (m_config.m_enableConstrainToPartId)
         {
-            aac.partid[0] = m_config.m_ownerPartId;
-            aac.partid[1] = m_config.m_targetPartId;
+            m_action_add_constraint.partid[0] = m_config.m_ownerPartId;
+            m_action_add_constraint.partid[1] = m_config.m_targetPartId;
         }
 
         if (m_config.m_enableForceLimits)
         {
-            aac.maxPullForce = m_config.m_maxPullForce;
+            m_action_add_constraint.maxPullForce = m_config.m_maxPullForce;
         }
 
         if (m_config.m_enableRotationLimits)
         {
-            aac.maxBendTorque = m_config.m_maxBendTorque;
+            m_action_add_constraint.maxBendTorque = m_config.m_maxBendTorque;
         }
 
         if (m_config.m_enableDamping)
         {
-            aac.damping = m_config.m_damping;
+            m_action_add_constraint.damping = m_config.m_damping;
         }
 
         if (m_config.m_enableSearchRadius)
         {
-            aac.sensorRadius = m_config.m_searchRadius;
+            m_action_add_constraint.sensorRadius = m_config.m_searchRadius;
         }
 
         if (!m_config.m_enableTargetCollisions)
         {
-            aac.flags |= constraint_ignore_buddy;
+            m_action_add_constraint.flags |= constraint_ignore_buddy;
         }
         if (!m_config.m_enableRelativeRotation)
         {
-            aac.flags |= constraint_no_rotation;
+            m_action_add_constraint.flags |= constraint_no_rotation;
         }
         if (!m_config.m_enforceOnFastObjects)
         {
-            aac.flags |= constraint_no_enforcement;
+            m_action_add_constraint.flags |= constraint_no_enforcement;
         }
         if (!m_config.m_breakable)
         {
-            aac.flags |= constraint_no_tears;
+            m_action_add_constraint.flags |= constraint_no_tears;
         }
 
-        m_constraintId = physEntity->Action(&aac) != 0;
-        if (m_constraintId)
+        // requests to add geometry in CryPhysics can get queued, so check if both entities have geometry (or the buddy is the world entity)
+        // otherwise connect to the tick bus and wait for geometry to be available before submitting the action to create the constraint
+        pe_status_nparts physEntityStatusParts, physBuddyStatusParts;
+        int physEntityNumParts = m_physEntity->GetStatus(&physEntityStatusParts);
+        int physBuddyNumParts = 0;
+        if (m_physBuddy != WORLD_ENTITY)
         {
-            EBUS_EVENT_ID(GetEntityId(), ConstraintComponentNotificationBus, OnConstraintEnabled);
+            physBuddyNumParts = m_physBuddy->GetStatus(&physBuddyStatusParts);
+        }
+
+        if (physEntityNumParts > 0 && (physBuddyNumParts > 0 || m_physBuddy == WORLD_ENTITY))
+        {
+            AddCryConstraint();
         }
         else
         {
-            AZ_Error("ConstraintComponent", false, "Constraint failed to initialize on entity %llu.", GetEntityId());
+            m_activationState = ActivationState::WaitingForGeometry;
+            AZ::TickBus::Handler::BusConnect();
         }
     }
 
@@ -568,6 +578,38 @@ namespace LmbrCentral
         aac.pt[1] = AZVec3ToLYVec3(targetPivot);
     }
 
+    void ConstraintComponent::AddCryConstraint()
+    {
+        m_constraintId = m_physEntity->Action(&m_action_add_constraint) != 0;
+        if (m_constraintId)
+        {
+            m_activationState = ActivationState::Active;
+            EBUS_EVENT_ID(GetEntityId(), ConstraintComponentNotificationBus, OnConstraintEnabled);
+        }
+        else
+        {
+            m_activationState = ActivationState::Inactive;
+            AZ_Error("ConstraintComponent", false, "Constraint failed to initialize on entity %llu.", GetEntityId());
+        }
+    }
+
+    void ConstraintComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    {
+        pe_status_nparts physEntityStatusParts, physBuddyStatusParts;
+        int physEntityNumParts = m_physEntity->GetStatus(&physEntityStatusParts);
+        int physBuddyNumParts = 0;
+        if (m_physBuddy != WORLD_ENTITY)
+        {
+            physBuddyNumParts = m_physBuddy->GetStatus(&physBuddyStatusParts);
+        }
+
+        if (physEntityNumParts > 0 && (physBuddyNumParts > 0 || m_physBuddy == WORLD_ENTITY))
+        {
+            AddCryConstraint();
+            AZ::TickBus::Handler::BusDisconnect();
+        }
+    }
+
     //=========================================================================
     // ConstraintComponent::DisableConstraint
     //=========================================================================
@@ -595,17 +637,25 @@ namespace LmbrCentral
             return;
         }
 
-        IPhysicalEntity* physEntity = nullptr;
-        EBUS_EVENT_ID_RESULT(physEntity, m_config.m_owningEntity, CryPhysicsComponentRequestBus, GetPhysicalEntity);
-        if (physEntity)
+        if (m_physEntity)
         {
             pe_action_update_constraint auc;
             auc.idConstraint = m_constraintId;
             auc.bRemove = 1;
-            physEntity->Action(&auc);
+            m_physEntity->Action(&auc);
         }
 
         m_constraintId = 0;
+
+        // reset the activation state and in case we were waiting for geometry check whether the tick bus is connected and disconnect
+        m_activationState = ActivationState::Inactive;
+        m_physEntity = nullptr;
+        m_physBuddy = nullptr;
+        if (AZ::TickBus::Handler::BusIsConnected())
+        {
+            AZ::TickBus::Handler::BusDisconnect();
+        }
+
         EBUS_EVENT_ID(GetEntityId(), ConstraintComponentNotificationBus, OnConstraintDisabled);
     }
 

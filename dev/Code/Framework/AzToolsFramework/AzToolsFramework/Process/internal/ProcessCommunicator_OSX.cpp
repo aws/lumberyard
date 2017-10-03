@@ -193,6 +193,41 @@ namespace AzToolsFramework
         return true;
     }
 
+    void StdInOutProcessCommunicator::WaitForReadyOutputs(OutputStatus& status) const
+    {
+        status.outputDeviceReady = m_stdOutRead->IsValid() && !m_stdOutRead->IsBroken();
+        status.errorsDeviceReady = m_stdErrRead->IsValid() && !m_stdErrRead->IsBroken();
+        status.shouldReadOutput = status.shouldReadErrors = false;
+
+        if (status.outputDeviceReady || status.errorsDeviceReady)
+        {
+            fd_set readSet;
+            int maxHandle = 0;
+
+            FD_ZERO(&readSet);
+
+            if (status.outputDeviceReady)
+            {
+                int currentHandle = m_stdOutRead->GetHandle();
+                FD_SET(currentHandle, &readSet);
+                maxHandle = currentHandle > maxHandle ? currentHandle : maxHandle;
+            }
+
+            if (status.errorsDeviceReady)
+            {
+                int currentHandle = m_stdErrRead->GetHandle();
+                FD_SET(currentHandle, &readSet);
+                maxHandle = currentHandle > maxHandle ? currentHandle : maxHandle;
+            }
+
+            if (select(maxHandle + 1, &readSet, nullptr, nullptr, nullptr) != -1)
+            {
+                status.shouldReadOutput = (status.outputDeviceReady && FD_ISSET(m_stdOutRead->GetHandle(), &readSet));
+                status.shouldReadErrors = (status.errorsDeviceReady && FD_ISSET(m_stdErrRead->GetHandle(), &readSet));
+            }
+        }
+    }
+
     bool StdInOutProcessCommunicatorForChildProcess::AttachToExistingPipes()
     {
         m_stdInRead->SetHandle(STDIN_FILENO);

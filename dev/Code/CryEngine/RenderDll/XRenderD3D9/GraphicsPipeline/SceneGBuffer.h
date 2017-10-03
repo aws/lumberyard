@@ -32,8 +32,7 @@ class CSceneGBufferPass
         EPerPassTexture_First = EPerPassTexture_TerrainBaseMap,
     };
 
-    // NOTE: DXOrbis only supports 32 shader slots at this time, don't use t32 or higher if DXOrbis support is desired!
-    static_assert(EPerPassTexture_Count <= 32, "Bind slot too high for DXOrbis");
+    static_assert(EPerPassTexture_Count <= 32, "Bind slot too high for platforms with only 32 shader slots");
 
     enum ESubPassId
     {

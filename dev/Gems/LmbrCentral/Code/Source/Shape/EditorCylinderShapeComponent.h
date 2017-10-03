@@ -13,18 +13,24 @@
 
 #include "EditorBaseShapeComponent.h"
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
+#include "CylinderShape.h"
 
 namespace LmbrCentral
 {
     class EditorCylinderShapeComponent
         : public EditorBaseShapeComponent
+        , public CylinderShape
     {
     public:
 
-        AZ_EDITOR_COMPONENT(EditorCylinderShapeComponent, "{D5FC4745-3C75-47D9-8C10-9F89502487DE}", EditorBaseShapeComponent);
+        AZ_EDITOR_COMPONENT(EditorCylinderShapeComponent, EditorCylinderShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         ~EditorCylinderShapeComponent() override = default;
+
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
 
         ////////////////////////////////////////////////////////////////////////
         // EditorComponentBase implementation
@@ -35,17 +41,21 @@ namespace LmbrCentral
         void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
         ////////////////////////////////////////////////////////////////////////
 
+        // CylinderShape
+        CylinderShapeConfig& GetConfiguration() override { return m_configuration; }
+
     protected:
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
-            provided.push_back(AZ_CRC("CylinderShapeService"));
+            provided.push_back(AZ_CRC("CylinderShapeService", 0x507c688e));
         }
 
     private:
+        void ConfigurationChanged();
 
         //! Stores configuration of a cylinder for this component
-        CylinderShapeConfiguration m_configuration;
+        CylinderShapeConfig m_configuration;
     };
 } // namespace LmbrCentral

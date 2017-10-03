@@ -78,7 +78,7 @@ QString CErrorRecord::GetErrorText() const
         sModuleName = "UI";
         break;
     }
-    str = QStringLiteral("[%2d]\t[%6s]\t%s").arg(count, 2).arg(QString(sModuleName).leftJustified(6), error).trimmed();
+    str = QStringLiteral("[%1]\t[%2]\t%3").arg(count, 2).arg(QString(sModuleName).leftJustified(6), error).trimmed();
 
     if (!file.isEmpty())
     {

@@ -74,7 +74,8 @@ namespace
                               AZStd::string sliceRootName,
                               AZ::EntityId& sliceRootParentEntityId, 
                               AZ::Vector3& sliceRootPositionAfterReplacement,
-                              bool& wasRootAutoCreated)
+                              bool& wasRootAutoCreated,
+                              QWidget* activeWindow)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -106,12 +107,16 @@ namespace
         {
             if (selectionRootEntities.size() > 1)
             {
-                const int response = QMessageBox::warning(QApplication::activeWindow(),
-                                                          QStringLiteral("Cannot Create Slice"),
-                                                          QString("The slice cannot be created because no single transform root is defined. "
-                                                          "Please make sure your slice contains only one root entity.\r\n\r\n"
-                                                          "Do you want to create a Transform root entity ?"),
-                                                          QMessageBox::Yes | QMessageBox::Cancel);
+                int response;
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::CheckAndAddSliceRoot:SingleRootUserQuery");
+                    response = QMessageBox::warning(activeWindow,
+                                                      QStringLiteral("Cannot Create Slice"),
+                                                      QString("The slice cannot be created because no single transform root is defined. "
+                                                      "Please make sure your slice contains only one root entity.\r\n\r\n"
+                                                      "Do you want to create a Transform root entity ?"),
+                                                      QMessageBox::Yes | QMessageBox::Cancel);
+                }
 
                 if (response == QMessageBox::Cancel)
                 {
@@ -195,14 +200,14 @@ namespace
             }
             else
             {
-                QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Cannot Save Slice"),
+                QMessageBox::warning(activeWindow, QStringLiteral("Cannot Save Slice"),
                                      QString("Failed to write slice \"%1\" because transforms could not be rooted."),
                                      QMessageBox::Ok);
             }
         }
         else
         {
-            QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Cannot Save Slice"),
+            QMessageBox::warning(activeWindow, QStringLiteral("Cannot Save Slice"),
                                  QString("Failed to write slice \"%1\" because transforms could not be rooted."),
                                  QMessageBox::Ok);
         }
@@ -225,7 +230,7 @@ namespace AzToolsFramework
             mainLayout->setContentsMargins(5, 5, 5, 5);
             SlicePushWidget* widget = new SlicePushWidget(entities, serializeContext);
             mainLayout->addWidget(widget);
-            dialog->setWindowTitle(widget->tr("Push to Slice(s)"));
+            dialog->setWindowTitle(widget->tr("Save Slice Overrides - Advanced"));
             dialog->setMinimumSize(QSize(600, 200));
             dialog->resize(QSize(1000, 600));
             dialog->setLayout(mainLayout);
@@ -292,6 +297,8 @@ namespace AzToolsFramework
 
             if (referencedEntitiesNotInSelection)
             {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:HandleNotIncludedReferences");
+
                 AZStd::string includedEntities;
                 AZStd::string missingEntities;
                 AZ::u32 totalIncluded = 0;
@@ -335,24 +342,28 @@ namespace AzToolsFramework
                     missingEntities.append(AZStd::string::format( "    (%u more entities...)\r\n", totalMissing - kMaxToDisplay));
                 }
 
-                const AZStd::string message = AZStd::string::format(
-                        "Some of the selected entities reference entities not contained in the selection.\r\n"
-                        "Any references from outside entities to those in the slice will be invalidated.\r\n\r\n"
-                        "The following entities are included in your selection:\r\n%s\r\n"
-                        "Would you like to include the following referenced entities?\r\n%s",
-                        includedEntities.c_str(),
-                        missingEntities.c_str());
-
-                const int response = QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Create Slice"),
-                        QString(message.c_str()), QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
-
-                if (response == QMessageBox::Yes)
                 {
-                    selectedHierarchyEntities = allReferencedEntities;
-                }
-                else if (response != QMessageBox::No)
-                {
-                    return false;
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:HandleNotIncludedReferences:UserDialog");
+
+                    const AZStd::string message = AZStd::string::format(
+                            "Some of the selected entities reference entities not contained in the selection.\r\n"
+                            "Any references from outside entities to those in the slice will be invalidated.\r\n\r\n"
+                            "The following entities are included in your selection:\r\n%s\r\n"
+                            "Would you like to include the following referenced entities?\r\n%s",
+                            includedEntities.c_str(),
+                            missingEntities.c_str());
+
+                    const int response = QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Create Slice"),
+                            QString(message.c_str()), QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+                    if (response == QMessageBox::Yes)
+                    {
+                        selectedHierarchyEntities = allReferencedEntities;
+                    }
+                    else if (response != QMessageBox::No)
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -372,7 +383,11 @@ namespace AzToolsFramework
             // temporarily null after the QFileDialog closes, which we need to
             // be able to parent our message dialogs properly
             QWidget* activeWindow = QApplication::activeWindow();
-            const QString saveAs = QFileDialog::getSaveFileName(nullptr, QString("Save As..."), saveAsStartPath.c_str(), QString("Slices (*.slice)"));
+            QString saveAs;
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:SaveAsDialog");
+                saveAs = QFileDialog::getSaveFileName(nullptr, QString("Save As..."), saveAsStartPath.c_str(), QString("Slices (*.slice)"));
+            }
             QFileInfo fi(saveAs);
             QString sliceName = fi.baseName();
             if (saveAs.isEmpty())
@@ -405,56 +420,64 @@ namespace AzToolsFramework
             //
             // Setup and execute transaction for the new slice.
             //
-
-            AZ::EntityId parentAfterReplacement;
-            AZ::Vector3 positionAfterReplacement(AZ::Vector3::CreateZero());
-            bool wasRootAutoCreated = false;
-
-            // PreSaveCallback for slice creation: Before saving slice, we ensure it has a single root by optionally auto-creating one for the user
-            SliceTransaction::PreSaveCallback preSaveCallback =
-                [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated]
-                (SliceTransaction::TransactionPtr transaction, const char* /*fullPath*/, const SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
-                {
-                    CheckAndAddSliceRoot(asset, sliceName.toUtf8().constData(), parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated);
-                    return AZ::Success();
-                };
-
-            // PostSaveCallback for slice creation: kick off async replacement of source entities with an instance of the new slice.
-            SliceTransaction::PostSaveCallback postSaveCallback = 
-                [&parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated]
-                (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
-                {
-                    // Once the asset is processed and ready, we can replace the source entities with an instance of the new slice.
-                    EditorEntityContextRequestBus::Broadcast(
-                        &EditorEntityContextRequests::QueueSliceReplacement,
-                        fullPath, transaction->GetLiveToAssetEntityIdMap(), selectedHierarchyEntities,
-                        parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated);
-                };
-
-            SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext);
-
-            // Add entities
-            for (const AZ::EntityId& entityId : selectedHierarchyEntities)
             {
-                SliceTransaction::Result addResult = transaction->AddEntity(entityId, !inheritSlices ? SliceTransaction::SliceAddEntityFlags::DiscardSliceAncestry : 0);
-                        if (!addResult)
-                        {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:SetupAndExecuteTransaction");
+
+                AZ::EntityId parentAfterReplacement;
+                AZ::Vector3 positionAfterReplacement(AZ::Vector3::CreateZero());
+                bool wasRootAutoCreated = false;
+
+                // PreSaveCallback for slice creation: Before saving slice, we ensure it has a single root by optionally auto-creating one for the user
+                SliceTransaction::PreSaveCallback preSaveCallback =
+                    [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated, &activeWindow]
+                    (SliceTransaction::TransactionPtr transaction, const char* /*fullPath*/, const SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:PreSaveCallback");
+                        CheckAndAddSliceRoot(asset, sliceName.toUtf8().constData(), parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated, activeWindow);
+                        return AZ::Success();
+                    };
+
+                // PostSaveCallback for slice creation: kick off async replacement of source entities with an instance of the new slice.
+                SliceTransaction::PostSaveCallback postSaveCallback = 
+                    [&parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated]
+                    (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:PostSaveCallback");
+                        // Once the asset is processed and ready, we can replace the source entities with an instance of the new slice.
+                        EditorEntityContextRequestBus::Broadcast(
+                            &EditorEntityContextRequests::QueueSliceReplacement,
+                            fullPath, transaction->GetLiveToAssetEntityIdMap(), selectedHierarchyEntities,
+                            parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated);
+                    };
+
+                SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext);
+
+                // Add entities
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:SetupAndExecuteTransaction:AddEntities");
+                    for (const AZ::EntityId& entityId : selectedHierarchyEntities)
+                    {
+                        SliceTransaction::Result addResult = transaction->AddEntity(entityId, !inheritSlices ? SliceTransaction::SliceAddEntityFlags::DiscardSliceAncestry : 0);
+                                if (!addResult)
+                                {
+                            QMessageBox::warning(activeWindow, QStringLiteral("Slice Save Failed"),
+                                        QString(addResult.GetError().c_str()), QMessageBox::Ok);
+                                    return false;
+                                }
+                    }
+                }
+
+                SliceTransaction::Result result = transaction->Commit(targetPath.c_str(), preSaveCallback, postSaveCallback, SliceTransaction::SliceCommitFlags::ApplyWorldSliceTransformRules);
+
+                if (!result)
+                {
                     QMessageBox::warning(activeWindow, QStringLiteral("Slice Save Failed"),
-                                QString(addResult.GetError().c_str()), QMessageBox::Ok);
-                            return false;
-                        }
+                                         QString(result.GetError().c_str()), QMessageBox::Ok);
+                    return false;
+                }
+
+                return true;
             }
-
-            SliceTransaction::Result result = transaction->Commit(targetPath.c_str(), preSaveCallback, postSaveCallback, SliceTransaction::SliceCommitFlags::ApplyWorldSliceTransformRules);
-
-            if (!result)
-            {
-                QMessageBox::warning(activeWindow, QStringLiteral("Slice Save Failed"),
-                                     QString(result.GetError().c_str()), QMessageBox::Ok);
-                return false;
-            }
-
-            return true;
         }
 
         //=========================================================================
@@ -504,20 +527,14 @@ namespace AzToolsFramework
                     auto beginCB = [&](void* ptr, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* elementData) -> bool
                     {
                         parentStack.push_back(classData);
-                            if (elementData && elementData->m_editData)
-                            {
-                                AZ::Edit::Attribute* attribute = elementData->m_editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-                                if (attribute)
-                                {
-                                    AZ::u32 flags = 0;
-                                    AzToolsFramework::PropertyAttributeReader reader(nullptr, attribute);
-                                    reader.Read<AZ::u32>(flags);
-                                    if (0 != (flags & AZ::Edit::SliceFlags::DontGatherReference))
-                                    {
-                                    return false;
-                                    }
-                                }
-                            }
+                        
+                        AZ::u32 sliceFlags = GetSliceFlags(elementData ? elementData->m_editData : nullptr, classData ? classData->m_editData : nullptr);
+                        
+                        // Skip any class or element marked as don't gather references
+                        if (0 != (sliceFlags & AZ::Edit::SliceFlags::DontGatherReference))
+                        {
+                            return false;
+                        }
 
                         if (classData->m_typeId == AZ::SerializeTypeInfo<AZ::EntityId>::GetUuid())
                         {
@@ -534,8 +551,8 @@ namespace AzToolsFramework
                                     const AZ::EntityId id = *entityIdPtr;
                                     if (id.IsValid())
                                     {
-                            visitChild(id);
-                        }
+                                        visitChild(id);
+                                    }
                                 }
                             }
                         }
@@ -577,8 +594,8 @@ namespace AzToolsFramework
 
             // Prior to comparison, remap asset entity's Id references to the instance values, so we don't see instance-remapped Ids as differences.
             const AZ::SliceComponent::EntityIdToEntityIdMap& assetToInstanceIdMap = instance.GetEntityIdMap();
-            AZ::EntityUtils::ReplaceEntityRefs(clone,
-                [&assetToInstanceIdMap](const AZ::EntityId& originalId, bool isEntityId) -> AZ::EntityId
+            AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(clone,
+                [&assetToInstanceIdMap](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                 {
                     if (!isEntityId)
                     {
@@ -591,9 +608,56 @@ namespace AzToolsFramework
 
                     return originalId;
                 },
-                &serializeContext);
+                &serializeContext, false);
 
             return AZStd::unique_ptr<AZ::Entity>(clone);
+        }
+
+        //=========================================================================
+        AZ::Outcome<void, AZStd::string> PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList, const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset)
+        {
+            using namespace AzToolsFramework::SliceUtilities;
+
+            if (!sliceAsset)
+            {
+                return AZ::Failure(AZStd::string::format("Asset \"%s\" with id %s is not loaded, or is not a slice.",
+                    sliceAsset.GetHint().c_str(), 
+                    sliceAsset.GetId().ToString<AZStd::string>().c_str()));
+            }
+
+            // Make a transaction targeting the specified slice and add all the entities in this set.
+            SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginSlicePush(sliceAsset);
+            if (transaction)
+            {
+                for (AZ::EntityId entityId : entityIdList)
+                {
+                    auto result = transaction->UpdateEntity(entityId);
+                    if (!result)
+                    {
+                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %1 to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
+                            entityId.ToString().c_str(),
+                            sliceAsset.GetHint().c_str(),
+                            result.GetError().c_str()));
+                    }
+                }
+
+                const SliceTransaction::Result result = transaction->Commit(
+                    sliceAsset.GetId(),
+                    nullptr, nullptr,
+                    SliceTransaction::ApplyWorldSliceTransformRules);
+
+                if (!result)
+                {
+                    AZStd::string sliceAssetPath;
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceAsset.GetId());
+
+                    return AZ::Failure(AZStd::string::format("Failed to to save slice \"%s\". Slice push aborted.\n\nError:\n%s",
+                        sliceAssetPath.c_str(),
+                        result.GetError().c_str()));
+                }
+            }
+
+            return AZ::Success();
         }
 
         //=========================================================================
@@ -637,8 +701,70 @@ namespace AzToolsFramework
         }
 
         //=========================================================================
+        AZ::u32 GetSliceFlags(const AZ::Edit::ElementData* editData, const AZ::Edit::ClassData* classData)
+        {
+            AZ::u32 sliceFlags = 0;
+
+            if (editData)
+            {
+                AZ::Edit::Attribute* slicePushAttribute = editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
+                if (slicePushAttribute)
+                {
+                    AZ::u32 elementSliceFlags = 0;
+                    AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
+                    reader.Read<AZ::u32>(elementSliceFlags);
+                    sliceFlags |= elementSliceFlags;
+                }
+            }
+
+            const AZ::Edit::ElementData* classEditData = classData ? classData->FindElementData(AZ::Edit::ClassElements::EditorData) : nullptr;
+            if (classEditData)
+            {
+                AZ::Edit::Attribute* slicePushAttribute = classEditData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
+                if (slicePushAttribute)
+                {
+                    AZ::u32 classSliceFlags = 0;
+                    AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
+                    reader.Read<AZ::u32>(classSliceFlags);
+                    sliceFlags |= classSliceFlags;
+                }
+            }
+
+            return sliceFlags;
+        }
+
+        AZ::u32 GetNodeSliceFlags(const InstanceDataNode& node)
+        {
+            const AZ::Edit::ElementData* editData = node.GetElementEditMetadata();
+
+            AZ::u32 sliceFlags = GetSliceFlags(editData, node.GetClassMetadata()->m_editData);
+
+            return sliceFlags;
+        }
+
+        //=========================================================================
+        bool IsNodePushable(const InstanceDataNode& node, bool isRootEntity /*= false*/)
+        {
+            const AZ::u32 sliceFlags = GetNodeSliceFlags(node);
+
+            if (0 != (sliceFlags & AZ::Edit::SliceFlags::NotPushable))
+            {
+                return false;
+            }
+
+            if (isRootEntity && 0 != (sliceFlags & AZ::Edit::SliceFlags::NotPushableOnSliceRoot))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        //=========================================================================
         bool GenerateSuggestedSlicePath(const AzToolsFramework::EntityIdSet& entitiesInSlice, const AZStd::string& targetDirectory, AZStd::string& suggestedFullPath)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             // Determine suggested save name for slice based on included root/top-level entity names
             // For example, with top-level entities Entity0, Entity1, and Entity2, we would end up with
             // Entity0Entity1Entity2_001.slice, and if that already existed we would suggest
@@ -763,7 +889,7 @@ namespace AzToolsFramework
             }
         }
 
-        void Reflect(AZ::SerializeContext* context)
+        void Reflect(AZ::ReflectContext* context)
         {
             SliceUserSettings::Reflect(context);
         }

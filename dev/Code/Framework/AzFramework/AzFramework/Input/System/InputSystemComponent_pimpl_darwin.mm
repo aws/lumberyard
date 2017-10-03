@@ -11,7 +11,6 @@
 */
 
 #include <AzFramework/Input/System/InputSystemComponent.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_darwin.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
 
 #include <AppKit/AppKit.h>
@@ -22,7 +21,6 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Platform specific implementation for the input system component on osx
     class InputSystemComponentOsx : public InputSystemComponent::Implementation
-                                  , public RawInputRequestBusOsx::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,8 +37,8 @@ namespace AzFramework
         ~InputSystemComponentOsx() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputRequestsOsx::PumpRawEventLoop
-        void PumpRawEventLoop() override;
+        //! \ref AzFramework::InputSystemComponent::Implementation::PreTickInputDevices
+        void PreTickInputDevices() override;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,18 +52,20 @@ namespace AzFramework
     InputSystemComponentOsx::InputSystemComponentOsx(InputSystemComponent& inputSystem)
         : InputSystemComponent::Implementation(inputSystem)
     {
-        RawInputRequestBusOsx::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputSystemComponentOsx::~InputSystemComponentOsx()
     {
-        RawInputRequestBusOsx::Handler::BusDisconnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputSystemComponentOsx::PumpRawEventLoop()
+    void InputSystemComponentOsx::PreTickInputDevices()
     {
+        // Pump the osx event loop to ensure that it has dispatched all input events. Other systems
+        // may also do this, so some or all input events may have already been dispatched, but each
+        // input device implementation should handle this (by queueing all input events until their
+        // TickInputDevice function is called) so events are processed at the same time every frame.
         NSAutoreleasePool* autoreleasePool = [[NSAutoreleasePool alloc] init];
         do
         {

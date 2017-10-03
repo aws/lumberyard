@@ -560,9 +560,6 @@ struct SANDBOX_API SEditorSettings
     // Enable Double Clicking in Layer Editor
     bool bLayerDoubleClicking;
 
-    // Enable the new menu layout
-    bool useNewMenuLayout;
-
     // Enable the old Qt docking
     bool enableQtDocking;
 

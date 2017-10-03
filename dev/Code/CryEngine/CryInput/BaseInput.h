@@ -22,38 +22,14 @@
 #pragma once
 
 #include <platform.h>
-#include <CryThread.h>
 
-        #include "KinectInputNULL.h"
 
-//#define USE_TRACKIR
-
-#if ((defined(WIN32) || defined(WIN64)) && defined(USE_TRACKIR))
-#include "TrackIRInput.h"
-typedef CTrackIRInput TNaturalPointInput;
-#else
-#include "NaturalPointInputNULL.h"
-typedef CNaturalPointInputNull TNaturalPointInput;
-#endif
-
-#include "CryListenerSet.h"
-#include "InputRequestBus.h"
-#include <AzFramework/Entity/EntityContextBus.h>
-#include "InputTypes.h"
-
-namespace AZ
-{
-    class EntityId;
-}
-struct  IInputDevice;
+struct IInputDevice;
 class CInputCVars;
 
 class CBaseInput
     : public IInput
     , public ISystemEventListener
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    , public AZ::InputRequestBus::Handler
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 {
 public:
     CBaseInput();
@@ -130,9 +106,12 @@ public:
     virtual void ClearBlockingInputs();
     virtual bool ShouldBlockInputEventPosting(const EKeyId keyId, const EInputDeviceType deviceType, const uint8 deviceIndex) const;
 
-    virtual IKinectInput* GetKinectInput(){return m_pKinectInput; }
+    virtual IKinectInput* GetKinectInput()
+    {
+        return nullptr;
+    }
 
-    virtual INaturalPointInput* GetNaturalPointInput(){return m_pNaturalPointInput; }
+    virtual INaturalPointInput* GetNaturalPointInput(){return nullptr; }
 
     virtual bool GrabInput(bool bGrab);
     const TInputDevices& GetInputDevices() const override { return m_inputDevices; }
@@ -141,21 +120,6 @@ public:
     virtual void StopTextInput() {}
     virtual bool IsScreenKeyboardShowing() const { return false; }
     virtual bool IsScreenKeyboardSupported() const { return false; }
-
-    //////////////////////////////////////////////////////////////////////////
-    // AZ::InputRequestBus::Handler
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    const AZStd::vector<AZStd::string> GetRegisteredDeviceList() override { return m_inputDeviceNames; }
-    const AZStd::vector<AZStd::string> GetInputListByDevice(const AZStd::string& deviceName) override { return m_deviceToInputsMap[AZ::Crc32(deviceName.c_str())]; }
-    void RequestDeviceMapping(const Input::ProfileId& profileId, const AZ::EntityId& requester) override;
-    void ClearAllDeviceMappings() override;
-    Input::ProfileId GetProfileIdByDeviceIndex(AZ::u8 deviceIndex) override;
-    void PushContext(const AZStd::string& context) override;
-    void PopContext() override;
-    void PopAllContexts() override;
-    AZStd::string GetCurrentContext() override;
-    AZStd::vector<AZStd::string> GetContextStack() override;
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
 protected:
     // Input blocking functionality
@@ -176,14 +140,6 @@ private:
     TInputEventListeners    m_listeners;
     TInputEventListeners    m_consoleListeners;
     IInputEventListener*    m_pExclusiveListener;
-
-    // input device suite, entity, and profile relationship data
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    AZStd::unordered_map<AZ::u8, Input::ProfileId> m_deviceIndexToProfileIdCrc;
-    AZStd::unordered_map<Input::ProfileId, AZStd::unordered_set<AZ::EntityId>> m_profileIdToBoundEntityIds;
-    AZStd::vector<AZStd::string> m_contexts;
-    AZ::u8 m_nextValidDeviceIndex = 0;
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     bool                    m_enableEventPosting;
     bool                    m_retriggering;
@@ -210,9 +166,6 @@ private:
     //CVars
     CInputCVars*                    m_pCVars;
 
-    CKinectInputNULL* m_pKinectInput;
-
-    TNaturalPointInput* m_pNaturalPointInput;
 
 protected:
     uint32                              m_platformFlags;

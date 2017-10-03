@@ -27,19 +27,23 @@ namespace AzToolsFramework
     {
     }
 
-    void EntityIdQLabel::SetEntityId(AZ::EntityId newId)
+    void EntityIdQLabel::SetEntityId(AZ::EntityId newId, const AZStd::string_view& nameOverride)
     {
         m_entityId = newId;
 
         AZ::Entity* pEntity = NULL;
         EBUS_EVENT_RESULT(pEntity, AZ::ComponentApplicationBus, FindEntity, m_entityId);
-        if (pEntity)
+        if (pEntity && nameOverride.empty())
         {
             setText(pEntity->GetName().c_str());
         }
-        else if(newId.IsValid())
+        else if(!newId.IsValid())
         {
             setText(tr("(Entity not found)"));
+        }
+        else if (!nameOverride.empty())
+        {
+            setText(nameOverride.to_string().c_str());
         }
         else
         {
@@ -63,8 +67,10 @@ namespace AzToolsFramework
 
     void EntityIdQLabel::mouseDoubleClickEvent(QMouseEvent* e)
     {
-        EBUS_EVENT(AzToolsFramework::EntityHighlightMessages::Bus, EntityStrongHighlightRequested, m_entityId);
         QLabel::mouseDoubleClickEvent(e);
+        EBUS_EVENT(AzToolsFramework::EntityHighlightMessages::Bus, EntityStrongHighlightRequested, m_entityId);
+        // The above EBus request calls EntityPropertyEditor::UpdateContents() down the code path, which in turn destroys 
+        // the current EntityIdQLabel object, therefore calling any method of EntityIdQLabel at this point is invalid.
     }
 }
 

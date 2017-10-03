@@ -48,10 +48,6 @@ namespace LmbrAWS
             EIP_TopicClient
         };
 
-        LmbrAWS::SNS::TopicClientInputPort m_topicClientPort {
-            EIP_TopicClient
-        };
-
         void ApplyResult(const Aws::SNS::Model::PublishRequest&, const Aws::SNS::Model::PublishOutcome& outcome, const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context);
     };
 } // namespace Amazon

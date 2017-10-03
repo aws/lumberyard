@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemInGameSurvey/CloudGemInGameSurveyBus.h",
+            "AWS/ServiceApi/CloudGemInGameSurveyClientComponent.h"
+        ],
+        "Source": [
+            "Source/CloudGemInGameSurveyModule.cpp",
+            "Source/CloudGemInGameSurveySystemComponent.cpp",
+            "Source/CloudGemInGameSurveySystemComponent.h",
+            "AWS/ServiceApi/CloudGemInGameSurveyClientComponent.cpp"
+        ]
+    }
+}

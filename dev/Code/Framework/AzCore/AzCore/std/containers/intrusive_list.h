@@ -26,7 +26,7 @@ namespace AZStd
      * using the appropriate hooks.
      * Check the intrusive_list \ref AZStdExamples.
      */
-    template< class T, int Unused = 0 /*This if left here because of a bug with autoexp.dat parsing. This is VS debugger data visualizer.*/>
+    template <class T>
     struct intrusive_list_node
     {
 #ifdef AZ_DEBUG_BUILD

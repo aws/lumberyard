@@ -43,6 +43,10 @@ namespace LmbrCentral
     IEditor*             EditorLightComponent::m_editor = nullptr;
     IMaterialManager*    EditorLightComponent::m_materialManager = nullptr;
     
+
+    const char* EditorLightComponent::BUTTON_GENERATE = "Generate";
+    const char* EditorLightComponent::BUTTON_ADDBOUNCE = "Add Bounce";
+
     //class converter. Convert EditorLightComponent to one of four above components
     namespace ClassConverters
     {
@@ -137,6 +141,7 @@ namespace LmbrCentral
                 ->Version(1)
                 ->Field("EditorLightConfiguration", &EditorLightComponent::m_configuration)
                 ->Field("CubemapRegen", &EditorLightComponent::m_cubemapRegen)
+                ->Field("CubemapClear", &EditorLightComponent::m_cubemapClear)
                 ->Field("ViewCubemap", &EditorLightComponent::m_viewCubemap)
                 ->Field("UseCustomizedCubemap", &EditorLightComponent::m_useCustomizedCubemap)
                 ->Field("cubemapAsset", &EditorLightComponent::m_cubemapAsset)
@@ -168,8 +173,13 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ReadOnly,&EditorLightComponent::CanGenerateCubemap)
 
                     ->DataElement("Button", &EditorLightComponent::m_cubemapRegen, "Cubemap", "Generate the associated cubemap")
-                        ->Attribute(AZ::Edit::Attributes::ButtonText, "Generate")
+                        ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorLightComponent::GetGenerateCubemapButtonName)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::GenerateCubemap)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::CanGenerateCubemap)
+
+                    ->DataElement("Button", &EditorLightComponent::m_cubemapClear, "Cubemap", "Clear the associated cubemap.")
+                        ->Attribute(AZ::Edit::Attributes::ButtonText, "Reset")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::ClearCubemap)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::CanGenerateCubemap)
 
                     ->DataElement(0, &EditorLightComponent::m_viewCubemap, "View cubemap", "Preview the cubemap in scene")
@@ -186,86 +196,89 @@ namespace LmbrCentral
             // "LightComponentBus" which is the intersection of the separate buses reflected here.
 
             // Point Light EBus reflection and VirtualProperties
-            behaviorContext->EBus<LightComponentEditorRequestBus>("EditorPointLightComponentBus")
-                ->Event("GetVisible", &LightComponentEditorRequestBus::Events::GetVisible)
-                ->Event("SetVisible", &LightComponentEditorRequestBus::Events::SetVisible)
+            behaviorContext->EBus<EditorLightComponentRequestBus>("EditorPointLightComponentBus")
+                ->Event("GetVisible", &EditorLightComponentRequestBus::Events::GetVisible)
+                ->Event("SetVisible", &EditorLightComponentRequestBus::Events::SetVisible)
                 ->VirtualProperty("Visible", "GetVisible", "SetVisible")
-                ->Event("GetColor", &LightComponentEditorRequestBus::Events::GetColor)
-                ->Event("SetColor", &LightComponentEditorRequestBus::Events::SetColor)
+                ->Event("GetColor", &EditorLightComponentRequestBus::Events::GetColor)
+                ->Event("SetColor", &EditorLightComponentRequestBus::Events::SetColor)
                 ->VirtualProperty("Color", "GetColor", "SetColor")
-                ->Event("GetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::GetDiffuseMultiplier)
-                ->Event("SetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::SetDiffuseMultiplier)
+                ->Event("GetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::GetDiffuseMultiplier)
+                ->Event("SetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::SetDiffuseMultiplier)
                 ->VirtualProperty("DiffuseMultiplier", "GetDiffuseMultiplier", "SetDiffuseMultiplier")
-                ->Event("GetSpecularMultiplier", &LightComponentEditorRequestBus::Events::GetSpecularMultiplier)
-                ->Event("SetSpecularMultiplier", &LightComponentEditorRequestBus::Events::SetSpecularMultiplier)
+                ->Event("GetSpecularMultiplier", &EditorLightComponentRequestBus::Events::GetSpecularMultiplier)
+                ->Event("SetSpecularMultiplier", &EditorLightComponentRequestBus::Events::SetSpecularMultiplier)
                 ->VirtualProperty("SpecularMultiplier", "GetSpecularMultiplier", "SetSpecularMultiplier")
-                ->Event("GetAmbient", &LightComponentEditorRequestBus::Events::GetAmbient)
-                ->Event("SetAmbient", &LightComponentEditorRequestBus::Events::SetAmbient)
+                ->Event("GetAmbient", &EditorLightComponentRequestBus::Events::GetAmbient)
+                ->Event("SetAmbient", &EditorLightComponentRequestBus::Events::SetAmbient)
                 ->VirtualProperty("Ambient", "GetAmbient", "SetAmbient")
-                ->Event("GetPointMaxDistance", &LightComponentEditorRequestBus::Events::GetPointMaxDistance)
-                ->Event("SetPointMaxDistance", &LightComponentEditorRequestBus::Events::SetPointMaxDistance)
+                ->Event("GetPointMaxDistance", &EditorLightComponentRequestBus::Events::GetPointMaxDistance)
+                ->Event("SetPointMaxDistance", &EditorLightComponentRequestBus::Events::SetPointMaxDistance)
                 ->VirtualProperty("PointMaxDistance", "GetPointMaxDistance", "SetPointMaxDistance")
-                ->Event("GetPointAttenuationBulbSize", &LightComponentEditorRequestBus::Events::GetPointAttenuationBulbSize)
-                ->Event("SetPointAttenuationBulbSize", &LightComponentEditorRequestBus::Events::SetPointAttenuationBulbSize)
+                ->Event("GetPointAttenuationBulbSize", &EditorLightComponentRequestBus::Events::GetPointAttenuationBulbSize)
+                ->Event("SetPointAttenuationBulbSize", &EditorLightComponentRequestBus::Events::SetPointAttenuationBulbSize)
                 ->VirtualProperty("PointAttenuationBulbSize", "GetPointAttenuationBulbSize", "SetPointAttenuationBulbSize")
                 ;
 
             // Area Light EBus reflection and VirtualProperties
-            behaviorContext->EBus<LightComponentEditorRequestBus>("EditorAreaLightComponentBus")
-                ->Event("GetVisible", &LightComponentEditorRequestBus::Events::GetVisible)
-                ->Event("SetVisible", &LightComponentEditorRequestBus::Events::SetVisible)
+            behaviorContext->EBus<EditorLightComponentRequestBus>("EditorAreaLightComponentBus")
+                ->Event("GetVisible", &EditorLightComponentRequestBus::Events::GetVisible)
+                ->Event("SetVisible", &EditorLightComponentRequestBus::Events::SetVisible)
                 ->VirtualProperty("Visible", "GetVisible", "SetVisible")
-                ->Event("GetColor", &LightComponentEditorRequestBus::Events::GetColor)
-                ->Event("SetColor", &LightComponentEditorRequestBus::Events::SetColor)
+                ->Event("GetColor", &EditorLightComponentRequestBus::Events::GetColor)
+                ->Event("SetColor", &EditorLightComponentRequestBus::Events::SetColor)
                 ->VirtualProperty("Color", "GetColor", "SetColor")
-                ->Event("GetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::GetDiffuseMultiplier)
-                ->Event("SetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::SetDiffuseMultiplier)
+                ->Event("GetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::GetDiffuseMultiplier)
+                ->Event("SetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::SetDiffuseMultiplier)
                 ->VirtualProperty("DiffuseMultiplier", "GetDiffuseMultiplier", "SetDiffuseMultiplier")
-                ->Event("GetSpecularMultiplier", &LightComponentEditorRequestBus::Events::GetSpecularMultiplier)
-                ->Event("SetSpecularMultiplier", &LightComponentEditorRequestBus::Events::SetSpecularMultiplier)
+                ->Event("GetSpecularMultiplier", &EditorLightComponentRequestBus::Events::GetSpecularMultiplier)
+                ->Event("SetSpecularMultiplier", &EditorLightComponentRequestBus::Events::SetSpecularMultiplier)
                 ->VirtualProperty("SpecularMultiplier", "GetSpecularMultiplier", "SetSpecularMultiplier")
-                ->Event("GetAmbient", &LightComponentEditorRequestBus::Events::GetAmbient)
-                ->Event("SetAmbient", &LightComponentEditorRequestBus::Events::SetAmbient)
+                ->Event("GetAmbient", &EditorLightComponentRequestBus::Events::GetAmbient)
+                ->Event("SetAmbient", &EditorLightComponentRequestBus::Events::SetAmbient)
                 ->VirtualProperty("Ambient", "GetAmbient", "SetAmbient")
-                ->Event("GetAreaMaxDistance", &LightComponentEditorRequestBus::Events::GetAreaMaxDistance)
-                ->Event("SetAreaMaxDistance", &LightComponentEditorRequestBus::Events::SetAreaMaxDistance)
+                ->Event("GetAreaMaxDistance", &EditorLightComponentRequestBus::Events::GetAreaMaxDistance)
+                ->Event("SetAreaMaxDistance", &EditorLightComponentRequestBus::Events::SetAreaMaxDistance)
                 ->VirtualProperty("AreaMaxDistance", "GetAreaMaxDistance", "SetAreaMaxDistance")
-                ->Event("GetAreaWidth", &LightComponentEditorRequestBus::Events::GetAreaWidth)
-                ->Event("SetAreaWidth", &LightComponentEditorRequestBus::Events::SetAreaWidth)
+                ->Event("GetAreaWidth", &EditorLightComponentRequestBus::Events::GetAreaWidth)
+                ->Event("SetAreaWidth", &EditorLightComponentRequestBus::Events::SetAreaWidth)
                 ->VirtualProperty("AreaWidth", "GetAreaWidth", "SetAreaWidth")
-                ->Event("GetAreaHeight", &LightComponentEditorRequestBus::Events::GetAreaHeight)
-                ->Event("SetAreaHeight", &LightComponentEditorRequestBus::Events::SetAreaHeight)
+                ->Event("GetAreaHeight", &EditorLightComponentRequestBus::Events::GetAreaHeight)
+                ->Event("SetAreaHeight", &EditorLightComponentRequestBus::Events::SetAreaHeight)
                 ->VirtualProperty("AreaHeight", "GetAreaHeight", "SetAreaHeight")
+                ->Event("GetAreaFOV", &LightComponentEditorRequestBus::Events::GetAreaFOV)
+                ->Event("SetAreaFOV", &LightComponentEditorRequestBus::Events::SetAreaFOV)
+                ->VirtualProperty("AreaFOV", "GetAreaFOV", "SetAreaFOV")
                 ;
 
             // Projector Light Ebus reflection and VirtualProperties
-            behaviorContext->EBus<LightComponentEditorRequestBus>("EditorProjectorLightComponentBus")
-                ->Event("GetVisible", &LightComponentEditorRequestBus::Events::GetVisible)
-                ->Event("SetVisible", &LightComponentEditorRequestBus::Events::SetVisible)
+            behaviorContext->EBus<EditorLightComponentRequestBus>("EditorProjectorLightComponentBus")
+                ->Event("GetVisible", &EditorLightComponentRequestBus::Events::GetVisible)
+                ->Event("SetVisible", &EditorLightComponentRequestBus::Events::SetVisible)
                 ->VirtualProperty("Visible", "GetVisible", "SetVisible")
-                ->Event("GetColor", &LightComponentEditorRequestBus::Events::GetColor)
-                ->Event("SetColor", &LightComponentEditorRequestBus::Events::SetColor)
+                ->Event("GetColor", &EditorLightComponentRequestBus::Events::GetColor)
+                ->Event("SetColor", &EditorLightComponentRequestBus::Events::SetColor)
                 ->VirtualProperty("Color", "GetColor", "SetColor")
-                ->Event("GetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::GetDiffuseMultiplier)
-                ->Event("SetDiffuseMultiplier", &LightComponentEditorRequestBus::Events::SetDiffuseMultiplier)
+                ->Event("GetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::GetDiffuseMultiplier)
+                ->Event("SetDiffuseMultiplier", &EditorLightComponentRequestBus::Events::SetDiffuseMultiplier)
                 ->VirtualProperty("DiffuseMultiplier", "GetDiffuseMultiplier", "SetDiffuseMultiplier")
-                ->Event("GetSpecularMultiplier", &LightComponentEditorRequestBus::Events::GetSpecularMultiplier)
-                ->Event("SetSpecularMultiplier", &LightComponentEditorRequestBus::Events::SetSpecularMultiplier)
+                ->Event("GetSpecularMultiplier", &EditorLightComponentRequestBus::Events::GetSpecularMultiplier)
+                ->Event("SetSpecularMultiplier", &EditorLightComponentRequestBus::Events::SetSpecularMultiplier)
                 ->VirtualProperty("SpecularMultiplier", "GetSpecularMultiplier", "SetSpecularMultiplier")
-                ->Event("GetAmbient", &LightComponentEditorRequestBus::Events::GetAmbient)
-                ->Event("SetAmbient", &LightComponentEditorRequestBus::Events::SetAmbient)
+                ->Event("GetAmbient", &EditorLightComponentRequestBus::Events::GetAmbient)
+                ->Event("SetAmbient", &EditorLightComponentRequestBus::Events::SetAmbient)
                 ->VirtualProperty("Ambient", "GetAmbient", "SetAmbient")
-                ->Event("GetProjectorMaxDistance", &LightComponentEditorRequestBus::Events::GetProjectorMaxDistance)
-                ->Event("SetProjectorMaxDistance", &LightComponentEditorRequestBus::Events::SetProjectorMaxDistance)
+                ->Event("GetProjectorMaxDistance", &EditorLightComponentRequestBus::Events::GetProjectorMaxDistance)
+                ->Event("SetProjectorMaxDistance", &EditorLightComponentRequestBus::Events::SetProjectorMaxDistance)
                 ->VirtualProperty("ProjectorMaxDistance", "GetProjectorMaxDistance", "SetProjectorMaxDistance")
-                ->Event("GetProjectorAttenuationBulbSize", &LightComponentEditorRequestBus::Events::GetProjectorAttenuationBulbSize)
-                ->Event("SetProjectorAttenuationBulbSize", &LightComponentEditorRequestBus::Events::SetProjectorAttenuationBulbSize)
+                ->Event("GetProjectorAttenuationBulbSize", &EditorLightComponentRequestBus::Events::GetProjectorAttenuationBulbSize)
+                ->Event("SetProjectorAttenuationBulbSize", &EditorLightComponentRequestBus::Events::SetProjectorAttenuationBulbSize)
                 ->VirtualProperty("ProjectorAttenuationBulbSize", "GetProjectorAttenuationBulbSize", "SetProjectorAttenuationBulbSize")
-                ->Event("GetProjectorFOV", &LightComponentEditorRequestBus::Events::GetProjectorFOV)
-                ->Event("SetProjectorFOV", &LightComponentEditorRequestBus::Events::SetProjectorFOV)
+                ->Event("GetProjectorFOV", &EditorLightComponentRequestBus::Events::GetProjectorFOV)
+                ->Event("SetProjectorFOV", &EditorLightComponentRequestBus::Events::SetProjectorFOV)
                 ->VirtualProperty("ProjectorFOV", "GetProjectorFOV", "SetProjectorFOV")
-                ->Event("GetProjectorNearPlane", &LightComponentEditorRequestBus::Events::GetProjectorNearPlane)
-                ->Event("SetProjectorNearPlane", &LightComponentEditorRequestBus::Events::SetProjectorNearPlane)
+                ->Event("GetProjectorNearPlane", &EditorLightComponentRequestBus::Events::GetProjectorNearPlane)
+                ->Event("SetProjectorNearPlane", &EditorLightComponentRequestBus::Events::SetProjectorNearPlane)
                 ->VirtualProperty("ProjectorNearPlane", "GetProjectorNearPlane", "SetProjectorNearPlane")
                 ;
 
@@ -396,6 +409,14 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Min, 0.1f)->
                         Attribute(AZ::Edit::Attributes::Step, 0.1f)->
                         Attribute(AZ::Edit::Attributes::Suffix, " _")->
+
+                    DataElement(0, &LightConfiguration::m_areaFOV, "FOV", "Area light field of view.")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetAreaSettingVisibility)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
+                        Attribute(AZ::Edit::Attributes::Min, 0.0f)->
+                        Attribute(AZ::Edit::Attributes::Max, 90.0f)->
+                        Attribute(AZ::Edit::Attributes::Step, 1.0f)->
+                        Attribute(AZ::Edit::Attributes::Suffix, " degrees")->
 
                     // Projector settings.
                     ClassElement(AZ::Edit::ClassElements::Group, "Projector Light Settings")->
@@ -646,7 +667,7 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, LightComponentEditorRequestBus, RefreshLight);
+            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
         }
 
         return AZ::Edit::PropertyRefreshLevels::EntireTree;
@@ -656,7 +677,7 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, LightComponentEditorRequestBus, RefreshLight);
+            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
         }
 
         return AZ::Edit::PropertyRefreshLevels::None;
@@ -666,7 +687,7 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, LightComponentEditorRequestBus, RefreshLight);
+            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
 
             EBUS_EVENT(LightSettingsNotificationsBus, AnimationSettingsChanged);
         }
@@ -676,8 +697,9 @@ namespace LmbrCentral
 
     EditorLightComponent::EditorLightComponent()
         : m_useCustomizedCubemap(false)
-        , m_viewCubemap (false)
+        , m_viewCubemap(false)
         , m_cubemapRegen(false)
+        , m_cubemapClear(false)
     {
         m_configuration.m_projectorTexture.SetAssetPath("engineassets/textures/defaults/spot_default.dds");
     }
@@ -713,7 +735,7 @@ namespace LmbrCentral
             OnViewCubemapChanged(); // Check to see if it should be displayed now.
         }
 
-        LightComponentEditorRequestBus::Handler::BusConnect(GetEntityId());
+        EditorLightComponentRequestBus::Handler::BusConnect(GetEntityId());
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
@@ -723,7 +745,7 @@ namespace LmbrCentral
 
     void EditorLightComponent::Deactivate()
     {
-        LightComponentEditorRequestBus::Handler::BusDisconnect();
+        EditorLightComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
@@ -777,6 +799,11 @@ namespace LmbrCentral
         return (m_configuration.m_lightType == LightConfiguration::LightType::Probe);
     }
 
+    bool EditorLightComponent::HasCubemap() const
+    {
+        return !m_configuration.m_probeCubemap.empty();
+    }
+
     const char* EditorLightComponent::GetCubemapAssetName() const
     {
         return m_configuration.m_probeCubemap.c_str();
@@ -788,6 +815,18 @@ namespace LmbrCentral
         return (m_configuration.m_lightType == LightConfiguration::LightType::Probe) && (!m_useCustomizedCubemap);
     }
 
+    const char* EditorLightComponent::GetGenerateCubemapButtonName() const
+    {
+        if (HasCubemap())
+        {
+            return BUTTON_ADDBOUNCE;
+        }
+        else
+        {
+            return BUTTON_GENERATE;
+        }
+    }
+
     void EditorLightComponent::GenerateCubemap()
     {
         if (CanGenerateCubemap())
@@ -795,8 +834,14 @@ namespace LmbrCentral
             EBUS_EVENT(AzToolsFramework::EditorRequests::Bus,
                 GenerateCubemapForEntity,
                 GetEntityId(),
-                nullptr);
+                nullptr,
+                false);
         }
+    }
+
+    void EditorLightComponent::ClearCubemap()
+    {
+        SetCubemap("");
     }
 
     void EditorLightComponent::OnViewCubemapChanged()
@@ -821,28 +866,50 @@ namespace LmbrCentral
         }
     }
 
-    void EditorLightComponent::SetCubemap(const char* cubemap)
+    void EditorLightComponent::SetCubemap(const AZStd::string& cubemap)
     {
         if (cubemap != m_configuration.m_probeCubemap)
         {
             AzToolsFramework::ScopedUndoBatch undo("Cubemap Assignment");
 
-            m_cubemapAsset.SetAssetPath(cubemap);
+            m_cubemapAsset.SetAssetPath(cubemap.c_str());
             m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
             m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
 
             EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
+        }
 
-            //get the notice when the dds generated by AP. we will only refresh the m_cubemapAsset when the dds is generated
-            AzFramework::AssetCatalogEventBus::Handler::BusConnect();
+        if (m_configuration.m_probeCubemap.empty())
+        {
+            // Since the cubemap was simply cleared, there is no need to wait for an asset to be processed.
+            // Instead, refresh the light now so the output will be cleared immediately.
+
+            if (IsSelected())
+            {
+                EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+            }
 
             if (EditorLightConfiguration::LightType::Probe == m_configuration.m_lightType)
             {
                 RefreshLight();
             }
         }
+        else
+        {
+            // Get the notice when the dds is generated by AP. We will only refresh the m_cubemapAsset and the PropertyDisplay when the dds is generated.
+            AzFramework::AssetCatalogEventBus::Handler::BusConnect();
+        }
     }
-    
+
+    void EditorLightComponent::SetProjectorTexture(const AZStd::string& projectorTexture)
+    {
+        if (projectorTexture != m_configuration.m_projectorTexture.GetAssetPath())
+        {
+            m_configuration.m_projectorTexture.SetAssetPath(projectorTexture.c_str());
+            RefreshLight();
+        }
+    }
+
     void EditorLightComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
     {
         AZ::Data::AssetId cmAssetId;
@@ -856,6 +923,13 @@ namespace LmbrCentral
             if (IsSelected())
             {
                 EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+            }
+
+            // We wait to refresh the light until after the new asset has finished loading to avoid showing old data; for example, when you
+            // Generate, Clear, and then Generate again.
+            if (EditorLightConfiguration::LightType::Probe == m_configuration.m_lightType)
+            {
+                RefreshLight();
             }
         }
     }
@@ -907,6 +981,17 @@ namespace LmbrCentral
     {
         return static_cast<AZ::u32>(m_configuration.m_probeCubemapResolution);
     }
+    void EditorLightComponent::SetCubemapResolution(AZ::u32 newResolution)
+    {
+        AZ_Assert(newResolution > 0, "Invalid resolution");
+
+        LightConfiguration::ResolutionSetting cubemapResolution = static_cast<LightConfiguration::ResolutionSetting>(newResolution);
+        if (m_configuration.m_probeCubemapResolution != cubemapResolution)
+        {
+            m_configuration.m_probeCubemapResolution = cubemapResolution;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
 
     bool EditorLightComponent::UseCustomizedCubemap() const
     {
@@ -932,6 +1017,19 @@ namespace LmbrCentral
     bool EditorLightComponent::GetVisible()
     {
         return m_configuration.m_visible;
+    }
+
+    void EditorLightComponent::SetOnInitially(bool onInitially)
+    {
+        if (m_configuration.m_onInitially != onInitially)
+        {
+            m_configuration.m_onInitially = onInitially;
+            m_configuration.MajorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetOnInitially()
+    {
+        return m_configuration.m_onInitially;
     }
 
     void EditorLightComponent::SetColor(const AZ::Color& newColor)
@@ -1052,6 +1150,19 @@ namespace LmbrCentral
         return m_configuration.m_areaHeight;
     }
 
+    void EditorLightComponent::SetAreaFOV(float newFOV)
+    {
+        if (newFOV != m_configuration.m_areaFOV)
+        {
+            m_configuration.m_areaFOV = newFOV;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetAreaFOV()
+    {
+        return m_configuration.m_areaFOV;
+    }
+
     void EditorLightComponent::SetProjectorMaxDistance(float newMaxDistance)
     {
         if (newMaxDistance != m_configuration.m_projectorRange)
@@ -1115,19 +1226,6 @@ namespace LmbrCentral
     const AZ::Vector3 EditorLightComponent::GetProbeAreaDimensions()
     {
         return m_configuration.m_probeArea;
-    }
-
-    void EditorLightComponent::SetProbeSortPriority(float newPriority)
-    {
-        if (newPriority != m_configuration.m_probeSortPriority)
-        {
-            m_configuration.m_probeSortPriority = (AZ::u32)newPriority;
-            m_configuration.MinorPropertyChanged();
-        }
-    }
-    float EditorLightComponent::GetProbeSortPriority()
-    {
-        return m_configuration.m_probeSortPriority;
     }
 
     void EditorLightComponent::SetProbeBoxProjected(bool isProbeBoxProjected)
@@ -1197,12 +1295,299 @@ namespace LmbrCentral
     {
         return m_configuration.m_attenFalloffMax;
     }
+
+    void EditorLightComponent::SetIndoorOnly(bool newIndoorOnly)
+    {
+        if (m_configuration.m_indoorOnly != newIndoorOnly)
+        {
+            m_configuration.m_indoorOnly = newIndoorOnly;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetIndoorOnly()
+    {
+        return m_configuration.m_indoorOnly;
+    }
+
+    void EditorLightComponent::SetCastShadowSpec(AZ::u32 newCastShadowSpec)
+    {
+        EngineSpec shadowSpec = static_cast<EngineSpec>(newCastShadowSpec);
+        if (m_configuration.m_castShadowsSpec != shadowSpec)
+        {
+            m_configuration.m_castShadowsSpec = shadowSpec;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    AZ::u32 EditorLightComponent::GetCastShadowSpec()
+    {
+        return static_cast<AZ::u32>(m_configuration.m_castShadowsSpec);
+    }
+
+    void EditorLightComponent::SetViewDistanceMultiplier(float newMultiplier)
+    {
+        if (m_configuration.m_viewDistMultiplier != newMultiplier)
+        {
+            m_configuration.m_viewDistMultiplier = newMultiplier;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetViewDistanceMultiplier()
+    {
+        return m_configuration.m_viewDistMultiplier;
+    }
+
+    void EditorLightComponent::SetProbeArea(const AZ::Vector3& newProbeArea)
+    {
+        if (m_configuration.m_probeArea != newProbeArea)
+        {
+            m_configuration.m_probeArea = newProbeArea;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    AZ::Vector3 EditorLightComponent::GetProbeArea()
+    {
+        return m_configuration.m_probeArea;
+    }
+
+    void EditorLightComponent::SetProbeSortPriority(AZ::u32 newProbeSortPriority)
+    {
+        if (m_configuration.m_probeSortPriority != newProbeSortPriority)
+        {
+            m_configuration.m_probeSortPriority = newProbeSortPriority;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    AZ::u32 EditorLightComponent::GetProbeSortPriority()
+    {
+        return m_configuration.m_probeSortPriority;
+    }
+
+    void EditorLightComponent::SetVolumetricFog(bool newVolumetricFog)
+    {
+        if (m_configuration.m_volumetricFog != newVolumetricFog)
+        {
+            m_configuration.m_volumetricFog = newVolumetricFog;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetVolumetricFog()
+    {
+        return m_configuration.m_volumetricFog;
+    }
+
+    void EditorLightComponent::SetVolumetricFogOnly(bool newVolumetricFogOnly)
+    {
+        if (m_configuration.m_volumetricFogOnly != newVolumetricFogOnly)
+        {
+            m_configuration.m_volumetricFogOnly = newVolumetricFogOnly;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetVolumetricFogOnly()
+    {
+        return m_configuration.m_volumetricFogOnly;
+    }
+
+    void EditorLightComponent::SetAttenuationFalloffMax(float newAttenFalloffMax)
+    {
+        if (m_configuration.m_attenFalloffMax != newAttenFalloffMax)
+        {
+            m_configuration.m_attenFalloffMax = newAttenFalloffMax;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetAttenuationFalloffMax()
+    {
+        return m_configuration.m_attenFalloffMax;
+    }
+
+    void EditorLightComponent::SetIgnoreVisAreas(bool newIgnoreVisAreas)
+    {
+        if (m_configuration.m_ignoreVisAreas != newIgnoreVisAreas)
+        {
+            m_configuration.m_ignoreVisAreas = newIgnoreVisAreas;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetIgnoreVisAreas()
+    {
+        return m_configuration.m_ignoreVisAreas;
+    }
+
+    void EditorLightComponent::SetAffectsThisAreaOnly(bool affectsThisAreaOnly)
+    {
+        if (m_configuration.m_affectsThisAreaOnly != affectsThisAreaOnly)
+        {
+            m_configuration.m_affectsThisAreaOnly = affectsThisAreaOnly;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetAffectsThisAreaOnly()
+    {
+        return m_configuration.m_affectsThisAreaOnly;
+    }
+
+    void EditorLightComponent::SetBoxHeight(float newBoxHeight)
+    {
+        if (m_configuration.m_boxHeight != newBoxHeight)
+        {
+            m_configuration.m_boxHeight = newBoxHeight;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetBoxHeight()
+    {
+        return m_configuration.m_boxHeight;
+    }
+
+    void EditorLightComponent::SetBoxWidth(float newBoxWidth)
+    {
+        if (m_configuration.m_boxWidth != newBoxWidth)
+        {
+            m_configuration.m_boxWidth = newBoxWidth;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetBoxWidth()
+    {
+        return m_configuration.m_boxWidth;
+    }
+
+    void EditorLightComponent::SetBoxLength(float newBoxLength)
+    {
+        if (m_configuration.m_boxLength != newBoxLength)
+        {
+            m_configuration.m_boxLength = newBoxLength;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetBoxLength()
+    {
+        return m_configuration.m_boxLength;
+    }
+
+    void EditorLightComponent::SetBoxProjected(bool newBoxProjected)
+    {
+        if (m_configuration.m_isBoxProjected != newBoxProjected)
+        {
+            m_configuration.m_isBoxProjected = newBoxProjected;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    bool EditorLightComponent::GetBoxProjected()
+    {
+        return m_configuration.m_isBoxProjected;
+    }
     ///////////////////////////////////////////////////////////////////
 
+    void EditorLightComponent::SetShadowBias(float shadowBias)
+    {
+        if (m_configuration.m_shadowBias != shadowBias)
+        {
+            m_configuration.m_shadowBias = shadowBias;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetShadowBias()
+    {
+        return m_configuration.m_shadowBias;
+    }
+
+    void EditorLightComponent::SetShadowSlopeBias(float shadowSlopeBias)
+    {
+        if (m_configuration.m_shadowSlopeBias != shadowSlopeBias)
+        {
+            m_configuration.m_shadowSlopeBias = shadowSlopeBias;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetShadowSlopeBias()
+    {
+        return m_configuration.m_shadowSlopeBias;
+    }
+
+    void EditorLightComponent::SetShadowResScale(float shadowResScale)
+    {
+        if (m_configuration.m_shadowResScale != shadowResScale)
+        {
+            m_configuration.m_shadowResScale = shadowResScale;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetShadowResScale()
+    {
+        return m_configuration.m_shadowResScale;
+    }
+
+    void EditorLightComponent::SetShadowUpdateMinRadius(float shadowUpdateMinRadius)
+    {
+        if (m_configuration.m_shadowUpdateMinRadius != shadowUpdateMinRadius)
+        {
+            m_configuration.m_shadowUpdateMinRadius = shadowUpdateMinRadius;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetShadowUpdateMinRadius()
+    {
+        return m_configuration.m_shadowUpdateMinRadius;
+    }
+
+    void EditorLightComponent::SetShadowUpdateRatio(float shadowUpdateRatio)
+    {
+        if (m_configuration.m_shadowUpdateRatio != shadowUpdateRatio)
+        {
+            m_configuration.m_shadowUpdateRatio = shadowUpdateRatio;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetShadowUpdateRatio()
+    {
+        return m_configuration.m_shadowUpdateRatio;
+    }
+
+    // Animation parameters
+    void EditorLightComponent::SetAnimIndex(AZ::u32 animIndex)
+    {
+        if (m_configuration.m_animIndex != animIndex)
+        {
+            m_configuration.m_animIndex = animIndex;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    AZ::u32 EditorLightComponent::GetAnimIndex()
+    {
+        return m_configuration.m_animIndex;
+    }
+
+    void EditorLightComponent::SetAnimSpeed(float animSpeed)
+    {
+        if (m_configuration.m_animSpeed != animSpeed)
+        {
+            m_configuration.m_animSpeed = animSpeed;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetAnimSpeed()
+    {
+        return m_configuration.m_animSpeed;
+    }
 
     void EditorLightComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_cubemapPreview.SetTransform(AZTransformToLYTransform(world));
+    }
+
+    void EditorLightComponent::SetAnimPhase(float animPhase)
+    {
+        if (m_configuration.m_animPhase != animPhase)
+        {
+            m_configuration.m_animPhase = animPhase;
+            m_configuration.MinorPropertyChanged();
+        }
+    }
+    float EditorLightComponent::GetAnimPhase()
+    {
+        return m_configuration.m_animPhase;
     }
 
     const char* EditorLightComponent::GetLightTypeText() const
@@ -1242,9 +1627,66 @@ namespace LmbrCentral
         case EditorLightConfiguration::LightType::Area:
         {
             dc->SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 0.5f));
-            const auto& area = AZ::Vector3(m_configuration.m_areaMaxDistance, m_configuration.m_areaWidth, m_configuration.m_areaHeight);
-            dc->DrawWireBox(AZ::Vector3(0, -area.GetY() * 0.5f, -area.GetZ() * 0.5f),
-                AZ::Vector3(area.GetX(),  area.GetY() * 0.5f,  area.GetZ() * 0.5f));
+
+            // Some initial calculations for drawing
+            AZ::Matrix3x3 rotYMatrix = AZ::Matrix3x3::CreateRotationY(AZ::DegToRad(m_configuration.m_areaFOV));
+            AZ::Matrix3x3 rotXMatrix = AZ::Matrix3x3::CreateRotationX(AZ::DegToRad(45));
+            AZ::Vector3 AngleRefPoint = AZ::Vector3(m_configuration.m_areaMaxDistance, 0, 0);
+            AngleRefPoint *= rotYMatrix;
+            const float roundedRectangleOffset = AngleRefPoint.GetZ();
+            AngleRefPoint *= rotXMatrix;
+
+            // draw box around light
+            AZ::Vector3 points[4];
+            points[0] = AZ::Vector3(0, -m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
+            points[1] = AZ::Vector3(0,  m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
+            points[2] = AZ::Vector3(0,  m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
+            points[3] = AZ::Vector3(0, -m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
+            dc->DrawPolyLine(points, 4, true);
+
+            // draw lines from corners of light
+            dc->DrawLine(points[0], points[0] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
+            dc->DrawLine(points[1], points[1] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
+            dc->DrawLine(points[2], points[2] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
+            dc->DrawLine(points[3], points[3] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
+
+            // draw curves to the corners of the max distance box
+            const float sqrthalf = sqrt(0.5f);
+            dc->DrawArc(points[0], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0,  sqrthalf, -sqrthalf));
+            dc->DrawArc(points[1], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0, -sqrthalf, -sqrthalf));
+            dc->DrawArc(points[2], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0, -sqrthalf,  sqrthalf));
+            dc->DrawArc(points[3], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0,  sqrthalf,  sqrthalf));
+
+            // Draw middle rounded rect
+            dc->DrawLine(
+                AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY(), points[0].GetZ() - roundedRectangleOffset),
+                AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY(), points[1].GetZ() - roundedRectangleOffset)
+            );
+            dc->DrawLine(
+                AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY() + roundedRectangleOffset, points[1].GetZ()),
+                AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY() + roundedRectangleOffset, points[2].GetZ())
+            );
+            dc->DrawLine(
+                AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY(), points[2].GetZ() + roundedRectangleOffset),
+                AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY(), points[3].GetZ() + roundedRectangleOffset)
+            );
+            dc->DrawLine(
+                AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY() - roundedRectangleOffset, points[3].GetZ()),
+                AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY() - roundedRectangleOffset, points[0].GetZ())
+            );
+
+            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY(), points[0].GetZ()), roundedRectangleOffset, 270.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY(), points[1].GetZ()), roundedRectangleOffset,   0.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY(), points[2].GetZ()), roundedRectangleOffset,  90.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY(), points[3].GetZ()), roundedRectangleOffset, 180.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+
+            // draw box at max distance in front of light
+            points[0] = AZ::Vector3(m_configuration.m_areaMaxDistance, -m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
+            points[1] = AZ::Vector3(m_configuration.m_areaMaxDistance,  m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
+            points[2] = AZ::Vector3(m_configuration.m_areaMaxDistance,  m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
+            points[3] = AZ::Vector3(m_configuration.m_areaMaxDistance, -m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
+            dc->DrawPolyLine(points, 4, true);
+
             break;
         }
         case EditorLightConfiguration::LightType::Projector:

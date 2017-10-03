@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include "DecalComponent.h"
+#include "MaterialOwnerRequestBusHandlerImpl.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <MathConversion.h>
 #include <I3DEngine.h>
@@ -86,7 +87,15 @@ namespace LmbrCentral
 
     DecalComponent::DecalComponent()
         : m_decalRenderNode(nullptr)
-    {}
+    {
+        m_materialBusHandler = aznew MaterialOwnerRequestBusHandlerImpl;
+    }
+
+    DecalComponent::~DecalComponent()
+    {
+        delete m_materialBusHandler;
+    }
+
 
     void DecalComponent::Activate()
     {
@@ -110,9 +119,12 @@ namespace LmbrCentral
             }
         }
 
+        m_materialBusHandler->Activate(m_decalRenderNode, m_entity->GetId());
+
         DecalComponentRequestBus::Handler::BusConnect(GetEntityId());
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        MaterialOwnerRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void DecalComponent::Deactivate()
@@ -120,6 +132,9 @@ namespace LmbrCentral
         DecalComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        MaterialOwnerRequestBus::Handler::BusDisconnect();
+
+        m_materialBusHandler->Deactivate();
 
         if (m_decalRenderNode)
         {
@@ -179,6 +194,73 @@ namespace LmbrCentral
     {
         return s_renderNodeRequestBusOrder;
     }
+
+
+    bool DecalComponent::IsMaterialOwnerReady()
+    {
+        return m_materialBusHandler->IsMaterialOwnerReady();
+    }
+
+    void DecalComponent::SetMaterial(_smart_ptr<IMaterial> material)
+    {
+        m_materialBusHandler->SetMaterial(material);
+    }
+
+    _smart_ptr<IMaterial> DecalComponent::GetMaterial()
+    {
+        return m_materialBusHandler->GetMaterial();
+    }
+
+    void DecalComponent::SetMaterialHandle(MaterialHandle m)
+    {
+        m_materialBusHandler->SetMaterialHandle(m);
+    }
+
+    MaterialHandle DecalComponent::GetMaterialHandle()
+    {
+        return m_materialBusHandler->GetMaterialHandle();
+    }
+
+    void DecalComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value)
+    {
+        m_materialBusHandler->SetMaterialParamVector4(name, value);
+    }
+
+    void DecalComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value)
+    {
+        m_materialBusHandler->SetMaterialParamVector3(name, value);
+    }
+
+    void DecalComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value)
+    {
+        m_materialBusHandler->SetMaterialParamColor(name, value);
+    }
+
+    void DecalComponent::SetMaterialParamFloat(const AZStd::string& name, float value)
+    {
+        m_materialBusHandler->SetMaterialParamFloat(name, value);
+    }
+
+    AZ::Vector4 DecalComponent::GetMaterialParamVector4(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamVector4(name);
+    }
+
+    AZ::Vector3 DecalComponent::GetMaterialParamVector3(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamVector3(name);
+    }
+
+    AZ::Color DecalComponent::GetMaterialParamColor(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamColor(name);
+    }
+
+    float DecalComponent::GetMaterialParamFloat(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamFloat(name);
+    }
+
 
     const float DecalComponent::s_renderNodeRequestBusOrder = 900.f;
 } // namespace LmbrCentral

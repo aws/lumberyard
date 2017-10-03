@@ -25,7 +25,6 @@
 // forward declarations,
 class CMaterialManager;
 class CVarBlock;
-struct IVariable;
 
 enum eMTL_PROPAGATION
 {

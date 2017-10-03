@@ -55,7 +55,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
 
             const AZ::Data::Asset<AZ::ScriptAsset>& GetScript() const       { return m_scriptComponent.GetScript(); }
-            void SetScript(const AZ::Data::Asset<AZ::ScriptAsset>& script)  { m_scriptAsset = script; m_scriptComponent.SetScript(script); }
+            void SetScript(const AZ::Data::Asset<AZ::ScriptAsset>& script);
 
             /// Resets the property to it's default value. (TODO)
             //void ResetProperty(const char* name);
@@ -112,6 +112,8 @@ namespace AzToolsFramework
 
             AzFramework::ScriptComponent m_scriptComponent;
             AZ::Data::Asset<AZ::ScriptAsset> m_scriptAsset;
+
+            AZStd::string m_customName;
         };
     } // namespace Component
 } // namespace AzToolsFramework

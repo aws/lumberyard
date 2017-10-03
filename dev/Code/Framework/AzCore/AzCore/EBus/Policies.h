@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_EBUS_POLICIES_H
-#define AZ_EBUS_POLICIES_H
+#pragma once
 
 /**
  * @file
@@ -21,6 +20,7 @@
 // Includes for the event queue.
 #include <AzCore/std/functional.h>
 #include <AzCore/std/containers/queue.h>
+#include <AzCore/std/containers/intrusive_set.h>
 
 #include <AzCore/Module/Environment.h>
 
@@ -102,7 +102,7 @@ namespace AZ
      * Use this as a template for custom connection policies.
      * @tparam Bus A class that defines an EBus.
      */
-    template<class Bus>
+    template <class Bus>
     struct EBusConnectionPolicy
     {
         /**
@@ -171,7 +171,7 @@ namespace AZ
      * modules (DLLs) that attach to the AZ::Environment. 
      * @tparam Context A class that contains EBus data.
      */
-    template<class Context>
+    template <class Context>
     struct EBusEnvironmentStoragePolicy
     {
         /**
@@ -200,7 +200,7 @@ namespace AZ
     /**
      * Environment variable that contains a pointer to the EBus data.
      */
-    template<class Context>
+    template <class Context>
     EnvironmentVariable<Context> EBusEnvironmentStoragePolicy<Context>::s_context;
 
     /**
@@ -209,7 +209,7 @@ namespace AZ
      * With this policy, each module (DLL) has its own instance of the EBus.
      * @tparam Context A class that contains EBus data.
      */
-    template<class Context>
+    template <class Context>
     struct EBusGlobalStoragePolicy
     {
         /**
@@ -230,7 +230,7 @@ namespace AZ
      * With this policy, each thread has its own instance of the EBus.
      * @tparam Context A class that contains EBus data.
      */
-    template<class Context>
+    template <class Context>
     struct EBusThreadLocalStoragePolicy
     {
         /**
@@ -247,7 +247,7 @@ namespace AZ
 
 
     /// @cond EXCLUDE_DOCS
-    template<bool IsEnabled, class Bus, class MutexType>
+    template <bool IsEnabled, class Bus, class MutexType>
     struct EBusMessageQueuePolicy
     {
         typedef int BusMessage;
@@ -256,7 +256,7 @@ namespace AZ
         void Clear() {};
     };
 
-    template<class Bus, class MutexType>
+    template <class Bus, class MutexType>
     struct EBusMessageQueuePolicy<true, Bus, MutexType>
     {
         typedef AZStd::function<void(typename Bus::InterfaceType*)> BusMessageCall;
@@ -319,7 +319,7 @@ namespace AZ
                         typename Bus::EBNode * bus = Bus::BusesContainer::toNodePtr(iter);
                         if (msg.m_isForward)
                         {
-                            typename Bus::template CallstackEntryIterator<typename Bus::EBNode::iterator> currentEvent(bus->begin(), &bus->m_busId);
+                            typename Bus::CallstackForwardIterator currentEvent(bus->begin(), &bus->m_busId);
                             typename Bus::EBNode::iterator lastEvent = bus->end();
                             for (; currentEvent.m_iterator != lastEvent; )
                             {
@@ -329,7 +329,7 @@ namespace AZ
                         }
                         else
                         {
-                            typename Bus::template CallstackEntryIterator<typename Bus::EBNode::reverse_iterator> currentEvent(bus->rbegin(), &bus->m_busId);
+                            typename Bus::CallstackReverseIterator currentEvent(bus->rbegin(), &bus->m_busId);
                             typename Bus::EBNode::reverse_iterator lastEvent = bus->rend();
                             for (; currentEvent.m_iterator != lastEvent; )
                             {
@@ -347,7 +347,7 @@ namespace AZ
                         msg.m_ptr->lock();
                         if (msg.m_isForward)
                         {
-                            typename Bus::template CallstackEntryIterator<typename Bus::EBNode::iterator> currentEvent(msg.m_ptr->begin(), &msg.m_ptr.get()->m_busId);
+                            typename Bus::CallstackForwardIterator currentEvent(msg.m_ptr->begin(), &msg.m_ptr.get()->m_busId);
                             typename Bus::EBNode::iterator lastEvent = msg.m_ptr->end();
                             for (; currentEvent.m_iterator != lastEvent; )
                             {
@@ -357,7 +357,7 @@ namespace AZ
                         }
                         else
                         {
-                            typename Bus::template CallstackEntryIterator<typename Bus::EBNode::reverse_iterator> currentEvent(msg.m_ptr->rbegin(), &msg.m_ptr.get()->m_busId);
+                            typename Bus::CallstackReverseIterator currentEvent(msg.m_ptr->rbegin(), &msg.m_ptr.get()->m_busId);
                             typename Bus::EBNode::reverse_iterator lastEvent = msg.m_ptr->rend();
                             for (; currentEvent.m_iterator != lastEvent; )
                             {
@@ -380,7 +380,7 @@ namespace AZ
                             for (; firstBus != lastBus; )
                             {
                                 typename Bus::EBNode&  bus = *firstBus;
-                                typename Bus::template CallstackEntryIterator<typename Bus::EBNode::iterator> currentEvent(bus.begin(), &bus.m_busId);
+                                typename Bus::CallstackForwardIterator currentEvent(bus.begin(), &bus.m_busId);
                                 typename Bus::EBNode::iterator lastEvent = bus.end();
                                 bus.add_ref(); // Lock the bus, so remove all handlers. We don't remove them until we get to the next one.
                                 for (; currentEvent.m_iterator != lastEvent; )
@@ -399,7 +399,7 @@ namespace AZ
                             for (; firstBus != lastBus; )
                             {
                                 typename Bus::EBNode&  bus = *firstBus;
-                                typename Bus::template CallstackEntryIterator<typename Bus::EBNode::reverse_iterator> currentEvent(bus.rbegin(), &bus.m_busId);
+                                typename Bus::CallstackReverseIterator currentEvent(bus.rbegin(), &bus.m_busId);
                                 typename Bus::EBNode::reverse_iterator lastEvent = bus.rend();
                                 bus.add_ref(); // Lock the bus, so remove all handlers. We don't remove them until we get to the next one.
                                 for (; currentEvent.m_iterator != lastEvent; )
@@ -425,7 +425,7 @@ namespace AZ
         }
     };
 
-    template<bool IsEnabled, class Bus, class MutexType>
+    template <bool IsEnabled, class Bus, class MutexType>
     struct EBusFunctionQueuePolicy
     {
         typedef Internal::NullBusMessageCall BusMessageCall;
@@ -435,7 +435,7 @@ namespace AZ
         bool IsActive() { return false; }
     };
 
-    template<class Bus, class MutexType>
+    template <class Bus, class MutexType>
     struct EBusFunctionQueuePolicy<true, Bus, MutexType>
     {
         typedef AZStd::function<void()> BusMessageCall;
@@ -507,14 +507,14 @@ namespace AZ
     ////////////////////////////////////////////////////////////
     // Implementations
     ////////////////////////////////////////////////////////////
-    template<class Bus>
+    template <class Bus>
     void EBusConnectionPolicy<Bus>::Bind(BusPtr& ptr, Context& context, const BusIdType& id)
     {
         auto iter = context.m_buses.insert(id);
         ptr = Bus::BusesContainer::toNodePtr(iter);
     }
 
-    template<class Bus>
+    template <class Bus>
     void EBusConnectionPolicy<Bus>::Connect(BusPtr& ptr, Context& context, HandlerNode& handler, const BusIdType& id)
     {
         auto iter = context.m_buses.insert(id);
@@ -522,14 +522,14 @@ namespace AZ
         ptr->insert(handler);
     }
 
-    template<class Bus>
+    template <class Bus>
     void EBusConnectionPolicy<Bus>::Disconnect(Context& context, HandlerNode& handler, BusPtr& ptr)
     {
         (void)context;
         ptr->erase(handler);
     }
 
-    template<class Bus>
+    template <class Bus>
     void EBusConnectionPolicy<Bus>::DisconnectId(Context& context, HandlerNode& handler, const BusIdType& id)
     {
         (void)context;
@@ -544,7 +544,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     // Router Policy
     /// @cond EXCLUDE_DOCS
-    template<class Interface>
+    template <class Interface>
     struct EBusRouterNode
         : public AZStd::intrusive_multiset_node<EBusRouterNode<Interface>>
     {
@@ -573,7 +573,7 @@ namespace AZ
         }
     };
 
-    template<class Bus>
+    template <class Bus>
     struct EBusRouterPolicy
     {
         using RouterNode = EBusRouterNode<typename Bus::InterfaceType>;
@@ -587,7 +587,7 @@ namespace AZ
             SkipListenersAndRouters, ///< Skip everybody. Nobody should receive the event after this.
         };
 
-        template<class CallstackHandler, class Function, class... InputArgs>
+        template <class CallstackHandler, class Function, class... InputArgs>
         inline bool RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args)
         {
             auto rtLast = m_routers.end();
@@ -615,6 +615,3 @@ namespace AZ
     /// @endcond
     //////////////////////////////////////////////////////////////////////////
 } // namespace AZ
-
-#endif // AZ_EBUS_POLICIES_H
-#pragma once

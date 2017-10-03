@@ -53,8 +53,11 @@ public: // member functions
     void LostActiveStatus() override;
     void HandleHoverStart() override;
     void HandleHoverEnd() override;
+    void HandleReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId) override;
     bool IsHandlingEvents() override;
     void SetIsHandlingEvents(bool isHandlingEvents) override;
+    bool GetIsAutoActivationEnabled() override;
+    void SetIsAutoActivationEnabled(bool isEnabled) override;
     // ~UiInteractableInterface
 
     // UiUpdateInterface
@@ -107,6 +110,9 @@ protected: // member functions
     void TriggerHoverEndAction();
     void TriggerPressedAction();
     void TriggerReleasedAction();
+    void TriggerReceivedHoverByNavigatingFromDescendantAction(AZ::EntityId descendantEntityId);
+
+    virtual bool IsAutoActivationSupported();
 
 protected: // data members
 
@@ -133,6 +139,10 @@ protected: // data members
 
     //! Action triggered on release
     LyShine::ActionName m_releasedActionName;
+
+    //! If true, the interactable automatically becomes active when navigated to via gamepad/keyboard.
+    //! Otherwise, a key press is needed to put the interactable in an active state 
+    bool m_isAutoActivationEnabled;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // non-persistent data

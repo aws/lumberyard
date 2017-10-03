@@ -66,6 +66,7 @@ namespace AzToolsFramework
                 }
                 else
                 {
+                    m_id = templateClassInstance->GetId();
                     m_template = templateClassInstance;
                 }
             }

@@ -23,7 +23,7 @@ def build(bld):
         configurations              = ['debug', 'debug_test', 'debug_dedicated', 'profile', 'profile_test', 'profile_dedicated'],
         test_all_file_list          = 'SceneUI_testing.waf_files',
         includes                    = [ bld.Path('Code/Tools') ],
-        use                         = ['SceneCore', 'AzCore', 'AzFramework', 'AzToolsFramework', 'EmotionFXSharedLib'],
+        use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'EmotionFXStaticLib', 'AzQtComponents'],
         defines                     = [ 'SCENE_UI_EXPORTS' ],
         features                    = ['qt5', 'crcfix'],
         autod_uselib                = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS']

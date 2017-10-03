@@ -15,7 +15,7 @@
 
 class PropertyHandlerChar
     : private QObject
-    , public AzToolsFramework::PropertyHandler<char, AzToolsFramework::PropertyStringLineEditCtrl>
+    , public AzToolsFramework::PropertyHandler<uint32_t, AzToolsFramework::PropertyStringLineEditCtrl>
 {
     // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
     Q_OBJECT

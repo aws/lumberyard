@@ -91,7 +91,9 @@ enum EMaterialFlags
     MTL_FLAG_REQUIRE_NEAREST_CUBEMAP    = 0x200000, // materials with alpha blending requires special processing for shadows
     MTL_FLAG_CONSOLE_MAT                = 0x400000,
     MTL_FLAG_DELETE_PENDING             = 0x800000, // Internal use only
-    MTL_FLAG_BLEND_TERRAIN              = 0x1000000
+    MTL_FLAG_BLEND_TERRAIN              = 0x1000000,
+    MTL_FLAG_IS_TERRAIN                 = 0x2000000,// indication to the loader - Terrain type
+    MTL_FLAG_IS_SKY                     = 0x4000000 // indication to the loader - Sky type
 };
 
 #define MTL_FLAGS_SAVE_MASK (MTL_FLAG_WIRE | MTL_FLAG_2SIDED | MTL_FLAG_ADDITIVE |  MTL_FLAG_LIGHTING | \
@@ -110,19 +112,16 @@ enum EPostEffectFlags
 enum EMaterialLayerFlags
 {
     // Active layers flags
-
     MTL_LAYER_FROZEN = 0x0001,
     MTL_LAYER_WET    = 0x0002,
     MTL_LAYER_DYNAMICFROZEN = 0x0008,
 
     // Usage flags
-
     MTL_LAYER_USAGE_NODRAW = 0x0001,     // Layer is disabled
     MTL_LAYER_USAGE_REPLACEBASE = 0x0002, // Replace base pass rendering with layer - optimization
     MTL_LAYER_USAGE_FADEOUT = 0x0004,            // Layer doesn't render but still causes parent to fade out
 
     // Blend offsets
-
     MTL_LAYER_BLEND_FROZEN = 0xff000000,
     MTL_LAYER_BLEND_WET    = 0x00fe0000,
     MTL_LAYER_BLEND_DYNAMICFROZEN = 0x000000ff,
@@ -134,7 +133,6 @@ enum EMaterialLayerFlags
     MTL_LAYER_BLEND_MASK = (MTL_LAYER_BLEND_FROZEN | MTL_LAYER_BLEND_WET | MTL_LAYER_BLEND_DYNAMICFROZEN),
 
     // Slot count
-
     MTL_LAYER_MAX_SLOTS = 3
 };
 
@@ -343,8 +341,30 @@ struct IMaterial
     virtual void* GetUserData() const = 0;
 
     //////////////////////////////////////////////////////////////////////////
-    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet) = 0;
-    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet) = 0;
+    //! Set or get a material parameter value.
+    //! \param sParamName        - Name of the parameter
+    //! \param v                 - Input or output value depending on bGet
+    //! \param bGet              - If true, v is an output; if false, v is an input
+    //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! return                   - True if sParamName was found
+    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false) = 0;
+    //! Set or get a material parameter value.
+    //! \param sParamName        - Name of the parameter
+    //! \param v                 - Input or output value depending on bGet
+    //! \param bGet              - If true, v is an output; if false, v is an input
+    //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! return                   - True if sParamName was found
+    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false) = 0;
+    //! Set or get a material parameter value.
+    //! \param sParamName        - Name of the parameter
+    //! \param v                 - Input or output value depending on bGet
+    //! \param bGet              - If true, v is an output; if false, v is an input
+    //! \param allowShaderParam  - If true, and sParamName is not a built-in parameter of the Material, then custom shader parameters will be searched as well. Defaults to false to preserve legacy behavior.
+    //! return                   - True if sParamName was found
+    virtual bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false) = 0;
+
+    virtual void SetDirty(bool dirty = true) = 0;
+    virtual bool IsDirty() const = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // Set Optional Camera for material (Used for monitors that look thru camera).
@@ -460,6 +480,10 @@ struct IMaterialManager
     virtual _smart_ptr<IMaterial> LoadMaterialFromXml(const char* sMtlName, XmlNodeRef mtlNode) = 0;
 
     // Description:
+    //    Reloads the material from disk.
+    virtual void ReloadMaterial(_smart_ptr<IMaterial> pMtl) = 0;
+
+    // Description:
     //    Saves material.
     virtual bool SaveMaterial(XmlNodeRef mtlNode, _smart_ptr<IMaterial> pMtl) = 0;
 
@@ -528,6 +552,5 @@ struct IMaterialManager
 
     // </interfuscator:shuffle>
 };
-
 
 #endif // CRYINCLUDE_CRYCOMMON_IMATERIAL_H

@@ -19,9 +19,12 @@
 #include <AzCore/Casting/lossy_cast.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/Module/ModuleManagerBus.h>
+
 #include <AzFramework/Logging/LoggingComponent.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/UI/Logging/LogPanel_Panel.h>
@@ -185,6 +188,10 @@ ApplicationManager::~ApplicationManager()
     m_frameworkApp.Stop();
 }
 
+bool ApplicationManager::InitiatedShutdown() const
+{
+    return m_duringShutdown;
+}
 
 QDir ApplicationManager::GetSystemRoot() const
 {
@@ -321,7 +328,6 @@ void ApplicationManager::CheckQuit()
 #if !defined(BATCH_MODE)
     AZ_TracePrintf(AssetProcessor::ConsoleChannel, "App quit requested, and all objects are ready.  Quitting app.\n");
 #endif
-    m_duringShutdown = false;
 
     // We will now loop over all the running threads and destroy them
     // Any QObjects that have these ThreadWorker as parent will also be deleted
@@ -458,36 +464,38 @@ void ApplicationManager::PopulateApplicationDependencies()
         m_filesOfInterest.push_back(builderDir.filePath(file));
     }
 
-    QDir engineRoot;
-    AssetUtilities::ComputeEngineRoot(engineRoot);
+    QDir assetRoot;
+    AssetUtilities::ComputeAssetRoot(assetRoot);
 
-    QString globalConfigPath = engineRoot.filePath("AssetProcessorPlatformConfig.ini");
+    QString globalConfigPath = assetRoot.filePath("AssetProcessorPlatformConfig.ini");
     m_filesOfInterest.push_back(globalConfigPath);
 
     QString gameName = AssetUtilities::ComputeGameName();
-    QString gamePlatformConfigPath = engineRoot.filePath(gameName + "/AssetProcessorGamePlatformConfig.ini");
+    QString gamePlatformConfigPath = assetRoot.filePath(gameName + "/AssetProcessorGamePlatformConfig.ini");
     m_filesOfInterest.push_back(gamePlatformConfigPath);
 
     // if our Gems file changes, make sure we watch that, too.
-    QString gemsConfigFile = engineRoot.filePath(gameName + "/gems.json");
+    QString gemsConfigFile = assetRoot.filePath(gameName + "/gems.json");
     if (QFile::exists(gemsConfigFile))
     {
         m_filesOfInterest.push_back(gemsConfigFile);
     }
 
     // add app modules
-    m_frameworkApp.EnumerateModules([this](AZ::Module*, AZ::DynamicModuleHandle* handle)
-    {
-        if (handle)
+    AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::EnumerateModules,
+        [this](const AZ::ModuleData& moduleData)
         {
-            QFileInfo fi(handle->GetFilename().c_str());
-            if (fi.exists())
+            AZ::DynamicModuleHandle* handle = moduleData.GetDynamicModuleHandle();
+            if (handle)
             {
-                m_filesOfInterest.push_back(fi.absoluteFilePath());
+                QFileInfo fi(handle->GetFilename().c_str());
+                if (fi.exists())
+                {
+                    m_filesOfInterest.push_back(fi.absoluteFilePath());
+                }
             }
-        }
-        return true; // keep iterating.
-    });
+            return true; // keep iterating.
+        });
 
     //find timestamps of all the files
     for (int idx = 0; idx < m_filesOfInterest.size(); idx++)
@@ -508,8 +516,11 @@ bool ApplicationManager::StartAZFramework()
     AZ::ComponentApplication::StartupParameters params;
     QString dir;
     QString filename;
-    AssetUtilities::ComputeApplicationInformation(dir, filename);
-    
+    QString binFolder;
+
+    AssetUtilities::ComputeAppRootAndBinFolderFromApplication(dir, filename, binFolder);
+
+    // The application will live in a bin folder one level up from the app root.
     char staticStorageForRootPath[AZ_MAX_PATH_LEN] = {0};
     azstrcpy(staticStorageForRootPath, AZ_MAX_PATH_LEN, dir.toUtf8().data());
     
@@ -527,7 +538,10 @@ bool ApplicationManager::StartAZFramework()
     AZ_Assert(context, "No serialize context");
     AzToolsFramework::LogPanel::BaseLogPanel::Reflect(context);
     
-    AZ::IO::FileIOBase::GetInstance()->SetAlias("@log@", dir.toUtf8().data());
+    // the log folder currently goes in the bin folder:
+    AZStd::string fullBinFolder;
+    AzFramework::StringFunc::Path::Join(dir.toUtf8().constData(), binFolder.toUtf8().constData(), fullBinFolder);
+    AZ::IO::FileIOBase::GetInstance()->SetAlias("@log@", fullBinFolder.c_str());
     m_entity = aznew AZ::Entity("Application Entity");
     if (m_entity)
     {
@@ -612,10 +626,15 @@ ApplicationManager::BeforeRunStatus ApplicationManager::BeforeRun()
 
 bool ApplicationManager::Activate()
 {
+    if (!AssetUtilities::ComputeAssetRoot(m_systemRoot))
+    {
+        return false;
+    }
 
     QString appDir;
     QString appFileName;
-    AssetUtilities::ComputeApplicationInformation(appDir, appFileName);
+    QString binFolderName;
+    AssetUtilities::ComputeAppRootAndBinFolderFromApplication(appDir, appFileName, binFolderName);
 
     m_gameName = AssetUtilities::ComputeGameName(appDir);
 

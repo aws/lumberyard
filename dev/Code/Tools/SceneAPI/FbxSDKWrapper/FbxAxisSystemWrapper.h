@@ -35,7 +35,7 @@ namespace AZ
             FbxAxisSystemWrapper(const FbxAxisSystem& fbxAxisSystem);
             virtual ~FbxAxisSystemWrapper() = default;
 
-            virtual UpVector GetUpVector(int sign) const;
+            virtual UpVector GetUpVector(int& sign) const;
             virtual Transform CalculateConversionTransform(UpVector targetUpAxis);
 
         protected:

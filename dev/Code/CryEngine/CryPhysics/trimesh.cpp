@@ -283,7 +283,8 @@ CTriMesh* CTriMesh::CreateTriMesh(strided_pointer<const Vec3> pVertices, strided
         memset(pValency, 0, m_nVertices);
         for (i = nTris * 3 - 1; i >= 0; i--)
         {
-            pValency[m_pIndices[i]]++;
+            if (m_pIndices[i] >= 0 && m_pIndices[i] < m_nVertices)
+                pValency[m_pIndices[i]]++;
         }
         for (m_nMaxVertexValency = i = 0; i < m_nVertices; i++)
         {
@@ -4306,6 +4307,8 @@ float CalcPyramidVolume(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2, const
     return fabsf((pt1 - pt0 ^ pt2 - pt0) * (pt3 - pt0)) * (1.0f / 6);
 }
 
+/// Calculate the volume of this CTriMesh that falls below the given plane pplane, given the referenced geometry world data pgwd.
+/// Returns the total volume below the plane, the center of mass as massACenter.
 float CTriMesh::CalculateBuoyancy(const plane* pplane, const geom_world_data* pgwd, Vec3& massCenter)
 {
     geometry_under_test gtest;
@@ -5986,12 +5989,13 @@ int CTriMesh::FloodFill(const Vec3& org, float& Vtrg, const Vec3& gdir, float e,
 
     pBrdNext[ivtxBott] = pBrdPrev[ivtxBott] = ibrd0 = ivtxBott;
     depth = m_pVertices[ivtxBott] * gdir;
-    V[0] = 1;
-    V[1] = 0;
+    V[0] = 1.0f;    // Max volume seen in prior round
+    V[1] = 0.0f;    // Max volume seen this round of computation
     nTris0 = 0;
 
     do
     {
+        // New maximum volume seen so far?
         if (V[1] > V[0])
         {
             ivtxBott0 = ivtxBott;
@@ -6056,15 +6060,17 @@ int CTriMesh::FloodFill(const Vec3& org, float& Vtrg, const Vec3& gdir, float e,
 fullspill:
     waterPlane.origin = m_pVertices[ivtxBott0];
     float Vcur, h[] = { 0, (m_pVertices[ivtxBott0] - m_pVertices[ivtxBott]) * gdir };
+    // When we get here V[0] is the volume associated with ivtxBott0, and V[1] is the volume associated with ivtxBott.
     V[0] = GetVesselVolume;
-    if (!nNewTris)
+    if (nNewTris == 0)
     {
         Vtrg = V[0];
     }
     i = 0;
+    // At this point V[0] <= Vtrg <= V[1], unless we had to spill
     if (V[0] >= Vtrg)
     {
-        // would have to spill some water into a separate volue on the same mesh
+        // would have to spill some water into a separate volume on the same mesh
         m_nTris = nTris0;
         waterPlane.origin += gdir * dim * 0.0003f;
         Vtrg = GetVesselVolume;

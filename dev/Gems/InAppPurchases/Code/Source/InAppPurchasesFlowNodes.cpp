@@ -15,6 +15,9 @@
 
 #include <InAppPurchases/InAppPurchasesBus.h>
 
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/Outcome/Outcome.h>
+
 #include <AzCore/JSON/document.h>
 #include <AzCore/JSON/error/en.h>
 
@@ -41,7 +44,8 @@ namespace InAppPurchases
         {
             static const SInputPortConfig inputs[] =
             {
-                InputPortConfig<string>("ProductIds", _HELP("The Ids of the products for which you want to retrieve product info. The product ids must be in JSON format with a list of product ids inside an array named product_ids")),
+                InputPortConfig_Void("Activate"),
+                InputPortConfig<string>("ProductIds", _HELP("The path to the json file containing Ids of the products for which you want to retrieve product info. The product ids must be in JSON format with a list of product ids inside an array named product_ids")),
                 { 0 }
             };
 
@@ -59,21 +63,49 @@ namespace InAppPurchases
             {
                 if (IsPortActive(activationInfo, 0))
                 {
-                    const char* productIds = GetPortString(activationInfo, 0).c_str();
+                    const char* filePath = GetPortString(activationInfo, 1).c_str();
+                    AZ::IO::FileIOBase* fileReader = AZ::IO::FileIOBase::GetInstance();
 
-                    rapidjson::Document parseProductIds;
-                    parseProductIds.Parse<rapidjson::kParseNoFlags>(productIds);
-                    if (parseProductIds.HasParseError())
+                    AZStd::string fileBuffer;
+
+                    AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
+                    AZ::u64 fileSize = 0;
+                    if (!fileReader->Open(filePath, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle))
                     {
-                        const char* errorStr = rapidjson::GetParseError_En(parseProductIds.GetParseError());
+                        AZ::Failure(AZStd::string::format("Failed to read %s - unable to open file", filePath));
+                        return;
+                    }
+
+                    if ((!fileReader->Size(fileHandle, fileSize)) || (fileSize == 0))
+                    {
+                        fileReader->Close(fileHandle);
+                        AZ::Failure(AZStd::string::format("Failed to read %s - file truncated.", filePath));
+                        return;
+                    }
+                    fileBuffer.resize(fileSize);
+                    if (!fileReader->Read(fileHandle, fileBuffer.data(), fileSize, true))
+                    {
+                        fileBuffer.resize(0);
+                        fileReader->Close(fileHandle);
+                        AZ::Failure(AZStd::string::format("Failed to read %s - file read failed.", filePath));
+                        return;
+                    }
+                    fileReader->Close(fileHandle);
+                    rapidjson::Document doc;
+
+                    doc.Parse(fileBuffer.data());
+
+                    if (doc.HasParseError())
+                    {
+                        const char* errorStr = rapidjson::GetParseError_En(doc.GetParseError());
                         AZ_Warning("LumberyardInAppBilling", false, "Failed to parse product_ids: %s\n", errorStr);
                         return;
                     }
 
                     AZStd::vector<AZStd::string> productIdsVec;
-                    if (parseProductIds.HasMember("product_ids") && parseProductIds["product_ids"].GetType() == rapidjson::kArrayType)
+                    if (doc.HasMember("product_ids") && doc["product_ids"].GetType() == rapidjson::kArrayType)
                     {
-                        rapidjson::Value& productIdsArray = parseProductIds["product_ids"];
+                        rapidjson::Value& productIdsArray = doc["product_ids"];
                         for (rapidjson::Value::ConstValueIterator itr = productIdsArray.Begin(); itr != productIdsArray.End(); itr++)
                         {
                             if ((*itr).HasMember("id"))

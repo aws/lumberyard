@@ -574,7 +574,7 @@
             "Controls/AssetViewer.cpp",
             "Controls/AssetViewer.h"
         ],
-         "AzAssetBrowser": [
+        "AzAssetBrowser": [
             "AzAssetBrowser/AzAssetBrowserRequestHandler.cpp",
             "AzAssetBrowser/AzAssetBrowserRequestHandler.h"
         ],
@@ -592,6 +592,19 @@
             "AzAssetBrowser/Preview/PreviewWidget.cpp",
             "AzAssetBrowser/Preview/PreviewWidget.h",
             "AzAssetBrowser/Preview/PreviewWidget.ui"
+        ],
+        "Thumbnails": [
+            "Thumbnails/MaterialThumbnailRenderer.cpp",
+            "Thumbnails/MaterialThumbnailRenderer.h",
+            "Thumbnails/StaticMeshThumbnailRenderer.cpp",
+            "Thumbnails/StaticMeshThumbnailRenderer.h",
+            "Thumbnails/TextureThumbnailRenderer.cpp",
+            "Thumbnails/TextureThumbnailRenderer.h"
+        ],
+        "Thumbnails/Example": [
+            "Thumbnails/Example/ThumbnailsSampleWidget.cpp",
+            "Thumbnails/Example/ThumbnailsSampleWidget.h",
+            "Thumbnails/Example/ThumbnailsSampleWidget.ui"
         ],
         "AssetDatabase": [
             "AssetDatabase/AssetDatabaseLocationListener.h",
@@ -654,6 +667,23 @@
             "AssetBrowser/AssetTypes/Texture/AssetTextureDatabase.h",
             "AssetBrowser/AssetTypes/Texture/AssetTextureItem.h",
             "AssetBrowser/AssetTypes/Texture/TextureAssetDbFilterDlg.h"
+        ],
+        "AssetImporter/AssetImporterManager": [
+            "AssetImporter/AssetImporterManager/AssetImporterDragAndDropHandler.cpp",
+            "AssetImporter/AssetImporterManager/AssetImporterDragAndDropHandler.h",
+            "AssetImporter/AssetImporterManager/AssetImporterManager.cpp",
+            "AssetImporter/AssetImporterManager/AssetImporterManager.h"
+        ],
+        "AssetImporter/UI": [
+            "AssetImporter/UI/FilesAlreadyExistDialog.cpp",
+            "AssetImporter/UI/FilesAlreadyExistDialog.h",
+            "AssetImporter/UI/FilesAlreadyExistDialog.ui",
+            "AssetImporter/UI/ProcessingAssetsDialog.cpp",
+            "AssetImporter/UI/ProcessingAssetsDialog.h",
+            "AssetImporter/UI/ProcessingAssetsDialog.ui",
+            "AssetImporter/UI/SelectDestinationDialog.cpp",
+            "AssetImporter/UI/SelectDestinationDialog.h",
+            "AssetImporter/UI/SelectDestinationDialog.ui"
         ],
         "AssetResolver": [
             "AssetResolver/AssetResolver.cpp",
@@ -1211,6 +1241,11 @@
             "LevelIndependentFileMan.cpp",
             "LevelIndependentFileMan.h"
         ],
+        "LegacyEntityConversion": [
+            "LegacyEntityConversion/LegacyEntityConversion.h",
+            "LegacyEntityConversion/LegacyEntityConversion.cpp",
+            "LegacyEntityConversion/LegacyEntityConversionUtil.inl"
+        ],
         "Lens Flare Editor": [
             "LensFlareEditor/ILensFlareListener.h",
             "LensFlareEditor/LensFlareAtomicList.cpp",
@@ -1260,6 +1295,7 @@
             "Mannequin/MannContextEditorDialog.ui",
             "Mannequin/MannDebugOptionsDialog.cpp",
             "Mannequin/MannDebugOptionsDialog.h",
+            "Mannequin/MannDeselectableTreeView.h",
             "Mannequin/MannErrorReportDialog.cpp",
             "Mannequin/MannErrorReportDialog.h",
             "Mannequin/MannErrorReportDialog.ui",
@@ -1740,6 +1776,7 @@
             "Terrain/Noise.cpp",
             "Terrain/RGBLayer.cpp",
             "Terrain/SurfaceType.cpp",
+            "Terrain/TerrainConverter.cpp",
             "Terrain/TerrainGrid.cpp",
             "Terrain/TerrainLayerTexGen.cpp",
             "Terrain/TerrainLightGen.cpp",
@@ -1755,6 +1792,7 @@
             "Terrain/Noise.h",
             "Terrain/RGBLayer.h",
             "Terrain/SurfaceType.h",
+            "Terrain/TerrainConverter.h",
             "Terrain/TerrainGrid.h",
             "Terrain/TerrainLayerTexGen.h",
             "Terrain/TerrainLightGen.h",
@@ -1866,11 +1904,9 @@
             "TrackView/EventKeyUIControls.cpp",
             "TrackView/GotoKeyUIControls.cpp",
             "TrackView/LookAtKeyUIControls.cpp",
-            "TrackView/MusicKeyUIControls.cpp",
             "TrackView/SelectKeyUIControls.cpp",
             "TrackView/SequenceKeyUIControls.cpp",
             "TrackView/SoundKeyUIControls.cpp",
-            "TrackView/TcbKeyUIControls.cpp",
             "TrackView/TrackEventKeyUIControls.cpp",
             "TrackView/TrackViewTrackPropsDlg.ui",
             "TrackView/TVEventsDialog.cpp",
@@ -1883,10 +1919,6 @@
             "TrackView/TVEventsDialog.h",
             "TrackView/TVSequenceProps.h",
             "TrackView/TVSequenceProps.ui"
-        ],
-        "TrackView/Dialog/Key Dialogs/deprecated": [
-            "TrackView/TcbPreviewCtrl.cpp",
-            "TrackView/TcbPreviewCtrl.h"
         ],
         "TrackView/Nodes": [
             "TrackView/TrackViewAnimNode.cpp",

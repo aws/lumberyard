@@ -23,6 +23,9 @@
 #include <memory>
 #include <fstream>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::S3::Model;
 
 namespace LmbrAWS
@@ -41,7 +44,7 @@ namespace LmbrAWS
 
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("UploadFile", _HELP("Activate this to write data to the cloud.")),
-            m_bucketClientPort.GetConfiguration("BucketName", _HELP("The name of the bucket to use")),
+            InputPortConfig<string>("BucketName", _HELP("The name of the bucket to use")),
             InputPortConfig<string>("KeyName", _HELP("What to name the object being uploaded. If you do not update this as you go, the existing object will be overwritten")),
             InputPortConfig<string, string>("ContentType", DEFAULT_CONTENT_TYPE, _HELP("The mime content-type to use for the uploaded objects such as text/html, video/mpeg, video/avi, or application/zip.  This type is then stored in the S3 record and can be used to help identify what type of data you're looking at or retrieving later.")),
             InputPortConfig<string>("FileName", _HELP("Name of file to upload."))
@@ -61,14 +64,8 @@ namespace LmbrAWS
         //Upload File
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_UploadFile))
         {
-            auto client = m_bucketClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& bucketName = client.GetBucketName();
+            AZStd::string bucketName = GetPortString(pActInfo, EIP_BucketClient).c_str();
+            EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, bucketName);
             auto& fileName = GetPortString(pActInfo, EIP_FileName);
             auto& keyName = GetPortString(pActInfo, EIP_KeyName);
             auto& contentType = GetPortString(pActInfo, EIP_ContentType);
@@ -110,7 +107,7 @@ namespace LmbrAWS
                 //{
                 PutObjectRequest putObjectRequest;
                 putObjectRequest.SetKey(keyName);
-                putObjectRequest.SetBucket(bucketName);
+                putObjectRequest.SetBucket(bucketName.c_str());
                 putObjectRequest.SetContentType(Aws::String(contentType));
                 putObjectRequest.SetBody(fileToUpload);
 

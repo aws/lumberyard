@@ -368,7 +368,6 @@ class CServiceNetwork
     : public IServiceNetwork
     , public CryRunnable
 {
-    static const uint32 kThreadAffinityDurango = 3;
 
 protected:
     struct ConnectionToClose

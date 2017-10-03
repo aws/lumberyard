@@ -16,6 +16,9 @@
 #include <aws/sns/model/ListSubscriptionsByTopicRequest.h>
 #pragma warning(pop)
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 namespace LmbrAWS
 {
     static const char* CLASS_TAG = "AWS:Primitive:SNS:SnsCheckSubscribed";
@@ -29,7 +32,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Check", _HELP("Activate this to check if the ARN is subscribed to the SNS topic.")),
-            m_topicClientPort.GetConfiguration("TopicARN", _HELP("SNS topic arn to check.")),
+            InputPortConfig<string>("TopicARN", _HELP("SNS topic arn to check.")),
             InputPortConfig<string>("Endpoint", _HELP("Endpoint to check if it is subscribed to the specified topic. This may be an email address, a SQS queue or any other endpoint supported by SNS."), "Endpoint")
         };
 
@@ -46,7 +49,7 @@ namespace LmbrAWS
         return outputPorts;
     }
 
-    void FlowNode_SnsCheckSubscribed::SendListSubscriptions(LmbrAWS::SNS::TopicClient& client, std::shared_ptr<const FlowGraphContext> context, const string& topicArn, const string& nextToken)
+    void FlowNode_SnsCheckSubscribed::SendListSubscriptions(std::shared_ptr<const FlowGraphContext> context, const string& topicArn, const string& nextToken)
     {
         Aws::SNS::Model::ListSubscriptionsByTopicRequest listSubscriptionsRequest;
         listSubscriptionsRequest.SetTopicArn(topicArn);
@@ -62,17 +65,10 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Check))
         {
-            auto client = m_topicClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& topicArn = client.GetTopicARN();
-
+            AZStd::string topicArn = GetPortString(pActInfo, EIP_TopicClient).c_str();
+            EBUS_EVENT_RESULT(topicArn, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, topicArn);
             auto context =  std::make_shared<FlowGraphContext>(pActInfo->pGraph, pActInfo->myID);
-            SendListSubscriptions(client, context, topicArn);
+            SendListSubscriptions(context, topicArn.c_str());
         }
     }
 
@@ -100,10 +96,7 @@ namespace LmbrAWS
                     auto nextToken = outcome.GetResult().GetNextToken();
                     if (!nextToken.empty())
                     {
-                        //More results to check
-                        auto client = m_topicClientPort.GetClient(fgContext);
-                        auto topicArn = client.GetTopicARN();
-                        SendListSubscriptions(client, fgContext, topicArn.c_str(), nextToken.c_str());
+                        SendListSubscriptions(fgContext, request.GetTopicArn().c_str(), nextToken.c_str());
                     }
                     else
                     {

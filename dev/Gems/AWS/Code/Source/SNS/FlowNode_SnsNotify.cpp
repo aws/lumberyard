@@ -16,6 +16,9 @@
 #include <aws/sns/model/PublishRequest.h>
 #pragma warning(pop)
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::SNS;
 using namespace Aws::SNS::Model;
 
@@ -34,7 +37,7 @@ namespace LmbrAWS
             InputPortConfig_Void("Notify", _HELP("Activate this to send your notification.")),
             InputPortConfig<string>("Message", _HELP("Message to send.")),
             InputPortConfig<string>("Subject", _HELP("Subject of message.")),
-            m_topicClientPort.GetConfiguration("TopicARN", _HELP("The ARN for your SNS topic."))
+            InputPortConfig<string>("TopicARN", _HELP("The ARN for your SNS topic."))
         };
 
         return inputPorts;
@@ -53,21 +56,15 @@ namespace LmbrAWS
         //publish to sns
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Notify))
         {
-            auto client = m_topicClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& arn = client.GetTopicARN();
+            AZStd::string topicArn = GetPortString(pActInfo, EIP_TopicClient).c_str();
+            EBUS_EVENT_RESULT(topicArn, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, topicArn);
             auto& message = GetPortString(pActInfo, EIP_Message);
             auto& subject = GetPortString(pActInfo, EIP_Subject);
 
             PublishRequest publishRequest;
             publishRequest.SetMessage(message.c_str());
             publishRequest.SetSubject(subject.c_str());
-            publishRequest.SetTopicArn(arn.c_str());
+            publishRequest.SetTopicArn(topicArn.c_str());
 
             auto context = std::make_shared<FlowGraphContext>(pActInfo->pGraph, pActInfo->myID);
             MARSHALL_AWS_BACKGROUND_REQUEST(SNS, client, Publish, FlowNode_SnsNotify::ApplyResult, publishRequest, context)

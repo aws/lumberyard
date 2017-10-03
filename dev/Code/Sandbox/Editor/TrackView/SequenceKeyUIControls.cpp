@@ -98,11 +98,11 @@ bool CSequenceKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            mv_name = sequenceKey.szSelection;
+            mv_name = sequenceKey.szSelection.c_str();
             mv_overrideTimes = sequenceKey.bOverrideTimes;
             if (!sequenceKey.bOverrideTimes)
             {
-                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection);
+                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection.c_str());
                 if (pSequence)
                 {
                     sequenceKey.fStartTime = pSequence->GetTimeRange().start;
@@ -148,12 +148,12 @@ void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
             {
                 QString sName;
                 sName = mv_name;
-                cry_strcpy(sequenceKey.szSelection, sName.toLatin1().data());
+                sequenceKey.szSelection = sName.toLatin1().data();
             }
 
             SyncValue(mv_overrideTimes, sequenceKey.bOverrideTimes, false, pVar);
 
-            IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection);
+            IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(sequenceKey.szSelection.c_str());
 
             if (!sequenceKey.bOverrideTimes)
             {

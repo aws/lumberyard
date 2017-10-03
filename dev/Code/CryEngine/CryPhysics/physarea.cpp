@@ -1641,9 +1641,24 @@ void CPhysArea::Update(float dt)
                 (m_pContainerEnt = (CPhysicalEntity*)rhit.pCollider)->AddRef();
             }
             m_idpartContainer = rhit.partid;
+
+            // Force the surface to rebuild if we found a container.
+            DeleteWaterMan();
+        }
+        else
+        {
+            // Keep searching for a container vessel each frame.
+			// Ideally we would use collision / intersection tracking to trigger this
+			// but that is not possible in the editor. In actual usage,
+			// this branch terminates rapidly as the physics for the container volume
+			// gets activated in a frame or two.
+			// The user should not, however, place water areas with defined volumes and no
+			// container, as this will have an ongoing cost to search for a container
+			// each frame.
+            m_pWorld->ActivateArea(this);
         }
     }
-
+ 
     if (m_pContainer)
     {
         QuatTS qtParent = m_qtsContainer.GetInverted();

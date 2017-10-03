@@ -400,10 +400,6 @@ AZSTD_DECLARE_POD_TYPE(AZ::Transform);
 
 #if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
     #include <AzCore/Math/Internal/TransformWin32.inl>
-#elif defined(AZ_SIMD_X360)
-    #include <AzCore/Math/Internal/TransformX360.inl>
-#elif defined(AZ_SIMD_PS3)
-    #include <AzCore/Math/Internal/TransformPs3.inl>
 #elif defined(AZ_SIMD_WII)
     #include <AzCore/Math/Internal/TransformWii.inl>
 #else

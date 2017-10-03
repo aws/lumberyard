@@ -1,0 +1,109 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include "precompiled.h"
+
+#include <Components/Slots/Property/PropertySlotComponent.h>
+
+#include <Components/Connections/ConnectionFilters/ConnectionFilters.h>
+#include <Components/Slots/Property/PropertySlotLayoutComponent.h>
+#include <Components/Slots/SlotConnectionFilterComponent.h>
+#include <Components/StylingComponent.h>
+
+namespace GraphCanvas
+{
+    //////////////////////////
+    // PropertySlotComponent
+    //////////////////////////
+
+    void PropertySlotComponent::Reflect(AZ::ReflectContext* reflectContext)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+        if (serializeContext)
+        {
+            serializeContext->Class<PropertySlotComponent, SlotComponent>()
+                ->Version(1)
+                ->Field("PropertyId", &PropertySlotComponent::m_propertyId)
+            ;
+        }
+    }
+
+    AZ::Entity* PropertySlotComponent::CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& slotConfiguration)
+    {
+        AZ::Entity* entity = SlotComponent::CreateCoreSlotEntity();
+
+        PropertySlotComponent* dataSlot = entity->CreateComponent<PropertySlotComponent>(propertyId, slotConfiguration);
+        dataSlot->SetNode(nodeId);
+        
+        entity->CreateComponent<PropertySlotLayoutComponent>();
+        entity->CreateComponent<StylingComponent>(Styling::Elements::PropertySlot, nodeId);
+
+        SlotConnectionFilterComponent* connectionFilter = entity->CreateComponent<SlotConnectionFilterComponent>();
+
+        // We don't want to accept any connections.
+        connectionFilter->AddFilter(aznew SlotTypeFilter(ConnectionFilterType::Include));
+
+        return entity;
+    }
+    
+    PropertySlotComponent::PropertySlotComponent()
+        : SlotComponent(SlotTypes::PropertySlot)
+    {
+        if (m_slotConfiguration.m_slotGroup == SlotGroups::Invalid)
+        {
+            m_slotConfiguration.m_slotGroup = SlotGroups::PropertyGroup;
+        }
+    }
+    
+    PropertySlotComponent::PropertySlotComponent(const AZ::Crc32& propertyId, const SlotConfiguration& slotConfiguration)
+        : SlotComponent(SlotTypes::PropertySlot, slotConfiguration)
+        , m_propertyId(propertyId)
+    {
+        if (m_slotConfiguration.m_slotGroup == SlotGroups::Invalid)
+        {
+            m_slotConfiguration.m_slotGroup = SlotGroups::PropertyGroup;
+        }
+    }
+
+    PropertySlotComponent::~PropertySlotComponent()
+    {
+    }
+    
+    void PropertySlotComponent::Init()
+    {
+        SlotComponent::Init();
+    }
+    
+    void PropertySlotComponent::Activate()
+    {
+        SlotComponent::Activate();
+        
+        PropertySlotBus::Handler::BusConnect(GetEntityId());
+    }
+    
+    void PropertySlotComponent::Deactivate()
+    {
+        SlotComponent::Deactivate();
+        
+        PropertySlotBus::Handler::BusDisconnect();
+    }
+
+    const AZ::Crc32& PropertySlotComponent::GetPropertyId() const
+    {
+        return m_propertyId;
+    }
+
+    AZ::Entity* PropertySlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    {
+        AZ_Error("Graph Canvas", false, "Property slots cannot have connections.");
+        return nullptr;
+    }
+}

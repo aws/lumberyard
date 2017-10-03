@@ -29,10 +29,10 @@ def build(bld):
         win_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         win_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
 
-        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
 
 
         file_list           = 'launcher.waf_files',

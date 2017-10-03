@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="${ANDROID_PACKAGE}"
-        android:versionCode="${ANDROID_VERSION_NUMBER}"
-        android:versionName="${ANDROID_VERSION_NAME}">
+    package="${ANDROID_PACKAGE}"
+    android:versionCode="${ANDROID_VERSION_NUMBER}"
+    android:versionName="${ANDROID_VERSION_NAME}">
 
-    <uses-sdk android:minSdkVersion="${ANDROID_MIN_SDK_VERSION}" />
+    <uses-sdk android:minSdkVersion="${ANDROID_MIN_SDK_VERSION}" 
+        android:targetSdkVersion="${ANDROID_TARGET_SDK_VERSION}"/>
 
     <!-- OpenGL ES 3.0 -->
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
-    <!-- Allow writing to external storage -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- Required for Kindle devices, which is based off Android 5.0, to access app specific public storage -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="21" />
 
     <!-- Allow TCP/IP.  Needed for PerfHUD ES -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -24,9 +25,6 @@
 
     <!-- Required to keep CPU alive while downloading the Obb files (NOT to keep screen awake) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- Required to access Google Play Licensing (Obb check) -->
-    <uses-permission android:name="com.android.vending.CHECK_LICENSE" />
 
     <!-- Required to for IAP -->
     <uses-permission android:name="com.android.vending.BILLING" />

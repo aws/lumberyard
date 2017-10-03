@@ -32,6 +32,10 @@ namespace AZ
             class IGroup;
             class IMeshGroup;
         }
+        namespace Events
+        {
+            class ExportProductList;
+        }
     }
     namespace RC
     {
@@ -43,7 +47,7 @@ namespace AZ
 
             CgfGroupExportContext(SceneAPI::Events::ExportEventContext& parent,
                 const SceneAPI::DataTypes::IMeshGroup& group, Phase phase);
-            CgfGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
+            CgfGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
                 const SceneAPI::DataTypes::IMeshGroup& group, Phase phase);
             CgfGroupExportContext(const CgfGroupExportContext& copyContext, Phase phase);
             CgfGroupExportContext(const CgfGroupExportContext& copyContext) = delete;
@@ -51,6 +55,7 @@ namespace AZ
 
             CgfGroupExportContext& operator=(const CgfGroupExportContext& other) = delete;
 
+            SceneAPI::Events::ExportProductList& m_products;
             const SceneAPI::Containers::Scene& m_scene;
             const AZStd::string& m_outputDirectory;
             const SceneAPI::DataTypes::IMeshGroup& m_group;

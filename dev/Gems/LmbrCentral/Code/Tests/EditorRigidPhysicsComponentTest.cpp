@@ -78,11 +78,15 @@ protected:
 
         if (m_object)
         {
-            m_editorPhysicsComponent = azrtti_cast<EditorRigidPhysicsComponent*>(m_object->GetTemplate());
+            if (m_editorPhysicsComponent = azrtti_cast<EditorRigidPhysicsComponent*>(m_object->GetTemplate()))
+            {
+                m_editorPhysicsComponent->GetConfiguration(m_rigidPhysicsConfig);
+            }
         }
     }
 
     EditorRigidPhysicsComponent* m_editorPhysicsComponent = nullptr;
+    RigidPhysicsConfig m_rigidPhysicsConfig;
 
 };
 
@@ -103,65 +107,100 @@ TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, EditorComponentWithinWrapp
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, EnabledInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_enabledInitially, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_enabledInitially, false);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, SpecifyMassOrDensity_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_specifyMassOrDensity, static_cast<RigidPhysicsConfiguration::MassOrDensity>(0));
+    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<RigidPhysicsConfig::MassOrDensity>(0));
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, Mass_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_mass, 33.f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_mass, 33.f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, Density_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_density, 555.f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_density, 555.f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, AtRestInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_atRestInitially, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_atRestInitially, false);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, InteractsWithTriggers_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_interactsWithTriggers, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_interactsWithTriggers, false);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, RecordCollision_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_recordCollisions, true);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_recordCollisions, true);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, MaxRecordedCollision_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_maxRecordedCollisions, 3);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_maxRecordedCollisions, 3);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, SimulationDamping_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_simulationDamping, 0.1f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_simulationDamping, 0.1f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, SimulationMinEnergy_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_simulationMinEnergy, 0.003f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_simulationMinEnergy, 0.003f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, BuoyancyDamping_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_buoyancyDamping, 0.3f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyDamping, 0.3f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, BuoyancyDensity_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_buoyancyDensity, 1.3f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyDensity, 1.3f);
 }
 
 TEST_F(LoadEditorRigidPhysicsComponentFromLegacyData, BuoyancyResistance_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_editorPhysicsComponent->GetConfiguration().m_buoyancyResistance, 1.6f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyResistance, 1.6f);
+}
+
+// Serialized EditorRigidPhysicsConfiguration version 1.
+// This version was accidentally reflected as a templated class.
+const char kEditorRigidPhysicsConfigurationV1[] = 
+R"DELIMITER(<ObjectStream version="2">
+    <Class name="EditorRigidPhysicsConfiguration&lt;RigidPhysicsConfiguration &gt;" field="Configuration" type="{B2FA5441-9B99-5EFA-A606-82752CA23EE8}" version="1" specializationTypeId="{B2FA5441-9B99-5EFA-A606-82752CA23EE8}">
+        <Class name="RigidPhysicsConfiguration" field="BaseClass1" type="{4D4211C2-4539-444F-A8AC-B0C8417AA579}" version="1" specializationTypeId="{4D4211C2-4539-444F-A8AC-B0C8417AA579}">
+            <Class name="bool" field="EnabledInitially" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+            <Class name="unsigned int" field="SpecifyMassOrDensity" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="1" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+            <Class name="float" field="Mass" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="10.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="float" field="Density" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="500.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="bool" field="AtRestInitially" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+            <Class name="bool" field="EnableCollisionResponse" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+            <Class name="bool" field="InteractsWithTriggers" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+            <Class name="bool" field="RecordCollisions" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+            <Class name="int" field="MaxRecordedCollisions" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}" value="1" specializationTypeId="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+            <Class name="float" field="SimulationDamping" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="0.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="float" field="SimulationMinEnergy" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="0.0020000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="float" field="BuoyancyDamping" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="0.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="float" field="BuoyancyDensity" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="1.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            <Class name="float" field="BuoyancyResistance" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}" value="1.0000000" specializationTypeId="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+        </Class>
+    </Class>
+</ObjectStream>)DELIMITER";
+
+class LoadEditorRigidPhysicsConfigurationV1
+    : public LoadReflectedObjectTest<AzToolsFramework::ToolsApplication, LmbrCentralEditorModule, EditorRigidPhysicsConfig>
+{
+    const char* GetSourceDataBuffer() const override { return kEditorRigidPhysicsConfigurationV1; }
+};
+
+TEST_F(LoadEditorRigidPhysicsConfigurationV1, Load_Succeeds)
+{
+    EXPECT_NE(m_object.get(), nullptr);
 }

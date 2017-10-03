@@ -73,7 +73,7 @@ namespace AzToolsFramework
             void FinalizeAll();
 
             //! Returns the ID of the last row affected.
-            int GetLastRowID();
+            AZ::s64 GetLastRowID();
 
             //! Returns the number of rows affected by the most recent statment.
             int GetNumAffectedRows();

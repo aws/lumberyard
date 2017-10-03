@@ -309,60 +309,51 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
 
         FX_SetState(newState);
         //////////////////////////////////////////////////////////////////////////
-        if (!CV_r_ShadowsUseClipVolume)
+        
+        //render clip volume
+        Matrix44 mViewProj = pShadowFrustum->mLightViewMatrix;
+        Matrix44 mViewProjInv = mViewProj.GetInverted();
+        gRenDev->m_TempMatrices[0][0] = mViewProjInv.GetTransposed();
+        
+        if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
         {
-            FX_SetStencilState(
-                STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
-                STENCOP_FAIL(FSS_STENCOP_KEEP) |
-                STENCOP_ZFAIL(FSS_STENCOP_KEEP) |
-                STENCOP_PASS(FSS_STENCOP_REPLACE),
-                nLod, 0x7F, 0x7F
-                );
-            pShader->FXBeginPass(DS_STENCIL_PASS);
-            if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_T2F_T3F)))
+            FX_SetVStream(0, m_pUnitFrustumVB[SHAPE_SIMPLE_PROJECTOR], 0, sizeof(SVF_P3F_C4B_T2F));
+            FX_SetIStream(m_pUnitFrustumIB[SHAPE_SIMPLE_PROJECTOR], 0, (kUnitObjectIndexSizeof == 2 ? Index16 : Index32));
+            
+            if (!CV_r_ShadowsUseClipVolume || !RenderCapabilities::SupportsDepthClipping())
             {
-                FX_Commit();
-                FX_DrawPrimitive(eptTriangleStrip, 0, 4);
+                FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP, DS_STENCIL_VOLUME_CLIP_FRONTFACING);
             }
-        }
-        else
-        { //render clip volume
-            Matrix44 mViewProj = pShadowFrustum->mLightViewMatrix;
-            Matrix44 mViewProjInv = mViewProj.GetInverted();
-            gRenDev->m_TempMatrices[0][0] = mViewProjInv.GetTransposed();
-
-            pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
-
-            if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+            else
             {
-                FX_SetVStream(0, m_pUnitFrustumVB[SHAPE_SIMPLE_PROJECTOR], 0, sizeof(SVF_P3F_C4B_T2F));
-                FX_SetIStream(m_pUnitFrustumIB[SHAPE_SIMPLE_PROJECTOR], 0, (kUnitObjectIndexSizeof == 2 ? Index16 : Index32));
-                FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR]);
-
-                // camera might be outside cached frustum => do front facing pass as well
-                if (pShadowFrustum->IsCached())
+                FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP);
+            }
+                
+            // camera might be outside cached frustum => do front facing pass as well
+            if (pShadowFrustum->IsCached())
+            {
+                Vec4 vCamPosShadowSpace = Vec4(GetViewParameters().vOrigin, 1.f) * mViewProj;
+                vCamPosShadowSpace /= vCamPosShadowSpace.w;
+                
+                if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
                 {
-                    Vec4 vCamPosShadowSpace = Vec4(GetViewParameters().vOrigin, 1.f) * mViewProj;
-                    vCamPosShadowSpace /= vCamPosShadowSpace.w;
-
-                    if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
-                    {
-                        D3DSetCull(eCULL_Back);
-                        FX_SetStencilState(
-                            STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
-                            STENCOP_FAIL(FSS_STENCOP_KEEP) |
-                            STENCOP_ZFAIL(FSS_STENCOP_ZERO) |
-                            STENCOP_PASS(FSS_STENCOP_KEEP),
+                    pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
+                    
+                    D3DSetCull(eCULL_Back);
+                    FX_SetStencilState(
+                        STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
+                        STENCOP_FAIL(FSS_STENCOP_KEEP) |
+                        STENCOP_ZFAIL(FSS_STENCOP_ZERO) |
+                        STENCOP_PASS(FSS_STENCOP_KEEP),
                             nLod, 0xFFFFFFFF, 0xFFFF
                             );
-
-                        FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], 0, m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR]);
-                    }
+                    
+                    
+                    FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], 0, m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR]);
+                    pShader->FXEndPass();
                 }
             }
         }
-
-        pShader->FXEndPass();
     }
     //////////////////////////////////////////////////////////////////////////
 
@@ -549,7 +540,7 @@ bool CD3D9Renderer::CreateUnitVolumeMesh(t_arrDeferredMeshIndBuff& arrDeferredIn
     return SUCCEEDED(hr);
 }
 
-void CD3D9Renderer::SetFrontFacingStencillState(int nStencilID)
+void CD3D9Renderer::SetBackFacingStencillState(int nStencilID)
 {
     int newState = m_RP.m_CurState;
     
@@ -658,16 +649,16 @@ void CD3D9Renderer::SetFrontFacingStencillState(int nStencilID)
                 if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // We must clear via full pass or else it'll kick buffers off GMEM
                 {
                     uint32 prevState = m_RP.m_CurState;
-                    uint32 newState = 0;
-                    newState |= GS_COLMASK_NONE;
-                    newState |= GS_STENCIL;
+                    uint32 state = 0;
+                    state |= GS_COLMASK_NONE;
+                    state |= GS_STENCIL;
                     FX_SetStencilState(
                         STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
                         STENCOP_FAIL(FSS_STENCOP_ZERO) |
                         STENCOP_ZFAIL(FSS_STENCOP_ZERO) |
                         STENCOP_PASS(FSS_STENCOP_ZERO),
                         0, 0xFFFFFFFF, 0xFFFF);
-                    FX_SetState(newState);
+                    FX_SetState(state);
                     SD3DPostEffectsUtils::ClearScreen(0, 0, 0, 0);
                     FX_SetState(prevState);
                 }
@@ -698,7 +689,7 @@ void CD3D9Renderer::SetFrontFacingStencillState(int nStencilID)
     FX_Commit();
 }
 
-void CD3D9Renderer::SetBackFacingStencillState(int nStencilID)
+void CD3D9Renderer::SetFrontFacingStencillState(int nStencilID)
 {    
     if (nStencilID < 0)
     {        
@@ -720,18 +711,22 @@ void CD3D9Renderer::SetBackFacingStencillState(int nStencilID)
 
 //This version of the function uses two different passes and clamps the back facing triangles to the far plane in the vertex shader. 
 //Use this when you dont have support for DepthClipEnable. Also, this setup assumes reverse depth. 
-void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int frontFacePass, int backFacePass )
+void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int backFacePass, int frontFacePass )
 {
-    //Render pass for front facing triangles
-    pShader->FXBeginPass(frontFacePass);    
-    SetFrontFacingStencillState(nStencilID);    
+    //Render pass for back facing triangles
+    pShader->FXBeginPass(backFacePass);
+    SetBackFacingStencillState(nStencilID);
     FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);       
     pShader->FXEndPass();
    
-    //Render pass for back facing triangles
-    pShader->FXBeginPass(backFacePass);
-    SetBackFacingStencillState(nStencilID);              
-    FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);    
+    //Render pass for front facing triangles
+    pShader->FXBeginPass(frontFacePass);
+    SetFrontFacingStencillState(nStencilID);
+    //skip front faces when nStencilID is specified
+    if (nStencilID < 0)
+    {
+        FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);
+    }
     pShader->FXEndPass();    
 
     return;
@@ -739,11 +734,11 @@ void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInd
 
 
 //This version of the function assumes we have support for DepthClipEnable. Assumes reverse depth. 
-void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int frontFacePass)
+void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int backFacePass)
 {
-    //Render pass for front facing triangles
-    pShader->FXBeginPass(frontFacePass);
-    SetFrontFacingStencillState(nStencilID);
+    //Render pass for back facing triangles
+    pShader->FXBeginPass(backFacePass);
+    SetBackFacingStencillState(nStencilID);
 
     // Don't clip pixels beyond far clip plane
     SStateRaster PreviousRS = m_StatesRS[m_nCurStateRS];
@@ -754,33 +749,14 @@ void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInd
     FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);   
     SetRasterState(&PreviousRS);
 
-    //Render pass for back facing triangles   
-    SetBackFacingStencillState(nStencilID);
-    FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);
-    pShader->FXEndPass();
-    return;
-}
-
-//This version of the function assumes that the calling code will set the the shader pass. Assumes reverse depth. 
-void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds)
-{
+    //Render pass for front facing triangles
     SetFrontFacingStencillState(nStencilID);
-
-    // Don't clip pixels beyond far clip plane
-    SStateRaster PreviousRS = m_StatesRS[m_nCurStateRS];
-    SStateRaster NoDepthClipRS = PreviousRS;
-    NoDepthClipRS.Desc.DepthClipEnable = false;
-    SetRasterState(&NoDepthClipRS);
-
-    FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);
-    SetRasterState(&PreviousRS);
-
-    SetBackFacingStencillState(nStencilID);
     //skip front faces when nStencilID is specified
     if (nStencilID < 0)
-    {       
+    {
         FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);
     }
+    pShader->FXEndPass();
     return;
 }
 
@@ -863,13 +839,11 @@ void CD3D9Renderer::FX_StencilFrustumCull(int nStencilID, const SRenderLight* pL
        
             if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
             {
-#if defined(CRY_USE_METAL)
                 if (!RenderCapabilities::SupportsDepthClipping())
                 {
-                    FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_BACKFACE);                    
+                    FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
                 }
                 else
-#endif
                 {
                     FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS);                    
                 }
@@ -929,13 +903,11 @@ void CD3D9Renderer::FX_StencilFrustumCull(int nStencilID, const SRenderLight* pL
    
     if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
     {
-#if defined(CRY_USE_METAL)
         if (!RenderCapabilities::SupportsDepthClipping())
         {
-            FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS, DS_SHADOW_FRUSTUM_CULL_PASS_BACKFACE);            
+            FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS, DS_SHADOW_FRUSTUM_CULL_PASS_FRONTFACING);
         }
         else
-#endif
         {
             FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS);
         }
@@ -1059,14 +1031,15 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                 }
                 FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
             }
+            pShader->FXEndPass();
 
-#if defined(OPENGL_ES)
-            uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
-            if (glVersion == DXGLES_VERSION_30 && !gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            // If there's no stencil texture support we "resolve" the vis area directly to the texture.
+            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsStencilTextures())
             {
-                pShader->FXBeginPass(CD3D9Renderer::DS_GLES3_0_STENCIL_CULL_NON_CONVEX_RESOLVE);
+                pShader->FXBeginPass(CD3D9Renderer::DS_STENCIL_CULL_NON_CONVEX_RESOLVE);
 
                 {
+                    // These values must match the ones in the shader (ResolveStencilPS)
                     const uint8_t BIT_STENCIL_STATIC = 0x0000007F;
                     const uint8_t BIT_STENCIL_INSIDE_VOLUME = 0x00000040;
 
@@ -1075,7 +1048,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                     resolvedStencil = resolvedStencil & BIT_STENCIL_STATIC;
                     resolvedStencil = max(resolvedStencil - BIT_STENCIL_INSIDE_VOLUME, 1);
 
-                    static CCryNameR pParamName0("StencilRefES3_0");
+                    static CCryNameR pParamName0("StencilRefResolve");
                     Vec4 StencilRefParam(0.f);
                     StencilRefParam.x = static_cast<float>(resolvedStencil) / 255.0;
                     StencilRefParam.y = 1.f;
@@ -1089,7 +1062,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                     newState |= GS_DEPTHFUNC_GREAT | GS_STENCIL;
                     FX_SetState(newState);
                 }
-
+                
                 {
                     FX_SetStencilState(STENC_FUNC(FSS_STENCFUNC_EQUAL) |
                         STENCOP_FAIL(FSS_STENCOP_KEEP) |
@@ -1099,15 +1072,14 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                 }
 
                 FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
+                pShader->FXEndPass();
             }
-#endif // defined(OPENGL_ES)
 
             D3DSetCull(nPrevCullMode);
             FX_SetState(nPrevState);
 
             m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = origMatView;
 
-            pShader->FXEndPass();
             pShader->FXEnd();
         }
     }

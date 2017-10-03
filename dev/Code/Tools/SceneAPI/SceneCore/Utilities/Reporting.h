@@ -22,8 +22,10 @@ namespace AZ
             const char* const ErrorWindow = "Error";
             // Window name used for reporting warnings through AZ_TracePrintf.
             const char* const WarningWindow = "Warning";
+            // Window name used for reporting success events through AZ_TracePrintf.
+            const char* const SuccessWindow = "Success";
             // Window name used for logging through AZ_TracePrintf.
-            const char* const LogWindow = "Asset Importer Framework";
+            const char* const LogWindow = "SceneAPI";
 
         } // Utilities
     } // SceneAPI

@@ -79,8 +79,8 @@ protected:
     // applied to attached images recursively after processing
     // necessary to correctly swap all endians according to the current platform
     void ProcessPlatformSpecificConversions(std::vector<STexture>& resourcesOut, byte* fileContent, const size_t fileSize);
-    void ProcessPlatformSpecificConversions_Orbis(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel);
-    void ProcessPlatformSpecificConversions_Durango(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel);
+    void ProcessPlatformSpecificConversions_Orbis(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel); // ACCEPTED_USE
+    void ProcessPlatformSpecificConversions_Durango(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel); // ACCEPTED_USE
 
     // process single texture
     void ProcessResource(
@@ -122,8 +122,8 @@ public:
     {
         eTT_None,
         eTT_PC,
-        eTT_Orbis,
-        eTT_Durango,
+        eTT_Orbis, // ACCEPTED_USE
+        eTT_Durango, // ACCEPTED_USE
     };
 
 protected:

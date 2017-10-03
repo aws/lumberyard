@@ -56,6 +56,9 @@ namespace AZ
                 SCENE_CORE_API virtual void GetVirtualTypes(AZStd::set<Crc32>& types, const Containers::Scene& scene, 
                     Containers::SceneGraph::NodeIndex node);
 
+                // Provides a list of string CRCs that indicate all available virtual types.
+                SCENE_CORE_API virtual void GetAllVirtualTypes(AZStd::set<Crc32>& types);
+
                 // Converts the virtual type hashed name into a readable name.
                 SCENE_CORE_API virtual void GetVirtualTypeName(AZStd::string& name, Crc32 type);
             };

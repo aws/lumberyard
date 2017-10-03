@@ -10,7 +10,7 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-import sys
+import sys, subprocess
 from waflib import Configure, Logs, Utils, Options, ConfigSet
 from waflib.Configure import conf
 from waflib import Logs, Node, Errors
@@ -37,16 +37,54 @@ except ImportError:
 WAF_EXECUTABLE = 'lmbr_waf.bat'
 
 #############################################################################
-# Helper method to add a value to a keyword and create the keyword if it is not there
-# This method will also make sure that a list of items is appended to the kw key
-@conf
+# Helper method for getting the host platform's command line character limit 
+def get_command_line_limit():
+    arg_max = 8192 # windows command line length limit
+
+    if Utils.unversioned_sys_platform() != "win32":
+        arg_max = int(subprocess.check_output(["getconf", "ARG_MAX"]).strip())
+        env_size = len(subprocess.check_output(['env']))
+        # on platforms such as mac, ARG_MAX encodes the amount of room you have for args, but in BYTES.
+        # as well as for environment itself.
+        arg_max = arg_max - (env_size * 2) # env has lines which are null terminated, reserve * 2 for safety
+        # finally, assume we're using some sort of unicode encoding here, with each character costing us at least two bytes
+        arg_max = arg_max / 2
+
+    return arg_max
+
 def append_kw_entry(kw,key,value):
+    """
+    Helper method to add a kw entry
+
+    :param kw:      The kw dictionary to apply to
+    :param key:     The kw entry to add/set
+    :param value:   The value (or values if its a list) to set
+    """
     if not key in kw:
         kw[key] = []
     if isinstance(value,list):
         kw[key] += value
     else:
         kw[key] += [value]
+		
+		
+def append_unique_kw_entry(kw,key,value):
+    """
+    Helper method to add a unique kw entry
+
+    :param kw:      The kw dictionary to apply to
+    :param key:     The kw entry to add/set
+    :param value:   The value (or values if its a list) to set
+    """
+    if not key in kw:
+        kw[key] = []
+    if isinstance(value,list):
+        for item in value:
+            append_unique_kw_entry(kw,key,item)
+    else:
+        if value not in kw[key]:
+            kw[key].append(value)
+
 
 #############################################################################
 # Helper method to add a value to a keyword and create the keyword if it is not there
@@ -97,6 +135,22 @@ def sanitize_kw_input_lists(list_keywords, kw):
         if key in kw:
             if not isinstance(kw[key],list):
                 kw[key] = [ kw[key] ]
+
+
+def flatten_list(input):
+    """
+    Given a list or list of lists, this method will flatten any list structure into a single list
+    :param input:   Artibtrary list to flatten.  If not a list, then the input will be returned as a list of that single item
+    :return: Flattened list
+    """
+    if isinstance(input,list):
+        result = []
+        for item in input:
+            result += flatten_list(item)
+        return result
+    else:
+        return [input]
+
 
 @conf
 def is_option_true(ctx, option_name):
@@ -254,10 +308,6 @@ def get_output_folder_name(self, platform, configuration):
         path = self.options.out_folder_win64_vs2012
     elif platform == 'win_x64_vs2010':
         path = self.options.out_folder_win64_vs2010
-    elif platform == 'durango':
-        path = self.options.out_folder_durango
-    elif platform == 'orbis':
-        path = self.options.out_folder_orbis
     elif platform == 'linux_x64':
         path = self.options.out_folder_linux64
     elif platform == 'darwin_x64':
@@ -307,19 +357,43 @@ def get_binfolder_defines(self):
     return [bin_folder_name]
 
 ###############################################################################
+
+lmbr_override_target_map = {'SetupAssistant', 'SetupAssistantBatch', 'ProjectConfigurator', 'lmbr', 'Lyzard'}
+
 @conf
-def get_output_folders(self, platform, configuration):
+def get_output_folders(self, platform, configuration, ctx=None, target=None):
+    output_paths = []
 
-    path = get_output_folder_name(self, platform, configuration)
+    # if target is provided, see if it's in the override list, if it is then override with specific logic
+    if target is not None:
+        # override for Tools/LmbrSetup folder
+        if target in lmbr_override_target_map:
+            output_paths = [self.get_lmbr_setup_tools_output_folder(platform, configuration)]
 
-    # Correct handling for absolute paths
-    if os.path.isabs(path):
-        output_folder_nodes = [self.root.make_node(path)]
-    else:
-        # For relative path, prefix binary output folder with game project folder
-        output_folder_nodes = []
-        output_folder_nodes += [self.path.make_node(path)]
-    return output_folder_nodes
+    if ctx is None:
+        ctx = self
+
+    # if no overwrite provided
+    if len(output_paths) == 0:
+        # check if output_folder is defined
+        output_paths = getattr(ctx, 'output_folder', None)
+        if output_paths:
+            if not isinstance(output_paths, list):
+                output_paths = [output_paths]
+        # otherwise use default path generation rule
+        else:
+            output_paths = [get_output_folder_name(self, platform, configuration)]
+
+    output_nodes = []
+    for path in output_paths:
+        # Correct handling for absolute paths
+        if os.path.isabs(path):
+            output_nodes.append(self.root.make_node(path))
+        else:
+            # For relative path, prefix binary output folder with game project folder
+            output_nodes.append(self.path.make_node(path))
+
+    return output_nodes
 
 
 @conf
@@ -443,7 +517,13 @@ def clean_output_targets(self):
                         to_delete.append(delete_target_copy)
 
         # Go through GEMS and add possible gems components
-        gems_output_names = self.GetGemsOutputModuleNames()
+        gems_output_names = set()
+        if self.options.project_spec in self.loaded_specs_dict:
+            spec_dict = self.loaded_specs_dict[self.options.project_spec]
+            if 'projects' in spec_dict:
+                for project in spec_dict['projects']:
+                    for gem in self.get_game_gems(project):
+                        gems_output_names.update(module.file_name for module in gem.modules)
 
         gems_target_ext_PATTERN=self.env['cxxshlib_PATTERN']
 
@@ -612,78 +692,6 @@ def get_configuration(ctx, target):
 cached_folders = {}
 
 
-def detect_durango_sdk(required_durango_edition, required_durango_edition_name):
-    """
-    Attempt to detect the durango sdk folder, xdk folder based on a required durango edition.
-    If the specific edition cannot be found, a system error is raised
-    :param required_durango_edition:        The durango edition (string)
-    :param required_durango_edition_name:   The durango edition name for error reporting
-    :return: The xdk and sdk folder tuple
-    """
-
-    if not winreg_available:
-        raise SystemError('Windows registry is not supported on this platform')
-
-    cache_key = 'durango_xdk_{}'.format(required_durango_edition)
-    if cache_key in cached_folders:
-        return cached_folders[cache_key]
-
-    # try to read the path from the registry
-    try:
-        durango_sdk_folder_entry = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                                                   "Software\\Wow6432Node\\Microsoft\\Durango XDK", 0, _winreg.KEY_READ)
-        (durango_sdk_dir, reg_type) = _winreg.QueryValueEx(durango_sdk_folder_entry, 'InstallPath')
-    except:
-        raise SystemError('Unable to read xdk installation folder from the registry')
-
-    durango_sdk_dir = durango_sdk_dir.encode('ascii')  # Make asci string (as we get unicode)
-    # get rid of trailing slash
-    durango_sdk_dir = durango_sdk_dir[0:-1]
-
-    (durango_edition, reg_type) = _winreg.QueryValueEx(durango_sdk_folder_entry, 'Latest')
-    durango_edition = durango_edition.encode('ascii')  # Make asci string (as we get unicode)
-
-    # make sure this is the correct xdk for the code
-    if required_durango_edition not in durango_edition:
-        Logs.debug('lumberyard: Durango Latest XDK Found is: {}. Looking for {}.'.format(durango_edition,
-                                                                                        required_durango_edition))
-        durango_edition = required_durango_edition
-        if not os.path.exists(durango_sdk_dir + '\\' + durango_edition + '\\xdk'):
-            if 'durango' in conf.get_supported_platforms():
-                raise SystemError("Durango XDK {0} ({1}) not found! Version {0} ({1}) "
-                                  "is the latest offically supported xdk".format(required_durango_edition,
-                                                                                 required_durango_edition_name))
-
-    durango_xdk_dir = durango_sdk_dir + '\\' + durango_edition + '\\xdk'
-
-    cached_folders[cache_key] = (durango_xdk_dir, durango_sdk_dir)
-
-    return durango_xdk_dir, durango_sdk_dir
-
-
-def detect_windows_sdk_folder():
-    """
-    Detect the current installed windows sdk folder from the registry
-    :return: The windows sdk folder from the registry
-    """
-
-    if not winreg_available:
-        raise SystemError('Windows registry is not supported on this platform')
-
-    cache_key = 'windows_sdk_folder'
-    if cache_key in cached_folders:
-        return cached_folders[cache_key]
-
-    microsoft_sdks_folder_entry = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                                                  "Software\\Microsoft\\Microsoft SDKs\\Windows", 0, _winreg.KEY_READ)
-    (microsoft_sdks_folder, type) = _winreg.QueryValueEx(microsoft_sdks_folder_entry, 'CurrentInstallFolder')
-    microsoft_sdks_folder = microsoft_sdks_folder.encode('ascii')  # Make asci string (as we get unicode)
-
-    cached_folders[cache_key] = microsoft_sdks_folder
-
-    return microsoft_sdks_folder
-
-
 def detect_visual_studio_vc_path(version, fallback_path):
     """
     Attempt to locate the installed visual studio VC path
@@ -692,7 +700,7 @@ def detect_visual_studio_vc_path(version, fallback_path):
     :return: The path to use for the visual studio VC folder
     """
     if not winreg_available:
-        raise SystemError('Windows registry is not supported on this platform')
+        raise SystemError('[ERR] Windows registry is not supported on this platform.')
 
     cache_key = 'detect_visual_studio_vc_path_{}'.format(version)
     if cache_key in cached_folders:
@@ -701,24 +709,22 @@ def detect_visual_studio_vc_path(version, fallback_path):
     vs_tools_path = fallback_path
     try:
         vs_regkey = "Software\\Microsoft\\VisualStudio\\{}_Config\\Setup\\vs".format(version)
-        vs_tools_reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
-                                              vs_regkey, 0,
-                                              _winreg.KEY_READ)
+        vs_tools_reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, vs_regkey, 0, _winreg.KEY_READ)
         (vs_tools_path, reg_type) = _winreg.QueryValueEx(vs_tools_reg_key, 'ProductDir')
         vs_tools_path = vs_tools_path.encode('ascii')  # Make asci string (as we get unicode)
         vs_tools_path += 'VC'
     except:
-        Logs.debug('lumberyard: Unable to find visual studio tools path from the registry.   Falling back to path {} '
-                   'as a good guess..."'.format(fallback_path))
+        Logs.warn('[WARN] Unable to find visual studio tools path from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
+                   
     if not os.path.exists(vs_tools_path):
-        raise SystemError('Unable to locate the visual studio VC folder for (vs version {})'.format(version))
+        raise SystemError('[ERR] Unable to locate the visual studio VC folder {} for (vs version {})'.format(vs_tools_path, version))
 
     cached_folders[cache_key] = vs_tools_path
 
     return vs_tools_path
 
 
-def detect_windows_sdk_include_path(fallback_path):
+def detect_windows_kits_include_path(fallback_path):
     """
     Attempt to locate the windows sdk include path
     :param fallback_path:
@@ -726,7 +732,7 @@ def detect_windows_sdk_include_path(fallback_path):
     """
 
     if not winreg_available:
-        raise SystemError('Windows registry is not supported on this platform')
+        raise SystemError('[ERR] Windows registry is not supported on this platform.')
 
     cache_key = 'windows_sdk_include_path'
     if cache_key in cached_folders:
@@ -734,89 +740,19 @@ def detect_windows_sdk_include_path(fallback_path):
 
     windows_sdk_include_path = fallback_path
     try:
-        windows_sdk_include_path = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                                                   "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", 0,
-                                                   _winreg.KEY_READ)
+        windows_sdk_include_path = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", _winreg.KEY_READ)
         (windows_sdk_include_path, type) = _winreg.QueryValueEx(windows_sdk_include_path, 'KitsRoot81')
         windows_sdk_include_path = windows_sdk_include_path.encode('ascii')  # Make asci string (as we get unicode)
         windows_sdk_include_path += 'Include'
     except:
-        Logs.debug('lumberyard: Unable to find windows sdk include path from the registry.   Falling back to path {} '
-                   'as a good guess..."'.format(fallback_path))
+        Logs.warn('[WARN] Unable to find windows sdk include path from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
+                   
     if not os.path.exists(windows_sdk_include_path):
-        raise SystemError('Unable to locate the Windows SDK include folder')
+        raise SystemError('[ERR] Unable to locate the Windows SDK include folder {}'.format(windows_sdk_include_path))
 
     cached_folders[cache_key] = windows_sdk_include_path
 
     return windows_sdk_include_path
-
-POTENTIAL_ORBIS_SDK_VERSION = [
-    '2.500',
-    '3.000',
-    '3.150',
-    '3.500',
-    '4.000'
-]
-
-ORBIS_SDK_ENV_KEY = 'SCE_ORBIS_SDK_DIR'
-
-def detect_orbis_sdk(version, name, log_warning):
-    """
-    Attempt to locate and validate the installed Orbis SDK if possible
-
-    :param version:   The required version number of the SDK
-    :param name: The nice display version name
-    :param log_warning: Log a warning based on the type of detection failure
-    :return: The path to the requested orbis SDK folder, None if an error or cannot be determined
-    """
-
-    # Get the orbis directory set in the system environment
-    if ORBIS_SDK_ENV_KEY not in os.environ:
-        if log_warning:
-            Logs.warn('[WARN] Unable to find SCE_ORBIS_SDK_DIR environment variable, removing Orbis target platform.')
-        return None
-
-    orbis_dir = os.environ[ORBIS_SDK_ENV_KEY]
-    if len(orbis_dir) == 0:
-        if log_warning:
-            Logs.warn('[WARN] SCE_ORBIS_SDK_DIR environment value is empty.')
-        return None
-
-    # If a folder was found, lets make sure its the one we requested
-    if version not in orbis_dir:
-        # There was a version found, but not the requested one.  Its possible that it exists and is not currently
-        # set as the active one
-        potential_path_found = False
-        for potential_version in POTENTIAL_ORBIS_SDK_VERSION:
-
-            if potential_version in orbis_dir:
-                orbis_dir = orbis_dir.replace(potential_version, version)
-                if os.path.exists(orbis_dir):
-                    potential_path_found = True
-                    if log_warning:
-                        Logs.warn(
-                            '[WARN] Orbis SDK {0} is not the current sdk ({1}), but the path for it exists.  Check your '
-                            'Orbis SDK installation and make sure {0} is the current version.'.format(version, potential_version))
-
-        if not potential_path_found:
-            if log_warning:
-                Logs.warn('[WARN] Unable to locate Orbis SDK {0} installed on this system.'.format(version))
-            return None
-
-    # Validate that both the Orbis SDK base folder exists and its toolchain subcomponent
-    if not os.path.exists(orbis_dir):
-        if log_warning:
-            Logs.warn('[WARN] The configured Orbis SDK {0} does not exist ({1}).'.format(version, orbis_dir))
-        return None
-
-    orbis_toolchain_folder = os.path.join(orbis_dir,'host_tools','bin')
-    if not os.path.exists(orbis_toolchain_folder):
-        if log_warning:
-            Logs.warn('[WARN] The configured Orbis SDK {0} toolchain folder does not exist ({1}).'.format(version, orbis_toolchain_folder))
-        return None
-
-
-    return orbis_dir
 
 def compare_config_sets(left, right, deep_compare = False):
     """

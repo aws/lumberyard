@@ -14,11 +14,13 @@
 
 #include "stdafx.h"
 #include <CGFContent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <RC/ResourceCompilerPC/CGF/LoaderCAF.h>
 #include <RC/ResourceCompilerScene/Common/CommonExportContexts.h>
 #include <RC/ResourceCompilerScene/Caf/CafExportContexts.h>
 #include <RC/ResourceCompilerScene/Caf/CafGroupExporter.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IAnimationGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
@@ -70,7 +72,16 @@ namespace AZ
 
             if (m_assetWriter)
             {
-                if (!m_assetWriter->WriteCAF(&cgfContent, &context.m_group, &controllerSkinningInfo, m_convertContext))
+                if (m_assetWriter->WriteCAF(&cgfContent, &context.m_group, &controllerSkinningInfo, m_convertContext))
+                {
+                    // The Caf writer expects a i_caf as input in order to produce an optimized and compressed .caf file.
+                    AzFramework::StringFunc::Path::ReplaceExtension(filename, ".caf");
+
+                    // This is a new guid as caf doesn't have type as it's an input to Mannequin.
+                    static const AZ::Data::AssetType cryAnimationAssetType("{10121AD6-2B3E-442C-AF5B-6F563614ABC6}");
+                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), cryAnimationAssetType);
+                }
+                else
                 {
                     result += SceneEvents::ProcessingResult::Failure;
                 }

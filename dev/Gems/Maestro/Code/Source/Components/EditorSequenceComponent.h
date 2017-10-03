@@ -12,24 +12,25 @@
 #pragma once
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
 #include <AzCore/Component/TickBus.h>
 
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include "SequenceComponent.h"
+#include "../Cinematics/AnimSequence.h"
 
-namespace LmbrCentral
+namespace Maestro
 {
     class EditorSequenceComponent
         : public AzToolsFramework::Components::EditorComponentBase
-        , public LmbrCentral::EditorSequenceComponentRequestBus::Handler
-        , public LmbrCentral::SequenceComponentRequestBus::Handler
+        , public Maestro::EditorSequenceComponentRequestBus::Handler
+        , public Maestro::SequenceComponentRequestBus::Handler
         , public AZ::TickBus::Handler       // for refreshing propertyGrids after SetAnimatedPropertyValue events
     {
     public:
         AZ_EDITOR_COMPONENT(EditorSequenceComponent, EditorSequenceComponentTypeId);    // EditorSequenceComponentTypeId is defined in EditorSequenceComponentBus.h
 
-        using AnimatablePropertyAddress = LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress;
-        using AnimatedValue = LmbrCentral::SequenceComponentRequests::AnimatedValue;
+        using AnimatablePropertyAddress = Maestro::SequenceComponentRequests::AnimatablePropertyAddress;
+        using AnimatedValue = Maestro::SequenceComponentRequests::AnimatedValue;
 
         ~EditorSequenceComponent();
 
@@ -50,8 +51,6 @@ namespace LmbrCentral
         void RemoveEntityToAnimate(AZ::EntityId removedEntityId) override;
 
         bool MarkEntityLayerAsDirty() const override;
-
-        void OnBeforeSave() override;
 
         EAnimValue GetValueType(const AZStd::string& animatableAddress) override;
         // ~EditorSequenceComponentRequestBus::Handler Interface
@@ -74,7 +73,7 @@ namespace LmbrCentral
         */
         bool SetAnimatedPropertyValue(const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value) override;
 
-        AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
+        AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -83,7 +82,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         // TODO - this should be on a Bus, right?
-        IAnimSequence* GetSequence() { return m_sequence; }
+        IAnimSequence* GetSequence() { return m_sequence.get(); }
 
     protected:
 
@@ -105,12 +104,11 @@ namespace LmbrCentral
         ////////////////////////////////////////////////////////////////////////
     private:
         // pointer and id of the CryMovie anim sequence responsible for playback/recording
-        _smart_ptr<struct IAnimSequence> m_sequence;
+        AZStd::intrusive_ptr<IAnimSequence> m_sequence;
         uint32                           m_sequenceId;
 
-        AnimSerialize::AnimationData     m_serializedAnimData;
         static AZ::ScriptTimePoint       s_lastPropertyRefreshTime;
         static const double              s_refreshPeriodMilliseconds;       // property refresh period for SetAnimatedPropertyValue events
         static const int                 s_invalidSequenceId;
     };
-} // namespace LmbrCentral
+} // namespace Maestro

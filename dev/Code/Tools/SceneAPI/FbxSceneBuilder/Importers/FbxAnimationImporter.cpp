@@ -13,10 +13,11 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxAnimationImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxTransformImporter.h>
-#include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxSceneWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxTimeSpanWrapper.h>
@@ -65,6 +66,10 @@ namespace AZ
                     return Events::ProcessingResult::Ignored;
                 }
 
+                AZStd::string nodeName = s_animationNodeName;
+                RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition);
+                AZ_TraceContext("Animation node name", nodeName);
+
                 AZStd::shared_ptr<SceneData::GraphData::AnimationData> createdAnimationData = 
                     AZStd::make_shared<SceneData::GraphData::AnimationData>();
 
@@ -74,7 +79,7 @@ namespace AZ
 
                 if (frameRate == 0.0)
                 {
-                    AZ_TracePrintf("Animation_Warning", "Scene has a 0 framerate. Animation cannot be processed without timing information.");
+                    AZ_TracePrintf(Utilities::ErrorWindow, "Scene has a 0 framerate. Animation cannot be processed without timing information.");
                     return Events::ProcessingResult::Failure;
                 }
 
@@ -93,16 +98,16 @@ namespace AZ
 
                     Transform animTransform = context.m_sourceNode.EvaluateLocalTransform(frameTime);
 
-#if !defined(MOTIONCANVAS_GEM_ENABLED)
+
                     context.m_sourceSceneSystem.SwapTransformForUpAxis(animTransform);
-#endif
+
                     context.m_sourceSceneSystem.ConvertBoneUnit(animTransform);
 
                     createdAnimationData->AddKeyFrame(animTransform);
                 }
 
                 Containers::SceneGraph::NodeIndex addNode = context.m_scene.GetGraph().AddChild(
-                    context.m_currentGraphPosition, s_animationNodeName, AZStd::move(createdAnimationData));
+                    context.m_currentGraphPosition, nodeName.c_str(), AZStd::move(createdAnimationData));
                 context.m_scene.GetGraph().MakeEndPoint(addNode);
 
                 return Events::ProcessingResult::Success;

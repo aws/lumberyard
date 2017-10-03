@@ -13,6 +13,7 @@
 
 #include <CloudGemFramework/AwsApiJobConfig.h>
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <aws/core/client/ClientConfiguration.h>
 
 namespace CloudGemFramework
@@ -36,7 +37,7 @@ namespace CloudGemFramework
 
         if(!credentialsProvider)
         {
-            EBUS_EVENT_RESULT(credentialsProvider, CloudGemFrameworkRequestBus, GetPlayerCredentialsProvider);
+            EBUS_EVENT_RESULT(credentialsProvider, CloudCanvasPlayerIdentityBus, GetPlayerCredentialsProvider);
         }
         
         m_settingsApplied = true;
@@ -70,6 +71,22 @@ namespace CloudGemFramework
             }
         );
         return target;
+    }
+
+    AZ::JobContext* AwsApiJobConfig::GetJobContext()
+    {
+        EnsureSettingsApplied();
+        return m_jobContext;
+    }
+
+    void AwsApiJobConfig::OnAfterIdentityUpdate()
+    {
+        // A new credentials provider is created when the identity changes.  Discard the credentials provider
+        // for the previous identity to avoid making calls using credentials for the wrong identity.
+        credentialsProvider.reset();
+
+        // The settings are incomplete after removing the credentials provider.
+        m_settingsApplied = false;
     }
 
     std::shared_ptr<Aws::Auth::AWSCredentialsProvider> AwsApiJobConfig::GetCredentialsProvider() const

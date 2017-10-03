@@ -22,9 +22,11 @@ class CAnimEventNode
     : public CAnimNode
 {
 public:
-    CAnimEventNode(const int id);
+    AZ_CLASS_ALLOCATOR(CAnimEventNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimEventNode, "{F9F306E0-FF9C-4FF4-B1CC-5A96746364FE}", CAnimNode);
 
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Event; }
+    CAnimEventNode();
+    CAnimEventNode(const int id);
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CAnimNode
@@ -40,11 +42,8 @@ public:
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 private:
     void SetScriptValue();
 

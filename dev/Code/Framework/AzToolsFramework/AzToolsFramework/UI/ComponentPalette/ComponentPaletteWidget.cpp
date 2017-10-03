@@ -17,6 +17,7 @@
 #include "ComponentPaletteWidget.hxx"
 
 #include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/Debug/Profiler.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
@@ -125,6 +126,7 @@ namespace AzToolsFramework
 
     void ComponentPaletteWidget::UpdateContent()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         m_componentModel->clear();
 
         bool applyFilter = !m_searchRegExp.isEmpty();
@@ -134,12 +136,15 @@ namespace AzToolsFramework
         ComponentPaletteUtil::ComponentIconTable componentIconTable;
         ComponentPaletteUtil::BuildComponentTables(m_serializeContext, m_componentFilter, m_serviceFilter, componentDataTable, componentIconTable);
 
+        AZ::Entity::ComponentArrayType componentsOnEntity;
+
         // Get all components on all selected entities so we can display a count of used components by type
         AZStd::unordered_set<AZ::Component*> allComponentsOnSelectedEntities;
         for (const AZ::EntityId entityId : m_selectedEntityIds)
         {
-            const auto& componentsForEntity = AzToolsFramework::GetAllComponentsForEntity(entityId);
-            allComponentsOnSelectedEntities.insert(componentsForEntity.begin(), componentsForEntity.end());
+            componentsOnEntity.clear();
+            AzToolsFramework::GetAllComponentsForEntity(entityId, componentsOnEntity);
+            allComponentsOnSelectedEntities.insert(componentsOnEntity.begin(), componentsOnEntity.end());
         }
 
         // Populate the context menu.
@@ -257,6 +262,7 @@ namespace AzToolsFramework
 
     void ComponentPaletteWidget::UpdateSearch()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         m_searchRegExp = QRegExp(m_searchText->text(), Qt::CaseInsensitive, QRegExp::RegExp);
         m_searchClearButton->setVisible(!m_searchText->text().isEmpty());
         m_searchText->setFocus();
@@ -278,13 +284,14 @@ namespace AzToolsFramework
             {
                 emit OnAddComponentBegin();
 
+                EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::AddComponentsToEntities, m_selectedEntityIds, AZ::ComponentTypeList{ componentClass->m_typeId });
+                AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::ButtonClick);
+
                 for (const AZ::EntityId entityId : m_selectedEntityIds)
                 {
                     // add component metrics event
                     EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, ComponentAdded, entityId, componentClass->m_typeId);
                 }
-
-                EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::AddComponentsToEntities, m_selectedEntityIds, AZ::ComponentTypeList{ componentClass->m_typeId });
 
                 emit OnAddComponentEnd();
 

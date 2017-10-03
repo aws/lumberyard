@@ -38,7 +38,7 @@ namespace AZ
         /**
          * Reflect entity utils data types.
          */
-        void Reflect(AZ::SerializeContext& serializeContext);
+        void Reflect(ReflectContext* context);
 
         /**
         * Given key, return the EntityId to map to
@@ -118,9 +118,8 @@ namespace AZ
                 object,
                 [&newIdMap](const EntityId& originalId, bool /*isEntityId*/) -> EntityId
                 {
-                    EntityId newId = Entity::MakeId();
-                    newIdMap.insert(AZStd::make_pair(originalId, newId));
-                    return newId;
+                    auto it = newIdMap.insert(AZStd::make_pair(originalId, Entity::MakeId()));
+                    return it.first->second;
                 }, context);
 
             ReplaceEntityRefs(

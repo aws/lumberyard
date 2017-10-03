@@ -19,12 +19,14 @@
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 // Sandbox imports.
 #include "../Editor/ViewManager.h"
 #include "../Editor/Viewport.h"
+#include "../Editor/Undo/IUndoManagerListener.h"
 
 #include <QApplication>
 #include <QPointer>
@@ -33,7 +35,6 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 
-struct IFlowGraph;
 
 /**
 * Integration of ToolsApplication behavior and Cry undo/redo and selection systems
@@ -62,6 +63,7 @@ class QMenu;
 class QWidget;
 class CComponentEntityObject;
 class CHyperGraph;
+struct IFlowGraph;
 
 namespace AzToolsFramework
 {
@@ -81,10 +83,13 @@ class SandboxIntegrationManager
     , private AzFramework::EntityDebugDisplayRequestBus::Handler
     , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , private AzToolsFramework::HyperGraphRequestBus::Handler
+    , private IUndoManagerListener
+    , private AZ::LegacyConversion::LegacyConversionRequestBus::Handler
 {
 public:
 
     SandboxIntegrationManager();
+    ~SandboxIntegrationManager();
 
     void Setup();
 
@@ -99,13 +104,14 @@ private:
 
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorRequests::Bus::Handler overrides
-    void RegisterViewPane(const char* name, const char* category, const QtViewOptions& viewOptions, const WidgetCreationFunc& widgetCreationFunc) override;
+    void RegisterViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions, const WidgetCreationFunc& widgetCreationFunc) override;
     void UnregisterViewPane(const char* name) override;
-    void ShowViewPane(const char* paneName) override;
+    void OpenViewPane(const char* paneName) override;
+    void CloseViewPane(const char* paneName) override;
     void BrowseForAssets(AzToolsFramework::AssetBrowser::AssetSelectionModel& selection) override;
     void GenerateAllCubemaps() override;
-    void GenerateCubemapForEntity(AZ::EntityId entityId, AZStd::string* cubemapOutputPath) override;
-    void HandleObjectModeSelection(const AZ::Vector2& point, int flags, bool& handled) override;
+    void GenerateCubemapForEntity(AZ::EntityId entityId, AZStd::string* cubemapOutputPath, bool hideEntity) override;
+    void HandleObjectModeSelection(const AZ::Vector2& point, int flags, bool& handled) override;    
     void UpdateObjectModeCursor(AZ::u32& cursorId, AZStd::string& cursorStr) override;
     void StartObjectPickMode() override;
     void StopObjectPickMode() override;
@@ -156,6 +162,7 @@ private:
     void DrawTri(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3) override;
     void DrawWireBox(const AZ::Vector3& min, const AZ::Vector3& max) override;
     void DrawSolidBox(const AZ::Vector3& min, const AZ::Vector3& max) override;
+    void DrawSolidOBB(const AZ::Vector3& center, const AZ::Vector3& axisX, const AZ::Vector3& axisY, const AZ::Vector3& axisZ, const AZ::Vector3& halfExtents) override;
     void DrawPoint(const AZ::Vector3& p, int nSize) override;
     void DrawLine(const AZ::Vector3& p1, const AZ::Vector3& p2) override;
     void DrawLine(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector4& col1, const AZ::Vector4& col2) override;
@@ -182,7 +189,7 @@ private:
     void DrawTextLabel(const AZ::Vector3& pos, float size, const char* text, const bool bCenter, int srcOffsetX, int scrOffsetY) override;
     void Draw2dTextLabel(float x, float y, float size, const char* text, bool bCenter) override;
     void DrawTextOn2DBox(const AZ::Vector3& pos, const char* text, float textScale, const AZ::Vector4& TextColor, const AZ::Vector4& TextBackColor) override;
-    void DrawTextureLabel(const char* textureFilename, const AZ::Vector3& pos, float sizeX, float sizeY, int texIconFlags) override;
+    void DrawTextureLabel(ITexture* texture, const AZ::Vector3& pos, float sizeX, float sizeY, int texIconFlags) override;
     void SetLineWidth(float width) override;
     bool IsVisible(const AZ::Aabb& bounds) override;
     int SetFillMode(int nFillMode) override;
@@ -202,6 +209,13 @@ private:
     void PushMatrix(const AZ::Transform& tm) override;
     void PopMatrix() override;
     void SetDC(DisplayContext* dc) override;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // AZ::LegacyConversion::LegacyConversionRequestBus::Handler 
+    AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> CreateConvertedEntity(CBaseObject* sourceObject, bool failIfParentNotFound, const AZ::ComponentTypeList& componentsToAdd) override;
+    AZ::EntityId FindCreatedEntity(const AZ::Uuid& sourceObjectUUID, const char* sourceObjectName) override;
+    AZ::EntityId FindCreatedEntityByExistingObject(const CBaseObject* sourceObject) override;
     //////////////////////////////////////////////////////////////////////////
 
     // Context menu handlers.
@@ -247,12 +261,17 @@ private:
     }
 
     AZStd::string GetComponentEditorIcon(const AZ::Uuid& componentType) override;
-    AZStd::string GetComponentIconPath(const AZ::Uuid& componentType, AZ::Crc32 componentIconAttrib) override;
+    AZStd::string GetComponentIconPath(const AZ::Uuid& componentType, AZ::Crc32 componentIconAttrib, AZ::Component* component) override;
+
+    //////////////////////////////////////////////////////////////////////////
+    // IUndoManagerListener
+    // Listens for Cry Undo System events.
+    void UndoStackFlushed() override;
 
 private:
-
     void SetupFileExtensionMap();
     void SetupSliceContextMenu(QMenu* menu);
+    void SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32 numEntitiesInSlices);
     void SetupFlowGraphContextMenu(QMenu* menu);
     void SetupScriptCanvasContextMenu(QMenu* menu);
 
@@ -265,7 +284,7 @@ private:
     AZ::Vector2 m_contextMenuViewPoint;
     AZ::Vector3 m_sliceWorldPos;
 
-    bool m_inObjectPickMode;
+    int m_inObjectPickMode;
     short m_startedUndoRecordingNestingLevel;   // used in OnBegin/EndUndo to ensure we only accept undo's we started recording
 
     DisplayContext* m_dc;

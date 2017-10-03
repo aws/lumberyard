@@ -296,7 +296,7 @@ namespace UnitTest
         }
 
         AZ::Entity::ComponentArrayType pendingComponents;
-        AzToolsFramework::EditorPendingCompositionRequestBus::EventResult(pendingComponents, entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequestBus::Events::GetPendingComponents);
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequestBus::Events::GetPendingComponents, pendingComponents);
 
         size_t count = 0;
         for (const auto pendingComponent : pendingComponents)
@@ -319,7 +319,7 @@ namespace UnitTest
         }
 
         AZ::Entity::ComponentArrayType disabledComponents;
-        AzToolsFramework::EditorDisabledCompositionRequestBus::EventResult(disabledComponents, entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequestBus::Events::GetDisabledComponents);
+        AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequestBus::Events::GetDisabledComponents, disabledComponents);
 
         size_t count = 0;
         for (const auto disabledComponent : disabledComponents)
@@ -335,7 +335,8 @@ namespace UnitTest
     template <typename ComponentType>
     AZStd::vector<AZ::Component*> GetComponentsForEntity(AZ::Entity* entity)
     {
-        AZStd::vector<AZ::Component*> components = AzToolsFramework::GetAllComponentsForEntity(entity);
+        AZStd::vector<AZ::Component*> components;
+        AzToolsFramework::GetAllComponentsForEntity(entity, components);
 
         auto itr = AZStd::remove_if(components.begin(), components.end(), [](AZ::Component* component) {return AzToolsFramework::GetUnderlyingComponentType(*component) != azrtti_typeid<ComponentType>();});
         components.erase(itr, components.end());
@@ -532,14 +533,14 @@ namespace UnitTest
         size_t GetPendingComponentCount() const
         {
             AZ::Entity::ComponentArrayType pendingComponents;
-            AzToolsFramework::EditorPendingCompositionRequestBus::EventResult(pendingComponents, m_entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequestBus::Events::GetPendingComponents);
+            AzToolsFramework::EditorPendingCompositionRequestBus::Event(m_entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequestBus::Events::GetPendingComponents, pendingComponents);
             return pendingComponents.size();
         }
 
         size_t GetDisabledComponentCount() const
         {
             AZ::Entity::ComponentArrayType disabledComponents;
-            AzToolsFramework::EditorDisabledCompositionRequestBus::EventResult(disabledComponents, m_entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequestBus::Events::GetDisabledComponents);
+            AzToolsFramework::EditorDisabledCompositionRequestBus::Event(m_entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequestBus::Events::GetDisabledComponents, disabledComponents);
             return disabledComponents.size();
         }
 

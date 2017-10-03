@@ -15,44 +15,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    const AZ::Crc32 InputChannelEventListener::Filter::AnyChannelNameCrc32("wildcard_any_input_channel_name");
-    const AZ::Crc32 InputChannelEventListener::Filter::AnyDeviceNameCrc32("wildcard_any_input_device_name");
-    const AZ::u32 InputChannelEventListener::Filter::AnyDeviceIndex(std::numeric_limits<AZ::u32>::max());
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputChannelEventListener::Filter::Filter(const AZ::Crc32& channelNameCrc32,
-                                              const AZ::Crc32& deviceNameCrc32,
-                                              const AZ::u32& deviceIndex)
-        : m_channelNameCrc32(channelNameCrc32)
-        , m_deviceNameCrc32(deviceNameCrc32)
-        , m_deviceIndex(deviceIndex)
-    {
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputChannelEventListener::Filter::DoesPassFilter(const InputChannel& inputChannel) const
-    {
-        if (m_channelNameCrc32 != AnyChannelNameCrc32 &&
-            m_channelNameCrc32 != inputChannel.GetInputChannelId().GetNameCrc32())
-        {
-            return false;
-        }
-
-        if (m_deviceNameCrc32 != AnyDeviceNameCrc32 &&
-            m_deviceNameCrc32 != inputChannel.GetInputDevice().GetInputDeviceId().GetNameCrc32())
-        {
-            return false;
-        }
-
-        if (m_deviceIndex != AnyDeviceIndex &&
-            m_deviceIndex != inputChannel.GetInputDevice().GetInputDeviceId().GetIndex())
-        {
-            return false;
-        }
-
-        return true;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelEventListener::InputChannelEventListener()
         : m_filter()
@@ -90,21 +52,24 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputChannelEventListener::InputChannelEventListener(const Filter& filter)
+    InputChannelEventListener::InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter)
         : m_filter(filter)
         , m_priority(GetPriorityDefault())
     {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputChannelEventListener::InputChannelEventListener(const Filter& filter, AZ::s32 priority)
+    InputChannelEventListener::InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter,
+                                                         AZ::s32 priority)
         : m_filter(filter)
         , m_priority(priority)
     {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputChannelEventListener::InputChannelEventListener(const Filter& filter, AZ::s32 priority, bool autoConnect)
+    InputChannelEventListener::InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter,
+                                                         AZ::s32 priority,
+                                                         bool autoConnect)
         : m_filter(filter)
         , m_priority(priority)
     {
@@ -121,7 +86,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputChannelEventListener::SetFilter(const Filter& filter)
+    void InputChannelEventListener::SetFilter(AZStd::shared_ptr<InputChannelEventFilter> filter)
     {
         m_filter = filter;
     }
@@ -147,10 +112,13 @@ namespace AzFramework
             return;
         }
 
-        const bool doesPassFilter = m_filter.DoesPassFilter(inputChannel);
-        if (!doesPassFilter)
+        if (m_filter)
         {
-            return;
+            const bool doesPassFilter = m_filter->DoesPassFilter(inputChannel);
+            if (!doesPassFilter)
+            {
+                return;
+            }
         }
 
         o_hasBeenConsumed = OnInputChannelEventFiltered(inputChannel);

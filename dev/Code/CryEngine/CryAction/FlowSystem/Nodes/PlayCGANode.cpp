@@ -202,9 +202,9 @@ public:
     {
         struct UpdateChanger
         {
-            UpdateChanger(SActivationInfo* info, bool update)
-                : info(info)
-                , update(update) {}
+            UpdateChanger(SActivationInfo* _info, bool _update)
+                : info(_info)
+                , update(_update) {}
             ~UpdateChanger() { info->pGraph->SetRegularlyUpdated(info->myID, update); }
             SActivationInfo* info;
             bool update;

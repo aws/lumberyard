@@ -21,6 +21,7 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <SceneAPI/SceneCore/Containers/Views/ConvertIterator.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
@@ -141,13 +142,6 @@ namespace AZ
                     EXPECT_EQ(view.begin(), view.end());
                 }
 
-                TEST_F(SceneGraphChildIteratorTest, Dereference_ValueIteratorNotSyncedWithHierarchyIteratorIfNotRequested_ReturnedValueMatchesOriginalValueIterator)
-                {
-                    auto valueIterator = m_graph.GetNameStorage().begin() + 2;
-                    auto iterator = MakeSceneGraphChildIterator(m_graph, m_graph.Find("A"), valueIterator, false);
-                    EXPECT_STREQ((*valueIterator).GetPath(), (*iterator).GetPath());
-                }
-
                 TEST_F(SceneGraphChildIteratorTest, Dereference_DereferencingThroughStarAndArrowOperator_ValuesAreEqual)
                 {
                     auto valueIterator = m_graph.GetNameStorage().begin();
@@ -162,6 +156,24 @@ namespace AZ
                     EXPECT_STREQ("A.B", iterator->GetPath());
                     EXPECT_STREQ("A.C", (++iterator)->GetPath());
                     EXPECT_STREQ("A.D", (++iterator)->GetPath());
+                }
+
+                TEST_F(SceneGraphChildIteratorTest, Dereference_ProvidedIteratorMovedToFirstChildIfRootIterator_ReturnedFirstChildName)
+                {
+                    auto valueIterator = m_graph.GetNameStorage().begin();
+                    auto iterator = MakeSceneGraphChildIterator(m_graph, m_graph.Find("A.C"), valueIterator, true);
+                    EXPECT_STREQ("A.C.E", (*iterator).GetPath());
+                }
+
+                TEST_F(SceneGraphChildIteratorTest, Dereference_ProvidedIteratorMovedToFirstChildIfNotRootIterator_ReturnedFirstChildName)
+                {
+                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
+                    ASSERT_TRUE(index.IsValid()); // Name has been entered in the graph so should be found.
+                    auto valueIterator = m_graph.ConvertToNameIterator(index);
+                    ASSERT_NE(m_graph.GetNameStorage().end(), valueIterator); // Correct iterator should be found.
+
+                    auto iterator = MakeSceneGraphChildIterator(m_graph, index, valueIterator, false);
+                    EXPECT_STREQ("A.C.E", (*iterator).GetPath());
                 }
 
                 TEST_F(SceneGraphChildIteratorTest, IncrementOperator_MovedPastLastChild_ReturnsEndIterator)

@@ -104,7 +104,7 @@ void CObjManager::UnloadObjects(bool bDeleteAll)
 
             m_lockedObjects.clear(); // Lock/Unlock resources will not work with this.
 
-                                     // Release default stat obj.
+            // Release default stat obj.
             m_pDefaultCGF = 0;
 
             m_nameToObjectMap.clear();
@@ -155,7 +155,7 @@ void CObjManager::UnloadObjects(bool bDeleteAll)
     m_statObjPool->FreeMemoryIfEmpty();
 #endif
 
-    //If this collection is not cleared on unload then character materials will 
+    //If this collection is not cleared on unload then character materials will
     //leak and most likely crash the engine across level loads.
     stl::free_container(m_collectedMaterials);
 
@@ -324,10 +324,10 @@ void CObjManager::PreloadLevelObjects()
                 {
                     CryLog("%s", cgfFilename.c_str());
                 }
-                CStatObj* pStatObj = GetObjManager()->LoadStatObjUnsafeManualRef(cgfFilename.c_str(), NULL, 0, true, 0);
+                IStatObj* pStatObj = GetObjManager()->LoadStatObjUnsafeManualRef(cgfFilename.c_str(), NULL, 0, true, 0);
                 if (pStatObj)
                 {
-                    if (pStatObj->m_bMeshStrippedCGF)
+                    if (pStatObj->IsMeshStrippedCGF())
                     {
                         nInLevelCacheCount++;
                     }
@@ -410,7 +410,7 @@ T CObjManager::LoadStatObjInternal(const char* filename,
     }
 
     // Try to find already loaded object
-    CStatObj* pObject = 0;
+    IStatObj* pObject = 0;
 
     int flagCloth = 0;
     if (_szGeomName && !strcmp(_szGeomName, BoneNames::Cloth))
@@ -424,7 +424,7 @@ T CObjManager::LoadStatObjInternal(const char* filename,
         // It is important that ClearStatObjGarbage is not run during this time (done via m_loadMutex)
 
         AZStd::string lowerFileName(normalizedFilename);
-        int(*toLowerFunc)(int) = std::tolower; //Needed to help the compiler figure out the right tolower to use on android
+        int(* toLowerFunc)(int) = std::tolower; //Needed to help the compiler figure out the right tolower to use on android
         AZStd::transform(lowerFileName.begin(), lowerFileName.end(), lowerFileName.begin(), toLowerFunc);
 
         pObject = stl::find_in_map(m_nameToObjectMap, CONST_TEMP_STRING(lowerFileName.c_str()), NULL);
@@ -440,7 +440,7 @@ T CObjManager::LoadStatObjInternal(const char* filename,
     return LoadNewCGF(pObject, flagCloth, bUseStreaming, bForceBreakable, nLoadingFlags, normalizedFilename, pData, nDataSize, filename, _szGeomName, ppSubObject);
 }
 
-CStatObj* CObjManager::LoadStatObjUnsafeManualRef(const char* filename,
+IStatObj* CObjManager::LoadStatObjUnsafeManualRef(const char* filename,
     const char* _szGeomName,
     IStatObj::SSubObject** ppSubObject,
     bool bUseStreaming,
@@ -449,10 +449,10 @@ CStatObj* CObjManager::LoadStatObjUnsafeManualRef(const char* filename,
     int nDataSize,
     const char* szBlockName)
 {
-    return LoadStatObjInternal<CStatObj*>(filename, _szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, pData, nDataSize, szBlockName);
+    return LoadStatObjInternal<IStatObj*>(filename, _szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, pData, nDataSize, szBlockName);
 }
 
-_smart_ptr<CStatObj> CObjManager::LoadStatObjAutoRef(const char* filename,
+_smart_ptr<IStatObj> CObjManager::LoadStatObjAutoRef(const char* filename,
     const char* _szGeomName,
     IStatObj::SSubObject** ppSubObject,
     bool bUseStreaming,
@@ -461,7 +461,7 @@ _smart_ptr<CStatObj> CObjManager::LoadStatObjAutoRef(const char* filename,
     int nDataSize,
     const char* szBlockName)
 {
-    return LoadStatObjInternal<_smart_ptr<CStatObj>>(filename, _szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, pData, nDataSize, szBlockName);
+    return LoadStatObjInternal<_smart_ptr<IStatObj> >(filename, _szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, pData, nDataSize, szBlockName);
 }
 
 template <size_t SIZE_IN_CHARS>
@@ -498,20 +498,20 @@ void CObjManager::LoadDefaultCGF(const char* filename, unsigned long nLoadingFla
             Error("CObjManager::LoadStatObj: Default object not found (%s)", sDefaulObjFilename);
             m_pDefaultCGF = new CStatObj();
         }
-        m_pDefaultCGF->m_bDefaultObject = true;
+        m_pDefaultCGF->SetDefaultObject(true);
     }
 }
 
-CStatObj* CObjManager::LoadNewCGF(CStatObj* pObject, int flagCloth, bool bUseStreaming, bool bForceBreakable, unsigned long nLoadingFlags, const char* normalizedFilename, const void* pData, int nDataSize, const char* originalFilename, const char* geomName, IStatObj::SSubObject** ppSubObject)
+IStatObj* CObjManager::LoadNewCGF(IStatObj* pObject, int flagCloth, bool bUseStreaming, bool bForceBreakable, unsigned long nLoadingFlags, const char* normalizedFilename, const void* pData, int nDataSize, const char* originalFilename, const char* geomName, IStatObj::SSubObject** ppSubObject)
 {
     pObject = new CStatObj();
-    pObject->m_nFlags |= flagCloth;
+    pObject->SetFlags(pObject->GetFlags() | flagCloth);
 
     bUseStreaming &= (GetCVars()->e_StreamCgf != 0);
 
     if (bUseStreaming)
     {
-        pObject->m_bCanUnload = true;
+        pObject->SetCanUnload(true);
     }
     if (bForceBreakable)
     {
@@ -526,7 +526,7 @@ CStatObj* CObjManager::LoadNewCGF(CStatObj* pObject, int flagCloth, bool bUseStr
         if (geomName && geomName[0])
         {
             delete pObject;
-            return 0;
+            return nullptr;
         }
 
         // make unique default CGF for every case of missing CGF, this will make export process more reliable and help finding missing CGF's in pure game
@@ -549,7 +549,7 @@ CStatObj* CObjManager::LoadNewCGF(CStatObj* pObject, int flagCloth, bool bUseStr
         pObject->LoadLowLODs(bUseStreaming, nLoadingFlags);
     }
 
-    if (!pObject->m_bCanUnload)
+    if (!pObject->IsUnloadable())
     { // even if streaming is disabled we register object for potential streaming (streaming system will never unload it)
         pObject->DisableStreaming();
     }
@@ -558,7 +558,7 @@ CStatObj* CObjManager::LoadNewCGF(CStatObj* pObject, int flagCloth, bool bUseStr
     pObject->TryMergeSubObjects(false);
 
     m_lstLoadedObjects.insert(pObject);
-    m_nameToObjectMap[pObject->m_szFileName.MakeLower()] = pObject;
+    m_nameToObjectMap[pObject->GetFileName().MakeLower()] = pObject;
 
     if (geomName && geomName[0])
     {
@@ -584,14 +584,14 @@ CStatObj* CObjManager::LoadNewCGF(CStatObj* pObject, int flagCloth, bool bUseStr
     return pObject;
 }
 
-CStatObj* CObjManager::LoadFromCacheNoRef(CStatObj* pObject, bool bUseStreaming, unsigned long nLoadingFlags, const char* geomName, IStatObj::SSubObject** ppSubObject)
+IStatObj* CObjManager::LoadFromCacheNoRef(IStatObj* pObject, bool bUseStreaming, unsigned long nLoadingFlags, const char* geomName, IStatObj::SSubObject** ppSubObject)
 {
-    if (!bUseStreaming && pObject->m_bCanUnload)
+    if (!bUseStreaming && pObject->IsUnloadable())
     {
         pObject->DisableStreaming();
     }
 
-    if (!pObject->m_bLodsLoaded)
+    if (!pObject->AreLodsLoaded())
     {
         pObject->LoadLowLODs(bUseStreaming, nLoadingFlags);
     }
@@ -599,7 +599,7 @@ CStatObj* CObjManager::LoadFromCacheNoRef(CStatObj* pObject, bool bUseStreaming,
     if (geomName && geomName[0])
     {
         // Return SubObject.
-        CStatObj::SSubObject* pSubObject = pObject->FindSubObject(geomName);
+        IStatObj::SSubObject* pSubObject = pObject->FindSubObject(geomName);
         if (!pSubObject || !pSubObject->pStatObj)
         {
             return nullptr;
@@ -622,19 +622,19 @@ CStatObj* CObjManager::LoadFromCacheNoRef(CStatObj* pObject, bool bUseStreaming,
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CObjManager::InternalDeleteObject(CStatObj* pObject)
+bool CObjManager::InternalDeleteObject(IStatObj* pObject)
 {
     assert(pObject);
 
     AZStd::lock_guard<AZStd::recursive_mutex> loadLock(m_loadMutex);
 
-    if (!m_bLockCGFResources && !IsResourceLocked(pObject->m_szFileName))
+    if (!m_bLockCGFResources && !IsResourceLocked(pObject->GetFileName()))
     {
         LoadedObjects::iterator it = m_lstLoadedObjects.find(pObject);
         if (it != m_lstLoadedObjects.end())
         {
             m_lstLoadedObjects.erase(it);
-            m_nameToObjectMap.erase(pObject->m_szFileName.MakeLower());
+            m_nameToObjectMap.erase(pObject->GetFileName().MakeLower());
         }
         else
         {
@@ -654,16 +654,16 @@ bool CObjManager::InternalDeleteObject(CStatObj* pObject)
     return false;
 }
 
-CStatObj* CObjManager::AllocateStatObj()
+IStatObj* CObjManager::AllocateStatObj()
 {
 #ifdef POOL_STATOBJ_ALLOCS
-    return (CStatObj*)m_statObjPool->Allocate();
+    return (IStatObj*)m_statObjPool->Allocate();
 #else
-    return (CStatObj*)malloc(sizeof(CStatObj));
+    return (IStatObj*)malloc(sizeof(CStatObj));
 #endif
 }
 
-void CObjManager::FreeStatObj(CStatObj* pObj)
+void CObjManager::FreeStatObj(IStatObj* pObj)
 {
 #ifdef POOL_STATOBJ_ALLOCS
     m_statObjPool->Deallocate(pObj);
@@ -896,11 +896,11 @@ void CObjManager::AddDecalToRenderer(float fDistance,
     if (bBending)
     {
         pVegetation->GetEntityStatObj(0, 0, &pOb->m_II.m_Matrix);
-        CStatObj* pBody = pVegetation->GetStatObj();
+        IStatObj* pBody = pVegetation->GetStatObj();
         assert(pBody);
         if (pBody)
         {
-            Get3DEngine()->SetupBending(pOb, pVegetation, pBody->m_fRadiusVert, passInfo);
+            Get3DEngine()->SetupBending(pOb, pVegetation, pBody->GetRadiusVert(), passInfo);
         }
     }
 
@@ -1047,7 +1047,7 @@ void CObjManager::FreeNotUsedCGFs()
         AZStd::lock_guard<AZStd::recursive_mutex> loadLock(m_loadMutex);
 
         m_lockedObjects.clear();
-        
+
         if (!m_bLockCGFResources)
         {
             //Timur, You MUST use next here, or with erase you invalidating
@@ -1220,7 +1220,7 @@ void CObjManager::ClearStatObjGarbage()
 {
     FUNCTION_PROFILER_3DENGINE;
 
-    std::vector<CStatObj*> garbage;
+    std::vector<IStatObj*> garbage;
 
     // No work? Exit early before attempting to take any locks
     if (m_checkForGarbage.empty())
@@ -1237,25 +1237,25 @@ void CObjManager::ClearStatObjGarbage()
 
         // Make sure all stat objects inside this array are unique.
         // Only check explicitly added objects.
-        CStatObj* pStatObj;
+        IStatObj* pStatObj;
 
         while (!m_checkForGarbage.empty())
         {
             pStatObj = m_checkForGarbage.back();
             m_checkForGarbage.pop_back();
 
-            if (pStatObj->m_bCheckGarbage)
+            if (pStatObj->CheckGarbage())
             {
                 // Check if it must be released.
                 int nChildRefs = pStatObj->CountChildReferences();
 
-                if (pStatObj->m_nUsers <= 0 && nChildRefs <= 0)
+                if (pStatObj->GetUserCount() <= 0 && nChildRefs <= 0)
                 {
                     garbage.push_back(pStatObj);
                 }
                 else
                 {
-                    pStatObj->m_bCheckGarbage = false;
+                    pStatObj->SetCheckGarbage(false);
                 }
             }
         }
@@ -1264,9 +1264,9 @@ void CObjManager::ClearStatObjGarbage()
     // First ShutDown object clearing all pointers.
     for (int i = 0, num = (int)garbage.size(); i < num; i++)
     {
-        CStatObj* pStatObj = garbage[i];
+        IStatObj* pStatObj = garbage[i];
 
-        if (!m_bLockCGFResources && !IsResourceLocked(pStatObj->m_szFileName))
+        if (!m_bLockCGFResources && !IsResourceLocked(pStatObj->GetFileName()))
         {
             // only shutdown object if it can be deleted by InternalDeleteObject()
             pStatObj->ShutDown();
@@ -1276,7 +1276,7 @@ void CObjManager::ClearStatObjGarbage()
     // Then delete all garbage objects.
     for (int i = 0, num = (int)garbage.size(); i < num; i++)
     {
-        CStatObj* pStatObj = garbage[i];
+        IStatObj* pStatObj = garbage[i];
         InternalDeleteObject(pStatObj);
     }
 }
@@ -1292,25 +1292,25 @@ IRenderMesh* CObjManager::GetRenderMeshBox()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CObjManager::CheckForGarbage(CStatObj* pObject)
+void CObjManager::CheckForGarbage(IStatObj* pObject)
 {
     if (m_bGarbageCollectionEnabled &&
-        !pObject->m_bCheckGarbage)
+        !pObject->CheckGarbage())
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_garbageMutex);
-        
-        pObject->m_bCheckGarbage = true;
+
+        pObject->SetCheckGarbage(true);
         m_checkForGarbage.push_back(pObject);
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CObjManager::UnregisterForGarbage(CStatObj* pObject)
+void CObjManager::UnregisterForGarbage(IStatObj* pObject)
 {
     CRY_ASSERT(pObject);
 
     if (m_bGarbageCollectionEnabled &&
-        pObject->m_bCheckGarbage)
+        pObject->CheckGarbage())
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_garbageMutex);
 
@@ -1324,7 +1324,7 @@ void CObjManager::UnregisterForGarbage(CStatObj* pObject)
             }
         }
 
-        pObject->m_bCheckGarbage = false;
+        pObject->SetCheckGarbage(false);
     }
 }
 
@@ -1361,13 +1361,13 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
 }
 
 bool CObjManager::CheckCreateRenderObject(
-    CRenderObject ** ppRenderObjectsLodsStorage,
+    CRenderObject** ppRenderObjectsLodsStorage,
     int nRenderObjectsLodsStorageNum,
-    CRenderObject * &pRenderObject,
-    const CLodValue * pLodValue,
-    const SRenderingPassInfo &passInfo,
-    const SRendItemSorter & rendItemSorter,
-    CRenderObject::SInstanceData * pInstData /*= 0*/,
+    CRenderObject*& pRenderObject,
+    const CLodValue* pLodValue,
+    const SRenderingPassInfo& passInfo,
+    const SRendItemSorter& rendItemSorter,
+    CRenderObject::SInstanceData* pInstData /*= 0*/,
     int nInstCount /*= 0*/) const
 {
     static ICVar* r_GraphicsPipeline = gEnv->pConsole->GetCVar("r_GraphicsPipeline");
@@ -1375,13 +1375,19 @@ bool CObjManager::CheckCreateRenderObject(
     if (GetCVars()->e_PermanentRenderObjects && r_GraphicsPipeline->GetIVal() >= 4)
     {
         if (pLodValue && pLodValue->LodA() == -1 && pLodValue->LodB() == -1)
+        {
             return true;
+        }
 
         if (pLodValue && pLodValue->LodA() == -1 && pLodValue->DissolveRefB() == 255)
+        {
             return true;
+        }
 
         if (pLodValue && pLodValue->LodB() == -1 && pLodValue->DissolveRefA() == 255)
+        {
             return true;
+        }
 
         int nLod = pLodValue ? CLAMP(0, pLodValue->LodA(), nRenderObjectsLodsStorageNum - 1) : 0;
 

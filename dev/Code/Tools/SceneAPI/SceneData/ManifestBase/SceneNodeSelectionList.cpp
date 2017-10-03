@@ -131,7 +131,7 @@ namespace AZ
                 return AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList>(new SceneNodeSelectionList(*this));
             }
 
-            void SceneNodeSelectionList::CopyTo(ISceneNodeSelectionList& other) const
+            void SceneNodeSelectionList::CopyTo(DataTypes::ISceneNodeSelectionList& other) const
             {
                 other.ClearSelectedNodes();
                 other.ClearUnselectedNodes();

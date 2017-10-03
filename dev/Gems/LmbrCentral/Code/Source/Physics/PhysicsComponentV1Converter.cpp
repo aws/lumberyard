@@ -22,7 +22,7 @@
 
 namespace LmbrCentral
 {
-    void ReadRigidPhysicsConfiguration(RigidPhysicsConfiguration& configuration, AZ::SerializeContext::DataElementNode* configurationNode, bool isProximityTriggerable)
+    void ReadRigidPhysicsConfig(RigidPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode, bool isProximityTriggerable)
     {
         if (configurationNode)
         {
@@ -44,7 +44,7 @@ namespace LmbrCentral
         configuration.m_interactsWithTriggers = isProximityTriggerable;
     }
 
-    void ReadStaticPhysicsConfiguration(StaticPhysicsConfiguration& configuration, AZ::SerializeContext::DataElementNode* configurationNode)
+    void ReadStaticPhysicsConfiguration(StaticPhysicsConfig& configuration, AZ::SerializeContext::DataElementNode* configurationNode)
     {
         if (configurationNode)
         {
@@ -118,16 +118,17 @@ namespace LmbrCentral
 
         if (behaviorNode && (behaviorNode->GetId() == AZ::Uuid("{48366EA0-71FA-49CA-B566-426EE897468E}"))) // RigidPhysicsBehavior
         {
-            // The rigid behavior class contained a RigidPhysicsConfiguration.
+            // The rigid behavior class contained a RigidPhysicsConfig.
             auto rigidConfigurationNode = behaviorNode->FindSubElement(AZ::Crc32("Configuration"));
 
 #if defined(LMBR_CENTRAL_EDITOR)
             if (isEditorComponent)
             {
-                EditorRigidPhysicsConfiguration configuration;
-                ReadRigidPhysicsConfiguration(configuration, rigidConfigurationNode, isProximityTriggerable);
+                EditorRigidPhysicsConfig configuration;
+                ReadRigidPhysicsConfig(configuration, rigidConfigurationNode, isProximityTriggerable);
 
-                EditorRigidPhysicsComponent component(configuration);
+                EditorRigidPhysicsComponent component;
+                component.SetConfiguration(configuration);
 
                 classNode.Convert(serializeContext, azrtti_typeid(component));
                 classNode.SetData(serializeContext, component);
@@ -135,10 +136,11 @@ namespace LmbrCentral
             else
 #endif
             {
-                RigidPhysicsConfiguration configuration;
-                ReadRigidPhysicsConfiguration(configuration, rigidConfigurationNode, isProximityTriggerable);
+                RigidPhysicsConfig configuration;
+                ReadRigidPhysicsConfig(configuration, rigidConfigurationNode, isProximityTriggerable);
 
-                RigidPhysicsComponent component(configuration);
+                RigidPhysicsComponent component;
+                component.SetConfiguration(configuration);
 
                 classNode.Convert(serializeContext, azrtti_typeid(component));
                 classNode.SetData(serializeContext, component);
@@ -146,7 +148,7 @@ namespace LmbrCentral
         }
         else // Otherwise assume static physics, the user might have never set a behavior.
         {
-            // The static behavior class contained a StaticPhysicsConfiguration.
+            // The static behavior class contained a StaticPhysicsConfig.
             AZ::SerializeContext::DataElementNode* staticConfigurationNode = nullptr;
             if (behaviorNode && (behaviorNode->GetId() == AZ::Uuid("{BC0600CC-5EF5-4753-A8BE-E28194149CA5}"))) // StaticPhysicsBehavior
             {
@@ -156,10 +158,11 @@ namespace LmbrCentral
 #if defined(LMBR_CENTRAL_EDITOR)
             if (isEditorComponent)
             {
-                EditorStaticPhysicsConfiguration configuration;
+                EditorStaticPhysicsConfig configuration;
                 ReadStaticPhysicsConfiguration(configuration, staticConfigurationNode);
 
-                EditorStaticPhysicsComponent component(configuration);
+                EditorStaticPhysicsComponent component;
+                component.SetConfiguration(configuration);
 
                 classNode.Convert(serializeContext, azrtti_typeid(component));
                 classNode.SetData(serializeContext, component);
@@ -167,10 +170,11 @@ namespace LmbrCentral
             else
 #endif 
             {
-                StaticPhysicsConfiguration configuration;
+                StaticPhysicsConfig configuration;
                 ReadStaticPhysicsConfiguration(configuration, staticConfigurationNode);
 
-                StaticPhysicsComponent component(configuration);
+                StaticPhysicsComponent component;
+                component.SetConfiguration(configuration);
 
                 classNode.Convert(serializeContext, azrtti_typeid(component));
                 classNode.SetData(serializeContext, component);

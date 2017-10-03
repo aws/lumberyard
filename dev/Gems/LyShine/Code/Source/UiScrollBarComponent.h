@@ -76,7 +76,8 @@ public: // member functions
     bool HandlePressed(AZ::Vector2 point, bool& shouldStayActive) override;
     bool HandleReleased(AZ::Vector2 point) override;
     bool HandleEnterPressed(bool& shouldStayActive) override;
-    bool HandleKeyInput(EKeyId keyId, int modifiers) override;
+    bool HandleAutoActivation() override;
+    bool HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys) override;
     void InputPositionUpdate(AZ::Vector2 point) override;
     bool DoesSupportDragHandOff(AZ::Vector2 startPoint) override;
     bool OfferDragHandOff(AZ::EntityId currentActiveInteractable, AZ::Vector2 startPoint, AZ::Vector2 currentPoint, float dragThreshold) override;
@@ -93,6 +94,10 @@ protected: // member functions
     void Activate() override;
     void Deactivate() override;
     // ~AZ::Component
+
+    // UiInteractableComponent
+    bool IsAutoActivationSupported() override;
+    // ~UiInteractableComponent
 
     UiInteractableStatesInterface::State ComputeInteractableState() override;
 

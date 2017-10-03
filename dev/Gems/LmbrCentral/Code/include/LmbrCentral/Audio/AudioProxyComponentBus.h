@@ -24,6 +24,13 @@ namespace LmbrCentral
         : public AZ::ComponentBus
     {
     public:
+        //! Execute a single ATL source trigger on a proxy
+        virtual bool ExecuteSourceTrigger(
+            const Audio::TAudioControlID triggerID,
+            const Audio::SAudioCallBackInfos& callbackInfo,
+            const Audio::TAudioControlID& sourceId
+        ) = 0;
+
         //! Execute a single ATL trigger on a proxy
         virtual bool ExecuteTrigger(
             const Audio::TAudioControlID triggerID,

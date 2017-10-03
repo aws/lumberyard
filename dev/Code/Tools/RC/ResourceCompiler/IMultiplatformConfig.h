@@ -35,6 +35,7 @@ public:
     virtual IConfig& getConfig() = 0;
 
     virtual void setKeyValue(EConfigPriority ePri, const char* key, const char* value) = 0;
+    virtual void setActivePlatform(int platformIndex) = 0;
 };
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_IMULTIPLATFORMCONFIG_H

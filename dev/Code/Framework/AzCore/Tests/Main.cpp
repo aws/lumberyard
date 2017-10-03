@@ -77,8 +77,12 @@ public:
 
     bool OnPreAssert(const char* file, int line, const char* /* func */, const char* message) override 
     { 
-        UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-        return true; 
+        if (UnitTest::TestRunner::Instance().m_isAssertTest)
+        {
+            UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
+            return true;
+        }
+        return false;
     }
     bool OnAssert(const char* /*message*/) override
     {
@@ -86,8 +90,12 @@ public:
     }
     bool OnPreError(const char* /*window*/, const char* file, int line, const char* /*func*/, const char* message) override
     {
-        UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
-        return true;
+        if (UnitTest::TestRunner::Instance().m_isAssertTest)
+        {
+            UnitTest::TestRunner::Instance().ProcessAssert(message, file, line, false);
+            return true;
+        }
+        return false;
     }
     bool OnError(const char* /*window*/, const char* message) override
     {
@@ -109,6 +117,7 @@ public:
     { 
         return false; 
     }
+
     bool OnOutput(const char* /*window*/, const char* /*message*/) override
     {
         return true;

@@ -1,0 +1,29 @@
+<div class="sidebar-container" [@sidebarState]="sidebarState" [class.sidebar-collapse]="sidebarState === 'Collapsed'">
+    <div class="sidebar-main">
+        <div class="sidebar-links">
+            <a routerLink="cloudgems" (click)="loadGemIndex(gemService.currentGem)" routerLinkActive="active">
+                <i class="fa fa-home fa-lg" aria-hidden="true"></i>
+                <span *ngIf="sidebarState === 'Expanded'"> Cloud Gems </span>
+            </a>
+            <a routerLink="support" routerLinkActive="active">
+                <i class="fa fa-life-ring fa-lg" aria-hidden="true"></i>
+                <span *ngIf="sidebarState === 'Expanded'"> Support </span>
+            </a>
+            <a routerLink="analytics" routerLinkActive="active">
+                <i class="fa fa-area-chart fa-lg" aria-hidden="true"></i>
+                <span *ngIf="sidebarState === 'Expanded'"> Analytics </span>
+            </a>
+        </div>
+    </div>
+    <div class="sidebar-footer">
+        <div class="sidebar-links">
+            <a class="admin-link-section" routerLink="admin" routerLinkActive="active">
+                <i class="fa fa-cog fa-lg" aria-hidden="true"></i>
+                <span *ngIf="sidebarState === 'Expanded'">Administration</span>
+            </a>
+        </div>
+        <div class="sidebar-close" (click)="sidebarState = (sidebarState === 'Expanded') ? 'Collapsed' : 'Expanded'">
+            <i [ngClass]="sidebarState === 'Expanded' ? 'fa-angle-double-left' : 'fa-angle-double-right'" class="fa fa-angle-double-left fa-lg" aria-hidden="true"></i>
+        </div>
+    </div> 
+</div>

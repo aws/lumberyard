@@ -82,6 +82,11 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
         {
             mv_event.SetEnumList(NULL);
             mv_animation.SetEnumList(NULL);
+
+            // Add <None> for empty, unset event
+            mv_event->AddEnumItem(QObject::tr("<None>"), "");
+            mv_animation->AddEnumItem(QObject::tr("<None>"), "");
+
             if (keyHandle.GetTrack()->GetAnimNode()->GetType() == eAnimNodeType_Director)
             {
                 CMission* pMission = GetIEditor()->GetDocument()->GetCurrentMission();
@@ -109,7 +114,6 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
                     CEntityScript* script = CEntityScriptRegistry::Instance()->Find(pEntity->GetClass()->GetName());
                     if (script)
                     {
-                        mv_event->AddEnumItem("", "");
                         for (int i = 0; i < script->GetEventCount(); i++)
                         {
                             mv_event->AddEnumItem(script->GetEvent(i), script->GetEvent(i));
@@ -120,7 +124,6 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
                     ICharacterInstance* pCharacter = pEntity->GetCharacter(0);
                     if (pCharacter)
                     {
-                        mv_animation->AddEnumItem("", "");
                         IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
                         assert (pAnimations);
 
@@ -137,9 +140,9 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
             IEventKey eventKey;
             keyHandle.GetKey(&eventKey);
 
-            mv_event = eventKey.event;
-            mv_value = eventKey.eventValue;
-            mv_animation = eventKey.animation;
+            mv_event = eventKey.event.c_str();
+            mv_value = eventKey.eventValue.c_str();
+            mv_animation = eventKey.animation.c_str();
             mv_notrigger_in_scrubbing = eventKey.bNoTriggerInScrubbing;
 
             bAssigned = true;
@@ -187,7 +190,7 @@ void CEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
             }
             SyncValue(mv_notrigger_in_scrubbing, eventKey.bNoTriggerInScrubbing, false, pVar);
 
-            if (strlen(eventKey.animation) > 0)
+            if (!eventKey.animation.empty())
             {
                 IEntity* pEntity = keyHandle.GetTrack()->GetAnimNode()->GetEntity();
                 if (pEntity)
@@ -197,7 +200,7 @@ void CEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
                     {
                         IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
                         assert (pAnimations);
-                        int id = pAnimations->GetAnimIDByName(eventKey.animation);
+                        int id = pAnimations->GetAnimIDByName(eventKey.animation.c_str());
                         eventKey.duration = pAnimations->GetDuration_sec(id);
                     }
                 }

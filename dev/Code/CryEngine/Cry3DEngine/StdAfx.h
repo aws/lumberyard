@@ -25,8 +25,6 @@
 #pragma warning( disable : 6239 ) // (<non-zero constant> && <expression>) always evaluates to the result of <expression>
 #pragma warning( disable : 6240 ) // (<expression> && <non-zero constant>) always evaluates to the result of <expression>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_3DEngine
 #define RWI_NAME_TAG "RayWorldIntersection(3dEngine)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(3dEngine)"
 

@@ -24,7 +24,7 @@ namespace AssetDatabase
         m_assetDatabaseConnection = new AzToolsFramework::AssetDatabase::AssetDatabaseConnection();
         m_assetDatabaseConnection->OpenDatabase();
 
-        EBUS_EVENT(AzToolsFramework::AssetBrowser::AssetBrowserComponentRequestsBus, DatabaseInitialized);
+        AzToolsFramework::AssetBrowser::AssetDatabaseLocationNotificationsBus::Broadcast(&AzToolsFramework::AssetBrowser::AssetDatabaseLocationNotifications::OnDatabaseInitialized);
     }
 
     AssetDatabaseLocationListener::~AssetDatabaseLocationListener()

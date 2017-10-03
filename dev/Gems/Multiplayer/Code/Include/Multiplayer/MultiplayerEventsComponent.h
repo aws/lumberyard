@@ -43,7 +43,7 @@ namespace AZ
 
 namespace Multiplayer
 {
-    /** 
+    /**
     * Pass thru behavior for GridMate::SessionEventBus::Handler
     */
     class SessionEventBusBehaviorHandler
@@ -62,13 +62,13 @@ namespace Multiplayer
             , OnSessionError
             , OnSessionStart
             , OnSessionEnd
-        );        
-    
+        );
+
         // GridMate::SessionEventBus
         void OnSessionServiceReady() override;
         void OnMemberJoined(GridMate::GridSession* session, GridMate::GridMember* member) override;
         void OnMemberLeaving(GridMate::GridSession* session, GridMate::GridMember* member) override;
-        void OnMemberKicked(GridMate::GridSession* session, GridMate::GridMember* member) override;
+        void OnMemberKicked(GridMate::GridSession* session, GridMate::GridMember* member, AZ::u8 kickreason) override;
         void OnSessionCreated(GridMate::GridSession* session) override;
         void OnSessionJoined(GridMate::GridSession* session) override;
         void OnSessionDelete(GridMate::GridSession* session) override;
@@ -83,7 +83,7 @@ namespace Multiplayer
     public:
 
         AZ_COMPONENT(MultiplayerEventsComponent,"{5969EE34-A090-4367-A6B5-464D1D5F3BF4}");
-        
+
         // for behavior reflection
         static void Reflect(AZ::ReflectContext* reflectContext);
 
@@ -93,6 +93,6 @@ namespace Multiplayer
         void Activate() override;
         void Deactivate() override;
 
-        
+
     };
 }

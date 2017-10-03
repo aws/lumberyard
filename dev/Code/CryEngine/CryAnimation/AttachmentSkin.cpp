@@ -48,6 +48,23 @@ uint32 CAttachmentSKIN::AddBinding(IAttachmentObject* pIAttachmentObject, _smart
         CryFatalError("CryAnimation: if you create the binding for a Skin-Attachment, then you have to pass the pointer to an ISkin as well");
     }
 
+    //On reload we need to clear out the motion blur pose array of old data
+    //we need to wait for async jobs to be done using the data before clearing
+    for (uint32 i = 0; i < tripleBufferSize; i++)
+    {
+        SSkinningData* pSkinningData = m_arrSkinningRendererData[i].pSkinningData;
+        int expectedNumBones = m_arrSkinningRendererData[i].nNumBones;
+        if (pSkinningData
+            && pSkinningData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData
+            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+        {
+            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+        }
+    }
+    memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
+
     uint32 nLogWarnings = (nLoadingFlags & CA_DisableLogWarnings) == 0;
     _smart_ptr<CSkin> pCSkinModel = _smart_ptr<CSkin>((CSkin*)pISkinRender.get());
 
@@ -649,7 +666,7 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
 
 
     // get skinning data
-    const bool swSkin = (nRenderLOD == 0) && ShouldSwSkin() && (Console::GetInst().ca_vaEnable != 0);
+    const bool swSkin = (nRenderLOD == 0) && (m_AttFlags & FLAGS_ATTACH_SW_SKINNING) && (Console::GetInst().ca_vaEnable != 0);
 
     IF (!swSkin, 1)
     {
@@ -667,9 +684,9 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
 
     pD->m_pSkinningData = GetVertexTransformationData(swSkin, nRenderLOD);
 
-    if (ShouldSkinLinear())
+    if (m_AttFlags & FLAGS_ATTACH_LINEAR_SKINNING)
     {
-        pD->m_pSkinningData->nHWSkinningFlags |= eHWS_SkinnedLinear;
+        pD->m_pSkinningData->nHWSkinningFlags |= eHWS_Skinning_DQ_Linear;
     }
 
     m_pModelSkin->m_arrModelMeshes[nRenderLOD].m_stream.nFrameId = passInfo.GetMainFrameID();
@@ -895,8 +912,9 @@ SSkinningData* CAttachmentSKIN::GetVertexTransformationData(bool bVertexAnimatio
 
     // get data to fill
     int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
-    int nList = nFrameID % 3;
-    int nPrevList = (nFrameID - 1) % 3;
+    int nList = nFrameID % tripleBufferSize;
+    int nPrevList = (nFrameID - 1) % tripleBufferSize;
+
     // before allocating new skinning date, check if we already have for this frame
     if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
     {
@@ -937,7 +955,16 @@ SSkinningData* CAttachmentSKIN::GetVertexTransformationData(bool bVertexAnimatio
         pVertexAnimation->commandBufferLength = commandBufferLength;
     }
     m_arrSkinningRendererData[nList].pSkinningData = pSkinningData;
+    m_arrSkinningRendererData[nList].nNumBones = nNumBones;
     m_arrSkinningRendererData[nList].nFrameID = nFrameID;
+
+    //clear obsolete data
+    int nPrevPrevList = (nFrameID - 2) % tripleBufferSize;
+    if (nPrevPrevList >= 0 && m_arrSkinningRendererData[nPrevPrevList].pSkinningData)
+    {
+        m_arrSkinningRendererData[nPrevPrevList].pSkinningData->pPreviousSkinningRenderData = nullptr;
+    }
+
     PREFAST_ASSUME(pSkinningData);
 
     // set data for motion blur
@@ -957,7 +984,6 @@ SSkinningData* CAttachmentSKIN::GetVertexTransformationData(bool bVertexAnimatio
     }
 
     pSkinningData->pRemapTable = &m_arrRemapTable[0];
-
     return pSkinningData;
 }
 

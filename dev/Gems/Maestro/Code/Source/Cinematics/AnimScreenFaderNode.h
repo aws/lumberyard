@@ -23,15 +23,16 @@ class CAnimScreenFaderNode
     : public CAnimNode
 {
 public:
-    //-----------------------------------------------------------------------------
-    //!
-    CAnimScreenFaderNode(const int id);
-    ~CAnimScreenFaderNode();
-    static void Initialize();
+    AZ_CLASS_ALLOCATOR(CAnimScreenFaderNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimScreenFaderNode, "{C24D5F2D-B17A-4350-8381-539202A99FDD}", CAnimNode);
 
     //-----------------------------------------------------------------------------
     //!
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_ScreenFader; }
+    CAnimScreenFaderNode(const int id);
+    CAnimScreenFaderNode();
+    ~CAnimScreenFaderNode();
+
+    static void Initialize();
 
     //-----------------------------------------------------------------------------
     //! Overrides from CAnimNode
@@ -54,6 +55,8 @@ public:
     virtual void Render();
 
     bool IsAnyTextureVisible() const;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;

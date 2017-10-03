@@ -11,5 +11,3 @@
 */
 #include "StdAfx.h"
 
-#include "Multiplayer/GridMateServiceWrapper/GridMateXboneServiceWrapper.h"
-

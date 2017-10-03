@@ -50,8 +50,9 @@ namespace News
 
         virtual void PopulateArticles();
         ArticleView* FindById(const QString& id);
-        void AddArticleView(Resource* pResource);
-        void DeleteArticleView(ArticleView* pResource);
+        void AddArticleView(const ArticleDescriptor& articleDesc, int articlePosition = -1);
+        void DeleteArticleView(ArticleView* view);
+        void ForceRefreshArticleView(ArticleView* articleView);
         void ScrollToView(ArticleView* view) const;
         void UpdateArticleOrder(ArticleView* view, bool direction) const;
         void AddLoadingMessage();
@@ -75,7 +76,7 @@ namespace News
 
         void ClearError();
         ArticleStyle GetArticleStyleEnumFromString(const QString& articleStyleStr) const;
-        ArticleView* CreateArticleView(Resource* resource);
+        ArticleView* CreateArticleView(const ArticleDescriptor& articleDesc);
 
     private Q_SLOTS:
         virtual void articleSelectedSlot(QString id);

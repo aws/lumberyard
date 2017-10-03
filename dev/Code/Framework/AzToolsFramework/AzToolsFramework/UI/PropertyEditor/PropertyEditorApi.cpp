@@ -19,6 +19,7 @@
 
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 namespace AzToolsFramework
 {
@@ -37,7 +38,7 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
-    NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node)
+    NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node, bool isSlicePushUI)
     {
         NodeDisplayVisibility visibility = NodeDisplayVisibility::NotVisible;
 
@@ -92,6 +93,29 @@ namespace AzToolsFramework
             else if (visibilityAttribute == AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             {
                 visibility = NodeDisplayVisibility::ShowChildrenOnly;
+            }
+        }
+
+        if (isSlicePushUI)
+        {
+            // Components should always appear, even if they're not exposed in the inspector UI.
+            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
+            {
+                const AZ::SerializeContext::ClassData* classData = node.GetClassMetadata();
+                if (classData && classData->m_azRtti && classData->m_azRtti->IsTypeOf(azrtti_typeid<AZ::Component>()))
+                {
+                    visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
+                }
+            }
+
+            // Nodes marked PushableEvenIfInvisible should appear when their child nodes are being pushed
+            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
+            {
+                const AZ::u32 sliceFlags = SliceUtilities::GetNodeSliceFlags(node);
+                if (0 != (sliceFlags & AZ::Edit::UISliceFlags::PushableEvenIfInvisible))
+                {
+                    visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
+                }
             }
         }
 
@@ -265,4 +289,5 @@ namespace AzToolsFramework
         // No one said no, show by default
         return AZ::Edit::PropertyVisibility::Show;
     }
-}
+
+} // namespace AzToolsFramework

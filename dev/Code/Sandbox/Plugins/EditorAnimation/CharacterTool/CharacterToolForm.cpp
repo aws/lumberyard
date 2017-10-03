@@ -1111,7 +1111,7 @@ namespace CharacterTool {
                     dlg->close();
                     if (wasSuccessfull)
                     {
-                        QtViewPaneManager::instance()->ClosePane(LyViewPane::Geppetto);
+                        QtViewPaneManager::instance()->ClosePane(LyViewPane::LegacyGeppetto);
                     }
                 }
                 );

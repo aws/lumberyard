@@ -27,12 +27,32 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         using BusIdType = AZ::EntityId;
         //////////////////////////////////////////////////////////////////////////
 
         virtual EntityOrderArray GetChildEntityOrderArray() = 0;
-        virtual void SetChildEntityOrderArray(const EntityOrderArray& entityOrderArray) = 0;
+        virtual bool SetChildEntityOrderArray(const EntityOrderArray& entityOrderArray) = 0;
+        virtual bool AddChildEntity(const AZ::EntityId& entityId, bool addToBack) = 0;
+        virtual bool RemoveChildEntity(const AZ::EntityId& entityId) = 0;
+        virtual AZ::u64 GetChildEntityIndex(const AZ::EntityId& entityId) = 0;
     };
     using EditorEntitySortRequestBus = AZ::EBus<EditorEntitySortRequests>;
+
+    class EditorEntitySortNotifications : public AZ::EBusTraits
+    {
+    public:
+        virtual ~EditorEntitySortNotifications() = default;
+
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual void ChildEntityOrderArrayUpdated() = 0;
+    };
+    using EditorEntitySortNotificationBus = AZ::EBus<EditorEntitySortNotifications>;
 
 } // namespace AzToolsFramework

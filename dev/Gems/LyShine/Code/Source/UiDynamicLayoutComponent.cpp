@@ -203,6 +203,7 @@ void UiDynamicLayoutComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiDynamicLayoutBus>("UiDynamicLayoutBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("SetNumChildElements", &UiDynamicLayoutBus::Events::SetNumChildElements);
     }
 }
@@ -237,6 +238,20 @@ void UiDynamicLayoutComponent::ResizeToFitChildElements()
     if (!m_prototypeElement.IsValid())
     {
         return;
+    }
+
+    // Only change the layout's size if it's not being controlled by its parent
+    AZ::Entity* parentElement = nullptr;
+    EBUS_EVENT_ID_RESULT(parentElement, GetEntityId(), UiElementBus, GetParent);
+    if (parentElement)
+    {
+        bool isControlledByParent = false;
+        EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, GetEntityId());
+
+        if (isControlledByParent)
+        {
+            return;
+        }
     }
 
     int numChildren = 0;

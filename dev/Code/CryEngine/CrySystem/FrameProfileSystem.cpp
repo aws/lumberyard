@@ -19,7 +19,7 @@
 #include <IInput.h>
 #include <StlUtils.h>
 #include <IConsole.h>
-#include <IHardwareMouse.h>
+#include <LyShine/Bus/UiCursorBus.h>
 #include <IThreadTask.h>
 #include <IGame.h>
 #include <IGameFramework.h>
@@ -370,10 +370,7 @@ void CFrameProfileSystem::Enable(bool bCollect, bool bDisplay)
             }
             if (m_bCollectionPaused)
             {
-                if (gEnv->pHardwareMouse)
-                {
-                    gEnv->pHardwareMouse->DecrementCounter();
-                }
+                UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
             }
         }
 #endif
@@ -1030,18 +1027,12 @@ void CFrameProfileSystem::EndFrame()
         if (bPaused)
         {
             // Must be paused.
-            if (gEnv->pHardwareMouse)
-            {
-                gEnv->pHardwareMouse->IncrementCounter();
-            }
+            UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
         }
         else
         {
             // Must be resumed.
-            if (gEnv->pHardwareMouse)
-            {
-                gEnv->pHardwareMouse->DecrementCounter();
-            }
+            UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
         }
     }
     if (m_bCollectionPaused != bPaused)

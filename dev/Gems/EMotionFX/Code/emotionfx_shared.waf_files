@@ -1,0 +1,33 @@
+{
+    "auto": {
+        "GemShared/Include": [
+            "Include/Integration/AnimationBus.h",
+            "Include/Integration/ActorComponentBus.h",
+            "Include/Integration/AnimGraphComponentBus.h",
+            "Include/Integration/SimpleMotionComponentBus.h"
+        ],
+        "GemShared/Source/System": [
+            "Source/Integration/System/SystemCommon.h"
+        ],
+        "GemShared/Source/Assets": [
+            "Source/Integration/Assets/AssetCommon.h",
+            "Source/Integration/Assets/ActorAsset.h",
+            "Source/Integration/Assets/ActorAsset.cpp",
+            "Source/Integration/Assets/MotionAsset.cpp",
+            "Source/Integration/Assets/MotionAsset.h",
+            "Source/Integration/Assets/MotionSetAsset.cpp",
+            "Source/Integration/Assets/MotionSetAsset.h",
+            "Source/Integration/Assets/AnimGraphAsset.cpp",
+            "Source/Integration/Assets/AnimGraphAsset.h"
+        ],
+        "GemShared/Source/Components": [
+            "Source/Integration/Components/ActorComponent.h",
+            "Source/Integration/Components/ActorComponent.cpp",
+            "Source/Integration/Components/AnimGraphComponent.h",
+            "Source/Integration/Components/AnimGraphComponent.cpp",
+            "Source/Integration/Components/SimpleMotionComponent.h",
+            "Source/Integration/Components/SimpleMotionComponent.cpp"
+        ]
+    }
+}
+

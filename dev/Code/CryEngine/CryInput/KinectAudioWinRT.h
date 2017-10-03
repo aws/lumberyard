@@ -11,9 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// Description : Kinect (Durango) Speech Recognition and Voice Commands
-//               Dispatcher
-
 
 #pragma once
 

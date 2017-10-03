@@ -5,6 +5,7 @@
 #include "internal_includes/toGLSLDeclaration.h"
 #include "internal_includes/toGLSLOperand.h"
 #include "internal_includes/languages.h"
+#include "internal_includes/hlslccToolkit.h"
 #include "bstrlib.h"
 #include "internal_includes/debug.h"
 #include <math.h>
@@ -81,8 +82,14 @@ void GetSTD140Layout(ShaderVarType* pType, uint32_t* puAlignment, uint32_t* puSi
     {
     case SVT_BOOL:
     case SVT_UINT:
+    case SVT_UINT8:
+    case SVT_UINT16:
     case SVT_INT:
+    case SVT_INT12:
+    case SVT_INT16:
     case SVT_FLOAT:
+    case SVT_FLOAT10:
+    case SVT_FLOAT16:
         *puSize = 4;
         *puAlignment = 4;
         break;
@@ -211,13 +218,15 @@ void DeclareConstBufferShaderVariable(HLSLCrossCompilerContext* psContext, const
         default:
             ASSERT(0);
         case SVT_FLOAT:
-            bformata(glsl, "\tvec%d ", psType->Columns);
-            break;
+        case SVT_FLOAT10:
+        case SVT_FLOAT16:
         case SVT_UINT:
-            bformata(glsl, "\tuvec%d ", psType->Columns);
-            break;
+        case SVT_UINT8:
+        case SVT_UINT16:
         case SVT_INT:
-            bformata(glsl, "\tivec%d ", psType->Columns);
+        case SVT_INT12:
+        case SVT_INT16:
+            bformata(glsl, "\t%s ", GetConstructorForTypeGLSL(psContext, psType->Type, psType->Columns, true));
             break;
         case SVT_DOUBLE:
             bformata(glsl, "\tdvec%d ", psType->Columns);
@@ -239,13 +248,15 @@ void DeclareConstBufferShaderVariable(HLSLCrossCompilerContext* psContext, const
         default:
             ASSERT(0);
         case SVT_FLOAT:
-            bformata(glsl, "\tfloat ");
-            break;
+        case SVT_FLOAT10:
+        case SVT_FLOAT16:
         case SVT_UINT:
-            bformata(glsl, "\tuint ");
-            break;
+        case SVT_UINT8:
+        case SVT_UINT16:
         case SVT_INT:
-            bformata(glsl, "\tint ");
+        case SVT_INT12:
+        case SVT_INT16:
+            bformata(glsl, "\t%s ", GetConstructorForTypeGLSL(psContext, psType->Type, 1, true));
             break;
         case SVT_DOUBLE:
             bformata(glsl, "\tdouble ");
@@ -599,7 +610,7 @@ static void DeclareInput(
             {
                 bformata(glsl, "%s %s %s%d %s [%d];\n", StorageQualifier, Precision, vecType, iNumComponents, InputName, psDecl->asOperands[0].aui32ArraySizes[0]);
 
-                bformata(glsl, "%s%d Input%d[%d];\n", vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber, psDecl->asOperands[0].aui32ArraySizes[0]);
+                bformata(glsl, "%s %s%d Input%d[%d];\n", Precision, vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber, psDecl->asOperands[0].aui32ArraySizes[0]);
 
                 psShader->aiInputDeclaredSize[psDecl->asOperands[0].ui32RegisterNumber] = psDecl->asOperands[0].aui32ArraySizes[0];
             }
@@ -628,14 +639,14 @@ static void DeclareInput(
                     bformata(glsl, "%s %s %s %s%d %s", Interpolation, StorageQualifier, Precision, vecType, iNumComponents, InputName);
                     bformata(glsl, "[%d];\n", psShader->aIndexedInput[psDecl->asOperands[0].ui32RegisterNumber]);
 
-                    bformata(glsl, "%s%d Input%d[%d];\n", vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber, psShader->aIndexedInput[psDecl->asOperands[0].ui32RegisterNumber]);
+                    bformata(glsl, "%s %s%d Input%d[%d];\n", Precision, vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber, psShader->aIndexedInput[psDecl->asOperands[0].ui32RegisterNumber]);
 
                     psShader->aiInputDeclaredSize[psDecl->asOperands[0].ui32RegisterNumber] = psShader->aIndexedInput[psDecl->asOperands[0].ui32RegisterNumber];
                 }
                 else
                 {
                     bformata(glsl, "%s %s %s %s%d %s;\n", Interpolation, StorageQualifier, Precision, vecType, iNumComponents, InputName);
-                    bformata(glsl, "%s%d Input%d;\n", vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber);
+                    bformata(glsl, "%s %s%d Input%d;\n", Precision, vecType, iNumComponents, psDecl->asOperands[0].ui32RegisterNumber);
 
                     psShader->aiInputDeclaredSize[psDecl->asOperands[0].ui32RegisterNumber] = -1;
                 }
@@ -680,18 +691,7 @@ void AddBuiltinInput(HLSLCrossCompilerContext* psContext, const Declaration* psD
     if (psShader->aiInputDeclaredSize[psDecl->asOperands[0].ui32RegisterNumber] == 0)
     {
         SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, &psDecl->asOperands[0]);
-        switch (eType)
-        {
-        case SVT_INT:
-            bformata(glsl, "ivec4 ");
-            break;
-        case SVT_UINT:
-            bformata(glsl, "uvec4 ");
-            break;
-        default:
-            bformata(glsl, "vec4 ");
-            break;
-        }
+        bformata(glsl, "%s ", GetConstructorForTypeGLSL(psContext, eType, 4, false));
         TranslateOperand(psContext, &psDecl->asOperands[0], TO_FLAG_NAME_ONLY);
         bformata(glsl, ";\n");
 

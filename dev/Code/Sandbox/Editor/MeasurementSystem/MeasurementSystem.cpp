@@ -49,10 +49,10 @@ CMeasurementSystemDialog::~CMeasurementSystemDialog()
 
 void CMeasurementSystemDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CMeasurementSystemDialog>(GetIEditor(), MEASUREMENT_SYSTEM_WINDOW_NAME, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CMeasurementSystemDialog>(MEASUREMENT_SYSTEM_WINDOW_NAME, LyViewPane::CategoryOther, options);
 }
 
 CMeasurementSystemDialog* CMeasurementSystem::GetMeasurementDialog()

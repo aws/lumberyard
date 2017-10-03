@@ -89,20 +89,20 @@ void CCommentNodeAnimator::AnimateCommentTextTrack(CTrackViewTrack* pTrack, cons
 
         if (commentKey.m_duration > 0 && ac.time < keyHandle.GetTime() + commentKey.m_duration)
         {
-            m_commentContext.m_strComment = commentKey.m_strComment.c_str();
-            cry_strcpy(m_commentContext.m_strFont,  commentKey.m_strFont);
+            m_commentContext.m_strComment = commentKey.m_strComment;
+            cry_strcpy(m_commentContext.m_strFont,  commentKey.m_strFont.c_str());
             m_commentContext.m_color = commentKey.m_color;
             m_commentContext.m_align = commentKey.m_align;
             m_commentContext.m_size = commentKey.m_size;
         }
         else
         {
-            m_commentContext.m_strComment = 0;
+            m_commentContext.m_strComment.clear();
         }
     }
     else
     {
-        m_commentContext.m_strComment = 0;
+        m_commentContext.m_strComment.clear();
     }
 }
 
@@ -149,9 +149,10 @@ void CCommentNodeAnimator::Render(CTrackViewAnimNode* pNode, const SAnimContext&
     {
         CCommentContext* cc = &m_commentContext;
 
-        if (cc->m_strComment)
+        if (!cc->m_strComment.empty())
         {
-            DrawText(cc->m_strFont, cc->m_size, cc->m_unitPos, cc->m_color, cc->m_strComment, cc->m_align);
+            Vec3 color(cc->m_color.GetR(), cc->m_color.GetG(), cc->m_color.GetB());
+            DrawText(cc->m_strFont, cc->m_size, cc->m_unitPos, color, cc->m_strComment.c_str(), cc->m_align);
         }
     }
 }

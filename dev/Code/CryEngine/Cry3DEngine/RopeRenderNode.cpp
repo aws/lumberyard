@@ -1360,9 +1360,9 @@ void CRopeRenderNode::Physicalize(bool bInstant)
     }
 
     m_WSBBox.Reset();
-    for (uint i = 0; i < m_points.size(); i++)
+    for (auto& point : m_points)
     {
-        m_WSBBox.Add(m_worldTM.TransformPoint(m_points[i]));
+        m_WSBBox.Add(m_worldTM.TransformPoint(point));
     }
     m_WSBBox.Expand(Vec3(m_params.fThickness));
 

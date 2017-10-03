@@ -122,7 +122,7 @@ private:
         ActivateOutput(&m_activationInfo, OutputPortSuccess, true);
     }
 
-    void OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService*) override
+    void OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService*, const AZStd::string&) override
     {
         BusDisconnect();
         ActivateOutput(&m_activationInfo, OutputPortFailed, true);

@@ -137,7 +137,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector4 Vector4::GetNormalizedSafe(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLength();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector4(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -149,7 +149,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector4 Vector4::GetNormalizedSafeApprox(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLengthApprox();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector4(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -161,7 +161,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector4 Vector4::GetNormalizedSafeExact(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLengthExact();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector4(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -174,7 +174,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::NormalizeSafeWithLength(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLength();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -187,7 +187,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::NormalizeSafeWithLengthApprox(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLengthApprox();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -200,7 +200,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::NormalizeSafeWithLengthExact(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLengthExact();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -216,13 +216,13 @@ namespace AZ
         SimdVectorType one = *reinterpret_cast<const SimdVectorType*>(&Internal::g_simd1111);
         SimdVectorType diff = _mm_sub_ss(GetLengthSq().m_value, one);
         SimdVectorType absDiff = _mm_and_ps(diff, *(const SimdVectorType*)&Internal::g_simdAbsMask);
-        return ((_mm_movemask_ps(_mm_cmplt_ss(absDiff, tolerance.m_value)) & 0x01) != 0);
+        return ((_mm_movemask_ps(_mm_cmple_ss(absDiff, tolerance.m_value)) & 0x01) != 0);
     }
     AZ_MATH_FORCE_INLINE bool Vector4::IsClose(const Vector4& v, const VectorFloat& tolerance) const
     {
         SimdVectorType diff = _mm_sub_ps(v.m_value, m_value);
         SimdVectorType absDiff = _mm_and_ps(diff, *(const SimdVectorType*)&Internal::g_simdAbsMask);
-        return (_mm_movemask_ps(_mm_cmpge_ps(absDiff, tolerance.m_value)) == 0);
+        return (_mm_movemask_ps(_mm_cmpgt_ps(absDiff, tolerance.m_value)) == 0);
     }
 
     AZ_MATH_FORCE_INLINE bool Vector4::operator==(const Vector4& rhs) const

@@ -54,12 +54,16 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStopped
-        void TextEntryStopped() override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStart
+        void TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStop
+        void TextEntryStop() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceKeyboard::Implementation::TickInputDevice
@@ -165,13 +169,19 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::TextEntryStarted(float /*activeTextFieldNormalizedBottomY*/)
+    bool InputDeviceKeyboardWin::HasTextEntryStarted() const
+    {
+        return m_hasTextEntryStarted;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboardWin::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
     {
         m_hasTextEntryStarted = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::TextEntryStopped()
+    void InputDeviceKeyboardWin::TextEntryStop()
     {
         m_hasTextEntryStarted = false;
     }

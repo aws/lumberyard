@@ -129,6 +129,8 @@
             "Replica/Interest/InterestDefs.h",
             "Replica/Interest/InterestManager.cpp",
             "Replica/Interest/InterestManager.h",
+            "Replica/Interest/BvDynamicTree.cpp",
+            "Replica/Interest/BvDynamicTree.h",
             "Replica/Interest/RulesHandler.h"
         ],
         "Serialize":

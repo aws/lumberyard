@@ -23,6 +23,7 @@ struct SEditorPaintBrush;
 // internal structure (tiled based, loading tiles on demand) is hidden from outside
 // texture does not have to be square
 // cache uses "last recently used" strategy to remain within set memory bounds (during terrain texture generation)
+// Data is actually stored as BGR - the video card uses this format natively, but imports / exports must be converted.
 class CRGBLayer
 {
 public:
@@ -112,6 +113,10 @@ public:
     }
     void ClosePakForLoading();
 
+    QString GetFullFileName() const;
+
+    void ApplyColorMultiply(float colorMultiply);
+
 private:
 
     class CTerrainTextureTiles
@@ -164,7 +169,6 @@ private:
 
     bool IsDirty() const;
 
-    QString GetFullFileName();
 };
 
 #endif // CRYINCLUDE_EDITOR_TERRAIN_RGBLAYER_H

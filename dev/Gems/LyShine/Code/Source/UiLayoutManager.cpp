@@ -14,6 +14,7 @@
 
 #include <LyShine/Bus/UiLayoutBus.h>
 #include <LyShine/Bus/UiElementBus.h>
+#include <LyShine/Bus/UiLayoutControllerBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC MEMBER FUNCTIONS
@@ -34,7 +35,7 @@ UiLayoutManager::~UiLayoutManager()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiLayoutManager::MarkToRecomputeLayout(AZ::EntityId entityId)
 {
-    if (UiLayoutBus::FindFirstHandler(entityId))
+    if (UiLayoutControllerBus::FindFirstHandler(entityId))
     {
         AddToRecomputeLayoutList(entityId);
     }
@@ -98,22 +99,22 @@ void UiLayoutManager::ComputeLayoutForElementAndDescendants(AZ::EntityId entityI
     // Get a list of layout children
     auto FindLayoutChildren = [](const AZ::Entity* entity)
     {
-        return (UiLayoutBus::FindFirstHandler(entity->GetId())) ? true : false;
+        return (UiLayoutControllerBus::FindFirstHandler(entity->GetId())) ? true : false;
     };
 
     LyShine::EntityArray layoutChildren;
     EBUS_EVENT_ID(entityId, UiElementBus, FindDescendantElements, FindLayoutChildren, layoutChildren);
 
-    EBUS_EVENT_ID(entityId, UiLayoutBus, ApplyLayoutWidth);
+    EBUS_EVENT_ID(entityId, UiLayoutControllerBus, ApplyLayoutWidth);
     for (auto layoutChild : layoutChildren)
     {
-        EBUS_EVENT_ID(layoutChild->GetId(), UiLayoutBus, ApplyLayoutWidth);
+        EBUS_EVENT_ID(layoutChild->GetId(), UiLayoutControllerBus, ApplyLayoutWidth);
     }
 
-    EBUS_EVENT_ID(entityId, UiLayoutBus, ApplyLayoutHeight);
+    EBUS_EVENT_ID(entityId, UiLayoutControllerBus, ApplyLayoutHeight);
     for (auto layoutChild : layoutChildren)
     {
-        EBUS_EVENT_ID(layoutChild->GetId(), UiLayoutBus, ApplyLayoutHeight);
+        EBUS_EVENT_ID(layoutChild->GetId(), UiLayoutControllerBus, ApplyLayoutHeight);
     }
 }
 
@@ -129,7 +130,7 @@ void UiLayoutManager::AddToRecomputeLayoutList(AZ::EntityId entityId)
     if (iter == m_elementsToRecomputeLayout.end())
     {
         // Check if element's parent is already in the list
-        for (auto iter = m_elementsToRecomputeLayout.begin(); iter != m_elementsToRecomputeLayout.end(); ++iter)
+        for (iter = m_elementsToRecomputeLayout.begin(); iter != m_elementsToRecomputeLayout.end(); ++iter)
         {
             if (IsParentOfElement(*iter, entityId))
             {
@@ -145,7 +146,7 @@ void UiLayoutManager::AddToRecomputeLayoutList(AZ::EntityId entityId)
             descendants);
 
         m_elementsToRecomputeLayout.remove_if(
-            [this, descendants](const AZ::EntityId& e)
+            [descendants](const AZ::EntityId& e)
         {
             for (auto descendant : descendants)
             {

@@ -20,7 +20,7 @@ namespace AzFramework
     {
         // helper utility to return a lower version of the string without altering the original.
         // regular to_lower operates directly on the input.
-        AZStd::string ToLower(AZStd::const_string inStr)
+        AZStd::string ToLower(AZStd::string_view inStr)
         {
             AZStd::string lowerStr = inStr;
             AZStd::to_lower(lowerStr.begin(), lowerStr.end());
@@ -120,12 +120,12 @@ namespace AzFramework
         }
     }
 
-    bool CommandLine::HasSwitch(AZStd::const_string switchName) const
+    bool CommandLine::HasSwitch(AZStd::string_view switchName) const
     {
         return m_switches.find(ToLower(switchName)) != m_switches.end();
     }
 
-    AZStd::size_t CommandLine::GetNumSwitchValues(AZStd::const_string switchName) const
+    AZStd::size_t CommandLine::GetNumSwitchValues(AZStd::string_view switchName) const
     {
         ParamMap::const_iterator switchFound = m_switches.find(ToLower(switchName));
         if (switchFound == m_switches.end())
@@ -136,7 +136,7 @@ namespace AzFramework
         return switchFound->second.size();
     }
 
-    const AZStd::string& CommandLine::GetSwitchValue(AZStd::const_string switchName, AZStd::size_t index) const
+    const AZStd::string& CommandLine::GetSwitchValue(AZStd::string_view switchName, AZStd::size_t index) const
     {
         ParamMap::const_iterator switchFound = m_switches.find(ToLower(switchName));
         if (switchFound == m_switches.end())

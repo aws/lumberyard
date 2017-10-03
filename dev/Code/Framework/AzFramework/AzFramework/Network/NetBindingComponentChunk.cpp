@@ -63,7 +63,7 @@ namespace AzFramework
             wb.Write(data.m_staticEntityId);
         }
     }
-    
+
     void NetBindingComponentChunk::SpawnInfo::Marshaler::Unmarshal(SpawnInfo& data, GridMate::ReadBuffer& rb)
     {
         rb.Read(data.m_owningContextId, GridMate::VlqU32Marshaler());
@@ -151,20 +151,57 @@ namespace AzFramework
             AZ::EntityId runtimeEntityId(m_spawnInfo.Get().m_runtimeEntityId);
             NetBindingContextSequence owningContextId = m_spawnInfo.Get().m_owningContextId;
 
-            if (m_spawnInfo.Get().ContainsSerializedState())
+            //TODO Move to Filter Hook
+            //      Reject and cancel sessions with duplicate MachineIds?
+            //      Reject and cancel sessions with duplicate entity ID creation requests?
+            //Check MachineId collision
+            bool collision = AZ::Entity::GetProcessSignature() == (m_spawnInfo.Get().m_runtimeEntityId & 0xFFFFFFFF);
+            AZ_Error("GridMate", !collision, "Replica received with duplicate Entity Machine IDs. Ignoring");
+
+            if (!collision)
             {
-                // Spawn the entity from our data
-                AZ::IO::MemoryStream spawnData(m_spawnInfo.Get().m_serializedState.data(), m_spawnInfo.Get().m_serializedState.size());
-                EBUS_EVENT(NetBindingSystemBus, SpawnEntityFromStream, spawnData, runtimeEntityId, GetReplicaId(), owningContextId);
+                //Check EntityID collision
+                AZ::Entity* entity = nullptr;
+                EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, runtimeEntityId);
+                collision = (entity != nullptr);   //Only false if no machine ID collision and no entity ID collision
             }
-            else
+
+            /**
+             * Special case - static entities should not count as duplicates.
+             * Static entities are loaded with the level and will be bounded here.
+             */
+            if (collision)
             {
-                NetBindingSliceContext spawnContext;
-                spawnContext.m_contextSequence = owningContextId;
-                spawnContext.m_sliceAssetId = AZ::Data::AssetId(m_spawnInfo.Get().m_sliceAssetId.first, m_spawnInfo.Get().m_sliceAssetId.second);
-                spawnContext.m_runtimeEntityId = runtimeEntityId;
-                spawnContext.m_staticEntityId = AZ::EntityId(m_spawnInfo.Get().m_staticEntityId);
-                EBUS_EVENT(NetBindingSystemBus, SpawnEntityFromSlice, GetReplicaId(), spawnContext);
+                AZ::EntityId staticEntityId;
+                EBUS_EVENT_RESULT(staticEntityId, NetBindingSystemBus, GetStaticIdFromEntityId, runtimeEntityId);
+                if (staticEntityId == runtimeEntityId)
+                {
+                    collision = false;
+                }
+            }
+
+            if (!collision)    //Ignore duplicate runtime entity IDs
+            {
+                if (m_spawnInfo.Get().ContainsSerializedState())
+                {
+                    // Spawn the entity from stream input data
+                    AZ::IO::MemoryStream spawnData(m_spawnInfo.Get().m_serializedState.data(), m_spawnInfo.Get().m_serializedState.size());
+                    EBUS_EVENT(NetBindingSystemBus, SpawnEntityFromStream, spawnData, runtimeEntityId, GetReplicaId(), owningContextId);
+                }
+                else
+                {
+                    NetBindingSliceContext spawnContext;
+                    spawnContext.m_contextSequence = owningContextId;
+                    spawnContext.m_sliceAssetId = AZ::Data::AssetId(m_spawnInfo.Get().m_sliceAssetId.first, m_spawnInfo.Get().m_sliceAssetId.second);
+                    spawnContext.m_runtimeEntityId = runtimeEntityId;
+                    spawnContext.m_staticEntityId = AZ::EntityId(m_spawnInfo.Get().m_staticEntityId);
+                    EBUS_EVENT(NetBindingSystemBus, SpawnEntityFromSlice, GetReplicaId(), spawnContext);
+                }
+            }
+            else    //Fail early to prevent unnecessary spawning of duplicate entity IDs
+            {
+                //Misconfiguration or potential cheating/DoS?
+                AZ_Warning("NetBinding", false, "Received duplicate Entity ID. Check FAQs.");
             }
         }
     }

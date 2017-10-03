@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "CommentNode.h"
 #include "AnimSplineTrack.h"
 #include "CommentTrack.h"
@@ -34,9 +35,14 @@ namespace
 
 //-----------------------------------------------------------------------------
 CCommentNode::CCommentNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Comment)
 {
     CCommentNode::Initialize();
+}
+
+CCommentNode::CCommentNode()
+    : CCommentNode(0)
+{
 }
 
 //-----------------------------------------------------------------------------
@@ -90,9 +96,17 @@ void CCommentNode::Activate(bool bActivate)
 }
 
 //-----------------------------------------------------------------------------
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CCommentNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCommentNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CCommentNode, CAnimNode>()
+        ->Version(1);
 }
 
 //-----------------------------------------------------------------------------

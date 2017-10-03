@@ -13,9 +13,9 @@
 
 #if !defined(_RELEASE)
 
-#include <EntityNode.h>
-#include <CharacterTrack.h>
-#include <CharacterTrackAnimator.h>
+#include "Cinematics/EntityNode.h"
+#include "Cinematics/CharacterTrack.h"
+#include "Cinematics/CharacterTrackAnimator.h"
 
 #include <AzTest/AzTest.h>
 

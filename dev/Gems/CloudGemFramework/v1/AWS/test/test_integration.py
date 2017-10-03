@@ -41,12 +41,13 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
     def __000_create_stacks(self): 
         self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
-        self.lmbr_aws('resource-group', 'add', '--resource-group', self.TEST_RESOURCE_GROUP_NAME)
+        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable')
         self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
 
     def __100_verify_cgp_content(self):
         cgp_bucket_name = self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'CloudGemPortal')
         self.verify_s3_object_exists(cgp_bucket_name, 'www/index.html')
+        self.verify_s3_object_exists(cgp_bucket_name, 'www/config.js')
         self.verify_s3_object_exists(cgp_bucket_name, 'www/bundles/app.bundle.js')
         self.verify_s3_object_exists(cgp_bucket_name, 'www/bundles/dependencies.bundle.js')
 
@@ -117,7 +118,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
         self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-current-configuration', '--silent-create-admin')
         s_object = str(self.lmbr_aws_stdout)
-
+        
         bootstrap_config = json.loads(s_object)
 
         self.__validate_bootstrap_config(bootstrap_config)
@@ -230,7 +231,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
             self.lmbr_aws('update-mappings', '--release')
         
-            mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.awsLogicalMappings.json')
+            mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.player.awsLogicalMappings.json')
             print 'Using mappings from', mappings_file
             os.environ["cc_override_resource_map"] = mappings_file
 
@@ -256,6 +257,8 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
     def __860_verify_cgp_user_pool_after_project_update(self):
         self.lmbr_aws('project', 'update', '--confirm-aws-usage', '--confirm-security-change')
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', '--silent-create-admin')
+        time.sleep(30) # Give the cloud gem framework a few seconds to populate cgp_bootstrap 
         self.__verify_only_administrator_can_signup_user_for_cgp()
         self.__verify_cgp_user_pool_groups()
 
@@ -292,15 +295,19 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
         return parts[0], parts[1]
 
     def __verify_only_administrator_can_signup_user_for_cgp(self):
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-current-configuration', '--silent-create-admin')
-        s_object = str(self.lmbr_aws_stdout)
-        bootstrap_config = json.loads(s_object)
-        user_pool_id = bootstrap_config["userPoolId"]
+        time.sleep(20) # allow time for IAM to reach a consistant state
+        
+        userpoolid = self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool")
+        client_apps = self.aws_cognito_idp.list_user_pool_clients(UserPoolId=userpoolid, MaxResults=60)
+        for client_app in client_apps.get('UserPoolClients', []):
+            if client_app['ClientName'] == 'CloudGemPortalApp':
+                client_id = client_app['ClientId']
+        
         user_name = "test_user1"
         signup_succeeded = True
         try:
             self.aws_cognito_idp.sign_up(
-                ClientId=bootstrap_config['clientId'],
+                ClientId=client_id,
                 Username=user_name,
                 Password='T3mp1@3456'
             )
@@ -311,10 +318,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
         self.assertFalse(signup_succeeded, 'A regular user was able to sign up to the Cognito User Pool.  This should be restricted to administrators only.')
 
     def __verify_cgp_user_pool_groups(self):
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-current-configuration', '--silent-create-admin')
-        s_object = str(self.lmbr_aws_stdout)
-        bootstrap_config = json.loads(s_object)
-        user_pool_id = bootstrap_config["userPoolId"]
+        user_pool_id = self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool")
         user_name = "test_user2"
 
         response = self.aws_cognito_idp.admin_create_user(
@@ -345,10 +349,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
         self.assertTrue(response['ResponseMetadata']['HTTPStatusCode'] == 200, 'Unable to delete the user.')
 
     def __verify_cgp_user_pool_permissions(self):
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-current-configuration', '--silent-create-admin')
-        s_object = str(self.lmbr_aws_stdout)
-        bootstrap_config = json.loads(s_object)
-        user_pool_id = bootstrap_config["userPoolId"]
+        user_pool_id = self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool")
         user_name = "test_user3"
 
         response = self.aws_cognito_idp.admin_create_user(
@@ -477,7 +478,11 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
     def __get_cgp_content_file_path(self):
 
-        cgp_dir_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, constant.GEM_CGP_DIRECTORY_NAME)
+        cgp_dir_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, constant.GEM_CGP_DIRECTORY_NAME) 
+        if not os.path.exists(cgp_dir_path):
+            os.mkdir(cgp_dir_path)
+
+        cgp_dir_path = os.path.join(cgp_dir_path, 'dist')
         if not os.path.exists(cgp_dir_path):
             os.mkdir(cgp_dir_path)
 
@@ -487,7 +492,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
     def __get_cgp_content_location(self):
         configuration_bucket = self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'Configuration')
-        object_key = constant.GEM_CGP_DIRECTORY_NAME + '/deployment/' + self.TEST_DEPLOYMENT_NAME + '/resource-group/' + self.TEST_RESOURCE_GROUP_NAME + '/' + self.CGP_CONTENT_FILE_NAME
+        object_key = constant.GEM_CGP_DIRECTORY_NAME + '/deployment/' + self.TEST_DEPLOYMENT_NAME + '/resource-group/' + self.TEST_RESOURCE_GROUP_NAME + '/dist/' + self.CGP_CONTENT_FILE_NAME
         return (configuration_bucket, object_key)
 
     def __get_service_url(self, path):
@@ -552,7 +557,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
     def __add_complex_api_to_swagger(self, param_type):
 
-        swagger_file_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, 'swagger.json')
+        swagger_file_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'swagger.json')
         with open(swagger_file_path, 'r') as file:
             swagger = json.load(file)
 
@@ -629,12 +634,12 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(lmbr_aws_test_support.lmb
 
 
     def __add_complex_api_to_code(self, param_type):
-        file_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', 'api', 'test_complex_{}.py'.format(param_type))
+        file_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', 'api', 'test_complex_{}.py'.format(param_type))
         with open(file_path, 'w') as file:
             file.write(self.COMPLEX_API_CODE)
 
     def __enable_complex_api_player_access(self, param_type):
-        file_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, 'resource-template.json')
+        file_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'resource-template.json')
         with open(file_path, 'r') as file:
             template = json.load(file)
 
@@ -738,7 +743,7 @@ def post(request, pathparam, queryparam, bodyparam):
 
     def __add_api_with_optional_parameters_to_swagger(self, with_defaults):
 
-        swagger_file_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, 'swagger.json')
+        swagger_file_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'swagger.json')
         with open(swagger_file_path, 'r') as file:
             swagger = json.load(file)
 
@@ -808,7 +813,7 @@ def post(request, pathparam, queryparam, bodyparam):
 
 
     def __add_api_with_optional_parameters_to_code(self, with_defaults):
-        file_path = self.get_resource_group_file_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', 'api', 'test_optional_{}.py'.format(self.__with_defaults_postfix(with_defaults)))
+        file_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', 'api', 'test_optional_{}.py'.format(self.__with_defaults_postfix(with_defaults)))
         with open(file_path, 'w') as file:
             file.write(self.OPTIONAL_API_CODE)
 

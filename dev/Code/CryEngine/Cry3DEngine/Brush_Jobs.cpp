@@ -55,7 +55,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
     const Vec3 vObjPos = CBrush::GetPos();
     CRNTmpData::SRNUserData& userData = m_pRNTmpData->userData;
 
-    CRenderObject * pObj;
+    CRenderObject* pObj;
     if (GetObjManager()->CheckCreateRenderObject(userData.m_arrPermanentRenderObjects, MAX_STATOBJ_LODS_NUM, pObj, &lodValue, passInfo, rendItemSorter))
     {
         return;
@@ -141,7 +141,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
     }
 
     // check the object against the water level
-    if (CObjManager::IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
+    if (GetObjManager()->IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
     {
         pObj->m_ObjFlags |= FOB_AFTER_WATER;
     }
@@ -248,7 +248,7 @@ void CBrush::OnRenderNodeBecomeVisible(const SRenderingPassInfo& passInfo)
     const Vec3 vCamPos = passInfo.GetCamera().GetPosition();
     float fEntDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, CBrush::GetBBox())) * passInfo.GetZoomFactor();
 
-    userData.nWantedLod = CObjManager::GetObjectLOD(this, fEntDistance);
+    userData.nWantedLod = GetObjManager()->GetObjectLOD(this, fEntDistance);
 
     int nLod = userData.nWantedLod;
 

@@ -128,14 +128,35 @@ void MainWidget::initializeControls()
     ui->allCombo->addItem("all");
     ui->allCombo->addItem("any");
 
-    ui->tagSelector->combo()->addItem("tag1");
-    ui->tagSelector->combo()->addItem("tag2");
-    ui->tagSelector->combo()->addItem("tag3");
-    ui->tagSelector->combo()->addItem("tag4");
-    ui->tagSelector->combo()->addItem("tag5");
-    ui->tagSelector->selectTag(0);
-    ui->tagSelector->selectTag(1);
-    ui->tagSelector->selectTag(3);
+
+    // Construct the available tag list.
+    const int numAvailableTags = 128;
+    QVector<QString> availableTags;
+    availableTags.reserve(numAvailableTags+8);
+
+    availableTags.push_back("Healthy");
+    availableTags.push_back("Tired");
+    availableTags.push_back("Laughing");
+    availableTags.push_back("Happy");
+    availableTags.push_back("Smiling");
+    availableTags.push_back("Weapon Left");
+    availableTags.push_back("Weapon Right");
+    availableTags.push_back("Loooooooooooooooooong Tag");
+
+    for (int i = 0; i < numAvailableTags; ++i)
+    {
+        availableTags.push_back("tag" + QString::number(i+1));
+    }
+
+    ui->tagSelector->Reinit(availableTags);
+
+    // Pre-select some of the tags.
+    ui->tagSelector->SelectTag("Healthy");
+    ui->tagSelector->SelectTag("Laughing");
+    ui->tagSelector->SelectTag("Smiling");
+    ui->tagSelector->SelectTag("Happy");
+    ui->tagSelector->SelectTag("Weapon Left");
+
 
     ui->toolButton->setProperty("class", "QToolBar");
     ui->toolButton_2->setProperty("class", "QToolBar");

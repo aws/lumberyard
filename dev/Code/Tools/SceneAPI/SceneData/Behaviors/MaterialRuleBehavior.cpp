@@ -16,9 +16,6 @@
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
-#ifdef MOTIONCANVAS_GEM_ENABLED
-#include <SceneAPI/SceneCore/DataTypes/Groups/IActorGroup.h>
-#endif
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMaterialData.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>

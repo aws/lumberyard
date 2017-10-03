@@ -119,12 +119,12 @@ void CLightningRenderNode::CTriStrip::AddStats(SLightningStats* pStats) const
     pStats->m_triCount.Increment(m_indices.size() / 3);
 }
 
-void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPointData* m_pointData,
+void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPointData* pointData,
     int _parentSegmentIdx, int _parentPointIdx, Vec3 _origin, Vec3 _destany,
     float _duration, float _intensity)
 {
-    m_firstPoint = m_pointData->m_points.size();
-    m_firstFuzzyPoint = m_pointData->m_fuzzyPoints.size();
+    m_firstPoint = pointData->m_points.size();
+    m_firstFuzzyPoint = pointData->m_fuzzyPoints.size();
     m_origin = _origin;
     m_destany = _destany;
     m_intensity = _intensity;
@@ -137,25 +137,25 @@ void CLightningRenderNode::CSegment::Create(const SLightningParams& desc, SPoint
     const int numSubSegs = desc.m_strikeNumPoints;
     const int numFuzzySegs = numSegs * numSubSegs;
 
-    m_pointData->m_points.push_back(Vec3(ZERO));
-    m_pointData->m_velocity.push_back(Vec3(ZERO));
+    pointData->m_points.push_back(Vec3(ZERO));
+    pointData->m_velocity.push_back(Vec3(ZERO));
     for (int i = 1; i < numSegs; ++i)
     {
-        m_pointData->m_points.push_back(cry_random_unit_vector<Vec3>());
-        m_pointData->m_velocity.push_back(cry_random_unit_vector<Vec3>() + Vec3(0.0f, 0.0f, 1.0f));
+        pointData->m_points.push_back(cry_random_unit_vector<Vec3>());
+        pointData->m_velocity.push_back(cry_random_unit_vector<Vec3>() + Vec3(0.0f, 0.0f, 1.0f));
     }
-    m_pointData->m_points.push_back(Vec3(ZERO));
-    m_pointData->m_velocity.push_back(Vec3(ZERO));
+    pointData->m_points.push_back(Vec3(ZERO));
+    pointData->m_velocity.push_back(Vec3(ZERO));
 
-    m_pointData->m_fuzzyPoints.push_back(Vec3(ZERO));
+    pointData->m_fuzzyPoints.push_back(Vec3(ZERO));
     for (int i = 1; i < numFuzzySegs; ++i)
     {
-        m_pointData->m_fuzzyPoints.push_back(cry_random_unit_vector<Vec3>());
+        pointData->m_fuzzyPoints.push_back(cry_random_unit_vector<Vec3>());
     }
-    m_pointData->m_fuzzyPoints.push_back(Vec3(ZERO));
+    pointData->m_fuzzyPoints.push_back(Vec3(ZERO));
 
-    m_numPoints = m_pointData->m_points.size() - m_firstPoint;
-    m_numFuzzyPoints = m_pointData->m_fuzzyPoints.size() - m_firstFuzzyPoint;
+    m_numPoints = pointData->m_points.size() - m_firstPoint;
+    m_numFuzzyPoints = pointData->m_fuzzyPoints.size() - m_firstFuzzyPoint;
 }
 
 void CLightningRenderNode::CSegment::Update(const SLightningParams& desc)

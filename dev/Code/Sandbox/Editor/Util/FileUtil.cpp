@@ -35,6 +35,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QSettings>
 #include "QtUtil.h"
 #include "QtUtilWin.h"
 #include "CryCommonTools/StringHelpers.h"
@@ -48,6 +49,7 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 bool CFileUtil::s_singleFileDlgPref[IFileUtil::EFILE_TYPE_LAST] = { true, true, true, true, true };
@@ -256,7 +258,9 @@ void CFileUtil::EditTextureFile(const char* textureFile, bool bUseGameFolder)
 #ifdef AZ_PLATFORM_WINDOWS
     // Use the Win32 API calls to open the right editor; the OS knows how to do this even better than
     // Qt does.
-    HINSTANCE hInst = ShellExecute(NULL, "open", textureEditorPath.data(), fullTexturePath.data(), NULL, SW_SHOWNORMAL);
+    QString fullTexturePathFixedForWindows = QString(fullTexturePath.data()).replace('/', '\\');
+    QByteArray fullTexturePathFixedForWindowsUtf8 = fullTexturePathFixedForWindows.toUtf8();
+    HINSTANCE hInst = ShellExecute(NULL, "open", textureEditorPath.data(), fullTexturePathFixedForWindowsUtf8.data(), NULL, SW_SHOWNORMAL);
     failedToLaunch = ((DWORD_PTR)hInst <= 32);
 #else
     failedToLaunch = !QProcess::startDetached(gSettings.textureEditor, { QString(fullTexturePath.data()) });
@@ -1303,7 +1307,7 @@ IFileUtil::ECopyTreeResult CFileUtil::CopyTree(const QString& strSourceDirectory
                     // If the option is not valid to all folder, we must ask anyway again the user option.
                     if (!oFileOptions.IsOptionToAll())
                     {
-                        const int ret = QMessageBox::question(nullptr,
+                        const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                             QObject::tr("Confirm file overwrite?"),
                             QObject::tr("There is already a file named \"%1\" in the target folder. Do you want to move this file anyway replacing the old one?")
                                 .arg(QtUtil::ToQString(fd.name)),
@@ -1397,7 +1401,7 @@ IFileUtil::ECopyTreeResult CFileUtil::CopyTree(const QString& strSourceDirectory
                     // If the option is not valid to all folder, we must ask anyway again the user option.
                     if (!oDirectoryOptions.IsOptionToAll())
                     {
-                        const int ret = QMessageBox::question(nullptr,
+                        const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                             QObject::tr("Confirm directory overwrite?"),
                             QObject::tr("There is already a folder named \"%1\" in the target folder. Do you want to move this folder anyway?")
                                 .arg(fd.name),
@@ -1509,7 +1513,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::CopyFile(const QString& strSourceFile, c
                 // If the option is not valid to all folder, we must ask anyway again the user option.
                 if (!oFileOptions.IsOptionToAll())
                 {
-                    const int ret = QMessageBox::question(nullptr,
+                    const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                         QObject::tr("Confirm file overwrite?"),
                         QObject::tr("There is already a file named \"%1\" in the target folder. Do you want to move this file anyway replacing the old one?")
                             .arg(strQueryFilename),
@@ -1654,7 +1658,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::MoveTree(const QString& strSourceDirecto
                     // If the option is not valid to all folder, we must ask anyway again the user option.
                     if (!oFileOptions.IsOptionToAll())
                     {
-                        const int ret = QMessageBox::question(nullptr,
+                        const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                             QObject::tr("Confirm file overwrite?"),
                             QObject::tr("There is already a file named \"%1\" in the target folder. Do you want to move this file anyway replacing the old one?")
                                 .arg(fd.name),
@@ -1748,7 +1752,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::MoveTree(const QString& strSourceDirecto
                     // If the option is not valid to all folder, we must ask anyway again the user option.
                     if (!oDirectoryOptions.IsOptionToAll())
                     {
-                        const int ret = QMessageBox::question(nullptr,
+                        const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                             QObject::tr("Confirm directory overwrite?"),
                             QObject::tr("There is already a folder named \"%1\" in the target folder. Do you want to move this folder anyway?")
                                 .arg(fd.name),
@@ -1871,7 +1875,7 @@ IFileUtil::ECopyTreeResult   CFileUtil::MoveFile(const QString& strSourceFile, c
                 // If the option is not valid to all folder, we must ask anyway again the user option.
                 if (!oFileOptions.IsOptionToAll())
                 {
-                    const int ret = QMessageBox::question(nullptr,
+                    const int ret = QMessageBox::question(AzToolsFramework::GetActiveWindow(),
                         QObject::tr("Confirm file overwrite?"),
                         QObject::tr("There is already a file named \"%1\" in the target folder. Do you want to move this file anyway replacing the old one?")
                             .arg(strQueryFilename),
@@ -1986,7 +1990,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
     }
     else
     {
-        fullPath = fullGamePath.toUtf8().data();
+        fullPath = fullGamePath;
     }
 
     uint32 nFileAttr = SCC_FILE_ATTRIBUTE_INVALID;

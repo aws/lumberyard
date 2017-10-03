@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 
 #include "LocalizedStringManager.h"
-#include <IInput.h>
 #include <ISystem.h>
 #include "System.h" // to access InitLocalization()
 #include <CryPath.h>
@@ -438,30 +437,6 @@ bool CLocalizedStringsManager::SetLanguage(const char* sLanguage)
 //////////////////////////////////////////////////////////////////////////
 void CLocalizedStringsManager::AddControl(int nKey)
 {
-    //marcok: currently not implemented ... will get fixed soon
-    /*IInput *pInput = m_pSystem->GetIInput();
-
-    if (!pInput)
-    {
-        return;
-    }
-
-    wchar_t szwKeyName[256] = {0};
-    char        szKey[256] = {0};
-
-    if (!IS_MOUSE_KEY(nKey))
-    {
-        if (pInput->GetOSKeyName(nKey, szwKeyName, 255))
-        {
-            sprintf_s(szKey, "control%d", nKey);
-
-            SLocalizedStringEntry loc;
-            loc.sEnglish.Format( "%S",szwKeyName );
-            loc.sLocalized = szwKeyName;
-            loc.sKey = szKey;
-            AddLocalizedString( m_pLanguage,loc );
-        }
-    }*/
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1801,49 +1776,6 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, string& outLoca
         {
             AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
             SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, labelCRC32, NULL);   // skip @ character.
-
-            // if it continues with cc_ it's a control code
-            if (sLabel[1] && (sLabel[1] == 'c' || sLabel[1] == 'C') &&
-                sLabel[2] && (sLabel[2] == 'c' || sLabel[2] == 'C') &&
-                sLabel[3] && sLabel[3] == '_')
-            {
-                if (entry == NULL)
-                {
-                    // controlcode
-                    // lookup KeyName
-                    IInput* pInput = gEnv->pInput;
-                    SInputEvent ev;
-                    ev.deviceType = eIDT_Keyboard;
-                    ev.keyName = sLabel + 4; // skip @cc_
-                    char inputCharAscii = pInput->GetInputCharAscii(ev);
-
-                    if (inputCharAscii == 0)
-                    {
-                        // try OS key
-                        const char* keyName = pInput->GetOSKeyName(ev);
-                        if (keyName && *keyName)
-                        {
-                            outLocalString.assign(keyName);
-                            return true;
-                        }
-                        // if we got some empty, try non-keyboard as well
-                        ev.deviceType = eIDT_Unknown;
-                        inputCharAscii = pInput->GetInputCharAscii(ev);
-                    }
-
-                    if (inputCharAscii)
-                    {
-                        // Note: Since the input char is assumed to be ASCII, the uppercasing is trivial
-                        if (inputCharAscii >= 'a' && inputCharAscii <= 'z')
-                        {
-                            inputCharAscii = inputCharAscii - 'a' + 'A';
-                        }
-                        outLocalString.assign(1, inputCharAscii);
-                        return true;
-                    }
-                }
-                // we found an localized entry (e.g. @cc_space), use normal translation -> Space/Leertaste
-            }
 
             if (entry != NULL)
             {

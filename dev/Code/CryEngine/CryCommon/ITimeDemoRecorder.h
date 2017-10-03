@@ -14,12 +14,9 @@
 // Description : Provides interface for TimeDemo  CryAction
 //               Can attach listener to perform game specific stuff on Record Play
 
-
-#ifndef __ITIMEDEMORECORDER_H__
-#define __ITIMEDEMORECORDER_H__
-
 #pragma once
 
+#include <AzCore/EBus/EBus.h>
 
 struct STimeDemoFrameRecord
 {
@@ -38,9 +35,19 @@ struct ITimeDemoListener
     virtual void OnPlayFrame() = 0;
 };
 
+
+
+/**
+ * ITimeDemoRecorder has been updated to be an ebus to allow it to be deprecated in 1.11 and then removed later.
+ * This system has not been heavily tested, and is presumed to not be functional with modern Lumberyard
+ * features like the component system. If you use this system, please let Lumberyard support know.
+ */
 struct ITimeDemoRecorder
+    : public AZ::EBusTraits
 {
-    virtual ~ITimeDemoRecorder(){}
+public:
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+    static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
     virtual bool IsRecording() const = 0;
     virtual bool IsPlaying() const = 0;
@@ -48,7 +55,14 @@ struct ITimeDemoRecorder
     virtual void RegisterListener(ITimeDemoListener* pListener) = 0;
     virtual void UnregisterListener(ITimeDemoListener* pListener) = 0;
     virtual void GetCurrentFrameRecord(STimeDemoFrameRecord& record) const = 0;
+
+    virtual void PreUpdate() = 0;
+    virtual void PostUpdate() = 0;
+    virtual void Reset() = 0;
+
+    virtual bool IsChainLoading() const = 0;
+    virtual bool IsTimeDemoActive() const = 0;
+    virtual void GetMemoryStatistics(class ICrySizer* pSizer) const = 0;
 };
 
-
-#endif //__ITIMEDEMORECORDER_H__
+typedef AZ::EBus<ITimeDemoRecorder> TimeDemoRecorderBus;

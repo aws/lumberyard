@@ -522,7 +522,7 @@ bool CREImposter::UpdateImposter()
             //rd->SetCamera(EngCam);
             //m_LastCamera.fFar += 100;
             rd->m_TranspOrigCameraProjMatrix = rd->m_ViewProjMatrix.GetTransposed();
-            rd->SetViewParameters(m_LastViewParameters);
+            rd->ApplyViewParameters(m_LastViewParameters);
 
             if (rd->m_logFileHandle != AZ::IO::InvalidHandle)
             {

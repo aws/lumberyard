@@ -12,10 +12,18 @@
 
 #pragma once
 
-// Enabling profiling markers on Android cause a noticeable drop of framerate.
-// Because of this it's disabled unless somebody wants to profile the build.
-// Uncomment the next line to enable trace markers.
+// For API < 23 there's no NDK support to check if tracing is enabled. Because of this
+// we have to push/pop the trace markers every frame causing a noticeable drop of framerate.
+// Uncomment the next line to enable trace markers for API < 23.
 //#define ANDROID_TRACE_ENABLED
+
+#include <android/api-level.h>
+#if __ANDROID_API__ >= 23 && NDK_REV_MAJOR >= 13
+    #define USE_NATIVE_TRACING
+    // For API >= 23 trace markers are ignored until a trace capture is in progress.
+    #define ANDROID_TRACE_ENABLED
+    #include <android/trace.h>
+#endif
 
 #include <pthread.h>
 #if defined(ANDROID_TRACE_ENABLED)
@@ -28,7 +36,8 @@ namespace CryProfile {
     namespace detail {
 
 #if defined(ANDROID_TRACE_ENABLED)
-        // Unfortunately Android doesn't provide a way to push/pop profiler markers through the NDK (java only).
+#   if !defined(USE_NATIVE_TRACING)
+        // Unfortunately Android doesn't provide a way to push/pop profiler markers through the NDK (java only) for API < 23.
         // The only way is to write to the trace_marker file.
         struct TraceFile
         {
@@ -62,26 +71,36 @@ namespace CryProfile {
         };
 
         static TraceFile s_traceFile;
+#   endif // !defined(USE_NATIVE_TRACING)
+
         ////////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////////
         // Set the beginning of a profile marker
         void PushProfilingMarker(const char* pName)
         {
+#if defined(USE_NATIVE_TRACING)
+            ATrace_beginSection(pName);
+#else
             // The format for adding a marker is "B|ppid|title"
             // You can also add arguments if needed.
             char buf[TraceFile::MAX_TRACE_MESSAGE_LENTH];
             size_t len = snprintf(buf, sizeof(buf), "B|%d|%s", getpid(), pName);
             write(s_traceFile.GetFileDescriptor(), buf, len);
+#endif // defined(USE_NATIVE_TRACING)
         }
 
         ////////////////////////////////////////////////////////////////////////////
         // Set the end of a profiling marker
         void PopProfilingMarker()
         {
+#if defined(USE_NATIVE_TRACING)
+            ATrace_endSection();
+#else
             // The format for ending a marker is just "E".
             char buf = 'E';
             write(s_traceFile.GetFileDescriptor(), &buf, 1);
+#endif // defined(USE_NATIVE_TRACING)
         }
 
         ////////////////////////////////////////////////////////////////////////////

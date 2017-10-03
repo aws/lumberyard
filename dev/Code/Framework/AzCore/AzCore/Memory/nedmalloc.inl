@@ -169,7 +169,7 @@ namespace nedalloc
 // End if nedmalloc.h
 //////////////////////////////////////////////////////////////////////////
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) // ACCEPTED_USE
     #include <malloc.h>
 #endif
 //#define MSPACES 1
@@ -224,7 +224,7 @@ namespace nedalloc
 #endif
 
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) // ACCEPTED_USE
  #define TLSVAR         DWORD
  #define TLSALLOC(k)    (*(k) = TlsAlloc(), TLS_OUT_OF_INDEXES == *(k))
  #define TLSFREE(k)     (!TlsFree(k))

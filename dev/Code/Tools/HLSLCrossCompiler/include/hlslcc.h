@@ -59,6 +59,17 @@ enum {MAX_FUNCTION_POINTERS = 128};
 #define MAX_FUNCTION_TABLES 256
 #define MAX_RESOURCE_BINDINGS 256
 
+//Operands flags
+#define TO_FLAG_NONE              0x0
+#define TO_FLAG_INTEGER           0x1
+#define TO_FLAG_NAME_ONLY         0x2
+#define TO_FLAG_DECLARATION_NAME  0x4
+#define TO_FLAG_DESTINATION       0x8 //Operand is being written to by assignment.
+#define TO_FLAG_UNSIGNED_INTEGER  0x10
+#define TO_FLAG_DOUBLE            0x20
+#define TO_FLAG_FLOAT             0x40
+#define TO_FLAG_COPY              0x80
+
 typedef enum SPECIAL_NAME
 {
 	NAME_UNDEFINED = 0,
@@ -174,6 +185,7 @@ typedef struct ResourceBinding_TAG
 	uint32_t ui32NumSamples;
 } ResourceBinding;
 
+// Do not change the value of these enums or they will not match what we find in the DXBC file
 typedef enum _SHADER_VARIABLE_TYPE { 
 	SVT_VOID                         = 0,
 	SVT_BOOL                         = 1,
@@ -221,6 +233,13 @@ typedef enum _SHADER_VARIABLE_TYPE {
 	SVT_RWSTRUCTURED_BUFFER          = 49,
 	SVT_APPEND_STRUCTURED_BUFFER     = 50,
 	SVT_CONSUME_STRUCTURED_BUFFER    = 51,
+
+	// Partial precision types
+	SVT_FLOAT10                      = 53,
+	SVT_FLOAT16                      = 54,
+	SVT_INT16                        = 156,
+	SVT_INT12                        = 157,
+	SVT_UINT16                       = 158,
 
 	SVT_FORCE_DWORD                  = 0x7fffffff
 } SHADER_VARIABLE_TYPE;
@@ -516,6 +535,11 @@ static const unsigned int HLSLCC_FLAG_AVOID_SHADER_LOAD_STORE_EXTENSION = 0x1000
 // If set, HLSLcc will generate GLSL code which contains syntactic workarounds for
 // driver bugs found in Qualcomm devices running OpenGL ES 3.0
 static const unsigned int HLSLCC_FLAG_QUALCOMM_GLES30_DRIVER_WORKAROUND = 0x20000;
+
+// If set, HLSL DX9 lower precision qualifiers (e.g half) will be transformed to DX11 style (e.g min16float)
+// before compiling. Necessary to preserve precision information. If not, FXC just silently transform
+// everything to full precision (e.g float32).
+static const unsigned int HLSLCC_FLAG_HALF_FLOAT_TRANSFORM = 0x40000;
 
 #ifdef __cplusplus
 extern "C" {

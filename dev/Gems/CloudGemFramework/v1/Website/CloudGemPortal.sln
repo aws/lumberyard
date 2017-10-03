@@ -3,7 +3,37 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Portal", "CloudGemPortal\Portal.csproj", "{F2217185-B3B4-4F51-8B4C-0E786B657E88}"
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemMessageOfTheDay", "..\..\..\CloudGemMessageOfTheDay\AWS\cgp-resource-code\src\CloudGemMessageOfTheDay.njsproj", "{6F12808A-2619-4C81-9F36-F4132F0359E7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemPortal", "CloudGemPortal\CloudGemPortal.njsproj", "{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemDynamicContent", "..\..\..\CloudGemDynamicContent\AWS\cgp-resource-code\src\CloudGemDynamicContent.njsproj", "{1F2F553C-6856-4949-9750-B474406A3195}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemLeaderboard", "..\..\..\CloudGemLeaderboard\AWS\cgp-resource-code\src\CloudGemLeaderboard.njsproj", "{AF618446-EA30-4A25-910D-37B386D6FC80}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemPlayerAccount", "..\..\..\CloudGemPlayerAccount\AWS\cgp-resource-code\src\CloudGemPlayerAccount.njsproj", "{A938655E-2973-4288-A5E2-68F01688A0DF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemInGameSurvey", "..\..\..\CloudGemInGameSurvey\AWS\cgp-resource-code\src\CloudGemInGameSurvey.njsproj", "{6BB2BEC6-212F-420A-8015-B3F53AC96A39}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemTextToSpeech", "..\..\..\CloudGemTextToSpeech\AWS\cgp-resource-code\src\CloudGemTextToSpeech.njsproj", "{95BA226D-C222-436F-9125-CD494644D75E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +41,34 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F2217185-B3B4-4F51-8B4C-0E786B657E88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F2217185-B3B4-4F51-8B4C-0E786B657E88}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F2217185-B3B4-4F51-8B4C-0E786B657E88}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F2217185-B3B4-4F51-8B4C-0E786B657E88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F12808A-2619-4C81-9F36-F4132F0359E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F12808A-2619-4C81-9F36-F4132F0359E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F12808A-2619-4C81-9F36-F4132F0359E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F12808A-2619-4C81-9F36-F4132F0359E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F2F553C-6856-4949-9750-B474406A3195}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F2F553C-6856-4949-9750-B474406A3195}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F2F553C-6856-4949-9750-B474406A3195}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F2F553C-6856-4949-9750-B474406A3195}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF618446-EA30-4A25-910D-37B386D6FC80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF618446-EA30-4A25-910D-37B386D6FC80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF618446-EA30-4A25-910D-37B386D6FC80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF618446-EA30-4A25-910D-37B386D6FC80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A938655E-2973-4288-A5E2-68F01688A0DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A938655E-2973-4288-A5E2-68F01688A0DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A938655E-2973-4288-A5E2-68F01688A0DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A938655E-2973-4288-A5E2-68F01688A0DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BB2BEC6-212F-420A-8015-B3F53AC96A39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BB2BEC6-212F-420A-8015-B3F53AC96A39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BB2BEC6-212F-420A-8015-B3F53AC96A39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BB2BEC6-212F-420A-8015-B3F53AC96A39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95BA226D-C222-436F-9125-CD494644D75E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95BA226D-C222-436F-9125-CD494644D75E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95BA226D-C222-436F-9125-CD494644D75E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95BA226D-C222-436F-9125-CD494644D75E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

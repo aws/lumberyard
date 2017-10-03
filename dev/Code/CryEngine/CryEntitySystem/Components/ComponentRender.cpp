@@ -715,7 +715,7 @@ void CComponentRender::ProcessEvent(SEntityEvent& event)
     }
     break;
     case ENTITY_EVENT_MATERIAL:
-        SetCustomMaterial((_smart_ptr<IMaterial>)reinterpret_cast<IMaterial*>(event.nParam[0]));
+        SetCustomMaterial((_smart_ptr<IMaterial>) reinterpret_cast<IMaterial*>(event.nParam[0]));
         break;
     case ENTITY_EVENT_ANIM_EVENT:
     {
@@ -1633,11 +1633,11 @@ int CComponentRender::LoadCharacter(int nSlot, const char* sFilename, int nLoadF
 
     //check the file extension to use the correct function: MakeCharacter for cgf/chr, LoadCharacterDefinition for cdf, AttachParts for cpt
     ICharacterInstance* pCharacter = gEnv->pCharacterManager->CreateInstance(sFilename);
-	if(!pCharacter)
-	{
-		EntityWarning( "[ComponentRender::LoadCharacter] Failed to create character instance Filename: %s, Entity: %s", sFilename, m_pEntity->GetEntityTextDescription() );
-		return -1;
-	}
+    if (!pCharacter)
+    {
+        EntityWarning("[ComponentRender::LoadCharacter] Failed to create character instance Filename: %s, Entity: %s", sFilename, m_pEntity->GetEntityTextDescription());
+        return -1;
+    }
 
     return SetSlotCharacter(nSlot, pCharacter);
 }
@@ -1785,7 +1785,6 @@ int CComponentRender::LoadCloud(int nSlot, const char* sFilename)
     //pSlot->flags |= ENTITY_SLOT_RENDER;
     pSlot->bUpdate = false;
     InvalidateBounds(true, true);
-
     return nSlot;
 }
 
@@ -1807,7 +1806,7 @@ int CComponentRender::LoadFogVolume(int nSlot, const SFogVolumeProperties& prope
 {
     CEntityObject* pSlot = GetOrMakeSlot(nSlot);
 
-    IFogVolumeRenderNode* pFogVolume((IFogVolumeRenderNode*) pSlot->pChildRenderNode);
+    IFogVolumeRenderNode* pFogVolume((IFogVolumeRenderNode*)pSlot->pChildRenderNode);
     if (0 == pFogVolume)
     {
         pSlot->ReleaseObjects();
@@ -2541,12 +2540,12 @@ void CComponentRender::DebugDraw(const SGeometryDebugDrawInfo& info)
             if (m_slots[i]->pStatObj)
             {
                 //Can't just get the slots world transform because if there are subobjects we will double
-                //multiply the transform matrices on the subobjects when we draw. 
+                //multiply the transform matrices on the subobjects when we draw.
                 SGeometryDebugDrawInfo subInfo = info;
                 pCompObj = GetCompoundObj();
                 if (!(nIndex & ENTITY_SLOT_ACTUAL) && (pCompObj))
                 {
-                   subInfo.tm = Slot(0)->GetWorldTM(m_pEntity);
+                    subInfo.tm = Slot(0)->GetWorldTM(m_pEntity);
                 }
                 else
                 {

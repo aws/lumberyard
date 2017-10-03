@@ -37,7 +37,6 @@ ActionWidget::ActionWidget()
             "Started Guide, documentation, or tutorials."
             ));
 
-    AddGettingStartedWithCloudCanvasLink();
     AddCloudCanvasDocumentationLink();
     AddCloudCanvasTutorialsLink();
 }
@@ -143,11 +142,6 @@ void ActionWidget::AddLearnMoreLink(const QString& text, const QString& url)
     link->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     connect(link, &QPushButton::clicked, this, [this, url]() { OnLinkActivated(url); });
     m_learnMoreLayout->insertWidget(m_learnMoreLayout->count() - 1, link);
-}
-
-void ActionWidget::AddGettingStartedWithCloudCanvasLink()
-{
-    AddLearnMoreLink("Get started with Cloud Canvas", "http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-getting-started.html");
 }
 
 void ActionWidget::AddCloudCanvasDocumentationLink()

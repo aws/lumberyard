@@ -63,7 +63,6 @@ private:
         bool m_stylusMode;
         bool m_bLayerDoubleClicking;
         bool m_bShowNews;
-        bool m_useNewMenuLayout;
         bool m_enableQtDocking;
         bool m_showFlowGraphNotification;
         bool m_enableSceneInspector;

@@ -97,6 +97,10 @@
       <file alias="Eye_Slash_Hidden.tif">res/Eye_Slash_Hidden.tif</file>
       <file alias="Eye_Slash_Hover.tif">res/Eye_Slash_Hover.tif</file>
       <file alias="Eye_Slash.tif">res/Eye_Slash.tif</file>
+      <file alias="Eye_Partial_Open.tif">res/Eye_Partial_Open.tif</file>
+      <file alias="Eye_Partial_Slash.tif">res/Eye_Partial_Slash.tif</file>
+      <file alias="Padlock_Partial_Disabled.tif">res/Padlock_Partial_Disabled.tif</file>
+      <file alias="Padlock_Partial_Enabled.tif">res/Padlock_Partial_Enabled.tif</file>
   </qresource>
   <qresource>
     <file>res/Preferences_00.png</file>

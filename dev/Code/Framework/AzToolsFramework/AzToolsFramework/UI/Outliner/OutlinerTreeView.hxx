@@ -38,9 +38,9 @@ namespace AzToolsFramework
     {
         Q_OBJECT;
     public:
-        AZ_CLASS_ALLOCATOR(OutlinerTreeView, AZ::SystemAllocator, 0)
+        AZ_CLASS_ALLOCATOR(OutlinerTreeView, AZ::SystemAllocator, 0);
 
-            OutlinerTreeView(QWidget* pParent = NULL);
+        OutlinerTreeView(QWidget* pParent = NULL);
         virtual ~OutlinerTreeView();
 
     protected:
@@ -54,14 +54,13 @@ namespace AzToolsFramework
         void startDrag(Qt::DropActions supportedActions) override;
 
         void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override;
-        bool edit(const QModelIndex& index, EditTrigger trigger, QEvent* event) override;
 
     private:
         void processQueuedMousePressedEvent(QMouseEvent* event);
 
-        void startDragForUnselectedItem(const QModelIndex& index, Qt::DropActions supportedActions);
+        void startCustomDrag(const QModelIndexList& indexList, Qt::DropActions supportedActions);
 
-        QImage createDragImageForUnselectedItem(const QModelIndex& index);
+        QImage createDragImage(const QModelIndexList& indexList);
 
         bool m_mousePressedQueued;
         QPoint m_mousePressedPos;

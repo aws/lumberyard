@@ -9,29 +9,37 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
+#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 
 
-namespace MotionCanvasPipeline
+namespace EMotionFX
 {
-    struct ActorGroupExportContext;
-
-    class ActorGroupExporter
-        : public AZ::SceneAPI::Events::CallProcessorBinder
+    namespace Pipeline
     {
-    public:
-        ActorGroupExporter();
-        ~ActorGroupExporter() override = default;
+        struct ActorGroupExportContext;
 
-        AZ::SceneAPI::Events::ProcessingResult ProcessContext(ActorGroupExportContext& context) const;
+        class ActorGroupExporter
+            : public AZ::SceneAPI::SceneCore::ExportingComponent
+        {
+        public:
+            AZ_COMPONENT(ActorGroupExporter, "{9E21DF50-202B-44CB-A9E7-F429D3B5E5BE}", AZ::SceneAPI::SceneCore::ExportingComponent);
 
-    protected:
-    };
+            ActorGroupExporter();
+            ~ActorGroupExporter() override = default;
 
-} // MotionCanvasPipeline
-#endif //MOTIONCANVAS_GEM_ENABLED
+            static void Reflect(AZ::ReflectContext* context);
+
+            AZ::SceneAPI::Events::ProcessingResult ProcessContext(ActorGroupExportContext& context) const;
+
+        private:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+            // Workaround for VS2013 - Delete the copy constructor and make it private
+            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+            ActorGroupExporter(const ActorGroupExporter&) = delete;
+#endif
+        };
+    }
+}

@@ -1,10 +1,10 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/stylesheet">
+    <file>img/in_progress.gif</file>
     <file>img/WindowShadow.png</file>
     <file>img/double_triangles.png</file>
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
-    <file>img/in_progress.gif</file>
     <file>img/radio-hover.png</file>
     <file>img/radio-selected.png</file>
     <file>img/radio-unselected.png</file>
@@ -16,10 +16,10 @@
     <file>img/separator_horiz.png</file>
     <file>img/slider-handle.png</file>
     <file>img/slider-handle-disabled.png</file>
+    <file>img/titlebar_close.png</file>
     <file>img/table_error.png</file>
     <file>img/table_warning.png</file>
     <file>img/table_success.png</file>
-    <file>img/titlebar_close.png</file>
     <file>img/titlebar_divider.png</file>
     <file>img/titlebar_maximize.png</file>
     <file>img/titlebar_minimize.png</file>

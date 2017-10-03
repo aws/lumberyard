@@ -14,6 +14,33 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <QString>
+
+namespace AzToolsFramework
+{
+    namespace AssetBrowser
+    {
+        class AssetBrowserEntry;
+    }
+}
+
+//! UISliceLibraryFilter locates all of the UI slices so that they can be instantiated via "Element from Slice Library" menu function
+class UISliceLibraryFilter
+    : public AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter
+{
+public:
+    UISliceLibraryFilter(const AZ::Data::AssetType& assetType, const char* pathToSearch);
+    ~UISliceLibraryFilter() override = default;
+
+protected:
+    QString GetNameInternal() const override;
+    bool MatchInternal(const  AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const override;
+
+private:
+    AZ::Data::AssetType m_assetType;
+    AZStd::string m_pathToSearch;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Class to build and represent a hierarchical tree view of files and folders containing

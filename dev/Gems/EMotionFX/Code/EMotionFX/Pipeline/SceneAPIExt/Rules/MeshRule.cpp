@@ -9,54 +9,54 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <SceneAPI/SceneData/Rules/EFXMeshRule.h>
+#include <SceneAPIExt/Rules/MeshRule.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
-            AZ_CLASS_ALLOCATOR_IMPL(EFXMeshRule, SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(MeshRule, AZ::SystemAllocator, 0)
 
-            EFXMeshRule::EFXMeshRule()
+            MeshRule::MeshRule()
                 : m_optimizeTriangleList(true)
             {
             }
 
-            bool EFXMeshRule::GetOptimizeTriangleList() const
+            bool MeshRule::GetOptimizeTriangleList() const
             {
                 return m_optimizeTriangleList;
             }
 
-            void EFXMeshRule::Reflect(ReflectContext* context)
+            void MeshRule::Reflect(AZ::ReflectContext* context)
             {
-                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(EFXMeshRule::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (!serializeContext)
                 {
                     return;
                 }
 
-                serializeContext->Class<EFXMeshRule, DataTypes::IEFXMeshRule>()->Version(2)
-                    ->Field("optimizeTriangleList", &EFXMeshRule::m_optimizeTriangleList);
+                serializeContext->Class<IMeshRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
 
-                EditContext* editContext = serializeContext->GetEditContext();
+                serializeContext->Class<MeshRule, IMeshRule>()->Version(2)
+                    ->Field("optimizeTriangleList", &MeshRule::m_optimizeTriangleList);
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<EFXMeshRule>("Mesh", "")
-                        ->ClassElement(Edit::ClassElements::EditorData, "")
+                    editContext->Class<MeshRule>("Mesh", "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute("AutoExpand", true)
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
-                        ->DataElement(Edit::UIHandlers::Default, &EFXMeshRule::m_optimizeTriangleList, "Optimize triangle list", "");
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &MeshRule::m_optimizeTriangleList, "Optimize triangle list", "");
                 }
             }
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

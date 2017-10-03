@@ -1677,9 +1677,10 @@ const GUID& CHyperGraphDialog::GetClassID()
 
 void CHyperGraphDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CHyperGraphDialog>(GetIEditor(), LyViewPane::LegacyFlowGraph, LyViewPane::CategoryTools, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CHyperGraphDialog>(LyViewPane::LegacyFlowGraph, LyViewPane::CategoryTools, options);
 }
 
 CHyperGraphDialog* CHyperGraphDialog::instance()

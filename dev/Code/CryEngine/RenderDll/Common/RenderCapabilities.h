@@ -64,6 +64,7 @@ namespace RenderCapabilities
     // Extracting this out as to not pollute rest of code base with a bunch of "if defined(OPENGL_ES)"
     bool SupportsPLSExtension();
 
+    bool SupportsDualSourceBlending();
 }
 
 #endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERCAPABILITIES_H

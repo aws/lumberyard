@@ -31,8 +31,6 @@ namespace AzToolsFramework
     }
 }
 
-using namespace AzToolsFramework::AssetBrowser;
-
 class AzAssetBrowserWindow
     : public QWidget
 {
@@ -47,8 +45,8 @@ public:
 
 private:
     QScopedPointer<Ui::AzAssetBrowserWindowClass> m_ui;
-    QScopedPointer<AssetBrowserFilterModel> m_filterModel;
-    AssetBrowserModel* m_assetBrowserModel;
+    QScopedPointer<AzToolsFramework::AssetBrowser::AssetBrowserFilterModel> m_filterModel;
+    AzToolsFramework::AssetBrowser::AssetBrowserModel* m_assetBrowserModel;
     
     void UpdatePreview() const;
 

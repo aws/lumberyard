@@ -373,7 +373,8 @@ bool CSystemConfiguration::ParseSystemConfig()
                 !(file.Open(filename, "rb", flags)) &&
                 !(file.Open(string("@root@/") + filename, "rb", flags)) &&
                 !(file.Open(string("@assets@/") + filename, "rb", flags)) &&
-                !(file.Open(string("@assets@/config/") + filename, "rb", flags))
+                !(file.Open(string("@assets@/config/") + filename, "rb", flags)) &&
+                !(file.Open(string("@assets@/config/spec/") + filename, "rb", flags))
                 )
             {
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "Config file %s not found!", filename.c_str());

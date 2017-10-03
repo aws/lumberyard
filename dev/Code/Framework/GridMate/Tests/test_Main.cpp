@@ -14,7 +14,7 @@
 #include "Tests.h"
 
 // set up the memory allocators and assert interceptor
-struct GridMateTestEnvironment 
+struct GridMateTestEnvironment
     : public AZ::Test::ITestEnvironment
     , public AZ::Debug::TraceMessageBus::Handler
 {
@@ -37,3 +37,4 @@ struct GridMateTestEnvironment
 };
 
 AZ_UNIT_TEST_HOOK({new GridMateTestEnvironment()});
+AZ_INTEG_TEST_HOOK({new GridMateTestEnvironment()});

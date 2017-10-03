@@ -35,11 +35,7 @@ namespace AZStd
     typedef int nullptr_t;
 #endif
 
-#if defined(AZ_PLATFORM_WII)
-    // Redacted
-#else
     typedef AZ::u64 sys_time_t;
-#endif
 }
 
 #endif // AZSTD_BASE_H

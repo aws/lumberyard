@@ -39,7 +39,7 @@ namespace GameLift
         // Need to shut down before GridMate.
         GameLiftRequestBus::Handler::BusDisconnect();
 
-#if BULD_GAMELIFT_CLIENT
+#if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
         StopClientService();
 #endif
 

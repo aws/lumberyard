@@ -291,7 +291,7 @@ public:
             return QVariant();
         }
 
-        if (m_hasEmptyRow && index.row() == rowCount() - 1)
+        if (isEmptyRow(index))
         {
             switch (role)
             {
@@ -324,22 +324,34 @@ public:
             return false;
         }
 
-        if (m_hasEmptyRow && index.row() == rowCount() - 1)
+        // Retrieve the dialog parent widget for this model so we can display
+        // error popups properly (if needed)
+        QWidget* parentWidget = qobject_cast<QWidget*>(parent());
+
+        // isNull and isValid in Qvariant/QString in this case cannot detect null input
+        // check null data input
+        if (data.toString().isEmpty())
         {
-            // isNull and isValid in Qvariant/QString in this case cannot detect null input
-            // check null data input
-            if (data.toString().size() == 0)
+            QMessageBox::critical(parentWidget, QString(), tr("Please enter a valid name!"));
+
+            // If this is a newly added empty row, then just delete it
+            // Otherwise if the user was renaming an existing row, the previous
+            // value will be restored
+            if (isEmptyRow(index))
             {
-                QMessageBox::critical(0, QString(), tr("Please enter a valid name!"));
                 removeRow(index.row());
                 assert(!m_hasEmptyRow);
-                return false;
             }
 
+            return false;
+        }
+
+        if (isEmptyRow(index))
+        {
             auto macro = GetIEditor()->GetToolBoxManager()->NewMacro(data.toString(), true, nullptr);
             if (macro == nullptr)
             {
-                QMessageBox::critical(0, QString(), tr("There is a macro of that name, already!"));
+                QMessageBox::critical(parentWidget, QString(), tr("There is a macro of that name, already!"));
 
                 removeRow(index.row());
                 assert(!m_hasEmptyRow);
@@ -356,7 +368,7 @@ public:
         }
         else
         {
-            QMessageBox::critical(0, QString(), tr("There is a macro of that name, already!"));
+            QMessageBox::critical(parentWidget, QString(), tr("There is a macro of that name, already!"));
         }
 
         return false;
@@ -408,6 +420,12 @@ public:
 
 private:
     bool m_hasEmptyRow;
+
+    // Empty row is the last row in the list if the proper flag is set
+    bool isEmptyRow(const QModelIndex& index) const
+    {
+        return m_hasEmptyRow && index.row() == rowCount() - 1;
+    }
 };
 
 // CToolsConfigPage dialog
@@ -415,6 +433,7 @@ private:
 ToolsConfigDialog::ToolsConfigDialog(QWidget* parent)
     : QDialog(parent)
 {
+    setWindowTitle(tr("Configure ToolBox Macros"));
     setLayout(new QVBoxLayout);
     QTabWidget* tabs = new QTabWidget;
     layout()->addWidget(tabs);

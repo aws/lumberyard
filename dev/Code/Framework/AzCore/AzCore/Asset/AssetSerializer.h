@@ -47,8 +47,6 @@ namespace AZ {
         /// Load the class data from a stream.
         bool Load(void* classPtr, IO::GenericStream& stream, unsigned int version, bool isDataBigEndian /*= false*/) override;
 
-        void RemapLegacyIds(AZ::Data::Asset<AZ::Data::AssetData>* asset);
-
         bool CompareValueData(const void* lhs, const void* rhs) override;
 
         // Even though Asset<T> is a template class, we don't actually care about its underlying asset type

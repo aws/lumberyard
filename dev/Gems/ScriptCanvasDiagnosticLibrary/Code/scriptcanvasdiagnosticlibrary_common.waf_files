@@ -1,0 +1,25 @@
+{
+  "none": {
+        "Source": [
+            "Source/precompiled.cpp",
+            "Source/precompiled.h"
+        ]
+    },
+     "auto": {
+        "Include": [
+            "Include/ScriptCanvasDiagnosticLibrary/ScriptCanvasDiagnosticLibraryGem.h"
+        ],
+        "Source": [
+            "Source/ScriptCanvasDiagnosticSystemComponent.h",
+            "Source/ScriptCanvasDiagnosticLibraryGem.cpp"
+        ],
+        "Source/Library": [
+            "Source/Debug.h",
+            "Source/Debug.cpp"
+        ],
+        "Source/Logging": [
+            "Source/Log.h",
+            "Source/Log.cpp"
+        ]
+    }
+}

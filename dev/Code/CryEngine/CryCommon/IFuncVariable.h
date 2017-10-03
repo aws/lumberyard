@@ -81,8 +81,8 @@ private:
 
 public:
 
-    float GetMin() const { return range.first; }
-    float GetMax() const { return range.second; }
+    float GetMin() const override { return range.first; }
+    float GetMax() const override { return range.second; }
 
     MFPVariable(FuncParamType type, const char* _humanname, const char* _description, T* obj, OpticsBase_MFPtr setter, OpticsBase_MFPtr getter, float fMin = 0, float fMax = 1.0f)
     {
@@ -127,7 +127,7 @@ public:
     #define INVOKE_SETTER(PARAM_TYPE, param)   (pObj->*(reinterpret_cast<void (T::*)(PARAM_TYPE)>(pSetter)))(*(PARAM_TYPE*)param)
     #define INVOKE_SETTER_P(PARAM_TYPE, param)   (pObj->*(reinterpret_cast<void (T::*)(PARAM_TYPE)>(pSetter)))((PARAM_TYPE)param)
 
-    void InvokeSetter(void* param)
+    void InvokeSetter(void* param) override
     {
         switch (paramType)
         {
@@ -169,15 +169,15 @@ public:
 
     #define INVOKE_GETTER(PARAM_TYPE)   ((pObj->*reinterpret_cast<PARAM_TYPE (T::*)()>(pGetter))())
 
-    int GetInt() const {return INVOKE_GETTER(int); }
-    float GetFloat() const {return INVOKE_GETTER(float); }
-    bool GetBool() const {return INVOKE_GETTER(bool); }
-    Vec2 GetVec2() const {return INVOKE_GETTER(Vec2); }
-    Vec3 GetVec3() const {return INVOKE_GETTER(Vec3); }
-    Vec4 GetVec4() const {return INVOKE_GETTER(Vec4); }
-    ColorF GetColorF() const {return INVOKE_GETTER(ColorF); }
-    Matrix33 GetMatrix33() const {return INVOKE_GETTER(Matrix33); }
-    ITexture* GetTexture() const {return INVOKE_GETTER(ITexture*); }
+    int GetInt() const override {return INVOKE_GETTER(int); }
+    float GetFloat() const override {return INVOKE_GETTER(float); }
+    bool GetBool() const override {return INVOKE_GETTER(bool); }
+    Vec2 GetVec2() const override {return INVOKE_GETTER(Vec2); }
+    Vec3 GetVec3() const override {return INVOKE_GETTER(Vec3); }
+    Vec4 GetVec4() const override {return INVOKE_GETTER(Vec4); }
+    ColorF GetColorF() const override {return INVOKE_GETTER(ColorF); }
+    Matrix33 GetMatrix33() const override {return INVOKE_GETTER(Matrix33); }
+    ITexture* GetTexture() const override {return INVOKE_GETTER(ITexture*); }
 };
 
 class FuncVariableGroup

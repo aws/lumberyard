@@ -487,10 +487,10 @@ void CDraw2d::DrawTextInternal(const char* textString, IFFont* font, unsigned in
     {
         // we align based on the size of the default font effect, because we do not want the
         // text to move when the font effect is changed
-        unsigned int effectIndex = fontContext.m_fxIdx;
+        unsigned int fontEffectIndex = fontContext.m_fxIdx;
         fontContext.SetEffect(0);
         Vec2 textSize = font->GetTextSize(textString, true, fontContext);
-        fontContext.SetEffect(effectIndex);
+        fontContext.SetEffect(fontEffectIndex);
 
         alignedPosition = Align(position, AZ::Vector2(textSize.x, textSize.y), horizontalAlignment, verticalAlignment);
     }

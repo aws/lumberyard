@@ -109,11 +109,6 @@ namespace AzFramework
             static Implementation* Create(InputDeviceTouch& inputDevice);
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Custom factory create function
-            using CustomCreateFunctionType = Implementation*(*)(InputDeviceTouch&);
-            static CustomCreateFunctionType CustomCreateFunctionPointer;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
             //! \param[in] inputDevice Reference to the input device being implemented
             Implementation(InputDeviceTouch& inputDevice);
@@ -198,9 +193,18 @@ namespace AzFramework
             RawTouchEventQueueByIdMap m_rawTouchEventQueuesById; //!< Raw touch event queues by id
         };
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Set the implementation of this input device
+        //! \param[in] implementation The new implementation
+        void SetImplementation(AZStd::unique_ptr<Implementation> impl) { m_pimpl = AZStd::move(impl); }
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Private pointer to the platform specific implementation
-        Implementation* m_pimpl;
+        AZStd::unique_ptr<Implementation> m_pimpl;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Helper class that handles requests to create a custom implementation for this device
+        InputDeviceImplementationRequestHandler<InputDeviceTouch> m_implementationRequestHandler;
     };
 } // namespace AzFramework

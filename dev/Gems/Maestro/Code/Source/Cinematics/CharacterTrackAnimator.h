@@ -15,6 +15,14 @@
         Utility class to handle Animation of Character Tracks (aka 'Animation' Tracks in the TrackView UI)
     */
 
+#include <CrySizer.h>
+
+struct IEntity;
+struct SAnimContext;
+struct ICharacterInstance;
+struct ICharacterKey;
+struct IAnimNode;
+
 #define MAX_CHARACTER_TRACKS 3
 #define ADDITIVE_LAYERS_OFFSET 6
 
@@ -42,33 +50,32 @@ public:
         pSizer->AddObject(m_setAnimationSinks);
     }
 
-    void OnReset(IEntity* entity);
+    void OnReset(IAnimNode* animNode);
     void OnEndAnimation(const char* animName, IEntity* entity);
 
-    bool CheckTimeJumpingOrOtherChanges(const SAnimContext& ec, int32 activeKeys[], int32 numActiveKeys, ICharacterInstance* pCharacter, int layer, int trackIndex, SAnimState& animState);
     ILINE bool IsAnimationPlaying(const SAnimState& animState) const;
 
     //! Animate Character Track.
-    // @param pEntity the legacy IEntity ptr used for script notification. For AZ::Entities, omit or set to nullptr
-    void AnimateTrack(class CCharacterTrack* track, SAnimContext& ec, int layer, int trackIndex, ICharacterInstance* pCharacter, IEntity* pEntity=nullptr );
+    void AnimateTrack(class CCharacterTrack* track, SAnimContext& ec, int layer, int trackIndex);
 
     // Forces current playhead anim key state change to reset animation cues
     void ForceAnimKeyChange();
-
     //////////////////////////////////////////////////////////////////////////////////////////
 protected:
     f32 ComputeAnimKeyNormalizedTime(const ICharacterKey& key, float ectime) const;
 
 private:
     void ResetLastAnimKeys();
-    void ReleaseAllAnimations(IEntity* entity);
+    void ReleaseAllAnimations(IAnimNode* animNode);
 
     void UpdateAnimTimeJumped(int32 keyIndex, class CCharacterTrack * track, float ectime, ICharacterInstance * pCharacter, int layer, bool bAnimEvents, int trackIndex, SAnimState & animState);
     void UpdateAnimRegular(int32 numActiveKeys, int32 activeKeys[], class CCharacterTrack * track, float ectime, ICharacterInstance * pCharacter, int layer, bool bAnimEvents);
     void UpdateAnimBlendGap(int32 activeKeys[], class CCharacterTrack * track, float ectime, ICharacterInstance * pCharacter, int layer);
     void ApplyAnimKey(int32 keyIndex, class CCharacterTrack * track, float ectime, ICharacterInstance * pCharacter, int layer, int animIndex, bool bAnimEvents);
-    //////////////////////////////////////////////////////////////////////////////////////////
 
+    bool CheckTimeJumpingOrOtherChanges(const SAnimContext& ec, int32 activeKeys[], int32 numActiveKeys, ICharacterInstance* pCharacter, int layer, int trackIndex, SAnimState& animState);
+
+    //////////////////////////////////////////////////////////////////////////////////////////
     static const float s_minClipDuration;
 
     SAnimState m_baseAnimState;

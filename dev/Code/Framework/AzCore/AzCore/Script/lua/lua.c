@@ -38,9 +38,6 @@ void script_randseed(unsigned int seed)
 
 // Handle CryTek defines
 
-#if defined(_DURANGO) || defined(_XBOX_ONE)
-#       define DURANGO
-#endif
 
 #if defined(__ANDROID__)
 #   ifndef ANDROID

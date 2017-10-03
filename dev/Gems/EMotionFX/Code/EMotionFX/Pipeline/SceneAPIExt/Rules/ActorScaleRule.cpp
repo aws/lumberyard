@@ -9,62 +9,60 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneData/Rules/EFXActorScaleRule.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <SceneAPIExt/Rules/ActorScaleRule.h>
 
-
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
+            AZ_CLASS_ALLOCATOR_IMPL(ActorScaleRule, AZ::SystemAllocator, 0)
 
-            AZ_CLASS_ALLOCATOR_IMPL(EFXActorScaleRule, SystemAllocator, 0)
-
-            EFXActorScaleRule::EFXActorScaleRule()
+            ActorScaleRule::ActorScaleRule()
                 : m_scaleFactor(1.0f)
             {
             }
 
-            void EFXActorScaleRule::SetScaleFactor(float value)
+            void ActorScaleRule::SetScaleFactor(float value)
             {
                 m_scaleFactor = value;
             }
 
-            float EFXActorScaleRule::GetScaleFactor()  const
+            float ActorScaleRule::GetScaleFactor()  const
             {
                 return m_scaleFactor;
             }
 
-            void EFXActorScaleRule::Reflect(ReflectContext* context)
+            void ActorScaleRule::Reflect(AZ::ReflectContext* context)
             {
-                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(EFXActorScaleRule::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (!serializeContext)
                 {
                     return;
                 }
-                
-                serializeContext->Class<EFXActorScaleRule, DataTypes::IEFXActorScaleRule>()->Version(1)
-                    ->Field("scaleFactor", &EFXActorScaleRule::m_scaleFactor);
 
-                EditContext* editContext = serializeContext->GetEditContext();
+                serializeContext->Class<IActorScaleRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
+                
+                serializeContext->Class<ActorScaleRule, IActorScaleRule>()->Version(1)
+                    ->Field("scaleFactor", &ActorScaleRule::m_scaleFactor);
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<EFXActorScaleRule>("Scale actor", "Scale the actor")
-                        ->ClassElement(Edit::ClassElements::EditorData, "")
-                            ->Attribute(Edit::Attributes::AutoExpand, true)
-                        ->DataElement(Edit::UIHandlers::Default, &EFXActorScaleRule::m_scaleFactor, "Scale factor", "Set the multiplier to scale geometry.")
-                            ->Attribute(Edit::Attributes::Min, 0.0001f)
-                            ->Attribute(Edit::Attributes::Max, 1000000.0f);
+                    editContext->Class<ActorScaleRule>("Scale actor", "Scale the actor")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ActorScaleRule::m_scaleFactor, "Scale factor", "Set the multiplier to scale geometry.")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0001f)
+                            ->Attribute(AZ::Edit::Attributes::Max, 1000000.0f);
                 }
             }
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

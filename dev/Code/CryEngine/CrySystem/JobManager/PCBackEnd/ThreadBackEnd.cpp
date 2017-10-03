@@ -273,7 +273,7 @@ void JobManager::ThreadBackEnd::CThreadBackEndWorkerThread::DoWork()
     do
     {
         SInfoBlock infoBlock;
-        CJobManager* __restrict pJobManager    =  CJobManager::Instance();
+        pJobManager    =  CJobManager::Instance();
         uint32 nPriorityLevel = ~0;
         JobManager::SInfoBlock* pFallbackInfoBlock = JobManager::detail::PopFromFallbackJobList();
 

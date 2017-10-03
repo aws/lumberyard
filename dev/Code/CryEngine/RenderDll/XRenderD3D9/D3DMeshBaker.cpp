@@ -33,11 +33,11 @@ private:
 public:
     CREBaker(CRendElementBase* pSrc, CMesh* pSrcMesh, std::vector<IIndexedMesh*> pDst, int nPhase, const SMeshBakingMaterialParams* params, int numParams, bool bSmoothNormals) { m_pSrc = pSrc; m_pDst = pDst; m_pSrcMesh = pSrcMesh; m_nPhase = nPhase; m_params = params; m_numParams = numParams; m_bSmoothNormals = bSmoothNormals; }
     virtual ~CREBaker() { }
-    inline uint32 mfGetFlags(void) { return m_pSrc->mfGetFlags(); }
-    inline void mfSetFlags(uint32 fl) { m_pSrc->mfSetFlags(fl); }
-    inline void mfUpdateFlags(uint32 fl) { m_pSrc->mfUpdateFlags(fl); }
-    inline void mfClearFlags(uint32 fl) { m_pSrc->mfClearFlags(fl); }
-    inline bool mfCheckUpdate(int Flags, uint16 nFrame) { return m_pSrc->mfCheckUpdate(Flags, nFrame); }
+    inline uint16 mfGetFlags(void) { return m_pSrc->mfGetFlags(); }
+    inline void mfSetFlags(uint16 fl) { m_pSrc->mfSetFlags(fl); }
+    inline void mfUpdateFlags(uint16 fl) { m_pSrc->mfUpdateFlags(fl); }
+    inline void mfClearFlags(uint16 fl) { m_pSrc->mfClearFlags(fl); }
+    inline bool mfCheckUpdate(int Flags, uint16 nFrame, bool /* unused */) { return m_pSrc->mfCheckUpdate(Flags, nFrame); }
     virtual void mfPrepare(bool bCheckOverflow) { m_pSrc->mfPrepare(bCheckOverflow); gcpRendD3D->m_RP.m_CurVFormat = eVF_P3F_T2F_T3F; }
     virtual CRenderChunk* mfGetMatInfo() { return m_pSrc->mfGetMatInfo(); }
     virtual TRenderChunkArray* mfGetMatInfoList() { return m_pSrc->mfGetMatInfoList(); }
@@ -125,8 +125,8 @@ bool CREBaker::mfDraw(CShader* ef, SShaderPass* sfm)
         }
 
         // Allocate and fill per-stream vertex buffers
-        TempDynVB<SVF_P3F_T2F_T3F> vb0;
-        TempDynVB<SPipTangents> vb1;
+        TempDynVB<SVF_P3F_T2F_T3F> vb0(gcpRendD3D);
+        TempDynVB<SPipTangents> vb1(gcpRendD3D);
 
         {
             vb0.Allocate(numOutputTriangles * 3);
@@ -406,7 +406,7 @@ static void EtchAlphas(std::vector<IIndexedMesh*> outputList, _smart_ptr<IMateri
         SMeshTexCoord* pOutTexCoords = pOutputMesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS);
 
         {
-            TempDynVB<SVF_P3F_T2F_T3F> vb;
+            TempDynVB<SVF_P3F_T2F_T3F> vb(gRenDev);
             vb.Allocate(numOutputTriangles * 3);
             SVF_P3F_T2F_T3F* vInputs = vb.Lock();
 
@@ -611,7 +611,7 @@ bool CD3D9Renderer::BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBa
     if (gEnv->IsEditor())
     {
         std::vector<IRenderMesh*> pRM;
-        std::vector<_smart_ptr<IMaterial>> pInputMaterial;
+        std::vector<_smart_ptr<IMaterial> > pInputMaterial;
         std::vector<CMesh*> pInputMesh;
         std::vector<IIndexedMesh*> pOutputMesh;
         _smart_ptr<IMaterial> pOutputMaterial;
@@ -658,7 +658,7 @@ bool CD3D9Renderer::BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBa
         // HACK TO GET STREAMING SYSTEM TO MAKE SURE USED TEXTURES ARE STREAMED IN
         gEnv->p3DEngine->ProposeContentPrecache();
         //      gEnv->p3DEngine->UpdateStreaming(SRenderingPassInfo::CreateGeneralPassRenderingInfo(gEnv->pSystem->GetViewCamera()));
-        for (std::vector<_smart_ptr<IMaterial>>::iterator it = pInputMaterial.begin(), end = pInputMaterial.end(); it != end; ++it)
+        for (std::vector<_smart_ptr<IMaterial> >::iterator it = pInputMaterial.begin(), end = pInputMaterial.end(); it != end; ++it)
         {
             float start = gEnv->pTimer->GetAsyncCurTime();
             while (true)
@@ -728,7 +728,7 @@ bool CD3D9Renderer::BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBa
 
         std::vector<_smart_ptr<IMaterial> > pBakeMaterial;
         pBakeMaterial.reserve(pInputMaterial.size());
-        for (std::vector<_smart_ptr<IMaterial>>::iterator it = pInputMaterial.begin(), end = pInputMaterial.end(); it != end; ++it)
+        for (std::vector<_smart_ptr<IMaterial> >::iterator it = pInputMaterial.begin(), end = pInputMaterial.end(); it != end; ++it)
         {
             pBakeMaterial.push_back(PatchMaterial(*it)); // Replace current shader with MeshBake
         }

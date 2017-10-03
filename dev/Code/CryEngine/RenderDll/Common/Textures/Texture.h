@@ -29,6 +29,7 @@
 #include "Image/DDSImage.h"
 
 #include "ImageExtensionHelper.h"
+#include <CryEngineAPI.h>
 #include <AzCore/std/parallel/atomic.h>
 
 class CTexture;
@@ -362,16 +363,15 @@ struct SDynTexture
     static TextureSet      s_availableTexturePoolCubeCustom_R16G16F;
     static TextureSubset   s_checkedOutTexturePoolCubeCustom_R16G16F;
 
-    static uint32    s_iNumTextureBytesCheckedOut;
-    static uint32    s_iNumTextureBytesCheckedIn;
+    static uint32 s_iNumTextureBytesCheckedOut;
+    static uint32 s_iNumTextureBytesCheckedIn;
 
-    static uint32    s_SuggestedDynTexAtlasCloudsMaxsize;
-    static uint32    s_SuggestedTexAtlasSize;
-    static uint32    s_SuggestedDynTexMaxSize;
-
-    static uint32    s_CurDynTexAtlasCloudsMaxsize;
-    static uint32    s_CurTexAtlasSize;
-    static uint32    s_CurDynTexMaxSize;
+    ENGINE_API static uint32 s_SuggestedDynTexAtlasCloudsMaxsize;
+    ENGINE_API static uint32 s_SuggestedTexAtlasSize;
+    ENGINE_API static uint32 s_SuggestedDynTexMaxSize;
+    ENGINE_API static uint32 s_CurDynTexAtlasCloudsMaxsize;
+    ENGINE_API static uint32 s_CurTexAtlasSize;
+    ENGINE_API static uint32 s_CurDynTexMaxSize;
 
     CTexture* CreateDynamicRT();
     CTexture* GetDynamicRT();
@@ -466,7 +466,7 @@ struct SDynTexture2
     SDynTexture2* m_Next;                   //!<
     SDynTexture2** m_PrevLink;              //!<
 
-    _inline void UnlinkGlobal()
+    void UnlinkGlobal()
     {
         if (m_Next)
         {
@@ -477,7 +477,7 @@ struct SDynTexture2
             *m_PrevLink = m_Next;
         }
     }
-    _inline void LinkGlobal(SDynTexture2*& Before)
+    void LinkGlobal(SDynTexture2*& Before)
     {
         if (Before)
         {
@@ -487,35 +487,24 @@ struct SDynTexture2
         m_PrevLink = &Before;
         Before = this;
     }
+
     void Link()
     {
         LinkGlobal(m_pOwner->m_pRoot);
     }
+
     void Unlink()
     {
         UnlinkGlobal();
         m_Next = NULL;
         m_PrevLink = NULL;
     }
+
     bool Remove();
-
-    uint32                  m_nX;
-    uint32                  m_nY;
-    uint32                  m_nWidth;
-    uint32                  m_nHeight;
-
-    bool                    m_bLocked;
-    byte                    m_nFlags;
-    byte                    m_nUpdateMask;  // Crossfire odd/even frames
-    uint32                    m_nFrameReset;
-    uint32                    m_nAccessFrame;
     virtual bool IsValid();
-    _inline bool _IsValid()
-    {
-        return IsValid();
-    }
+    bool _IsValid() { return IsValid(); }
 
-    SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool);
+    ENGINE_API SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool);
     SDynTexture2(const char* szSource, ETexPool eTexPool);
     ~SDynTexture2();
 
@@ -545,6 +534,7 @@ struct SDynTexture2
         nWidth = m_nWidth;
         nHeight = m_nHeight;
     }
+
     virtual void GetImageRect(uint32& nX, uint32& nY, uint32& nWidth, uint32& nHeight);
     virtual int GetTextureID();
     virtual void Lock() { m_bLocked = true; }
@@ -554,11 +544,13 @@ struct SDynTexture2
 
     typedef std::map<uint32, STextureSetFormat*>  TextureSet2;
     typedef TextureSet2::iterator TextureSet2Itor;
-    static TextureSet2      s_TexturePool[eTP_Max];
-    static int              s_nMemoryOccupied[eTP_Max];
+
+    static TextureSet2 s_TexturePool[eTP_Max];
+    static int s_nMemoryOccupied[eTP_Max];
 
     static void ShutDown();
     static void Init(ETexPool eTexPool);
+
     static int GetPoolMaxSize(ETexPool eTexPool);
     static void SetPoolMaxSize(ETexPool eTexPool, int nSize, bool bWarn);
     static const char* GetPoolName(ETexPool eTexPool);
@@ -573,6 +565,17 @@ struct SDynTexture2
         }
         return nT;
     }
+
+    uint32 m_nX;
+    uint32 m_nY;
+    uint32 m_nWidth;
+    uint32 m_nHeight;
+
+    bool m_bLocked;
+    byte m_nFlags;
+    byte m_nUpdateMask;  // Crossfire odd/even frames
+    uint32 m_nFrameReset;
+    uint32 m_nAccessFrame;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -1392,6 +1395,11 @@ class CTexture
     friend struct CompareStreamingPrioriryInv;
 
 public:
+    virtual void ApplyTexture(int nTUnit, int nState = -1) override
+    {
+        Apply(nTUnit, nState);
+    }
+
     virtual void Apply(int nTUnit, int nState = -1, int nTexMatSlot = EFTT_UNKNOWN, int nSUnit = -1, SResourceView::KeyType nResViewKey = SResourceView::DefaultView, EHWShaderClass eHWSC = eHWSC_Pixel);
 
 private:
@@ -1609,7 +1617,7 @@ public:
         COMPILE_TIME_ASSERT(MaxStreamTasks < 32767);
     }
 
-   
+
 
     bool GetIsTextureMissing() const
     {
@@ -1669,7 +1677,7 @@ public:
         SetClampingMode(nMode, nMode, nMode);
         UpdateTexStates();
     }
-    
+
     virtual const bool IsTextureLoaded() const { return IsLoaded(); }
     virtual void PrecacheAsynchronously(float fMipFactor, int nFlags, int nUpdateId, int nCounter = 1);
     virtual byte* GetData32(int nSide = 0, int nLevel = 0, byte* pDst = NULL, ETEX_Format eDstFormat = eTF_R8G8B8A8);
@@ -1776,7 +1784,7 @@ public:
     // so increment and decrement when it is pushed/popped from the stack
     void IncrementRenderTargetUseCount()
     {
-        assert(m_renderTargetUseCount < (1<<CTEXTURE_RENDER_TARGET_USE_COUNT_NUMBER_BITS));
+        assert(m_renderTargetUseCount < (1 << CTEXTURE_RENDER_TARGET_USE_COUNT_NUMBER_BITS));
         m_renderTargetUseCount++;
     }
     void DecrementRenderTargetUseCount()
@@ -1925,6 +1933,11 @@ public:
     static uint32 s_nFormatCodes;
     typedef std::map<SStreamFormatCodeKey, uint32> TStreamFormatCodeKeyMap;
     static TStreamFormatCodeKeyMap s_formatCodeMap;
+
+    static const int LOW_SPEC_PC;
+    static const int MEDIUM_SPEC_PC;
+    static const int HIGH_SPEC_PC;
+    static const int VERYHIGH_SPEC_PC;
 
     enum
     {
@@ -2103,7 +2116,7 @@ public:
     static CTexture* GetByNameCRC(CCryNameTSCRC Name);
     static CTexture* ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst);
     static CTexture* CreateTextureArray(const char* name, ETEX_Type eType, uint32 nWidth, uint32 nHeight, uint32 nArraySize, int nMips, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
-    static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
+    ENGINE_API static CTexture* CreateRenderTarget(const char* name, uint32 nWidth, uint32 nHeight, const ColorF& cClear, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
     static CTexture* CreateTextureObject(const char* name, uint32 nWidth, uint32 nHeight, int nDepth, ETEX_Type eTT, uint32 nFlags, ETEX_Format eTF, int nCustomID = -1);
 
     static void InitStreaming();
@@ -2201,7 +2214,8 @@ public:
     // upload mip data from file regarding to platform specifics
     static bool IsInPlaceFormat(const ETEX_Format fmt);
     static void ExpandMipFromFile(byte* dest, const int destSize, const byte* src, const int srcSize, const ETEX_Format fmt);
-    static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
+
+    ENGINE_API static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF, ETEX_TileMode eTM = eTM_None);
 
     //  Confetti BEGIN: Igor Lobanchikov
     static ILINE bool IsBlockCompressed(const ETEX_Format eTF) { return CImageExtensionHelper::IsBlockCompressed(eTF); }
@@ -2232,11 +2246,10 @@ public:
 
 public:
 
-    static std::vector<STexState> s_TexStates;
+    ENGINE_API static std::vector<STexState> s_TexStates;
     static int GetTexState(const STexState& TS)
     {
         uint32 i;
-
 
         const uint32 nTexStatesSize = s_TexStates.size();
         for (i = 0; i < nTexStatesSize; i++)
@@ -2387,7 +2400,8 @@ public:
     static CTexture* s_ptexSceneDiffuseAccMapMS;
     static CTexture* s_ptexSceneSpecularAccMapMS;
 
-    static CTexture* s_ptexZTarget;
+    ENGINE_API static CTexture* s_ptexZTarget;
+
     static CTexture* s_ptexZOcclusion[2];
     static CTexture* s_ptexZTargetReadBack[4];
     static CTexture* s_ptexZTargetDownSample[4];

@@ -1303,5 +1303,45 @@ namespace AzFramework
                     ->Field("legacyAssetIds", &AssetNotificationMessage::m_legacyAssetIds);
             }
         }
+
+        //----------------------------------------------------------------------------
+        unsigned int SaveAssetCatalogRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessorManager::SaveCatalogRequest", 0x79e0f02f);
+            return messageType;
+        }
+
+        unsigned int SaveAssetCatalogRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void SaveAssetCatalogRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SaveAssetCatalogRequest, BaseAssetProcessorMessage>()
+                    ->SerializerForEmptyClass();
+            }
+        }
+
+        //----------------------------------------------------------------------------
+
+        unsigned int SaveAssetCatalogResponse::GetMessageType() const
+        {
+            return SaveAssetCatalogRequest::MessageType();
+        }
+
+        void SaveAssetCatalogResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SaveAssetCatalogResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("CatalogSaved", &SaveAssetCatalogResponse::m_saved);
+            }
+        }
     } // namespace AssetSystem
 } // namespace AzFramework

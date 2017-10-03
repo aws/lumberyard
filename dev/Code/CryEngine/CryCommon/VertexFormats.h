@@ -261,7 +261,7 @@ struct SVF_P2F_T4F_C4F
     Vec4 st;
     Vec4 color;
 };
-struct SVF_P3F_C4B_I4B_PS4F
+struct SVF_P3F_C4B_I4B_PS4F // ACCEPTED_USE
 {
     Vec3 xyz;
     Vec2 prevXaxis;

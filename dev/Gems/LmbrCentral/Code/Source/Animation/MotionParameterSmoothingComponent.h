@@ -14,11 +14,13 @@
 #include <AzCore/Component/Component.h>
 
 #include <LmbrCentral/Animation/MotionExtraction.h>
+#include <LmbrCentral/Animation/CharacterAnimationBus.h>
 
 namespace LmbrCentral
 {
     class MotionParameterSmoothingComponent
         : public AZ::Component
+        , private CharacterAnimationNotificationBus::Handler
     {
     public:
 
@@ -28,6 +30,11 @@ namespace LmbrCentral
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // CharacterAnimationNotifications interface implementation
+        void OnCharacterInstanceRegistered(ICharacterInstance* character);
         //////////////////////////////////////////////////////////////////////////
 
         static void Reflect(AZ::ReflectContext* context);

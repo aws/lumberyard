@@ -29,7 +29,7 @@ CAnimNode::SParamInfo CAnimLightNode::s_nodeParams[CAnimLightNode::NumNodeParams
 };
 
 CAnimLightNode::CAnimLightNode(const int id)
-    : CAnimEntityNode(id)
+    : CAnimEntityNode(id, eAnimNodeType_Light)
     , m_fRadius(10.0f)
     , m_fDiffuseMultiplier(1)
     , m_fHDRDynamic(0)
@@ -210,7 +210,7 @@ void CAnimLightNode::Activate(bool bActivate)
     m_bJustActivated = bActivate;
 }
 
-
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimLightNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimEntityNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);

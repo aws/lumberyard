@@ -191,6 +191,7 @@ protected:
 
     //! Path to component entity icon for this object
     AZStd::string m_icon;
+    ITexture* m_iconTexture;
 
     //! Whether this component entity icon is visible
     bool m_entityIconVisible;

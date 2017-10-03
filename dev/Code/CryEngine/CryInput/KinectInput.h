@@ -22,7 +22,7 @@
 #endif
 
 #if !defined(RELEASE) && (defined(WIN32) || defined(WIN64))
-#define KINECT_XBOX_CONNECT
+#define KINECT_XBOX_CONNECT // ACCEPTED_USE
 class CKinectXboxSyncThread;
 #endif
 
@@ -126,7 +126,7 @@ private:
     //Check to see if skeleton positions have moved and inform listeners
     void CheckSkeletonPositions();
 
-#ifdef KINECT_XBOX_CONNECT
+#ifdef KINECT_XBOX_CONNECT // ACCEPTED_USE
     void SetupXboxKinectThread();
 #endif
 
@@ -165,7 +165,7 @@ private:
     TKINGrips m_timeGrips;
 #endif
 
-#ifdef KINECT_XBOX_CONNECT
+#ifdef KINECT_XBOX_CONNECT // ACCEPTED_USE
     CKinectXboxSyncThread* m_pXboxKinectSyncThread;
 #endif
 

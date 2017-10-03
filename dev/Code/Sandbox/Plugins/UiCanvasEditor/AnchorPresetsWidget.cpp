@@ -78,4 +78,13 @@ void AnchorPresetsWidget::SetPresetSelection(int presetIndex)
     m_presetIndex = presetIndex;
 }
 
+void AnchorPresetsWidget::SetPresetButtonEnabledAt(int presetIndex, bool enabled)
+{
+    if (presetIndex != -1)
+    {
+        // Set the new selection.
+        m_buttons[presetIndex]->setEnabled(enabled);
+    }
+}
+
 #include <AnchorPresetsWidget.moc>

@@ -411,26 +411,26 @@ def verify_compiler_options_msvc(self):
 # Code for auto-recognition of Visual Studio Compiler and Windows SDK Path
 # Taken from the original WAF code
 #############################################################################
-all_msvc_platforms = [ ('x64', 'amd64'), ('x86', 'x86') ]
+all_msvc_platforms = [ ('x64', 'amd64')]
 """List of msvc platforms"""
 
 @conf
-def auto_detect_msvc_compiler(conf, version, target):
+def auto_detect_msvc_compiler(conf, version, target, windows_kit):
     conf.env['MSVC_VERSIONS'] = [version]
     conf.env['MSVC_TARGETS'] = [target]
     
-    conf.autodetect(True)
-    conf.find_msvc()    
+    conf.autodetect(windows_kit, True)
+    conf.find_msvc()
     
 @conf
-def autodetect(conf, arch = False):
+def autodetect(conf, windows_kit, arch = False):
     v = conf.env
     
     if arch:
-        compiler, version, path, includes, libdirs, arch = conf.detect_msvc(True)
+        compiler, version, path, includes, libdirs, arch = conf.detect_msvc(windows_kit, True)
         v['DEST_CPU'] = arch
     else:
-        compiler, version, path, includes, libdirs = conf.detect_msvc()
+        compiler, version, path, includes, libdirs = conf.detect_msvc(windows_kit)
     
     v['PATH'] = path
     v['INCLUDES'] = includes
@@ -442,8 +442,8 @@ def autodetect(conf, arch = False):
         v['MSVC_VERSION'] = float(version[:-3]) 
 
 @conf
-def detect_msvc(conf, arch = False):
-    versions = get_msvc_versions(conf)
+def detect_msvc(conf, windows_kit, arch = False):
+    versions = get_msvc_versions(conf, windows_kit)
     return setup_msvc(conf, versions, arch) 
     
 def setup_msvc(conf, versions, arch = False):
@@ -471,20 +471,22 @@ def setup_msvc(conf, versions, arch = False):
     conf.fatal('msvc: Impossible to find a valid architecture for building (in setup_msvc)')
 
     
-MSVC_INSTALLED_VERSIONS = []
+MSVC_INSTALLED_VERSIONS = {}
 @conf
-def get_msvc_versions(conf):
+def get_msvc_versions(conf, windows_kit):
     """
     :return: list of compilers installed
     :rtype: list of string
     """
     global MSVC_INSTALLED_VERSIONS
-    if len(MSVC_INSTALLED_VERSIONS) == 0:
+    if not windows_kit in MSVC_INSTALLED_VERSIONS:
+        MSVC_INSTALLED_VERSIONS[windows_kit] = ''
+    if len(MSVC_INSTALLED_VERSIONS[windows_kit]) == 0:
         lst = []
-        conf.gather_wsdk_versions(lst)
-        conf.gather_msvc_versions(lst)
-        MSVC_INSTALLED_VERSIONS = lst
-    return MSVC_INSTALLED_VERSIONS  
+        conf.gather_wsdk_versions(windows_kit, lst)
+        conf.gather_msvc_versions(windows_kit, lst)
+        MSVC_INSTALLED_VERSIONS[windows_kit] = lst
+    return MSVC_INSTALLED_VERSIONS[windows_kit]
 
 def gather_msvc_detected_versions():
     #Detected MSVC versions!
@@ -521,7 +523,7 @@ def gather_msvc_detected_versions():
     return detected_versions
     
 @conf
-def gather_msvc_versions(conf, versions):
+def gather_msvc_versions(conf, windows_kit, versions):
     vc_paths = []
     for (v,version,reg) in gather_msvc_detected_versions():
         try:
@@ -536,27 +538,27 @@ def gather_msvc_versions(conf, versions):
     
     for version,vc_path in vc_paths:
         vs_path = os.path.dirname(vc_path)
-        conf.gather_msvc_targets(versions, version, vc_path)
+        conf.gather_msvc_targets(versions, version, windows_kit, vc_path)
     pass
 
 @conf
-def gather_msvc_targets(conf, versions, version, vc_path):
+def gather_msvc_targets(conf, versions, version, windows_kit, vc_path):
     #Looking for normal MSVC compilers!
     targets = []
     if os.path.isfile(os.path.join(vc_path, 'vcvarsall.bat')):
         for target,realtarget in all_msvc_platforms[::-1]:
             try:
-                targets.append((target, (realtarget, conf.get_msvc_version('msvc', version, target, os.path.join(vc_path, 'vcvarsall.bat')))))              
+                targets.append((target, (realtarget, conf.get_msvc_version('msvc', version, target, windows_kit, os.path.join(vc_path, 'vcvarsall.bat')))))              
             except conf.errors.ConfigurationError:
                 pass
     elif os.path.isfile(os.path.join(vc_path, 'Common7', 'Tools', 'vsvars32.bat')):
         try:
-            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, 'x86', os.path.join(vc_path, 'Common7', 'Tools', 'vsvars32.bat')))))
+            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, 'x86', windows_kit, os.path.join(vc_path, 'Common7', 'Tools', 'vsvars32.bat')))))
         except conf.errors.ConfigurationError:
             pass
     elif os.path.isfile(os.path.join(vc_path, 'Bin', 'vcvars32.bat')):
         try:
-            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, '', os.path.join(vc_path, 'Bin', 'vcvars32.bat')))))
+            targets.append(('x86', ('x86', conf.get_msvc_version('msvc', version, '', windows_kit, os.path.join(vc_path, 'Bin', 'vcvars32.bat')))))
         except conf.errors.ConfigurationError:
             pass
     if targets:
@@ -575,7 +577,7 @@ def _get_prog_names(conf, compiler):
     return compiler_name, linker_name, lib_name
     
 @conf
-def get_msvc_version(conf, compiler, version, target, vcvars):
+def get_msvc_version(conf, compiler, version, target, windows_kit, vcvars):
     """
     Create a bat file to obtain the location of the libraries
 
@@ -586,16 +588,16 @@ def get_msvc_version(conf, compiler, version, target, vcvars):
     :return: the location of msvc, the location of include dirs, and the library paths
     :rtype: tuple of strings
     """
-    debug('msvc: get_msvc_version: %r %r %r', compiler, version, target)
+    debug('msvc: get_msvc_version: %r %r %r %r', compiler, version, target, windows_kit)
     batfile = conf.bldnode.make_node('waf-print-msvc.bat')
     batfile.write("""@echo off
 set INCLUDE=
 set LIB=
-call "%s" %s
+call "%s" %s %s
 echo PATH=%%PATH%%
 echo INCLUDE=%%INCLUDE%%
 echo LIB=%%LIB%%;%%LIBPATH%%
-""" % (vcvars,target))
+""" % (vcvars,target,windows_kit))
     sout = conf.cmd_and_log(['cmd', '/E:on', '/V:on', '/C', batfile.abspath()])
     lines = sout.splitlines()
     
@@ -611,7 +613,7 @@ echo LIB=%%LIB%%;%%LIBPATH%%
             MSVC_INCDIR = [i for i in line[8:].split(';') if i]
         elif line.startswith('LIB='):
             MSVC_LIBDIR = [i for i in line[4:].split(';') if i]
-    if None in (MSVC_PATH, MSVC_INCDIR, MSVC_LIBDIR):
+    if not MSVC_PATH or not MSVC_INCDIR or not MSVC_LIBDIR:
         conf.fatal('msvc: Could not find a valid architecture for building (get_msvc_version_3)')
     
     # Check if the compiler is usable at all.
@@ -630,19 +632,115 @@ echo LIB=%%LIB%%;%%LIBPATH%%
         try:
             conf.cmd_and_log(cxx + ['/help'], env=env)
         except Exception as e:
-            debug('msvc: get_msvc_version: %r %r %r -> failure' % (compiler, version, target))
+            debug('msvc: get_msvc_version: %r %r %r %r -> failure' % (compiler, version, target, windows_kit))
             debug(str(e))
             conf.fatal('msvc: cannot run the compiler (in get_msvc_version)')
         else:
-            debug('msvc: get_msvc_version: %r %r %r -> OK', compiler, version, target)
+            debug('msvc: get_msvc_version: %r %r %r %r -> OK', compiler, version, target, windows_kit)
     finally:
         conf.env[compiler_name] = ''
+
+    # vcvarsall does not always resolve the windows sdk path with VS2015 + Win10, but we know where it is
+    winsdk_path = _get_win_sdk_path(windows_kit, target)
+    if winsdk_path:
+        MSVC_PATH.append(winsdk_path)
     
     return (MSVC_PATH, MSVC_INCDIR, MSVC_LIBDIR)
 
+def _get_win_sdk_path(windows_kit, arch):
+    path = _find_win_sdk_root(windows_kit)
+    if path:
+        is_valid, version, bin_path = _is_valid_win_sdk(path, windows_kit.startswith('10'), windows_kit)
+        if is_valid:
+            if version == windows_kit:
+                return str(os.path.join(bin_path, arch))
+            else:
+                Logs.debug('winsdk: Found a working windows SDK (%s), but it does not match the requested version (%s)' % (version, windows_kit))
+
+    return ''
+
+def _is_valid_win_sdk(path, is_universal_versioning, desired_version=''):
+    # Successfully installed windows kits have rc.exe. This file is a downstream dependency of vcvarsall.bat.
+    def _check_for_rc_file(path):
+        rc_x64 = os.path.join(path, 'x64\\rc.exe')
+        rc_x86 = os.path.join(path, 'x86\\rc.exe')
+        return os.path.isfile(rc_x64) or os.path.isfile(rc_x86)
+
+    bin_dir = os.path.join(path, 'bin')
+    include_dir = os.path.join(path, 'include')
+    if is_universal_versioning:
+        potential_sdks = [desired_version] if desired_version else []
+        if os.path.isdir(include_dir):
+            # lexically sort the 10.xxx versions in reverse so that latest/highest is first
+            potential_sdks += sorted(os.listdir(include_dir), reverse=True)
+        sdk10_versions = [entry for entry in potential_sdks if entry.startswith('10.')]
+        for sub_version in sdk10_versions:
+            sub_version_folder = os.path.join(include_dir, sub_version)
+            if os.path.isdir(os.path.join(sub_version_folder, 'um')):
+                # check for rc.exe in the sub_version folder's bin, or in the root 10 bin, we just need at least one
+                for bin_path in (os.path.join(os.path.join(path, 'bin'), sub_version), bin_dir):
+                    if _check_for_rc_file(bin_path):
+                        return True, sub_version, bin_path
+    else:
+        if _check_for_rc_file(bin_dir):
+            version = path.split('\\')[-2]
+            return True, version, bin_dir
+
+    return False, '', ''
+
+def _find_win_sdk_root(winsdk_hint):
+    """
+        Use winreg to find a valid installed windows kit.
+        Returns empty string if no valid version was found.
+
+        See visual studio compatibility charts here:
+        https://www.visualstudio.com/en-us/productinfo/vs2015-compatibility-vs
+
+        """
+    try:
+        installed_roots = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Wow6432node\\Microsoft\\Windows Kits\\Installed Roots')
+    except WindowsError:
+        try:
+            installed_roots = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots')
+        except WindowsError:
+            return ''
+
+    if winsdk_hint.startswith('10'):
+        try:
+            path, type = Utils.winreg.QueryValueEx(installed_roots, 'KitsRoot10')
+            return path
+        except WindowsError:
+            pass
+
+    elif winsdk_hint.startswith('8'):
+        try:
+            path, type = Utils.winreg.QueryValueEx(installed_roots, 'KitsRoot81')
+            return path
+        except WindowsError:
+            pass
+
+    return ''
+
+@conf
+def find_valid_wsdk_version(conf):
+    path = _find_win_sdk_root("10")
+    if path:
+        is_valid, version, bin_path = _is_valid_win_sdk(path, True)
+        if is_valid:
+            return version
+
+    # No root for sdk 10 found, try 8.1
+    path = _find_win_sdk_root("8.1")
+    if path:
+        is_valid, version, bin_path = _is_valid_win_sdk(path, False)
+        if is_valid:
+            return version
+
+    return ''
+
     
 @conf
-def gather_wsdk_versions(conf, versions):
+def gather_wsdk_versions(conf, windows_kit, versions):
     """
     Use winreg to add the msvc versions to the input list
 
@@ -675,7 +773,7 @@ def gather_wsdk_versions(conf, versions):
             targets = []
             for target,arch in all_msvc_platforms:
                 try:
-                    targets.append((target, (arch, conf.get_msvc_version('wsdk', version, '/'+target, os.path.join(path, 'bin', 'SetEnv.cmd')))))
+                    targets.append((target, (arch, conf.get_msvc_version('wsdk', version, '/'+target, windows_kit, os.path.join(path, 'bin', 'SetEnv.cmd')))))
                 except conf.errors.ConfigurationError:
                     pass
             versions.append(('wsdk ' + version[1:], targets))

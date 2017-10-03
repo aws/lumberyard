@@ -65,6 +65,38 @@ namespace AZ
     };
 
     /**
+     * Base class for component configurations.
+     * Components that accept a ComponentConfig can be configured in-game using code.
+     * To author a component that is runtime configurable:
+     * 1) Create a class which inherits from ComponentConfig.
+     *    a) Write this class in a publicly available header file (ex: within an include/ folder).
+     *    b) Add AZ_RTTI to this class.
+     *    c) Put all properties that your component needs to be configured into this class.
+     *    d) You might find it helpful to simply store an instance of the configuration class
+     *       within your component, rather than having duplicate properties in each class.
+     * 2) Implement the ReadInConfig() function for your component.
+     *    Set properties in your component, based on the properties in the configuration class.
+     * 3) Implement the WriteOutConfig() function for your component.
+     *    Set properties in the config class, based on the properties in the component.
+     * 4) Reflect your configuration class to the appropriate contexts.
+     *    BehaviorContext allows the configuration to be used from scripts.
+     *    If your component stores an instance of the configuration within itself,
+     *    reflect to the SerializeContext and EditContext to make the properties
+     *    accessible in the Editor UI.
+     * @note Components are not required to support a configuration class.
+     * The EditContext can expose a component's properties to the editor's UI
+     * regardless of whether the component has a configuration class.
+     */
+    class ComponentConfig
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(ComponentConfig, SystemAllocator, 0);
+        AZ_RTTI(ComponentConfig, "{0A7929DF-2932-40EA-B2B3-79BC1C3490D0}");
+
+        virtual ~ComponentConfig() = default;
+    };
+
+    /**
      * A pair of entity and component IDs that are used to access an address 
      * of an AZ::EntityComponentBus.
      */

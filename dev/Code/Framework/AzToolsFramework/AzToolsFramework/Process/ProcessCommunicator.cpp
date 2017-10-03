@@ -15,10 +15,26 @@
 
 namespace AzToolsFramework
 {
+    void ProcessOutput::Clear()
+    {
+        outputResult.clear();
+        errorResult.clear();
+    }
+
+    bool ProcessOutput::HasOutput() const
+    {
+        return !outputResult.empty();
+    }
+
+    bool ProcessOutput::HasError() const
+    {
+        return !errorResult.empty();
+    }
+
     AZ::u32 ProcessCommunicator::BlockUntilErrorAvailable(AZStd::string& readBuffer)
     {
         // block until errors can actually be read
-        ReadError(readBuffer.data(), static_cast<AZ::u32>(0));
+        ReadError(readBuffer.data(), 0);
         // at this point errors can be read, return the peek amount
         return PeekError();
     }
@@ -26,9 +42,46 @@ namespace AzToolsFramework
     AZ::u32 ProcessCommunicator::BlockUntilOutputAvailable(AZStd::string& readBuffer)
     {
         // block until output can actually be read
-        ReadOutput(readBuffer.data(), static_cast<AZ::u32>(0));
+        ReadOutput(readBuffer.data(), 0);
         // at this point output can be read, return the peek amount
         return PeekOutput();
+    }
+
+    void ProcessCommunicator::ReadIntoProcessOutput(ProcessOutput& processOutput)
+    {
+        OutputStatus status;
+        char readBuffer[s_readBufferSize];
+
+        // read from the process until the handle is no longer valid
+        while (true)
+        {
+            WaitForReadyOutputs(status);
+            ReadFromOutputs(processOutput, status, readBuffer, s_readBufferSize);
+
+            if (!status.outputDeviceReady && !status.errorsDeviceReady)
+            {
+                break;
+            }
+        }
+    }
+
+    void ProcessCommunicator::ReadFromOutputs(ProcessOutput& processOutput, OutputStatus& status, char* buffer, AZ::u32 bufferSize)
+    {
+        AZ::u32 bytesRead = 0;
+
+        if (status.shouldReadOutput)
+        {
+            bytesRead = ReadOutput(buffer, bufferSize);
+            buffer[bytesRead] = 0;
+            processOutput.outputResult.append(buffer, bytesRead);
+        }
+
+        if (status.shouldReadErrors)
+        {
+            bytesRead = ReadError(buffer, bufferSize);
+            buffer[bytesRead] = 0;
+            processOutput.errorResult.append(buffer, bytesRead);
+        }
     }
 
     AZ::u32 ProcessCommunicatorForChildProcess::BlockUntilInputAvailable(AZStd::string& readBuffer)
@@ -49,7 +102,7 @@ namespace AzToolsFramework
         CloseAllHandles();
     }
 
-    bool StdInOutProcessCommunicator::IsValid()
+    bool StdInOutProcessCommunicator::IsValid() const
     {
         return m_initialized && (m_stdInWrite->IsValid() || m_stdOutRead->IsValid() || m_stdErrRead->IsValid());
     }
@@ -104,7 +157,7 @@ namespace AzToolsFramework
         CloseAllHandles();
     }
 
-    bool StdInOutProcessCommunicatorForChildProcess::IsValid()
+    bool StdInOutProcessCommunicatorForChildProcess::IsValid() const
     {
         return m_initialized && (m_stdInRead->IsValid() || m_stdOutWrite->IsValid() || m_stdErrWrite->IsValid());
     }

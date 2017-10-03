@@ -52,7 +52,8 @@ namespace AZ
             AZ_CLASS_ALLOCATOR_IMPL(AnimationGroup, SystemAllocator, 0)
 
             AnimationGroup::AnimationGroup()
-                : m_startFrame(0)
+                : m_id(Uuid::CreateRandom())
+                , m_startFrame(0)
                 , m_endFrame(0)
                 , m_defaultCompressionStrength(0.1f)
             {
@@ -71,6 +72,16 @@ namespace AZ
             void AnimationGroup::SetName(AZStd::string&& name)
             {
                 m_name = AZStd::move(name);
+            }
+
+            const Uuid& AnimationGroup::GetId() const
+            {
+                return m_id;
+            }
+
+            void AnimationGroup::OverrideId(const Uuid& id)
+            {
+                m_id = id;
             }
 
             Containers::RuleContainer& AnimationGroup::GetRuleContainer()
@@ -133,8 +144,9 @@ namespace AZ
 
                 DataTypes::IAnimationGroup::PerBoneCompression::Reflect(context);
 
-                serializeContext->Class<AnimationGroup, DataTypes::IAnimationGroup>()->Version(2, VersionConverter)
+                serializeContext->Class<AnimationGroup, DataTypes::IAnimationGroup>()->Version(3, VersionConverter)
                     ->Field("name", &AnimationGroup::m_name)
+                    ->Field("id", &AnimationGroup::m_id)
                     ->Field("selectedRootBone", &AnimationGroup::m_selectedRootBone)
                     ->Field("startFrame", &AnimationGroup::m_startFrame)
                     ->Field("endFrame", &AnimationGroup::m_endFrame)
@@ -173,13 +185,22 @@ namespace AZ
             {
                 const unsigned int version = classElement.GetVersion();
 
+                bool result = true;
+
                 // Replaced vector<IRule> with RuleContainer.
                 if (version == 1)
                 {
-                    return Containers::RuleContainer::VectorToRuleContainerConverter(context, classElement);
+                    result = result && Containers::RuleContainer::VectorToRuleContainerConverter(context, classElement);
                 }
 
-                return true;
+                // Added a uuid "id" as the unique identifier to replace the file name.
+                // Setting it to null by default and expecting a behavior to patch this when additional information is available.
+                if (version <= 2)
+                {
+                    result = result && classElement.AddElementWithData<AZ::Uuid>(context, "id", AZ::Uuid::CreateNull()) != -1;
+                }
+
+                return result;
             }
 
         } // namespace SceneData

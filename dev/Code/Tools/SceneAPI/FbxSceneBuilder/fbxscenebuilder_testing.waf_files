@@ -20,7 +20,9 @@
         ],
         "Tests/Importers": [
             "Tests/Importers/FbxImporterUtilitiesTests.cpp"
+        ],
+        "Tests/Importers/Utilities": [
+            "Tests/Importers/Utilities/RenamedNodesMapTests.cpp"
         ]
-
     }
 }

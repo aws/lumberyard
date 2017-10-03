@@ -20,7 +20,7 @@
 #include <GemRegistry/IGemRegistry.h>
 
 #ifndef AZ_MONOLITHIC_BUILD
-#include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/Module/ModuleManagerBus.h>
 #endif//AZ_MONOLITHIC_BUILD
 
 class GemManager
@@ -38,7 +38,7 @@ private:
 
 protected:
 #ifndef AZ_MONOLITHIC_BUILD // Loads statically in monolithic mode, doesn't require a module.
-    AZStd::unique_ptr<AZ::DynamicModuleHandle> m_registryModule;
+    AZStd::shared_ptr<AZ::DynamicModuleHandle> m_registryModule;
 #endif//AZ_MONOLITHIC_BUILD
     Gems::IGemRegistry * m_registry = nullptr;
     Gems::IProjectSettings* m_projectSettings = nullptr;

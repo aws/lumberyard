@@ -15,6 +15,8 @@
 #include <AssetImporterWindow.h>
 #include <QtViewPaneManager.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
+#include <LyViewPaneNames.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 AssetImporterPlugin* AssetImporterPlugin::s_instance;
 
@@ -22,6 +24,7 @@ AssetImporterPlugin::AssetImporterPlugin(IEditor* editor)
     : m_editor(editor)
     , m_toolName(LyViewPane::SceneSettings)
     , m_assetBrowserContextProvider()
+    , m_sceneSerializationHandler()
 {
     s_instance = this;
 
@@ -35,15 +38,18 @@ AssetImporterPlugin::AssetImporterPlugin(IEditor* editor)
     ActivateSceneLibrary(m_sceneUIModule);
     ActivateSceneLibrary(m_fbxSceneBuilderModule);
 
-    QtViewOptions opt;
+    m_sceneSerializationHandler.Activate();
+    
+    AzToolsFramework::ViewPaneOptions opt;
     opt.isPreview = true;
     opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<AssetImporterWindow>(editor, m_toolName.c_str(), LyViewPane::CategoryTools, opt);
+    AzToolsFramework::RegisterViewPane<AssetImporterWindow>(m_toolName.c_str(), LyViewPane::CategoryTools, opt);
 }
 
 void AssetImporterPlugin::Release()
 {
-    UnregisterQtViewPane<AssetImporterWindow>();
+    AzToolsFramework::UnregisterViewPane(m_toolName.c_str());
+    m_sceneSerializationHandler.Deactivate();
 
     DeactivateSceneLibrary(m_fbxSceneBuilderModule);
     DeactivateSceneLibrary(m_sceneUIModule);

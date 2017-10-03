@@ -111,8 +111,7 @@ namespace AssetProcessor
 
     void AssetCatalog::SaveRegistry_Impl()
     {
-        QMutexLocker locker(&m_savingRegistryMutex);
-        
+        bool allCatalogsSaved = true;
         // note that its safe not to save the catalog if the catalog is not dirty
         // because the engine will be accepting updates as long as the update has a higher or equal
         // number to the saveId, not just equal.
@@ -163,7 +162,8 @@ namespace AssetProcessor
                         AZ::IO::FileIOBase::GetInstance()->Close(fileHandle);
 
                         // if we succeeded in doing this, then use "rename" to move the file over the previous copy.
-                        bool moved = AZ::IO::SystemFile::Rename(tempRegistryFile.toUtf8().constData(), actualRegistryFile.toUtf8().constData(), true);
+                        bool moved = AssetUtilities::MoveFileWithTimeout(tempRegistryFile, actualRegistryFile, 3);
+                        allCatalogsSaved = allCatalogsSaved && moved;
 
                         // warn if it failed
                         AZ_Warning(AssetProcessor::ConsoleChannel, moved, "Failed to move %s to %s", tempRegistryFile.toUtf8().constData(), actualRegistryFile.toUtf8().constData());
@@ -176,15 +176,49 @@ namespace AssetProcessor
                     else
                     {
                         AZ_Warning(AssetProcessor::ConsoleChannel, false, "Failed to create catalog file %s", tempRegistryFile.toUtf8().constData());
+                        allCatalogsSaved = false;
                     }
 
                     AZ::IO::FileIOBase::GetInstance()->DestroyPath(workSpace.toUtf8().data());
                 }
             }
         }
+        
+        {
+            // scoped to minimize the duration of this mutex lock
+            QMutexLocker locker(&m_savingRegistryMutex);
+            m_currentlySavingCatalog = false;
+            RegistrySaveComplete(m_currentRegistrySaveVersion, allCatalogsSaved);
+            AssetRegistryNotificationBus::Broadcast(&AssetRegistryNotifications::OnRegistrySaveComplete, m_currentRegistrySaveVersion, allCatalogsSaved);
+        }
+    }
 
-        m_currentlySavingCatalog = false;
-        AssetRegistryNotificationBus::Broadcast(&AssetRegistryNotifications::OnRegistrySaveComplete, m_currentRegistrySaveVersion);
+    void AssetCatalog::RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed)
+    {
+        AZ_UNUSED(message);
+        AZ_UNUSED(platform);
+        AZ_UNUSED(fencingFailed);
+        int registrySaveVersion = SaveRegistry();
+        m_queuedSaveCatalogRequest.insert(registrySaveVersion, requestId);
+    }
+
+    void AssetCatalog::RegistrySaveComplete(int assetCatalogVersion, bool allCatalogsSaved)
+    {
+        for (auto iter = m_queuedSaveCatalogRequest.begin(); iter != m_queuedSaveCatalogRequest.end();)
+        {
+            if (iter.key() <= assetCatalogVersion)
+            {
+                AssetProcessor::NetworkRequestID& requestId = iter.value();
+                AzFramework::AssetSystem::SaveAssetCatalogResponse saveCatalogResponse;
+                saveCatalogResponse.m_saved = allCatalogsSaved;
+                AssetProcessor::ConnectionBus::Event(requestId.first, &AssetProcessor::ConnectionBus::Events::Send, requestId.second, saveCatalogResponse);
+                iter = m_queuedSaveCatalogRequest.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
     }
 
     int AssetCatalog::SaveRegistry()
@@ -226,23 +260,34 @@ namespace AssetProcessor
                     info.m_assetType = combined.m_assetType;
                     info.m_relativePath = relativeProductPath.toUtf8().data();
                     info.m_assetId = assetId;
-                    info.m_assetType = combined.m_assetType;
                     info.m_sizeBytes = AZ::IO::SystemFile::Length(fullProductPath.toUtf8().constData());
 
                     // also register it at the legacy id(s) if its different:
                     AZ::Data::AssetId legacyAssetId(combined.m_legacyGuid, 0);
-                    AZ::Data::AssetId legacySourceAssetId(AssetUtilities::CreateSafeSourceUUIDFromName(combined.m_sourceName.c_str(), false), combined.m_subID);
+                    AZ::Uuid  legacySourceUuid = AssetUtilities::CreateSafeSourceUUIDFromName(combined.m_sourceName.c_str(), false);
+                    AZ::Data::AssetId legacySourceAssetId(legacySourceUuid, combined.m_subID);
 
-                    m_registries[platform].RegisterAsset(assetId, info);
+                    currentRegistry.RegisterAsset(assetId, info);
 
                     if (legacyAssetId != assetId)
                     {
-                        m_registries[platform].RegisterLegacyAssetMapping(legacyAssetId, assetId);
+                        currentRegistry.RegisterLegacyAssetMapping(legacyAssetId, assetId);
                     }
 
                     if (legacySourceAssetId != assetId)
                     {
-                        m_registries[platform].RegisterLegacyAssetMapping(legacySourceAssetId, assetId);
+                        currentRegistry.RegisterLegacyAssetMapping(legacySourceAssetId, assetId);
+                    }
+
+                    // now include the additional legacies based on the SubIDs by which this asset was previously referred to.
+                    for (auto entry : combined.m_legacySubIDs)
+                    {
+                        AZ::Data::AssetId legacySubID(combined.m_sourceGuid, entry.m_subID);
+                        if ((legacySubID != assetId) && (legacySubID != legacyAssetId) && (legacySubID != legacySourceAssetId))
+                        {
+                            currentRegistry.RegisterLegacyAssetMapping(legacySubID, assetId);
+                        }
+
                     }
 
                     return true;//see them all
@@ -252,7 +297,8 @@ namespace AssetProcessor
                 databaseQueryCallback, AZ::Uuid::CreateNull(),
                 nullptr,
                 platform.toUtf8().constData(),
-                AzToolsFramework::AssetSystem::JobStatus::Any);
+                AzToolsFramework::AssetSystem::JobStatus::Any,
+                true); /*we do need legacy IDs - hardly anyone else does*/
 
             AZ_TracePrintf("Catalog", "Read %u assets from database for %s in %fs\n", currentRegistry.m_assetIdToInfo.size(), platform.toUtf8().constData(), timer.elapsed() / 1000.0f);
         }

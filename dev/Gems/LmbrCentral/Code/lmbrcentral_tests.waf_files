@@ -8,7 +8,9 @@
             "Tests/LmbrCentralReflectionTest.cpp",
             "Tests/LmbrCentralTest.cpp",
             "Tests/RigidPhysicsComponentTest.cpp",
-            "Tests/StaticPhysicsComponentTest.cpp"
+            "Tests/StaticPhysicsComponentTest.cpp",
+            "Tests/PolygonPrismShapeComponentTests.cpp",
+            "Tests/SplineComponentTests.cpp"
         ]
     }
 }

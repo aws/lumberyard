@@ -105,7 +105,7 @@ function DropTargetStacking:OnDrop(draggable)
 			local clonedCounterText = UiElementBus.Event.GetChild(clonedCounterBox, 0)
 			UiTextBus.Event.SetText(clonedCounterText, "1")
 			-- if using keyboard/gamepad make the we want to make sure the hover moves
-			UiCanvasBus.Event.SetHoverInteractable(canvasEntity, clonedElement)
+			UiCanvasBus.Event.ForceHoverInteractable(canvasEntity, clonedElement)
 		else
 			-- increment dest
 			destInventoryCount = destInventoryCount + 1
@@ -113,7 +113,7 @@ function DropTargetStacking:OnDrop(draggable)
 			UiTextBus.Event.SetText(destDraggableCounterText, destTextString)
 			-- if using keyboard/gamepad make the we want to make sure the hover moves
 			local canvasEntity = UiElementBus.Event.GetCanvas(self.entityId)
-			UiCanvasBus.Event.SetHoverInteractable(canvasEntity, destDraggable)
+			UiCanvasBus.Event.ForceHoverInteractable(canvasEntity, destDraggable)
 		end
 		if (sourceInventoryCount == 1) then
 			UiElementBus.Event.DestroyElement(draggable)

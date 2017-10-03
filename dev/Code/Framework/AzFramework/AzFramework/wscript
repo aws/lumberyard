@@ -22,6 +22,8 @@ def build(bld):
         '-Wall'     # warning level
     ]
 
+   
+
     bld.CryEngineStaticLibrary(
 
         # Settings
@@ -43,7 +45,6 @@ def build(bld):
 
        
        
-
        
        
         android_file_list   = ['azframework_android.waf_files'],

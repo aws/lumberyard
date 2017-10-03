@@ -15,7 +15,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
+#include <CloudCanvas/ICloudCanvas.h>
 
 namespace AZ
 {
@@ -28,6 +28,11 @@ namespace Aws
     {
         class AWSCredentialsProvider;
     }
+}
+
+namespace CloudGemFramework
+{
+    class AwsApiJobConfig;
 }
 
 namespace CloudGemFramework
@@ -51,12 +56,13 @@ namespace CloudGemFramework
         /// Returns the JobContext that should be used for AWS jobs.
         virtual AZ::JobContext* GetDefaultJobContext() = 0;
 
-        /// Returns an AWS credentials provider that uses the players AWS 
-        /// credentials, as retrieved via the player Cognito identity pool.
-        virtual std::shared_ptr<Aws::Auth::AWSCredentialsProvider> GetPlayerCredentialsProvider() = 0;
-
         // Root CA File needed on some platforms (Android)
-        virtual LmbrAWS::RequestRootCAFileResult GetRootCAFile(AZStd::string& filePath) = 0;
+        virtual CloudCanvas::RequestRootCAFileResult GetRootCAFile(AZStd::string& filePath) = 0;
+
+        // Returns the default client configuration settings for CloudGemFramework.  Because this is implemented in a static library potentially
+        // there are other copies around - for the purposes of Cloud Canvas code the CloudGemFramework version is the "master" and covers the ground
+        // the client settings in LmbrAWS did before
+        virtual AwsApiJobConfig* GetDefaultConfig() = 0;
 #ifdef _DEBUG
         /// Tracks job instances. All job instances must be deleted before 
         /// CloudGemFrameworkSystemComponent is deactivated.

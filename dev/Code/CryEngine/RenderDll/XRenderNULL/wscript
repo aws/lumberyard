@@ -42,7 +42,7 @@ def build(bld):
                                bld.Path('Code/SDKs'),
                                bld.Path('Code/SDKs/squish-ccr'),
                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9')],
-        defines             = ['NULL_RENDERER', '_RENDERER' ],
+        defines             = ['NULL_RENDERER', '_RENDERER', 'RENDERER_EXPORTS', 'ENGINE_EXPORTS' ],
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
                                'LZSS'],

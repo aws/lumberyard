@@ -63,6 +63,8 @@
             "Components/StylesheetPreprocessor.h",
             "Components/TagSelector.cpp",
             "Components/TagSelector.h",
+            "Components/ToolBarArea.cpp",
+            "Components/ToolBarArea.h",
             "Components/VectorEdit.cpp",
             "Components/VectorEdit.h",
             "Components/WindowDecorationWrapper.cpp",

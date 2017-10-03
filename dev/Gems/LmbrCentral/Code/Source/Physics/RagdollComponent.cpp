@@ -62,6 +62,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Ragdoll.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-ragdoll.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_isActiveInitially, "Enabled initially", "When true the model will start off as a ragdoll")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_tryToUsePhysicsComponentMass, "Use physics component mass", "When true tries to use mass set by a physics component first.  Defaults to 'Mass' if unchecked or no component is found")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_mass, "Mass", "Simulated mass for the ragdoll. Used as defined by 'Use physics component mass'")
@@ -121,6 +122,7 @@ namespace LmbrCentral
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<RagdollPhysicsRequestBus>("RagdollPhysicsRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("EnterRagdoll", &RagdollPhysicsRequestBus::Events::EnterRagdoll)
                 ->Event("ExitRagdoll", &RagdollPhysicsRequestBus::Events::ExitRagdoll)
                 ;
@@ -254,6 +256,13 @@ namespace LmbrCentral
         CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         EntityPhysicsEventBus::Handler::BusDisconnect();
 
+        ICharacterInstance* character = nullptr;
+        EBUS_EVENT_ID_RESULT(character, GetEntityId(), SkinnedMeshComponentRequestBus, GetCharacterInstance);
+        if (character)
+        {
+            character->GetISkeletonPose()->DestroyCharacterPhysics();
+        }
+		
         if (m_physicalEntity)
         {
             gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_physicalEntity);

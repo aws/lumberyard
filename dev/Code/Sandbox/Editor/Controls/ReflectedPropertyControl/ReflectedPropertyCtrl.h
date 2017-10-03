@@ -196,14 +196,20 @@ public:
 
     AzToolsFramework::PropertyRowWidget* FindPropertyRowWidget(ReflectedPropertyItem* item);
 
+    QSize sizeHint() const override;
     AzToolsFramework::ReflectedPropertyEditor* GetEditor() { return m_editor; }
 
 public slots:
+    //invalidates attributes and values
     void InvalidateCtrl(bool queued = true);
     void RebuildCtrl(bool queued = true);
 
     void SetTitle(const QString &title);
-    
+
+    void OnCopy(bool bRecursively);
+    void OnCopyAll();
+    void OnPaste();
+
 protected:
     friend class ReflectedPropertyItem;
 
@@ -305,18 +311,22 @@ public:
 protected:
     void resizeEvent(QResizeEvent *event) override;
 
-    private slots:
-    void UpdateLayouts();
-
 private:
+    void ToggleTwoColumnLayout();
+
     QVector<PropertyCard*> m_controlList;
     QVector<TSmartPtr<CVarBlock>> m_varBlockList;
     TSmartPtr<CVarBlock> m_pVarBlock;
 
+    QWidget *m_leftContainer;
+    QWidget *m_rightContainer;
     QScrollArea *m_leftScrollArea;
     QScrollArea *m_rightScrollArea;
-    QVBoxLayout *m_leftLayout;
-    QVBoxLayout *m_rightLayout;
+
+    bool m_twoColumns;
+
+    static const int minimumColumnWidth = 320;
+    static const int minimumTwoColumnWidth = 660;
 };
 
 

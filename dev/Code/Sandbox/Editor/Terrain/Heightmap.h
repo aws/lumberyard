@@ -254,7 +254,7 @@ public:
 
     void RecordUndo(int x1, int y1, int width, int height, bool bInfo = false);
 
-    CRGBLayer* GetRGBLayer() { return &m_TerrainRGBTexture; }
+    CRGBLayer* GetRGBLayer() { return &m_TerrainBGRTexture; }
 
     // Arguments:
     //   texsector - make sure the values are in valid range
@@ -315,7 +315,7 @@ private:
 
     std::unique_ptr<CTerrainGrid> m_terrainGrid;
 
-    CRGBLayer m_TerrainRGBTexture; // Terrain RGB texture
+    CRGBLayer m_TerrainBGRTexture; // Terrain RGB texture
 
     // Changing mod sectors to a set for efficiency, using std::pair instead of Vec2i for built-in lexicographic operator<
     std::set<std::pair<int, int> > m_modSectors;

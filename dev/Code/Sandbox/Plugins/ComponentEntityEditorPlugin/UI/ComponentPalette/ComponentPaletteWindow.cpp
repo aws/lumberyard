@@ -17,7 +17,7 @@
 #include "FilteredComponentList.h"
 #include "CategoriesList.h"
 
-#include <QtViewPaneManager.h>
+#include <LyViewPaneNames.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -107,10 +107,12 @@ void ComponentPaletteWindow::keyPressEvent(QKeyEvent* event)
 
 void ComponentPaletteWindow::RegisterViewClass()
 {
-    QtViewOptions options;
+    using namespace AzToolsFramework;
+
+    ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<ComponentPaletteWindow>(GetIEditor(), "Component Palette", LyViewPane::CategoryOther, options);
+    RegisterViewPane<ComponentPaletteWindow>("Component Palette", LyViewPane::CategoryOther, options);
 }
 
 #include <UI/ComponentPalette/ComponentPaletteWindow.moc>

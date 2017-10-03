@@ -4,6 +4,7 @@
 
 #include "LyShineExamplesSystemComponent.h"
 #include "UiTestScrollBoxDataProviderComponent.h"
+#include "UiCustomImageComponent.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include <IGem.h>
@@ -22,7 +23,8 @@ namespace LyShineExamples
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {
                 LyShineExamplesSystemComponent::CreateDescriptor(),
-                UiTestScrollBoxDataProviderComponent::CreateDescriptor()
+                UiTestScrollBoxDataProviderComponent::CreateDescriptor(),
+                UiCustomImageComponent::CreateDescriptor(),
             });
         }
 

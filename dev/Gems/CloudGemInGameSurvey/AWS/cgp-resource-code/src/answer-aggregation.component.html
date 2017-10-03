@@ -1,0 +1,76 @@
+<div *ngIf="!curViewingTextQuestionId">
+    <div *ngIf="isLoading == true">
+        <loading-spinner></loading-spinner>
+    </div>
+
+    <div *ngIf="isLoading == false">
+        <div class="answer-aggregation" *ngFor="let questionAnswerAggregation of surveyAnswerAggregationsUIModel.questionAnswerAggregationsUIModels; let questionIndex = index">
+            <div class="question-title">
+                {{questionAnswerAggregation.questionTitle}}
+            </div>
+            <div class="row" *ngIf="questionAnswerAggregation.questionType == 'predefined' || questionAnswerAggregation.questionType == 'scale'">
+                <div class="col-3">
+                    <table class="answer-table col-12">
+                        <thead>
+                            <tr>                                
+                                <td>
+                                    ANSWER
+                                </td>
+                                <td>
+                                    RESPONSES
+                                </td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let answerAggregation of questionAnswerAggregation.answerAggregations">
+                                <td>
+                                    {{answerAggregation.answer}}
+                                </td>
+                                <td>
+                                    {{answerAggregation.count}}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <b>TOTAL RESPONSES</b>
+                                </td>
+                                <td>
+                                    <b>{{questionAnswerAggregation.totalResponses}}</b>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-9">
+                    <div class="row">
+                        <span [class.active-chart]="questionAnswerAggregation.chart == Chart.Bar" class="fa fa-bar-chart cursor-pointer" data-toggle="tooltip" data-placement="top" title="Show Bar Chart" (click)="onShowBarChart(questionAnswerAggregation)"></span>
+                        &nbsp;
+                        <span [class.active-chart]="questionAnswerAggregation.chart == Chart.Pie" class="fa fa-pie-chart cursor-pointer" data-toggle="tooltip" data-placement="top" title="Show Pie Chart" (click)="onShowPieChart(questionAnswerAggregation)"></span>
+
+                        <ng-container [ngSwitch]="questionAnswerAggregation.chart">
+                            <barchart *ngSwitchCase="Chart.Bar" class="col-12" [data]="questionAnswerAggregation.chartData" [y-axis-label]="'Number of Responses'"></barchart>
+                            <piechart *ngSwitchCase="Chart.Pie" class="col-12" [data]="questionAnswerAggregation.chartData"></piechart>
+                        </ng-container>                        
+                    </div>
+                </div>
+            </div>
+            <div *ngIf="questionAnswerAggregation.questionType == 'text'">
+                <div class="col-12">
+                    <div>
+                        Answers to text questions can be accessed by viewing each individual responses.                        
+                    </div>                                        
+                    <button (click)="onShowTextAnswers(questionAnswerAggregation.questionId)" class="btn l-primary">
+                        View Answers
+                    </button>
+                </div>                
+            </div>
+        </div>
+    </div>
+</div>
+
+<div *ngIf="curViewingTextQuestionId">
+    <button (click)="onShowAggregatedResults()" class="btn l-primary">
+        < Back to aggregated results
+    </button>
+    <text-answer-submission-list [context]="context" [survey]="survey" [questionId]="curViewingTextQuestionId"></text-answer-submission-list>
+</div>

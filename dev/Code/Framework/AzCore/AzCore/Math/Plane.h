@@ -156,6 +156,16 @@ namespace AZ
 
         AZ_MATH_FORCE_INLINE bool IsFinite() const { return m_plane.IsFinite(); }
 
+        AZ_MATH_FORCE_INLINE bool operator==(const Plane& rhs) const
+        {
+            return m_plane.IsClose(rhs.m_plane);
+        }
+
+        AZ_MATH_FORCE_INLINE bool operator!=(const Plane& rhs) const
+        {
+            return !(*this == rhs);
+        }
+
     private:
         Vector4     m_plane;        ///< plane normal (x,y,z) and negative distance to the origin (w)
     };

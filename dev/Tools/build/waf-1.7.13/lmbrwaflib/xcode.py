@@ -443,7 +443,10 @@ class PBXProject(XCodeNode):
         w("}\n")
 
     def add_task_gen(self, task_generator, ctx):
-        if not getattr(task_generator, 'mac_app', False) and not getattr(task_generator, 'ios_app', False) and not getattr(task_generator, 'appletv_app', False):
+
+        is_mac_app_game_project = getattr(task_generator, 'mac_app', False) and getattr(task_generator, 'mac_app_game_project', True)
+
+        if not is_mac_app_game_project and not getattr(task_generator, 'ios_app', False) and not getattr(task_generator, 'appletv_app', False):
             self.targets.append(PBXLegacyTarget(self.platform_name, self.project_spec, task_generator.name, ctx))
         else:
             target = PBXNativeTarget(self.platform_name, self.project_spec, task_generator, self.settings, ctx)

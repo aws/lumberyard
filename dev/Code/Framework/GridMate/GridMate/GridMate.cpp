@@ -340,16 +340,16 @@ bool GridMateImpl::StartLeaderboardService(ServiceType type)
         break;
 
 #ifndef GRIDMATE_FOR_TOOLS
-    case ST_XLIVE:
+    case ST_XLIVE: // ACCEPTED_USE
     {
-        serviceName = "  XLive";
-        AZ_Assert(false, "Xbox Live leaderboard service is available on XBone platform only!");
+        serviceName = "  XLive"; // ACCEPTED_USE
+        AZ_Assert(false, "Xbox Live leaderboard service is available on XBone platform only!"); // ACCEPTED_USE
         break;
     }
 
-    case ST_PSN:
-        serviceName = "  PSN";
-        AZ_Assert(false, "PSN leaderboard service is available on PS4 platform only!");
+    case ST_PSN: // ACCEPTED_USE
+        serviceName = "  PSN"; // ACCEPTED_USE
+        AZ_Assert(false, "PSN leaderboard service is available on PS4 platform only!"); // ACCEPTED_USE
         break;
 #endif // GRIDMATE_FOR_TOOLS
 
@@ -446,13 +446,12 @@ bool GridMateImpl::StartAchievementService(ServiceType type, const AchievementSe
         break;
 
 #ifndef GRIDMATE_FOR_TOOLS
-    case ST_XLIVE:
-        serviceName = "  XLive";
-        AZ_Assert(false, "Xbox live achievement service is available on XBone platform only!");
+    case ST_XLIVE: // ACCEPTED_USE
+        AZ_Assert(false, "Xbox live achievement service is available on XBone platform only!"); // ACCEPTED_USE
         break;
 
-    case ST_PSN:
-        AZ_Assert(false, "PSN trophy service is available on PS4 platform only!");
+    case ST_PSN: // ACCEPTED_USE
+        AZ_Assert(false, "PSN trophy service is available on PS4 platform only!"); // ACCEPTED_USE
         break;
 #endif // GRIDMATE_FOR_TOOLS
 

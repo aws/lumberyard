@@ -1,0 +1,20 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "5c539192ddda40aaa2e92eb71f8e3170",
+    "Name": "StarterGameGem",
+    "DisplayName": "StarterGame Gem",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides services for the StarterGame sample.",
+    "Tags": ["Samples"],
+    "IconPath": "preview.png"
+}

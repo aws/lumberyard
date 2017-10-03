@@ -1318,6 +1318,26 @@ ILINE Matrix34_tpl<F1>& operator *= (Matrix34_tpl<F1>& l, const Diag33_tpl<F2>& 
     return l;
 }
 template<class F1, class F2>
+ILINE Matrix34_tpl<F1> operator + (const Matrix34_tpl<F1>& l, const Matrix34_tpl<F2>& r)
+{
+    assert(l.IsValid());
+    assert(r.IsValid());
+    Matrix34_tpl<F1> m;
+    m.m00 = l.m00 + r.m00;
+    m.m01 = l.m01 + r.m01;
+    m.m02 = l.m02 + r.m02;
+    m.m03 = l.m03 + r.m03;
+    m.m10 = l.m10 + r.m10;
+    m.m11 = l.m11 + r.m11;
+    m.m12 = l.m12 + r.m12;
+    m.m13 = l.m13 + r.m13;
+    m.m20 = l.m20 + r.m20;
+    m.m21 = l.m21 + r.m21;
+    m.m22 = l.m22 + r.m22;
+    m.m23 = l.m23 + r.m23;
+    return m;
+}
+template<class F1, class F2>
 ILINE Matrix34_tpl<F1>& operator += (Matrix34_tpl<F1>& l, const Matrix34_tpl<F2>& r)
 {
     assert(l.IsValid());

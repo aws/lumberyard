@@ -29,6 +29,7 @@
 
 #include <GridMate/Serialize/DataMarshal.h>
 #include <GridMate/Serialize/CompressionMarshal.h>
+#include "AzCore/std/smart_ptr/unique_ptr.h"
 
 using namespace GridMate;
 
@@ -705,13 +706,14 @@ enum class TestStatus
     Completed,
 };
 
-class SimpleTest
+class Integ_SimpleTest
     : public UnitTest::GridMateMPTestFixture
+    , public ::testing::Test
 {
 public:
-    GM_CLASS_ALLOCATOR(SimpleTest);
+    //GM_CLASS_ALLOCATOR(Integ_SimpleTest);
 
-    SimpleTest()
+    Integ_SimpleTest()
         : m_sessionCount(0) { }
 
     virtual int GetNumSessions() { return 0; }
@@ -719,9 +721,8 @@ public:
     virtual void PreInit() { }
     virtual void PreConnect() { }
     virtual void PostInit() { }
-    virtual TestStatus Tick(int ticks) = 0;
 
-    void run()
+    void SetUp() override
     {
         AZ_TracePrintf("GridMate", "\n");
 
@@ -773,10 +774,22 @@ public:
         {
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<ChunkWithShortInts>();
         }
+    }
 
+    void TearDown() override
+    {
+        for (int i = 0; i < m_sessionCount; ++i)
+        {
+            m_sessions[i].GetReplicaMgr().Shutdown();
+            DefaultCarrier::Destroy(m_sessions[i].GetTransport());
+        }
+    }
+
+    void RunTickLoop(AZStd::function<TestStatus(int)> tickBody)
+    {
         // Setting up simulator with 50% outgoing packet loss
-        DefaultSimulator defaultSimulator;
-        defaultSimulator.SetOutgoingPacketLoss(0, 0);
+        m_defaultSimulator = AZStd::make_unique<DefaultSimulator>();
+        m_defaultSimulator->SetOutgoingPacketLoss(0, 0);
 
         m_sessionCount = GetNumSessions();
 
@@ -786,10 +799,10 @@ public:
         int basePort = 4427;
         for (int i = 0; i < m_sessionCount; ++i)
         {
-            CarrierDesc desc;
+            TestCarrierDesc desc;
             desc.m_port = basePort + i;
             desc.m_enableDisconnectDetection = false;
-            desc.m_simulator = &defaultSimulator;
+            desc.m_simulator = m_defaultSimulator.get();
 
             // initialize replica managers
             m_sessions[i].SetTransport(DefaultCarrier::Create(desc, m_gridMate));
@@ -813,7 +826,7 @@ public:
         int count = 0;
         for (;; )
         {
-            if (Tick(count) == TestStatus::Completed)
+            if (tickBody(count) == TestStatus::Completed)
             {
                 break;
             }
@@ -840,23 +853,18 @@ public:
             }
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(k_delay));
         }
-
-        for (int i = 0; i < m_sessionCount; ++i)
-        {
-            m_sessions[i].GetReplicaMgr().Shutdown();
-            DefaultCarrier::Destroy(m_sessions[i].GetTransport());
-        }
     }
 
     int m_sessionCount;
     AZStd::array<MPSession, 10> m_sessions;
+    AZStd::unique_ptr<DefaultSimulator> m_defaultSimulator;
 };
 
-class ReplicaChunkRPCExec
-    : public SimpleTest
+class Integ_ReplicaChunkRPCExec
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaChunkRPCExec()
+    Integ_ReplicaChunkRPCExec()
         : m_chunk(nullptr)
         , m_replicaId(0)
     { }
@@ -879,7 +887,13 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
     }
 
-    TestStatus Tick(int tick) override
+    RPCChunk::Ptr m_chunk;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaChunkRPCExec, ReplicaChunkRPCExec)
+{
+    RunTickLoop([this](int tick) -> TestStatus
     {
         // perform some random actions on a timeline
         switch (tick)
@@ -930,13 +944,12 @@ public:
 
             return TestStatus::Completed;
         }
+        default:
+            return TestStatus::Running;
         }
         return TestStatus::Running;
-    }
-
-    RPCChunk::Ptr m_chunk;
-    ReplicaId m_replicaId;
-};
+    });
+}
 
 //-----------------------------------------------------------------------------
 class DestroyRPCChunk
@@ -1035,8 +1048,8 @@ int DestroyRPCChunk::s_afterDestroyFromMasterCalls = 0;
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-class ReplicaDestroyedInRPC
-    : public SimpleTest
+class Integ_ReplicaDestroyedInRPC
+    : public Integ_SimpleTest
 {
 public:
     enum
@@ -1062,7 +1075,12 @@ public:
         }
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaId m_repId[2];
+};
+
+TEST_F(Integ_ReplicaDestroyedInRPC, ReplicaDestroyedInRPC)
+{
+    RunTickLoop([this](int tick)->TestStatus
     {
         switch (tick)
         {
@@ -1101,19 +1119,19 @@ public:
 
             return TestStatus::Completed;
         }
+        default:
+            return TestStatus::Running;
         }
 
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaId m_repId[2];
-};
-
-class ReplicaChunkAddWhileReplicated
-    : public SimpleTest
+class Integ_ReplicaChunkAddWhileReplicated
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaChunkAddWhileReplicated()
+    Integ_ReplicaChunkAddWhileReplicated()
         : m_replica(nullptr)
         , m_chunk(nullptr)
         , m_replicaId(0)
@@ -1136,7 +1154,14 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    RPCChunk::Ptr m_chunk;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaChunkAddWhileReplicated, ReplicaChunkAddWhileReplicated)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         // perform some random actions on a timeline
         switch (tick)
@@ -1168,20 +1193,19 @@ public:
             AZ_TEST_ASSERT(rep->GetNumChunks() == 1);
             return TestStatus::Completed;
         }
+        default:
+            return TestStatus::Running;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    RPCChunk::Ptr m_chunk;
-    ReplicaId m_replicaId;
-};
 
-class ReplicaRPCValues
-    : public SimpleTest
+class Integ_ReplicaRPCValues
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaRPCValues()
+    Integ_ReplicaRPCValues()
         : m_replica(nullptr)
         , m_chunk(nullptr)
         , m_replicaId(0)
@@ -1205,7 +1229,14 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    RPCChunk::Ptr m_chunk;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaRPCValues, ReplicaRPCValues)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         if (tick < 100)
         {
@@ -1221,18 +1252,14 @@ public:
             return TestStatus::Running;
         }
         return TestStatus::Completed;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    RPCChunk::Ptr m_chunk;
-    ReplicaId m_replicaId;
-};
-
-class FullRPCValues
-    : public SimpleTest
+class Integ_FullRPCValues
+    : public Integ_SimpleTest
 {
 public:
-    FullRPCValues()
+    Integ_FullRPCValues()
         : m_replica(nullptr)
         , m_chunk(nullptr)
         , m_replicaId(0)
@@ -1256,7 +1283,14 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    FullRPCChunk::Ptr m_chunk;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_FullRPCValues, FullRPCValues)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1320,20 +1354,19 @@ public:
 
             return TestStatus::Completed;
         }
+        default:
+            return TestStatus::Running;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    FullRPCChunk::Ptr m_chunk;
-    ReplicaId m_replicaId;
-};
 
-class ReplicaRemoveProxy
-    : public SimpleTest
+class Integ_ReplicaRemoveProxy
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaRemoveProxy()
+    Integ_ReplicaRemoveProxy()
         : m_replica(nullptr)
         , m_replicaId(0)
     {
@@ -1355,7 +1388,14 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaRemoveProxy, ReplicaRemoveProxy)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1369,22 +1409,24 @@ public:
             m_replica->Destroy();
             break;
         case 30:
+        {
             auto rep = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaId);
             AZ_TEST_ASSERT(!rep);
             return TestStatus::Completed;
         }
+        default:
+            return TestStatus::Running;
+        }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-};
 
-class ReplicaChunkEvents
-    : public SimpleTest
+class Integ_ReplicaChunkEvents
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaChunkEvents()
+    Integ_ReplicaChunkEvents()
         : m_replicaId(InvalidReplicaId)
         , m_chunk(nullptr)
         , m_proxyChunk(nullptr)
@@ -1413,7 +1455,15 @@ public:
         AZ_TEST_ASSERT(m_chunk->m_deactivates == 0);
     }
 
-    TestStatus Tick(int tick) override
+
+    ReplicaId m_replicaId;
+    AllEventChunk::Ptr m_chunk;
+    AllEventChunk::Ptr m_proxyChunk;
+};
+
+TEST_F(Integ_ReplicaChunkEvents, ReplicaChunkEvents)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1442,20 +1492,18 @@ public:
             AZ_TEST_ASSERT(m_proxyChunk->m_detaches == 1);
             AZ_TEST_ASSERT(m_proxyChunk->m_deactivates == 1);
             return TestStatus::Completed;
+        default: break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaId m_replicaId;
-    AllEventChunk::Ptr m_chunk;
-    AllEventChunk::Ptr m_proxyChunk;
-};
 
-class ReplicaChunksBeyond32
-    : public SimpleTest
+class Integ_ReplicaChunksBeyond32
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaChunksBeyond32()
+    Integ_ReplicaChunksBeyond32()
         : m_replicaId(InvalidReplicaId)
     {
     }
@@ -1483,7 +1531,13 @@ public:
         AZ_TEST_ASSERT(numChunks == GM_MAX_CHUNKS_PER_REPLICA);
     }
 
-    TestStatus Tick(int tick) override
+
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaChunksBeyond32, ReplicaChunksBeyond32)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1505,16 +1559,15 @@ public:
             break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaId m_replicaId;
-};
 
-class ReplicaChunkEventsDeactivate
-    : public SimpleTest
+class Integ_ReplicaChunkEventsDeactivate
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaChunkEventsDeactivate()
+    Integ_ReplicaChunkEventsDeactivate()
         : m_replica(nullptr)
         , m_replicaId(0)
         , m_chunk(nullptr)
@@ -1543,7 +1596,15 @@ public:
         AZ_TEST_ASSERT(m_chunk->m_deactivates == 0);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+    AllEventChunk::Ptr m_chunk;
+    AllEventChunk::Ptr m_proxyChunk;
+};
+
+TEST_F(Integ_ReplicaChunkEventsDeactivate, ReplicaChunkEventsDeactivate)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1579,21 +1640,18 @@ public:
             AZ_TEST_ASSERT(m_proxyChunk->m_detaches == 1);
             AZ_TEST_ASSERT(m_proxyChunk->m_deactivates == 1);
             return TestStatus::Completed;
+        default: break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-    AllEventChunk::Ptr m_chunk;
-    AllEventChunk::Ptr m_proxyChunk;
-};
 
-class ReplicaDriller
-    : public SimpleTest
+class Integ_ReplicaDriller
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaDriller()
+    Integ_ReplicaDriller()
         : m_replicaId(InvalidReplicaId)
     {
     }
@@ -1946,12 +2004,18 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
     }
 
-    ~ReplicaDriller()
+    ~Integ_ReplicaDriller()
     {
         m_driller.BusDisconnect();
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaDrillerHook m_driller;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaDriller, ReplicaDriller)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -1982,7 +2046,7 @@ public:
             AZ_TEST_ASSERT(m_driller.m_numRequestChangeOwnership == 1);
             AZ_TEST_ASSERT(m_driller.m_numChangedOwnership == 2); // two because one call for host & one for peer
 
-            // chunks
+                                                                  // chunks
             AZ_TEST_ASSERT(m_driller.m_createdChunks >= m_driller.m_createdReplicas);
             AZ_TEST_ASSERT(m_driller.m_destroyedChunks >= m_driller.m_destroyedReplicas);
             AZ_TEST_ASSERT(m_driller.m_activatedChunks >= m_driller.m_activatedReplicas);
@@ -2008,19 +2072,18 @@ public:
             AZ_TEST_ASSERT(m_driller.m_totalOutgoingBytes > 0);
             AZ_TEST_ASSERT(m_driller.m_totalIncomingBytes > 0);
             return TestStatus::Completed;
+        default: break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaDrillerHook m_driller;
-    ReplicaId m_replicaId;
-};
 
-class DataSetChangedTest
-    : public SimpleTest
+class Integ_DataSetChangedTest
+    : public Integ_SimpleTest
 {
 public:
-    DataSetChangedTest()
+    Integ_DataSetChangedTest()
         : m_replica(nullptr)
         , m_replicaId(0)
         , m_chunk(nullptr)
@@ -2043,7 +2106,15 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+    DataSetChunk::Ptr m_chunk;
+};
+
+TEST_F(Integ_DataSetChangedTest, DataSetChangedTest)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         if (tick < 100)
         {
@@ -2066,18 +2137,15 @@ public:
         }
 
         return TestStatus::Completed;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-    DataSetChunk::Ptr m_chunk;
-};
 
-class CustomHandlerTest
-    : public SimpleTest
+class Integ_CustomHandlerTest
+    : public Integ_SimpleTest
 {
 public:
-    CustomHandlerTest()
+    Integ_CustomHandlerTest()
         : m_replica(nullptr)
         , m_replicaId(0)
         , m_chunk(nullptr)
@@ -2103,7 +2171,16 @@ public:
         m_chunk->SetHandler(m_masterHandler.get());
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+    CustomHandlerChunk::Ptr m_chunk;
+    AZStd::scoped_ptr<CustomHandler> m_masterHandler;
+    AZStd::scoped_ptr<CustomHandler> m_proxyHandler;
+};
+
+TEST_F(Integ_CustomHandlerTest, CustomHandlerTest)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         {
             auto rep = m_sessions[s2].GetReplicaMgr().FindReplica(m_replicaId);
@@ -2150,20 +2227,15 @@ public:
             expected += 10;
         }
         return TestStatus::Completed;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-    CustomHandlerChunk::Ptr m_chunk;
-    AZStd::scoped_ptr<CustomHandler> m_masterHandler;
-    AZStd::scoped_ptr<CustomHandler> m_proxyHandler;
-};
 
-class NonConstMarshalerTest
-    : public SimpleTest
+class Integ_NonConstMarshalerTest
+    : public Integ_SimpleTest
 {
 public:
-    NonConstMarshalerTest()
+    Integ_NonConstMarshalerTest()
         : m_replica(nullptr)
         , m_replicaId(0)
         , m_chunk(nullptr)
@@ -2186,7 +2258,14 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+    NonConstMarshalerChunk::Ptr m_chunk;
+};
+
+TEST_F(Integ_NonConstMarshalerTest, NonConstMarshalerTest)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -2219,21 +2298,19 @@ public:
 
             return TestStatus::Completed;
         }
+        default: ;
         }
 
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-    NonConstMarshalerChunk::Ptr m_chunk;
-};
 
-class SourcePeerTest
-    : public SimpleTest
+class Integ_SourcePeerTest
+    : public Integ_SimpleTest
 {
 public:
-    SourcePeerTest()
+    Integ_SourcePeerTest()
         : m_replica(nullptr)
         , m_replicaId(0)
         , m_chunk(nullptr)
@@ -2257,7 +2334,15 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(m_replica);
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaPtr m_replica;
+    ReplicaId m_replicaId;
+    SourcePeerChunk::Ptr m_chunk;
+    SourcePeerChunk::Ptr m_chunk2;
+};
+
+TEST_F(Integ_SourcePeerTest, SourcePeerTest)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         if (!m_chunk2)
         {
@@ -2308,19 +2393,16 @@ public:
 
             return TestStatus::Completed;
         }
+        default: break;
         }
 
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaPtr m_replica;
-    ReplicaId m_replicaId;
-    SourcePeerChunk::Ptr m_chunk;
-    SourcePeerChunk::Ptr m_chunk2;
-};
 
-class SendWithPriority
-    : public SimpleTest
+class Integ_SendWithPriority
+    : public Integ_SimpleTest
 {
 public:
     enum
@@ -2353,8 +2435,8 @@ public:
     {
     public:
         ReplicaDrillerHook()
-            : m_expectedSendValue(SendWithPriority::kNumReplicas)
-            , m_expectedRecvValue(SendWithPriority::kNumReplicas)
+            : m_expectedSendValue(Integ_SendWithPriority::kNumReplicas)
+            , m_expectedRecvValue(Integ_SendWithPriority::kNumReplicas)
         {
         }
 
@@ -2403,7 +2485,16 @@ public:
         }
     }
 
-    TestStatus Tick(int tick) override
+
+    static const size_t kNumReplicas = 5;
+
+    ReplicaDrillerHook m_driller;
+    PriorityChunk::Ptr m_chunks[kNumReplicas];
+};
+
+TEST_F(Integ_SendWithPriority, SendWithPriority)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         if (tick == 20)
         {
@@ -2413,17 +2504,14 @@ public:
         }
 
         return TestStatus::Running;
-    }
+    });
+}
 
-    static const size_t kNumReplicas = 5;
 
-    ReplicaDrillerHook m_driller;
-    PriorityChunk::Ptr m_chunks[kNumReplicas];
-};
-
-class SuspendUpdatesTest
-    : public SimpleTest
+class Integ_SuspendUpdatesTest
+    : public Integ_SimpleTest
 {
+public:
     enum
     {
         sHost,
@@ -2491,8 +2579,6 @@ class SuspendUpdatesTest
         bool m_enabled;
     };
 
-public:
-
     int GetNumSessions() override { return nSessions; }
 
     void PreConnect() override
@@ -2504,7 +2590,13 @@ public:
         m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
     }
 
-    TestStatus Tick(int tick) override
+    SuspendUpdatesChunk::Ptr m_chunk = nullptr;
+    unsigned int m_numRpcCalled = 0;
+};
+
+TEST_F(Integ_SuspendUpdatesTest, SuspendUpdatesTest)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         if (tick >= 10 && tick < 15)
         {
@@ -2558,15 +2650,15 @@ public:
         }
 
         return TestStatus::Running;
-    }
+    });
+}
 
-    SuspendUpdatesChunk::Ptr m_chunk = nullptr;
-    unsigned int m_numRpcCalled = 0;
-};
 
-class BasicHostChunkDescriptorTest
+class Integ_BasicHostChunkDescriptorTest
     : public UnitTest::GridMateMPTestFixture
+    , public ::testing::Test
 {
+public:
     enum
     {
         Host,
@@ -2598,100 +2690,99 @@ class BasicHostChunkDescriptorTest
         static int nMasterActivations;
         static int nProxyActivations;
     };
+};
+int Integ_BasicHostChunkDescriptorTest::HostChunk::nMasterActivations = 0;
+int Integ_BasicHostChunkDescriptorTest::HostChunk::nProxyActivations = 0;
 
-public:
-    void run()
+TEST_F(Integ_BasicHostChunkDescriptorTest, BasicHostChunkDescriptorTest)
+{
+    AZ_TracePrintf("GridMate", "\n");
+
+    // Register test chunks
+    ReplicaChunkDescriptorTable::Get().RegisterChunkType<HostChunk, GridMate::BasicHostChunkDescriptor<HostChunk>>();
+
+    MPSession nodes[nNodes];
+
+    // initialize transport
+    int basePort = 4427;
+    for (int i = 0; i < nNodes; ++i)
     {
-        AZ_TracePrintf("GridMate", "\n");
+        TestCarrierDesc desc;
+        desc.m_port = basePort + i;
+        // initialize replica managers
+        nodes[i].SetTransport(DefaultCarrier::Create(desc, m_gridMate));
+        nodes[i].AcceptConn(true);
+        nodes[i].SetClient(i != Host);
+        nodes[i].GetReplicaMgr().Init(ReplicaMgrDesc(i + 1, nodes[i].GetTransport(), 0, i == 0 ? ReplicaMgrDesc::Role_SyncHost : 0));
+    }
 
-        // Register test chunks
-        ReplicaChunkDescriptorTable::Get().RegisterChunkType<HostChunk, GridMate::BasicHostChunkDescriptor<HostChunk>>();
+    // connect Client to Host
+    nodes[Client].GetTransport()->Connect("127.0.0.1", basePort);
 
-        MPSession nodes[nNodes];
+    ReplicaPtr hostReplica;
+    ReplicaPtr clientReplica;
 
-        // initialize transport
-        int basePort = 4427;
-        for (int i = 0; i < nNodes; ++i)
+    // main test loop
+    for (int tick = 0; tick < 1000; ++tick)
+    {
+        if (tick == 100)
         {
-            CarrierDesc desc;
-            desc.m_port = basePort + i;
-            // initialize replica managers
-            nodes[i].SetTransport(DefaultCarrier::Create(desc, m_gridMate));
-            nodes[i].AcceptConn(true);
-            nodes[i].SetClient(i != Host);
-            nodes[i].GetReplicaMgr().Init(ReplicaMgrDesc(i + 1, nodes[i].GetTransport(), 0, i == 0 ? ReplicaMgrDesc::Role_SyncHost : 0));
-        }
-
-        // connect Client to Host
-        nodes[Client].GetTransport()->Connect("127.0.0.1", basePort);
-
-        ReplicaPtr hostReplica;
-        ReplicaPtr clientReplica;
-
-        // main test loop
-        for (int tick = 0; tick < 1000; ++tick)
-        {
-            if (tick == 100)
-            {
-                for (int i = 0; i < nNodes; ++i)
-                {
-                    AZ_TEST_ASSERT(nodes[i].GetReplicaMgr().IsReady());
-                }
-            }
-
-            if (tick == 200)
-            {
-                hostReplica = Replica::CreateReplica("HostReplica");
-                hostReplica->AttachReplicaChunk(CreateReplicaChunk<HostChunk>());
-                nodes[Host].GetReplicaMgr().AddMaster(hostReplica);
-            }
-
-            if (tick == 300)
-            {
-                AZ_TEST_ASSERT(HostChunk::nMasterActivations == 1);
-                AZ_TEST_ASSERT(HostChunk::nProxyActivations == 1);
-                AZ_TEST_ASSERT(nodes[Client].GetReplicaMgr().FindReplica(hostReplica->GetRepId())->FindReplicaChunk<HostChunk>());
-
-                AZ_TEST_START_ASSERTTEST;
-                clientReplica = Replica::CreateReplica("ClientReplica");
-                clientReplica->AttachReplicaChunk(CreateReplicaChunk<HostChunk>());
-                nodes[Client].GetReplicaMgr().AddMaster(clientReplica);
-            }
-
-            if (tick == 400)
-            {
-                AZ_TEST_STOP_ASSERTTEST(1);
-                AZ_TEST_ASSERT(HostChunk::nMasterActivations == 2);
-                AZ_TEST_ASSERT(HostChunk::nProxyActivations == 1);
-                AZ_TEST_ASSERT(!nodes[Host].GetReplicaMgr().FindReplica(clientReplica->GetRepId())->FindReplicaChunk<HostChunk>());
-            }
-
-            // tick everything
             for (int i = 0; i < nNodes; ++i)
             {
-                nodes[i].Update();
-                nodes[i].GetReplicaMgr().Unmarshal();
-                nodes[i].GetReplicaMgr().UpdateReplicas();
-                nodes[i].GetReplicaMgr().UpdateFromReplicas();
-                nodes[i].GetReplicaMgr().Marshal();
-                nodes[i].GetTransport()->Update();
+                AZ_TEST_ASSERT(nodes[i].GetReplicaMgr().IsReady());
             }
-
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
         }
 
-        hostReplica = nullptr;
-        clientReplica = nullptr;
+        if (tick == 200)
+        {
+            hostReplica = Replica::CreateReplica("HostReplica");
+            hostReplica->AttachReplicaChunk(CreateReplicaChunk<HostChunk>());
+            nodes[Host].GetReplicaMgr().AddMaster(hostReplica);
+        }
 
+        if (tick == 300)
+        {
+            AZ_TEST_ASSERT(HostChunk::nMasterActivations == 1);
+            AZ_TEST_ASSERT(HostChunk::nProxyActivations == 1);
+            AZ_TEST_ASSERT(nodes[Client].GetReplicaMgr().FindReplica(hostReplica->GetRepId())->FindReplicaChunk<HostChunk>());
+
+            AZ_TEST_START_ASSERTTEST;
+            clientReplica = Replica::CreateReplica("ClientReplica");
+            clientReplica->AttachReplicaChunk(CreateReplicaChunk<HostChunk>());
+            nodes[Client].GetReplicaMgr().AddMaster(clientReplica);
+        }
+
+        if (tick == 400)
+        {
+            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_ASSERT(HostChunk::nMasterActivations == 2);
+            AZ_TEST_ASSERT(HostChunk::nProxyActivations == 1);
+            AZ_TEST_ASSERT(!nodes[Host].GetReplicaMgr().FindReplica(clientReplica->GetRepId())->FindReplicaChunk<HostChunk>());
+        }
+
+        // tick everything
         for (int i = 0; i < nNodes; ++i)
         {
-            nodes[i].GetReplicaMgr().Shutdown();
-            DefaultCarrier::Destroy(nodes[i].GetTransport());
+            nodes[i].Update();
+            nodes[i].GetReplicaMgr().Unmarshal();
+            nodes[i].GetReplicaMgr().UpdateReplicas();
+            nodes[i].GetReplicaMgr().UpdateFromReplicas();
+            nodes[i].GetReplicaMgr().Marshal();
+            nodes[i].GetTransport()->Update();
         }
+
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
     }
-};
-int BasicHostChunkDescriptorTest::HostChunk::nMasterActivations = 0;
-int BasicHostChunkDescriptorTest::HostChunk::nProxyActivations = 0;
+
+    hostReplica = nullptr;
+    clientReplica = nullptr;
+
+    for (int i = 0; i < nNodes; ++i)
+    {
+        nodes[i].GetReplicaMgr().Shutdown();
+        DefaultCarrier::Destroy(nodes[i].GetTransport());
+    }
+}
 
 /*
  * The most basic functionality test for sending datasets that have a default value and have not yet been modified
@@ -2699,11 +2790,11 @@ int BasicHostChunkDescriptorTest::HostChunk::nProxyActivations = 0;
  *
  * This is a simple sanity check to ensure the logic sends the update when it's necessary.
  */
-class Replica_DontSendDataSets_WithNoDiffFromCtorData
-    : public SimpleTest
+class Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData
+    : public Integ_SimpleTest
 {
 public:
-    Replica_DontSendDataSets_WithNoDiffFromCtorData()
+    Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData()
         : m_replicaIdDefault(InvalidReplicaId), m_replicaIdModified(InvalidReplicaId)
     {
     }
@@ -2747,7 +2838,13 @@ public:
         }
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaId m_replicaIdDefault;
+    ReplicaId m_replicaIdModified;
+};
+
+TEST_F(Integ_Replica_DontSendDataSets_WithNoDiffFromCtorData, Replica_DontSendDataSets_WithNoDiffFromCtorData)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -2812,21 +2909,19 @@ public:
             break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaId m_replicaIdDefault;
-    ReplicaId m_replicaIdModified;
-};
 
 /*
  * This test checks the actual size of the replica as marshalled in the binary payload.
  * The assessment of the payload size is done using driller EBus.
  */
-class ReplicaDefaultDataSetDriller
-    : public SimpleTest
+class Integ_ReplicaDefaultDataSetDriller
+    : public Integ_SimpleTest
 {
 public:
-    ReplicaDefaultDataSetDriller()
+    Integ_ReplicaDefaultDataSetDriller()
         : m_replicaId(InvalidReplicaId)
     {
     }
@@ -2895,12 +2990,19 @@ public:
         m_replicaId = m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
     }
 
-    ~ReplicaDefaultDataSetDriller()
+    ~Integ_ReplicaDefaultDataSetDriller()
     {
         m_driller.BusDisconnect();
     }
 
-    TestStatus Tick(int tick) override
+
+    ReplicaDrillerHook m_driller;
+    ReplicaId m_replicaId;
+};
+
+TEST_F(Integ_ReplicaDefaultDataSetDriller, ReplicaDefaultDataSetDriller)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -2945,18 +3047,16 @@ public:
             break;
         }
         return TestStatus::Running;
-    }
+    });
+}
 
-    ReplicaDrillerHook m_driller;
-    ReplicaId m_replicaId;
-};
 
 /*
  * Create and immedietly destroy master replica
  * Test that it does not result in any network sync
 */
-class CreateDestroyMaster
-    : public SimpleTest
+class Integ_CreateDestroyMaster
+    : public Integ_SimpleTest
     , public Debug::ReplicaDrillerBus::Handler
 {
 public:
@@ -2969,30 +3069,6 @@ public:
 
     int GetNumSessions() override { return nSessions; }
 
-    TestStatus Tick(int tick) override
-    {
-        switch (tick)
-        {
-
-        case 10:
-        {
-            Debug::ReplicaDrillerBus::Handler::BusConnect();
-            auto replica = Replica::CreateReplica(nullptr);
-            CreateAndAttachReplicaChunk<DataSetChunk>(replica);
-            m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
-
-            // Destroying replica right away
-            replica->Destroy();
-            break;
-        }
-
-        case 20:
-            Debug::ReplicaDrillerBus::Handler::BusDisconnect();
-            return TestStatus::Completed;
-        }
-
-        return TestStatus::Running;
-    }
 
     // ReplicaDrillerBus
     void OnReceive(PeerId from, const void* data, size_t len) override
@@ -3003,17 +3079,57 @@ public:
 
         AZ_TEST_ASSERT(false); // should not receive any replica data
     }
+
+    void ConnectDriller()
+    {
+        Debug::ReplicaDrillerBus::Handler::BusConnect();
+    }
+
+    void DisconnectDriller()
+    {
+        Debug::ReplicaDrillerBus::Handler::BusDisconnect();
+    }
 };
+
+TEST_F(Integ_CreateDestroyMaster, CreateDestroyMaster)
+{
+    RunTickLoop([this](int tick)-> TestStatus
+    {
+        switch (tick)
+        {
+
+        case 10:
+        {
+            ConnectDriller();
+            auto replica = Replica::CreateReplica(nullptr);
+            CreateAndAttachReplicaChunk<DataSetChunk>(replica);
+            m_sessions[sHost].GetReplicaMgr().AddMaster(replica);
+
+            // Destroying replica right away
+            replica->Destroy();
+            break;
+        }
+
+        case 20:
+            DisconnectDriller();
+            return TestStatus::Completed;
+        default: break;
+        }
+
+        return TestStatus::Running;
+    });
+}
+
 
 /*
 * This test checks the actual size of the replica as marshalled in the binary payload.
 * The assessment of the payload size is done using driller EBus.
 */
-class Replica_ComparePackingBoolsVsU8
-    : public SimpleTest
+class Integ_Replica_ComparePackingBoolsVsU8
+    : public Integ_SimpleTest
 {
 public:
-    Replica_ComparePackingBoolsVsU8()
+    Integ_Replica_ComparePackingBoolsVsU8()
         : m_replicaBoolsId(InvalidReplicaId)
         , m_replicaU8Id(InvalidReplicaId)
     {
@@ -3072,12 +3188,19 @@ public:
         m_replicaU8Id = m_sessions[sHost].GetReplicaMgr().AddMaster(replica2);
     }
 
-    ~Replica_ComparePackingBoolsVsU8()
+    ~Integ_Replica_ComparePackingBoolsVsU8()
     {
         m_driller.BusDisconnect();
     }
 
-    TestStatus Tick(int tick) override
+    ReplicaDrillerHook m_driller;
+    ReplicaId m_replicaBoolsId;
+    ReplicaId m_replicaU8Id;
+};
+
+TEST_F(Integ_Replica_ComparePackingBoolsVsU8, Replica_ComparePackingBoolsVsU8)
+{
+    RunTickLoop([this](int tick)-> TestStatus
     {
         switch (tick)
         {
@@ -3145,35 +3268,7 @@ public:
             break;
         }
         return TestStatus::Running;
-    }
-
-    ReplicaDrillerHook m_driller;
-    ReplicaId m_replicaBoolsId;
-    ReplicaId m_replicaU8Id;
-};
+    });
+}
 
 } // namespace UnitTest
-
-GM_TEST_SUITE(ReplicaMediumSuite)
-GM_TEST(BasicHostChunkDescriptorTest);
-GM_TEST(CustomHandlerTest);
-GM_TEST(DataSetChangedTest);
-GM_TEST(FullRPCValues);
-GM_TEST(NonConstMarshalerTest);
-GM_TEST(ReplicaChunkAddWhileReplicated);
-GM_TEST(ReplicaChunkEvents);
-GM_TEST(ReplicaChunksBeyond32);
-GM_TEST(ReplicaChunkEventsDeactivate);
-GM_TEST(ReplicaChunkRPCExec);
-GM_TEST(ReplicaDestroyedInRPC);
-GM_TEST(ReplicaDriller);
-GM_TEST(ReplicaRemoveProxy);
-GM_TEST(ReplicaRPCValues);
-GM_TEST(SendWithPriority);
-GM_TEST(SourcePeerTest);
-GM_TEST(SuspendUpdatesTest);
-GM_TEST(Replica_DontSendDataSets_WithNoDiffFromCtorData);
-GM_TEST(ReplicaDefaultDataSetDriller);
-GM_TEST(CreateDestroyMaster);
-GM_TEST(Replica_ComparePackingBoolsVsU8);
-GM_TEST_SUITE_END()

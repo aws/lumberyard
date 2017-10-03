@@ -67,7 +67,8 @@ namespace AZ
         static void CompareElementsInternal(const DataNode* sourceNode, const DataNode* targetNode, DataPatch::PatchMap& patch, const DataPatch::FlagsMap& patchFlags, SerializeContext* context, DataPatch::AddressType& address, DataPatch::Flags& addressFlags, AZStd::vector<AZ::u8>& tmpSourceBuffer);
 
         /// Apply patch to elements, return a valid pointer only for the root element
-        static void* ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc);
+        typedef AZStd::unordered_map<DataPatch::AddressType, AZStd::vector<DataPatch::AddressType> > ChildPatchMap;
+        static void* ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, const ChildPatchMap& childPatchLookup, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc);
 
         DataNode m_root;
         DataNode* m_currentNode;        ///< Used as temp during tree building
@@ -327,27 +328,72 @@ namespace AZ
             else
             {
                 // Not containers, just compare elements. Since they are known at compile time and class data is shared
-                // elements will be in the order and matching.
-                auto targetElementIt = targetNode->m_children.begin();
-                auto sourceElementIt = sourceNode->m_children.begin();
-                while (targetElementIt != targetNode->m_children.end())
+                // elements will be there if they are not nullptr
+                // When elements are nullptrs, they are not serialized out and therefore causes the number of children to differ
+                /* For example the AzFramework::EntityReference class serializes out a AZ::EntityId and AZ::Entity*
+                class EntityReference
                 {
-                    address.push_back(sourceElementIt->m_classElement->m_nameCrc); // use element class element name as an ID
+                    AZ::Entity m_entityId;
+                    AZ::Entity* m_entity;
+                }
+                    If the EntityReference::m_entity element is nullptr in the source instance, it is not part of the source node children
+                */
+                // find elements that we have added or modified by creating a union of the source data nodes and target data nodes
 
-                    // determine flags for next address
-                    DataPatch::Flags nextAddressFlags = addressFlags;
-                    auto foundNewAddressFlags = patchFlags.find(address);
-                    if (foundNewAddressFlags != patchFlags.end())
+                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> sourceAddressMap;
+                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> targetAddressMap;
+                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> unionAddressMap;
+                for (auto targetElementIt = targetNode->m_children.begin(); targetElementIt != targetNode->m_children.end(); ++targetElementIt)
+                {
+                    targetAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
+                    unionAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
+                }
+
+                for (auto sourceElementIt = sourceNode->m_children.begin(); sourceElementIt != sourceNode->m_children.end(); ++sourceElementIt)
+                {
+                    sourceAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
+                    unionAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
+                }
+
+                for (auto& unionAddressNode : unionAddressMap)
+                {
+                    auto sourceFoundIt = sourceAddressMap.find(unionAddressNode.first);
+                    auto targetFoundIt = targetAddressMap.find(unionAddressNode.first);
+
+                    if (sourceFoundIt != sourceAddressMap.end() && targetFoundIt != targetAddressMap.end())
                     {
-                        nextAddressFlags |= foundNewAddressFlags->second;
+                        address.push_back(sourceFoundIt->first); // use element class element name as an ID
+                        DataPatch::Flags nextAddressFlags = addressFlags;
+                        auto foundNewAddressFlags = patchFlags.find(address);
+                        if (foundNewAddressFlags != patchFlags.end())
+                        {
+                            nextAddressFlags |= foundNewAddressFlags->second;
+                        }
+
+                        CompareElementsInternal(sourceFoundIt->second, targetFoundIt->second, patch, patchFlags, context, address, nextAddressFlags, tmpSourceBuffer);
+                        address.pop_back();
                     }
+                    else if (targetFoundIt != targetAddressMap.end())
+                    {
+                        // this is a new node store it
+                        address.push_back(targetFoundIt->first); // use element class element name as an ID
+                        auto insertResult = patch.insert_key(address);
+                        insertResult.first->second.clear();
 
-                    CompareElementsInternal(&(*sourceElementIt), &(*targetElementIt), patch, patchFlags, context, address, nextAddressFlags, tmpSourceBuffer);
-
-                    address.pop_back();
-
-                    ++sourceElementIt;
-                    ++targetElementIt;
+                        auto& targetElementNode = targetFoundIt->second;
+                        IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
+                        if (!Utils::SaveObjectToStream(stream, AZ::ObjectStream::ST_BINARY, targetElementNode->m_data, targetElementNode->m_classData->m_typeId, context, targetElementNode->m_classData))
+                        {
+                            AZ_Assert(false, "Unable to serialize class %s, SaveObjectToStream() failed.", targetElementNode->m_classData->m_name);
+                        }
+                        address.pop_back();
+                    }
+                    else
+                    {
+                        address.push_back(sourceFoundIt->first); // use element class element name as an ID
+                        patch.insert_key(address); // record removal of element by inserting a key with a 0 byte patch
+                        address.pop_back();
+                    }
                 }
             }
         }
@@ -368,9 +414,10 @@ namespace AZ
     //=========================================================================
     // ApplyToElements
     //=========================================================================
-    void* DataNodeTree::ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc)
+    void* DataNodeTree::ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, const ChildPatchMap& childPatchLookup, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc)
     {
         void* targetPointer = nullptr;
+        void* reservePointer = nullptr;
         auto patchIt = patch.find(address);
         if (patchIt != patch.end())
         {
@@ -396,6 +443,13 @@ namespace AZ
                     targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
                 }
 
+                reservePointer = targetPointer;
+                if (patchIt->second.empty())
+                {
+                    // if patch is empty do remove the element
+                    return nullptr;
+                }
+
                 IO::MemoryStream stream(patchIt->second.data(), patchIt->second.size());
                 if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                 {
@@ -406,10 +460,8 @@ namespace AZ
                 {
                     // load in place
                     ObjectStream::LoadBlocking(&stream, *context, ObjectStream::ClassReadyCB(), filterDesc,
-                        [&targetPointer, &sourceNode](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid& classId, SerializeContext* context)
+                        [&targetPointer, &sourceNode](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid&, SerializeContext*)
                         {
-                            (void)context;
-                            (void)classId;
                             if (rootAddress)
                             {
                                 *rootAddress = targetPointer;
@@ -448,6 +500,7 @@ namespace AZ
                     targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
                 }
 
+                reservePointer = targetPointer;
                 // create a new instance if needed
                 if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                 {
@@ -514,30 +567,31 @@ namespace AZ
 
                         address.push_back(elementId);
 
-                        ApplyToElements(&sourceElementNode, patch, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                        ApplyToElements(&sourceElementNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
 
                         address.pop_back();
 
                         ++elementIndex;
                     }
 
-                    // Find missing elements that need to be added to container.
-                    // \note check performance, tag new elements to improve it.
+                    // Find missing elements that need to be added to container (new element patches).
                     AZStd::vector<u64> newElementIds;
-                    for (auto& keyValue : patch)
                     {
-                        if (keyValue.second.empty())
+                        // Check each datapatch that matches our address + 1 address element ("possible new element datapatches")
+                        auto foundIt = childPatchLookup.find(address);
+                        if (foundIt != childPatchLookup.end())
                         {
-                            continue; // this is removal of element, we already did that above
-                        }
-
-                        DataPatch::AddressType patchAddress = keyValue.first;
-                        if (patchAddress.size() == address.size() + 1) // only container elements, not container element, sub element patches
-                        {
-                            u64 newElementId = patchAddress.back();
-                            patchAddress.pop_back();
-                            if (patchAddress == address) // make sure that this patch is for the container
+                            const AZStd::vector<DataPatch::AddressType>& childPatches = foundIt->second;
+                            for (auto& childPatchAddress : childPatches)
                             {
+                                auto foundPatchIt = patch.find(childPatchAddress);
+                                if (foundPatchIt != patch.end() && foundPatchIt->second.empty())
+                                {
+                                    continue; // this is removal of element (actual patch is empty), we already handled removed elements above
+                                }
+
+                                u64 newElementId = childPatchAddress.back();
+
                                 elementIndex = 0;
                                 bool isFound = false;
                                 for (DataNode& sourceElementNode : sourceNode->m_children)
@@ -568,10 +622,10 @@ namespace AZ
                                 }
                             }
                         }
-                    }
 
-                    // Sort so that elements using index as ID retain relative order.
-                    AZStd::sort(newElementIds.begin(), newElementIds.end());
+                        // Sort so that elements using index as ID retain relative order.
+                        AZStd::sort(newElementIds.begin(), newElementIds.end());
+                    }
 
                     // Add missing elements to container.
                     for (u64 newElementId : newElementIds)
@@ -582,7 +636,7 @@ namespace AZ
                         DataNode defaultSourceNode;
                         defaultSourceNode.m_classElement = sourceNode->m_classData->m_container->GetElement(sourceNode->m_classData->m_container->GetDefaultElementNameCrc());
 
-                        ApplyToElements(&defaultSourceNode, patch, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                        ApplyToElements(&defaultSourceNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
 
                         address.pop_back();
                     }
@@ -590,16 +644,61 @@ namespace AZ
                 else
                 {
                     // Traverse child elements
+                    AZStd::unordered_set<u64> parsedElementIds;
                     auto sourceElementIt = sourceNode->m_children.begin();
                     while (sourceElementIt != sourceNode->m_children.end())
                     {
                         address.push_back(sourceElementIt->m_classElement->m_nameCrc); // use element class element name as an ID
-
-                        ApplyToElements(&(*sourceElementIt), patch, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                        parsedElementIds.emplace(address.back());
+                        ApplyToElements(&(*sourceElementIt), patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
 
                         address.pop_back();
 
                         ++sourceElementIt;
+                    }
+
+                    // Find missing elements that need to be added to structure.
+                    // \note check performance, tag new elements to improve it.
+                    AZStd::vector<u64> newElementIds;
+                    
+                    auto foundIt = childPatchLookup.find(address);
+                    if (foundIt != childPatchLookup.end())
+                    {
+                        const AZStd::vector<DataPatch::AddressType>& childPatches = foundIt->second;
+                        for (auto& childPatchAddress : childPatches)
+                        {
+                            auto foundPatchIt = patch.find(childPatchAddress);
+                            if (foundPatchIt != patch.end() && foundPatchIt->second.empty())
+                            {
+                                continue; // this is removal of element (actual patch is empty), we already handled removed elements above
+                            }
+
+                            u64 newElementId = childPatchAddress.back();
+
+                            if (parsedElementIds.count(newElementId) == 0)
+                            {
+                                newElementIds.push_back(newElementId);
+                            }
+                        }
+                    }
+
+                    // Add missing elements to class.
+                    for (u64 newElementId : newElementIds)
+                    {
+                        address.push_back(newElementId);
+
+                        DataNode defaultSourceNode;
+                        for (const auto& classElement : sourceNode->m_classData->m_elements)
+                        {
+                            if (classElement.m_nameCrc == static_cast<AZ::u32>(newElementId))
+                            {
+                                defaultSourceNode.m_classElement = &classElement;
+                                ApplyToElements(&defaultSourceNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                                break;
+                            }
+                        }
+
+                        address.pop_back();
                     }
                 }
             }
@@ -611,7 +710,7 @@ namespace AZ
 
             if (parentPointer && parentClassData->m_container)
             {
-                parentClassData->m_container->StoreElement(parentPointer, targetPointer);
+                parentClassData->m_container->StoreElement(parentPointer, reservePointer);
             }
         }
 
@@ -775,9 +874,38 @@ namespace AZ
         DataPatch::AddressType address;
         AZStd::vector<AZ::u8> tmpSourceBuffer;
         void* result;
+        
+        // Build a mapping of child patches for quick look-up: [parent patch address] -> [list of patches for child elements (parentAddress + one more address element)]
+        DataNodeTree::ChildPatchMap childPatchMap;
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Apply:GenerateChildPatchMap");
+            for (auto& patch : m_patch)
+            {
+                const DataPatch::AddressType& patchAddress = patch.first;
+                if (patchAddress.empty())
+                {
+                    AZ_Error("Serialization", false, "Can't apply a patch that contains an empty patch address!\n");
+                    return nullptr;
+                }
+
+                DataPatch::AddressType parentAddress = patchAddress;
+                parentAddress.pop_back();
+                auto foundIt = childPatchMap.find(parentAddress);
+                if (foundIt != childPatchMap.end())
+                {
+                    foundIt->second.push_back(patchAddress);
+                }
+                else
+                {
+                    AZStd::vector<DataPatch::AddressType> newChildPatchCollection;
+                    newChildPatchCollection.push_back(patchAddress);
+                    childPatchMap[parentAddress] = AZStd::move(newChildPatchCollection);
+                }
+            }
+        }
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Apply:RecursiveCallToApplyToElements");
-            result = DataNodeTree::ApplyToElements(&sourceTree.m_root, m_patch, address, nullptr, nullptr, tmpSourceBuffer, context, filterDesc);
+            result = DataNodeTree::ApplyToElements(&sourceTree.m_root, m_patch, childPatchMap, address, nullptr, nullptr, tmpSourceBuffer, context, filterDesc);
         }
         return result;
     }
@@ -882,14 +1010,17 @@ namespace AZ
     //=========================================================================
     // Apply
     //=========================================================================
-    void DataPatch::Reflect(SerializeContext& context)
+    void DataPatch::Reflect(ReflectContext* context)
     {
-        context.Class<DataPatch::AddressType>()->
-            Serializer<AddressTypeSerializer>();
+        if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+        {
+            serializeContext->Class<DataPatch::AddressType>()->
+                Serializer<AddressTypeSerializer>();
 
-        context.Class<DataPatch>()->
-            Field("m_targetClassId", &DataPatch::m_targetClassId)->
-            Field("m_patch", &DataPatch::m_patch);
+            serializeContext->Class<DataPatch>()->
+                Field("m_targetClassId", &DataPatch::m_targetClassId)->
+                Field("m_patch", &DataPatch::m_patch);
+        }
     }
 }   // namespace AZ
 

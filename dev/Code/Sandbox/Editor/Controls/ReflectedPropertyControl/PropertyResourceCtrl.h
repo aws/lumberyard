@@ -26,6 +26,7 @@
 class QPushButton;
 class QLineEdit;
 class QHBoxLayout;
+class CBitmapToolTip;
 class QToolTipWidget;
 
 class BrowseButton
@@ -75,6 +76,9 @@ public:
 signals:
     void PathChanged(const QString& path);
 
+protected:
+    bool event(QEvent* event) override;
+
 private:
     void OnAssignClicked();
     void OnMaterialClicked();
@@ -90,6 +94,7 @@ private:
 
     QHBoxLayout* m_mainLayout;
     QVector<BrowseButton*> m_buttons;
+    QScopedPointer<CBitmapToolTip> m_previewToolTip;
     QToolTipWidget* m_tooltip;
 };
 

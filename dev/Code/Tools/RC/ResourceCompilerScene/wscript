@@ -42,12 +42,13 @@ def build(bld):
                                    
                                    'AzToolsFramework', 
                                    'GFxFramework',
-                                   'EmotionFXSharedLib'],
+                                   'EMotionFXStaticLib',
+                                   'AssetBuilderSDK'],
         uselib                  = ['QT5CORE',
                                    'QT5GUI',
                                    'QT5WIDGETS',
                                    'FBXSDK'],
-        features            	= ['qt5'],
+        features            	= ['qt5', 'link_running_program'],
 
         #Platform specific
         darwin_file_list        = darwinExportedSymbolFileList,

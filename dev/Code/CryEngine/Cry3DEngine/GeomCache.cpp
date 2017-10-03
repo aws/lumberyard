@@ -854,7 +854,7 @@ void CGeomCache::UpdateStreamableComponents(float importance, const Matrix34A& o
         return;
     }
 
-    const int nRoundId = GetObjManager()->m_nUpdateStreamingPrioriryRoundId;
+    const int nRoundId = GetObjManager()->GetUpdateStreamingPrioriryRoundId();
 
     if (UpdateStreamingPrioriryLowLevel(importance, nRoundId, bFullUpdate))
     {

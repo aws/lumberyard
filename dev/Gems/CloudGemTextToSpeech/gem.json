@@ -1,0 +1,39 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "bf49ab6b1b624e16854dcbaa94b1aa24",
+    "Name": "CloudGemTextToSpeech",
+    "DisplayName": "Cloud Gem Text-To-Speech",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Enable your game with runtime text to speech functionality or generate all your dialogs with lifelike synthesized voices in a few clicks. This Cloud Gem uses Amazon Polly to generate the audio speech files and speech marks for animated character lipsync.",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda", "Polly", "S3"],
+    "IconPath": "preview.png",
+    "Dependencies": [
+        {
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        },
+        {
+            "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudGemDynamicContent"
+        },
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ]
+}

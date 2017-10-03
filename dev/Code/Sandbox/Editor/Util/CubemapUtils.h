@@ -18,9 +18,14 @@
 
 namespace CubemapUtils
 {
-    SANDBOX_API bool GenCubemap(QString& texturename);
-    SANDBOX_API bool GenCubemapWithPathAndSize(QString& filename, const int size, const bool dds = true);
-    SANDBOX_API bool GenCubemapWithObjectPathAndSize(QString& filename, CBaseObject* pObject, const int size, const bool dds);
+    //! Generate a cubemap
+    //! \param filename
+    //! \param pObject     The cubemap will be generated at this object's location
+    //! \param size        Texel dimension of the cubemap
+    //! \param hideObject  If true, pObject will be hidden when rendering the cubemap. For example, set this to true if pObject is a model that shouldn't
+    //!                    show up in the cubemap, or set to false if pObject is a light or probe that should contribute to the cubemap.
+    SANDBOX_API bool GenCubemapWithObjectPathAndSize(QString& filename, CBaseObject* pObject, const int size, const bool hideObject);
+
     SANDBOX_API bool GenHDRCubemapTiff(const QString& fileName, int size, Vec3& pos);
     SANDBOX_API void RegenerateAllEnvironmentProbeCubemaps();
 }

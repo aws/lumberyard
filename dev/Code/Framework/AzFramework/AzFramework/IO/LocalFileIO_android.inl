@@ -22,6 +22,26 @@
 #include <AzCore/Android/JNI/Object.h>
 #include <AzCore/Android/Utils.h>
 
+#include <android/api-level.h>
+
+#if __ANDROID_API__ == 19
+    // The following were apparently introduced in API 21, however in earlier versions of the 
+    // platform specific headers they were defines.  In the move to unified headers, the follwoing
+    // defines were removed from stat.h
+    #ifndef stat64
+        #define stat64 stat
+    #endif
+
+    #ifndef fstat64
+        #define fstat64 fstat
+    #endif
+
+    #ifndef lstat64
+        #define lstat64 lstat
+    #endif
+#endif // __ANDROID_API__ == 19
+
+
 //Note: Switching on verbose logging will give you a lot of detailed information about what files are being read from the APK
 //      but there is a likelihood it could cause logcat to terminate with a 'buffer full' error. Restarting logcat will resume logging
 //      but you may lose information
@@ -47,19 +67,19 @@ public:
         {
             FILE_IO_LOG("******* Attempting to open file in APK:[%s] ", fname);
 
-            AAsset* pAsset = nullptr;
+            AAsset* asset = nullptr;
             {
                 using namespace AZ::Android::Utils;
-                pAsset = AAssetManager_open(GetAssetManager(), StripApkPrefix(fname), AASSET_MODE_UNKNOWN);
+                asset = AAssetManager_open(GetAssetManager(), StripApkPrefix(fname), AASSET_MODE_UNKNOWN);
             }
 
-            if (pAsset != nullptr)
+            if (asset != nullptr)
             {
-                //the pointer returned by funopen will allow us to use fread, fseek etc
-                fp = funopen(pAsset, APKHandler::read, APKHandler::write, APKHandler::seek, APKHandler::close);
+                // the pointer returned by funopen will allow us to use fread, fseek etc
+                fp = funopen(asset, APKHandler::read, APKHandler::write, APKHandler::seek, APKHandler::close);
 
-                //the file pointer we return from funopen can't be used to get the length of the file so we need to capture that info while we have the AAsset pointer available
-                size = filelength(pAsset);
+                // the file pointer we return from funopen can't be used to get the length of the file so we need to capture that info while we have the AAsset pointer available
+                size = AAsset_getLength(asset);
                 FILE_IO_LOG("File loaded successfully");
             }
             else
@@ -89,11 +109,6 @@ public:
     {
         AAsset_close((AAsset*)asset);
         return 0;
-    }
-
-    static int filelength(void* asset)
-    {
-        return AAsset_getLength(static_cast<AAsset*>(asset));
     }
 
     static int filelength(const char* filename)
@@ -438,7 +453,15 @@ namespace AZ
             char resolvedPath[AZ_MAX_PATH_LEN];
             ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
 
-            if (!AZ::Android::Utils::IsApkPath(resolvedPath))
+            if (AZ::Android::Utils::IsApkPath(resolvedPath))
+            {
+                size = APKHandler::filelength(resolvedPath);
+                if (!size)
+                {
+                    return Exists(resolvedPath) ? ResultCode::Success : ResultCode::Error;
+                }
+            }
+            else 
             {
                 struct stat64 statResult;
                 if (stat64(resolvedPath, &statResult) != 0)
@@ -448,10 +471,7 @@ namespace AZ
 
                 size = static_cast<AZ::u64>(statResult.st_size);
             }
-            else
-            {
-                size = APKHandler::filelength(resolvedPath);
-            }
+
             return ResultCode::Success;
         }
 

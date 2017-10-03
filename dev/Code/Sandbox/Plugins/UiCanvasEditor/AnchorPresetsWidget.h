@@ -28,6 +28,8 @@ public:
 
     void SetPresetSelection(int presetIndex);
 
+    void SetPresetButtonEnabledAt(int presetIndex, bool enabled);
+
 private:
 
     int m_presetIndex;

@@ -1013,6 +1013,8 @@ namespace JobManager
         virtual void SetJobFilter(const char* pFilter) = 0;
         virtual void SetJobSystemEnabled(int nEnable) = 0;
 
+        // If the calling thread is a Worker Thread, returns the Worker Thread ID, otherwise returns 0xFFFFFFFF
+        // (Worker Thread ID is a index ranging 0 to GetNumWorkerThreads()-1)
         virtual uint32 GetWorkerThreadId() const = 0;
 
         virtual JobManager::SJobProfilingData* GetProfilingData(uint16 nProfilerIndex) = 0;
@@ -1043,7 +1045,8 @@ namespace JobManager
     };
 
     /////////////////////////////////////////////////////////////////////////////
-    // util function to get the worker thread id in a job, returns 0xFFFFFFFF otherwise
+    // Util function to get the worker thread id in a job, returns 0xFFFFFFFF otherwise
+    // (Worker Thread ID is a index ranging 0 to GetNumWorkerThreads()-1)
     ILINE uint32 GetWorkerThreadId()
     {
         uint32 nWorkerThreadID = gEnv->GetJobManager()->GetWorkerThreadId();

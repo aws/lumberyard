@@ -673,7 +673,7 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
             {
                 // during shader cache gen, disable the special features in non D3D11 mode, and just accept
                 // the lines as they come in D3D11 mode
-                if (CParserBin::m_nPlatform != SF_D3D11 && CParserBin::m_nPlatform != SF_DURANGO && CParserBin::m_nPlatform != SF_GL4 && CParserBin::m_nPlatform != SF_ORBIS)
+                if (CParserBin::m_nPlatform != SF_D3D11 && CParserBin::m_nPlatform != SF_DURANGO && CParserBin::m_nPlatform != SF_GL4 && CParserBin::m_nPlatform != SF_ORBIS) // ACCEPTED_USE
                 {
                     if (pBit->m_nDependencySet & SHGD_HW_WATER_TESSELLATION)
                     {
@@ -912,12 +912,12 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
         cry_strcat(nameRes, "(MET)");
     }
     else
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
         cry_strcat(nameRes, "(O)");
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
         cry_strcat(nameRes, "(D)");
     }

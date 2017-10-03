@@ -98,6 +98,13 @@ function DynamicScrollBox:InitContent(jsonFilepath)
 	-- Refresh the dynamic scrollbox. This will trigger events from the
 	-- UiDynamicScrollBoxDataBus and the UiDynamicScrollBoxElementNotificationBus
 	UiDynamicScrollBoxBus.Event.RefreshContent(self.Properties.DynamicScrollBox)
+	
+	-- Force the hover interactable to be the scroll box.
+	-- The scroll box is set to auto-activate, but it could still have the hover
+	-- since it starts out having no children. Now that it may contain children,
+	-- force it to be the hover in order to auto-activate it and pass the hover to its child
+	local canvas = UiElementBus.Event.GetCanvas(self.entityId)
+	UiCanvasBus.Event.ForceHoverInteractable(canvas, self.Properties.DynamicScrollBox)
 end
 
 return DynamicScrollBox

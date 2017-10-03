@@ -15,6 +15,9 @@
 #include <aws/core/utils/Outcome.h>
 #include <memory>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 
 namespace LmbrAWS
@@ -32,7 +35,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Add", _HELP("Activate this to write val to the cloud")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to use")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to use")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("Key name used in this table")),
             InputPortConfig<string>("Key", _HELP("The key you wish to write")),
             InputPortConfig<string>("Attribute", _HELP("The attribute you wish to write")),
@@ -55,14 +58,8 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Add))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& tableName =  client.GetTableName();
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
             auto& keyName = GetPortString(pActInfo, EIP_TableKeyName);
             auto& key = GetPortString(pActInfo, EIP_Key);
             auto& attr = GetPortString(pActInfo, EIP_Attribute);
@@ -70,7 +67,7 @@ namespace LmbrAWS
             Aws::String valueToAddAsString(std::to_string(valueToAdd).c_str());
 
             Aws::DynamoDB::Model::UpdateItemRequest updateRequest;
-            updateRequest.SetTableName(tableName);
+            updateRequest.SetTableName(tableName.c_str());
             AttributeValue hk,  val;
             hk.SetS(key);
             val.SetN(valueToAddAsString);
@@ -89,7 +86,7 @@ namespace LmbrAWS
 
             auto context = std::make_shared<FlowGraphStringContext>(Aws::String(attr), pActInfo->pGraph, pActInfo->myID);
 
-            MARSHALL_AWS_BACKGROUND_REQUEST(DynamoDB, client, UpdateItem, FlowNode_CloudHashMapAddNumber::ApplyResult, updateRequest, context)
+            MARSHALL_AWS_BACKGROUND_REQUEST(DynamoDB, client, UpdateItem, FlowNode_CloudHashMapAddNumber::ApplyResult, updateRequest, context);
         }
     }
 

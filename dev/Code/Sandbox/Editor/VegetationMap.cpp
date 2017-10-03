@@ -29,6 +29,8 @@
 #include "Material/Material.h"
 #include "GameEngine.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include "../Plugins/EditorCommon/QtViewPane.h"
 
 #include <QMessageBox>
@@ -334,6 +336,12 @@ protected:
             {
                 pVegetationDatabase->ReloadObjects();
             }
+        }
+
+        CVegetationDataBasePage* vegetationObjects = FindViewPane<CVegetationDataBasePage>(LyViewPane::VegetationEditor);
+        if (vegetationObjects)
+        {
+            vegetationObjects->ReloadObjects();
         }
     }
 
@@ -1666,7 +1674,7 @@ bool CVegetationMap::InsertObject(CVegetationObject* obj)
     if (id < 0)
     {
         // Free id not found, created more then 256 objects
-        QMessageBox::warning(nullptr, QString(), QObject::tr("Vegetation objects limit is reached."));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Vegetation objects limit is reached."));
         return false;
     }
 

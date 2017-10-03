@@ -28,20 +28,24 @@ local ButtonAnimation =
 function ButtonAnimation:OnActivate()
 	self.interactableHandler = UiInteractableNotificationBus.Connect(self, self.Properties.Button)
 	self.buttonHandler = UiButtonNotificationBus.Connect(self, self.Properties.Button)
-	
 
-	self.tickBusHandler = TickBus.Connect(self);
+	self.tickBusHandler = TickBus.Connect(self)
+	self.hovering = false
 end
 
 function ButtonAnimation:OnTick(deltaTime, timePoint)
 	self.tickBusHandler:Disconnect()
 
 	self.canvas = UiElementBus.Event.GetCanvas(self.entityId)
-	
+
 	self.animHandler = UiAnimationNotificationBus.Connect(self, self.canvas)
 	
-	-- Start the idle button sequence
-	UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.IdleAnimName)
+	-- Start the button sequence
+	if (self.hovering) then
+		UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.HoverAnimName)
+	else
+		UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.IdleAnimName)
+	end
 end
 
 
@@ -52,14 +56,16 @@ function ButtonAnimation:OnDeactivate()
 end
 
 function ButtonAnimation:OnHoverStart()
-	if (self.Exiting == false) then
+	self.hovering = true
+	if (self.Exiting == false and self.canvas ~= nil) then
 		UiAnimationBus.Event.StopSequence(self.canvas, self.Properties.IdleAnimName)
 		UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.HoverAnimName)
 	end
 end
 
 function ButtonAnimation:OnHoverEnd()
-	if (self.Exiting == false) then
+	self.hovering = false
+	if (self.Exiting == false and self.canvas ~= nil) then
 		UiAnimationBus.Event.StopSequence(self.canvas, self.Properties.HoverAnimName)
 		UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.IdleAnimName)
 	end
@@ -78,7 +84,13 @@ function ButtonAnimation:OnUiAnimationEvent(eventType, sequenceName)
 	if (eventType == eUiAnimationEvent_Stopped) then
 		if (sequenceName == self.Properties.ExitAnimName) then
 			UiAnimationBus.Event.ResetSequence(self.canvas, self.Properties.ExitAnimName)
-			UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.IdleAnimName)
+
+			if (self.hovering) then
+				UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.HoverAnimName)
+			else
+				UiAnimationBus.Event.StartSequence(self.canvas, self.Properties.IdleAnimName)
+			end						
+			
 			self.Exiting = false
 		end
 	end

@@ -17,7 +17,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
@@ -50,16 +50,6 @@ void CTrackViewSequenceManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
     switch (event)
     {
-    case eNotify_OnBeginSceneSave:
-        for (int i = GetCount(); --i >= 0;)
-        {
-            CTrackViewSequence* sequence = GetSequenceByIndex(i);
-            if (sequence)
-            {
-                sequence->PrepareForSave();
-            }
-        }
-        break;
     case eNotify_OnBeginGameMode:
         ResumeAllSequences();
         break;
@@ -89,6 +79,38 @@ CTrackViewSequence* CTrackViewSequenceManager::GetSequenceByName(QString name) c
         CTrackViewSequence* pSequence = (*iter).get();
 
         if (pSequence->GetName() == name)
+        {
+            return pSequence;
+        }
+    }
+
+    return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////
+CTrackViewSequence* CTrackViewSequenceManager::GetLegacySequenceByName(QString name) const
+{
+    for (auto iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
+    {
+        CTrackViewSequence* pSequence = (*iter).get();
+
+        if (pSequence->GetSequenceType() == eSequenceType_Legacy && pSequence->GetName() == name)
+        {
+            return pSequence;
+        }
+    }
+
+    return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////
+CTrackViewSequence* CTrackViewSequenceManager::GetSequenceByEntityId(const AZ::EntityId& entityId) const
+{
+    for (auto iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
+    {
+        CTrackViewSequence* pSequence = (*iter).get();
+
+        if (pSequence->GetSequenceComponentEntityId() == entityId)
         {
             return pSequence;
         }
@@ -146,6 +168,8 @@ void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType seque
     }
     else if (sequenceType == eSequenceType_SequenceComponent)
     {
+        AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Sequence");
+
         // create AZ::Entity at the current center of the viewport, but don't select it
 
         // Store the current selection for selection restore after the sequence component is created
@@ -165,12 +189,14 @@ void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType seque
             }
 
             // add the SequenceComponent. The SequenceComponent's Init() method will call OnCreateSequenceObject() which will actually create
-            // the sequence and connect it other SequenceComponent
+            // the sequence and connect it
             // #TODO LY-21846: Use "SequenceService" to find component, rather than specific component-type.
             AzToolsFramework::EntityCompositionRequestBus::Broadcast(&AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, AzToolsFramework::EntityIdList{ newEntityId }, AZ::ComponentTypeList{ "{C02DC0E2-D0F3-488B-B9EE-98E28077EC56}" });
 
             // restore the Editor selection
             AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::Bus::Events::SetSelectedEntities, selectedEntities);
+
+            undoBatch.MarkEntityDirty(newEntityId);
         }
     }
 }
@@ -178,39 +204,58 @@ void CTrackViewSequenceManager::CreateSequence(QString name, ESequenceType seque
 ////////////////////////////////////////////////////////////////////////////
 IAnimSequence* CTrackViewSequenceManager::OnCreateSequenceObject(QString name, bool isLegacySequence)
 {
-
-    CTrackViewSequence* pExistingSequence = GetSequenceByName(name);
-    if (pExistingSequence)
-    {
-        return pExistingSequence->m_pAnimSequence;
-    }
-
     ESequenceType sequenceType = (isLegacySequence ? eSequenceType_Legacy : eSequenceType_SequenceComponent);
     IAnimSequence* pNewCryMovieSequence = GetIEditor()->GetMovieSystem()->CreateSequence(name.toLatin1().data(), /*bload =*/ false, /*id =*/ 0U, sequenceType);
-    CTrackViewSequence* pNewSequence = new CTrackViewSequence(pNewCryMovieSequence);
+    CTrackViewSequence* newTrackViewSequence = new CTrackViewSequence(pNewCryMovieSequence);
 
-    m_sequences.push_back(std::unique_ptr<CTrackViewSequence>(pNewSequence));
-
-    const bool bUndoWasSuspended = GetIEditor()->IsUndoSuspended();
-    if (bUndoWasSuspended)
-    {
-        GetIEditor()->ResumeUndo();
-    }
-
-    if (CUndo::IsRecording())
-    {
-        CUndo::Record(new CUndoSequenceAdd(pNewSequence));
-    }
-
-    if (bUndoWasSuspended)
-    {
-        GetIEditor()->SuspendUndo();
-    }
-
-    SortSequences();
-    OnSequenceAdded(pNewSequence);
+    AddTrackViewSequence(newTrackViewSequence);
 
     return pNewCryMovieSequence;
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewSequenceManager::OnSequenceLoaded(const AZ::EntityId& entityId)
+{
+    CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
+    if (pAnimationContext != nullptr)
+    {
+        pAnimationContext->OnSequenceLoaded(entityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewSequenceManager::OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence)
+{
+    IMovieSystem* movieSystem = GetIEditor()->GetMovieSystem();
+
+    // Notify the MovieSystem of the new sequence Id (updates the next available Id if needed)
+    movieSystem->OnSetSequenceId(sequence->GetId());
+
+    // check of sequence ID collision and resolve if needed
+    if (movieSystem->FindSequenceById(sequence->GetId()))  
+    {
+        // A collision found - resolve by resetting Id. TODO: resolve all references to previous Id
+        sequence->ResetId();
+    }
+
+    // Fix up the internal pointers in the sequence to match the deserialized structure
+    sequence->InitPostLoad();
+
+    // Add the sequence to the movie system
+    movieSystem->AddSequence(sequence.get());
+
+    // Create the TrackView Sequence
+    CTrackViewSequence* newTrackViewSequence = new CTrackViewSequence(sequence);
+
+    AddTrackViewSequence(newTrackViewSequence);
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewSequenceManager::AddTrackViewSequence(CTrackViewSequence* sequenceToAdd)
+{
+    m_sequences.push_back(std::unique_ptr<CTrackViewSequence>(sequenceToAdd));
+    SortSequences();
+    OnSequenceAdded(sequenceToAdd);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -230,6 +275,8 @@ void CTrackViewSequenceManager::DeleteSequence(CTrackViewSequence* pSequence)
             }
             else
             {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Delete TrackView Sequence");
+
                 // delete Sequence Component (and entity if there's no other components left on the entity except for the Transform Component)
                 AZ::Entity* entity = nullptr;
                 AZ::EntityId entityId = pSequence->m_pAnimSequence->GetOwnerId();
@@ -261,6 +308,8 @@ void CTrackViewSequenceManager::DeleteSequence(CTrackViewSequence* pSequence)
 
                             AzToolsFramework::EntityCompositionRequestBus::Broadcast(&AzToolsFramework::EntityCompositionRequests::RemoveComponents, AZ::Entity::ComponentArrayType{ sequenceComponent });
                         }
+
+                        undoBatch.MarkEntityDirty(entityId);
                     }
                 }
             }
@@ -313,10 +362,35 @@ void CTrackViewSequenceManager::RenameNode(CTrackViewAnimNode* pAnimNode, const 
     }
 }
 
-////////////////////////////////////////////////////////////////////////////
-void CTrackViewSequenceManager::OnDeleteSequenceObject(QString name)
+void CTrackViewSequenceManager::RemoveSequenceInternal(CTrackViewSequence* sequence)
 {
-    CTrackViewSequence* pSequence = GetSequenceByName(name);
+    std::unique_ptr<CTrackViewSequence> storedTrackViewSequence;
+    
+    for (auto iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
+    {
+        std::unique_ptr<CTrackViewSequence>& currentSequence = *iter;
+
+        if (currentSequence.get() == sequence)
+        {
+            // Hang onto this until we finish this function.
+            currentSequence.swap(storedTrackViewSequence);
+
+            // Remove from CryMovie and TrackView
+            m_sequences.erase(iter);
+            IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
+            pMovieSystem->RemoveSequence(sequence->m_pAnimSequence.get());
+
+            break;
+        }
+    }
+
+    OnSequenceRemoved(sequence);
+}
+
+////////////////////////////////////////////////////////////////////////////
+void CTrackViewSequenceManager::OnDeleteSequenceObject(const AZ::EntityId& entityId)
+{
+    CTrackViewSequence* pSequence = GetSequenceByEntityId(entityId);
     assert(pSequence);
 
     if (pSequence)
@@ -331,15 +405,28 @@ void CTrackViewSequenceManager::OnDeleteSequenceObject(QString name)
             GetIEditor()->ResumeUndo();
         }
 
+        // Component based sequence use AZ Undo, not Track View custom undo code
+        auto useTrackViewUndo = pSequence->GetSequenceType() == eSequenceType_Legacy;
+
         if (m_bUnloadingLevel || isDuringUndo)
         {
-            // While unloading or during AZ::Undo, there is no recording so
-            // only make the undo object destroy the sequence
-            std::unique_ptr<CUndoSequenceRemove> sequenceRemove(new CUndoSequenceRemove(pSequence));
+            if (useTrackViewUndo)
+            {
+                // While unloading or during AZ::Undo, there is no recording so
+                // only make the undo object destroy the sequence
+                std::unique_ptr<CUndoSequenceRemove> sequenceRemove(new CUndoSequenceRemove(pSequence));
+            }
+            else
+            {
+                RemoveSequenceInternal(pSequence);
+            }
         }
-        else if (CUndo::IsRecording())
+        else
         {
-            CUndo::Record(new CUndoSequenceRemove(pSequence));
+            // Remove the sequence from the managers.
+            // Allow AZ::Undo take care of Undo/Redo in the case of component entity sequences
+            // and generic CUndoBaseObject take care of Undo/Redo in the case of Legacy sequences.
+            RemoveSequenceInternal(pSequence);
         }
 
         if (bUndoWasSuspended)

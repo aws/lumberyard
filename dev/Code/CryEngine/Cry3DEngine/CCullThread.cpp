@@ -154,7 +154,7 @@ namespace NAsyncCull
                 const int8* pQuads          =   reinterpret_cast<const int8*>(Quads16);
                 const int8* pTris               =   reinterpret_cast<const int8*>(Tris16);
 
-                for (size_t a = 0, S = QuadCount; a < S; a += 4)
+                for (size_t b = 0, S = QuadCount; b < S; b += 4)
                 {
                     const float x0 = *pQuads++;
                     const float y0 = *pQuads++;
@@ -195,7 +195,7 @@ namespace NAsyncCull
                     reinterpret_cast<float*>(pOut)[0x17]    =   1.f;
                     pOut += 0x18 * sizeof(float);
                 }
-                for (size_t a = 0, S = TriCount; a < S; a++)
+                for (size_t c = 0, S = TriCount; c < S; c++)
                 {
                     const float x = *pTris++;
                     const float y = *pTris++;
@@ -219,9 +219,9 @@ namespace NAsyncCull
             pOut += InstanceSize;
 
             m_OCMBuffer.resize(pOut - &OCMBufferOut[0]);
-            size_t  BufferOffset    =   reinterpret_cast<size_t>(&m_OCMBuffer[0]);
-            BufferOffset    =   (BufferOffset + 15) & ~15;
-            m_pOCMBufferAligned     =   reinterpret_cast<uint8*>(BufferOffset);
+            size_t  bufferOffset    =   reinterpret_cast<size_t>(&m_OCMBuffer[0]);
+            bufferOffset    =   (bufferOffset + 15) & ~15;
+            m_pOCMBufferAligned     =   reinterpret_cast<uint8*>(bufferOffset);
             memcpy(m_pOCMBufferAligned, &OCMBufferOut[0], m_OCMBuffer.size());
         }
 

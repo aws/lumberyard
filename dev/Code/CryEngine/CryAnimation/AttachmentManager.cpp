@@ -410,6 +410,8 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
     CDefaultSkeleton& rDefaultSkeleton = *m_pSkelInstance->m_pDefaultSkeleton;
 
     bool bHasVertexAnimation = false;
+    bool bUseMatrixSkinning = false;
+
     CCharInstance* pICharacter = m_pSkelInstance;
     uint32 numAttachments = parrAttachments.size();
 
@@ -474,6 +476,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
                         pIAttachmentObject->SetReplacementMaterial(attach.m_pMaterial);
                     }
                     bHasVertexAnimation |= pIChildCharacter->HasVertexAnimation();
+                    bUseMatrixSkinning |= pIChildCharacter->UseMatrixSkinning();
                 }
             }
             if (IsCGF)
@@ -598,6 +601,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
                     {
                         pAttachment->SetFlags(attach.m_AttFlags);
                         bHasVertexAnimation |= (attach.m_AttFlags & FLAGS_ATTACH_SW_SKINNING) != 0;
+                        bUseMatrixSkinning |= (attach.m_AttFlags & FLAGS_ATTACH_MATRIX_SKINNING) != 0;
                         pAttachment->HideAttachment(attach.m_AttFlags & FLAGS_ATTACH_HIDE_ATTACHMENT);
 
                         if (pIAttachmentObject)
@@ -765,6 +769,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
         }
     }
     pICharacter->m_bHasVertexAnimation = bHasVertexAnimation;
+    pICharacter->m_bUseMatrixSkinning = bUseMatrixSkinning;
 
     uint32 count = GetAttachmentCount();
     ProjectAllAttachment();

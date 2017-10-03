@@ -41,9 +41,13 @@ namespace AZ
                 AZ_RTTI(SkinGroup, "{A3217B13-79EA-4487-9A13-5D382EA9077A}", DataTypes::ISkinGroup);
                 AZ_CLASS_ALLOCATOR_DECL
 
+                SkinGroup();
+
                 const AZStd::string& GetName() const override;
                 void SetName(const AZStd::string& name);
                 void SetName(AZStd::string&& name);
+                const Uuid& GetId() const override;
+                void OverrideId(const Uuid& id);
 
                 Containers::RuleContainer& GetRuleContainer();
                 const Containers::RuleContainer& GetRuleContainerConst() const;
@@ -55,9 +59,10 @@ namespace AZ
                 static bool VersionConverter(SerializeContext& context, SerializeContext::DataElementNode& classElement);
 
             protected:
-                SceneNodeSelectionList      m_nodeSelectionList;
-                Containers::RuleContainer   m_rules;
-                AZStd::string               m_name;
+                SceneNodeSelectionList m_nodeSelectionList;
+                Containers::RuleContainer m_rules;
+                AZStd::string m_name;
+                Uuid m_id;
             };
 
         } // SceneData

@@ -87,46 +87,6 @@ namespace Overlap {
         return (sqrad > (distc | distc));
     }
 
-    /**
-    * \brief This method checks if a point is inside a sphere or outside it
-    * \param centerPosition Position of the center of the sphere
-    * \param radiusSquared square of cylinder radius
-    * \param testPoint Point to be tested
-    * \return boolean value indicating if the point is inside or not
-    */
-    AZ_INLINE bool Point_Sphere(const AZ::Vector3& centerPosition,
-        float radiusSquared, const AZ::Vector3& testPoint)
-    {
-        return testPoint.GetDistanceSq(centerPosition) < radiusSquared;
-    }
-
-    /**
-    * \brief This method checks if a point is inside a cylinder or outside it
-    * \param baseCenterPoint Vector to the base of the cylinder
-    * \param axisVector Non normalized vector from the base of the cylinder to the other end
-    * \param axisLengthSquared square of length of "axisVector"
-    * \param radiusSquared square of cylinder radius
-    * \param testPoint Point to be tested
-    * \return boolean value indicating if the point is inside or not
-    */
-    AZ_INLINE bool Point_Cylinder(const AZ::Vector3& baseCenterPoint, const AZ::Vector3& axisVector, 
-                                  float axisLengthSquared, float radiusSquared, const AZ::Vector3& testPoint)
-    {
-        AZ::Vector3 baseCenterPointToTestPoint = testPoint - baseCenterPoint;
-        float dotProduct = baseCenterPointToTestPoint.Dot(axisVector);
-
-        // If the dot is < 0, the point is below the base cap of the cylinder, if it's > lengthSquared then it's beyond the other cap.
-        if (dotProduct < 0.0f || dotProduct > axisLengthSquared)
-        {
-            return false;
-        }
-        else
-        {
-            float distanceSquared = (baseCenterPointToTestPoint.GetLengthSq()) - (dotProduct * dotProduct / axisLengthSquared);
-            return distanceSquared <= radiusSquared;
-        }
-    }
-
     /// Two line segments, in 2D (ignore z)
     inline bool Lineseg_Lineseg2D(const Lineseg& lineA, const Lineseg& lineB)
     {

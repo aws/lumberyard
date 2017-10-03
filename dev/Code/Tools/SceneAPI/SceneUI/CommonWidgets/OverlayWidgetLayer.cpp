@@ -61,11 +61,12 @@ namespace AZ
                     }
 
                     m_breakoutDialog = new QDialog(parent ? parent : QApplication::activeWindow());
+                    connect(m_breakoutDialog, &QDialog::finished, this, &OverlayWidgetLayer::PopLayer);
                     m_ui->setupUi(m_breakoutDialog);
                     m_ui->m_centerLayout->addWidget(breakoutWidget);
                     m_breakoutDialog->installEventFilter(this);
                     breakoutWidget->installEventFilter(this);
-                    
+
                     AddButtons(*m_ui.data(), buttons, true);
 
                     m_breakoutDialog->setWindowTitle(title);

@@ -293,14 +293,14 @@ bool MacroTextureExporter::Export(const char* ctcFilename)
         STerrainTextureFileHeader subHeader;
         subHeader.LayerCount = 1;
         subHeader.Flags = 0;
-        subHeader.ColorMultiplier = 1.0f;
+        subHeader.ColorMultiplier_deprecated = 1.0f;
         ctcFile.Write(&subHeader, sizeof(subHeader));
     }
 
     // Layer Header
     {
         STerrainTextureLayerFileHeader layerHeader;
-        layerHeader.eTexFormat = eTF_B8G8R8A8;
+        layerHeader.eTexFormat = textureFormat;
         layerHeader.SectorSizeInPixels = TileResolution;
         layerHeader.SectorSizeInBytes = tileSizeInBytes;
         ctcFile.Write(&layerHeader, sizeof(STerrainTextureLayerFileHeader));
@@ -342,6 +342,7 @@ void MacroTextureExporter::Context::ExportLeafTile(CImageEx& tile, float left, f
 
     m_Settings.Texture->GetSubImageStretched(left, bottom, left + size, bottom + size, tile, true);
 
+#if TERRAIN_USE_CIE_COLORSPACE
     // convert RGB colour into format that has less compression artifacts for brightness variations
     {
         uint32* pMem = &tile.ValueAt(0, 0);
@@ -353,18 +354,18 @@ void MacroTextureExporter::Context::ExportLeafTile(CImageEx& tile, float left, f
                 uint32 r, g, b;
 
                 {
-                    float fR = ((*pMem >> 16) & 0xff) * (1.0f / 255.0f);
-                    float fG = ((*pMem >> 8) & 0xff) * (1.0f / 255.0f);
-                    float fB = ((*pMem >> 0) & 0xff) * (1.0f / 255.0f);
+                    float fR = GetRValue(*pMem) * (1.0f / 255.0f);
+                    float fG = GetGValue(*pMem) * (1.0f / 255.0f);
+                    float fB = GetBValue(*pMem) * (1.0f / 255.0f);
 
                     ColorF cCol = ColorF(fR, fG, fB);
 
                     // Convert to linear space
                     cCol.srgb2rgb();
 
-#if TERRAIN_USE_CIE_COLORSPACE
+
                     cCol = cCol.RGB2mCIE();
-#endif
+
 
                     // Convert to gamma 2.2 space
                     cCol.rgb2srgb();
@@ -374,11 +375,12 @@ void MacroTextureExporter::Context::ExportLeafTile(CImageEx& tile, float left, f
                     b = (uint32)(cCol.b * 255.0f + 0.5f);
                 }
 
-                *pMem = (r << 16) | (g << 8) | (b);
+                *pMem = RGB(r, g, b);
                 pMem++;
             }
         }
     }
+#endif
 }
 
 bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const CCryMemFile& header)

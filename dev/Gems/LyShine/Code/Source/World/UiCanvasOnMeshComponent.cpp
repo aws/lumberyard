@@ -300,15 +300,15 @@ UiCanvasOnMeshComponent::UiCanvasOnMeshComponent()
 {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasOnMeshComponent::ProcessCollisionInputEvent(const SInputEvent& event, int triangleIndex, Vec3 hitPoint)
+bool UiCanvasOnMeshComponent::ProcessCollisionInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint)
 {
-    return ProcessCollisionInputEventInternal(event, triangleIndex, hitPoint, nullptr, 0);
+    return ProcessCollisionInputEventInternal(inputSnapshot, triangleIndex, hitPoint, nullptr, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasOnMeshComponent::ProcessRayHitInputEvent(const SInputEvent& event, const ray_hit& rayHit)
+bool UiCanvasOnMeshComponent::ProcessRayHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const ray_hit& rayHit)
 {
-    return ProcessCollisionInputEventInternal(event, rayHit.iPrim, rayHit.pt, rayHit.pCollider, rayHit.ipart);
+    return ProcessCollisionInputEventInternal(inputSnapshot, rayHit.iPrim, rayHit.pt, rayHit.pCollider, rayHit.ipart);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -345,6 +345,7 @@ void UiCanvasOnMeshComponent::Reflect(AZ::ReflectContext* context)
                     ->Attribute(AZ::Edit::Attributes::Category, "UI")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvasOnMesh.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvasOnMesh.png")
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-ui-canvas-on-mesh.html")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
 
             editInfo->DataElement(0, &UiCanvasOnMeshComponent::m_renderTargetOverride,
@@ -374,7 +375,7 @@ void UiCanvasOnMeshComponent::Deactivate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const SInputEvent& event, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex)
+bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex)
 {
     AZ::EntityId canvasEntityId = GetCanvas();
 
@@ -404,7 +405,7 @@ bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const SInputEve
                         AZ::Vector2 canvasPoint = AZ::Vector2(texCoord.x * canvasSize.GetX(), texCoord.y * canvasSize.GetY());
 
                         bool handledByCanvas = false;
-                        EBUS_EVENT_ID_RESULT(handledByCanvas, canvasEntityId, UiCanvasBus, HandleInputPositionalEvent, event, canvasPoint);
+                        EBUS_EVENT_ID_RESULT(handledByCanvas, canvasEntityId, UiCanvasBus, HandleInputPositionalEvent, inputSnapshot, canvasPoint);
                         if (handledByCanvas)
                         {
                             return true;

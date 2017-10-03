@@ -20,7 +20,7 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
-        virtual AZStd::vector<AZ::Component*> GetPendingComponents() = 0;
+        virtual void GetPendingComponents(AZStd::vector<AZ::Component*>& components) = 0;
         virtual void AddPendingComponent(AZ::Component* componentToAdd) = 0;
         virtual void RemovePendingComponent(AZ::Component* componentToRemove) = 0;
     };

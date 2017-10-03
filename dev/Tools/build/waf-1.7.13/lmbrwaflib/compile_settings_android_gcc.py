@@ -66,7 +66,7 @@ def load_android_gcc_common_settings(conf):
 
     # required 3rd party libs that need to be included in the apk
     env['EXT_LIBS'] += [
-        os.path.join(stl_root, 'libs', env['ANDROID_ARCH'], 'libgnustl_shared.so')
+        conf.add_to_android_cache(os.path.join(stl_root, 'libs', env['ANDROID_ARCH'], 'libgnustl_shared.so'))
     ]
 
     # disable support for the following build options

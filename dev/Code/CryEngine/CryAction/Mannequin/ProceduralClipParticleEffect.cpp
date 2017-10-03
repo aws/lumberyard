@@ -23,7 +23,7 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/Component/TransformBus.h>
+#include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <LmbrCentral/Rendering/ParticleComponentBus.h>
 
@@ -200,11 +200,12 @@ public:
             if (AZ::Entity* childEntity = new AZ::Entity(name.c_str()))
             {
                 m_particleEntityId = childEntity->GetId();
-                EBUS_EVENT(AzFramework::GameEntityContextRequestBus, MarkEntityForNoActivation, m_particleEntityId);
+                
+                childEntity->SetRuntimeActiveByDefault(false);
+
                 EBUS_EVENT(AzFramework::GameEntityContextRequestBus, AddGameEntity, childEntity);
 
-                // Is there a better way to do this?
-                childEntity->CreateComponent("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}");     // HACK!  TransformComponent Uuid
+                childEntity->CreateComponent<AzFramework::TransformComponent>();
                 childEntity->CreateComponent("{65BC817A-ABF6-440F-AD4F-581C40F92795}");     // HACK!  ParticleComponent Uuid
             }
 

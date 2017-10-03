@@ -1,0 +1,110 @@
+﻿<div class="container rest-container" *ngIf="model !== undefined && model.swagger">
+    <div class="row mb-3">
+        <label class="col-md-2"> Host </label>
+        <span class="col-md-10"> {{model.swagger.host}} <a><i class="fa fa-external-link" (click)="openAWSConsole(model.swagger.host)"></i></a> </span>
+    </div>
+        <div class="row mb-3">
+        <label class="col-md-2"> Title </label>
+        <span class="col-md-10"> {{model.swagger.info.title}} </span>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2"> Version </label>
+        <span class="col-md-10"> {{model.swagger.info.version}} </span>
+    </div>
+    <div class="row mb-3">
+        <label class="col-md-2"> Schemes </label>
+        <span class="col-md-10"> {{model.swagger.schemes.join(',')}} </span>
+    </div>  
+    <div class="row mb-3">
+        <label class="col-md-2"> Path </label>
+        <div class="d-inline-block"  ngbDropdown>
+            <button type="button" class="btn l-dropdown" id="path-dropdown" ngbDropdownToggle>
+                <span> {{model.path.selected ? model.path.selected : 'Select'}} </span>
+                <i class="fa fa-caret-down" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-center" aria-labelledby="path-dropdown">
+                <button *ngFor="let path of model.harmonized.paths" (click)="initializePathContext(path)" type="button" class="dropdown-item"> {{path.original}} </button>
+            </div>            
+        </div>        
+    </div>
+    <div class="row mb-3" *ngIf="model.path.verbs">
+        <label class="col-md-2"> Verb </label>
+        <div class="row no-gutters">
+            <div class="row col-md-12">
+                <div class="d-inline-block" *ngIf="model.path.verbs" [ngClass]="{'form-control-danger': !model.path.verbValueValid}" ngbDropdown>
+                    <button type="button" class="btn l-dropdown" id="verb-dropdown" ngbDropdownToggle>
+                        <span> {{model.path.verb ? model.path.verb : 'Select'}} </span>
+                        <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="verb-dropdown">
+                        <button *ngFor="let verb of model.path.verbs | objKeys" (click)="initializeVerbContext(verb)" type="button" class="dropdown-item"> {{verb}} </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row col-md-12">
+                <p class="ml-3 mt-2" *ngIf="model.path.verb && model.path.verbs && model.path.verbs[model.path.verb]"><i>{{model.path.verbs[model.path.verb].description}}</i></p>
+            </div>
+        </div>
+    </div>
+    <div class="show-swagger" *ngIf="model.path.verb">
+        <button type="button" (click)="model.showRawVerb= !model.showRawVerb" class="btn btn-outline-primary">{{ !model.showRawVerb ? "Show Path Swagger" : "Hide Path Swagger"}}</button>
+    </div>
+    <div *ngIf="model.showRawVerb" class="response-area">
+        <h2>Path Swagger</h2>
+        <pre>{{ model.path.verbs[model.path.verb] | json}}</pre>
+    </div> 
+    <div class="row mb-3" *ngIf="model.path.parameters && model.path.parameters.length > 0">
+        <label class="col-lg-2"> Parameters </label>
+        <div class="col-lg-10">            
+            <label *ngIf="hasPathParams"> Path </label>
+            <div *ngFor="let parameter of model.path.parameters" [ngClass]="{'has-danger': parameter.valid === false}">                                
+                <div *ngIf="parameter.in == 'path'">                    
+                    <div class="row mb-3 no-gutters rest-prop">
+                        <span class="col-lg-2"> {{parameter.name}}</span>
+                        <input class="form-control" type="{{parameter.type}}" [(ngModel)]="parameter.value" [ngClass]="{'input-dotted' : parameter.required == false, 'form-control-danger': parameter.valid === false}" placeholder="{{parameter.type}}" />
+                        <span class="ml-3"><i *ngIf="parameter.description" class="fa fa-question-circle-o" placement="bottom" ngbTooltip="{{parameter.description}}"></i></span>
+                        <div *ngIf="parameter.message" class="form-control-feedback">{{parameter.message}}</div>
+                    </div>
+                </div>
+            </div>
+            <label *ngIf="hasQueryParams"> Query </label>
+            <div *ngFor="let parameter of model.path.parameters" [ngClass]="{'has-danger': parameter.valid === false}">                                
+                <div *ngIf="parameter.in == 'query'">                    
+                    <div class="row mb-3 no-gutters rest-prop">
+                        <span class="col-lg-2"> {{parameter.name}}</span>
+                        <input class="form-control" type="{{parameter.type}}" [(ngModel)]="parameter.value" [ngClass]="{'input-dotted' : parameter.required == false, 'form-control-danger': parameter.valid === false}" placeholder="{{parameter.type}}" />
+                        <span class="ml-3"><i *ngIf="parameter.description" class="fa fa-question-circle-o" placement="bottom" ngbTooltip="{{parameter.description}}"></i></span>
+                        <div *ngIf="parameter.message" class="form-control-feedback">{{parameter.message}}</div>
+                    </div>
+                </div>
+            </div>
+            <div *ngFor="let parameter of model.path.parameters">                
+                <div *ngIf="parameter.in == 'body'">                    
+                    <label> Body </label>
+                    <body-tree-view [data]="getBodyParameters(parameter, model.swagger.definitions)"></body-tree-view>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div *ngIf="model.path.selected && model.path.verb && model.path.verb.toUpperCase() != 'GET'" class="row mb-3 rest-multiplier">
+        <span> Run {{model.path.selected}} </span>
+        <input class="col-md-2 form-control" [(ngModel)]="model.multiplier" type="number" /> 
+        <span> times </span>
+    </div>
+    <div class="show-swagger">
+        <button type="button" (click)="model.showSwagger= !model.showSwagger" class="btn btn-outline-primary">{{ !model.showSwagger ? "Show Swagger" : "Hide Swagger"}}</button>
+    </div>
+    <div class="show-swagger">
+        <button type="button" (click)="send()" class="btn l-primary">Send</button>
+    </div>
+    <div class="row mb-3" *ngIf="model.response.length > 0">
+        <div class="col-12 response-area" *ngFor="let result of model.response; let i = index" [attr.data-index]="i">
+            <h2>Run {{i + 1}} </h2>            
+            <pre>{{result | json }}</pre> 
+        </div>
+    </div>      
+    <div *ngIf="model.showSwagger" class="row mb-3 response-area">        
+        <h2>Swagger</h2>
+        <pre>{{model.swagger | json }}</pre>
+    </div>       
+</div>

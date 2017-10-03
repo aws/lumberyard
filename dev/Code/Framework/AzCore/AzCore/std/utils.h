@@ -20,6 +20,7 @@
 #include <AzCore/std/typetraits/remove_const.h>
 #include <AzCore/std/typetraits/is_enum.h>
 #include <AzCore/std/typetraits/underlying_type.h>
+#include <AzCore/std/typetraits/add_reference.h>
 
 #ifdef AZ_HAS_RVALUE_REFS
 #   include <AzCore/std/typetraits/decay.h>
@@ -557,6 +558,39 @@ namespace AZStd
     struct RemoveFunctionConst<R(C::*)(Args...) const>
     {
         using type = R(C::*)(Args...);
+    };
+
+    template <class T>
+    typename AZStd::add_rvalue_reference<T>::type declval();
+
+    template <template <class> class, typename...>
+    struct sequence_and;
+
+    template <template <class> class trait, typename T1, typename... Ts>
+    struct sequence_and<trait, T1, Ts...>
+    {
+        static const bool value = trait<T1>::value && sequence_and<trait, Ts...>::value;
+    };
+
+    template <template <class> class trait>
+    struct sequence_and<trait>
+    {
+        static const bool value = true;
+    };
+
+    template <template <class> class, typename...>
+    struct sequence_or;
+
+    template <template <class> class trait, typename T1, typename... Ts>
+    struct sequence_or<trait, T1, Ts...>
+    {
+        static const bool value = trait<T1>::value || sequence_or<trait, Ts...>::value;
+    };
+
+    template <template <class> class trait>
+    struct sequence_or<trait>
+    {
+        static const bool value = false;
     };
 }
 

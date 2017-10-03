@@ -20,6 +20,8 @@
 
 #include <ui_TerrainModifyPanel.h>
 
+#include <QPainter>
+
 static const char* BRUSH_TYPE_FLATTEN = "Flatten";
 static const char* BRUSH_TYPE_SMOOTH = "Smooth";
 static const char* BRUSH_TYPE_RISE_LOWER = "Rise/Lower";
@@ -336,27 +338,16 @@ QSize CBrushPreviewPictureBox::sizeHint() const
 
 void CBrushPreviewPictureBox::render(const QSize& bounds)
 {
-#ifdef KDAB_MAC_PORT
-    using namespace Gdiplus;
     int diameter = min(bounds.height(), bounds.width());
-    Rect clipRect = Rect(0, 0, diameter, diameter);
-    Bitmap buffer(diameter, diameter);
-    std::unique_ptr<Graphics> bufferGraphics(Graphics::FromImage(&buffer));
-    if (!bufferGraphics)
-    {
-        // not likely to get here but the API says Graphics::FromImage could return null
-        return;
-    }
+    QPixmap image(diameter, diameter);
+    QRect clipRect(0, 0, diameter, diameter);
+    QPainter painter(&image);
 
-    CheckerboardFillRect(bufferGraphics.get(), clipRect, diameter / 6, Color::DarkSlateGray, Color::LightSlateGray);
+    CheckerboardFillRect(&painter, clipRect, diameter / 6, QColor("darkslategray"), QColor("lightslategray"));
 
     // when it's pick height mode, the radius is 0 and we don't need to provide the brush preview
     if (m_brush.radius > 0.f)
     {
-        GraphicsPath path;
-        path.AddEllipse(0, 0, diameter, diameter);
-        PathGradientBrush pthGrBrush(&path);
-
         // Linear rolloff makes it too hard to see brush under 30% hardness so using a sin ease.
         BYTE alphaValue = static_cast<BYTE>(255.f * sin(m_brush.hardness * (gf_PI / 2.f)));
         BYTE brightnessValue = 0;
@@ -364,30 +355,29 @@ void CBrushPreviewPictureBox::render(const QSize& bounds)
         {
             brightnessValue = static_cast<BYTE>((m_brush.height - m_brush.heightRange.x) / (m_brush.heightRange.y - m_brush.heightRange.x) * 255.0f);
         }
-        Color presetColors[] = // colors are arranged from edge to center of a circle
+        QColor presetColors[] = // colors are arranged from edge to center of a circle
         {
-            {0, 255, 255, 255},
-            {alphaValue, brightnessValue, brightnessValue, brightnessValue},
-            {alphaValue, brightnessValue, brightnessValue, brightnessValue}
+            {255, 255, 255, 0},
+            {brightnessValue, brightnessValue, brightnessValue, alphaValue},
+            {brightnessValue, brightnessValue, brightnessValue, alphaValue}
         };
-        REAL interpPositions[] = {0.0f, 1.0f - m_brush.radiusInside / m_brush.radius, 1.0f};
-        pthGrBrush.SetInterpolationColors(presetColors, interpPositions, 3);
-        bufferGraphics->FillEllipse(&pthGrBrush, 0, 0, diameter, diameter);
+        const int numPresetColors = AZ_ARRAY_SIZE(presetColors);
+
+        qreal interpPositions[] = {0.0f, 1.0f - m_brush.radiusInside / m_brush.radius, 1.0f};
+        const int lastInterpPositionIndex = AZ_ARRAY_SIZE(interpPositions) - 1;
+
+        QRadialGradient gradient(image.rect().center(), diameter / 2);
+        for (int i = 0; i < numPresetColors; ++i)
+        {
+            gradient.setColorAt(interpPositions[lastInterpPositionIndex - i], presetColors[i]);
+        }
+
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(gradient);
+        painter.drawEllipse(image.rect());
     }
 
-    QImage image(diameter, diameter, QImage::Format_ARGB32);
-
-    BitmapData data;
-    buffer.LockBits(&clipRect, ImageLockModeRead, PixelFormat32bppARGB, &data);
-
-    for (int y = 0; y < bounds.height(); y++)
-    {
-        memcpy(image.scanLine(y), static_cast<uint8_t*>(data.Scan0) + y * data.Stride, data.Stride);
-    }
-    buffer.UnlockBits(&data);
-
-    setPixmap(QPixmap::fromImage(image));
-#endif // KDAB_MAC_PORT
+    setPixmap(image);
 }
 
 void CBrushPreviewPictureBox::SetBrush(const CTerrainBrush& brush)

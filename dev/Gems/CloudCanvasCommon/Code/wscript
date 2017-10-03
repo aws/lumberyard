@@ -28,6 +28,7 @@ def build(bld):
         file_list = file_list,
         includes = [bld.Path('Code/SDKs/AWSNativeSDK/include')],
        
+       
         uselib = ['AWS_CPP_SDK_CORE'],
         shared_settings = ['awsgem.json']
     )

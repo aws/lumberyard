@@ -1017,7 +1017,7 @@ class SDLJoystickHandler_API12 extends SDLJoystickHandler {
     public void pollInputDevices() {
         int[] deviceIds = InputDevice.getDeviceIds();
         // It helps processing the device ids in reverse order
-        // For example, in the case of the XBox 360 wireless dongle,
+        // For example, in the case of the XBox 360 wireless dongle, // ACCEPTED_USE
         // so the first controller seen by SDL matches what the receiver
         // considers to be the first controller
         

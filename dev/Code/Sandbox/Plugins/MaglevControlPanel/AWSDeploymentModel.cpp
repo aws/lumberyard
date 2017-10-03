@@ -139,7 +139,32 @@ void AWSDeploymentModel::ProcessOutputDeploymentList(const QVariant& value)
     auto map = value.value<QVariantMap>();
     QVariantList list = map["Deployments"].toList();
     Sort(list, AWSDeploymentColumn::Name);
+    for (int i = 0; i < list.length(); i++)
+    {
+        if (list[i].toMap()["Default"] == true) {
+            QString resourceArn = list[i].toMap()["StackId"].toString();
+            QStringList splitList = resourceArn.split(":");
+            if (splitList.length() < 4)
+            {
+                m_region = "";
+                QString errorStr{ "Failed to get region from ARN: " };
+                errorStr += resourceArn;
+                QMessageBox msgBox(QMessageBox::Critical,
+                    tr("Cloud Canvas Resource Manager"),
+                    errorStr,
+                    QMessageBox::Ok,
+                    Q_NULLPTR,
+                    Qt::Popup);
+                msgBox.exec();
 
+            }
+            else
+            {
+                m_region = splitList[3];
+            }
+            break;
+        }
+    }    
     // UpdateItems does the begin/end stuff that is necessary, but the view currently depends on the modelReset signal to refresh itself.
     beginResetModel();
     UpdateItems(list);
@@ -162,4 +187,9 @@ QString AWSDeploymentModel::GetActiveDeploymentName() const
 bool AWSDeploymentModel::IsActiveDeploymentSet() const
 {
     return !GetActiveDeploymentName().isEmpty();
+}
+
+QString AWSDeploymentModel::GetActiveDeploymentRegion() const
+{
+    return m_region;
 }

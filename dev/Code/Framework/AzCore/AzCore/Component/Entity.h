@@ -273,7 +273,7 @@ namespace AZ
          * @param componentToAdd The component to add to the entity.
          * @return True if the components were swapped. False if the components could not be swapped.
          */
-        bool SwapComponents(Component* componentToRemove, Component* componentToAdd);
+         bool SwapComponents(Component* componentToRemove, Component* componentToAdd);
          /// @endcond
 
         /**
@@ -322,8 +322,8 @@ namespace AZ
         {
             return azrtti_cast<ComponentType*>(FindComponent(AzTypeInfo<ComponentType>::Uuid()));
         }
-
-/**
+ 
+        /**
         * Return a vector of all the components of the specified type in an entity.
          * @return a vector of all the components of the specified type.
          */
@@ -339,13 +339,12 @@ namespace AZ
             return components;
         }
 
-
         /**
          * Indicates to the entity that dependencies among its components need
          * to be evaluated.
          * Dependencies will be evaluated the next time the entity is activated.
          */
-        void            InvalidateDependencies()            { m_isDependencyReady = false; }
+        void            InvalidateDependencies();
 
         /**
          * Calls DependencySort() to sort an entity's components based on the dependencies
@@ -356,6 +355,18 @@ namespace AZ
          * to activate its components.
          */
         DependencySortResult    EvaluateDependencies();
+
+        /**
+         * Mark the entity to be activated by default. This is observed automatically by EntityContext,
+         * and should be observed by any other custom systems that create and manage entities.
+         * @param activeByDefault whether the entity should be active by default after creation.
+         */
+        void            SetRuntimeActiveByDefault(bool activeByDefault);
+
+        /**
+         * @return true if the entity is marked to activate by default upon creation.
+         */
+        bool            IsRuntimeActiveByDefault() const;
 
         /**
          * Reflects the entity into a variety of contexts (script, serialize, edit,
@@ -369,26 +380,17 @@ namespace AZ
          * @return An entity ID.
          */
         static EntityId MakeId();
-        
-        /**
-         * Sets an ID for the local machine.
-         * By default, Lumberyard generates a unique ID. You call this
-         * function to override the default value. If you want to use
-         * the ID on the Internet, you must call this function.
-         * @param machineId An ID for the local machine.
-         */
-        static void     SetLocalMachineId(AZ::u32 machineId);
 
         /**
-         * Gets the ID of the local machine.
-         * @return The ID of the local machine.
+         * Gets the Process Signature of the local machine.
+         * @return The Process Signature of the local machine.
          */
-        static AZ::u32  GetLocalMachineId();
+        static AZ::u32 GetProcessSignature();
 
         /// @cond EXCLUDE_DOCS 
         /**
          * @deprecated Use the TransformBus to communicate with the TransformInterface.
-        */
+         */
         inline TransformInterface* GetTransform() const { return m_transform; }
         /// @endcond
 
@@ -426,6 +428,10 @@ namespace AZ
          */
         static DependencySortResult DependencySort(ComponentArrayType& components);
 
+        // Helpers for child classes
+        static void ActivateComponent(Component& component) { component.Activate(); }
+        static void DeactivateComponent(Component& component) { component.Deactivate(); }
+
         /**
          * The ID that the system uses to identify and address the entity.
          * The serializer determines whether this is an entity ID or an entity
@@ -440,32 +446,34 @@ namespace AZ
          */
         ComponentArrayType m_components;
 
-        /**
-         * The state of the entity.
-         */
-        State m_state;
         
         /**
          * A cached pointer to the transform interface. 
          * We recommend using AZ::TransformBus and caching locally instead of accessing
          * the transform interface directly through this pointer.
          */
-        TransformInterface* m_transform; 
-        
-        /**
-         * Indicates whether dependencies between components have been evaluated.
-         */
-        bool m_isDependencyReady;
+        TransformInterface* m_transform;
         
         /**
          * A user-friendly name for the entity. This makes error messages easier to read.
          */
-        AZStd::string m_name; 
+        AZStd::string m_name;
 
         /**
-         * Local machine ID. This is used for ID generation.
+         * The state of the entity.
          */
-        static AZ::u32 s_machineId;    
+        State m_state;
+        
+        /**
+         * Foundational entity properties/flags.
+         * To keep AZ::Entity lightweight, one should resist the urge the add flags here unless they're extremely
+         * common to AZ::Entity use cases, and inherently fundamental.
+         * Furthermore, if more than 4 flags are needed, please consider using a more space-efficient container,
+         * such as AZStd::bit_set<>. With just a couple flags, AZStd::bit_set's word-size of 32-bits will actually 
+         * waste space.
+         */
+        bool m_isDependencyReady;           ///< Indicates the component dependencies have been evaluated and sorting was completed successfully.
+        bool m_isRuntimeActiveByDefault;    ///< Indicates the entity should be activated on initial creation.
     };
 
     template<class ComponentType, typename... Args>

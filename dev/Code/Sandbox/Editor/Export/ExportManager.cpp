@@ -1293,7 +1293,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                         keyStartTime = animationKey.m_startTime;
                         keyEndTime = animationKey.m_endTime;
                         keyTime = animationKey.time;
-                        keyContentName = CleanXMLText(animationKey.m_animation);
+                        keyContentName = CleanXMLText(animationKey.m_animation.c_str());
                         keyDuration = animationKey.GetActualDuration();
                     }
                     else if (trackType == eAnimParamType_Sound)
@@ -1306,7 +1306,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                         ISoundKey soundKey;
                         keyHandle.GetKey(&soundKey);
                         keyTime = soundKey.time;
-                        keyContentName = CleanXMLText(soundKey.sStartTrigger);
+                        keyContentName = CleanXMLText(soundKey.sStartTrigger.c_str());
                         keyDuration = soundKey.fDuration;
                     }
 
@@ -1421,9 +1421,9 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            if (*sequenceKey.szSelection != 0)
+            if (!sequenceKey.szSelection.empty())
             {
-                CTrackViewSequence* pSubSequence = GetIEditor()->GetSequenceManager()->GetSequenceByName(sequenceKey.szSelection);
+                CTrackViewSequence* pSubSequence = GetIEditor()->GetSequenceManager()->GetSequenceByName(sequenceKey.szSelection.c_str());
 
                 if (pSubSequence && !pSubSequence->IsDisabled())
                 {

@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/EditorRigidPhysicsComponentTest.cpp",
+            "Tests/EditorStaticPhysicsComponentTest.cpp",
+            "Tests/LmbrCentralReflectionTest.h",
+            "Tests/LmbrCentralReflectionTest.cpp"
+        ]
+    }
+}

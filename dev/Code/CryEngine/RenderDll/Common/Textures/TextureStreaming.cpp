@@ -81,6 +81,11 @@ SStreamFormatCode CTexture::s_formatCodes[256];
 uint32 CTexture::s_nFormatCodes = 1;
 CTexture::TStreamFormatCodeKeyMap CTexture::s_formatCodeMap;
 
+const int CTexture::LOW_SPEC_PC = 5;
+const int CTexture::MEDIUM_SPEC_PC = 6;
+const int CTexture::HIGH_SPEC_PC = 7;
+const int CTexture::VERYHIGH_SPEC_PC = 8;
+
 #ifdef TEXSTRM_ASYNC_TEXCOPY
 void STexStreamInState::CopyMips()
 {
@@ -899,7 +904,7 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
     {
         m_nFlags |= FT_SPLITTED;
     }
-    if (pIM->mfGet_Flags() & FIM_X360_NOT_PRETILED)
+    if (pIM->mfGet_Flags() & FIM_X360_NOT_PRETILED) // ACCEPTED_USE
     {
         m_nFlags |= FT_TEX_WAS_NOT_PRE_TILED;
     }
@@ -1651,19 +1656,19 @@ void CTexture::InitStreaming()
                 // Note: On some MGPU systems the memory reported is the overall amount and not the memory available per GPU
                 if (gRenDev->m_MaxTextureMemory >= (size_t)2800 * 1024 * 1024)
                 {
-                    pICVarTexRes->Set(4);
+                    pICVarTexRes->Set(VERYHIGH_SPEC_PC);
                 }
                 else if (gRenDev->m_MaxTextureMemory >= (size_t)1900 * 1024 * 1024)
                 {
-                    pICVarTexRes->Set(3);
+                    pICVarTexRes->Set(HIGH_SPEC_PC);
                 }
                 else if (gRenDev->m_MaxTextureMemory >= (size_t)1450 * 1024 * 1024)
                 {
-                    pICVarTexRes->Set(2);
+                    pICVarTexRes->Set(MEDIUM_SPEC_PC);
                 }
                 else
                 {
-                    pICVarTexRes->Set(1);
+                    pICVarTexRes->Set(LOW_SPEC_PC);
                 }
             }
             else

@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "ScriptVarNode.h"
 #include "AnimTrack.h"
 
@@ -20,10 +21,17 @@
 
 //////////////////////////////////////////////////////////////////////////
 CAnimScriptVarNode::CAnimScriptVarNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_ScriptVar)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
     m_value = -1e-20f;
+}
+
+//////////////////////////////////////////////////////////////////////////
+CAnimScriptVarNode::CAnimScriptVarNode()
+    : CAnimScriptVarNode(0)
+{
+
 }
 
 void CAnimScriptVarNode::OnReset()
@@ -129,4 +137,10 @@ void CAnimScriptVarNode::SetScriptValue()
             pTable->SetValue(sName, m_value);
         }
     }
+}
+
+void CAnimScriptVarNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimScriptVarNode, CAnimNode>()
+        ->Version(1);
 }

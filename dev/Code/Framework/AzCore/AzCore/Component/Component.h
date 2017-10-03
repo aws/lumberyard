@@ -102,6 +102,25 @@ namespace AZ
          */
         void SetId(const ComponentId& id)   { m_id = id; }
 
+        /**
+         * Set the component's configuration.
+         * A component cannot be configured while it is activated.
+         * A component must implement the ReadInConfig() function for this to have an effect.
+         * @param config The component will set its properties based on this configuration.
+         * The configuration class must be of the appropriate type for this component.
+         * For example, use a TransformConfig with a TransformComponent.
+         */
+        bool SetConfiguration(const AZ::ComponentConfig& config);
+
+        /**
+         * Get a component's configuration.
+         * A component must implement the WriteOutConfig() function for this to have an effect.
+         * @param outConfig[out] The component will copy its properties into this configuration class.
+         * The configuration class must be of the appropriate type for this component.
+         * For example, use a TransformConfig with a TransformComponent.
+         */
+        bool GetConfiguration(AZ::ComponentConfig& outConfig) const;
+
     protected:
         /**
          * Initializes a component's resources.
@@ -135,6 +154,49 @@ namespace AZ
          * Deactivate() implementation can handle this scenario.
          */
         virtual void Deactivate() = 0;
+
+        /**
+         * Read properties from the configuration class into the component.
+         * Overriding this function allows your component to be configured at runtime.
+         * See AZ::ComponentConfig for more details.
+         * This function cannot be invoked while the component is activated.
+         * 
+         * @code{.cpp}
+         * // sample implementation
+         * bool ReadInConfig(const ComponentConfig* baseConfig) override
+         * {
+         *     if (auto config = azrtti_cast<const MyConfig*>(baseConfig))
+         *     {
+         *         m_propertyA = config->m_propertyA;
+         *         m_propertyB = config->m_propertyB
+         *         return true;
+         *     }
+         *     return false;
+         * }
+         * @endcode
+         */
+        virtual bool ReadInConfig(const ComponentConfig* baseConfig);
+
+        /**
+         * Write properties from the component into the configuration class.
+         * Overriding this function allows your component's configuration to be queried at runtime.
+         * See AZ::ComponentConfig for more details.
+         *
+         * @code{.cpp}
+         * // sample implementation
+         * bool WriteOutConfig(ComponentConfig* outBaseConfig) const override
+         * {
+         *     if (auto config = azrtti_cast<MyConfig*>(outBaseConfig))
+         *     {
+         *         config->m_propertyA = m_propertyA;
+         *         config->m_propertyB = m_propertyB;
+         *         return true;
+         *     }
+         *     return false;
+         * }
+         * @endcode
+         */
+        virtual bool WriteOutConfig(ComponentConfig* outBaseConfig) const;
 
         /**
          * Sets the current entity.

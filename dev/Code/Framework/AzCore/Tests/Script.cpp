@@ -44,9 +44,6 @@ namespace UnitTest
 {
     using namespace AZ;
 
-    int g_globalValue = 501;
-    int g_globalData = 0;
-
     enum GlobalEnum
     {
         GE_VALUE1 = 0,
@@ -60,7 +57,9 @@ namespace UnitTest
         Value3,
     };
 
-    static GlobalClassEnum s_globalClassEnumValue = GlobalClassEnum::Value3;
+    int g_globalValue = 501;
+    int g_globalData = 0;
+    GlobalClassEnum globalClassEnumValue = GlobalClassEnum::Value3;
 
     int globalPropertyGetter()
     {
@@ -80,6 +79,11 @@ namespace UnitTest
     void globalMethod1()
     {
         g_globalData = 1001;
+    }
+
+    int globalMethod2WithDefaultArgument(int value)
+    {
+        return value + 1;
     }
 
     int globalMethodContainers(const AZStd::vector<int>& value)
@@ -107,11 +111,9 @@ namespace UnitTest
         return GlobalClassEnum::Value1;
     }
 
-
-
     void globalMethodSetClassEnum(GlobalClassEnum value)
     {
-        s_globalClassEnumValue = value;
+        globalClassEnumValue = value;
     }
 
     // Global Enum class wrapper, till the "namespace" open/close functionallity is missing
@@ -224,6 +226,12 @@ namespace UnitTest
             return AZStd::string::format("%d\n", m_data);
         }
 
+        bool BoundsCheckMethodWithDefaultValue(float value, float epsilon, float minBounds, float maxBounds)
+        {
+            (void)epsilon;
+            return value >= minBounds && value < maxBounds;
+        }
+
         int m_data;
         int m_data1;
         int m_dataReadOnly;
@@ -279,13 +287,15 @@ namespace UnitTest
             return data + 2;
         }
 
-        virtual int OnEventWithResultContainer(const AZStd::vector<int>& values) = 0;
+        virtual int OnEventWithResultContainer(const AZStd::vector<int> values) = 0;
 
         virtual GlobalClassEnum OnEventWithClassEnumResult() = 0;
 
         virtual AZStd::string OnEventWithStringResult() { return ""; }
 
         virtual BehaviorTestClass OnEventWithClassResult() { return BehaviorTestClass(); }
+
+        virtual AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view) { return AZStd::string::format("Default Value: %s", view1.data()); }
     };
 
     typedef AZ::EBus<BehaviorTestBusEvents> BehaviorTestBus;
@@ -301,6 +311,7 @@ namespace UnitTest
             , OnEventWithClassEnumResult
             , OnEventWithStringResult
             , OnEventWithClassResult
+            , OnEventWithDefaultValueAndStringResult
         );
         
         // User code
@@ -319,7 +330,7 @@ namespace UnitTest
             return result;
         }
 
-        int OnEventWithResultContainer(const AZStd::vector<int>& values) override
+        int OnEventWithResultContainer(const AZStd::vector<int> values) override
         {
             int result = 0;
             CallResult(result, FN_OnEventWithResultContainer, values);
@@ -346,6 +357,11 @@ namespace UnitTest
             CallResult(result, FN_OnEventWithClassResult);
             return result;
         }
+
+        AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view view2) override
+        {
+            return BehaviorTestBus::Handler::OnEventWithDefaultValueAndStringResult(view1, view2);
+        }
     };
 
     // traditional EBus Handler
@@ -369,7 +385,7 @@ namespace UnitTest
             return data + 3;
         }
 
-        int OnEventWithResultContainer(const AZStd::vector<int>& values) override
+        int OnEventWithResultContainer(const AZStd::vector<int> values) override
         {
             g_globalData = 2100 + values[0];
             return values[0];
@@ -509,12 +525,6 @@ namespace UnitTest
         int m_data;
     };
 
-    BehaviorTestClass& GlobalDataReferenceResult()
-    {
-        static BehaviorTestClass testClass;
-        return testClass;
-    }
-
     class ClassRequestBusEvents :  public AZ::EBusTraits
     {
     public:
@@ -550,6 +560,19 @@ namespace UnitTest
     {
     public:
 
+        void SetUp()
+        {
+            AllocatorsFixture::SetUp();
+            ResetGlobalVars();
+        }
+
+        void ResetGlobalVars()
+        {
+            g_globalValue = 501;
+            g_globalData = 0;
+            globalClassEnumValue = GlobalClassEnum::Value3;
+        }
+
         void run()
         {
             BehaviorContext behaviorContext;
@@ -558,9 +581,9 @@ namespace UnitTest
             behaviorContext.Constant("globalConstant", []() { return 3.14f; });
             behaviorContext.Constant("globalConstantMacro", BehaviorConstant(3.14f));
 
-            behaviorContext.Enum<GE_VALUE1>("GE_VALUE1");
+            behaviorContext.Enum<(int)GE_VALUE1>("GE_VALUE1");
 
-            behaviorContext.Enum<GlobalClassEnum::Value1>("Value1");
+            behaviorContext.Enum<(int)GlobalClassEnum::Value1>("Value1");
             behaviorContext.Enum<(int)GlobalClassEnum::Value2>("Value2");
 
             // Property
@@ -573,9 +596,11 @@ namespace UnitTest
 
 
             // Method
+            const int defaultIntValue = 20;
             behaviorContext.Method("globalMethod", &globalMethod, BehaviorMakeDefaultValues(555))
                     ->Attribute("GlobalMethodAttr", 5);
             behaviorContext.Method("globalMethod1", &globalMethod1);
+            behaviorContext.Method("globalMethod2WithDefaultArgument", &globalMethod2WithDefaultArgument, { {{"Value", "An Integer argument", BehaviorMakeDefaultValue(defaultIntValue)}} });
 
             behaviorContext.Method("globalMethodContainers", &globalMethodContainers);
             behaviorContext.Method("globalMethodPair", &globalMethodPair);
@@ -598,8 +623,8 @@ namespace UnitTest
                     Attribute(AZ::Script::Attributes::Storage,AZ::Script::Attributes::StorageType::Value)->
                     Attribute(AZ::Script::Attributes::ConstructorOverride,&TestScriptNonIntrusiveConstructor)->
                 Constant("epsilon", BehaviorConstant(0.001f))->
-                Enum<BehaviorTestClass::ME_VALUE0>("ME_VALUE0")->
-                Enum<BehaviorTestClass::MyClassEnum::MCE_VALUE0>("MCE_VALUE0")->
+                Enum<(int)BehaviorTestClass::ME_VALUE0>("ME_VALUE0")->
+                Enum<(int)BehaviorTestClass::MyClassEnum::MCE_VALUE0>("MCE_VALUE0")->
                 Enum<(int)BehaviorTestClass::MyClassEnum::MCE_VALUE1>("MCE_VALUE1")->
                 Method("Method1", &BehaviorTestClass::Method1)->
                     Attribute("MethodAttr", 20)->
@@ -614,6 +639,8 @@ namespace UnitTest
                     Attribute(AZ::Script::Attributes::Operator,AZ::Script::Attributes::OperatorType::Add)->
                 Method("ToString", &BehaviorTestClass::ToString)->
                 Method("StaticMethod", &BehaviorTestClass::StaticMethod)->
+                Method("MemberWithDefaultValues", &BehaviorTestClass::BoundsCheckMethodWithDefaultValue, { {{"value", "Value which will be checked to be within the two bounds arguments"}, {"delta", "The epsilon value", BehaviorMakeDefaultValue(0.1f)},
+                    {"minBound", "The minimum bounds value,", BehaviorMakeDefaultValue(0.0f)}, {"maxBound", "The maximum bounds value", BehaviorMakeDefaultValue(1.0f)}} })->
                 Property("data", &BehaviorTestClass::GetData, &BehaviorTestClass::SetData)->
                     Attribute("PropAttr", 30)->
                 Property("data1", BehaviorValueProperty(&BehaviorTestClass::m_data1))->
@@ -633,6 +660,9 @@ namespace UnitTest
                 ;
 
             // EBus
+            const AZStd::string_view defaultStringViewValue = "DEFAULT!!!!";
+            AZStd::string expectedDefaultValueAndStringResult = AZStd::string::format("Default Value: %s", defaultStringViewValue.data());
+
             behaviorContext.EBus<BehaviorTestBus>("TestBus")
                     ->Attribute("EBusAttr", 40)
                 ->Handler<BehaviorTestBusHandler>()
@@ -643,6 +673,9 @@ namespace UnitTest
                 ->Event("OnEventWithResultContainer", &BehaviorTestBus::Events::OnEventWithResultContainer)
                 ->Event("OnEventWithClassEnumResult", &BehaviorTestBus::Events::OnEventWithClassEnumResult)
                 ->Event("OnEventWithStringResult", &BehaviorTestBus::Events::OnEventWithStringResult)
+                ->Event("OnEventWithDefaultValueAndStringResult", &BehaviorTestBus::Events::OnEventWithDefaultValueAndStringResult,
+                { {{"view1", "string_view without string trait", aznew BehaviorDefaultValue(defaultStringViewValue), AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
+                    {"view2", "string_view with string trait", aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"))}} }) // Remove string trait from parameter
                 ;
 
             // Calls
@@ -664,6 +697,12 @@ namespace UnitTest
 
             method = behaviorContext.m_methods.find("globalMethod1")->second;
             method->Invoke();
+
+            method = behaviorContext.m_methods.find("globalMethod2WithDefaultArgument")->second;
+            int defaultValueMethodResult = 0;
+            method->InvokeResult(defaultValueMethodResult);
+            EXPECT_EQ(defaultIntValue + 1, defaultValueMethodResult);
+
             AZStd::vector<int> values = { 10, 11, 12 };
             method = behaviorContext.m_methods.find("globalMethodContainers")->second;
             method->InvokeResult(result, values);
@@ -733,6 +772,14 @@ namespace UnitTest
 
             method = behaviorClass->m_methods.find("StaticMethod")->second;
             EXPECT_FALSE(method->IsMember());
+
+            method = behaviorClass->m_methods.find("MemberWithDefaultValues")->second;
+            EXPECT_TRUE(method->IsMember());
+            bool withinBounds = false;
+            method->InvokeResult(withinBounds, classInstance, 0.4f);
+            EXPECT_TRUE(withinBounds);
+            method->InvokeResult(withinBounds, classInstance, -1.1f);
+            EXPECT_FALSE(withinBounds);
 
             // Class property
             prop = behaviorClass->m_properties.find("data")->second;
@@ -828,6 +875,33 @@ namespace UnitTest
             method = behaviorEBus->m_events.find("OnEvent")->second.m_queueEvent;
             method->Invoke(testId, 2);
 
+            method = behaviorEBus->m_events.find("OnEventWithDefaultValueAndStringResult")->second.m_broadcast;
+            AZStd::string defaultStringResultValue;
+            method->InvokeResult(defaultStringResultValue);
+            EXPECT_EQ(expectedDefaultValueAndStringResult, defaultStringResultValue);
+            
+            method = behaviorEBus->m_events.find("OnEventWithDefaultValueAndStringResult")->second.m_event;
+            defaultStringResultValue.clear();
+            method->InvokeResult(defaultStringResultValue, testId);
+            EXPECT_EQ(expectedDefaultValueAndStringResult, defaultStringResultValue);
+
+            EXPECT_EQ(3, method->GetNumArguments());
+            EXPECT_EQ(1, method->GetMinNumberOfArguments());
+            EXPECT_TRUE(method->HasResult());
+            const AZ::BehaviorParameter* stringResultParam = method->GetResult();
+            EXPECT_NE(nullptr, stringResultParam);
+            EXPECT_TRUE(AZ::BehaviorContextHelper::IsStringParameter(*stringResultParam));
+
+            // The first string_view param has removed the TR_STRING trait
+            const AZ::BehaviorParameter* stringView1Param = method->GetArgument(1);
+            EXPECT_NE(nullptr, stringView1Param);
+            EXPECT_FALSE(AZ::BehaviorContextHelper::IsStringParameter(*stringView1Param));
+
+            // The second string_view param has the TR_STRING trait
+            const AZ::BehaviorParameter* stringView2Param = method->GetArgument(2);
+            EXPECT_NE(nullptr, stringView2Param);
+            EXPECT_TRUE(AZ::BehaviorContextHelper::IsStringParameter(*stringView2Param));
+
             BehaviorTestBus::ExecuteQueuedEvents();
 
             delete testBusHandler;
@@ -868,7 +942,7 @@ namespace UnitTest
                 // test index operators
                 sc.Execute("globalProperty = intVector[1]"); // read a value using custom operator
                 AZ_TEST_ASSERT(g_globalValue == 74);
-                sc.Execute("intVector[5] = 128"); // write a value (set and resize) using custom operator
+                sc.Execute("intVector[6] = 128"); // write a value (set and resize) using custom operator
                 sc.Execute("globalProperty = intVector[2]");
                 AZ_TEST_ASSERT(g_globalValue == 0); // on resize we initialize with default value
                 sc.Execute("globalProperty = intVector[6]");
@@ -970,19 +1044,19 @@ namespace UnitTest
 
                 // use a table as result container
                 sc.Execute("eventClassResult = { TestBus.Broadcast.OnEventWithClassEnumResult() }");
-                s_globalClassEnumValue = GlobalClassEnum::Value3;
+                globalClassEnumValue = GlobalClassEnum::Value3;
                 sc.Execute("globalMethodSetClassEnum(eventClassResult[1])");
-                AZ_TEST_ASSERT(s_globalClassEnumValue == GlobalClassEnum::Value2);
+                AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value2);
                 sc.Execute("globalMethodSetClassEnum(eventClassResult[2])");
-                AZ_TEST_ASSERT(s_globalClassEnumValue == GlobalClassEnum::Value1);
+                AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value1);
 
                 // use multiple variables as result container
                 sc.Execute("result1, result2 = TestBus.Broadcast.OnEventWithClassEnumResult()");
-                s_globalClassEnumValue = GlobalClassEnum::Value3;
+                globalClassEnumValue = GlobalClassEnum::Value3;
                 sc.Execute("globalMethodSetClassEnum(result1)");
-                AZ_TEST_ASSERT(s_globalClassEnumValue == GlobalClassEnum::Value2);
+                AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value2);
                 sc.Execute("globalMethodSetClassEnum(result2)");
-                AZ_TEST_ASSERT(s_globalClassEnumValue == GlobalClassEnum::Value1);
+                AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value1);
 
                 myTestBusHandler1.BusDisconnect();
                 myTestBusHandler2.BusDisconnect();
@@ -1201,6 +1275,47 @@ namespace UnitTest
         context.PushResult(s_globalVar * 2);
     }
 
+    class ScriptClass2;
+    class ScriptClass4;
+    class ScriptClass5;
+
+    class ScriptBindTest
+        : public AllocatorsFixture
+    {
+        static ScriptBindTest* s_scriptBindInstance;
+    public:
+        AZStd::fixed_vector<ScriptClass2*, 10> scriptClass2Instances;
+
+        AZStd::fixed_vector< AZStd::shared_ptr<ScriptClass4>, 10 > scriptClass4lockedInstances;
+        int scriptClass4numInstances = 0;
+
+        AZStd::fixed_vector< AZStd::intrusive_ptr<ScriptClass5>, 10 > scriptClass5lockedInstances;
+        int scriptClass5numInstances = 0;
+
+        void SetUp() override;
+
+        void TearDown() override;
+
+        void ResetGlobalVars();
+
+        static ScriptBindTest* GetScriptBindInstance()
+        {
+            return s_scriptBindInstance;
+        }
+
+        static bool EnumClass(const char* name, const AZ::Uuid& /*typeid*/, void* /*userData*/);
+
+        static bool EnumMethod(const AZ::Uuid* /*type id*/, const char* name, const char* dbgParamInfo, void* /*userData*/);
+
+        static bool EnumProperty(const AZ::Uuid* /*type id*/, const char* name, bool isRead, bool isWrite, void* /*userData*/);
+
+        static void ScriptErrorCB(AZ::ScriptContext*, AZ::ScriptContext::ErrorType, const char* details);
+
+        void run();
+    };
+
+    ScriptBindTest* ScriptBindTest::s_scriptBindInstance = nullptr;
+
     class ScriptClass* s_scriptClassInstance = nullptr;
 
     class ScriptClass
@@ -1307,23 +1422,27 @@ namespace UnitTest
     class ScriptClass2
     {
     public:
-        static AZStd::fixed_vector<ScriptClass2*, 10> s_instances;
         AZ_TYPE_INFO(ScriptClass2, "{b4482151-b246-4c95-9ab3-db4589b3ffa0}");
         AZ_CLASS_ALLOCATOR(ScriptClass2, SystemAllocator, 0);
 
         ScriptClass2(int data)
             : m_data(data)
         {
-            s_instances.push_back(this);
+            ScriptBindTest::GetScriptBindInstance()->scriptClass2Instances.push_back(this);
         }
         ScriptClass2(const ScriptClass2& rhs)
         {
             m_data = rhs.m_data;
-            s_instances.push_back(this);
+            ScriptBindTest::GetScriptBindInstance()->scriptClass2Instances.push_back(this);
         }
         ~ScriptClass2()
         {
-            s_instances.erase(AZStd::find(s_instances.begin(), s_instances.end(), this));
+            auto& scriptClass2Instances = ScriptBindTest::GetScriptBindInstance()->scriptClass2Instances;
+            auto instanceIt = AZStd::find(scriptClass2Instances.begin(), scriptClass2Instances.end(), this);
+            if (instanceIt != scriptClass2Instances.end())
+            {
+                scriptClass2Instances.erase(instanceIt);
+            }
         }
 
         void    VariadicFunc(ScriptDataContext& context)
@@ -1354,8 +1473,6 @@ namespace UnitTest
 
         int m_data;
     };
-
-    AZStd::fixed_vector<ScriptClass2*, 10> ScriptClass2::s_instances;
 
     class ScriptClass3* s_scriptClass3Instance = nullptr;
     class ScriptClass3
@@ -1427,16 +1544,19 @@ namespace UnitTest
         ScriptClass4(int data)
             : m_data(data) 
         {
-            s_numInstances++; 
+            int& numClass4Instances = ScriptBindTest::GetScriptBindInstance()->scriptClass4numInstances;
+            numClass4Instances++;
         }
         ~ScriptClass4()
         {
-            s_numInstances--;
+            int& numClass4Instances = ScriptBindTest::GetScriptBindInstance()->scriptClass4numInstances;
+            numClass4Instances--;
         }
 
         static void HoldInstance(const AZStd::shared_ptr<ScriptClass4>& ptr)
         {
-            s_lockedInstances.push_back(ptr);
+            auto& class4lockedInstances = ScriptBindTest::GetScriptBindInstance()->scriptClass4lockedInstances;
+            class4lockedInstances.push_back(ptr);
         }
         void CopyData(AZStd::shared_ptr<ScriptClass4> rhs)
         {
@@ -1444,11 +1564,7 @@ namespace UnitTest
         }
         int m_data;
 
-        static AZStd::fixed_vector< AZStd::shared_ptr<ScriptClass4>, 10 > s_lockedInstances;
-        static int s_numInstances;
     };
-    AZStd::fixed_vector< AZStd::shared_ptr<ScriptClass4>, 10 > ScriptClass4::s_lockedInstances;
-    int ScriptClass4::s_numInstances = 0;
 
     class ScriptClass5
     {
@@ -1460,11 +1576,13 @@ namespace UnitTest
             : m_data(data)
             , m_refCount(0) 
         {
-            s_numInstances++;
+            int& numClass5Instances = ScriptBindTest::GetScriptBindInstance()->scriptClass5numInstances;
+            numClass5Instances++;
         }
         ~ScriptClass5()
         {
-            s_numInstances--;
+            int& numClass5Instances = ScriptBindTest::GetScriptBindInstance()->scriptClass5numInstances;
+            numClass5Instances--;
         }
         void add_ref()          { m_refCount++; }
         void release()
@@ -1477,7 +1595,8 @@ namespace UnitTest
         }
         static void HoldInstance(const AZStd::intrusive_ptr<ScriptClass5>& ptr)
         {
-            s_lockedInstances.push_back(ptr);
+            auto& class5lockedInstances = ScriptBindTest::GetScriptBindInstance()->scriptClass5lockedInstances;
+            class5lockedInstances.push_back(ptr);
         }
 
         void CopyData(const AZStd::intrusive_ptr<ScriptClass5>& rhs)
@@ -1488,11 +1607,8 @@ namespace UnitTest
         int m_data;
         int m_refCount;
 
-        static AZStd::fixed_vector< AZStd::intrusive_ptr<ScriptClass5>, 10 > s_lockedInstances;
-        static int s_numInstances;
+        
     };
-    AZStd::fixed_vector< AZStd::intrusive_ptr<ScriptClass5>, 10 > ScriptClass5::s_lockedInstances;
-    int ScriptClass5::s_numInstances = 0;
 
     struct ScriptValueClass
     {
@@ -1502,7 +1618,6 @@ namespace UnitTest
         ScriptValueClass()
             : m_data(10)
         {
-            s_ptr = this;
         }
 
         ScriptValueClass(const ScriptValueClass& rhs)
@@ -1512,10 +1627,7 @@ namespace UnitTest
         }
 
         int m_data;
-        static ScriptValueClass* s_ptr;
     };
-
-    ScriptValueClass* ScriptValueClass::s_ptr = nullptr;
 
     struct ScriptValueHolder
     {
@@ -1524,7 +1636,6 @@ namespace UnitTest
 
         ScriptValueHolder()
         {
-            s_ptr = this;
         }
         ScriptValueHolder(const ScriptValueHolder& rhs)
         {
@@ -1532,9 +1643,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(false); // we should not make copies
         }
         ScriptValueClass  m_value;
-        static ScriptValueHolder* s_ptr;
     };
-    ScriptValueHolder* ScriptValueHolder::s_ptr = nullptr;
 
     class ScriptUnregisteredBaseClass
     {
@@ -1638,791 +1747,805 @@ namespace UnitTest
     AZStd::shared_ptr<ScriptClass4> s_scriptMemberShared;
     AZStd::intrusive_ptr<ScriptClass5> s_scriptMemberIntrusive;
 
-    class ScriptBindTest
-        : public AllocatorsFixture
+    
+    void ScriptBindTest::SetUp()
     {
+        AllocatorsFixture::SetUp();
+        ResetGlobalVars();
+        s_scriptBindInstance = this;
+        s_scriptMemberShared = AZStd::shared_ptr<ScriptClass4>(aznew ScriptClass4(10));
+        s_scriptMemberIntrusive = AZStd::intrusive_ptr<ScriptClass5>(aznew ScriptClass5(10));
+    }
 
+    void ScriptBindTest::TearDown()
+    {
+        s_scriptMemberShared.reset();
+        s_scriptMemberIntrusive.reset();
+        s_scriptBindInstance = nullptr;
 
-    public:
+        AllocatorsFixture::TearDown();
+    }
 
-        void SetUp() override
+    void ScriptBindTest::ResetGlobalVars()
+    {
+        s_globalVar = 0;
+        s_globalVarBool = false;
+        s_globalVar1 = 0.0f;
+        s_globalVar2ReadOnly = 10.0f;
+        s_globalVar3WriteOnly = 0.0f;
+
+        s_globalVarString = AZStd::string();
+
+        s_globalField = 0;
+        s_globalField1 = 12;
+        s_globalField2 = 0;
+
+        s_errorCount = 0;
+
+        s_globalIncompletePtr = static_cast<IncompleteType*>(AZ_INVALID_POINTER);
+        s_globalIncompletePtr1 = nullptr;
+    }
+
+    bool ScriptBindTest::EnumClass(const char* name, const AZ::Uuid& /*typeid*/, void* /*userData*/)
+    {
+        AZ_TEST_ASSERT(name != nullptr);
+        return true;
+    }
+
+    bool ScriptBindTest::EnumMethod(const AZ::Uuid* /*type id*/, const char* name, const char* dbgParamInfo, void* /*userData*/)
+    {
+        // make sure the debug info works
+        if (strcmp(name, "GlobalFunc5") == 0)
         {
-            AllocatorsFixture::SetUp();
+            AZ_TEST_ASSERT(strcmp(dbgParamInfo, "int NumberArguments (int intValue,float floatValue,bool Value,int intValue2,float floatValue2") == 0);
+        }
+        return true;
+    }
 
-            s_scriptMemberShared = AZStd::shared_ptr<ScriptClass4>(aznew ScriptClass4(10));
-            s_scriptMemberIntrusive = AZStd::intrusive_ptr<ScriptClass5>(aznew ScriptClass5(10));
+    bool ScriptBindTest::EnumProperty(const AZ::Uuid* /*type id*/, const char* name, bool isRead, bool isWrite, void* /*userData*/)
+    {
+        if (strcmp(name, "globalVar") == 0)
+        {
+            AZ_TEST_ASSERT(isWrite && isRead);
+        }
+        if (strcmp(name, "globalVar2") == 0)
+        {
+            AZ_TEST_ASSERT(!isWrite && isRead);
+        }
+        if (strcmp(name, "globalVar3") == 0)
+        {
+            AZ_TEST_ASSERT(isWrite && !isRead);
+        }
+        return true;
+    }
+
+    void ScriptBindTest::ScriptErrorCB(AZ::ScriptContext*, AZ::ScriptContext::ErrorType, const char* details)
+    {
+        (void)details;
+        s_errorCount++;
+        AZ_Warning("Script", false, "%s", details);
+    }
+
+    void ScriptBindTest::run()
+    {
+        BehaviorContext behaviorContext;
+
+        AZ::Uuid ch = AzTypeInfo<char>::Uuid();
+        AZ::Uuid ch1 = AzTypeInfo<const char*>::Uuid();
+        (void)ch; (void)ch1;
+
+        // enum
+        behaviorContext.Enum<GE_VALUE1>("GE_VALUE1")->
+            Enum<GE_VALUE2>("GE_VALUE2");
+
+        // constant
+        behaviorContext.Constant("PI", BehaviorConstant(3.14f));
+
+        // property
+        behaviorContext.Property("globalVar", &GlobalVarGet, &GlobalVarSet);
+        behaviorContext.Property("globalVar1", BehaviorValueProperty(&s_globalVar1));
+        behaviorContext.Property("globalVarBool", BehaviorValueProperty(&s_globalVarBool));
+        behaviorContext.Property("globalVar2", BehaviorValueGetter(&s_globalVar2ReadOnly), nullptr);
+        behaviorContext.Property("globalVar3", nullptr, BehaviorValueSetter(&s_globalVar3WriteOnly));
+        behaviorContext.Property("globalVarString", &GlobalVarStringGet, &GlobalVarStringSet);
+
+        // field
+        behaviorContext.Property("globalField", BehaviorValueProperty(&s_globalField));
+        behaviorContext.Property("globalField1", BehaviorValueGetter(&s_globalField1), nullptr);
+        behaviorContext.Property("globalField2", nullptr, BehaviorValueSetter(&s_globalField2));
+        behaviorContext.Property("globalIncomplete", BehaviorValueProperty(&s_globalIncompletePtr)); // unregistered type (passed as light userdata)
+        behaviorContext.Property("globalIncomplete1", BehaviorValueProperty(&s_globalIncompletePtr1)); // unregistered type (passed as light userdata)
+
+        // method
+        behaviorContext.Method("GlobalFunc0", &GlobalFunc0);
+        behaviorContext.Method("GlobalFunc1", &GlobalFunc1);
+        behaviorContext.Method("GlobalFunc2", &GlobalFunc2);
+        behaviorContext.Method("GlobalFunc3", &GlobalFunc3);
+        behaviorContext.Method("GlobalFunc4", &GlobalFunc4);
+        behaviorContext.Method("GlobalFunc5", &GlobalFunc5, nullptr, "int NumberArguments (int intValue,float floatValue,bool Value,int intValue2,float floatValue2");
+        behaviorContext.Method("GlobalVoidFunc0", &GlobalVoidFunc0);
+        behaviorContext.Method("GlobalVoidFunc1", &GlobalVoidFunc1);
+        behaviorContext.Method("GlobalVoidFunc2", &GlobalVoidFunc2);
+        behaviorContext.Method("GlobalVoidFunc3", &GlobalVoidFunc3);
+        behaviorContext.Method("GlobalVoidFunc4", &GlobalVoidFunc4);
+        behaviorContext.Method("GlobalVoidFunc5", &GlobalVoidFunc5);
+        behaviorContext.Method("GlobalEnumFunc", &GlobalEnumFunc);
+        behaviorContext.Method("GlobalCheckString", &GlobalCheckString);
+        behaviorContext.Method("GlobalCheckStringRef", &GlobalCheckStringRef);
+
+        // clases
+        behaviorContext.Class<ScriptClass>()->
+            Allocator(&ScriptClassAllocate, &ScriptClassFree)->
+            Enum<ScriptClass::SC_ET_VALUE2>("SC_ET_VALUE2")->
+            Enum<ScriptClass::SC_ET_VALUE3>("SC_ET_VALUE3")->
+            Constant("EPSILON", BehaviorConstant(0.001f))->
+            Method("MemberFunc0", &ScriptClass::MemberFunc0)->
+            Method("MemberFunc1", &ScriptClass::MemberFunc1)->
+            Method("MemberFunc2", &ScriptClass::MemberFunc2)->
+            Method("MemberFunc3", &ScriptClass::MemberFunc3)->
+            Method("MemberFunc4", &ScriptClass::MemberFunc4)->
+            Method("MemberFunc5", &ScriptClass::MemberFunc5)->
+            Method("MemberVoidFunc0", &ScriptClass::MemberVoidFunc0)->
+            Method("MemberVoidFunc1", &ScriptClass::MemberVoidFunc1)->
+            Method("MemberVoidFunc2", &ScriptClass::MemberVoidFunc2)->
+            Method("MemberVoidFunc3", &ScriptClass::MemberVoidFunc3)->
+            Method("MemberVoidFunc4", &ScriptClass::MemberVoidFunc4)->
+            Method("MemberVoidFunc5", &ScriptClass::MemberVoidFunc5)->
+            Method("VariadicFunc", &ScriptClass::VariadicFunc)->
+            Property("data", &ScriptClass::GetData, &ScriptClass::SetData)->
+            Property("data1", BehaviorValueProperty(&ScriptClass::m_data1))->
+            Property("data2", BehaviorValueGetter(&ScriptClass::m_data2ReadOnly), nullptr)->
+            Property("data3", nullptr, BehaviorValueSetter(&ScriptClass::m_data3WriteOnly));//->
+        //Class<ScriptClass::ScriptClassNested,ScriptContext::SP_RAW_SCRIPT_OWN>()->
+        //  Field("data",&ScriptClass::ScriptClassNested::m_data)->
+        //ClassEnd();
+
+        behaviorContext.Class<ScriptClass2>()->
+            Constructor<int>()->
+            Method("Add", &ScriptClass2::ScriptAdd)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Add)->
+            Method("Sub", &ScriptClass2::ScriptSub)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Sub)->
+            Method("Mul", &ScriptClass2::ScriptMul)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Mul)->
+            Method("Div", &ScriptClass2::ScriptDiv)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+            Method("Mod", &ScriptClass2::ScriptMod)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Mod)->
+            Method("Pow", &ScriptClass2::ScriptPow)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Pow)->
+            Method("Unary", &ScriptClass2::ScriptUnary)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Unary)->
+            Method("Concat", &ScriptClass2::ScriptConcat)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Concat)->
+            Method("Length", &ScriptClass2::ScriptLength)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)->
+            Method("Equal", &ScriptClass2::operator==)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)->
+            Method("LessEqual", &ScriptClass2::operator<=)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::LessEqualThan)->
+            Method("LessThan", &ScriptClass2::operator<)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::LessThan)->
+            Method("ToString", &ScriptClass2::ToString)->
+            Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)->
+            Method("Forward", &ScriptClass2::Forward)->
+            Property("data", BehaviorValueProperty(&ScriptClass2::m_data));
+
+        behaviorContext.Class<ScriptClass3>()->
+            Constructor<ScriptDataContext&>()->
+            Property("boolData", BehaviorValueProperty(&ScriptClass3::m_bool))->
+            Property("intData", BehaviorValueProperty(&ScriptClass3::m_intData))->
+            Property("floatData", BehaviorValueProperty(&ScriptClass3::m_floatData))->
+            Property("scriptClass2", BehaviorValueProperty(&ScriptClass3::m_scriptClass2));
+
+        behaviorContext.Class<ScriptClass4>()->
+            Constructor<int>()->
+            Method("CopyData", &ScriptClass4::CopyData)->
+            Property("data", BehaviorValueProperty(&ScriptClass4::m_data));
+
+        behaviorContext.Property("scriptClass4Member", BehaviorValueProperty(&s_scriptMemberShared));
+        behaviorContext.Method("HoldScriptClass4", &ScriptClass4::HoldInstance);
+
+        behaviorContext.Class<ScriptClass5>()->
+            Constructor<int>()->
+            Method("CopyData", &ScriptClass5::CopyData)->
+            Property("data", BehaviorValueProperty(&ScriptClass5::m_data));
+
+        behaviorContext.Property("scriptClass5Member", BehaviorValueProperty(&s_scriptMemberIntrusive));
+        behaviorContext.Method("HoldScriptClass5", &ScriptClass5::HoldInstance);
+
+        // Variadic method
+        behaviorContext.Method("VariadicFunc", &VariadicFunc);
+
+        // Check nested classes
+        behaviorContext.Class<ScriptValueClass>()->
+            Property("data", BehaviorValueProperty(&ScriptValueClass::m_data));
+
+        behaviorContext.Class<ScriptValueHolder>()->
+            Property("value", BehaviorValueProperty(&ScriptValueHolder::m_value));
+
+        // test class pointer casting for unregistered classes
+        behaviorContext.Property("globalUnregBaseClass", BehaviorValueProperty(&s_globalUnregBaseClass));
+        behaviorContext.Property("globalUnregDerivedClass", BehaviorValueProperty(&s_globalUnregDerivedClass));
+
+        behaviorContext.Method("GetUnregisteredScriptBaseData", &GetUnregisteredScriptBaseData);
+        behaviorContext.Method("GetUnregisteredScriptDerivedData", &GetUnregisteredScriptDerivedData);
+
+        // register a base and derived class test
+        behaviorContext.Class<ScriptRegisteredBaseClass>()->
+            Property("baseData", BehaviorValueProperty(&ScriptRegisteredBaseClass::m_baseData))->
+            Method("VirtualFunction", &ScriptRegisteredBaseClass::VirtualFunction);
+
+        // when using AZ_RTTI the bind will discover the 'ScriptRegisteredBaseClass' and import it's bindings
+        // into 'ScriptRegisteredDerivedClass' class so we access it (like in C++)
+        behaviorContext.Class<ScriptRegisteredDerivedClass>()->
+            Property("derivedData", BehaviorValueProperty(&ScriptRegisteredDerivedClass::m_derivedData));
+
+        // add a function that makes a derived class (can change at runtime) and return pointer to a base class.
+        behaviorContext.Property("globalRegisteredBaseClass", BehaviorValueProperty(&s_globalRegisteredBaseClass));
+
+        // abstract classes
+        behaviorContext.Class<AbstractClass>()->
+            Method("PureCall", &AbstractClass::PureCall);
+
+        behaviorContext.Class<AbstractImplementation>();
+
+        // create the lua script context and Bind it the behavior
+        ScriptContext script;
+        script.BindTo(&behaviorContext);
+
+        // test globalVar with functions get and set
+        AZ_TEST_ASSERT(s_globalVar == 0);
+        script.Execute("globalVar = 5");
+        AZ_TEST_ASSERT(s_globalVar == 5);
+        script.Execute("globalVar = globalVar + 1");
+        AZ_TEST_ASSERT(s_globalVar == 6);
+
+        // test globalVar1 with variable address only
+        AZ_TEST_ASSERT(s_globalVar1 == 0.0f);
+        script.Execute("globalVar1 = 5");
+        AZ_TEST_ASSERT(s_globalVar1 == 5.0f);
+        script.Execute("globalVar1 = globalVar1 + 1.0");
+        AZ_TEST_ASSERT(s_globalVar1 == 6.0f);
+
+        // test globalVar2ReadOnly
+        s_globalVar1 = 0.0f;
+        AZ_TEST_ASSERT(s_globalVar2ReadOnly == 10.0f);
+        script.Execute("globalVar1 = globalVar2");
+        AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
+        //script.Execute("globalVar2 = 5.0"); //- this will cause script error (we can improve the message by providing a fake set function);
+
+        // test globalVar2WriteOnly
+        AZ_TEST_ASSERT(s_globalVar3WriteOnly == 0.0f);
+        script.Execute("globalVar3 = 100");
+        AZ_TEST_ASSERT(s_globalVar3WriteOnly == 100.0f);
+        //script.Execute("print(\"globalVar3 is \",globalVar3)"); //- this will cause script error (we can improve the message by providing a fake set function);
+
+        // globalField with functions get and set
+        AZ_TEST_ASSERT(s_globalField == 0);
+        script.Execute("globalField = 5");
+        AZ_TEST_ASSERT(s_globalField == 5);
+        script.Execute("globalField = globalField +1");
+        AZ_TEST_ASSERT(s_globalField == 6);
+
+        // globalField1 read only
+        s_globalVar1 = 0.0f;
+        AZ_TEST_ASSERT(s_globalField1 == 12.0f);
+        script.Execute("globalVar1 = globalField1");
+        AZ_TEST_ASSERT(s_globalVar1 == 12.0f);
+        //script.Execute("globalField1 = 10.0"); //- this will cause script error (we can improve the message by providing a fake set function);
+
+        // globalField2 write only
+        AZ_TEST_ASSERT(s_globalField2 == 0.0f);
+        script.Execute("globalField2 = 100");
+        AZ_TEST_ASSERT(s_globalField2 == 100.0f);
+        //script.Execute("print(\"globalField2 is \",globalField2)"); //- this will cause script error (we can improve the message by providing a fake set function);
+
+        // s_globalVarString test
+        AZ_TEST_ASSERT(s_globalVarString.empty());
+        script.Execute("globalVarString = \"Hello\"");
+        AZ_TEST_ASSERT(s_globalVarString.compare("Hello") == 0);
+
+        // incomplete types passed by a light-user data (pointer reference)
+        AZ_TEST_ASSERT(s_globalIncompletePtr == reinterpret_cast<IncompleteType*>(AZ_INVALID_POINTER));
+        AZ_TEST_ASSERT(s_globalIncompletePtr1 == 0);
+
+        script.Execute("globalIncomplete1 = globalIncomplete");
+        AZ_TEST_ASSERT(s_globalIncompletePtr1 == s_globalIncompletePtr);
+
+        // enum
+        s_globalVar = 100;
+        script.Execute("globalVar = 0");
+        AZ_TEST_ASSERT(s_globalVar == 0);
+        s_globalVar = 100;
+        script.Execute("globalVar = GE_VALUE1");
+        AZ_TEST_ASSERT(s_globalVar == GE_VALUE1);
+        s_globalVar = 100;
+        script.Execute("globalVar = GE_VALUE2");
+        AZ_TEST_ASSERT(s_globalVar == GE_VALUE2);
+        s_globalVar = 100;
+        script.Execute("GlobalEnumFunc(GE_VALUE2)");
+        AZ_TEST_ASSERT(s_globalVar == GE_VALUE2);
+
+        // constant
+        s_globalVar1 = 0.0f;
+        script.Execute("globalVar1 = PI");
+        AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 3.14f);
+
+        // methods
+        s_globalVar = 5;
+        script.Execute("globalVar = GlobalFunc0()");
+        AZ_TEST_ASSERT(s_globalVar == 0);
+        s_globalVar = 0;
+        script.Execute("globalVar = GlobalFunc1(2)");
+        AZ_TEST_ASSERT(s_globalVar == 1);
+        s_globalVar = 0;
+        script.Execute("globalVar = GlobalFunc2(2,3)");
+        AZ_TEST_ASSERT(s_globalVar == 2);
+        s_globalVar = 0;
+        script.Execute("globalVar = GlobalFunc3(2,3,true)");
+        AZ_TEST_ASSERT(s_globalVar == 3);
+        s_globalVar = 0;
+        script.Execute("globalVar = GlobalFunc4(2,3,false,4)");
+        AZ_TEST_ASSERT(s_globalVar == 4);
+        s_globalVar = 0;
+        script.Execute("globalVar = GlobalFunc5(2,3,true,5,2)");
+        AZ_TEST_ASSERT(s_globalVar == 5);
+
+        s_globalVar = 5;
+        script.Execute("GlobalVoidFunc0()");
+        AZ_TEST_ASSERT(s_globalVar == 0);
+        s_globalVar = 0;
+        script.Execute("GlobalVoidFunc1(2)");
+        AZ_TEST_ASSERT(s_globalVar == 2);
+        s_globalVar = 0;
+        script.Execute("GlobalVoidFunc2(10,1)");
+        AZ_TEST_ASSERT(s_globalVar == 10);
+        s_globalVar = 0;
+        script.Execute("GlobalVoidFunc3(15,3,true)");
+        AZ_TEST_ASSERT(s_globalVar == 15);
+        s_globalVar = 0;
+        script.Execute("GlobalVoidFunc4(21,4,false,2)");
+        AZ_TEST_ASSERT(s_globalVar == 21);
+        s_globalVar = 0;
+        script.Execute("GlobalVoidFunc5(101,102,true,2,1)");
+        AZ_TEST_ASSERT(s_globalVar == 101);
+
+        script.Execute("GlobalCheckString(globalVarString)");
+        script.Execute("GlobalCheckStringRef(globalVarString)");
+
+        // test a variadic function
+        s_globalVar = 5;
+        script.Execute("globalVar1 = VariadicFunc()");
+        AZ_TEST_ASSERT(s_globalVar == 0);
+        AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 0.0f);
+
+        s_globalVar = 0;
+        script.Execute("globalVar1 = VariadicFunc(101,102,true,2,1)");
+        AZ_TEST_ASSERT(s_globalVar == 5);
+        AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 10.0f);
+
+        s_globalVar = 0;
+        script.Execute("globalVar1 = VariadicFunc(101,102)");
+        AZ_TEST_ASSERT(s_globalVar == 2);
+        AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 4.0f);
+
+        //////////////////////////////////////////////////////////////////////////
+        // Classes
+        s_globalVar = 0;
+        script.Execute("globalVar = scriptClass4Member.data");
+        AZ_TEST_ASSERT(s_globalVar == 10);
+        script.Execute("scriptClass4Member = nil");
+        AZ_TEST_ASSERT(s_scriptMemberShared == nullptr);
+        script.Execute("scriptClass4Member = shared_ptr_ScriptClass4(ScriptClass4(12))");
+        AZ_TEST_ASSERT(s_scriptMemberShared->m_data == 12);
+
+        // test invalid assignment
+        {
+            s_errorCount = 0;
+            auto originalErrorCB = script.GetErrorHook();
+            script.SetErrorHook(&ScriptErrorCB);
+            script.Execute("scriptClass4Member = ScriptClass5(12)");
+            script.SetErrorHook(originalErrorCB);
+            AZ_TEST_ASSERT(s_errorCount == 1);
         }
 
-        void TearDown() override
-        {
-            s_scriptMemberShared.reset();
-            s_scriptMemberIntrusive.reset();
-
-            AllocatorsFixture::TearDown();
-        }
-
-
-        static bool EnumClass(const char* name, const AZ::Uuid& /*typeid*/, void* /*userData*/)
-        {
-            AZ_TEST_ASSERT(name != nullptr);
-            return true;
-        }
-
-        static bool EnumMethod(const AZ::Uuid* /*type id*/, const char* name, const char* dbgParamInfo, void* /*userData*/)
-        {
-            // make sure the debug info works
-            if (strcmp(name, "GlobalFunc5") == 0)
-            {
-                AZ_TEST_ASSERT(strcmp(dbgParamInfo, "int NumberArguments (int intValue,float floatValue,bool Value,int intValue2,float floatValue2") == 0);
-            }
-            return true;
-        }
-
-        static bool EnumProperty(const AZ::Uuid* /*type id*/, const char* name, bool isRead, bool isWrite, void* /*userData*/)
-        {
-            if (strcmp(name, "globalVar") == 0)
-            {
-                AZ_TEST_ASSERT(isWrite && isRead);
-            }
-            if (strcmp(name, "globalVar2") == 0)
-            {
-                AZ_TEST_ASSERT(!isWrite && isRead);
-            }
-            if (strcmp(name, "globalVar3") == 0)
-            {
-                AZ_TEST_ASSERT(isWrite && !isRead);
-            }
-            return true;
-        }
-
-        static void ScriptErrorCB(AZ::ScriptContext*, AZ::ScriptContext::ErrorType, const char* details)
-        {
-            (void)details;
-            s_errorCount++;
-            AZ_Warning("Script", false, "%s", details);
-        }
-
-        void run()
-        {
-            BehaviorContext behaviorContext;
-
-            AZ::Uuid ch = AzTypeInfo<char>::Uuid();
-            AZ::Uuid ch1 = AzTypeInfo<const char*>::Uuid();
-            (void)ch; (void)ch1;
-
-            // enum
-            behaviorContext.Enum<GE_VALUE1>("GE_VALUE1")->
-                            Enum<GE_VALUE2>("GE_VALUE2");
-
-            // constant
-            behaviorContext.Constant("PI", BehaviorConstant(3.14f));
-
-            // property
-            behaviorContext.Property("globalVar", &GlobalVarGet, &GlobalVarSet);
-            behaviorContext.Property("globalVar1", BehaviorValueProperty(&s_globalVar1));
-            behaviorContext.Property("globalVarBool", BehaviorValueProperty(&s_globalVarBool));
-            behaviorContext.Property("globalVar2", BehaviorValueGetter(&s_globalVar2ReadOnly), nullptr);
-            behaviorContext.Property("globalVar3", nullptr, BehaviorValueSetter(&s_globalVar3WriteOnly));
-            behaviorContext.Property("globalVarString", &GlobalVarStringGet, &GlobalVarStringSet);
-
-            // field
-            behaviorContext.Property("globalField", BehaviorValueProperty(&s_globalField));
-            behaviorContext.Property("globalField1", BehaviorValueGetter(&s_globalField1), nullptr);
-            behaviorContext.Property("globalField2", nullptr, BehaviorValueSetter(&s_globalField2));
-            behaviorContext.Property("globalIncomplete", BehaviorValueProperty(&s_globalIncompletePtr)); // unregistered type (passed as light userdata)
-            behaviorContext.Property("globalIncomplete1", BehaviorValueProperty(&s_globalIncompletePtr1)); // unregistered type (passed as light userdata)
-
-            // method
-            behaviorContext.Method("GlobalFunc0", &GlobalFunc0);
-            behaviorContext.Method("GlobalFunc1", &GlobalFunc1);
-            behaviorContext.Method("GlobalFunc2", &GlobalFunc2);
-            behaviorContext.Method("GlobalFunc3", &GlobalFunc3);
-            behaviorContext.Method("GlobalFunc4", &GlobalFunc4);
-            behaviorContext.Method("GlobalFunc5", &GlobalFunc5, nullptr, "int NumberArguments (int intValue,float floatValue,bool Value,int intValue2,float floatValue2");
-            behaviorContext.Method("GlobalVoidFunc0", &GlobalVoidFunc0);
-            behaviorContext.Method("GlobalVoidFunc1", &GlobalVoidFunc1);
-            behaviorContext.Method("GlobalVoidFunc2", &GlobalVoidFunc2);
-            behaviorContext.Method("GlobalVoidFunc3", &GlobalVoidFunc3);
-            behaviorContext.Method("GlobalVoidFunc4", &GlobalVoidFunc4);
-            behaviorContext.Method("GlobalVoidFunc5", &GlobalVoidFunc5);
-            behaviorContext.Method("GlobalEnumFunc", &GlobalEnumFunc);
-            behaviorContext.Method("GlobalCheckString", &GlobalCheckString);
-            behaviorContext.Method("GlobalCheckStringRef", &GlobalCheckStringRef);
-
-            // clases
-            behaviorContext.Class<ScriptClass>()->
-                Allocator(&ScriptClassAllocate, &ScriptClassFree)->
-                Enum<ScriptClass::SC_ET_VALUE2>("SC_ET_VALUE2")->
-                Enum<ScriptClass::SC_ET_VALUE3>("SC_ET_VALUE3")->
-                Constant("EPSILON", BehaviorConstant(0.001f))->
-                Method("MemberFunc0", &ScriptClass::MemberFunc0)->
-                Method("MemberFunc1", &ScriptClass::MemberFunc1)->
-                Method("MemberFunc2", &ScriptClass::MemberFunc2)->
-                Method("MemberFunc3", &ScriptClass::MemberFunc3)->
-                Method("MemberFunc4", &ScriptClass::MemberFunc4)->
-                Method("MemberFunc5", &ScriptClass::MemberFunc5)->
-                Method("MemberVoidFunc0", &ScriptClass::MemberVoidFunc0)->
-                Method("MemberVoidFunc1", &ScriptClass::MemberVoidFunc1)->
-                Method("MemberVoidFunc2", &ScriptClass::MemberVoidFunc2)->
-                Method("MemberVoidFunc3", &ScriptClass::MemberVoidFunc3)->
-                Method("MemberVoidFunc4", &ScriptClass::MemberVoidFunc4)->
-                Method("MemberVoidFunc5", &ScriptClass::MemberVoidFunc5)->
-                Method("VariadicFunc", &ScriptClass::VariadicFunc)->
-                Property("data", &ScriptClass::GetData, &ScriptClass::SetData)->
-                Property("data1", BehaviorValueProperty(&ScriptClass::m_data1))->
-                Property("data2", BehaviorValueGetter(&ScriptClass::m_data2ReadOnly), nullptr)->
-                Property("data3", nullptr, BehaviorValueSetter(&ScriptClass::m_data3WriteOnly));//->
-            //Class<ScriptClass::ScriptClassNested,ScriptContext::SP_RAW_SCRIPT_OWN>()->
-            //  Field("data",&ScriptClass::ScriptClassNested::m_data)->
-            //ClassEnd();
-
-            behaviorContext.Class<ScriptClass2>()->
-                Constructor<int>()->
-                Method("Add", &ScriptClass2::ScriptAdd)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Add)->
-                Method("Sub", &ScriptClass2::ScriptSub)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Sub)->
-                Method("Mul", &ScriptClass2::ScriptMul)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Mul)->
-                Method("Div", &ScriptClass2::ScriptDiv)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
-                Method("Mod", &ScriptClass2::ScriptMod)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Mod)->
-                Method("Pow", &ScriptClass2::ScriptPow)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Pow)->
-                Method("Unary", &ScriptClass2::ScriptUnary)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Unary)->
-                Method("Concat", &ScriptClass2::ScriptConcat)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Concat)->
-                Method("Length", &ScriptClass2::ScriptLength)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)->
-                Method("Equal", &ScriptClass2::operator==)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)->
-                Method("LessEqual", &ScriptClass2::operator<=)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::LessEqualThan)->
-                Method("LessThan", &ScriptClass2::operator<)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::LessThan)->
-                Method("ToString", &ScriptClass2::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)->
-                Method("Forward", &ScriptClass2::Forward)->
-                Property("data", BehaviorValueProperty(&ScriptClass2::m_data));
-
-            behaviorContext.Class<ScriptClass3>()->
-                Constructor<ScriptDataContext&>()->
-                Property("boolData", BehaviorValueProperty(&ScriptClass3::m_bool))->
-                Property("intData", BehaviorValueProperty(&ScriptClass3::m_intData))->
-                Property("floatData", BehaviorValueProperty(&ScriptClass3::m_floatData))->
-                Property("scriptClass2", BehaviorValueProperty(&ScriptClass3::m_scriptClass2));
-
-            behaviorContext.Class<ScriptClass4>()->
-                Constructor<int>()->
-                Method("CopyData", &ScriptClass4::CopyData)->
-                Property("data", BehaviorValueProperty(&ScriptClass4::m_data));
-
-            behaviorContext.Property("scriptClass4Member", BehaviorValueProperty(&s_scriptMemberShared));
-            behaviorContext.Method("HoldScriptClass4", &ScriptClass4::HoldInstance);
-
-            behaviorContext.Class<ScriptClass5>()->
-                Constructor<int>()->
-                Method("CopyData", &ScriptClass5::CopyData)->
-                Property("data", BehaviorValueProperty(&ScriptClass5::m_data));
-
-            behaviorContext.Property("scriptClass5Member", BehaviorValueProperty(&s_scriptMemberIntrusive));
-            behaviorContext.Method("HoldScriptClass5", &ScriptClass5::HoldInstance);
-            
-            // Variadic method
-            behaviorContext.Method("VariadicFunc", &VariadicFunc);
-
-            // Check nested classes
-            behaviorContext.Class<ScriptValueClass>()->
-                Property("data", BehaviorValueProperty(&ScriptValueClass::m_data));
-
-            behaviorContext.Class<ScriptValueHolder>()->
-                Property("value", BehaviorValueProperty(&ScriptValueHolder::m_value));
-
-            // test class pointer casting for unregistered classes
-            behaviorContext.Property("globalUnregBaseClass", BehaviorValueProperty(&s_globalUnregBaseClass));
-            behaviorContext.Property("globalUnregDerivedClass", BehaviorValueProperty(&s_globalUnregDerivedClass));
-
-            behaviorContext.Method("GetUnregisteredScriptBaseData", &GetUnregisteredScriptBaseData);
-            behaviorContext.Method("GetUnregisteredScriptDerivedData", &GetUnregisteredScriptDerivedData);
-
-            // register a base and derived class test
-            behaviorContext.Class<ScriptRegisteredBaseClass>()->
-                Property("baseData", BehaviorValueProperty(&ScriptRegisteredBaseClass::m_baseData))->
-                Method("VirtualFunction", &ScriptRegisteredBaseClass::VirtualFunction);
-
-            // when using AZ_RTTI the bind will discover the 'ScriptRegisteredBaseClass' and import it's bindings
-            // into 'ScriptRegisteredDerivedClass' class so we access it (like in C++)
-            behaviorContext.Class<ScriptRegisteredDerivedClass>()->
-                Property("derivedData", BehaviorValueProperty(&ScriptRegisteredDerivedClass::m_derivedData));
-
-            // add a function that makes a derived class (can change at runtime) and return pointer to a base class.
-            behaviorContext.Property("globalRegisteredBaseClass", BehaviorValueProperty(&s_globalRegisteredBaseClass));
-
-            // abstract classes
-            behaviorContext.Class<AbstractClass>()->
-                Method("PureCall", &AbstractClass::PureCall);
-
-            behaviorContext.Class<AbstractImplementation>();
-
-            // create the lua script context and Bind it the behavior
-            ScriptContext script;
-            script.BindTo(&behaviorContext);
-
-            // test globalVar with functions get and set
-            AZ_TEST_ASSERT(s_globalVar == 0);
-            script.Execute("globalVar = 5");
-            AZ_TEST_ASSERT(s_globalVar == 5);
-            script.Execute("globalVar = globalVar + 1");
-            AZ_TEST_ASSERT(s_globalVar == 6);
-
-            // test globalVar1 with variable address only
-            AZ_TEST_ASSERT(s_globalVar1 == 0.0f);
-            script.Execute("globalVar1 = 5");
-            AZ_TEST_ASSERT(s_globalVar1 == 5.0f);
-            script.Execute("globalVar1 = globalVar1 + 1.0");
-            AZ_TEST_ASSERT(s_globalVar1 == 6.0f);
-
-            // test globalVar2ReadOnly
-            s_globalVar1 = 0.0f;
-            AZ_TEST_ASSERT(s_globalVar2ReadOnly == 10.0f);
-            script.Execute("globalVar1 = globalVar2");
-            AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
-            //script.Execute("globalVar2 = 5.0"); //- this will cause script error (we can improve the message by providing a fake set function);
-
-            // test globalVar2WriteOnly
-            AZ_TEST_ASSERT(s_globalVar3WriteOnly == 0.0f);
-            script.Execute("globalVar3 = 100");
-            AZ_TEST_ASSERT(s_globalVar3WriteOnly == 100.0f);
-            //script.Execute("print(\"globalVar3 is \",globalVar3)"); //- this will cause script error (we can improve the message by providing a fake set function);
-
-            // globalField with functions get and set
-            AZ_TEST_ASSERT(s_globalField == 0);
-            script.Execute("globalField = 5");
-            AZ_TEST_ASSERT(s_globalField == 5);
-            script.Execute("globalField = globalField +1");
-            AZ_TEST_ASSERT(s_globalField == 6);
-
-            // globalField1 read only
-            s_globalVar1 = 0.0f;
-            AZ_TEST_ASSERT(s_globalField1 == 12.0f);
-            script.Execute("globalVar1 = globalField1");
-            AZ_TEST_ASSERT(s_globalVar1 == 12.0f);
-            //script.Execute("globalField1 = 10.0"); //- this will cause script error (we can improve the message by providing a fake set function);
-
-            // globalField2 write only
-            AZ_TEST_ASSERT(s_globalField2 == 0.0f);
-            script.Execute("globalField2 = 100");
-            AZ_TEST_ASSERT(s_globalField2 == 100.0f);
-            //script.Execute("print(\"globalField2 is \",globalField2)"); //- this will cause script error (we can improve the message by providing a fake set function);
-
-            // s_globalVarString test
-            AZ_TEST_ASSERT(s_globalVarString.empty());
-            script.Execute("globalVarString = \"Hello\"");
-            AZ_TEST_ASSERT(s_globalVarString.compare("Hello") == 0);
-
-            // incomplete types passed by a light-user data (pointer reference)
-            AZ_TEST_ASSERT(s_globalIncompletePtr == reinterpret_cast<IncompleteType*>(AZ_INVALID_POINTER));
-            AZ_TEST_ASSERT(s_globalIncompletePtr1 == 0);
-
-            script.Execute("globalIncomplete1 = globalIncomplete");
-            AZ_TEST_ASSERT(s_globalIncompletePtr1 == s_globalIncompletePtr);
-
-            // enum
-            s_globalVar = 100;
-            script.Execute("globalVar = 0");
-            AZ_TEST_ASSERT(s_globalVar == 0);
-            s_globalVar = 100;
-            script.Execute("globalVar = GE_VALUE1");
-            AZ_TEST_ASSERT(s_globalVar == GE_VALUE1);
-            s_globalVar = 100;
-            script.Execute("globalVar = GE_VALUE2");
-            AZ_TEST_ASSERT(s_globalVar == GE_VALUE2);
-            s_globalVar = 100;
-            script.Execute("GlobalEnumFunc(GE_VALUE2)");
-            AZ_TEST_ASSERT(s_globalVar == GE_VALUE2);
-
-            // constant
-            s_globalVar1 = 0.0f;
-            script.Execute("globalVar1 = PI");
-            AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 3.14f);
-
-            // methods
-            s_globalVar = 5;
-            script.Execute("globalVar = GlobalFunc0()");
-            AZ_TEST_ASSERT(s_globalVar == 0);
-            s_globalVar = 0;
-            script.Execute("globalVar = GlobalFunc1(2)");
-            AZ_TEST_ASSERT(s_globalVar == 1);
-            s_globalVar = 0;
-            script.Execute("globalVar = GlobalFunc2(2,3)");
-            AZ_TEST_ASSERT(s_globalVar == 2);
-            s_globalVar = 0;
-            script.Execute("globalVar = GlobalFunc3(2,3,true)");
-            AZ_TEST_ASSERT(s_globalVar == 3);
-            s_globalVar = 0;
-            script.Execute("globalVar = GlobalFunc4(2,3,false,4)");
-            AZ_TEST_ASSERT(s_globalVar == 4);
-            s_globalVar = 0;
-            script.Execute("globalVar = GlobalFunc5(2,3,true,5,2)");
-            AZ_TEST_ASSERT(s_globalVar == 5);
-
-            s_globalVar = 5;
-            script.Execute("GlobalVoidFunc0()");
-            AZ_TEST_ASSERT(s_globalVar == 0);
-            s_globalVar = 0;
-            script.Execute("GlobalVoidFunc1(2)");
-            AZ_TEST_ASSERT(s_globalVar == 2);
-            s_globalVar = 0;
-            script.Execute("GlobalVoidFunc2(10,1)");
-            AZ_TEST_ASSERT(s_globalVar == 10);
-            s_globalVar = 0;
-            script.Execute("GlobalVoidFunc3(15,3,true)");
-            AZ_TEST_ASSERT(s_globalVar == 15);
-            s_globalVar = 0;
-            script.Execute("GlobalVoidFunc4(21,4,false,2)");
-            AZ_TEST_ASSERT(s_globalVar == 21);
-            s_globalVar = 0;
-            script.Execute("GlobalVoidFunc5(101,102,true,2,1)");
-            AZ_TEST_ASSERT(s_globalVar == 101);
-
-            script.Execute("GlobalCheckString(globalVarString)");
-            script.Execute("GlobalCheckStringRef(globalVarString)");
-
-            // test a variadic function
-            s_globalVar = 5;
-            script.Execute("globalVar1 = VariadicFunc()");
-            AZ_TEST_ASSERT(s_globalVar == 0);
-            AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 0.0f);
-
-            s_globalVar = 0;
-            script.Execute("globalVar1 = VariadicFunc(101,102,true,2,1)");
-            AZ_TEST_ASSERT(s_globalVar == 5);
-            AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 10.0f);
-
-            s_globalVar = 0;
-            script.Execute("globalVar1 = VariadicFunc(101,102)");
-            AZ_TEST_ASSERT(s_globalVar == 2);
-            AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 4.0f);
-
-            //////////////////////////////////////////////////////////////////////////
-            // Classes
-            s_globalVar = 0;
-            script.Execute("globalVar = scriptClass4Member.data");
-            AZ_TEST_ASSERT(s_globalVar == 10);
-            script.Execute("scriptClass4Member = nil");
-            AZ_TEST_ASSERT(s_scriptMemberShared == nullptr);
-            script.Execute("scriptClass4Member = shared_ptr_ScriptClass4(ScriptClass4(12))");
-            AZ_TEST_ASSERT(s_scriptMemberShared->m_data == 12);
-
-            // test invalid assignment
-            {
-                s_errorCount = 0;
-                auto originalErrorCB = script.GetErrorHook();
-                script.SetErrorHook(&ScriptErrorCB);
-                script.Execute("scriptClass4Member = ScriptClass5(12)");
-                script.SetErrorHook(originalErrorCB);
-                AZ_TEST_ASSERT(s_errorCount == 1);
-            }
-
-            script.Execute("scriptClass4Member = nil");
-            script.GarbageCollect();
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 0)
+        script.Execute("scriptClass4Member = nil");
+        script.GarbageCollect();
+        AZ_TEST_ASSERT(scriptClass4numInstances == 0)
 
             // test assignments of nil to intrusive pointer
             s_globalVar = 0;
-            script.Execute("globalVar = scriptClass5Member.data");
-            AZ_TEST_ASSERT(s_globalVar == 10);
-            script.Execute("scriptClass5Member = nil");
-            AZ_TEST_ASSERT(s_scriptMemberShared == nullptr);
-            script.Execute("scriptClass5Member = intrusive_ptr_ScriptClass5(ScriptClass5(12))");
-            AZ_TEST_ASSERT(s_scriptMemberIntrusive->m_data == 12);
+        script.Execute("globalVar = scriptClass5Member.data");
+        AZ_TEST_ASSERT(s_globalVar == 10);
+        script.Execute("scriptClass5Member = nil");
+        AZ_TEST_ASSERT(s_scriptMemberShared == nullptr);
+        script.Execute("scriptClass5Member = intrusive_ptr_ScriptClass5(ScriptClass5(12))");
+        AZ_TEST_ASSERT(s_scriptMemberIntrusive->m_data == 12);
 
-            // test invalid assignment
-            {
-                s_errorCount = 0;
-                auto originalErrorCB = script.GetErrorHook();
-                script.SetErrorHook(&ScriptErrorCB);
-                script.Execute("scriptClass5Member = ScriptClass4(12)");
-                script.SetErrorHook(originalErrorCB);
-                AZ_TEST_ASSERT(s_errorCount == 1);
-            }
+        // test invalid assignment
+        {
+            s_errorCount = 0;
+            auto originalErrorCB = script.GetErrorHook();
+            script.SetErrorHook(&ScriptErrorCB);
+            script.Execute("scriptClass5Member = ScriptClass4(12)");
+            script.SetErrorHook(originalErrorCB);
+            AZ_TEST_ASSERT(s_errorCount == 1);
+        }
 
-            AZ_TEST_ASSERT(s_scriptMemberIntrusive->m_data == 12);
-            script.Execute("scriptClass5Member = nil");
-            script.GarbageCollect();
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 0)
+        AZ_TEST_ASSERT(s_scriptMemberIntrusive->m_data == 12);
+        script.Execute("scriptClass5Member = nil");
+        script.GarbageCollect();
+        AZ_TEST_ASSERT(scriptClass5numInstances == 0)
 
             // debug print
             AZ_TEST_ASSERT(script.GetDebugContext() == nullptr);
-            script.EnableDebug();
-            if (script.GetDebugContext() != nullptr) // debug is NOT supported in release builds
-            {
-                script.GetDebugContext()->EnumRegisteredGlobals(&EnumMethod, &EnumProperty);
-                script.GetDebugContext()->EnumRegisteredClasses(&EnumClass, &EnumMethod, &EnumProperty);
-                script.DisableDebug();
-                AZ_TEST_ASSERT(script.GetDebugContext() == nullptr);
-            }
+        script.EnableDebug();
+        if (script.GetDebugContext() != nullptr) // debug is NOT supported in release builds
+        {
+            script.GetDebugContext()->EnumRegisteredGlobals(&EnumMethod, &EnumProperty);
+            script.GetDebugContext()->EnumRegisteredClasses(&EnumClass, &EnumMethod, &EnumProperty);
+            script.DisableDebug();
+            AZ_TEST_ASSERT(script.GetDebugContext() == nullptr);
+        }
 
-            // create a ScriptClass instance from the script
-            AZ_TEST_ASSERT(s_scriptClassInstance == nullptr);
-            script.Execute("sc = ScriptClass()");
-            AZ_TEST_ASSERT(s_scriptClassInstance != nullptr);
+        // create a ScriptClass instance from the script
+        AZ_TEST_ASSERT(s_scriptClassInstance == nullptr);
+        script.Execute("sc = ScriptClass()");
+        AZ_TEST_ASSERT(s_scriptClassInstance != nullptr);
 
-            // enum
-            s_globalVar = 0;
-            script.Execute("globalVar = sc.SC_ET_VALUE2");
-            AZ_TEST_ASSERT(s_globalVar == 2);
+        // enum
+        s_globalVar = 0;
+        script.Execute("globalVar = sc.SC_ET_VALUE2");
+        AZ_TEST_ASSERT(s_globalVar == 2);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc.SC_ET_VALUE3");
-            AZ_TEST_ASSERT(s_globalVar == 3);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc.SC_ET_VALUE3");
+        AZ_TEST_ASSERT(s_globalVar == 3);
 
-            // constant
-            s_globalVar1 = 0.0f;
-            script.Execute("globalVar1 = sc.EPSILON");
-            AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 0.001f);
+        // constant
+        s_globalVar1 = 0.0f;
+        script.Execute("globalVar1 = sc.EPSILON");
+        AZ_TEST_ASSERT_FLOAT_CLOSE(s_globalVar1, 0.001f);
 
-            // methods
-            s_globalVar = 1;
-            script.Execute("globalVar = sc:MemberFunc0()");
-            AZ_TEST_ASSERT(s_globalVar == 0);
+        // methods
+        s_globalVar = 1;
+        script.Execute("globalVar = sc:MemberFunc0()");
+        AZ_TEST_ASSERT(s_globalVar == 0);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc:MemberFunc1(1)");
-            AZ_TEST_ASSERT(s_globalVar == 1);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc:MemberFunc1(1)");
+        AZ_TEST_ASSERT(s_globalVar == 1);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc:MemberFunc2(2,2.0)");
-            AZ_TEST_ASSERT(s_globalVar == 2);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc:MemberFunc2(2,2.0)");
+        AZ_TEST_ASSERT(s_globalVar == 2);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc:MemberFunc3(3,3.0,false)");
-            AZ_TEST_ASSERT(s_globalVar == 3);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc:MemberFunc3(3,3.0,false)");
+        AZ_TEST_ASSERT(s_globalVar == 3);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc:MemberFunc4(4,4.0,true,40)");
-            AZ_TEST_ASSERT(s_globalVar == 4);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc:MemberFunc4(4,4.0,true,40)");
+        AZ_TEST_ASSERT(s_globalVar == 4);
 
-            s_globalVar = 0;
-            script.Execute("globalVar = sc:MemberFunc5(5,5.0,false,50,50.0)");
-            AZ_TEST_ASSERT(s_globalVar == 5);
+        s_globalVar = 0;
+        script.Execute("globalVar = sc:MemberFunc5(5,5.0,false,50,50.0)");
+        AZ_TEST_ASSERT(s_globalVar == 5);
 
-            s_scriptClassInstance->m_data = 10;
-            script.Execute("sc:MemberVoidFunc0()");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 0);
+        s_scriptClassInstance->m_data = 10;
+        script.Execute("sc:MemberVoidFunc0()");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 0);
 
-            s_scriptClassInstance->m_data = 0;
-            script.Execute("sc:MemberVoidFunc1(11)");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 11);
+        s_scriptClassInstance->m_data = 0;
+        script.Execute("sc:MemberVoidFunc1(11)");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 11);
 
-            s_scriptClassInstance->m_data = 0;
-            script.Execute("sc:MemberVoidFunc2(7,11)");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 7);
+        s_scriptClassInstance->m_data = 0;
+        script.Execute("sc:MemberVoidFunc2(7,11)");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 7);
 
-            s_scriptClassInstance->m_data = 0;
-            script.Execute("sc:MemberVoidFunc3(13,11,false)");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 13);
+        s_scriptClassInstance->m_data = 0;
+        script.Execute("sc:MemberVoidFunc3(13,11,false)");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 13);
 
-            s_scriptClassInstance->m_data = 0;
-            script.Execute("sc:MemberVoidFunc4(21,11,false,40)");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 21);
+        s_scriptClassInstance->m_data = 0;
+        script.Execute("sc:MemberVoidFunc4(21,11,false,40)");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 21);
 
-            s_scriptClassInstance->m_data = 0;
-            script.Execute("sc:MemberVoidFunc5(30,11,false,50,50.0)");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 30);
+        s_scriptClassInstance->m_data = 0;
+        script.Execute("sc:MemberVoidFunc5(30,11,false,50,50.0)");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data == 30);
 
-            // test number of arguments in a variadic function
-            s_globalVar = 0;
-            script.Execute("sc:VariadicFunc(30,11,false)");
-            AZ_TEST_ASSERT(s_globalVar == 3);
+        // test number of arguments in a variadic function
+        s_globalVar = 0;
+        script.Execute("sc:VariadicFunc(30,11,false)");
+        AZ_TEST_ASSERT(s_globalVar == 3);
 
-            s_scriptClassInstance->m_data = 0;
-            s_globalVar = 1;
-            script.Execute("globalVar = sc.data");
-            AZ_TEST_ASSERT(s_globalVar == 0);
+        s_scriptClassInstance->m_data = 0;
+        s_globalVar = 1;
+        script.Execute("globalVar = sc.data");
+        AZ_TEST_ASSERT(s_globalVar == 0);
 
-            script.Execute("sc.data = 10");
-            script.Execute("globalVar = sc.data");
-            AZ_TEST_ASSERT(s_globalVar == 10);
+        script.Execute("sc.data = 10");
+        script.Execute("globalVar = sc.data");
+        AZ_TEST_ASSERT(s_globalVar == 10);
 
-            s_globalVar1 = 3.0f;
-            script.Execute("globalVar1 = sc.data1");
-            AZ_TEST_ASSERT(s_globalVar1 == 0.0f);
+        s_globalVar1 = 3.0f;
+        script.Execute("globalVar1 = sc.data1");
+        AZ_TEST_ASSERT(s_globalVar1 == 0.0f);
 
-            script.Execute("sc.data1 = 11 ");
-            script.Execute("globalVar1 = sc.data1");
-            AZ_TEST_ASSERT(s_globalVar1 == 11.0f);
+        script.Execute("sc.data1 = 11 ");
+        script.Execute("globalVar1 = sc.data1");
+        AZ_TEST_ASSERT(s_globalVar1 == 11.0f);
 
-            s_globalVar1 = 0.0f;
-            script.Execute("globalVar1 = sc.data2");
-            AZ_TEST_ASSERT(s_globalVar1 == 11.0f);
+        s_globalVar1 = 0.0f;
+        script.Execute("globalVar1 = sc.data2");
+        AZ_TEST_ASSERT(s_globalVar1 == 11.0f);
 
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data3WriteOnly == 0.0f);
-            script.Execute("sc.data3 = 101");
-            AZ_TEST_ASSERT(s_scriptClassInstance->m_data3WriteOnly == 101.0f);
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data3WriteOnly == 0.0f);
+        script.Execute("sc.data3 = 101");
+        AZ_TEST_ASSERT(s_scriptClassInstance->m_data3WriteOnly == 101.0f);
 
-            s_globalVarString.clear();
-            script.Execute("globalVarString = tostring(sc)");
-            AZ_TEST_ASSERT(s_globalVarString.compare("ScriptClass") == 0);
+        s_globalVarString.clear();
+        script.Execute("globalVarString = tostring(sc)");
+        AZ_TEST_ASSERT(s_globalVarString.compare("ScriptClass") == 0);
 
-            // release test
-            script.Execute("sc = nil");
-            script.GarbageCollect();
-            AZ_TEST_ASSERT(s_scriptClassInstance == nullptr);
+        // release test
+        script.Execute("sc = nil");
+        script.GarbageCollect();
+        AZ_TEST_ASSERT(s_scriptClassInstance == nullptr);
 
-            //////////////////////////////////////////////////////////////////////////
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 0);
-            script.Execute("sc2 = ScriptClass2(10)");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 1);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[0]->m_data == 10);
+        //////////////////////////////////////////////////////////////////////////
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 0);
+        script.Execute("sc2 = ScriptClass2(10)");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 1);
+        AZ_TEST_ASSERT(scriptClass2Instances[0]->m_data == 10);
 
-            script.Execute("sc21 = ScriptClass2(20)");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[1]->m_data == 20);
+        script.Execute("sc21 = ScriptClass2(20)");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
+        AZ_TEST_ASSERT(scriptClass2Instances[1]->m_data == 20);
 
-            // addition
-            script.Execute("sc22 = sc2 + sc21");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 30);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // addition
+        script.Execute("sc22 = sc2 + sc21");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 30);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // sub
-            script.Execute("sc22 = sc2 - sc21");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == -10);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // sub
+        script.Execute("sc22 = sc2 - sc21");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == -10);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // mul
-            script.Execute("sc22 = sc2 * sc21");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 200);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // mul
+        script.Execute("sc22 = sc2 * sc21");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 200);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // div
-            script.Execute("sc22 = sc21 / sc2");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 2);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // div
+        script.Execute("sc22 = sc21 / sc2");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 2);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // mod
-            script.Execute("sc21.data = 3 sc22 = sc2 % sc21 sc21.data = 20");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 1);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // mod
+        script.Execute("sc21.data = 3 sc22 = sc2 % sc21 sc21.data = 20");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 1);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // pow
-            script.Execute("sc21.data = 2 sc22 = sc2 ^ sc21 sc21.data = 20");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 100);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // pow
+        script.Execute("sc21.data = 2 sc22 = sc2 ^ sc21 sc21.data = 20");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 100);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // unary
-            script.Execute("sc22 = -sc2");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == -10);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // unary
+        script.Execute("sc22 = -sc2");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == -10);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // concat
-            script.Execute("sc22 = sc2 .. sc21");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 3);
-            AZ_TEST_ASSERT(ScriptClass2::s_instances[2]->m_data == 30);
-            script.Execute("sc22 = nil collectgarbage(\"collect\")");
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 2);
+        // concat
+        script.Execute("sc22 = sc2 .. sc21");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 3);
+        AZ_TEST_ASSERT(scriptClass2Instances[2]->m_data == 30);
+        script.Execute("sc22 = nil collectgarbage(\"collect\")");
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 2);
 
-            // compare
-            s_globalVarBool = true;
-            script.Execute("globalVarBool = (sc2 == sc21)");
-            AZ_TEST_ASSERT(!s_globalVarBool);
-            script.Execute("sc21.data = 10 globalVarBool = (sc2 == sc21) sc21.data = 20");
-            AZ_TEST_ASSERT(s_globalVarBool);
+        // compare
+        s_globalVarBool = true;
+        script.Execute("globalVarBool = (sc2 == sc21)");
+        AZ_TEST_ASSERT(!s_globalVarBool);
+        script.Execute("sc21.data = 10 globalVarBool = (sc2 == sc21) sc21.data = 20");
+        AZ_TEST_ASSERT(s_globalVarBool);
 
-            // compare less than
-            s_globalVarBool = false;
-            script.Execute("globalVarBool = (sc2 < sc21)");
-            AZ_TEST_ASSERT(s_globalVarBool);
-            script.Execute("globalVarBool = (sc21 < sc2)");
-            AZ_TEST_ASSERT(!s_globalVarBool);
+        // compare less than
+        s_globalVarBool = false;
+        script.Execute("globalVarBool = (sc2 < sc21)");
+        AZ_TEST_ASSERT(s_globalVarBool);
+        script.Execute("globalVarBool = (sc21 < sc2)");
+        AZ_TEST_ASSERT(!s_globalVarBool);
 
-            // compare less than
-            s_globalVarBool = false;
-            script.Execute("globalVarBool = (sc2 <= sc21)");
-            AZ_TEST_ASSERT(s_globalVarBool);
-            script.Execute("globalVarBool = (sc21 <= sc2)");
-            AZ_TEST_ASSERT(!s_globalVarBool);
+        // compare less than
+        s_globalVarBool = false;
+        script.Execute("globalVarBool = (sc2 <= sc21)");
+        AZ_TEST_ASSERT(s_globalVarBool);
+        script.Execute("globalVarBool = (sc21 <= sc2)");
+        AZ_TEST_ASSERT(!s_globalVarBool);
 
-            // len
-            s_globalVar = 0;
-            script.Execute("globalVar = #sc2");
-            AZ_TEST_ASSERT(s_globalVar == 10);
+        // len
+        s_globalVar = 0;
+        script.Execute("globalVar = #sc2");
+        AZ_TEST_ASSERT(s_globalVar == 10);
 
-            // len
-            s_globalVarString.clear();
-            script.Execute("globalVarString = tostring(sc2)");
-            AZ_TEST_ASSERT(s_globalVarString.compare("This is ScriptClass2") == 0);
+        // len
+        s_globalVarString.clear();
+        script.Execute("globalVarString = tostring(sc2)");
+        AZ_TEST_ASSERT(s_globalVarString.compare("This is ScriptClass2") == 0);
 
-            // test pass object by pointer (when it's script owned) back to script
-            // we should make sure that we find the original instance
-            script.Execute("sc2F = sc2:Forward()");
+        // test pass object by pointer (when it's script owned) back to script
+        // we should make sure that we find the original instance
+        script.Execute("sc2F = sc2:Forward()");
 
-            // release test
-            script.Execute("sc2 = nil sc21 = nil");
-            script.GarbageCollect();
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 1);
-            script.Execute("sc2F = nil");
-            script.GarbageCollect();
-            AZ_TEST_ASSERT(ScriptClass2::s_instances.size() == 0);
+        // release test
+        script.Execute("sc2 = nil sc21 = nil");
+        script.GarbageCollect();
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 1);
+        script.Execute("sc2F = nil");
+        script.GarbageCollect();
+        AZ_TEST_ASSERT(scriptClass2Instances.size() == 0);
 
-            // test class with variadic constructor
-            AZ_TEST_ASSERT(s_scriptClass3Instance == nullptr);
-            script.Execute("sc3 = ScriptClass3(true,10,20.0,globalIncomplete)");
-            AZ_TEST_ASSERT(s_scriptClass3Instance != nullptr);
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_bool == true)
+        // test class with variadic constructor
+        AZ_TEST_ASSERT(s_scriptClass3Instance == nullptr);
+        script.Execute("sc3 = ScriptClass3(true,10,20.0,globalIncomplete)");
+        AZ_TEST_ASSERT(s_scriptClass3Instance != nullptr);
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_bool == true)
             AZ_TEST_ASSERT(s_scriptClass3Instance->m_intData == 10)
             AZ_TEST_ASSERT(s_scriptClass3Instance->m_floatData == 20.0f)
             AZ_TEST_ASSERT(s_scriptClass3Instance->m_incompletePtr == s_globalIncompletePtr);
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 == nullptr);
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 == nullptr);
 
-            // we need to transfer the ownership of the object
-            script.Execute("sc3.scriptClass2 = ScriptClass2(333):ReleaseOwnership()");
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 != nullptr);
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2->m_data == 333);
-            script.Execute("sc3.scriptClass2.data = 444");
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2->m_data == 444);
-            ScriptClass2* scriptClass2ToDelete = s_scriptClass3Instance->m_scriptClass2; // we Lua released the ownership
-            script.Execute("sc3.scriptClass2 = nil");
-            AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 == nullptr);
+        // we need to transfer the ownership of the object
+        script.Execute("sc3.scriptClass2 = ScriptClass2(333):ReleaseOwnership()");
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 != nullptr);
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2->m_data == 333);
+        script.Execute("sc3.scriptClass2.data = 444");
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2->m_data == 444);
+        ScriptClass2* scriptClass2ToDelete = s_scriptClass3Instance->m_scriptClass2; // we Lua released the ownership
+        script.Execute("sc3.scriptClass2 = nil");
+        AZ_TEST_ASSERT(s_scriptClass3Instance->m_scriptClass2 == nullptr);
 
-            script.Execute("sc3 = nil collectgarbage(\"collect\")");
-            delete scriptClass2ToDelete;
-            AZ_TEST_ASSERT(s_scriptClass3Instance == nullptr);
+        script.Execute("sc3 = nil collectgarbage(\"collect\")");
+        delete scriptClass2ToDelete;
+        AZ_TEST_ASSERT(s_scriptClass3Instance == nullptr);
 
-            // test a class with shared_ptr owner policy
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 0);
-            script.Execute("sc4 = shared_ptr_ScriptClass4(ScriptClass4(101))"); // create an instance and DON'T HOLD A SHARED PTR 
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 1);
-            AZ_TEST_ASSERT(ScriptClass4::s_lockedInstances.empty());
-            script.Execute("sc41 = shared_ptr_ScriptClass4(ScriptClass4(201)) HoldScriptClass4(sc41)"); // create an instance and HOLD A SHARED PTR
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 2);
-            AZ_TEST_ASSERT(ScriptClass4::s_lockedInstances.size() == 1);
-            AZ_TEST_ASSERT(ScriptClass4::s_lockedInstances[0]->m_data == 201);
-            script.Execute("sc41:CopyData(sc4)");
-            AZ_TEST_ASSERT(ScriptClass4::s_lockedInstances[0]->m_data == 101);
-            script.Execute("sc4 = nil sc41 = nil collectgarbage(\"collect\")"); // this should release and delete sc4 but NOT sc41
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 1);
-            AZ_TEST_ASSERT(ScriptClass4::s_lockedInstances.size() == 1);
-            ScriptClass4::s_lockedInstances.clear();
-            AZ_TEST_ASSERT(ScriptClass4::s_numInstances == 0);
+        // test a class with shared_ptr owner policy
+        AZ_TEST_ASSERT(scriptClass4numInstances == 0);
+        script.Execute("sc4 = shared_ptr_ScriptClass4(ScriptClass4(101))"); // create an instance and DON'T HOLD A SHARED PTR 
+        AZ_TEST_ASSERT(scriptClass4numInstances == 1);
+        AZ_TEST_ASSERT(scriptClass4lockedInstances.empty());
+        script.Execute("sc41 = shared_ptr_ScriptClass4(ScriptClass4(201)) HoldScriptClass4(sc41)"); // create an instance and HOLD A SHARED PTR
+        AZ_TEST_ASSERT(scriptClass4numInstances == 2);
+        AZ_TEST_ASSERT(scriptClass4lockedInstances.size() == 1);
+        AZ_TEST_ASSERT(scriptClass4lockedInstances[0]->m_data == 201);
+        script.Execute("sc41:CopyData(sc4)");
+        AZ_TEST_ASSERT(scriptClass4lockedInstances[0]->m_data == 101);
+        script.Execute("sc4 = nil sc41 = nil collectgarbage(\"collect\")"); // this should release and delete sc4 but NOT sc41
+        AZ_TEST_ASSERT(scriptClass4numInstances == 1);
+        AZ_TEST_ASSERT(scriptClass4lockedInstances.size() == 1);
+        scriptClass4lockedInstances.clear();
+        AZ_TEST_ASSERT(scriptClass4numInstances == 0);
 
-            // test a class with intrusive_ptr owner policy
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 0);
-            script.Execute("sc5 = intrusive_ptr_ScriptClass5(ScriptClass5(101))"); // create an instance and DON'T HOLD A INTRUSIVE PTR (check constructor)
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 1);
-            AZ_TEST_ASSERT(ScriptClass5::s_lockedInstances.empty());
-            script.Execute("sc51 = intrusive_ptr_ScriptClass5(ScriptClass5(201)) HoldScriptClass5(sc51)"); // create an instance and HOLD A INTRUSIVE PTR (check constructor)
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 2);
-            AZ_TEST_ASSERT(ScriptClass5::s_lockedInstances.size() == 1);
-            AZ_TEST_ASSERT(ScriptClass5::s_lockedInstances[0]->m_data == 201);
-            script.Execute("sc51:CopyData(sc5)");
-            AZ_TEST_ASSERT(ScriptClass5::s_lockedInstances[0]->m_data == 101);
-            script.Execute("sc5 = nil sc51 = nil collectgarbage(\"collect\")"); // this should release and delete sc4 but NOT sc41
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 1);
-            AZ_TEST_ASSERT(ScriptClass5::s_lockedInstances.size() == 1);
-            ScriptClass5::s_lockedInstances.clear();
-            AZ_TEST_ASSERT(ScriptClass5::s_numInstances == 0);
+        // test a class with intrusive_ptr owner policy
+        AZ_TEST_ASSERT(scriptClass5numInstances == 0);
+        script.Execute("sc5 = intrusive_ptr_ScriptClass5(ScriptClass5(101))"); // create an instance and DON'T HOLD A INTRUSIVE PTR (check constructor)
+        AZ_TEST_ASSERT(scriptClass5numInstances == 1);
+        AZ_TEST_ASSERT(scriptClass5lockedInstances.empty());
+        script.Execute("sc51 = intrusive_ptr_ScriptClass5(ScriptClass5(201)) HoldScriptClass5(sc51)"); // create an instance and HOLD A INTRUSIVE PTR (check constructor)
+        AZ_TEST_ASSERT(scriptClass5numInstances == 2);
+        AZ_TEST_ASSERT(scriptClass5lockedInstances.size() == 1);
+        AZ_TEST_ASSERT(scriptClass5lockedInstances[0]->m_data == 201);
+        script.Execute("sc51:CopyData(sc5)");
+        AZ_TEST_ASSERT(scriptClass5lockedInstances[0]->m_data == 101);
+        script.Execute("sc5 = nil sc51 = nil collectgarbage(\"collect\")"); // this should release and delete sc4 but NOT sc41
+        AZ_TEST_ASSERT(scriptClass5numInstances == 1);
+        AZ_TEST_ASSERT(scriptClass5lockedInstances.size() == 1);
+        scriptClass5lockedInstances.clear();
+        AZ_TEST_ASSERT(scriptClass5numInstances == 0);
 
-            // Check nested classes
+        // Check nested classes
 
-            // create valueHolder
-            script.Execute("valueHolder = ScriptValueHolder()");
+        // create valueHolder
+        script.Execute("valueHolder = ScriptValueHolder()");
 
-            // test reading user value data type
-            script.Execute("globalVar1 = valueHolder.value.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
+        // test reading user value data type
+        script.Execute("globalVar1 = valueHolder.value.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
 
-            // test writing user value data type
-            script.Execute("valueHolder.value.data = 5");
-            script.Execute("globalVar1 = valueHolder.value.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 5.0f);
+        // test writing user value data type
+        script.Execute("valueHolder.value.data = 5");
+        script.Execute("globalVar1 = valueHolder.value.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 5.0f);
 
-            // create user value type
-            script.Execute("userValueType = ScriptValueClass()");
+        // create user value type
+        script.Execute("userValueType = ScriptValueClass()");
 
-            // test reading user value data type
-            s_globalVar1 = 0.0f;
-            script.Execute("globalVar1 = userValueType.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
+        // test reading user value data type
+        s_globalVar1 = 0.0f;
+        script.Execute("globalVar1 = userValueType.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
 
-            // test assignment of value types
-            s_globalVar1 = 0.0f;
-            script.Execute("valueHolder.value = userValueType");
-            script.Execute("globalVar1 = valueHolder.value.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
+        // test assignment of value types
+        s_globalVar1 = 0.0f;
+        script.Execute("valueHolder.value = userValueType");
+        script.Execute("globalVar1 = valueHolder.value.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
 
-            // make sure we copy the userValueType, not store a reference to it!
-            script.Execute("userValueType.data = 100");
-            script.Execute("globalVar1 = valueHolder.value.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
+        // make sure we copy the userValueType, not store a reference to it!
+        script.Execute("userValueType.data = 100");
+        script.Execute("globalVar1 = valueHolder.value.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 10.0f);
 
-            // now store a reference and make sure it works
-            script.Execute("userValueTypeRef = valueHolder.value");
-            script.Execute("userValueTypeRef.data = 100");
-            script.Execute("globalVar1 = valueHolder.value.data");
-            AZ_TEST_ASSERT(s_globalVar1 == 100.0f);
+        // now store a reference and make sure it works
+        script.Execute("userValueTypeRef = valueHolder.value");
+        script.Execute("userValueTypeRef.data = 100");
+        script.Execute("globalVar1 = valueHolder.value.data");
+        AZ_TEST_ASSERT(s_globalVar1 == 100.0f);
 
-            script.Execute("valueHolder = nil userValueType = nil");
+        script.Execute("valueHolder = nil userValueType = nil");
 
-            // test class pointer casting for unregistered classes
-            ScriptUnregisteredBaseClass ubc;
-            ScriptUnregisteredDerivedClass udc;
+        // test class pointer casting for unregistered classes
+        ScriptUnregisteredBaseClass ubc;
+        ScriptUnregisteredDerivedClass udc;
 
-            s_globalUnregBaseClass = &udc;
-            s_globalUnregDerivedClass = &udc;
-            s_globalVar = 0;
-            script.Execute("globalVar = GetUnregisteredScriptBaseData(globalUnregDerivedClass)"); // using downcast
-            AZ_TEST_ASSERT(s_globalVar == 10);
-            s_globalVar = 0;
-            script.Execute("globalVar = GetUnregisteredScriptBaseData(globalUnregBaseClass)");
-            AZ_TEST_ASSERT(s_globalVar == 10);
-            s_globalVar = 0;
-            script.Execute("globalVar = GetUnregisteredScriptDerivedData(globalUnregBaseClass)"); // using RTTI upcast
-            AZ_TEST_ASSERT(s_globalVar == 10);
+        s_globalUnregBaseClass = &udc;
+        s_globalUnregDerivedClass = &udc;
+        s_globalVar = 0;
+        script.Execute("globalVar = GetUnregisteredScriptBaseData(globalUnregDerivedClass)"); // using downcast
+        AZ_TEST_ASSERT(s_globalVar == 10);
+        s_globalVar = 0;
+        script.Execute("globalVar = GetUnregisteredScriptBaseData(globalUnregBaseClass)");
+        AZ_TEST_ASSERT(s_globalVar == 10);
+        s_globalVar = 0;
+        script.Execute("globalVar = GetUnregisteredScriptDerivedData(globalUnregBaseClass)"); // using RTTI upcast
+        AZ_TEST_ASSERT(s_globalVar == 10);
 
-            // register a base and derived class test
+        // register a base and derived class test
 
-            // test that derived classes copy the base class properties
-            s_globalVar = 0;
-            script.Execute("derivedWithBase = ScriptRegisteredDerivedClass()");
-            script.Execute("globalVar = derivedWithBase.baseData"); // access base class data (RTTI is needed to be discovered and imported into top class metatable)
-            AZ_TEST_ASSERT(s_globalVar == 2);
-            // check that virtual functions work properly.
-            script.Execute("globalRegisteredBaseClass = derivedWithBase"); // this will cast ScriptRegisteredDerivedClass to ScriptRegisteredBaseClass
-            script.Execute("registeredBase = globalRegisteredBaseClass"); // this should cast back to the top known/registered class using AZRTTI.
-            script.Execute("globalVar = registeredBase:VirtualFunction()");
-            AZ_TEST_ASSERT(s_globalVar == 1);
-            script.Execute("globalVar = derivedWithBase:VirtualFunction()");
-            AZ_TEST_ASSERT(s_globalVar == 1);
-            script.Execute("globalRegisteredBaseClass = nil registeredBase = nil derivedWithBase = nil");
+        // test that derived classes copy the base class properties
+        s_globalVar = 0;
+        script.Execute("derivedWithBase = ScriptRegisteredDerivedClass()");
+        script.Execute("globalVar = derivedWithBase.baseData"); // access base class data (RTTI is needed to be discovered and imported into top class metatable)
+        AZ_TEST_ASSERT(s_globalVar == 2);
+        // check that virtual functions work properly.
+        script.Execute("globalRegisteredBaseClass = derivedWithBase"); // this will cast ScriptRegisteredDerivedClass to ScriptRegisteredBaseClass
+        script.Execute("registeredBase = globalRegisteredBaseClass"); // this should cast back to the top known/registered class using AZRTTI.
+        script.Execute("globalVar = registeredBase:VirtualFunction()");
+        AZ_TEST_ASSERT(s_globalVar == 1);
+        script.Execute("globalVar = derivedWithBase:VirtualFunction()");
+        AZ_TEST_ASSERT(s_globalVar == 1);
+        script.Execute("globalRegisteredBaseClass = nil registeredBase = nil derivedWithBase = nil");
 
-            // abstract classes
-            s_globalVar = 0;
-            script.Execute("abstract = AbstractImplementation()");
-            script.Execute("globalVar = abstract:PureCall()");
-            AZ_TEST_ASSERT(s_globalVar == 5);
-            script.Execute("abstract = nil");
+        // abstract classes
+        s_globalVar = 0;
+        script.Execute("abstract = AbstractImplementation()");
+        script.Execute("globalVar = abstract:PureCall()");
+        AZ_TEST_ASSERT(s_globalVar == 5);
+        script.Execute("abstract = nil");
 
-            s_globalVarString.set_capacity(0); // free all memory
+        s_globalVarString.set_capacity(0); // free all memory
 
-        }
-    };
+    }
 
     TEST_F(ScriptBindTest, Test)
     {
@@ -3772,6 +3895,8 @@ namespace UnitTest
 
             m_behavior = aznew BehaviorContext();
 
+            AZ::MathReflect(m_behavior);
+
             m_behavior->Class<ScriptClass>();
             m_behavior->Method("AZTestAssert", &AZTestAssert);
             m_behavior->Method("CheckScriptClassTypeid", &CheckScriptTypeid<ScriptClass>);
@@ -3793,14 +3918,14 @@ namespace UnitTest
         }
 
         template <typename T>
-        static void CheckScriptTypeid(void* typeId)
+        static void CheckScriptTypeid(const AZ::Uuid& typeId)
         {
-            EXPECT_EQ((void*)azrtti_typeid<T>().GetHash(), typeId);
+            EXPECT_EQ(azrtti_typeid<T>(), typeId);
         }
 
-        static void CheckScriptTypeidNullptr(void* typeId)
+        static void CheckScriptTypeidNullptr(const AZ::Uuid& typeId)
         {
-            EXPECT_EQ(nullptr, typeId);
+            EXPECT_TRUE(typeId.IsNull());
         }
 
         BehaviorContext* m_behavior = nullptr;

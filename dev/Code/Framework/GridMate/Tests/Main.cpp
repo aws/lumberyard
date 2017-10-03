@@ -70,17 +70,8 @@ int main(int argc, char** argv)
 
 #else // NOT defined(AZ_TESTS_ENABLED)
 
-#ifdef AZ_PLATFORM_X360
-// Redacted
-#endif
-
 using namespace GridMate;
 
-#ifdef AZ_PLATFORM_PSP
-// Redacted
-#elif defined(AZ_PLATFORM_WII)
-// Redacted
-#endif // AZ_PLATFORM_PS4
 
 /**
  * Default AZStd memory allocations implementations. Just so we can assert if we use them
@@ -106,7 +97,7 @@ namespace AZStd
 
 //////////////////////////////////////////////////////////////////////////
 // Overload global new and delete to make sure we don't new anything
-#if !defined(AZ_PLATFORM_XBONE) && !defined(AZ_PLATFORM_APPLE_IOS) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_PS4)
+#if !defined(AZ_PLATFORM_XBONE) && !defined(AZ_PLATFORM_APPLE_IOS) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
 void* operator new(std::size_t size, const char* fileName, int lineNum, const AZ::Internal::AllocatorDummy&)
 {
     (void)size;
@@ -196,10 +187,6 @@ int DoTests(const char* projectName = 0, const char* resultsFileName = 0)
 //
 //    TraceDrillerHook traceHook;
 //
-//#ifdef AZ_PLATFORM_PS3
-//    // wait a bit for networks stack to start
-//    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5000));
-//#endif
 //    AZ_TEST_RUN_SUITE(SerializeSuite);
 //    AZ_TEST_RUN_SUITE(CarrierSuite);
 //    AZ_TEST_RUN_SUITE(ReplicaSmallSuite);
@@ -250,11 +237,6 @@ namespace Render {
 //=========================================================================
 void Setup()
 {
-#if defined(AZ_PLATFORM_X360)
-    // Redacted
-#elif defined(AZ_PLATFORM_WII)
-    // Redacted
-#endif // AZ_PLATFORM_WII
     Render::Init();
 }
 
@@ -266,19 +248,9 @@ void Destroy()
 {
     Render::Destroy();
 
-#ifdef AZ_PLATFORM_WII
-    // Redacted
-#endif
 }
 
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WII)
-void main(int argc, char* argv[])
-{
-    Setup();
-    DoTests();
-    Destroy();
-}
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 extern "C"
 {
 void RunTests()

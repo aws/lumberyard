@@ -27,6 +27,8 @@ namespace LmbrAWS
         Aws::Vector<SOutputPortConfig> GetOutputPorts() const override;
 
         virtual void ProcessEvent_Internal(IFlowNode::EFlowEvent event, IFlowNode::SActivationInfo* activationInfo) override;
+
+        static void ExpandParameterMapping(AZStd::string& value, AZStd::unordered_set<AZStd::string>& seen);
     protected:
         const char* GetFlowNodeDescription() const override
         {

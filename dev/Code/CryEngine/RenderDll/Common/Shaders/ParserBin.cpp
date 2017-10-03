@@ -27,8 +27,8 @@
 // Shader cache directories. Using defines to handle the string concatenation
 // at compile time instead of runtime.
 #define gShaderCacheMetal "Shaders/Cache/METAL/"
-#define gShaderCacheOrbis "shaders/cache/orbis/"
-#define gShaderCacheDurango "Shaders/Cache/Durango/"
+#define gShaderCacheOrbis "shaders/cache/orbis/" // ACCEPTED_USE
+#define gShaderCacheDurango "Shaders/Cache/Durango/" // ACCEPTED_USE
 #define gShaderCacheD3D11 "Shaders/Cache/D3D11/"
 #define gShaderCacheGL4 "Shaders/Cache/GL4/"
 
@@ -727,8 +727,8 @@ void CParserBin::Init()
     FX_REGISTER_TOKEN(23);
     FX_REGISTER_TOKEN(24);
 
-    FX_REGISTER_TOKEN(ORBIS);
-    FX_REGISTER_TOKEN(DURANGO);
+    FX_REGISTER_TOKEN(ORBIS); // ACCEPTED_USE
+    FX_REGISTER_TOKEN(DURANGO); // ACCEPTED_USE
     FX_REGISTER_TOKEN(PCDX11);
     FX_REGISTER_TOKEN(GL4);
     FX_REGISTER_TOKEN(OSXGL4);
@@ -919,14 +919,6 @@ void CParserBin::SetupForMETAL()
 
     int macroNum = 2;
 
-#if defined(CRY_USE_METAL)
-    if (!RenderCapabilities::SupportsDepthClipping())
-    {
-        AddMacro(CParserBin::fxToken("NoDepthClipping"), nMacro, 1, 0, m_StaticMacros);
-        macroNum++;
-    }
-#endif
-
     m_nPlatform = SF_METAL;
     gRenDev->m_cEF.m_ShadersCache = gShaderCacheMetal;
     gRenDev->m_cEF.m_ShadersFilter = "METAL";
@@ -1057,14 +1049,14 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
 #endif
 }
 
-void CParserBin::SetupForOrbis()
+void CParserBin::SetupForOrbis() // ACCEPTED_USE
 {
     CleanPlatformMacros();
     uint32 nMacro[1] = {eT_1};
-    AddMacro(CParserBin::fxToken("ORBIS"), nMacro, 1, 0, m_StaticMacros);
-    m_nPlatform = SF_ORBIS;
-    gRenDev->m_cEF.m_ShadersCache = gShaderCacheOrbis;
-    gRenDev->m_cEF.m_ShadersFilter = "Orbis";
+    AddMacro(CParserBin::fxToken("ORBIS"), nMacro, 1, 0, m_StaticMacros); // ACCEPTED_USE
+    m_nPlatform = SF_ORBIS; // ACCEPTED_USE
+    gRenDev->m_cEF.m_ShadersCache = gShaderCacheOrbis; // ACCEPTED_USE
+    gRenDev->m_cEF.m_ShadersFilter = "Orbis"; // ACCEPTED_USE
     SetupFeatureDefines();
     gRenDev->m_cEF.m_Bin.InvalidateCache();
     gRenDev->m_cEF.mfInitLookups();
@@ -1072,15 +1064,15 @@ void CParserBin::SetupForOrbis()
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
 
-void CParserBin::SetupForDurango()
+void CParserBin::SetupForDurango() // ACCEPTED_USE
 {
     CleanPlatformMacros();
     uint32 nMacro[1] = {eT_1};
 
-    m_nPlatform = SF_DURANGO;
-    gRenDev->m_cEF.m_ShadersCache = gShaderCacheDurango;
-    gRenDev->m_cEF.m_ShadersFilter = "Durango";
-    AddMacro(CParserBin::fxToken("DURANGO"), nMacro, 1, 0, m_StaticMacros);
+    m_nPlatform = SF_DURANGO; // ACCEPTED_USE
+    gRenDev->m_cEF.m_ShadersCache = gShaderCacheDurango; // ACCEPTED_USE
+    gRenDev->m_cEF.m_ShadersFilter = "Durango"; // ACCEPTED_USE
+    AddMacro(CParserBin::fxToken("DURANGO"), nMacro, 1, 0, m_StaticMacros); // ACCEPTED_USE
 
     SetupFeatureDefines();
     gRenDev->m_cEF.m_Bin.InvalidateCache();
@@ -1114,14 +1106,6 @@ const char* CParserBin::GetPlatformShaderlistName()
         }
     }
 #endif
-    else if (CParserBin::m_nPlatform == SF_DURANGO)
-    {
-        return "ShaderList_Durango.txt";
-    }
-    else if (CParserBin::m_nPlatform == SF_ORBIS)
-    {
-        return "ShaderList_Orbis.txt";
-    }
     // Confetti Nicholas Baldwin: adding metal shader language support
     else if (CParserBin::m_nPlatform == SF_METAL)
     {
@@ -1149,16 +1133,6 @@ CCryNameTSCRC CParserBin::GetPlatformSpecName(CCryNameTSCRC orgName)
     if (CParserBin::m_nPlatform == SF_GLES3)
     {
         nmTemp.add(0x800);
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_ORBIS)
-    {
-        nmTemp.add(0x600);
-    }
-    else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
-    {
-        nmTemp.add(0x700);
     }
     // Confetti Nicholas Baldwin: adding metal shader language support
     else
@@ -1324,8 +1298,8 @@ bool CParserBin::RemoveMacro(uint32 dwName, FXMacroBin& Macro)
 
 void CParserBin::CleanPlatformMacros()
 {
-    RemoveMacro(CParserBin::fxToken("DURANGO"), m_StaticMacros);
-    RemoveMacro(CParserBin::fxToken("ORBIS"), m_StaticMacros);
+    RemoveMacro(CParserBin::fxToken("DURANGO"), m_StaticMacros); // ACCEPTED_USE
+    RemoveMacro(CParserBin::fxToken("ORBIS"), m_StaticMacros); // ACCEPTED_USE
     RemoveMacro(CParserBin::fxToken("PCDX11"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("GL4"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("OSXGL4"), m_StaticMacros);
@@ -3337,8 +3311,8 @@ void SFXSampler::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                                         m_nRegister[eHWSC_Hull] =
                                             m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
 
-                        uint32 nTok2 = pTokens[nCur++];
-                        if (nTok2 != eT_br_rnd_2)
+                        uint32 tok2 = pTokens[nCur++];
+                        if (tok2 != eT_br_rnd_2)
                         {
                             CRY_ASSERT(0);
                         }
@@ -3473,8 +3447,8 @@ void SFXTexture::PostLoad(CParserBin& Parser, SParserFrame& Name, SParserFrame& 
                                         m_nRegister[eHWSC_Hull] =
                                             m_nRegister[eHWSC_Compute] = atoi(&szReg[0]);
 
-                        uint32 nTok2 = pTokens[nCur++];
-                        if (nTok2 != eT_br_rnd_2)
+                        uint32 tok2 = pTokens[nCur++];
+                        if (tok2 != eT_br_rnd_2)
                         {
                             CRY_ASSERT(0);
                         }
@@ -3684,10 +3658,11 @@ void CParserBin::SetupFeatureDefines()
     RemoveMacro(CParserBin::GetCRC32("FEATURE_SVO_GI"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_8_BONE_SKINNING"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_TEXTURE_VIEWS"), m_StaticMacros);
+    RemoveMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), m_StaticMacros);
 
     uint32 nEnable[1] = {eT_1};
 #if defined(MESH_TESSELLATION)
-    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_GL4)
+    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_GL4) // ACCEPTED_USE
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_MESH_TESSELLATION"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3701,13 +3676,13 @@ void CParserBin::SetupFeatureDefines()
     }
 #endif
 #if defined(PARTICLES_TESSELLATION)
-    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_GL4)
+    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_GL4) // ACCEPTED_USE
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_PARTICLES_TESSELLATION"), nEnable, 1, 0, m_StaticMacros);
     }
 #endif
 
-    if (m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_D3D11 || m_nPlatform == SF_GL4 || m_nPlatform == SF_GLES3 || m_nPlatform == SF_METAL)
+    if (m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_D3D11 || m_nPlatform == SF_GL4 || m_nPlatform == SF_GLES3 || m_nPlatform == SF_METAL) // ACCEPTED_USE
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_SPI_CONSTANT_BUFFERS"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3719,7 +3694,7 @@ void CParserBin::SetupFeatureDefines()
 #endif
     }
 
-    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4))
+    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4)) // ACCEPTED_USE
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_GEOMETRY_SHADERS"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3734,7 +3709,7 @@ void CParserBin::SetupFeatureDefines()
     const bool isMacOpenGl = false;
 #endif
 
-    if ((m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO)) || (isMacOpenGl == false && m_nPlatform & (SF_GL4)))
+    if ((m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO)) || (isMacOpenGl == false && m_nPlatform & (SF_GL4))) // ACCEPTED_USE
     {
         // Disable FEATURE_8_BONE_SKINNING because structurebuffer sb_SkinExtraBlendWeights is not handled in the code currently.
         // AddMacro(CParserBin::GetCRC32("FEATURE_8_BONE_SKINNING"), nEnable, 1, 0, m_StaticMacros);
@@ -3744,6 +3719,16 @@ void CParserBin::SetupFeatureDefines()
      if (RenderCapabilities::SupportsTextureViews())
      {
          AddMacro(CParserBin::GetCRC32("FEATURE_TEXTURE_VIEWS"), nEnable, 1, 0, m_StaticMacros);
+     }
+
+     if (RenderCapabilities::SupportsDualSourceBlending())
+     {
+         AddMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), nEnable, 1, 0, m_StaticMacros);
+     }
+
+     if (!RenderCapabilities::SupportsDepthClipping())
+     {
+         AddMacro(CParserBin::fxToken("NoDepthClipping"), nEnable, 1, 0, m_StaticMacros);
      }
 #endif // !defined(NULL_RENDERER)
 }

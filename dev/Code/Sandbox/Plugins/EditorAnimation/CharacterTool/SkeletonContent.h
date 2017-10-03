@@ -24,6 +24,13 @@ namespace CharacterTool
         SkeletonParameters skeletonParameters;
 
         AnimationSetFilter includedAnimationSetFilter;
+        bool m_filterInValidState;
+        string m_errorListString;
+
+        SkeletonContent():
+            m_filterInValidState(true)
+        {
+        }
 
         void Reset()
         {
@@ -31,9 +38,17 @@ namespace CharacterTool
         }
 
         void UpdateIncludedAnimationSet(ExplorerFileList* skeletonList);
-        void ComposeCompleteAnimationSetFilter(AnimationSetFilter* outFilter, ExplorerFileList* skeletonList) const;
+        bool ComposeCompleteAnimationSetFilter(AnimationSetFilter* outFilter, ExplorerFileList* skeletonList) const;
 
         void GetDependencies(vector<string>* paths) const;
         void Serialize(Serialization::IArchive& ar);
+        bool IsValid()
+        {
+            return m_filterInValidState;
+        };
+        const char* GetErrorString() const
+        {
+            return m_errorListString.c_str();
+        }
     };
 }

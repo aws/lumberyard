@@ -29,6 +29,7 @@ namespace AzToolsFramework
         MenuAltKey,
         ToolButton,
         Shortcut,
+        DragAndDrop,
 
         Count
     };
@@ -65,6 +66,10 @@ namespace AzToolsFramework
         // are finished.
         virtual void EndUserAction() {}
 
+        // Triggered when a user instantiates a slice manually
+        // Not triggered on level load
+        virtual void SliceInstantiated(const AZ::Crc32& /*sliceIdentifier*/) {}
+
         // Triggered when a user creates an entity manually 
         // (via right click mouse, via menu, via drag and drop, etc). 
         // Not triggered on level load or slice instantiation.
@@ -85,7 +90,7 @@ namespace AzToolsFramework
         virtual void ComponentRemoved(const AZ::EntityId& /*entityId*/, const AZ::Uuid& /* componentTypeId */) {}
 
         // Triggered when the user changes the parent of an entity
-        virtual void EntityParentChanged(const AZ::EntityId& /*entityId*/, const AZ::EntityId&  /*newParentId*/, const AZ::EntityId&  /*oldParentId*/) {}
+        virtual void UpdateTransformParentEntity(const AZ::EntityId& /*entityId*/, const AZ::EntityId&  /*newParentId*/, const AZ::EntityId&  /*oldParentId*/) {}
 
         // Triggered when a legacy (Cry) entity is created by the user
         virtual void LegacyEntityCreated(const char* /* entityType */, const char* /* scriptEntityType */) {}
@@ -96,7 +101,10 @@ namespace AzToolsFramework
         // Triggered when the user triggers a redo of a ComponentEntity object(s)
         virtual void Redo() {}
 
-        // Triggered when the user triggers a clone of ComponentEntity object(s)
+        // Triggered when the user triggers a clone of ComponentEntity object(s), before operation begins
+        virtual void EntitiesAboutToBeCloned() {}
+
+        // Triggered when the user triggers a clone of ComponentEntity object(s)), after operation completes
         virtual void EntitiesCloned() {}
 
         // Called when a menu is triggered

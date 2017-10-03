@@ -10,7 +10,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <ISystem.h>
 
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 #include "CloudGemPlayerAccountHelper.h"
 
@@ -28,10 +28,10 @@
         traceMessage << "\nNot signed in.";                                         \
     }                                                                               \
     AZStd::string traceServiceApi;                                                  \
-    EBUS_EVENT_RESULT(traceServiceApi, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.ServiceApi"); \
+    EBUS_EVENT_RESULT(traceServiceApi, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.ServiceApi"); \
     traceMessage << "\nService API: " << traceServiceApi.c_str();                   \
     AZStd::string traceUserPool;                                                    \
-    EBUS_EVENT_RESULT(traceUserPool, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.PlayerUserPool"); \
+    EBUS_EVENT_RESULT(traceUserPool, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.PlayerUserPool"); \
     traceMessage << "\nUser Pool: " << traceUserPool.c_str();                         \
     SCOPED_TRACE(traceMessage.str());
 

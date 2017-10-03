@@ -22,7 +22,6 @@
 
 #define NUM_ASPECTS                         32              // Number of GameObject aspects supported.
 #define MAXIMUM_NUMBER_OF_CONNECTIONS       64              // Maximum number of connections supported.
-
 #define LOBBY_DEFAULT_PORT                  30090           // Default local UDP port.
 #define SERVER_DEFAULT_PORT LOBBY_DEFAULT_PORT
 #define SERVER_DEFAULT_PORT_STRING #SERVER_DEFAULT_PORT

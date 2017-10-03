@@ -56,7 +56,7 @@ namespace AzToolsFramework
             ////////////////////////////////////////////////////////////////////////
 
             ////////////////////////////////////////////////////////////////////////
-            void ProcessQueuedSelectionAccents() override;
+            void ForceSelectionAccentRefresh() override;
             ////////////////////////////////////////////////////////////////////////
 
         protected:
@@ -65,6 +65,11 @@ namespace AzToolsFramework
             {
                 provided.push_back(AZ_CRC("EditorSelectionAccentingSelectionService", 0x8b5253cf));
             }
+
+            /**
+            * \brief Queues the invalidation, recalculation and application of accents
+            */
+            void QueueAccentRefresh();
 
             /**
             * \brief Invalidates all currently applied accents

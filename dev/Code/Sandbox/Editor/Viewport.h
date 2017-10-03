@@ -32,6 +32,7 @@
 class CBaseObject;
 struct DisplayContext;
 class CCryEditDoc;
+class CLayoutViewPane;
 class CViewManager;
 class CEditTool;
 class CBaseObjectsCache;
@@ -145,7 +146,7 @@ public:
     virtual void SetAxisConstrain(int axis) = 0;
     int GetAxisConstrain() const { return GetIEditor()->GetAxisConstrains(); };
 
-    virtual Vec3 SnapToGrid(Vec3 vec) = 0;
+    virtual Vec3 SnapToGrid(const Vec3& vec) = 0;
 
     //! Get selection procision tolerance.
     virtual float GetSelectionTolerance() const = 0;
@@ -248,7 +249,16 @@ public:
 
     virtual void OnTitleMenu(QMenu* menu) {}
 
+    void SetViewPane(CLayoutViewPane* viewPane) { m_viewPane = viewPane; }
+
+    //Child classes can override these to provide extra logic that wraps
+    //widget rendering. Needed by the RenderViewport to handle raycasts 
+    //from screen-space to world-space. 
+    virtual void PreWidgetRendering() {}
+    virtual void PostWidgetRendering() {}
+
 protected:
+    CLayoutViewPane* m_viewPane;
     CViewManager* m_viewManager;
     // Viewport matrix.
     Matrix34 m_viewTM;
@@ -364,7 +374,7 @@ public:
     virtual Vec3 GetCPVector(const Vec3& p1, const Vec3& p2, int axis);
 
     //! Snap any given 3D world position to grid lines if snap is enabled.
-    virtual Vec3 SnapToGrid(Vec3 vec);
+    Vec3 SnapToGrid(const Vec3& vec) override;
     virtual float GetGridStep() const;
 
     //! Returns the screen scale factor for a point given in world coordinates.
@@ -413,7 +423,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //! Set construction plane from given position construction matrix refrence coord system and axis settings.
     //////////////////////////////////////////////////////////////////////////
-    virtual void MakeConstructionPlane(int axis);
+    void MakeConstructionPlane(int axis) override;
     virtual void SetConstructionMatrix(RefCoordSys coordSys, const Matrix34& xform);
     virtual const Matrix34& GetConstructionMatrix(RefCoordSys coordSys);
     // Set simple construction plane origin.
@@ -516,6 +526,12 @@ protected:
 #endif // KDAB_MAC_PORT
     void OnSetCursor();
 
+    //Child classes can override these to provide extra logic that wraps
+    //widget rendering. Needed by the RenderViewport to handle raycasts 
+    //from screen-space to world-space. 
+    virtual void PreWidgetRendering() {}
+    virtual void PostWidgetRendering() {}
+
     float m_selectionTolerance;
     QMenu m_cViewMenu;
 
@@ -563,7 +579,7 @@ protected:
 
     ViewportDropTarget* m_pViewportDropTarget;
 
-    _smart_ptr<CEditTool> m_pLocalEditTool;
+    QPointer<CEditTool> m_pLocalEditTool;
 
     std::vector<IRenderListener*>           m_cRenderListeners;
 

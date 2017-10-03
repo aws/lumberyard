@@ -927,7 +927,7 @@ bool CMannTagDefEditorDialog::OnTagTreeEndLabelEdit(const QModelIndex& index, co
             {
                 STagDefPair::SRenameInfo renameInfo;
                 renameInfo.m_originalCRC = m_tagDefTreeModel->selectedTagDefinition()->GetTagCRC(id);
-                renameInfo.m_newName = text.toLatin1().data();
+                renameInfo.m_newName = text;
                 renameInfo.m_isGroup = false;
 
                 m_tagDefLocalCopy[index].m_renameInfo.push_back(renameInfo);
@@ -955,7 +955,7 @@ bool CMannTagDefEditorDialog::OnTagTreeEndLabelEdit(const QModelIndex& index, co
             {
                 STagDefPair::SRenameInfo renameInfo;
                 renameInfo.m_originalCRC = m_tagDefTreeModel->selectedTagDefinition()->GetGroupCRC(groupID);
-                renameInfo.m_newName = text.toLatin1().data();
+                renameInfo.m_newName = text;
                 renameInfo.m_isGroup = true;
 
                 m_tagDefLocalCopy[index].m_renameInfo.push_back(renameInfo);

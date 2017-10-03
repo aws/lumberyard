@@ -43,6 +43,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
@@ -206,7 +207,7 @@ namespace Editor
         , m_inWinEventFilter(false)
         , m_stylesheet(new AzQtComponents::LumberyardStylesheet(this))
         , m_idleTimer(new QTimer(this))
-        , m_qtEntity(aznew AZ::Entity())
+        , m_qtEntity(nullptr)
     {
         setWindowIcon(QIcon(":/Application/res/editor_icon.ico"));
 
@@ -248,6 +249,10 @@ namespace Editor
 
     void EditorQtApplication::InitQtEntity()
     {
+        AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor();
+        AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor();
+        m_qtEntity.reset(aznew AZ::Entity());
+        m_qtEntity->AddComponent(aznew AzToolsFramework::Thumbnailer::ThumbnailerComponent());
         m_qtEntity->AddComponent(aznew AzToolsFramework::AssetBrowser::AssetBrowserComponent());
         m_qtEntity->Init();
         m_qtEntity->Activate();

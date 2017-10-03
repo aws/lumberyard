@@ -31,6 +31,29 @@
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
 
+namespace 
+{
+    // Due to issues with DLLs sometimes there can be different values of gEnv in different DLLs.
+    // So we use this preferred method of getting the global environment
+    SSystemGlobalEnvironment* GetGlobalEnv()
+    {
+        if (!GetISystem())
+        {
+            return nullptr;
+        }
+
+        return GetISystem()->GetGlobalEnvironment();
+    }
+}
+
+LoadScreenComponent::LoadScreenComponent()
+{
+}
+
+LoadScreenComponent::~LoadScreenComponent()
+{
+}
+
 void LoadScreenComponent::Reflect(AZ::ReflectContext* context)
 {
     AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -62,7 +85,7 @@ void LoadScreenComponent::Reset()
     m_isPlaying = false;
     m_processingLoadScreen.store(false);
 
-    if (gEnv && gEnv->pLyShine)
+    if (GetGlobalEnv() && GetGlobalEnv()->pLyShine)
     {
         AZ::Entity* canvasEntity = nullptr;
 
@@ -72,7 +95,7 @@ void LoadScreenComponent::Reset()
             EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, m_gameCanvasEntityId);
             if (canvasEntity)
             {
-                gEnv->pLyShine->ReleaseCanvas(m_gameCanvasEntityId, false);
+                GetGlobalEnv()->pLyShine->ReleaseCanvas(m_gameCanvasEntityId, false);
             }
         }
 
@@ -82,7 +105,7 @@ void LoadScreenComponent::Reset()
             EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, m_levelCanvasEntityId);
             if (canvasEntity)
             {
-                gEnv->pLyShine->ReleaseCanvas(m_levelCanvasEntityId, false);
+                GetGlobalEnv()->pLyShine->ReleaseCanvas(m_levelCanvasEntityId, false);
             }
         }
     }
@@ -100,15 +123,15 @@ void LoadScreenComponent::Reset()
 
 void LoadScreenComponent::ClearCVars(const std::list<const char*>& varNames)
 {
-    if (!gEnv ||
-        !gEnv->pConsole)
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pConsole)
     {
         return;
     }
 
     for (auto name : varNames)
     {
-        ICVar* var = gEnv->pConsole->GetCVar(name);
+        ICVar* var = GetGlobalEnv()->pConsole->GetCVar(name);
         if (var)
         {
             var->Set("");
@@ -118,7 +141,7 @@ void LoadScreenComponent::ClearCVars(const std::list<const char*>& varNames)
 
 AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const char* autoPlayVarName, const char* fixedFpsVarName, const char* maxFpsVarName)
 {
-    ICVar* pathVar = gEnv->pConsole->GetCVar(pathVarName);
+    ICVar* pathVar = GetGlobalEnv()->pConsole->GetCVar(pathVarName);
     string path = pathVar ? pathVar->GetString() : "";
     if (path.empty())
     {
@@ -127,7 +150,7 @@ AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const cha
         return AZ::EntityId();
     }
 
-    AZ::EntityId canvasId = gEnv->pLyShine->LoadCanvas(path);
+    AZ::EntityId canvasId = GetGlobalEnv()->pLyShine->LoadCanvas(path);
     AZ_Warning("LoadScreenComponent", canvasId.IsValid(), "Can't load canvas: %s", path.c_str());
     if (!canvasId.IsValid())
     {
@@ -138,7 +161,7 @@ AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const cha
 
     EBUS_EVENT_ID(canvasId, UiCanvasBus, SetKeepLoadedOnLevelUnload, true);
 
-    ICVar* autoPlayVar = gEnv->pConsole->GetCVar(autoPlayVarName);
+    ICVar* autoPlayVar = GetGlobalEnv()->pConsole->GetCVar(autoPlayVarName);
     string sequence = autoPlayVar ? autoPlayVar->GetString() : "";
     if (sequence.empty())
     {
@@ -154,7 +177,7 @@ AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const cha
         return canvasId;
     }
 
-    ICVar* fixedFpsVar = gEnv->pConsole->GetCVar(fixedFpsVarName);
+    ICVar* fixedFpsVar = GetGlobalEnv()->pConsole->GetCVar(fixedFpsVarName);
     if (fixedFpsVar &&
         fixedFpsVar->GetFVal() > 0.0f)
     {
@@ -165,7 +188,7 @@ AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const cha
         m_fixedDeltaTimeInSeconds = -1.0f;
     }
 
-    ICVar* maxFpsVar = gEnv->pConsole->GetCVar(maxFpsVarName);
+    ICVar* maxFpsVar = GetGlobalEnv()->pConsole->GetCVar(maxFpsVarName);
     if (maxFpsVar &&
         maxFpsVar->GetFVal() > 0.0f)
     {
@@ -198,13 +221,14 @@ void LoadScreenComponent::Deactivate()
     LoadScreenBus::Handler::BusDisconnect(GetEntityId());
 }
 
-void LoadScreenComponent::OnCrySystemInitialized(ISystem&, const SSystemInitParams&)
+void LoadScreenComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
 {
-    if (gEnv->pSystem->GetGlobalEnvironment()->IsEditor())
+    if (system.GetGlobalEnvironment()->IsEditor())
     {
         return;
     }
 
+    // If not running from the editor, then run GameStart
     GameStart();
 }
 
@@ -214,19 +238,16 @@ void LoadScreenComponent::OnCrySystemShutdown(ISystem&)
 
 void LoadScreenComponent::UpdateAndRender()
 {
-    // IMPORTANT: We DON'T want to early out on m_isPlaying.
-    // Because it's possible for a canvas to be loaded in LyShine,
-    // outside of the scope of this class. In which case, we want
-    // to update LyShine unconditionally.
-    if (!gEnv ||
-        !gEnv->pRenderer ||
-        !gEnv->pTimer ||
-        !gEnv->pLyShine)
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pRenderer ||
+        !GetGlobalEnv()->pTimer ||
+        !GetGlobalEnv()->pLyShine ||
+        !m_isPlaying)
     {
         return;
     }
 
-    if (GetCurrentThreadId() != gEnv->mMainThreadId)
+    if (GetCurrentThreadId() != GetGlobalEnv()->mMainThreadId)
     {
         return;
     }
@@ -238,10 +259,10 @@ void LoadScreenComponent::UpdateAndRender()
         if (!m_previousCallTimeForUpdateAndRender.GetValue())
         {
             // This is the first call to UpdateAndRender().
-            m_previousCallTimeForUpdateAndRender = gEnv->pTimer->GetAsyncTime();
+            m_previousCallTimeForUpdateAndRender = GetGlobalEnv()->pTimer->GetAsyncTime();
         }
 
-        callTimeForUpdateAndRender = gEnv->pTimer->GetAsyncTime();
+        callTimeForUpdateAndRender = GetGlobalEnv()->pTimer->GetAsyncTime();
         deltaTimeInSeconds = fabs((callTimeForUpdateAndRender - m_previousCallTimeForUpdateAndRender).GetSeconds());
         if ((m_maxDeltaTimeInSeconds > 0.0f) &&
             (deltaTimeInSeconds < m_maxDeltaTimeInSeconds))
@@ -261,26 +282,23 @@ void LoadScreenComponent::UpdateAndRender()
     m_previousCallTimeForUpdateAndRender = callTimeForUpdateAndRender;
 
     // update the animation system
-    gEnv->pLyShine->Update((m_fixedDeltaTimeInSeconds == -1.0f) ? deltaTimeInSeconds : m_fixedDeltaTimeInSeconds);
+    GetGlobalEnv()->pLyShine->Update((m_fixedDeltaTimeInSeconds == -1.0f) ? deltaTimeInSeconds : m_fixedDeltaTimeInSeconds);
 
     // Render.
-    if (m_isPlaying)
-    {
-        gEnv->pRenderer->SetViewport(0, 0, gEnv->pRenderer->GetOverlayWidth(), gEnv->pRenderer->GetOverlayHeight());
+    GetGlobalEnv()->pRenderer->SetViewport(0, 0, GetGlobalEnv()->pRenderer->GetOverlayWidth(), GetGlobalEnv()->pRenderer->GetOverlayHeight());
 
-        gEnv->pRenderer->BeginFrame();
-        gEnv->pLyShine->Render();
-        gEnv->pRenderer->EndFrame();
-    }
+    GetGlobalEnv()->pRenderer->BeginFrame();
+    GetGlobalEnv()->pLyShine->Render();
+    GetGlobalEnv()->pRenderer->EndFrame();
 
     m_processingLoadScreen.store(false);
 }
 
 void LoadScreenComponent::GameStart()
 {
-    if (!gEnv ||
-        !gEnv->pRenderer ||
-        !gEnv->pLyShine ||
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pRenderer ||
+        !GetGlobalEnv()->pLyShine ||
         m_isPlaying)
     {
         return;
@@ -306,9 +324,9 @@ void LoadScreenComponent::GameStart()
 
 void LoadScreenComponent::LevelStart()
 {
-    if (!gEnv ||
-        !gEnv->pRenderer ||
-        !gEnv->pLyShine ||
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pRenderer ||
+        !GetGlobalEnv()->pLyShine ||
         m_isPlaying ||
         m_gameCanvasEntityId.IsValid())
     {
@@ -335,9 +353,9 @@ void LoadScreenComponent::LevelStart()
 
 void LoadScreenComponent::Pause()
 {
-    if (!gEnv ||
-        !gEnv->pRenderer ||
-        !gEnv->pLyShine ||
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pRenderer ||
+        !GetGlobalEnv()->pLyShine ||
         !m_isPlaying ||
         !(m_gameCanvasEntityId.IsValid() || m_levelCanvasEntityId.IsValid()))
     {
@@ -349,9 +367,9 @@ void LoadScreenComponent::Pause()
 
 void LoadScreenComponent::Resume()
 {
-    if (!gEnv ||
-        !gEnv->pRenderer ||
-        !gEnv->pLyShine ||
+    if (!GetGlobalEnv() ||
+        !GetGlobalEnv()->pRenderer ||
+        !GetGlobalEnv()->pLyShine ||
         m_isPlaying ||
         !(m_gameCanvasEntityId.IsValid() || m_levelCanvasEntityId.IsValid()))
     {

@@ -47,6 +47,7 @@ namespace AZ
             virtual const std::shared_ptr<FbxPropertyWrapper> FindProperty(const char* name) const;
             virtual bool IsBone() const;
             virtual const char* GetName() const;
+            virtual AZ::u64 GetUniqueId() const;
 
             virtual Transform EvaluateGlobalTransform();
             virtual Vector3 EvaluateLocalTranslation();

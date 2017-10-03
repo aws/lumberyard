@@ -697,8 +697,7 @@ struct IResourceList
     // </interfuscator:shuffle>
 };
 
-//! Everybody should use fxopen instead of fopen
-//! so it will work both on PC and XBox
+//! Everybody should use fxopen instead of fopen so it opens on all platforms
 inline AZ::IO::HandleType fxopen(const char* file, const char* mode, bool bGameRelativePath = false)
 {
     if (gEnv && gEnv->pCryPak)
@@ -716,7 +715,6 @@ inline AZ::IO::HandleType fxopen(const char* file, const char* mode, bool bGameR
         ;
     }
 
-    // This is on windows/xbox/Linux/Mac
     if (gEnv && gEnv->pCryPak)
     {
         int nAdjustFlags = 0;

@@ -45,19 +45,22 @@ namespace Audio
         if (Iter != m_cTriggers.end())
         {
             SATLTriggerInstanceState& rTriggerInstState = Iter->second;
-            rTriggerInstState.pOwnerOverride = pOwnerOverride;
-            rTriggerInstState.pUserData = pUserData;
-            rTriggerInstState.pUserDataOwner = pUserDataOwner;
-            rTriggerInstState.nFlags &= ~eATS_STARTING;
-
-            if ((nFlags & eARF_SYNC_FINISHED_CALLBACK) == 0)
+            if (rTriggerInstState.numPlayingEvents > 0 || rTriggerInstState.numLoadingEvents > 0)
             {
-                rTriggerInstState.nFlags |= eATS_CALLBACK_ON_AUDIO_THREAD;
+                rTriggerInstState.pOwnerOverride = pOwnerOverride;
+                rTriggerInstState.pUserData = pUserData;
+                rTriggerInstState.pUserDataOwner = pUserDataOwner;
+                rTriggerInstState.nFlags &= ~eATS_STARTING;
+
+                if ((nFlags & eARF_SYNC_FINISHED_CALLBACK) == 0)
+                {
+                    rTriggerInstState.nFlags |= eATS_CALLBACK_ON_AUDIO_THREAD;
+                }
             }
-
-            if (rTriggerInstState.numPlayingEvents == 0 && rTriggerInstState.numLoadingEvents == 0)
+            else
             {
-                // All of the events have finished before we got here, so need to report this trigger as finished.
+                // All of the events have either finished before we got here or never started.
+                // So we report this trigger as finished immediately.
                 ReportFinishedTriggerInstance(Iter);
             }
         }
@@ -906,13 +909,13 @@ namespace Audio
         if (!m_cActiveEvents.empty())
         {
             const char* const sEventString = GetEventIDs("; ").c_str();
-            g_audioLogger.Log(eALT_WARNING, "Active events on an object to be released: %u! EventIDs: %s", GetID(), sEventString);
+            g_audioLogger.Log(eALT_WARNING, "Active events on an object (ID: %u) being released!  #Events: %u   EventIDs: %s", GetID(), m_cActiveEvents.size(), sEventString);
         }
 
         if (!m_cTriggers.empty())
         {
             const char* const sTriggerString = GetTriggerNames("; ", pDebugNameStore).c_str();
-            g_audioLogger.Log(eALT_WARNING, "Active triggers on an object to be released: %u! TriggerNames: %s", GetID(), sTriggerString);
+            g_audioLogger.Log(eALT_WARNING, "Active triggers on an object (ID: %u) being released!  #Triggers: %u   TriggerNames: %s", GetID(), m_cTriggers.size(), sTriggerString);
         }
     }
 

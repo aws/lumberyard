@@ -37,10 +37,6 @@ namespace AZStd
         {
             QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
         }
-#elif defined(AZ_PLATFORM_X360)
-        // Redacted
-#elif defined(AZ_PLATFORM_WII)
-        // Redacted
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         // Value is in nano seconds, return number of nano seconds in one second
         AZStd::sys_time_t freq = 1000000000L;
@@ -53,10 +49,8 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowTicks()
     {
         AZStd::sys_time_t timeNow;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         QueryPerformanceCounter((LARGE_INTEGER*)&timeNow);
-#elif defined(AZ_PLATFORM_WII)
-        // Redacted
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
@@ -97,9 +91,7 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowMicroSecond()
     {
         AZStd::sys_time_t timeNowMicroSecond;
-#if   defined(AZ_PLATFORM_WII)
-        // Redacted
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#if   defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         timeNowMicroSecond =  GetTimeNowTicks() / 1000L;
 #elif defined(AZ_PLATFORM_WINDOWS)
         // NOTE: The default line below was not working on systems with smaller TicksPerSecond() values (like in Windows7, for example)
@@ -115,11 +107,9 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowSecond()
     {
         AZStd::sys_time_t timeNowSecond;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         // Using get tick count, since it's more stable for longer time measurements.
         timeNowSecond = GetTickCount() / 1000;
-#elif defined(AZ_PLATFORM_WII)
-        // Redacted
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
@@ -160,7 +150,7 @@ namespace AZStd
     AZ::u64 GetTimeUTCMilliSecond()
     {
         AZ::u64 utc;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         FILETIME UTCFileTime;
         GetSystemTimeAsFileTime(&UTCFileTime);
         // store time in 100 of nanoseconds since January 1, 1601 UTC

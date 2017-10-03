@@ -12,79 +12,53 @@
 
 #pragma once
 
-#include <AzCore/Jobs/Job.h>
-
-#include <CloudGemFramework/AwsApiJob.h>
+#include <CloudGemFramework/HttpRequestJob.h>
 #include <CloudGemFramework/ServiceJobConfig.h>
 #include <CloudGemFramework/RequestBuilder.h>
 
-namespace Aws
-{
-    namespace Http
-    {
-        class HttpClient;
-        class HttpRequest;
-        class HttpResponse;
-    }
-}
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace CloudGemFramework
 {
 
-    /// Non-templated base class for ServiceClientJobs
+    /// A ServiceJob encapsulates an HttpJob with all of the functionality necessary for an auto-generated service.
+    /// Inherits protected from HttpJob to hide all of the functionality we don't normally require.
     class ServiceJob
-        : public AwsApiJob
+        : protected HttpRequestJob
     {
-
     public:
-
-        // To use a different allocator, extend this class and use this macro.
-        AZ_CLASS_ALLOCATOR(ServiceJob, AZ::SystemAllocator, 0);
-
         using IConfig = IServiceJobConfig;
         using Config = ServiceJobConfig;
 
         static Config* GetDefaultConfig()
         {
             static AwsApiJobConfigHolder<Config> s_configHolder{};
-            return s_configHolder.GetConfig(AwsApiJob::GetDefaultConfig());
+            return s_configHolder.GetConfig(HttpRequestJob::GetDefaultConfig());
         }
 
-    protected:
+    public:
+        // To use a different allocator, extend this class and use this macro.
+        AZ_CLASS_ALLOCATOR(ServiceJob, AZ::SystemAllocator, 0);
 
         ServiceJob(bool isAutoDelete, IConfig* config)
-            : AwsApiJob(isAutoDelete, config)
-            , m_readRateLimiter(config->GetReadRateLimiter())
-            , m_writeRateLimiter(config->GetWriteRateLimiter())
-            , m_httpClient(config->GetHttpClient())
-            , m_userAgent(config->GetUserAgent())
+            : HttpRequestJob(isAutoDelete, config)
         {
         }
 
-        virtual bool BuildRequest(RequestBuilder& request) = 0;
+        /// Access the underlying HttpRequestJob if lower-level access is needed
+        HttpRequestJob& GetHttpRequestJob();
+        const HttpRequestJob& GetHttpRequestJob() const;
 
-        virtual void ProcessResponse(const std::shared_ptr<Aws::Http::HttpResponse>& response) = 0;
-
-        virtual std::shared_ptr<Aws::StringStream> GetBodyContent(RequestBuilder& requestBuilder);
-        /// Converts an HttpMethod to a string. Used for debug output.
-        static const char* HttpMethodToString(Aws::Http::HttpMethod);
-
-        /// Enumeration of HTTP methods
-        using HttpMethod = Aws::Http::HttpMethod;
+        /// Start the asynchronous job
+        void Start();
 
     private:
+        /// Descendant classes must implement these in order to have their requests sent
+        virtual bool BuildRequest(RequestBuilder& request) = 0;
+        virtual std::shared_ptr<Aws::StringStream> GetBodyContent(RequestBuilder& requestBuilder);
 
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> m_readRateLimiter;
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> m_writeRateLimiter;
-        std::shared_ptr<Aws::Http::HttpClient> m_httpClient;
-        Aws::String m_userAgent;
-
-        // Calls GetRequest to get a request, sends that request, then
-        // calls OnResponse when response is received or an error occurs.
-        void Process() override;
-
-        std::shared_ptr<Aws::Http::HttpRequest> GetRequest();
-
+        /// Configures the request using the custom properties of the service by calling BuildRequest()
+        std::shared_ptr<Aws::Http::HttpRequest> InitializeRequest() override;
     };
 
 } // namespace CloudGemFramework

@@ -141,7 +141,6 @@ class MetricReporter(object):
         self._logger.info('Created MetricReporter.')
 
         self.command_line = sys.argv
-        self._logger.info(self.command_line)
 
     def _wake_up_background_thread(self):
         """Signal the background thread to wake up and check the metric queue."""
@@ -156,6 +155,7 @@ class MetricReporter(object):
 
     def parse_command_line(self, command_line):
         self._logger.info('Parsing command line...')
+
         for index, arg in enumerate(command_line):
             if arg == '-p' or arg == '--project-spec':
                 if index+1 < len(command_line):
@@ -165,9 +165,6 @@ class MetricReporter(object):
                     self.metrics_namespace = command_line.pop(index+1)
             elif arg.lower() == '--use-incredibuild=true':
                 self.use_incredibuild=True
-
-        if self.metrics_namespace is None:
-            return False
 
         #strip the metrics parameters from argv so WAF doesn't complain about it later
         try:
@@ -179,7 +176,13 @@ class MetricReporter(object):
         except ValueError:
             pass
 
+        if self.metrics_namespace is None:
+            return False
+
         return True
+
+    def set_build_command(self, cmd):
+        self.additional_metric_metadata['build_command'] = cmd
 
     def start(self):
         """Start the background metrics thread. Has no effect is async=False or if
@@ -197,20 +200,21 @@ class MetricReporter(object):
         self.additional_metric_metadata['project_spec'] = str(self.project_spec)
         self.additional_metric_metadata['use_incredibuild'] = str(self.use_incredibuild)
 
+        # this gets replaced later
+        self.additional_metric_metadata['build_result'] = "#BUILD_RESULT#"
+
         build_id = os.getenv('BUILD_ID')
-        # if we're running in jenkins and the BUILD_TAG variable is set,
-        build_tag = os.getenv('BUILD_TAG')
-        if build_tag is not None:
-            self._logger.info('BUILD_TAG variable is set: {0}'.format(build_tag))
-            build_id = '{0}.{1}'.format(build_tag, os.getenv('P4_CHANGELIST'))
+        command_id = os.getenv('COMMAND_ID')
 
         if build_id is None:
-            self._logger.error('No build id is set!')
+            self._logger.error('No build id is set! These metrics will be lost!')
         else:
             self.additional_metric_metadata['build_id'] = build_id
 
-        self.build_id = build_id
-        self.hostname = socket.gethostname()
+        if command_id is None:
+            self._logger.error('No command is is set! These metrics will be lost!')
+        else:
+            self.additional_metric_metadata['command_id'] = command_id
 
         self._metric_send_thread = threading.Thread(target=self._metric_loop)
         self._metric_send_thread.daemon = True
@@ -240,6 +244,10 @@ class MetricReporter(object):
         if wait_for_empty_queue:
             self._logger.info('waiting for empty queue')
             self._metric_send_thread.join(timeout=MetricReporter.SHUTDOWN_TIMEOUT_SECS)
+
+        for handler in list(self._logger.handlers):
+            handler.close()
+            self._logger.removeHandler(handler)
 
     def flush(self):
         """If async=True, wakes up background thread and forces a flush of any stored metrics.
@@ -409,6 +417,9 @@ def submit_build_metric(name, units, value, dimensions, disable_dimension_unwrap
 
 def add_output_directory(out_dir):
     metric_reporter.add_output_directory(out_dir)
+
+def set_build_command(cmd):
+    metric_reporter.set_build_command(cmd)
 
 metric_reporter = MetricReporter('WAF_BuildMetrics')
 

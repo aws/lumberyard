@@ -35,6 +35,7 @@
 #include "TextMarkup.h"
 #include "UiTextComponentOffsetsSelector.h"
 #include "StringUtfUtils.h"
+#include "UiLayoutHelpers.h"
 
 namespace
 {
@@ -333,8 +334,6 @@ namespace
             }
             case TextMarkup::TagType::Font:
             {
-                // --- Work in progress: font tag support ---
-
                 const TextMarkup::FontTag* pFontTag = static_cast<const TextMarkup::FontTag*>(currentTag);
                 if (!(pFontTag->face.empty()))
                 {
@@ -470,6 +469,11 @@ namespace
                 if (prevCh && ctx.m_kerningEnabled)
                 {
                     curCharWidth += drawBatch.font->GetKerning(prevCh, ch, ctx).x;
+                }
+
+                if (prevCh)
+                {
+                    curCharWidth += ctx.m_tracking;
                 }
 
                 prevCh = ch;
@@ -754,6 +758,10 @@ UiTextComponent::UiTextComponent()
     , m_fontSize(32)
     , m_textHAlignment(IDraw2d::HAlign::Center)
     , m_textVAlignment(IDraw2d::VAlign::Center)
+    , m_charSpacing(0.0f)
+    , m_lineSpacing(0.0f)
+    , m_currFontSize(m_fontSize)
+    , m_currCharSpacing(m_charSpacing)
     , m_font(nullptr)
     , m_fontFamily(nullptr)
     , m_fontEffectIndex(0)
@@ -762,6 +770,10 @@ UiTextComponent::UiTextComponent()
     , m_overrideAlpha(m_alpha)
     , m_overrideFontFamily(nullptr)
     , m_overrideFontEffectIndex(m_fontEffectIndex)
+    , m_isColorOverridden(false)
+    , m_isAlphaOverridden(false)
+    , m_isFontFamilyOverridden(false)
+    , m_isFontEffectOverridden(false)
     , m_textSelectionColor(0.0f, 0.0f, 0.0f, 1.0f)
     , m_selectionStart(-1)
     , m_selectionEnd(-1)
@@ -804,19 +816,28 @@ void UiTextComponent::ResetOverrides()
     m_overrideFontFamily = m_fontFamily;
     m_overrideFontEffectIndex = m_fontEffectIndex;
 
-    PrepareDisplayedTextInternal(PrepareTextOption::Localize);
+    m_isColorOverridden = false;
+    m_isAlphaOverridden = false;
+    m_isFontFamilyOverridden = false;
+    m_isFontEffectOverridden = false;
+
+    PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::SetOverrideColor(const AZ::Color& color)
 {
     m_overrideColor.Set(color.GetAsVector3());
+
+    m_isColorOverridden = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::SetOverrideAlpha(float alpha)
 {
     m_overrideAlpha = alpha;
+
+    m_isAlphaOverridden = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -824,13 +845,17 @@ void UiTextComponent::SetOverrideFont(FontFamilyPtr fontFamily)
 {
     m_overrideFontFamily = fontFamily;
 
-    PrepareDisplayedTextInternal(PrepareTextOption::Localize);
+    m_isFontFamilyOverridden = true;
+
+    PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::SetOverrideFontEffect(unsigned int fontEffectIndex)
 {
     m_overrideFontEffectIndex = fontEffectIndex;
+
+    m_isFontEffectOverridden = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -979,14 +1004,14 @@ void UiTextComponent::Render()
         // Subtract one from the number of newline-delimited strings since,
         // by default, there is at least one string that will be correctly
         // aligned (consider single-line case).
-        pos.SetY(pos.GetY() - (m_fontSize * (numLinesOfText - 1.0f)));
+        pos.SetY(pos.GetY() - (m_fontSize + m_lineSpacing) * (numLinesOfText - 1.0f));
     }
 
     // Centered alignment is obtained by offsetting by half the height of the
     // entire text
     else if (m_textVAlignment == IDraw2d::VAlign::Center)
     {
-        pos.SetY(pos.GetY() - (0.5f * m_fontSize * (numLinesOfText - 1.0f)));
+        pos.SetY(pos.GetY() - (m_fontSize + m_lineSpacing) * (numLinesOfText - 1.0f) * 0.5f);
     }
 
     RenderDrawBatchLines(pos, points, fontContext, newlinePosYIncrement);
@@ -1047,8 +1072,14 @@ void UiTextComponent::SetColor(const AZ::Color& color)
     m_color.Set(color.GetAsVector3());
     m_alpha = color.GetA();
 
-    m_overrideColor = m_color;
-    m_overrideAlpha = m_alpha;
+    if (!m_isColorOverridden)
+    {
+        m_overrideColor = m_color;
+    }
+    if (!m_isAlphaOverridden)
+    {
+        m_overrideAlpha = m_alpha;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1095,6 +1126,9 @@ float UiTextComponent::GetFontSize()
 void UiTextComponent::SetFontSize(float fontSize)
 {
     m_fontSize = fontSize;
+    m_currFontSize = fontSize;
+
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1138,7 +1172,52 @@ void UiTextComponent::SetVerticalTextAlignment(IDraw2d::VAlign alignment)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTextComponent::GetCharacterSpacing()
+{
+    return m_charSpacing;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::SetCharacterSpacing(float characterSpacing)
+{
+    m_charSpacing = characterSpacing;
+    m_currCharSpacing = characterSpacing;
+
+    // Recompute the text since we might have more lines to draw now (for word wrap)
+    OnTextWidthPropertyChanged();
+
+    InvalidateLayout();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiTextComponent::GetLineSpacing()
+{
+    return m_lineSpacing;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::SetLineSpacing(float lineSpacing)
+{
+    m_lineSpacing = lineSpacing;
+
+    InvalidateLayout();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 int UiTextComponent::GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBoundingBox)
+{
+    // get the input point into untransformed canvas space
+    AZ::Vector3 point3(point.GetX(), point.GetY(), 0.0f);
+    AZ::Matrix4x4 transform;
+    EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetTransformFromViewport, transform);
+    point3 = transform * point3;
+    AZ::Vector2 pointInCanvasSpace(point3.GetX(), point3.GetY());
+
+    return GetCharIndexFromCanvasSpacePoint(pointInCanvasSpace, mustBeInBoundingBox);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mustBeInBoundingBox)
 {
     // get the bounding rectangle of the text itself in untransformed canvas space
     UiTransformInterface::RectPoints rect;
@@ -1149,19 +1228,13 @@ int UiTextComponent::GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBound
     // the contents on-screen.
     point.SetX(point.GetX() + CalculateHorizontalClipOffset());
 
-    // get the input point into untransformed canvas space;
-    AZ::Vector3 pointInCanvasSpace(point.GetX(), point.GetY(), 0.0f);
-    AZ::Matrix4x4 transform;
-    EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetTransformFromViewport, transform);
-    pointInCanvasSpace = transform * pointInCanvasSpace;
-
     // first test if the point is in the bounding box
     // point is in rect if it is within rect or exactly on edge
     bool isInRect = false;
-    if (pointInCanvasSpace.GetX() >= rect.TopLeft().GetX() &&
-        pointInCanvasSpace.GetX() <= rect.BottomRight().GetX() &&
-        pointInCanvasSpace.GetY() >= rect.TopLeft().GetY() &&
-        pointInCanvasSpace.GetY() <= rect.BottomRight().GetY())
+    if (point.GetX() >= rect.TopLeft().GetX() &&
+        point.GetX() <= rect.BottomRight().GetX() &&
+        point.GetY() >= rect.TopLeft().GetY() &&
+        point.GetY() <= rect.BottomRight().GetY())
     {
         isInRect = true;
     }
@@ -1174,8 +1247,8 @@ int UiTextComponent::GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBound
     // Get point relative to this element's TopLeft() rect. We use this offset
     // to see how far along we've iterated over the rendered string size and
     // whether or not the index has been found.
-    AZ::Vector2 pickOffset = AZ::Vector2( pointInCanvasSpace.GetX() - rect.TopLeft().GetX(),
-                            pointInCanvasSpace.GetY() - rect.TopLeft().GetY());
+    AZ::Vector2 pickOffset = AZ::Vector2(point.GetX() - rect.TopLeft().GetX(),
+        point.GetY() - rect.TopLeft().GetY());
 
     STextDrawContext fontContext(GetTextDrawContextPrototype());
 
@@ -1234,7 +1307,7 @@ int UiTextComponent::GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBound
                 // pickOffset is a screen-position and the text position changes
                 // based on its alignment. We add an offset here to account for
                 // the location of the text on-screen for different alignments.
-                float alignedOffset = 0.0f; 
+                float alignedOffset = 0.0f;
                 if (m_textHAlignment == IDraw2d::HAlign::Center)
                 {
                     alignedOffset = 0.5f * (rect.GetAxisAlignedSize().GetX() - batchLine.lineSize.GetX());
@@ -1345,6 +1418,12 @@ AZ::Vector2 UiTextComponent::GetTextSize()
         size.SetX(AZ::GetMax(drawBatchLine.lineSize.GetX(), size.GetX()));
 
         size.SetY(size.GetY() + drawBatchLine.lineSize.GetY());
+    }
+
+    // Add the extra line spacing to the Y size
+    if (m_drawBatchLines.batchLines.size() > 0)
+    {
+        size.SetY(size.GetY() + (m_drawBatchLines.batchLines.size() - 1) * m_lineSpacing);
     }
 
     return size;
@@ -1534,11 +1613,33 @@ void UiTextComponent::SetWrapText(WrapTextSetting wrapSetting)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::PropertyValuesChanged()
 {
-    m_overrideColor = m_color;
-    m_overrideAlpha = m_alpha;
+    if (!m_isColorOverridden)
+    {
+        m_overrideColor = m_color;
+    }
+    if (!m_isAlphaOverridden)
+    {
+        m_overrideAlpha = m_alpha;
+    }
 
-    m_overrideFontFamily = m_fontFamily;
-    m_overrideFontEffectIndex = m_fontEffectIndex;
+    if (!m_isFontFamilyOverridden)
+    {
+        m_overrideFontFamily = m_fontFamily;
+    }
+
+    if (!m_isFontEffectOverridden)
+    {
+        m_overrideFontEffectIndex = m_fontEffectIndex;
+    }
+
+    // If any of the properties that affect line width changed
+    if (m_currFontSize != m_fontSize || m_currCharSpacing != m_charSpacing)
+    {
+        OnTextWidthPropertyChanged();
+
+        m_currFontSize = m_fontSize;
+        m_currCharSpacing = m_charSpacing;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1549,11 +1650,21 @@ void UiTextComponent::OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTr
 
     if (sizeChanged)
     {
-        // Remove current word-wrap applied to string by re-initializing the
-        // string's contents via the loc system.
-        PrepareDisplayedTextInternal(PrepareTextOption::Localize, false, false);
+        // OnCanvasSpaceRectChanged (with a size change) is called on the first canvas update, so text will initially be prepared here.
+        // Text will also be prepared on all subsequent calls to OnCanvasSpaceRectChanged with a size change.
+        // This will remove the current word-wrap applied to the string by re-initializing the
+        // string's contents via the loc system
+
+        // Show xml warnings on the initial call to OnCanvasSpaceRectChanged while suppressing xml warnings on all subsequent calls
+        bool suppressXmlWarnings = m_postActivate;
+        
+        PrepareDisplayedTextInternal(PrepareTextOption::Localize, suppressXmlWarnings, false);
     }
 
+    // If the text is wrapped, we need to know the element size before calling PrepareDisplayedTextInternal.
+    // Since OnCanvasSpaceRectChanged is called on the first canvas update, we know that the component has been activated
+    // at this time, and the element size can be retrieved. We can't use InGamePostActivate because it is only available
+    // at runtime. We also need word-wrap to occur in the editor, so we use a simple boolean variable instead.
     m_postActivate = true;
 }
 
@@ -1645,6 +1756,8 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
             ->Field("EffectIndex", &UiTextComponent::m_fontEffectIndex)
             ->Field("TextHAlignment", &UiTextComponent::m_textHAlignment)
             ->Field("TextVAlignment", &UiTextComponent::m_textVAlignment)
+            ->Field("CharacterSpacing", &UiTextComponent::m_charSpacing)
+            ->Field("LineSpacing", &UiTextComponent::m_lineSpacing)
             ->Field("OverflowMode", &UiTextComponent::m_overflowMode)
             ->Field("WrapTextSetting", &UiTextComponent::m_wrapTextSetting);
 
@@ -1660,7 +1773,8 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
             editInfo->DataElement(0, &UiTextComponent::m_text, "Text", "The text string")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnTextChange);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnTextChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::Color, &UiTextComponent::m_color, "Color", "The color to draw the text string")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnColorChange);
             editInfo->DataElement(AZ::Edit::UIHandlers::Slider, &UiTextComponent::m_alpha, "Alpha", "The transparency of the text string")
@@ -1668,12 +1782,15 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Max, 1.0f);
             editInfo->DataElement("SimpleAssetRef", &UiTextComponent::m_fontFilename, "Font path", "The pathname to the font")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontPathnameChange);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontPathnameChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_fontEffectIndex, "Font effect", "The font effect (from font file)")
                 ->Attribute("EnumValues", &UiTextComponent::PopulateFontEffectList)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontEffectChange);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontEffectChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::SpinBox, &UiTextComponent::m_fontSize, "Font size", "The size of the font in points")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnWrapTextSettingChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontSizeChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Step, 1.0f);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_textHAlignment, "Horizontal text alignment", "How to align the text within the rect")
@@ -1684,11 +1801,20 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->EnumAttribute(IDraw2d::VAlign::Top, "Top")
                 ->EnumAttribute(IDraw2d::VAlign::Center, "Center")
                 ->EnumAttribute(IDraw2d::VAlign::Bottom, "Bottom");
+            editInfo->DataElement(0, &UiTextComponent::m_charSpacing, "Character Spacing", 
+                "The spacing in 1/1000th of ems to add between each two consecutive characters.\n"
+                "One em is equal to the currently specified font size.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnCharSpacingChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
+            editInfo->DataElement(0, &UiTextComponent::m_lineSpacing, "Line Spacing", "The amount of pixels to add between each two consecutive lines.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnLineSpacingChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_overflowMode, "Overflow mode", "How text should fit within the element")
                 ->EnumAttribute(OverflowMode::OverflowText, "Overflow")
                 ->EnumAttribute(OverflowMode::ClipText, "Clip text");
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_wrapTextSetting, "Wrap text", "Determines whether text is wrapped")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnWrapTextSettingChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)
                 ->EnumAttribute(WrapTextSetting::NoWrap, "No wrap")
                 ->EnumAttribute(WrapTextSetting::Wrap, "Wrap text");
         }
@@ -1698,6 +1824,7 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTextBus>("UiTextBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetText", &UiTextBus::Events::GetText)
             ->Event("SetText", &UiTextBus::Events::SetText)
             ->Event("GetColor", &UiTextBus::Events::GetColor)
@@ -1712,6 +1839,10 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetHorizontalTextAlignment", &UiTextBus::Events::SetHorizontalTextAlignment)
             ->Event("GetVerticalTextAlignment", &UiTextBus::Events::GetVerticalTextAlignment)
             ->Event("SetVerticalTextAlignment", &UiTextBus::Events::SetVerticalTextAlignment)
+            ->Event("GetCharacterSpacing", &UiTextBus::Events::GetCharacterSpacing)
+            ->Event("SetCharacterSpacing", &UiTextBus::Events::SetCharacterSpacing)
+            ->Event("GetLineSpacing", &UiTextBus::Events::GetLineSpacing)
+            ->Event("SetLineSpacing", &UiTextBus::Events::SetLineSpacing)
             ->Event("GetOverflowMode", &UiTextBus::Events::GetOverflowMode)
             ->Event("SetOverflowMode", &UiTextBus::Events::SetOverflowMode)
             ->Event("GetWrapText", &UiTextBus::Events::GetWrapText)
@@ -1750,10 +1881,12 @@ void UiTextComponent::Init()
         ChangeFont(m_fontFilename.GetAssetPath());
     }
 
-    string locText;
-    gEnv->pSystem->GetLocalizationManager()->LocalizeString(m_text.c_str(), locText);
-    m_locText = locText;
-    gEnv->pCryFont->AddCharsToFontTextures(m_fontFamily, m_locText.c_str());
+    // A call to prepare text is required here to build the draw batches for display. When
+    // adding a text component to a pre-existing element, the rect may or may not change,
+    // so we can't rely on that to prepare the text for display. Text components with fonts
+    // other than the default font can also cause the text to be prepared for display, but if
+    // the font used is the default font, that won't trigger a prepare either.
+    PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1808,10 +1941,17 @@ void UiTextComponent::ChangeFont(const AZStd::string& fontFileName)
         if (m_fontEffectIndex >= numEffects)
         {
             m_fontEffectIndex = 0;
-            m_overrideFontEffectIndex = m_fontEffectIndex;
         }
 
-        m_overrideFontFamily = m_fontFamily;
+        if (!m_isFontFamilyOverridden)
+        {
+            m_overrideFontFamily = m_fontFamily;
+            
+            if (m_overrideFontEffectIndex >= numEffects)
+            {
+                m_overrideFontEffectIndex = m_fontEffectIndex;
+            }
+        }
 
         // When the font changes, we need to rebuild our draw batches, but we
         // need to know the element's size for word-wrapping. ChangeFont may
@@ -1819,7 +1959,7 @@ void UiTextComponent::ChangeFont(const AZStd::string& fontFileName)
         // be re-built regardless on first render iteration - "post-activate").
         if (m_postActivate)
         {
-            PrepareDisplayedTextInternal(PrepareTextOption::Localize);
+            PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
         }
     }
 }
@@ -1898,6 +2038,14 @@ void UiTextComponent::OnColorChange()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::OnFontSizeChange()
+{
+    InvalidateLayout();
+
+    OnTextWidthPropertyChanged();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::u32 UiTextComponent::OnFontPathnameChange()
 {
     // we should be guaranteed that the asset path in the simple asset ref is root relative and
@@ -1925,7 +2073,21 @@ void UiTextComponent::OnFontEffectChange()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::OnWrapTextSettingChange()
 {
-    PrepareDisplayedTextInternal(PrepareTextOption::Localize);
+    PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::OnCharSpacingChange()
+{
+    InvalidateLayout();
+
+    OnTextWidthPropertyChanged();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::OnLineSpacingChange()
+{
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1985,7 +2147,8 @@ float UiTextComponent::CalculateHorizontalClipOffset()
             // - cursorAtFirstChar
             // - cursorClippedRight
             // - cursorClippedLeft
-            AZStd::string leftString(displayedText.substr(0, m_selectionEnd));
+            int bytesToSelectionEnd = LyShine::GetByteLengthOfUtf8Chars(displayedText.c_str(), m_selectionEnd);
+            AZStd::string leftString(displayedText.substr(0, bytesToSelectionEnd));
             Vec2 leftSize(m_font->GetTextSize(leftString.c_str(), true, fontContext));
 
             if (m_textHAlignment == IDraw2d::HAlign::Left)
@@ -2081,7 +2244,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                 // - cursorAtFirstChar
                 // - cursorClippedRight
                 // - cursorClippedLeft
-                AZStd::string rightString(displayedText.substr(m_selectionEnd, displayedText.length() - m_selectionEnd));
+                AZStd::string rightString(displayedText.substr(bytesToSelectionEnd, displayedText.length() - bytesToSelectionEnd));
                 Vec2 rightSize(m_font->GetTextSize(rightString.c_str(), true, fontContext));
 
                 // Negative offset will scroll text to the right
@@ -2143,10 +2306,7 @@ void UiTextComponent::PrepareDisplayedTextInternal(PrepareTextOption prepOption,
 
     if (invalidateParentLayout)
     {
-        // Invalidate the parent's layout
-        AZ::EntityId canvasEntityId;
-        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-        EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), true);
+        InvalidateLayout();
     }
 }
 
@@ -2311,7 +2471,7 @@ void UiTextComponent::RenderDrawBatchLines(
             gEnv->pRenderer->PopProfileMarker(profileMarker);
         }
 
-        newlinePosYIncrement += m_fontSize;
+        newlinePosYIncrement += m_fontSize + m_lineSpacing;
     }
 }
 
@@ -2323,7 +2483,26 @@ STextDrawContext UiTextComponent::GetTextDrawContextPrototype() const
     ctx.SetSizeIn800x600(false);
     ctx.SetSize(vector2f(m_fontSize, m_fontSize));
     ctx.m_processSpecialChars = false;
+    ctx.m_tracking = m_charSpacing / 1000.0f;
     return ctx;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::OnTextWidthPropertyChanged()
+{
+    if (m_wrapTextSetting == UiTextInterface::WrapTextSetting::NoWrap)
+    {
+        // Recompute the line sizes so that they are aligned properly (else the sizes will be aligned
+        // according to their original width)
+        STextDrawContext fontContext(GetTextDrawContextPrototype());
+        AssignLineSizes(m_drawBatchLines, m_fontFamily.get(), fontContext, m_displayedTextFunction, true);
+    }
+    else
+    {
+        // Recompute even the lines, because since we have new widths, we might have more lines due
+        // to word wrap
+        PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2450,6 +2629,24 @@ int UiTextComponent::GetLineNumberFromCharIndex(const int soughtIndex) const
     // the line string, in which case we count the soughtIndex as being on
     // that line anyways.
     return lineCounter;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::InvalidateLayout() const
+{
+    // Invalidate the parent's layout
+    AZ::EntityId canvasEntityId;
+    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), true);
+
+    // Invalidate the element's layout
+    EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayout, GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties() const
+{
+    UiLayoutHelpers::CheckFitterAndRefreshEditorTransformProperties(GetEntityId());
 }
 
 #include "Tests/internal/test_UiTextComponent.cpp"

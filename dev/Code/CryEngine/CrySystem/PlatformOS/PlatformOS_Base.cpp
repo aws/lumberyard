@@ -17,6 +17,8 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/string/conversions_winrt.h>
 
+#include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
+
 #include <GridMate/GridMate.h>
 #include <GridMate/Online/UserServiceTypes.h>
 
@@ -143,6 +145,32 @@ int PlatformOS_Base::GetFirstSignedInUser() const
 bool PlatformOS_Base::UserGetOnlineName(unsigned int userIndex, IPlatformOS::TUserName& outName) const
 {
     return UserGetName(userIndex, outName);
+}
+
+bool PlatformOS_Base::KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback)
+{
+    AzFramework::InputTextEntryRequests::VirtualKeyboardOptions options;
+    options.m_initialText = initialInput;
+    options.m_titleText = title;
+    AzFramework::InputTextEntryRequestBus::Event(AzFramework::InputDeviceVirtualKeyboard::Id,
+        &AzFramework::InputTextEntryRequests::TextEntryStart, options);
+    return true;
+}
+
+bool PlatformOS_Base::KeyboardIsRunning()
+{
+    bool hasTextEntryStarted = false;
+    AzFramework::InputTextEntryRequestBus::EventResult(hasTextEntryStarted,
+                                                        AzFramework::InputDeviceVirtualKeyboard::Id,
+                                                        &AzFramework::InputTextEntryRequests::HasTextEntryStarted);
+    return hasTextEntryStarted;
+}
+
+bool PlatformOS_Base::KeyboardCancel()
+{
+    AzFramework::InputTextEntryRequestBus::Event(AzFramework::InputDeviceVirtualKeyboard::Id,
+                                                 &AzFramework::InputTextEntryRequests::TextEntryStop);
+    return true;
 }
 
 void PlatformOS_Base::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)

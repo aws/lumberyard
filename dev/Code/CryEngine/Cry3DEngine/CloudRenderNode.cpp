@@ -232,7 +232,7 @@ void CCloudRenderNode::Render(const SRendParams& rParams, const SRenderingPassIn
     pOD->m_fTempVars[0] = m_fScale;
     pRO->m_fSort = 0;
     pRO->m_fDistance = rParams.fDistance;
-    int nAfterWater = CObjManager::IsAfterWater(m_offsetedMatrix.GetTranslation(), passInfo.GetCamera().GetPosition(), passInfo, Get3DEngine()->GetWaterLevel()) ? 1 : 0;
+    int nAfterWater = GetObjManager()->IsAfterWater(m_offsetedMatrix.GetTranslation(), passInfo.GetCamera().GetPosition(), passInfo, Get3DEngine()->GetWaterLevel()) ? 1 : 0;
     pRO->m_II.m_AmbColor = rParams.AmbientColor;
     pRO->m_fAlpha = rParams.fAlpha * m_alpha;
 

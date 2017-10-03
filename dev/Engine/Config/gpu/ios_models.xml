@@ -1,0 +1,31 @@
+<DeviceList>
+    <Device model="iPhone6,1" file="ios_low.cfg"/> <!-- iPhone 5s, Apple A7 GPU -->
+    <Device model="iPhone6,2" file="ios_low.cfg"/> <!-- iPhone 5s, Apple A7 GPU -->
+    <Device model="iPhone7,1" file="ios_low.cfg"/> <!-- iPhone 6 Plus, Apple A8 GPU -->
+    <Device model="iPhone7,2" file="ios_medium.cfg"/> <!-- iPhone 6, Apple A8 GPU -->
+    <Device model="iPhone8,1" file="ios_high.cfg"/> <!-- iPhone 6s, Apple A9 GPU -->
+    <Device model="iPhone8,2" file="ios_high.cfg"/> <!-- iPhone 6s Plus, Apple A9 GPU -->
+    <Device model="iPhone8,4" file="ios_high.cfg"/> <!-- iPhone SE, Apple A9 GPU -->
+    <Device model="iPhone9,1" file="ios_veryhigh.cfg"/> <!-- iPhone 7, Apple A10 GPU -->
+    <Device model="iPhone9,3" file="ios_veryhigh.cfg"/> <!-- iPhone 7, Apple A10 GPU -->
+    <Device model="iPhone9,2" file="ios_veryhigh.cfg"/> <!-- iPhone 7 Plus, Apple A10 GPU -->
+    <Device model="iPhone9,4" file="ios_veryhigh.cfg"/> <!-- iPhone 7 Plus, Apple A10 GPU -->
+    <Device model="iPad4,1" file="ios_low.cfg"/> <!-- iPad Air, Apple A7 GPU -->
+    <Device model="iPad4,2" file="ios_low.cfg"/> <!-- iPad Air, Apple A7 GPU -->
+    <Device model="iPad4,3" file="ios_low.cfg"/> <!-- iPad Air, Apple A7 GPU -->
+    <Device model="iPad4,4" file="ios_low.cfg"/> <!-- iPad mini 2, Apple A7 GPU -->
+    <Device model="iPad4,5" file="ios_low.cfg"/> <!-- iPad mini 2, Apple A7 GPU -->
+    <Device model="iPad4,6" file="ios_low.cfg"/> <!-- iPad mini 2, Apple A7 GPU -->
+    <Device model="iPad4,7" file="ios_low.cfg"/> <!-- iPad mini 3, Apple A7 GPU -->
+    <Device model="iPad4,8" file="ios_low.cfg"/> <!-- iPad mini 3, Apple A7 GPU -->
+    <Device model="iPad4,9" file="ios_low.cfg"/> <!-- iPad mini 3, Apple A7 GPU -->
+    <Device model="iPad5,1" file="ios_medium.cfg"/> <!-- iPad mini 4, Apple A8 GPU -->
+    <Device model="iPad5,2" file="ios_medium.cfg"/> <!-- iPad mini 4, Apple A8 GPU -->
+    <Device model="iPad5,3" file="ios_medium.cfg"/> <!-- iPad Air 2, Apple A8 GPU -->
+    <Device model="iPad5,4" file="ios_medium.cfg"/> <!-- iPad Air 2, Apple A8 GPU -->
+    <Device model="iPad6,3" file="ios_high.cfg"/> <!-- iPad Pro, Apple A9 GPU -->
+    <Device model="iPad6,4" file="ios_high.cfg"/> <!-- iPad Pro, Apple A9 GPU -->
+    <Device model="iPad6,7" file="ios_high.cfg"/> <!-- iPad Pro, Apple A9 GPU -->
+    <Device model="iPad6,8" file="ios_high.cfg"/> <!-- iPad Pro, Apple A9 GPU -->
+    <Device model="iPod7,1" file="ios_medium.cfg"/> <!-- iPod touch 6th generation, Apple A8 GPU -->
+</DeviceList>

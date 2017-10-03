@@ -252,7 +252,7 @@ bool CBaseLibrary::SaveLibrary(const char* name, bool saveEmptyLibrary)
 
     XmlNodeRef root = GetIEditor()->GetSystem()->CreateXmlNode(name);
     Serialize(root, false);
-    bool bRes = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), root, fileName.toLatin1().data());
+    bool bRes = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), root, fileName.toUtf8().data());
     if (m_bNewLibrary)
     {
         AddLibraryToSourceControl(fileName);
@@ -261,7 +261,8 @@ bool CBaseLibrary::SaveLibrary(const char* name, bool saveEmptyLibrary)
     if (!bRes)
     {
         string strMessage;
-        strMessage.Format("The file %s is read-only and the save of the library couldn't be performed. Try to remove the \"read-only\" flag or check-out the file and then try again.", GetFilename());
+        QByteArray filenameUtf8 = fileName.toUtf8();
+        strMessage.Format("The file %s is read-only and the save of the library couldn't be performed. Try to remove the \"read-only\" flag or check-out the file and then try again.", filenameUtf8.data());
         CryMessageBox(strMessage.c_str(), "Saving Error", MB_OK | MB_ICONWARNING);
     }
     return bRes;

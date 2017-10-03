@@ -24,10 +24,24 @@ namespace AZ
             const static AZ::Crc32 Ignore = AZ_CRC("ScriptIgnore", 0xeb7615e1); ///< Don't use the element in the script reflection
             const static AZ::Crc32 ClassNameOverride = AZ_CRC("ScriptClassNameOverride", 0x891238a3); ///< Provide a custom name for script reflection, that doesn't match the behavior Context name
             const static AZ::Crc32 MethodOverride = AZ_CRC("ScriptFunctionOverride", 0xf89a7882); ///< Use a custom function in the attribute instead of the function  
-            const static AZ::Crc32 ConstructorOverride = AZ_CRC("ConstructorOverride", 0xef5ce4aa); ///< You can provide a custom constructor to be called when created from script
+            const static AZ::Crc32 ConstructorOverride = AZ_CRC("ConstructorOverride", 0xef5ce4aa); ///< You can provide a custom constructor to be called when created from Lua script
+            const static AZ::Crc32 GenericConstructorOverride = AZ_CRC("GenericConstructorOverride", 0xe6a1698e); ///< You can provide a custom constructor to be called when creating a script
             const static AZ::Crc32 ReaderWriterOverride = AZ_CRC("ReaderWriterOverride", 0x1ad9ce2a); ///< paired with \ref ScriptContext::CustomReaderWriter allows you to customize read/write to Lua VM
             const static AZ::Crc32 ConstructibleFromNil = AZ_CRC("ConstructibleFromNil", 0x23908169); ///< Applied to classes. Value (bool) specifies if the class be default constructed when nil is provided.
-            
+            const static AZ::Crc32 ToolTip = AZ_CRC("ToolTip", 0xa1b95fb0); ///< Add a tooltip for a method/event/property
+            const static AZ::Crc32 Category = AZ_CRC("Category", 0x064c19c1); ///< Provide a category to allow for partitioning/sorting/ordering of the element
+            const static AZ::Crc32 Deprecated = AZ_CRC("Deprecated", 0xfe49a138); ///< Marks a reflected class, method, EBus or property as deprecated. 
+            ///< This attribute can be attached to the EditContext Attribute of a reflected class, the BehaviorContext Attribute of a reflected class, method, ebus or property.
+            ///< ExcludeFlags can be used to prevent elements from appearing in List, Documentation, etc...
+            const static AZ::Crc32 ExcludeFrom = AZ_CRC("ExcludeFrom", 0xa98972fe);
+            enum ExcludeFlags : AZ::u64
+            {
+                List = 1 << 0,
+                Documentation = 1 << 1,
+                Preview = 1 << 2,
+                All = static_cast<AZ::u64>(-1)
+            };
+
             const static AZ::Crc32 Storage = AZ_CRC("ScriptStorage", 0xcd95b44d);
             enum class StorageType
             {

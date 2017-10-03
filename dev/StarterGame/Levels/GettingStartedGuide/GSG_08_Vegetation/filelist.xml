@@ -1,0 +1,6 @@
+<download name="GSG_08_Vegetation" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="959312" md5="acc86a64a09b28f51a37a63a9dfe50c5"/>
+ </files>
+</download>

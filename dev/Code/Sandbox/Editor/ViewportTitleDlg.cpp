@@ -88,6 +88,12 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
     connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::menuEntryClicked, this, &CViewportTitleDlg::OnViewportSearchButtonClicked);
     connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::returnPressed, this, &CViewportTitleDlg::OnSearchTermChange);
 
+    connect(m_ui->m_fovLabel, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpFOVMenu);
+    connect(m_ui->m_fovStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpFOVMenu);
+    connect(m_ui->m_ratioStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpAspectMenu);
+    connect(m_ui->m_ratioLabel, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpAspectMenu);
+    connect(m_ui->m_sizeStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpResolutionMenu);
+
     auto clearAction = new QAction(this);
     clearAction->setIcon(QIcon(":/stylesheet/img/16x16/lineedit-clear.png"));
     clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
@@ -111,16 +117,18 @@ CViewportTitleDlg::~CViewportTitleDlg()
 //////////////////////////////////////////////////////////////////////////
 void CViewportTitleDlg::SetViewPane(CLayoutViewPane* pViewPane)
 {
+    if (m_pViewPane)
+        m_pViewPane->disconnect(this);
     m_pViewPane = pViewPane;
-};
+    if (m_pViewPane)
+        connect(this, &QWidget::customContextMenuRequested, m_pViewPane, &CLayoutViewPane::ShowTitleMenu);
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CViewportTitleDlg::OnInitDialog()
 {
     m_ui->m_titleBtn->setText(m_title);
     m_ui->m_sizeStaticCtrl->setText(QString());
-
-    m_ui->m_titleBtn->installEventFilter(this);
 
     UpdateSearchOptionsText();
 
@@ -214,28 +222,11 @@ QMenu * CViewportTitleDlg::InitializeViewportSearchMenu()
 }
 
 //////////////////////////////////////////////////////////////////////////
-// CViewportTitleDlg message handlers
-//////////////////////////////////////////////////////////////////////////
-void CViewportTitleDlg::focusInEvent(QFocusEvent*)
-{
-    parentWidget()->setFocus();
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CViewportTitleDlg::SetTitle(const QString& title)
 {
     m_title = title;
     m_ui->m_titleBtn->setText(m_title);
     m_ui->m_viewportSearch->setVisible(title == QLatin1String("Perspective"));
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CViewportTitleDlg::mouseDoubleClickEvent(QMouseEvent* event)
-{
-    if (event->button() == Qt::LeftButton && m_pViewPane)
-    {
-        m_pViewPane->ToggleMaximize();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -258,30 +249,6 @@ void CViewportTitleDlg::OnToggleDisplayInfo()
 {
     int currentDisplayInfo = gEnv->pConsole->GetCVar("r_displayInfo")->GetIVal();
     gEnv->pConsole->GetCVar("r_displayInfo")->Set(currentDisplayInfo >= 3 ? 0 : currentDisplayInfo + 1);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CViewportTitleDlg::mousePressEvent(QMouseEvent* event)
-{
-    if (event->button() == Qt::RightButton && m_pViewPane)
-    {
-        if (m_ui->m_fovStaticCtrl->geometry().contains(event->pos()))
-        {
-            PopUpFOVMenu();
-        }
-        else if (m_ui->m_ratioStaticCtrl->geometry().contains(event->pos()))
-        {
-            PopUpAspectMenu();
-        }
-        else if (m_ui->m_sizeStaticCtrl->geometry().contains(event->pos()))
-        {
-            PopUpResolutionMenu();
-        }
-        else
-        {
-            m_pViewPane->ShowTitleMenu();
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -541,15 +508,6 @@ void CViewportTitleDlg::PopUpResolutionMenu()
     connect(action, &QAction::triggered, this, &CViewportTitleDlg::OnMenuResolutionCustom);
 
     menu.exec(QCursor::pos());
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CViewportTitleDlg::OnTitle()
-{
-    if (m_pViewPane)
-    {
-        m_pViewPane->ShowTitleMenu();
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -984,17 +942,24 @@ void CViewportTitleDlg::OnChangedDisplayInfo(ICVar* pDisplayInfo, QAbstractButto
 
 bool CViewportTitleDlg::eventFilter(QObject* object, QEvent* event)
 {
-    if (object == m_ui->m_titleBtn && event->type() == QEvent::MouseButtonPress)
+    bool consumeEvent = false;
+
+    // These events are forwarded from the toolbar that took ownership of our widgets
+    if (event->type() == QEvent::MouseButtonDblClick)
     {
-        QMouseEvent* ev = static_cast<QMouseEvent*>(event);
-        if (ev->button() == Qt::RightButton)
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton)
         {
-            OnTitle();
-            return true;
+            OnMaximize();
+            consumeEvent = true;
         }
     }
+    else if (event->type() == QEvent::FocusIn)
+    {
+        parentWidget()->setFocus();
+    }
 
-    return QWidget::eventFilter(object, event);
+    return QWidget::eventFilter(object, event) || consumeEvent;
 }
 
 

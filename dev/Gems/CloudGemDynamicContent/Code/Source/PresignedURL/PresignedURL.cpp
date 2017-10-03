@@ -47,21 +47,21 @@ namespace CloudCanvas
         PresignedURLRequestBus::Handler::BusDisconnect();
     }
 
-    AZ::Job* PresignedURLManager::RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName)
+    AZ::Job* PresignedURLManager::RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id)
     {
-        return CreateDownloadSignedURLJob(signedURL, fileName);
+        return CreateDownloadSignedURLJob(signedURL, fileName, id);
     }
 
-    void PresignedURLManager::RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName)
+    void PresignedURLManager::RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id)
     {
-        AZ::Job* downloadJob = CreateDownloadSignedURLJob(signedURL, fileName);
+        AZ::Job* downloadJob = CreateDownloadSignedURLJob(signedURL, fileName, id);
         if (downloadJob)
         {
             downloadJob->Start();
         }
     }
 
-    AZ::Job* PresignedURLManager::CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName) const
+    AZ::Job* PresignedURLManager::CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) const
     {
         if (!signedURL.length())
         {
@@ -82,7 +82,11 @@ namespace CloudCanvas
         AZ::Job* job{ nullptr };
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        job = AZ::CreateJobFunction([signedURL, outputFile]()
+        // Guarantee that CryMemoryManager has been initialized in this module before handing the function off to the jobs thread.  A bug was
+        // discovered in osx/clang where CryMemoryManager could crash when the code below was executed from the jobs thread without first guaranteeing that
+        // this module had initialized CryMemoryManager.  CryMemoryManager is being removed so this can go away soon.
+        CryGetIMemoryManager();
+        job = AZ::CreateJobFunction([signedURL, outputFile, id]()
         {
             Aws::Client::ClientConfiguration presignedConfig;
             // This timeout value is not always used consistently across http clients - it can mean "how long between packets" or 
@@ -95,7 +99,7 @@ namespace CloudCanvas
             presignedConfig.connectTimeoutMs = 30000;
 
             AZStd::string caFile;
-            LmbrAWS::RequestRootCAFileResult requestResult;
+            CloudCanvas::RequestRootCAFileResult requestResult;
             EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);
             if (caFile.length())
             {
@@ -116,7 +120,14 @@ namespace CloudCanvas
             if (!httpResponse)
             {
                 gEnv->pLog->LogAlways("No Response Received from request!  (Internal SDK Error)");
-                EBUS_EVENT(CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, 0, returnString);
+                if (!id.IsValid())
+                {
+                    EBUS_EVENT(CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, 0, returnString, outputFile);
+                }
+                else
+                {
+                    EBUS_EVENT_ID(id, CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, 0, returnString, outputFile);
+                }
                 return;
             }
 
@@ -127,8 +138,20 @@ namespace CloudCanvas
                 Aws::StringStream readableOut;
                 readableOut << body.rdbuf();
                 returnString = readableOut.str().c_str();
+                AZ_TracePrintf("CloudCanvas", "PresignedURL Failed with Code %d to write to %s", responseCode,outputFile.c_str());
             }
-            EBUS_EVENT(CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, responseCode, returnString);
+            else
+            {
+                AZ_TracePrintf("CloudCanvas", "PresignedURL downloaded: %s", outputFile.c_str());
+            }
+            if (!id.IsValid())
+            {
+                EBUS_EVENT(CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, responseCode, returnString, outputFile);
+            }
+            else
+            {
+                EBUS_EVENT_ID(id, CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, responseCode, returnString, outputFile);
+            }
 
         }, true, jobContext);
 #endif

@@ -1,0 +1,5 @@
+<Material MtlFlags="525312" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_concrete" Diffuse="0.71569365,0.093058966,0.093058966" Specular="0,0,0" Opacity="1" Shininess="10" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="Textures/terrain/ama_white_01.dds"/>
+ </Textures>
+</Material>

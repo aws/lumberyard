@@ -12,10 +12,16 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-
 TIME="`date +%Y%m%d%H%M%S`"
-BUILD_ID="$COMPUTERNAME.$TIME"
+export COMMAND_ID="$COMPUTERNAME-$TIME"
+if [ -n "$BUILD_TAG" ]; then
+    if [ -n "$P4_CHANGELIST" ]; then
+        export COMMAND_ID="$BUILD_TAG.$P4_CHANGELIST-$TIME"
+    fi
+fi
 
+BASEDIR=$(dirname "$0")
+pushd $BASEDIR
 env python Tools/build/waf-1.7.13/lmbr_waf "$@"
 
 RESULT=$?
@@ -23,9 +29,16 @@ RESULT=$?
 if [ -f "Tools/build/waf-1.7.13/build_metrics/build_metrics_overrides.py" ]; then
     if [ $RESULT -eq 0 ]; then
         env python Tools/build/waf-1.7.13/build_metrics/write_build_metric.py WafBuildResult 1 Unitless $*
+        if [ -f "build_metrics.txt" ]; then
+            env sed -i -e 's/#BUILD_RESULT#/True/g' build_metrics.txt
+        fi
     else
-        env python Tools/build/waf-1.7.13/build_metrics/write_build_metric.py WafBuildResult 0 Unitless $*
+        if [ -f "build_metrics.txt" ]; then
+            env python Tools/build/waf-1.7.13/build_metrics/write_build_metric.py WafBuildResult 0 Unitless $*
+            env sed -i -e 's/#BUILD_RESULT#/False/g' build_metrics.txt
+        fi
     fi
 fi
 
+popd
 exit $RESULT

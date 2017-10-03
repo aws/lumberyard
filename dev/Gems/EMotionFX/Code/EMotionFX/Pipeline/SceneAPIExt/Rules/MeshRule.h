@@ -11,41 +11,38 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/Memory/Memory.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMeshRule.h>
+#include <SceneAPIExt/Rules/IMeshRule.h>
 
 namespace AZ
 {
     class ReflectContext;
+}
 
-    namespace SceneAPI
+namespace EMotionFX
+{
+    namespace Pipeline
     {
-        namespace Containers
+        namespace Rule
         {
-            class Scene;
-        }
-        namespace SceneData
-        {
-            class EFXMeshRule
-                : public DataTypes::IEFXMeshRule
+            class MeshRule
+                : public IMeshRule
             {
             public:
-                AZ_RTTI(EFXMeshRule, "{7F115A73-28A2-4E35-8C87-1A1982773034}", DataTypes::IEFXMeshRule);
+                AZ_RTTI(MeshRule, "{7F115A73-28A2-4E35-8C87-1A1982773034}", IMeshRule);
                 AZ_CLASS_ALLOCATOR_DECL
 
-                EFXMeshRule();
-                ~EFXMeshRule() override = default;
+                MeshRule();
+                ~MeshRule() override = default;
 
                 bool GetOptimizeTriangleList() const override;
 
-                static void Reflect(ReflectContext* context);
+                static void Reflect(AZ::ReflectContext* context);
 
             protected:
                 bool m_optimizeTriangleList;
             };
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

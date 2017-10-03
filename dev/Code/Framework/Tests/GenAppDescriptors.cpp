@@ -88,7 +88,7 @@ namespace UnitTest
             AllocatorInstance<AZ::ThreadPoolAllocator>::Create(AZ::ThreadPoolAllocator::Descriptor());
 
             SerializeContext serializeContext;
-            AZ::ComponentApplication::Descriptor::ReflectSerialize(&serializeContext, &app);
+            AZ::ComponentApplication::Descriptor::Reflect(&serializeContext, &app);
             AZ::Entity::Reflect(&serializeContext);
 
             AZ::Entity dummySystemEntity(AZ::SystemEntityId, "SystemEntity");

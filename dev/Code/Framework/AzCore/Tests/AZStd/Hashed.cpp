@@ -419,6 +419,10 @@ namespace UnitTest
         int_set_type int_set9 = int_set8;
         AZ_TEST_ASSERT(int_set8 == int_set9);
         AZ_TEST_ASSERT(int_set1 != int_set9);
+
+        int_set_type int_set10;
+        int_set10.insert({ 1, 2, 3, 4, 4, 5 });
+        EXPECT_EQ(int_set8, int_set10);
 #endif
     }
 
@@ -503,6 +507,10 @@ namespace UnitTest
         int_multiset_type int_set9 = int_set8;
         AZ_TEST_ASSERT(int_set8 == int_set9);
         AZ_TEST_ASSERT(int_set1 != int_set9);
+
+        int_multiset_type int_set10;
+        int_set10.insert({ 1, 2, 3, 4, 4, 5 });
+        EXPECT_EQ(int_set8, int_set10);
 #endif
     }
 
@@ -615,6 +623,10 @@ namespace UnitTest
         AZ_TEST_ASSERT(intint_map8.find(3)->second == 3000);
         AZ_TEST_ASSERT(intint_map8.find(4)->second == 40000);
         AZ_TEST_ASSERT(intint_map8.find(5)->second == 500000);
+
+        int_int_map_type intint_map9;
+        intint_map9.insert({ { 1, 10 }, { 2, 200 }, { 3, 3000 }, { 4, 40000 }, { 4, 40001 }, { 5, 500000 } });
+        EXPECT_EQ(intint_map8, intint_map9);
 #endif
     }
 
@@ -719,6 +731,10 @@ namespace UnitTest
         AZ_TEST_ASSERT(intclass_map8.find(3)->second == MyClass(3000));
         AZ_TEST_ASSERT(intclass_map8.find(4)->second == MyClass(40000));
         AZ_TEST_ASSERT(intclass_map8.find(5)->second == MyClass(500000));
+
+        int_myclass_map_type intclass_map9;
+        intclass_map9.insert({ { 1, MyClass(10) },{ 2, MyClass(200) },{ 3, MyClass(3000) },{ 4, MyClass(40000) },{ 4, MyClass(40001) },{ 5, MyClass(500000) } });
+        EXPECT_EQ(intclass_map8, intclass_map9);
 #endif
     }
 
@@ -916,6 +932,10 @@ namespace UnitTest
         AZ_TEST_ASSERT(intint_map8.lower_bound(4)->second == 40000 || intint_map8.lower_bound(4)->second == 40001);
         AZ_TEST_ASSERT((++intint_map8.lower_bound(4))->second == 40000 || (++intint_map8.lower_bound(4))->second == 40001);
         AZ_TEST_ASSERT(intint_map8.lower_bound(5)->second == 500000);
+
+        int_int_multimap_type intint_map9;
+        intint_map9.insert({ { 1, 10 },{ 2, 200 },{ 3, 3000 },{ 4, 40000 },{ 4, 40001 },{ 5, 500000 } });
+        EXPECT_EQ(intint_map8, intint_map9);
 #endif
     }
 
@@ -977,6 +997,7 @@ namespace UnitTest
         MoveOnlyType& operator=(MoveOnlyType&& other)
         {
             m_name = AZStd::move(other.m_name);
+            return *this;
         }
 
         bool operator==(const MoveOnlyType& other) const

@@ -22,7 +22,17 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
+        /**
+         * Gets the current component sort order array
+         * @return Container of component ids which is in the proper sorted order of components
+         */
         virtual ComponentOrderArray GetComponentOrderArray() = 0;
+
+        /**
+         * Sets the current component sort order array
+         * Emits EditorInspectorComponentNotifications::OnComponentOrderChanged if the new sort order differs from the current ordering.
+         * @param componentOrderArray Container of component ids which is sorted in the desired sort order of components
+         */
         virtual void SetComponentOrderArray(const ComponentOrderArray& componentOrderArray) = 0;
     };
 
@@ -34,7 +44,7 @@ namespace AzToolsFramework
     public:
 
         /**
-        * EBus events fired when the order of components in the inspector has been changed.
+        * Event fired when the order of components in the inspector has been changed
         */
         virtual void OnComponentOrderChanged() = 0;
     };

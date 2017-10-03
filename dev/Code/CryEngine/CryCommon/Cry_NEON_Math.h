@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// Description : declaration of fast trigonometric funcs for PS3
+// Description : declaration of fast trigonometric funcs for NEON
 
 
 #ifndef CRYINCLUDE_CRYCOMMON_CRY_NEON_MATH_H

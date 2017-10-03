@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 
 namespace AZ
 {
@@ -36,25 +37,46 @@ namespace AZ
             {
                 class ManifestWidgetPage;
             }
-            class ManifestWidgetPage : public QWidget, public AzToolsFramework::IPropertyEditorNotify
+            class ManifestWidgetPage 
+                : public QWidget
+                , public AzToolsFramework::IPropertyEditorNotify
+                , public Events::ManifestMetaInfoBus::Handler
             {
                 Q_OBJECT
             public:
                 ManifestWidgetPage(SerializeContext* context, AZStd::vector<AZ::Uuid>&& classTypeIds);
+                ~ManifestWidgetPage() override;
 
                 // Sets the number of entries the user can add through this widget. It doesn't limit
                 //      the amount of entries that can be stored.
-                void SetCapSize(size_t size);
-                size_t GetCapSize() const;
+                virtual void SetCapSize(size_t size);
+                virtual size_t GetCapSize() const;
 
-                bool SupportsType(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
-                bool AddObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
-                bool RemoveObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
+                virtual bool SupportsType(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
+                virtual bool AddObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
+                virtual bool RemoveObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object);
 
-                size_t ObjectCount() const;
-                void Clear();
+                virtual size_t ObjectCount() const;
+                virtual void Clear();
 
-                void ScrollToBottom();
+                virtual void ScrollToBottom();
+
+            protected slots:
+                //! Callback that's triggered when the add button only has 1 entry.
+                void OnSingleGroupAdd();
+
+            protected:
+                //! Callback that's triggered when the add button has multiple entries.
+                virtual void OnMultiGroupAdd(const Uuid& id);
+
+                virtual void BuildAndConnectAddButton();
+                
+                virtual AZStd::string ClassIdToName(const Uuid& id) const;
+                virtual void AddNewObject(const Uuid& id);
+                //! Report that an object on this page has been updated.
+                //! @param object Pointer to the changed object. If the manifest itself has been update
+                //! for instance after adding or removing a group use null to update the entire manifest.
+                virtual void EmitObjectChanged(const DataTypes::IManifestObject* object = nullptr);
 
                 // IPropertyEditorNotify Interface Methods
                 void BeforePropertyModified(AzToolsFramework::InstanceDataNode* pNode) override;
@@ -63,21 +85,8 @@ namespace AZ
                 void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* pNode) override;
                 void SealUndoStack() override;
 
-            signals:
-                void PageUpdated();
-
-            protected slots:
-                // Callback that's triggered when the add button only has 1 entry.
-                void OnSingleGroupAdd();
-
-            protected:
-                // Callback that's triggered when the add button has multiple entries.
-                void OnMultiGroupAdd(const Uuid& id);
-
-                void BuildAndConnectAddButton();
-                
-                AZStd::string ClassIdToName(const Uuid& id) const;
-                void AddNewObject(const Uuid& id);
+                // ManifestMetaInfoBus
+                void ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender) override;
 
                 AZStd::vector<AZ::Uuid> m_classTypeIds;
                 AZStd::vector<AZStd::shared_ptr<DataTypes::IManifestObject>> m_objects;
@@ -86,6 +95,6 @@ namespace AZ
                 SerializeContext* m_context;
                 size_t m_capSize;
             };
-        } // UI
-    } // SceneAPI
-} // AZ
+        } // namespace UI
+    } // namespace SceneAPI
+} // namespace AZ

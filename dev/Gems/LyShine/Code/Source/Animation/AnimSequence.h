@@ -40,9 +40,6 @@ public:
 
     float GetTime() const { return m_time; }
 
-    float GetFixedTimeStep() const { return m_fixedTimeStep; }
-    void SetFixedTimeStep(float dt) { m_fixedTimeStep = dt; }
-
     virtual void SetOwner(IUiAnimSequenceOwner* pOwner)
     { m_pOwner = pOwner; }
     virtual IUiAnimSequenceOwner* GetOwner() const
@@ -153,7 +150,6 @@ private:
     IUiAnimNode* m_pActiveDirector;
 
     float m_time;
-    float m_fixedTimeStep;
 
     VectorSet<IEntity*> m_precachedEntitiesSet;
 };

@@ -21,7 +21,7 @@
 HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
     size_t showMask,
     bool addMenuForNewElement,
-    const AZ::Component* optionalOnlyThisComponentType,
+    AZ::Component* componentToRemove,
     const QPoint* optionalPos)
     : QMenu()
 {
@@ -84,7 +84,7 @@ HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
 
     if (showMask & Show::kRemoveComponents)
     {
-        RemoveComponents(hierarchy, selectedItems, optionalOnlyThisComponentType);
+        RemoveComponents(hierarchy, selectedItems, componentToRemove);
     }
 }
 
@@ -209,22 +209,29 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
     auto selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selectedItems, false);
 
     // Determine if any of the selected entities are in a slice
-    bool sliceSelected = false;
-    if (!selectedEntities.empty())
-    {
-        for (const AZ::EntityId& entityId : selectedEntities)
-        {
-            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
-            EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+    AZ::SliceComponent::EntityAncestorList referenceAncestors;
 
-            if (sliceAddress.first)
+    AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
+    for (const AZ::EntityId& entityId : selectedEntities)
+    {
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+        EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+        if (sliceAddress.first)
+        {
+            if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
             {
-                // This entity is in a slice
-                sliceSelected = true;
-                break;
+                if (sliceInstances.empty())
+                {
+                    sliceAddress.first->GetInstanceEntityAncestry(entityId, referenceAncestors);
+                }
+
+                sliceInstances.push_back(sliceAddress);
             }
         }
     }
+
+    bool sliceSelected = sliceInstances.size() > 0;
     
     if (sliceSelected)
     {
@@ -254,6 +261,56 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                 }
             );
         }
+
+        if (showMask & Show::kPushToSlice)  // use the push to slice flag to show detach since it appears in all the same situations
+        {
+            // Detach slice entity
+            {
+                // Detach entities action currently acts on entities and all descendants, so include those as part of the selection
+                AzToolsFramework::EntityIdSet selectedTransformHierarchyEntities =
+                    hierarchy->GetEditorWindow()->GetSliceManager()->GatherEntitiesAndAllDescendents(selectedEntities);
+
+                AzToolsFramework::EntityIdList selectedDetachEntities;
+                selectedDetachEntities.insert(selectedDetachEntities.begin(), selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
+
+                QString detachEntitiesActionText;
+                if (selectedDetachEntities.size() == 1)
+                {
+                    detachEntitiesActionText = QObject::tr("Detach slice entity...");
+                }
+                else
+                {
+                    detachEntitiesActionText = QObject::tr("Detach slice entities...");
+                }
+                QAction* action = addAction(detachEntitiesActionText);
+                QObject::connect(action, &QAction::triggered, [this, hierarchy, selectedDetachEntities]
+                {
+                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
+                }
+                );
+            }
+
+            // Detach slice instance
+            {
+                QString detachSlicesActionText;
+                if (sliceInstances.size() == 1)
+                {
+                    detachSlicesActionText = QObject::tr("Detach slice instance...");
+                }
+                else
+                {
+                    detachSlicesActionText = QObject::tr("Detach slice instances...");
+                }
+                QAction* action = addAction(detachSlicesActionText);
+                QObject::connect(action, &QAction::triggered, [this, hierarchy, selectedEntities]
+
+                {
+                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
+                }
+                );
+            }
+        }
+
     }
     else
     {

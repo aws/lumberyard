@@ -76,7 +76,7 @@ public:
     //! Populates the given pGlyphBitmap's buffer from the FreeType bitmap buffer
     //! \param iCharCode Used as a character index to retrieve the FreeType glyph and it's associated bitmap buffer for the character
     //! \param pGlyphBitmap The FreeType glyph buffer is essentially copied into this CGlyphBitmap buffer
-    int         GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, char& iCharOffsetX, char& iCharOffsetY, int iX, int iY, int iCharCode);
+    int         GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, int iX, int iY, int iCharCode);
     int         GetGlyphScaled(CGlyphBitmap* pGlyphBitmap, int* iGlyphWidth, int* iGlyphHeight, int iX, int iY, float fScaleX, float fScaleY, int iCharCode);
 
     void GetMemoryUsage(ICrySizer* pSizer) const {}

@@ -1,0 +1,8 @@
+{
+  "name": "@cloud-gems/cloudgemmessageoftheday",
+  "version": "1.0.0",
+  "description": "Cloud Gem - Message of the Day",
+  "private": true,
+    "dependencies": {
+    }
+}

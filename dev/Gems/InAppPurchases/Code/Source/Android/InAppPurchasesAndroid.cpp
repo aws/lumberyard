@@ -15,6 +15,7 @@
 #include "InAppPurchasesModule.h"
 
 #include <InAppPurchases/InAppPurchasesResponseBus.h>
+#include <NativeUIRequests.h>
 
 #include <AzCore/JSON/document.h>
 #include <AzCore/JSON/error/en.h>
@@ -22,6 +23,7 @@
 #include <SDL_system.h>
 
 #include <android/log.h>
+#include <AzCore/EBus/BusImpl.h>
 
 namespace InAppPurchases
 {
@@ -157,8 +159,17 @@ namespace InAppPurchases
 
         env->RegisterNatives(billingClass, methods, sizeof(methods) / sizeof(methods[0]));
 
+        mid = env->GetMethodID(billingClass, "IsKindleDevice","()Z");
+        jboolean result = env->CallBooleanMethod(m_billingInstance, mid);
+        if (!result)
+        {
         mid = env->GetMethodID(billingClass, "Initialize", "()V");
         env->CallVoidMethod(m_billingInstance, mid);
+        }
+        else
+        {
+            EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Kindle Device Detected", "IAP currently unsupported on Kindle devices", false);
+        }
 
         env->DeleteLocalRef(billingClass);
         env->DeleteLocalRef(billingInstance);

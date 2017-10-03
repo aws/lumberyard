@@ -20,6 +20,7 @@
 #include "IRCLog.h"               // RCLogError
 #include "ThreadUtils.h"          // ThreadUtils
 #include "MathHelpers.h"          // MathHelpers
+#include "SuffixUtil.h"                     // SuffixUtil
 
 //////////////////////////////////////////////////////////////////////////
 // PowerVR PVRTexLib
@@ -268,8 +269,13 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
                 memcpy(pDstMem, pCompressedData, compressedDataSize);
             }
 
-            // check if we lost the alpha-channel in the conversion
-            if (CPixelFormats::IsPixelFormatWithoutAlpha(fmtDst))
+            const EPixelFormat destinationAlphaFormat = pProps->GetDestAlphaPixelFormat();    
+            bool isNormalGlossTexture = SuffixUtil::HasSuffix(pProps->GetSourceFileName(), '_', "ddna");
+            bool buildGlossTexture = isNormalGlossTexture && (fmtDst != destinationAlphaFormat);
+
+            // check if we lost the alpha-channel in the conversion or if we want to force alpha channel for normal-gloss maps   
+            // buildAlphaTexture allows us to use pvrtc/astc compressions( on ios/android) for normal-gloss maps even though they support an alpha channel.
+            if (CPixelFormats::IsPixelFormatWithoutAlpha(fmtDst) || buildGlossTexture)
             {
                 // save alpha channel as *attached* image, because it's impossible to store it in the 2-channel normal map image
                 if (pProps->m_bPreserveAlpha && get()->HasNonOpaqueAlpha() && !pProps->GetDiscardAlpha())
@@ -277,19 +283,19 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
                     // alpha2bump suppress the alpha channel export - this behavior saves memory
                     //if (pProps->m_AlphaAsBump.GetBumpToNormalFilter() == 0)
                     {
-                        const EPixelFormat destinationFormat = pProps->GetDestAlphaPixelFormat();
+                        
 
                         // we are limiting alpha mip count because A8/R32F may contain more mips than a block compressed format
                         ImageToProcess tempImageToProcess(
-                            get()->GetPixelFormat() == ePixelFormat_A32B32G32R32F && destinationFormat != ePixelFormat_A8
+                            get()->GetPixelFormat() == ePixelFormat_A32B32G32R32F && destinationAlphaFormat != ePixelFormat_A8
                             ? get()->CopyAnyAlphaIntoR32FImage(pRet->GetMipCount())
                             : get()->CopyAnyAlphaIntoA8Image(pRet->GetMipCount())
                             );
 
                         const EPixelFormat currentFormat = tempImageToProcess.get()->GetPixelFormat();
-                        if (destinationFormat != currentFormat)
+                        if (destinationAlphaFormat != currentFormat)
                         {
-                            tempImageToProcess.ConvertFormat(pProps, destinationFormat);
+                            tempImageToProcess.ConvertFormat(pProps, destinationAlphaFormat);
                         }
 
                         pRet->SetAttachedImage(tempImageToProcess.get());

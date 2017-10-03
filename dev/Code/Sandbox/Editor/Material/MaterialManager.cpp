@@ -491,6 +491,9 @@ void CMaterialManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnBeginGameMode:
         m_pHighlighter->RestoreMaterials();
         break;
+    case eNotify_OnEndGameMode:
+        ReloadDirtyMaterials();
+        break;
     case eNotify_OnBeginNewScene:
         SetCurrentMaterial(0);
         break;
@@ -512,6 +515,37 @@ void CMaterialManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
         }
         break;
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMaterialManager::ReloadDirtyMaterials()
+{
+    IMaterialManager* runtimeMaterialManager = GetIEditor()->Get3DEngine()->GetMaterialManager();
+
+    uint32 mtlCount = 0;
+
+    runtimeMaterialManager->GetLoadedMaterials(NULL, mtlCount);
+
+    if (mtlCount > 0)
+    {
+        std::vector<_smart_ptr<IMaterial>> allMaterials;
+
+        allMaterials.reserve(mtlCount);
+
+        uint32 mtlCountPrev = mtlCount;
+        runtimeMaterialManager->GetLoadedMaterials(&allMaterials, mtlCount);
+        AZ_Assert(mtlCountPrev == mtlCount && mtlCount == allMaterials.size(), "It appears GetLoadedMaterials was not used correctly.");
+
+        for (size_t i = 0; i < mtlCount; ++i)
+        {
+            _smart_ptr<IMaterial> pMtl = allMaterials[i];
+            if (pMtl && pMtl->IsDirty())
+            {
+                runtimeMaterialManager->ReloadMaterial(pMtl);
+            }
+        }
+    }
+
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -31,6 +31,9 @@ local DraggableCrossCanvasElement =
 
 function DraggableCrossCanvasElement:OnActivate()
 	self.draggableHandler = UiDraggableNotificationBus.Connect(self, self.entityId)
+	self.dragCanvas = EntityId()
+	self.clonedElement = EntityId()
+	self.originalParent = EntityId()
 end
 
 function DraggableCrossCanvasElement:OnDeactivate()
@@ -53,17 +56,21 @@ function DraggableCrossCanvasElement:OnDragStart(position)
 		-- number here.
 		self.dragCanvas = UiCanvasManagerBus.Broadcast.CreateCanvas()
 	
-		-- clone the original draggable making it a child of the root element on the new canvas
-		self.clonedElement = UiCanvasBus.Event.CloneElement(self.dragCanvas, self.entityId, EntityId(), EntityId())
-
-		-- set the new cloned draggable element to act as a proxy for the original element
-		UiDraggableBus.Event.SetAsProxy(self.clonedElement, self.entityId, position)
-
-		-- hide the original element by reparenting it and disabling it so that we can drop
-		-- the proxy at the original location if we want to
-	    self.originalParent = UiElementBus.Event.GetParent(self.entityId)
-		UiElementBus.Event.Reparent(self.entityId, EntityId(), EntityId())
-		UiElementBus.Event.SetIsEnabled(self.entityId, false)
+		if (self.dragCanvas:IsValid()) then
+			-- clone the original draggable making it a child of the root element on the new canvas
+			self.clonedElement = UiCanvasBus.Event.CloneElement(self.dragCanvas, self.entityId, EntityId(), EntityId())
+	
+			if (self.clonedElement:IsValid()) then
+				-- set the new cloned draggable element to act as a proxy for the original element
+				UiDraggableBus.Event.SetAsProxy(self.clonedElement, self.entityId, position)
+		
+				-- hide the original element by reparenting it and disabling it so that we can drop
+				-- the proxy at the original location if we want to
+			    self.originalParent = UiElementBus.Event.GetParent(self.entityId)
+				UiElementBus.Event.Reparent(self.entityId, EntityId(), EntityId())
+				UiElementBus.Event.SetIsEnabled(self.entityId, false)
+			end
+		end
 	else
 		-- This is the proxy, it gets an OnDragStart after SetAsProxy is called, at that point we
 		-- to move it to where the cursor is
@@ -87,16 +94,16 @@ function DraggableCrossCanvasElement:OnDragEnd(position)
 	else
 		-- this is the original
 
-		-- unhide the original and put it back under its original parent
-		UiElementBus.Event.SetIsEnabled(self.entityId, true)
-		UiElementBus.Event.Reparent(self.entityId, self.originalParent, EntityId())
-
-		-- clean up by destroying the proxy element and the temporary canvas
-		if (self.clonedElement:IsValid()) then
-			UiElementBus.Event.DestroyElement(self.clonedElement)
-		end
-
 		if (self.dragCanvas:IsValid()) then
+			if (self.clonedElement:IsValid()) then
+				-- unhide the original and put it back under its original parent
+				UiElementBus.Event.SetIsEnabled(self.entityId, true)
+				UiElementBus.Event.Reparent(self.entityId, self.originalParent, EntityId())
+		
+				-- clean up by destroying the proxy element and the temporary canvas
+				UiElementBus.Event.DestroyElement(self.clonedElement)
+			end
+
 			UiCanvasManagerBus.Broadcast.UnloadCanvas(self.dragCanvas)
 		end
 	end

@@ -101,45 +101,8 @@ private:
     QComboBox* m_comboBox;
 };
 
-bool CubemapUtils::GenCubemap(QString& texturename)
-{
-    QString filename;
-    if (!CFileUtil::SelectSaveFile("*.tif", "tif", "Textures", filename))
-    {
-        return false;
-    }
-
-    QString relative = Path::GetRelativePath(filename);
-    if (relative.isEmpty())
-    {
-        QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Texture Must be inside MasterCD folder!"));
-        return false;
-    }
-
-    CubemapSizeDialog dlg(QApplication::activeWindow());
-    if (dlg.exec() != QDialog::Accepted)
-    {
-        return false;
-    }
-
-    if (!GenCubemapWithPathAndSize(relative, dlg.GetValue()))
-    {
-        return false;
-    }
-
-    texturename = relative;
-    return true;
-}
-
 ///////////////////////////////////////////////////////////////////////////////////
-bool CubemapUtils::GenCubemapWithPathAndSize(QString& filename, const int size, const bool dds)
-{
-    CBaseObject* pObject = GetIEditor()->GetSelectedObject();
-    return GenCubemapWithObjectPathAndSize(filename, pObject, size, dds);
-}
-
-///////////////////////////////////////////////////////////////////////////////////
-bool CubemapUtils::GenCubemapWithObjectPathAndSize(QString& filename, CBaseObject* pObject, const int size, const bool dds)
+bool CubemapUtils::GenCubemapWithObjectPathAndSize(QString& filename, CBaseObject* pObject, const int size, const bool hideObject)
 {
     if (!pObject)
     {
@@ -170,21 +133,31 @@ bool CubemapUtils::GenCubemapWithObjectPathAndSize(QString& filename, CBaseObjec
     }
 
     IRenderNode* pRenderNode = pObject->GetEngineNode();
-    IEntity* pIEnt = NULL;
-    bool bIsHidden = false;
-    // Hide object before Cubemap generation.
-    if (pRenderNode)
-    {
-        bIsHidden = (pRenderNode->GetRndFlags() & ERF_HIDDEN) != 0;
-        pRenderNode->SetRndFlags(ERF_HIDDEN, true);
-    }
-    else if (pObject->GetType() == OBJTYPE_ENTITY)
+
+    IEntity* pIEnt = NULL; 
+    if (pObject->GetType() == OBJTYPE_ENTITY)
     {
         CEntityObject* pEnt = (CEntityObject*)pObject;
         pIEnt = pEnt->GetIEntity();
-        if (pIEnt)
+    }
+
+    // Hide the object before Cubemap generation (maybe). This is useful for when generating a cubemap at an entity's position, like the player,
+    // and you don't want their model showing up in the cubemap. But you want to leave the entity alone if it's a light or something that
+    // has a desired contribution to the cubemap.
+    bool bIsHidden = false;
+    if (pRenderNode)
+    {
+        bIsHidden = (pRenderNode->GetRndFlags() & ERF_HIDDEN) != 0;
+        if (hideObject)
         {
-            bIsHidden = pIEnt->IsHidden();
+            pRenderNode->SetRndFlags(ERF_HIDDEN, true);
+        }
+    }
+    else if (pIEnt)
+    {
+        bIsHidden = pIEnt->IsHidden();
+        if (hideObject)
+        {
             pIEnt->Hide(true);
         }
     }
@@ -216,6 +189,7 @@ bool CubemapUtils::GenCubemapWithObjectPathAndSize(QString& filename, CBaseObjec
     {
         pIEnt->Hide(bIsHidden);
     }
+
     filename = Path::ToUnixPath(texname);
 
     return success;

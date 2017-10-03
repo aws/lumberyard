@@ -96,12 +96,15 @@
 
 #include "Util/GuidUtil.h"
 
+#include <AzCore/Debug/Profiler.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 
 #include <QMessageBox>
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <LegacyEntityConversion/LegacyEntityConversion.h>
 
 /*!
  *  Class Description used for object templates.
@@ -421,13 +424,14 @@ CObjectManager::CObjectManager()
     RegisterObjectClasses();
 
     m_objectsByName.reserve(1024);
-
+    m_converter.reset(aznew AZ::LegacyConversion::Converter());
     LoadRegistry();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CObjectManager::~CObjectManager()
 {
+    m_converter.reset();
     m_bExiting = true;
     SaveRegistry();
     DeleteAllObjects();
@@ -752,6 +756,7 @@ CBaseObject* CObjectManager::NewObject(const QString& typeName, CBaseObject* pre
 //////////////////////////////////////////////////////////////////////////
 void    CObjectManager::DeleteObject(CBaseObject* obj)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     if (m_currEditObject == obj)
     {
         EndEditParams();
@@ -832,6 +837,7 @@ void    CObjectManager::DeleteObject(CBaseObject* obj)
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::DeleteSelection(CSelectionGroup* pSelection)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     if (pSelection == NULL)
     {
         return;
@@ -895,6 +901,7 @@ void CObjectManager::DeleteSelection(CSelectionGroup* pSelection)
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::DeleteAllObjects()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     GetIEditor()->GetPrefabManager()->SetSkipPrefabUpdate(true);
 
     EndEditParams();
@@ -931,6 +938,9 @@ void CObjectManager::DeleteAllObjects()
     // Clear name map.
     m_nameNumbersMap.clear();
 
+    m_aiTerritoryObjects.clear();
+    m_aiWaveObjects.clear();
+
     RefreshEntitiesAssignedToSelectedTnW();
 
     GetIEditor()->GetPrefabManager()->SetSkipPrefabUpdate(false);
@@ -938,6 +948,7 @@ void CObjectManager::DeleteAllObjects()
 
 CBaseObject* CObjectManager::CloneObject(CBaseObject* obj)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     assert(obj);
     //CRuntimeClass *cls = obj->GetRuntimeClass();
     //CBaseObject *clone = (CBaseObject*)cls->CreateObject();
@@ -1039,6 +1050,18 @@ bool CObjectManager::AddObject(CBaseObject* obj)
     }
     m_objects[obj->GetId()] = obj;
 
+    // Handle adding object to type-specific containers if needed
+    {
+        if (CAITerritoryObject* territoryObj = qobject_cast<CAITerritoryObject*>(obj))
+        {
+            m_aiTerritoryObjects.insert(territoryObj);
+        }
+        else if (CAIWaveObject* waveObj = qobject_cast<CAIWaveObject*>(obj))
+        {
+            m_aiWaveObjects.insert(waveObj);
+        }
+    }
+
     const AZ::Crc32 nameCrc(obj->GetName().toLatin1().data(), obj->GetName().toLatin1().count(), true);
     m_objectsByName[nameCrc] = obj;
 
@@ -1054,6 +1077,18 @@ void CObjectManager::RemoveObject(CBaseObject* obj)
     assert(obj != 0);
 
     InvalidateVisibleList();
+
+    // Handle removing object from type-specific containers if needed
+    {
+        if (CAITerritoryObject* territoryObj = qobject_cast<CAITerritoryObject*>(obj))
+        {
+            m_aiTerritoryObjects.erase(territoryObj);
+        }
+        else if (CAIWaveObject* waveObj = qobject_cast<CAIWaveObject*>(obj))
+        {
+            m_aiWaveObjects.erase(waveObj);
+        }
+    }
 
     m_objects.erase(obj->GetId());
     m_objectsByName.erase(AZ::Crc32(obj->GetName().toLatin1().data(), obj->GetName().toLatin1().count(), true));
@@ -1558,6 +1593,7 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
 //////////////////////////////////////////////////////////////////////////
 int CObjectManager::ClearSelection()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     int numSel = m_currSelection->GetCount();
     UnselectCurrent();
     m_defaultSelection.RemoveAll();
@@ -1575,6 +1611,7 @@ int CObjectManager::ClearSelection()
 //////////////////////////////////////////////////////////////////////////
 int CObjectManager::InvertSelection()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     int selCount = 0;
     // iterate all objects.
     for (Objects::const_iterator it = m_objects.begin(); it != m_objects.end(); ++it)
@@ -1597,6 +1634,7 @@ int CObjectManager::InvertSelection()
 
 void CObjectManager::SetSelection(const QString& name)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     CSelectionGroup* selection = stl::find_in_map(m_selections, name, (CSelectionGroup*)0);
     if (selection)
     {
@@ -1609,6 +1647,7 @@ void CObjectManager::SetSelection(const QString& name)
 
 void CObjectManager::RemoveSelection(const QString& name)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     QString selName = name;
     CSelectionGroup* selection = stl::find_in_map(m_selections, name, (CSelectionGroup*)0);
     if (selection)
@@ -1627,6 +1666,7 @@ void CObjectManager::RemoveSelection(const QString& name)
 //! Checks the state of the current selection and fixes it if necessary - Used when AZ Code modifies the selection
 void CObjectManager::CheckAndFixSelection()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     bool bObjectMode = qobject_cast<CObjectMode*>(GetIEditor()->GetEditTool()) != nullptr;
 
     if (m_currSelection->GetCount() == 0)
@@ -1687,6 +1727,7 @@ void CObjectManager::CheckAndFixSelection()
 
 void CObjectManager::SelectCurrent()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     for (int i = 0; i < m_currSelection->GetCount(); i++)
     {
         CBaseObject* obj = m_currSelection->GetObject(i);
@@ -1701,8 +1742,14 @@ void CObjectManager::SelectCurrent()
 
 void CObjectManager::UnselectCurrent()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+    
     // Make sure to unlock selection.
     GetIEditor()->LockSelection(false);
+
+    // Unselect all component entities as one bulk operation instead of individually
+    AzToolsFramework::EntityIdList selectedEntities;
+    EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, SetSelectedEntities, selectedEntities);
 
     for (int i = 0; i < m_currSelection->GetCount(); i++)
     {
@@ -1714,8 +1761,6 @@ void CObjectManager::UnselectCurrent()
 
         SetObjectSelected(obj, false);
     }
-
-    AzToolsFramework::Components::EditorSelectionAccentingRequestBus::Broadcast(&AzToolsFramework::Components::EditorSelectionAccentingRequests::ProcessQueuedSelectionAccents);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1912,6 +1957,7 @@ void CObjectManager::EndEditParams(int flags)
 //! Select objects within specified distance from given position.
 int CObjectManager::SelectObjects(const AABB& box, bool bUnselect)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     int numSel = 0;
 
     AABB objBounds;
@@ -2053,6 +2099,8 @@ bool CObjectManager::IsObjectDeletionAllowed(CBaseObject* pObject)
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::DeleteSelection()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     // Make sure to unlock selection.
     GetIEditor()->LockSelection(false);
 
@@ -2293,6 +2341,8 @@ bool CObjectManager::HitTest(HitContext& hitInfo)
 }
 void CObjectManager::FindObjectsInRect(CViewport* view, const QRect& rect, std::vector<GUID>& guids)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (rect.width() < 1 || rect.height() < 1)
     {
         return;
@@ -2319,6 +2369,8 @@ void CObjectManager::FindObjectsInRect(CViewport* view, const QRect& rect, std::
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::SelectObjectsInRect(CViewport* view, const QRect& rect, bool bSelect)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     // Ignore too small rectangles.
     if (rect.width() < 1 || rect.height() < 1)
     {
@@ -2341,8 +2393,6 @@ void CObjectManager::SelectObjectsInRect(CViewport* view, const QRect& rect, boo
 
         SelectObjectInRect(pObj, view, hc, bSelect);
     }
-
-    AzToolsFramework::Components::EditorSelectionAccentingRequestBus::Broadcast(&AzToolsFramework::Components::EditorSelectionAccentingRequests::ProcessQueuedSelectionAccents);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3229,8 +3279,16 @@ bool CObjectManager::IsLightClass(CBaseObject* pObject)
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::RefreshEntitiesAssignedToSelectedTnW()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     m_setEntitiesAssignedToSelectedTerritory.clear();
     m_setEntitiesAssignedToSelectedWave.clear();
+
+    // No need to refresh entities assigned to selected waves/territories when there are no waves/territories
+    if (m_aiTerritoryObjects.empty() && m_aiWaveObjects.empty())
+    {
+        return;
+    }
 
     std::vector<CAITerritoryObject*> vSelectedTerritories;
     std::set<QString> setSelectedTerritories;
@@ -3244,70 +3302,75 @@ void CObjectManager::RefreshEntitiesAssignedToSelectedTnW()
     QString sEntityWave;
 
     CBaseObjectsArray objects;
-    GetObjects(objects);
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "CObjectManager::RefreshEntitiesAssignedToSelectedTnW:GetObjects");
+        GetObjects(objects);
+    }
 
     // First clarify relationships between Entities (e.g. Grunts) and AI Territories & Waves
-
-    for (size_t i = 0, n = objects.size(); i < n; ++i)
     {
-        CBaseObject* pObject = objects[i];
-        if (!qobject_cast<CEntityObject*>(pObject))
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "CObjectManager::RefreshEntitiesAssignedToSelectedTnW:ClarifyRelationships");
+        for (size_t i = 0, n = objects.size(); i < n; ++i)
         {
-            continue;
-        }
-
-        CEntityObject* pEntity = static_cast<CEntityObject*>(pObject);
-
-        if (pEntity->IsHidden() || pEntity->IsHiddenBySpec() || pEntity->IsFrozen())
-        {
-            continue;
-        }
-
-        if (qobject_cast<CAITerritoryObject*>(pEntity))
-        {
-            if (pEntity->IsSelected())
+            CBaseObject* pObject = objects[i];
+            if (!qobject_cast<CEntityObject*>(pObject))
             {
-                vSelectedTerritories.push_back(static_cast<CAITerritoryObject*>(pEntity));
-                setSelectedTerritories.insert(pEntity->GetName());
+                continue;
             }
-        }
-        else if (qobject_cast<CAIWaveObject*>(pEntity))
-        {
-            if (pEntity->IsSelected())
-            {
-                setSelectedWaves.insert(pEntity->GetName());
-            }
-        }
-        else
-        {
-            // Associate Entities (e.g. Grunts) with their Territories and Waves
 
-            CVarBlock* pProperties2 = pEntity->GetProperties2();
-            if (pProperties2)
+            CEntityObject* pEntity = static_cast<CEntityObject*>(pObject);
+
+            if (pEntity->IsHidden() || pEntity->IsHiddenBySpec() || pEntity->IsFrozen())
             {
-                IVariable* pVarTerritory = pProperties2->FindVariable("aiterritory_Territory");
-                if (pVarTerritory)
+                continue;
+            }
+
+            if (qobject_cast<CAITerritoryObject*>(pEntity))
+            {
+                if (pEntity->IsSelected())
                 {
-                    pVarTerritory->Get(sEntityTerritory);
-                    if (!sEntityTerritory.isEmpty() && (sEntityTerritory != "<None>"))
-                    {
-#ifndef USE_SIMPLIFIED_AI_TERRITORY_SHAPE
-                        if (sEntityTerritory == "<Auto>")
-                        {
-                            vEntitiesWithAutoAssignment.push_back(pEntity);
-                        }
-                        else
-#endif
-                        {
-                            mapEntityTerritories.insert(std::make_pair(pEntity, sEntityTerritory));
+                    vSelectedTerritories.push_back(static_cast<CAITerritoryObject*>(pEntity));
+                    setSelectedTerritories.insert(pEntity->GetName());
+                }
+            }
+            else if (qobject_cast<CAIWaveObject*>(pEntity))
+            {
+                if (pEntity->IsSelected())
+                {
+                    setSelectedWaves.insert(pEntity->GetName());
+                }
+            }
+            else
+            {
+                // Associate Entities (e.g. Grunts) with their Territories and Waves
 
-                            IVariable* pVarWave = pProperties2->FindVariable("aiwave_Wave");
-                            if (pVarWave)
+                CVarBlock* pProperties2 = pEntity->GetProperties2();
+                if (pProperties2)
+                {
+                    IVariable* pVarTerritory = pProperties2->FindVariable("aiterritory_Territory");
+                    if (pVarTerritory)
+                    {
+                        pVarTerritory->Get(sEntityTerritory);
+                        if (!sEntityTerritory.isEmpty() && (sEntityTerritory != "<None>"))
+                        {
+    #ifndef USE_SIMPLIFIED_AI_TERRITORY_SHAPE
+                            if (sEntityTerritory == "<Auto>")
                             {
-                                pVarWave->Get(sEntityWave);
-                                if (!sEntityWave.isEmpty() && (sEntityWave != "<None>"))
+                                vEntitiesWithAutoAssignment.push_back(pEntity);
+                            }
+                            else
+    #endif
+                            {
+                                mapEntityTerritories.insert(std::make_pair(pEntity, sEntityTerritory));
+
+                                IVariable* pVarWave = pProperties2->FindVariable("aiwave_Wave");
+                                if (pVarWave)
                                 {
-                                    mapEntityWaves.insert(std::make_pair(pEntity, sEntityWave));
+                                    pVarWave->Get(sEntityWave);
+                                    if (!sEntityWave.isEmpty() && (sEntityWave != "<None>"))
+                                    {
+                                        mapEntityWaves.insert(std::make_pair(pEntity, sEntityWave));
+                                    }
                                 }
                             }
                         }
@@ -3318,55 +3381,57 @@ void CObjectManager::RefreshEntitiesAssignedToSelectedTnW()
     }
 
     // Now figure out what to select
-
-    for (std::map<CEntityObject*, QString>::iterator it = mapEntityTerritories.begin(), end = mapEntityTerritories.end(); it != end; ++it)
     {
-        CEntityObject* pEntity = it->first;
-        const QString& sTerritoryName = it->second;
-
-        if (setSelectedTerritories.find(sTerritoryName) != setSelectedTerritories.end())
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "CObjectManager::RefreshEntitiesAssignedToSelectedTnW:DetermineSelection");
+        for (std::map<CEntityObject*, QString>::iterator it = mapEntityTerritories.begin(), end = mapEntityTerritories.end(); it != end; ++it)
         {
-            m_setEntitiesAssignedToSelectedTerritory.insert(pEntity);
-        }
-    }
+            CEntityObject* pEntity = it->first;
+            const QString& sTerritoryName = it->second;
 
-    for (std::vector<CAITerritoryObject*>::iterator it = vSelectedTerritories.begin(), end = vSelectedTerritories.end(); it != end; ++it)
-    {
-        CAITerritoryObject* territory = *it;
-
-        const Matrix34& tm = territory->GetWorldTM();
-        std::vector<Vec3> territoryPoints;
-        for (int i = 0, n = territory->GetPointCount(); i < n; ++i)
-        {
-            Vec3 point = tm.TransformPoint(territory->GetPoint(i));
-            territoryPoints.push_back(point);
-        }
-
-        for (std::vector<CEntityObject*>::iterator it2 = vEntitiesWithAutoAssignment.begin(), end = vEntitiesWithAutoAssignment.end(); it2 != end; ++it2)
-        {
-            CEntityObject* pEntity = *it2;
-
-            const Vec3& pos = pEntity->GetPos();
-            float height = territory->GetHeight();
-            float h = pos.z - territory->GetPos().z;
-            if ((height < 0.01f) || ((0.0f < h) && (h < height)))
+            if (setSelectedTerritories.find(sTerritoryName) != setSelectedTerritories.end())
             {
-                if (Overlap::Point_Polygon2D(pos, territoryPoints))
+                m_setEntitiesAssignedToSelectedTerritory.insert(pEntity);
+            }
+        }
+
+        for (std::vector<CAITerritoryObject*>::iterator it = vSelectedTerritories.begin(), end = vSelectedTerritories.end(); it != end; ++it)
+        {
+            CAITerritoryObject* territory = *it;
+
+            const Matrix34& tm = territory->GetWorldTM();
+            std::vector<Vec3> territoryPoints;
+            for (int i = 0, n = territory->GetPointCount(); i < n; ++i)
+            {
+                Vec3 point = tm.TransformPoint(territory->GetPoint(i));
+                territoryPoints.push_back(point);
+            }
+
+            for (std::vector<CEntityObject*>::iterator it2 = vEntitiesWithAutoAssignment.begin(), end = vEntitiesWithAutoAssignment.end(); it2 != end; ++it2)
+            {
+                CEntityObject* pEntity = *it2;
+
+                const Vec3& pos = pEntity->GetPos();
+                float height = territory->GetHeight();
+                float h = pos.z - territory->GetPos().z;
+                if ((height < 0.01f) || ((0.0f < h) && (h < height)))
                 {
-                    m_setEntitiesAssignedToSelectedTerritory.insert(pEntity);
+                    if (Overlap::Point_Polygon2D(pos, territoryPoints))
+                    {
+                        m_setEntitiesAssignedToSelectedTerritory.insert(pEntity);
+                    }
                 }
             }
         }
-    }
 
-    for (std::map<CEntityObject*, QString>::iterator it = mapEntityWaves.begin(), end = mapEntityWaves.end(); it != end; ++it)
-    {
-        CEntityObject* pEntity = it->first;
-        const QString& sWaveName = it->second;
-
-        if (setSelectedWaves.find(sWaveName) != setSelectedWaves.end())
+        for (std::map<CEntityObject*, QString>::iterator it = mapEntityWaves.begin(), end = mapEntityWaves.end(); it != end; ++it)
         {
-            m_setEntitiesAssignedToSelectedWave.insert(pEntity);
+            CEntityObject* pEntity = it->first;
+            const QString& sWaveName = it->second;
+
+            if (setSelectedWaves.find(sWaveName) != setSelectedWaves.end())
+            {
+                m_setEntitiesAssignedToSelectedWave.insert(pEntity);
+            }
         }
     }
 }

@@ -40,8 +40,8 @@
  * multiply a vector and a matrix:
  *    - row_vector = row_vector * matrix
  *    - column_vector = matrix * column_vector
- * If we use column vector multiplication, then hardware with a fast dot product (X360) will need the
- * matrix stored in row-major format. Hardware which uses multiply-add instructions (PS3) will prefer
+ * If we use column vector multiplication, then hardware with a fast dot product will need the
+ * matrix stored in row-major format. Hardware which uses multiply-add instructions will prefer
  * the matrix to be stored in column-major format. We choose to use column vector multiplication
  * consistently, and allow different internal storage formats for different platforms.
  *
@@ -50,9 +50,7 @@
  * We use suffixes to indicate what approximations are used.
  *
  * A function without a suffix may use an approximation, but will generally have sufficient accuracy for everyday use.
- * E.g. On PC Vector3::GetNormalized() uses the SSE square root reciprocal approximation instruction. On Xbox 360 it
- * uses the VMX square root reciprocal instruction, but adds an addition Newton-Rhapson refinement since the VMX
- * instruction is less accurate than the SSE instruction.
+ * E.g. On PC Vector3::GetNormalized() uses the SSE square root reciprocal approximation instruction.
  *
  * Functions with an 'Approx' suffix use the coarsest and fastest approximation instruction available, e.g.
  * Vector3::GetNormalizeApprox().
@@ -79,7 +77,7 @@
  * \li Matrix types can be stored in either row-major or column-major format, this depends on the platform, and is
  *     transparent to the user, provided they do not cast directly to float.
  * \li Type based alias analysis on newer compilers will likely break your casts anyway, unless you are very careful.
- *     Strict aliasing is enabled by default on the PS3 compiler, and maybe other platforms in the future.
+ *     Strict aliasing is enabled by default on the some compilers, and maybe other platforms in the future.
  *
  * A corollary to this is that the math types should not be stored in data directly. Store floats in the data and
  * convert on load.

@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Components/InteractiveWindowGeometryChanger.h>
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
 #include <QApplication>
 #include <QKeyEvent>
 #include <QDebug>
@@ -58,7 +59,7 @@ namespace AzQtComponents
     {
         if (m_targetWindow && m_restoreCursorAtExit)
         {
-            QCursor::setPos(m_targetWindow->mapToGlobal(m_originalCursorPos));
+            AzQtComponents::SetCursorPos(m_targetWindow->mapToGlobal(m_originalCursorPos));
         }
     }
 
@@ -294,7 +295,7 @@ namespace AzQtComponents
             newPos.setY((s & TopSide) ? (y + 1) : (y + height - 1));
         }
 
-        QCursor::setPos(newPos);
+        AzQtComponents::SetCursorPos(newPos);
     }
 
     InteractiveWindowMover::InteractiveWindowMover(QWindow* target, QObject* parent)

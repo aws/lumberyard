@@ -83,14 +83,14 @@ namespace AZStd
         stamped_node_ptr nodeStamp;
         nodeStamp.m_node = NULL;
         nodeStamp.m_stamp = 0;
-        m_top.template store<memory_order_release>(nodeStamp);
+        m_top.store(nodeStamp, memory_order_release);
     }
 
     template<typename T, typename Hook>
     inline lock_free_intrusive_stamped_stack<T, Hook>::~lock_free_intrusive_stamped_stack()
     {
 #ifdef AZ_DEBUG_BUILD
-        stamped_node_ptr nodeStamp = m_top.template load<memory_order_acquire>();
+        stamped_node_ptr nodeStamp = m_top.load(memory_order_acquire);
         node_type* node = nodeStamp.m_node;
         while (node)
         {
@@ -114,7 +114,7 @@ namespace AZStd
         exponential_backoff backoff;
         while (true)
         {
-            stamped_node_ptr oldTop = m_top.template load<memory_order_acquire>();
+            stamped_node_ptr oldTop = m_top.load(memory_order_acquire);
             newHookNode->m_next = oldTop.m_node;
             newTop.m_stamp = oldTop.m_stamp + 1;
             if (m_top.compare_exchange_weak(oldTop, newTop, memory_order_acq_rel, memory_order_acquire))
@@ -157,7 +157,7 @@ namespace AZStd
     template<typename T, typename Hook>
     inline bool lock_free_intrusive_stamped_stack<T, Hook>::empty() const
     {
-        return (m_top.template load<memory_order_acquire>().m_node == NULL);
+        return (m_top.load(memory_order_acquire).m_node == NULL);
     }
 }
 

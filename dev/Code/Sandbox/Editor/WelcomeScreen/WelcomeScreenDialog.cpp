@@ -12,6 +12,7 @@
 #include "StdAfx.h"
 #include "WelcomeScreenDialog.h"
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <WelcomeScreen/ui_WelcomeScreenDialog.h>
 #include "LevelFileDialog.h"
 
@@ -23,6 +24,8 @@
 #include <QUrl>
 #include <QTimer>
 #include <QMessageBox>
+#include <QApplication>
+#include <QDesktopWidget>
 
 #include "NewsShared/ResourceManagement/ResourceManifest.h"
 #include "NewsShared/Qt/ArticleViewContainer.h"
@@ -33,6 +36,24 @@ using namespace AzQtComponents;
 
 #define WMSEVENTNAME "WMSEvent"
 #define WMSEVENTOPERATION "operation"
+
+static int GetSmallestScreenHeight()
+{
+    QDesktopWidget* desktopWidget = QApplication::desktop();
+
+    int smallestHeight = -1;
+    int screenCount = desktopWidget->screenCount();
+    for (int i = 0; i < screenCount; i++)
+    {
+        int screenHeight = desktopWidget->availableGeometry(i).height();
+        if ((smallestHeight < 0) || (smallestHeight > screenHeight))
+        {
+            smallestHeight = screenHeight;
+        }
+    }
+
+    return smallestHeight;
+}
 
 WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
 #ifdef Q_OS_WIN
@@ -123,6 +144,19 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
     ui->articleViewContainerRoot->layout()->addWidget(m_articleViewContainer);
 
     m_manifest->Sync();
+
+    // Adjust the height, if need be
+    // Do it in the constructor so that the WindowDecoratorWrapper handles it correctly
+    int smallestHeight = GetSmallestScreenHeight();
+    if (smallestHeight < geometry().height())
+    {
+        const int SOME_PADDING_IN_PIXELS = 90;
+        int difference = geometry().height() - (smallestHeight - SOME_PADDING_IN_PIXELS);
+
+        QRect newGeometry = geometry().adjusted(0, difference / 2, 0, -difference / 2);
+        setMinimumSize(minimumSize().width(), newGeometry.height());
+        resize(newGeometry.size());
+    }
 }
 
 
@@ -164,7 +198,6 @@ bool WelcomeScreenDialog::eventFilter(QObject *watched, QEvent *event)
 
     return QDialog::eventFilter(watched, event);
 }
-
 
 void WelcomeScreenDialog::SetRecentFileList(RecentFileList* pList)
 {
@@ -352,7 +385,7 @@ void WelcomeScreenDialog::OnShowOnStartupBtnClicked(bool checked)
 
     if (gSettings.bShowDashboardAtStartup == false)
     {
-        QMessageBox msgBox(QApplication::activeWindow());
+        QMessageBox msgBox(AzToolsFramework::GetActiveWindow());
         msgBox.setWindowTitle(QObject::tr("Skip the Welcome dialog on startup"));
         msgBox.setText(QObject::tr("You may re-enable the Welcome dialog at any time by going to Edit > Editor Settings > Global Preferences in the menu bar."));
         msgBox.exec();

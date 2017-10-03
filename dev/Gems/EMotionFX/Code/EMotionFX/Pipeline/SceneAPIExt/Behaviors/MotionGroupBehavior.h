@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -11,45 +9,51 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
+#pragma once
 
+#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 #include <AzCore/Memory/Memory.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace Behaviors
+        namespace Behavior
         {
-            class EFXMotionGroupBehavior
-                : public Events::ManifestMetaInfoBus::Handler
-                , public Events::AssetImportRequestBus::Handler
+            class MotionGroupBehavior
+                : public AZ::SceneAPI::SceneCore::BehaviorComponent
+                , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler
+                , public AZ::SceneAPI::Events::AssetImportRequestBus::Handler
             {
             public:
-                AZ_CLASS_ALLOCATOR_DECL
+                AZ_COMPONENT(MotionGroupBehavior, "{643EAD72-FD50-4771-8D88-78E617D92C6D}", AZ::SceneAPI::SceneCore::BehaviorComponent);
 
-                EFXMotionGroupBehavior();
-                ~EFXMotionGroupBehavior() override;
+                ~MotionGroupBehavior() override = default;
+
+                // From BehaviorComponent
+                void Activate();
+                void Deactivate();
+                static void Reflect(AZ::ReflectContext* context);
 
                 // ManifestMetaInfo
-                void GetCategoryAssignments(CategoryRegistrationList& categories, const Containers::Scene& scene) override;
-                void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target) override;
+                void GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene) override;
+                void GetAvailableModifiers(ModifiersList& modifiers, const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::IManifestObject& target) override;
+                void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;
                 
                 // AssetImportRequest
-                Events::ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
+                AZ::SceneAPI::Events::ProcessingResult UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester) override;
                 
             private:
-                Events::ProcessingResult BuildDefault(Containers::Scene& scene) const;
-                Events::ProcessingResult UpdateEFXMotionGroupBehaviors(Containers::Scene& scene) const;
+                AZ::SceneAPI::Events::ProcessingResult BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const;
+                AZ::SceneAPI::Events::ProcessingResult UpdateMotionGroupBehaviors(AZ::SceneAPI::Containers::Scene& scene) const;
 
-                bool SceneHasMotionGroup(const Containers::Scene& scene) const;
+                bool SceneHasMotionGroup(const AZ::SceneAPI::Containers::Scene& scene) const;
 
                 static const int s_preferredTabOrder;
             };
-        } // Behaviors
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Behavior
+    } // Pipeline
+} // EMotionFX

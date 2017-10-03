@@ -19,6 +19,15 @@
 #include "../../utilities/assetUtils.h"
 #include "../../unittests/UnitTestRunner.h"
 
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+
+namespace AssetUtilities
+{
+    extern char s_assetRoot[AZ_MAX_PATH_LEN];
+    extern char s_cachedEngineRoot[AZ_MAX_PATH_LEN];
+}
+
 void Foo(int*, int* b)
 { 
 }
@@ -70,6 +79,9 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
     TestInternalRecognizerBasedBuilder  test(mockRC);
     UnitTestUtils::AssertAbsorber       assertAbsorber;
     MockRecognizerConfiguration         configuration;
+
+    azstrcpy(AssetUtilities::s_cachedEngineRoot, AZ_MAX_PATH_LEN, "TestCachedEngineRoot");
+    azstrcpy(AssetUtilities::s_assetRoot, AZ_MAX_PATH_LEN, "TestAssetRoot");
 
     // 3 Asset recognizers, 1 duplicate & 1 without platform should result in only 1 InternalAssetRecognizer
 
@@ -631,4 +643,172 @@ TEST_F(RCBuilderTest, ProcessJob_ProcessStandardSkippedSingleJob_Invalid)
     test.TestProcessJob(request, response);
     ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Failed);
 }
+
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_LegacySystem)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    test.AddTestFileInfo("file.dds")
+        .AddTestFileInfo("file.caf")
+        .AddTestFileInfo("file.png")
+        .AddTestFileInfo("rc_createdfiles.txt")
+        .AddTestFileInfo("rc_log.log")
+        .AddTestFileInfo("rc_log_warnings.log")
+        .AddTestFileInfo("rc_log_errors.log")
+        .AddTestFileInfo("ProcessJobRequest.xml")
+        .AddTestFileInfo("ProcessJobResponse.xml");
+
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+
+    AssetBuilderSDK::ProcessJobResponse response;
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, false, response);
+
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Success);
+
+    // we expect it to have ignored most of the file cruft.
+    ASSERT_EQ(response.m_outputProducts.size(), 3);
+
+    AZStd::string fileJoined;
+
+    AzFramework::StringFunc::Path::Join("c:\\temp", "file.dds", fileJoined);
+    ASSERT_EQ(response.m_outputProducts[0].m_productFileName, fileJoined);
+    ASSERT_EQ(response.m_outputProducts[0].m_productAssetType, productGUID);
+    ASSERT_EQ(response.m_outputProducts[0].m_productSubID, 0x00000000);
+    ASSERT_EQ(response.m_outputProducts[0].m_legacySubIDs.size(), 0);
+
+    AzFramework::StringFunc::Path::Join("c:\\temp", "file.caf", fileJoined);
+    ASSERT_EQ(response.m_outputProducts[1].m_productFileName, fileJoined);
+    ASSERT_EQ(response.m_outputProducts[1].m_productAssetType, productGUID);
+    ASSERT_EQ(response.m_outputProducts[1].m_productSubID, (AZ_CRC("file.caf", 0x91277b80) & 0x0000FFFF)); // legacy subids are just the lower 16 bits of the crc of filename.
+    ASSERT_EQ(response.m_outputProducts[1].m_legacySubIDs.size(), 0);
+    
+    AzFramework::StringFunc::Path::Join("c:\\temp", "file.png", fileJoined);
+    ASSERT_EQ(response.m_outputProducts[2].m_productFileName, fileJoined);
+    ASSERT_EQ(response.m_outputProducts[2].m_productAssetType, productGUID);
+    ASSERT_EQ(response.m_outputProducts[2].m_productSubID, (AZ_CRC("file.png", 0x7fd84af0) & 0x0000FFFF));
+    ASSERT_EQ(response.m_outputProducts[2].m_legacySubIDs.size(), 0);
+}
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_Fail_Fail)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    AssetBuilderSDK::ProcessJobResponse response;
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+    
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+}
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_Succeed_NothingBuilt)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    AssetBuilderSDK::ProcessJobResponse response;
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+    
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+}
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_Fail_BadName)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    AssetBuilderSDK::ProcessJobResponse response;
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+    // note: empty name on next line
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("", productGUID, 1234));
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+}
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_Fail_DuplicateFile)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    AssetBuilderSDK::ProcessJobResponse response;
+    test.AddTestFileInfo("file.dds");
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.dds", productGUID, 1234));
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.dds", productGUID, 5679));
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+    ASSERT_EQ(m_errorAbsorber->m_numErrorsAbsorbed, 1);
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+}
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_Fail_DuplicateSubID)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    AssetBuilderSDK::ProcessJobResponse response;
+    test.AddTestFileInfo("file.dds")
+        .AddTestFileInfo("file.caf");
+    AZ::Uuid productGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+
+    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.dds", productGUID, 1234));
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.caf", productGUID, 1234));
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+    ASSERT_EQ(m_errorAbsorber->m_numErrorsAbsorbed, 1);
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+}
+
+
+TEST_F(RCBuilderTest, TestProcessRCResultFolder_WithResponseFromRC)
+{
+    TestInternalRecognizerBasedBuilder  test(new MockRCCompiler());
+    test.AddTestFileInfo("file.dds")
+        .AddTestFileInfo("file.caf")
+        .AddTestFileInfo("file.png")
+        .AddTestFileInfo("rc_createdfiles.txt")
+        .AddTestFileInfo("rc_log.log")
+        .AddTestFileInfo("rc_log_warnings.log")
+        .AddTestFileInfo("rc_log_errors.log")
+        .AddTestFileInfo("ProcessJobRequest.xml")
+        .AddTestFileInfo("ProcessJobResponse.xml");
+
+    AZ::Uuid productGUID = AZ::Uuid::CreateNull(); // this is to make sure that it doesn't matter what we pass in
+    AZ::Uuid actualGUID = AZ::Uuid("{60554E3C-D8D5-4429-AC77-740F0ED46193}");
+
+    AssetBuilderSDK::ProcessJobResponse response;
+
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.dds", actualGUID, 1234));
+    response.m_outputProducts.back().m_legacySubIDs.push_back(3333);
+    response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct("file.caf", actualGUID, 3456));
+    response.m_outputProducts.back().m_legacySubIDs.push_back(2222);
+    response.m_outputProducts.back().m_legacySubIDs.push_back((AZ_CRC("file.caf", 0x91277b80) & 0x0000FFFF)); // push back the existing one to make sure no dupes.
+
+    // in this test we pretend the response was actually populated by the builder and make sure it populates the legacy IDs correctly
+    // 1. there should actually BE legacy IDs
+    // 2. there should be no duplicate IDs (legacy IDs should not duplicate ACTUAL ids)
+    // 3. there should be no duplicate Legacy IDs (legacy IDs should not duplicate each other)
+    // 4. if we provide legacy Ids, they should be used in addition to the automatic ones.
+
+    test.TestProcessRCResultFolder("c:\\temp", productGUID, true, response);
+
+    ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Success);
+
+    // we expect it to only have accepted the products we specified.
+    ASSERT_EQ(response.m_outputProducts.size(), 2);
+
+    AZStd::string fileJoined;
+
+    AzFramework::StringFunc::Path::Join("c:\\temp", "file.dds", fileJoined);
+    ASSERT_EQ(response.m_outputProducts[0].m_productFileName, fileJoined);
+    ASSERT_EQ(response.m_outputProducts[0].m_productAssetType, actualGUID);
+    ASSERT_EQ(response.m_outputProducts[0].m_productSubID, 1234);
+    ASSERT_EQ(response.m_outputProducts[0].m_legacySubIDs.size(), 2); // it must include our new one AND the zero that it would have generated before.
+    ASSERT_EQ(response.m_outputProducts[0].m_legacySubIDs[0], 3333);
+    ASSERT_EQ(response.m_outputProducts[0].m_legacySubIDs[1], 0);
+
+    AzFramework::StringFunc::Path::Join("c:\\temp", "file.caf", fileJoined);
+    ASSERT_EQ(response.m_outputProducts[1].m_productFileName, fileJoined);
+    ASSERT_EQ(response.m_outputProducts[1].m_productAssetType, actualGUID);
+    ASSERT_EQ(response.m_outputProducts[1].m_productSubID, 3456); // legacy subids are just the lower 16 bits of the crc of filename.
+    ASSERT_EQ(response.m_outputProducts[1].m_legacySubIDs.size(), 2); // we only expect the one legacy, no dupes!
+    ASSERT_EQ(response.m_outputProducts[1].m_legacySubIDs[0], 2222);
+    ASSERT_EQ(response.m_outputProducts[1].m_legacySubIDs[1], (AZ_CRC("file.caf", 0x91277b80) & 0x0000FFFF));
+}
+
 

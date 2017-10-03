@@ -14,7 +14,7 @@
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/parallel/thread.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 
 #include <AzCore/std/parallel/threadbus.h>
 
@@ -68,14 +68,10 @@ namespace AZStd
                 ::SetThreadPriority(hThread, desc->m_priority);
             }
 
-#ifdef AZ_PLATFORM_X360
-            // Redacted
-#else
             if (desc && desc->m_cpuId >= 0 && desc->m_cpuId < 32)
             {
                 SetThreadAffinityMask(hThread, DWORD_PTR(1) << desc->m_cpuId);
             }
-#endif // AZ_PLATFORM_X360
 
             EBUS_EVENT(ThreadEventBus, OnThreadEnter, thread::id(*id), desc);
 
@@ -159,17 +155,13 @@ namespace AZStd
     /// Return number of physical processors
     unsigned thread::hardware_concurrency()
     {
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
-        return 6;
-#else
         SYSTEM_INFO info = {0};
         GetSystemInfo(&info);
         return info.dwNumberOfProcessors;
-#endif
     }
     //////////////////////////////////////////////////////////////////////////
 }
 
-#endif // #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#endif 
 
 #endif // #ifndef AZ_UNITY_BUILD

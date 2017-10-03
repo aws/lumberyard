@@ -34,25 +34,27 @@ class CAnimNode
     : public IAnimNode
 {
 public:
-    CAnimNode(const int id);
+    AZ_CLASS_ALLOCATOR(CAnimNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimNode, "{57736B48-5EE7-4530-8051-657ACC9BA1EE}", IAnimNode);
+
+    CAnimNode();
+    CAnimNode(const CAnimNode& other);
+    CAnimNode(const int id, EAnimNodeType nodeType);
     ~CAnimNode();
 
+    EAnimNodeType GetType() const override { return m_nodeType; }
+
     //////////////////////////////////////////////////////////////////////////
-    virtual void Release()
-    {
-        if (--IAnimNode::m_nRefCounter <= 0)
-        {
-            delete this;
-        }
-    }
+    void add_ref() override;
+    void release() override;
     //////////////////////////////////////////////////////////////////////////
 
     void SetName(const char* name) override { m_name = name; };
-    const char* GetName() { return m_name; };
+    const char* GetName() { return m_name.c_str(); };
 
     void SetSequence(IAnimSequence* sequence) override { m_pSequence = sequence; }
     // Return Animation Sequence that owns this node.
-    IAnimSequence* GetSequence() override { return m_pSequence; };
+    IAnimSequence* GetSequence() const override { return m_pSequence; };
 
     virtual void SetEntityGuid(const EntityGUID& guid) {};
     virtual void SetEntityGuidTarget(const EntityGUID& guid) {};
@@ -120,6 +122,7 @@ public:
     virtual void PrecacheDynamic(float time) {}
 
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) override;
+    void InitPostLoad(IAnimSequence* sequence) override;
 
     void SetNodeOwner(IAnimNodeOwner* pOwner) override;
     IAnimNodeOwner* GetNodeOwner() override { return m_pOwner; };
@@ -128,7 +131,7 @@ public:
     virtual void Activate(bool bActivate);
 
     //////////////////////////////////////////////////////////////////////////
-    void SetParent(IAnimNode* parent) override { m_pParentNode = parent; };
+    void SetParent(IAnimNode* parent) override;
     IAnimNode* GetParent() const override { return m_pParentNode; };
     IAnimNode* HasDirectorAsParent() const override;
     //////////////////////////////////////////////////////////////////////////
@@ -159,17 +162,13 @@ public:
     int GetId() const { return m_id; }
     const char* GetNameFast() const { return m_name.c_str(); }
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(m_name);
-        pSizer->AddObject(m_tracks);
-    }
-
     virtual void Render(){}
 
     void UpdateDynamicParams() final;
 
     void TimeChanged(float newTime) override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual void UpdateDynamicParamsInternal() {};
@@ -182,6 +181,10 @@ protected:
     IAnimTrack* CreateTrackInternalQuat(EAnimCurveType trackType, const CAnimParamType& paramType) const;
     IAnimTrack* CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const EAnimValue animValue) const;
     IAnimTrack* CreateTrackInternalFloat(int trackType) const;
+
+    // sets track animNode pointer to this node and sorts tracks
+    void RegisterTrack(IAnimTrack* pTrack);
+
     CMovieSystem* GetCMovieSystem() const { return (CMovieSystem*)gEnv->pMovieSystem; }
 
     virtual bool NeedToRender() const { return false; }
@@ -196,21 +199,26 @@ protected:
     void AnimateSound(std::vector<SSoundInfo>& nodeSoundInfo, SAnimContext& ec, IAnimTrack* pTrack, size_t numAudioTracks);
     //////////////////////////////////////////////////////////////////////////
 
+    int m_refCount;
+    EAnimNodeType m_nodeType = eAnimNodeType_Invalid;
     int m_id;
-    string m_name;
+    AZStd::string m_name;
     IAnimSequence* m_pSequence;
     IAnimNodeOwner* m_pOwner;
     IAnimNode* m_pParentNode;
-    int m_nLoadedParentNodeId;
+    int m_nLoadedParentNodeId;  // only used in legacy Serialize()
+    int m_parentNodeId;
     int m_flags;
     unsigned int m_bIgnoreSetParam : 1; // Internal flags.
 
-    std::vector<_smart_ptr<IAnimTrack> > m_tracks;
+    typedef AZStd::vector<AZStd::intrusive_ptr<IAnimTrack> > AnimTracks;
+    AnimTracks m_tracks;
 
 private:
+    void SortTracks();
     bool IsTimeOnSoundKey(float queryTime) const;
 
-    static bool TrackOrder(const _smart_ptr<IAnimTrack>& left, const _smart_ptr<IAnimTrack>& right);
+    static bool TrackOrder(const AZStd::intrusive_ptr<IAnimTrack>& left, const AZStd::intrusive_ptr<IAnimTrack>& right);
 
     AZStd::mutex m_updateDynamicParamsLock;
 };
@@ -220,17 +228,21 @@ class CAnimNodeGroup
     : public CAnimNode
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimNodeGroup, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimNodeGroup, "{6BDA5C06-7C15-4622-9550-68368E84D653}", CAnimNode);
+
+    CAnimNodeGroup()
+        : CAnimNodeGroup(0) {}
+
     CAnimNodeGroup(const int id)
-        : CAnimNode(id) { SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName); }
-    EAnimNodeType GetType() const { return eAnimNodeType_Group; }
+        : CAnimNode(id, eAnimNodeType_Group) 
+    { 
+        SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
+    }
 
     virtual CAnimParamType GetParamType(unsigned int nIndex) const { return eAnimParamType_Invalid; }
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_ANIMNODE_H

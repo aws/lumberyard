@@ -42,76 +42,12 @@ namespace AzToolsFramework
             }
             else
             {
-                ReadIntoProcessOutput(outProcessOutput, pCommunicator, true);
+                pCommunicator->ReadIntoProcessOutput(outProcessOutput);
             }
         }
         return true;
     }
 
-
-    void ProcessWatcher::ReadIntoProcessOutput(ProcessOutput& processOutput, ProcessCommunicator* processCommunicator, bool shouldSafelyPeek)
-    {
-        AZ::u32 bytesRead = 0;
-        AZ::u32 readBufferSize = 0;
-        bool shouldReadOutput = true;
-        bool shouldReadErrors = true;
-        AZStd::string readBuffer;
-
-        // read from the process until the handle is no longer valid
-        while (processCommunicator->IsValid())
-        {
-            if (!shouldReadOutput && !shouldReadErrors)
-            {
-                break;
-            }
-
-            if (shouldReadOutput)
-            {
-                if (shouldSafelyPeek)
-                {
-                    readBufferSize = processCommunicator->BlockUntilOutputAvailable(readBuffer);
-                }
-                else
-                {
-                    readBufferSize = processCommunicator->PeekOutput();
-                }
-
-                if (readBufferSize != 0)
-                {
-                    readBuffer.resize(readBufferSize);
-                    bytesRead = processCommunicator->ReadOutput(readBuffer.data(), static_cast<AZ::u32>(readBufferSize));
-                    processOutput.outputResult.append(readBuffer);
-                }
-                else
-                {
-                    shouldReadOutput = false;
-                }
-            }
-
-            if (shouldReadErrors)
-            {
-                if (shouldSafelyPeek)
-                {
-                    readBufferSize = processCommunicator->BlockUntilErrorAvailable(readBuffer);
-                }
-                else
-                {
-                    readBufferSize = processCommunicator->PeekError();
-                }
-
-                if (readBufferSize != 0)
-                {
-                    readBuffer.resize(readBufferSize);
-                    bytesRead = processCommunicator->ReadError(readBuffer.data(), static_cast<AZ::u32>(readBufferSize));
-                    processOutput.errorResult.append(readBuffer);
-                }
-                else
-                {
-                    shouldReadErrors = false;
-                }
-            }
-        }
-    }
 
     bool ProcessWatcher::SpawnProcess(const ProcessLauncher::ProcessLaunchInfo& processLaunchInfo, ProcessCommunicationType communicationType)
     {

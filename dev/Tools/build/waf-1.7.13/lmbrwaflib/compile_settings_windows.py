@@ -34,7 +34,6 @@ def load_debug_windows_settings(conf):
     Setup all compiler and linker settings shared over all windows configurations for
     the 'debug' configuration
     """
-    v = conf.env
     conf.load_windows_common_settings()
     
 @conf
@@ -43,7 +42,6 @@ def load_profile_windows_settings(conf):
     Setup all compiler and linker settings shared over all windows configurations for
     the 'debug' configuration
     """
-    v = conf.env
     conf.load_windows_common_settings()
     
 @conf
@@ -52,7 +50,6 @@ def load_performance_windows_settings(conf):
     Setup all compiler and linker settings shared over all windows configurations for
     the 'debug' configuration
     """
-    v = conf.env
     conf.load_windows_common_settings()
     
 @conf
@@ -61,5 +58,4 @@ def load_release_windows_settings(conf):
     Setup all compiler and linker settings shared over all windows configurations for
     the 'debug' configuration
     """
-    v = conf.env
     conf.load_windows_common_settings()

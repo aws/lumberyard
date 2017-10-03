@@ -12,10 +12,11 @@
 
 #pragma once
 
-#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
+#include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 
 namespace AZ
 {
@@ -32,6 +33,7 @@ namespace AZ
                 : public SceneCore::BehaviorComponent
                 , public Events::ManifestMetaInfoBus::Handler
                 , public Events::AssetImportRequestBus::Handler
+                , public Events::GraphMetaInfoBus::Handler
             {
             public:
                 AZ_COMPONENT(PhysicsRuleBehavior, "{B3F5D0AC-F9FC-483E-A3EE-FACC479A5B54}", SceneCore::BehaviorComponent);
@@ -45,6 +47,8 @@ namespace AZ
                 void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target) override;
                 Events::ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester) override;
+
+                void GetAllVirtualTypes(AZStd::set<Crc32>& types) override;
 
             private:
                 size_t SelectPhysicsMeshes(const Containers::Scene& scene, DataTypes::ISceneNodeSelectionList& selection) const;

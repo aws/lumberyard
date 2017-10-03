@@ -56,9 +56,6 @@ void CShaderList::Tick()
         m_lastTime = t;
 
         Save();
-        //CShaderList::Instance().m_PC.MergeNewLinesAndSave();
-        //CShaderList::Instance().m_X360.MergeNewLinesAndSave();
-        //CShaderList::Instance().m_PS3.MergeNewLinesAndSave();
     }
 }
 

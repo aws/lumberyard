@@ -18,6 +18,7 @@
 #define CRYINCLUDE_CRYCOMMON_CRY_VECTOR2_H
 #pragma once
 
+#include <AzCore/RTTI/TypeInfo.h>
 
 template<class F>
 struct Vec2_tpl
@@ -380,5 +381,8 @@ const Vec2_tpl<float> Vec2_OneX(1, 0);
 const Vec2_tpl<float> Vec2_OneY(0, 1);
 const Vec2_tpl<float> Vec2_One(1, 1);
 
-
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Vec2, "{844131BA-9565-42F3-8482-6F65A6D5FC59}");
+}
 #endif // CRYINCLUDE_CRYCOMMON_CRY_VECTOR2_H

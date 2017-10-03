@@ -49,8 +49,12 @@ public:     // member functions
     void GatherAllReferencedEntities(AZStd::unordered_set<AZ::EntityId>& entitiesWithReferences,
                                      AZ::SerializeContext& serializeContext);
 
-    void PushEntitiesModal(const AzToolsFramework::EntityIdList& entities, 
+    void PushEntitiesModal(const AzToolsFramework::EntityIdList& entities,
                            AZ::SerializeContext* serializeContext = nullptr);
+
+    void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities);
+
+    void DetachSliceInstances(const AzToolsFramework::EntityIdList& entities);
 
     bool IsRootEntity(const AZ::Entity& entity) const;
 
@@ -85,6 +89,9 @@ private:    // member functions
         AzToolsFramework::EntityIdList& topLevelEntities, AZ::Entity*& insertBefore);
 
     bool ValidatePushSelection(AzToolsFramework::EntityIdList& entities, AZ::SerializeContext* serializeContext);
+
+    //! \return whether user confirmed detach, false if cancelled
+    bool ConfirmDialog_Detach(const QString& title, const QString& text);
 
 private:    // data
 

@@ -564,8 +564,8 @@ private:
 
 enum EScreenShotType
 {
-    ESST_NONE         =   0,
-    ESST_HIGHRES  =   1,
+    ESST_NONE = 0,
+    ESST_HIGHRES = 1,
     ESST_PANORAMA,
     ESST_MAP_DELAYED,
     ESST_MAP,
@@ -585,6 +585,8 @@ void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPas
                 static_cast<int>((dwPanHeight + GetRenderer()->GetHeight() - 1) / GetRenderer()->GetHeight())));
     const uint32  dwVirtualWidth  =   GetRenderer()->GetWidth() * MinSlices;
     const uint32  dwVirtualHeight =   GetRenderer()->GetHeight() * MinSlices;
+
+    GetRenderer()->StartScreenShot(GetCVars()->e_ScreenShot);
 
     switch (abs(GetCVars()->e_ScreenShot))
     {
@@ -682,6 +684,9 @@ void C3DEngine::ScreenshotDispatcher(const int nRenderFlags, const SRenderingPas
     default:
         GetCVars()->e_ScreenShot = 0;
     }
+
+    GetRenderer()->EndScreenShot(GetCVars()->e_ScreenShot);
+
 #endif //#if defined(WIN32) || defined(WIN64)
 }
 
@@ -993,8 +998,8 @@ void C3DEngine::PreWorldStreamUpdate(const CCamera& cam)
             m_bContentPrecacheRequested = true;
 
             // Invalidate existing precache info
-            m_pObjManager->m_nUpdateStreamingPrioriryRoundIdFast += 8;
-            m_pObjManager->m_nUpdateStreamingPrioriryRoundId += 8;
+            m_pObjManager->IncrementUpdateStreamingPrioriryRoundIdFast(8);
+            m_pObjManager->IncrementUpdateStreamingPrioriryRoundId(8);
         }
 
         m_vPrevMainFrameCamPos = cam.GetPosition();
@@ -1283,9 +1288,9 @@ void C3DEngine::PrintDebugInfo(const SRenderingPassInfo& passInfo)
 
         DrawTextLeftAligned(fTextPosX, fTextPosY += fTextStepY, DISPLAY_INFO_SCALE, Col_White, "------------------- List of meshes bigger than %d KB -------------------", GetCVars()->e_StreamCgfDebugMinObjSize);
 
-        for (int nObjId = 0; nObjId < m_pObjManager->m_arrStreamableObjects.Count(); nObjId++)
+        for (int nObjId = 0; nObjId < m_pObjManager->GetArrStreamableObjects().Count(); nObjId++)
         {
-            CStatObj* pStatObj = (CStatObj*)m_pObjManager->m_arrStreamableObjects[nObjId].GetStreamAbleObject();
+            CStatObj* pStatObj = (CStatObj*)m_pObjManager->GetArrStreamableObjects()[nObjId].GetStreamAbleObject();
 
             int nKB = pStatObj->GetStreamableContentMemoryUsage() >> 10;
             int nSel = (pStatObj->m_nSelectedFrameId >= passInfo.GetMainFrameID() - 2);
@@ -1410,7 +1415,7 @@ void C3DEngine::UpdatePreRender(const SRenderingPassInfo& passInfo)
         }
 
         const int nCascadeCount = Get3DEngine()->GetShadowsCascadeCount(NULL);
-        m_pObjManager->m_fGSMMaxDistance = Get3DEngine()->m_fGsmRange * powf(Get3DEngine()->m_fGsmRangeStep, (float)nCascadeCount);
+        m_pObjManager->SetGSMMaxDistance(Get3DEngine()->m_fGsmRange * powf(Get3DEngine()->m_fGsmRangeStep, (float)nCascadeCount));
     }
 
     // (bethelz) This has to happen before particle updates.
@@ -1490,8 +1495,8 @@ void C3DEngine::UpdatePostRender(const SRenderingPassInfo& passInfo)
             {
                 for (int y = 0; y < memUsage.GetSize(); y++)
                 {
-                    Vec3 v0((float)x * fStep,       (float)y * fStep,       Get3DEngine()->GetTerrainElevation((float)x * fStep, (float)y * fStep));
-                    Vec3 v1((float)x * fStep + fStep, (float)y * fStep + fStep, v0.z + fStep);
+                    Vec3 v0((float)x* fStep,       (float)y* fStep,       Get3DEngine()->GetTerrainElevation((float)x* fStep, (float)y* fStep));
+                    Vec3 v1((float)x* fStep + fStep, (float)y* fStep + fStep, v0.z + fStep);
                     v0 += Vec3(.25f, .25f, .25f);
                     v1 -= Vec3(.25f, .25f, .25f);
                     AABB box(v0, v1);
@@ -1525,10 +1530,10 @@ void C3DEngine::UpdatePostRender(const SRenderingPassInfo& passInfo)
     }
     else
     {
-        m_pObjManager->m_vStreamPreCacheCameras[0].vPosition = passInfo.GetCamera().GetPosition();
-        if (Distance::Point_AABBSq(m_pObjManager->m_vStreamPreCacheCameras[0].vPosition, m_pObjManager->m_vStreamPreCacheCameras[0].bbox) > 0.0f)
+        m_pObjManager->GetStreamPreCacheCameras()[0].vPosition = passInfo.GetCamera().GetPosition();
+        if (Distance::Point_AABBSq(m_pObjManager->GetStreamPreCacheCameras()[0].vPosition, m_pObjManager->GetStreamPreCacheCameras()[0].bbox) > 0.0f)
         {
-            m_pObjManager->m_vStreamPreCacheCameras[0].bbox = AABB(m_pObjManager->m_vStreamPreCacheCameras[0].vPosition, GetCVars()->e_StreamPredictionBoxRadius);
+            m_pObjManager->GetStreamPreCacheCameras()[0].bbox = AABB(m_pObjManager->GetStreamPreCacheCameras()[0].vPosition, GetCVars()->e_StreamPredictionBoxRadius);
         }
         m_pObjManager->UpdateObjectsStreamingPriority(false, passInfo);
     }
@@ -1577,7 +1582,7 @@ _smart_ptr<IMaterial> C3DEngine::GetSkyMaterial()
     {
         if (!m_pSkyLowSpecMat)
         {
-            m_pSkyLowSpecMat = m_skyLowSpecMatName.empty() ? 0 : m_pMatMan->LoadMaterial(m_skyLowSpecMatName.c_str(), false);
+            m_pSkyLowSpecMat = m_skyLowSpecMatName.empty() ? 0 : m_pMatMan->LoadMaterial(m_skyLowSpecMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
         }
         pRes = m_pSkyLowSpecMat;
     }
@@ -1585,7 +1590,7 @@ _smart_ptr<IMaterial> C3DEngine::GetSkyMaterial()
     {
         if (!m_pSkyMat)
         {
-            m_pSkyMat = m_skyMatName.empty() ? 0 : GetMatMan()->LoadMaterial(m_skyMatName.c_str(), false);
+            m_pSkyMat = m_skyMatName.empty() ? nullptr : GetMatMan()->LoadMaterial(m_skyMatName.c_str(), false, false, MTL_FLAG_IS_SKY);
         }
         pRes = m_pSkyMat;
     }
@@ -1615,7 +1620,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     CRY_ASSERT(gEnv->pGame);
     CRY_ASSERT(gEnv->pCharacterManager);
 
-    GetObjManager()->m_CullThread.SetActive(true);
+    GetObjManager()->GetCullThread().SetActive(true);
 
 #ifdef USE_CULL_QUEUE
     if (GetCVars()->e_CoverageBuffer)
@@ -1697,7 +1702,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         }
 
         // start processing terrain
-        if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated() && 
+        if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated() &&
             m_pTerrain != nullptr)
         {
             m_pTerrain->CheckVis(passInfo);
@@ -1830,12 +1835,12 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
-    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->m_nUpdateStreamingPrioriryRoundId, GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast);
+    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
 
     {
         FRAME_PROFILER("Renderer::EF_EndEf3D", GetSystem(), PROFILE_RENDERER);
         // TODO: separate SHDF_NOASYNC and SHDF_STREAM_SYNC flags
-        GetRenderer()->EF_EndEf3D(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,  GetObjManager()->m_nUpdateStreamingPrioriryRoundId, GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast, passInfo);
+        GetRenderer()->EF_EndEf3D(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,  GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(), passInfo);
     }
 
     GetRenderer()->EnableFog(false);
@@ -1967,7 +1972,6 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
                     if (m_pObjectsTree != nullptr)
                     {
                         m_pObjectsTree->Render_Object_Nodes(false, OCTREENODE_RENDER_FLAG_OBJECTS | OCTREENODE_RENDER_FLAG_OBJECTS_ONLY_ENTITIES, SRenderingPassInfo::CreateTempRenderingInfo(cam, passInfo), rendItemSorter);
-
                     }
                 }
             }
@@ -2023,11 +2027,11 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
-    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->m_nUpdateStreamingPrioriryRoundId, GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast);
+    gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
 
     {
         FRAME_PROFILER("Renderer::EF_EndEf3D", GetSystem(), PROFILE_RENDERER);
-        GetRenderer()->EF_EndEf3D(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,  GetObjManager()->m_nUpdateStreamingPrioriryRoundId, GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast, passInfo);
+        GetRenderer()->EF_EndEf3D(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,  GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(), passInfo);
     }
 }
 
@@ -2457,11 +2461,11 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     case eRT_DX12:
         pRenderType = "DX12";
         break;
-    case eRT_XboxOne:
-        pRenderType = "XboxOne";
+    case eRT_XboxOne: // ACCEPTED_USE
+        pRenderType = "XboxOne"; // ACCEPTED_USE
         break;
-    case eRT_PS4:
-        pRenderType = "PS4";
+    case eRT_PS4: // ACCEPTED_USE
+        pRenderType = "PS4"; // ACCEPTED_USE
         break;
     case eRT_Metal:
         pRenderType = "Metal";
@@ -2487,8 +2491,8 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     ESystemConfigSpec spec = GetISystem()->GetConfigSpec();
     switch (spec)
     {
-    case CONFIG_CUSTOM:
-        AppendString(szFlagsEnd, "Custom");
+    case CONFIG_AUTO_SPEC:
+        AppendString(szFlagsEnd, "Auto");
         break;
     case CONFIG_LOW_SPEC:
         AppendString(szFlagsEnd, "LowSpec");
@@ -2501,18 +2505,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         break;
     case CONFIG_VERYHIGH_SPEC:
         AppendString(szFlagsEnd, "VeryHighSpec");
-        break;
-    case CONFIG_DURANGO:
-        AppendString(szFlagsEnd, "XboxOneSpec");
-        break;
-    case CONFIG_ORBIS:
-        AppendString(szFlagsEnd, "PS4Spec");
-        break;
-    case CONFIG_ANDROID:
-        AppendString(szFlagsEnd, "AndroidSpec");
-        break;
-    case CONFIG_IOS:
-        AppendString(szFlagsEnd, "iOSSpec");
         break;
     default:
         assert(0);
@@ -2667,7 +2659,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
             m_pObjManager->GetObjectsStreamingStatus(objectsStreamingStatus);
             sprintf_s(szCGFStreaming, 256, "CgfStrm: Loaded:%d InProg:%d All:%d Act:%d PcP:%d MemUsed:%2.2f MemReq:%2.2f Pool:%d",
                 objectsStreamingStatus.nReady, objectsStreamingStatus.nInProgress, objectsStreamingStatus.nTotal, objectsStreamingStatus.nActive,
-                (int)m_pObjManager->m_vStreamPreCachePointDefs.size(),
+                (int)m_pObjManager->GetStreamPreCachePointDefs().size(),
                 float(objectsStreamingStatus.nAllocatedBytes) / 1024 / 1024, float(objectsStreamingStatus.nMemRequired) / 1024 / 1024, GetCVars()->e_StreamCgfPoolSize);
         }
 
@@ -3446,6 +3438,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         DRAW_OBJ_STATS(eERType_PrismObject);
         DRAW_OBJ_STATS(eERType_RenderComponent);
         DRAW_OBJ_STATS(eERType_StaticMeshRenderComponent);
+        DRAW_OBJ_STATS(eERType_DynamicMeshRenderComponent);
         DRAW_OBJ_STATS(eERType_SkinnedMeshRenderComponent);
         DRAW_OBJ_STATS(eERType_GameEffect);
         DRAW_OBJ_STATS(eERType_BreakableGlass);

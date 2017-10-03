@@ -1805,7 +1805,7 @@ IFileClient::fileHandle_t CFileClient::FOpen(const char* file, const char* mode)
 int64 CFileClient::FTell(IFileClient::fileHandle_t hFile)
 {
     // Code copied from FileIOWrapper
-#if defined(PS3) || defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if defined(LINUX) || defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
     return (int64)ftell(hFile);
 #else
     return _ftelli64(hFile);

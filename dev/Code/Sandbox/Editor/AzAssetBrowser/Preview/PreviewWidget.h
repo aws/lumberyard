@@ -13,7 +13,6 @@
 
 #include <Editor/Util/FileUtil.h>
 #include <Editor/Util/Image.h>
-
 #include <AzCore/Memory/SystemAllocator.h>
 
 #include <QWidget>
@@ -75,7 +74,7 @@ private:
     TextureType m_textureType;
     QString m_fileinfo;
 
-    void DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product);
+    bool DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product);
     void UpdateTextureType();
 
     static bool FileInfoCompare(const FileInfo& f1, const FileInfo& f2);

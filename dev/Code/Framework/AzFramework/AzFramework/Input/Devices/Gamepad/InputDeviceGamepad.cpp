@@ -25,6 +25,12 @@ namespace AzFramework
     const InputDeviceId InputDeviceGamepad::IdForIndexN(AZ::u32 n) { return InputDeviceId(Name, n); }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceGamepad::IsGamepad(const InputDeviceId& inputDeviceId)
+    {
+        return (inputDeviceId.GetNameCrc32() == IdForIndex0.GetNameCrc32());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceGamepad::Button::A("gamepad_button_a");
     const InputChannelId InputDeviceGamepad::Button::B("gamepad_button_b");
     const InputChannelId InputDeviceGamepad::Button::X("gamepad_button_x");
@@ -110,9 +116,6 @@ namespace AzFramework
     }};
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceGamepad::Implementation::CustomCreateFunctionType InputDeviceGamepad::Implementation::CustomCreateFunctionPointer = nullptr;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceGamepad::InputDeviceGamepad()
         : InputDeviceGamepad(0) // Delegated constructor
     {
@@ -127,7 +130,8 @@ namespace AzFramework
         , m_thumbStickAxis1DChannelsById()
         , m_thumbStickAxis2DChannelsById()
         , m_thumbStickDirectionChannelsById()
-        , m_pimpl(nullptr)
+        , m_pimpl()
+        , m_implementationRequestHandler(*this)
     {
         // Create all digital button input channels
         for (const InputChannelId& channelId : Button::All)
@@ -170,9 +174,7 @@ namespace AzFramework
         }
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
 
         // Connect to the haptic feedback request bus
         InputHapticFeedbackRequestBus::Handler::BusConnect(GetInputDeviceId());
@@ -185,7 +187,7 @@ namespace AzFramework
         InputHapticFeedbackRequestBus::Handler::BusDisconnect(GetInputDeviceId());
 
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy all thumb-stick direction input channels
         for (const auto& channelById : m_thumbStickDirectionChannelsById)

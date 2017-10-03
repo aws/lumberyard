@@ -33,8 +33,8 @@ set SOURCESHADERLIST=%1
 set GAMENAME=SamplesProject
 
 set SHADERPLATFORM=GL4
-rem other available platforms are GL4 GLES3 ORBIS DURANGO METAL
-rem if changing the above platform, also change the below folder name (D3D11, ORBIS, DURANGO, METAL, GL4, GLES3)
+rem other available platforms are GL4 GLES3 METAL and the Console platforms
+rem if changing the above platform, also change the below folder name to match
 set SHADERFLAVOR=GL4
 
 xcopy /y %SOURCESHADERLIST% Cache\%GAMENAME%\PC\user\Cache\Shaders\shaderlist.txt*

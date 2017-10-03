@@ -27,6 +27,9 @@ class CBoolTrack
     : public TAnimTrack<IBoolKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CBoolTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CBoolTrack, "{A98E28CB-DE42-47A3-8E4B-6B43A5F3D8B2}", IAnimTrack);
+
     CBoolTrack();
 
     virtual EAnimValue GetValueType() { return eAnimValue_Bool; };
@@ -40,12 +43,9 @@ public:
 
     void SetDefaultValue(const bool bDefaultValue);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
-
     bool Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true) override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
     bool m_bDefaultValue;

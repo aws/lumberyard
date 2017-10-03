@@ -29,7 +29,8 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS',
                            'BOOSTPYTHON',
-                           'AWS_CPP_SDK_CORE'],
+                           'AWS_CPP_SDK_CORE',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
         features	    = ['qt5',
                            'EmbeddedPython'],
         includes        = ['.',
@@ -38,13 +39,14 @@ def build(bld):
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/Sandbox/Plugins/EditorUI_QT'),
-                           bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Code/CryEngine/LmbrAWS')],
+                           bld.Path('Code/CryEngine/CryAction')],
 
         defines         = ['QT_NO_DEBUG',
                            'QT_LARGEFILE_SUPPORT',
                            'QT_NO_EMIT',
                            'EDITOR_COMMON_IMPORTS'],
+        darwin_use		= bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+        win_use			= bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
 
         # Testing
         test_all_file_list = ['maglevcontrolpanel_test.waf_files'],

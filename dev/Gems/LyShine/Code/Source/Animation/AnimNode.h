@@ -34,11 +34,11 @@ public:
             : name("")
             , valueType(eUiAnimValue_Float)
             , flags(ESupportedParamFlags(0)) {};
-        SParamInfo(const char* name, CUiAnimParamType paramType, EUiAnimValue valueType, ESupportedParamFlags flags)
-            : name(name)
-            , paramType(paramType)
-            , valueType(valueType)
-            , flags(flags) {};
+        SParamInfo(const char* _name, CUiAnimParamType _paramType, EUiAnimValue _valueType, ESupportedParamFlags _flags)
+            : name(_name)
+            , paramType(_paramType)
+            , valueType(_valueType)
+            , flags(_flags) {};
 
         const char* name;           // parameter name.
         CUiAnimParamType paramType;     // parameter id.

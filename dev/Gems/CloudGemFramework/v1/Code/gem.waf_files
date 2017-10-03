@@ -18,6 +18,7 @@
             "Include/CloudGemFramework/JobExecuter.h",
             "Include/CloudGemFramework/JsonObjectHandler.h",
             "Include/CloudGemFramework/JsonWriter.h",
+            "Include/CloudGemFramework/MultipartFormData.h",
             "Include/CloudGemFramework/RequestBuilder.h",
             "Include/CloudGemFramework/ServiceClientJob.h",
             "Include/CloudGemFramework/ServiceClientJobConfig.h",
@@ -27,13 +28,26 @@
             "Include/CloudGemFramework/ServiceRequestJob.h",
             "Include/CloudGemFramework/ServiceRequestJobConfig.h",
             "Include/CloudGemFramework/HttpClientComponent.h",
-            "Include/CloudGemFramework/HttpRequestJob.h"
+            "Include/CloudGemFramework/HttpFileUploadJob.h",
+            "Include/CloudGemFramework/HttpRequestJob.h",
+            "Include/CloudGemFramework/HttpRequestJobConfig.h"
         ],
         "Source": [
+            "Source/CloudGemFrameworkModule.h",
             "Source/CloudGemFrameworkModule.cpp",
             "Source/CloudGemFrameworkSystemComponent.cpp",
             "Source/CloudGemFrameworkSystemComponent.h",
-            "Source/HttpClientComponent.cpp"
+            "Source/HttpClientComponent.cpp",
+            "Source/MappingsComponent.cpp",
+            "Source/MappingsComponent.h",
+            "Source/PlayerIdentityComponent.cpp",
+            "Source/PlayerIdentityComponent.h"
+        ],
+        "Identity": [
+            "Source/Identity/TokenRetrievingPersistentIdentityProvider.cpp",
+            "Source/Identity/ResourceManagementLambdaBasedTokenRetrievalStrategy.cpp",
+            "Include/Identity/TokenRetrievingPersistentIdentityProvider.h",
+            "Include/Identity/ResourceManagementLambdaBasedTokenRetrievalStrategy.h"
         ]
     }
 }

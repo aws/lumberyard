@@ -38,7 +38,7 @@ public:
     virtual const char* GetSubTrackName(int nIndex) const { return NULL; };
     virtual void SetSubTrackName(int nIndex, const char* name) { assert(0); }
 
-    virtual CUiAnimParamType  GetParameterType() const { return m_nParamType; };
+    virtual const CUiAnimParamType&  GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CUiAnimParamType type) { m_nParamType = type; };
 
     virtual const UiAnimParamData& GetParamData() const { return m_componentParamData; }

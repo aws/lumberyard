@@ -60,12 +60,10 @@ BOOL CTVSequenceProps::OnInitDialog()
 
     ui->ALWAYS_PLAY->setChecked((seqFlags & IAnimSequence::eSeqFlags_PlayOnReset));
     ui->CUT_SCENE->setChecked((seqFlags & IAnimSequence::eSeqFlags_CutScene));
-    ui->DISABLEHUD->setChecked((seqFlags & IAnimSequence::eSeqFlags_NoHUD));
     ui->DISABLEPLAYER->setChecked((seqFlags & IAnimSequence::eSeqFlags_NoPlayer));
     ui->DISABLESOUNDS->setChecked((seqFlags & IAnimSequence::eSeqFlags_NoGameSounds));
     ui->NOSEEK->setChecked((seqFlags & IAnimSequence::eSeqFlags_NoSeek));
     ui->NOABORT->setChecked((seqFlags & IAnimSequence::eSeqFlags_NoAbort));
-    ui->TIMEWARP_IN_FIXEDTIMESTEP->setChecked((seqFlags & IAnimSequence::eSeqFlags_CanWarpInFixedTime));
     ui->EARLYMOVIEUPDATE->setChecked((seqFlags & IAnimSequence::eSeqFlags_EarlyMovieUpdate));
 
     ToggleCutsceneOptions(ui->CUT_SCENE->isChecked());
@@ -190,15 +188,6 @@ void CTVSequenceProps::OnOK()
         seqFlags &= ~IAnimSequence::eSeqFlags_CutScene;
     }
 
-    if (ui->DISABLEHUD->isChecked())
-    {
-        seqFlags |= IAnimSequence::eSeqFlags_NoHUD;
-    }
-    else
-    {
-        seqFlags &= (~IAnimSequence::eSeqFlags_NoHUD);
-    }
-
     if (ui->DISABLEPLAYER->isChecked())
     {
         seqFlags |= IAnimSequence::eSeqFlags_NoPlayer;
@@ -242,15 +231,6 @@ void CTVSequenceProps::OnOK()
     else
     {
         seqFlags &= (~IAnimSequence::eSeqFlags_NoAbort);
-    }
-
-    if (ui->TIMEWARP_IN_FIXEDTIMESTEP->isChecked())
-    {
-        seqFlags |= IAnimSequence::eSeqFlags_CanWarpInFixedTime;
-    }
-    else
-    {
-        seqFlags &= (~IAnimSequence::eSeqFlags_CanWarpInFixedTime);
     }
 
     if (ui->EARLYMOVIEUPDATE->isChecked())

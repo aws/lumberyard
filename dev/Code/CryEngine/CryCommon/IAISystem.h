@@ -269,50 +269,50 @@ enum EAIStimulusFilterMerge
 struct SNavigationShapeParams
 {
     SNavigationShapeParams(
-        const char* szPathName = 0,
-        EnumAreaType areaType = AREATYPE_PATH,
-        bool pathIsRoad = true,
-        bool closed = false,
-        const Vec3* points = 0,
-        unsigned nPoints = 0,
-        float fHeight = 0,
-        int nNavType = 0,
-        int nAuxType = 0,
-        EAILightLevel lightLevel = AILL_NONE,
-        float fNodeAutoConnectDistance = 0,
-        EWaypointConnections waypointConnections = WPCON_DESIGNER_NONE,
-        bool bVehiclesInHumanNav = false,
-        bool bCalculate3DNav = true,
-        bool bCritterOnly = false,
-        float f3DNavVolumeRadius = 10.0f,
-        float extraLinkCostFactor = 0.0f,
-        float fReductionPerMetre = 0.0f,
-        float fReductionMax = 1.0f,
-        float flyAgentWidth = 0.0f,
-        float flyAgentHeight = 0.0f,
-        const char* szPFPropertiesList = 0)
-        : szPathName(szPathName)
-        , areaType(areaType)
-        , pathIsRoad(pathIsRoad)
-        , closed(closed)
-        , points(points)
-        , nPoints(nPoints)
-        , fHeight(fHeight)
-        , nNavType(nNavType)
-        , nAuxType(nAuxType)
-        , fNodeAutoConnectDistance(fNodeAutoConnectDistance)
-        , waypointConnections(waypointConnections)
-        , bVehiclesInHumanNav(bVehiclesInHumanNav)
-        , bCalculate3DNav(bCalculate3DNav)
-        , bCritterOnly(bCritterOnly)
-        , f3DNavVolumeRadius(f3DNavVolumeRadius)
-        , extraLinkCostFactor(extraLinkCostFactor)
-        , fReductionPerMetre(fReductionPerMetre)
-        , fReductionMax(fReductionMax)
-        , lightLevel(lightLevel)
-        , flyAgentWidth(flyAgentWidth)
-        , flyAgentHeight(flyAgentHeight)
-        , szPFPropertiesList(szPFPropertiesList)
+        const char* _szPathName = 0,
+        EnumAreaType _areaType = AREATYPE_PATH,
+        bool _pathIsRoad = true,
+        bool _closed = false,
+        const Vec3* _points = 0,
+        unsigned _nPoints = 0,
+        float _fHeight = 0,
+        int _nNavType = 0,
+        int _nAuxType = 0,
+        EAILightLevel _lightLevel = AILL_NONE,
+        float _fNodeAutoConnectDistance = 0,
+        EWaypointConnections _waypointConnections = WPCON_DESIGNER_NONE,
+        bool _bVehiclesInHumanNav = false,
+        bool _bCalculate3DNav = true,
+        bool _bCritterOnly = false,
+        float _f3DNavVolumeRadius = 10.0f,
+        float _extraLinkCostFactor = 0.0f,
+        float _fReductionPerMetre = 0.0f,
+        float _fReductionMax = 1.0f,
+        float _flyAgentWidth = 0.0f,
+        float _flyAgentHeight = 0.0f,
+        const char* _szPFPropertiesList = 0)
+        : szPathName(_szPathName)
+        , areaType(_areaType)
+        , pathIsRoad(_pathIsRoad)
+        , closed(_closed)
+        , points(_points)
+        , nPoints(_nPoints)
+        , fHeight(_fHeight)
+        , nNavType(_nNavType)
+        , nAuxType(_nAuxType)
+        , fNodeAutoConnectDistance(_fNodeAutoConnectDistance)
+        , waypointConnections(_waypointConnections)
+        , bVehiclesInHumanNav(_bVehiclesInHumanNav)
+        , bCalculate3DNav(_bCalculate3DNav)
+        , bCritterOnly(_bCritterOnly)
+        , f3DNavVolumeRadius(_f3DNavVolumeRadius)
+        , extraLinkCostFactor(_extraLinkCostFactor)
+        , fReductionPerMetre(_fReductionPerMetre)
+        , fReductionMax(_fReductionMax)
+        , lightLevel(_lightLevel)
+        , flyAgentWidth(_flyAgentWidth)
+        , flyAgentHeight(_flyAgentHeight)
+        , szPFPropertiesList(_szPFPropertiesList)
     {}
 
     struct FlightNavData
@@ -381,16 +381,16 @@ struct SAIStimulus
     {
     }
 
-    SAIStimulus(EAIStimulusType type, unsigned char subType, EntityId sourceId, EntityId targetId,
-        const Vec3& pos, const Vec3& dir, float radius, unsigned char flags = 0)
-        : sourceId(sourceId)
-        , targetId(targetId)
-        , pos(pos)
-        , dir(dir)
-        , radius(radius)
-        , type(static_cast<unsigned char>(type))
-        , subType(subType)
-        , flags(flags)
+    SAIStimulus(EAIStimulusType _type, unsigned char _subType, EntityId _sourceId, EntityId _targetId,
+        const Vec3& _pos, const Vec3& _dir, float _radius, unsigned char _flags = 0)
+        : sourceId(_sourceId)
+        , targetId(_targetId)
+        , pos(_pos)
+        , dir(_dir)
+        , radius(_radius)
+        , type(static_cast<unsigned char>(_type))
+        , subType(_subType)
+        , flags(_flags)
     {
     }
 
@@ -1051,7 +1051,7 @@ public:
     {
     }
 
-    // need to force as no_inline, else on xbox(if cstr and dstr are inlined), we get totaly wrong numbers
+    // need to force as no_inline, else on some implementations (if cstr and dstr are inlined), we get totaly wrong numbers
     NO_INLINE ~CAILightProfileSection()
     {
         IAISystem* pAISystem = gEnv->pAISystem;

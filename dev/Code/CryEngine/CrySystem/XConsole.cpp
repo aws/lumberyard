@@ -32,10 +32,11 @@
 #include <ISystem.h>
 #include <ILog.h>
 #include <IProcess.h>
-#include <IHardwareMouse.h>
 #include <IRemoteCommand.h>
 #include <IRenderAuxGeom.h>
 #include "ConsoleHelpGen.h"         // CConsoleHelpGen
+
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 //#define DEFENCE_CVAR_HASH_LOGGING
 
@@ -346,12 +347,16 @@ CXConsole::CXConsole()
     m_blockCounter = 0;
 
     CNotificationNetworkConsole::Initialize();
+
+    AzFramework::ConsoleRequestBus::Handler::BusConnect();
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 CXConsole::~CXConsole()
 {
+    AzFramework::ConsoleRequestBus::Handler::BusDisconnect();
+
     if (gEnv->pSystem)
     {
         gEnv->pSystem->GetIRemoteConsole()->UnregisterListener(this);
@@ -1027,17 +1032,18 @@ void    CXConsole::ShowConsole(bool show, const int iRequestScrollMax)
 
     if (show && !m_bConsoleActive)
     {
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->IncrementCounter();
-        }
+        AzFramework::InputSystemCursorRequestBus::EventResult(m_previousSystemCursorState,
+                                                              AzFramework::InputDeviceMouse::Id,
+                                                              &AzFramework::InputSystemCursorRequests::GetSystemCursorState);
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                        AzFramework::SystemCursorState::UnconstrainedAndVisible);
     }
     else if (!show && m_bConsoleActive)
     {
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->DecrementCounter();
-        }
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                        m_previousSystemCursorState);
     }
 
     SetStatus(show);
@@ -1280,7 +1286,7 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
         else
         {
             // slower
-            char szCombinedName[40];
+            char szCombinedName[255];
             int iLen = 0;
 
             if (event.modifiers & eMM_Ctrl)
@@ -1304,6 +1310,7 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
                 iLen += 4;
             }
 
+            assert(sizeof(szCombinedName) > (iLen + strlen(event.keyName.c_str()) + 1));
             strcpy(&szCombinedName[iLen], event.keyName.c_str());
 
             cmd = FindKeyBind(szCombinedName);
@@ -1373,9 +1380,13 @@ bool CXConsole::OnInputEvent(const SInputEvent& event)
 bool CXConsole::OnInputEventUI(const SUnicodeEvent& event)
 {
 #ifdef PROCESS_XCONSOLE_INPUT
-    if (m_bConsoleActive && event.inputChar >= 32)
+    const uint32 inputChar = event.inputChar;
+
+    // Ignore tilde/accent character since it is reserved for toggling the console
+    bool isTilde = (inputChar == 96 || inputChar == 126);
+    if (m_bConsoleActive && inputChar >= 32 && !isTilde)
     {
-        AddInputChar(event.inputChar);
+        AddInputChar(inputChar);
     }
 #endif
     return false;
@@ -2238,6 +2249,13 @@ void CXConsole::ExecuteString(const char* command, const bool bSilentMode, const
         ScopedSwitchToGlobalHeap globalHeap;
         m_deferredCommands.push_back(SDeferredCommand(str.c_str(), bSilentMode));
     }
+}
+
+// This method is used by the ConsoleRequestBus to allow executing of console commands
+// This can be used from anywhere in code or via script since the bus is relected to the behavior context
+void CXConsole::ExecuteConsoleCommand(const char* command)
+{
+    ExecuteString(command, true);
 }
 
 void CXConsole::SplitCommands(const char* line, std::list<string>& split)

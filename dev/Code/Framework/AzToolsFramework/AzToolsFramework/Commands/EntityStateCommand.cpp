@@ -23,6 +23,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include "PreemptiveUndoCache.h"
 
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
@@ -138,11 +139,36 @@ namespace AzToolsFramework
         AZ::Entity* entity = nullptr;
 
         EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, m_entityID);
+        EntityStateCommandNotificationBus::Event(m_entityID, &EntityStateCommandNotificationBus::Events::PreRestore);
 
-        EBUS_EVENT(AZ::ComponentApplicationBus, DeleteEntity, m_entityID);
+        bool isSliceMetadataEntity = false;
+        SliceMetadataEntityContextRequestBus::BroadcastResult(isSliceMetadataEntity, &SliceMetadataEntityContextRequestBus::Events::IsSliceMetadataEntity, m_entityID);
+        AZ::ObjectStream::InplaceLoadRootInfoCB inplaceLoadRootInfoCB;
+        if (isSliceMetadataEntity)
+        {
+            // Instead of deleting the entity, dtor it which will remove and disconnect it entirely
+            entity->~Entity();
+            
+            // placement new to default the entity
+            entity = new(entity) AZ::Entity();
+
+            // Set up a callback so we in-place load over this entity instead of creating it new
+            inplaceLoadRootInfoCB = [entity](void** rootAddress, const AZ::SerializeContext::ClassData** /*classData*/, const AZ::Uuid& /*classId*/, AZ::SerializeContext* /*context*/)
+            {
+                *rootAddress = entity;
+            };
+        }
+        else
+        {
+            // Normal entities will be deleted and loaded anew
+            //EBUS_EVENT(AZ::ComponentApplicationBus, DeleteEntity, m_entityID);
+            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Events::DeleteEntity, m_entityID);
+        }
+
         bool success = AZ::ObjectStream::LoadBlocking(&memoryStream, *serializeContext,
-                AZStd::bind(&LoadEntity, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &entity),
-                AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+            AZStd::bind(&LoadEntity, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &entity),
+            AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading),
+            inplaceLoadRootInfoCB);
         (void)success;
         AZ_Assert(success, "Unable to serialize entity for undo/redo");
         AZ_Assert(entity, "Unable to create entity");
@@ -182,6 +208,8 @@ namespace AzToolsFramework
             {
                 selectedEntities.push_back(m_entityID);
             }
+
+            EntityStateCommandNotificationBus::Event(m_entityID, &EntityStateCommandNotificationBus::Events::PostRestore, entity);
         }
 
         EBUS_EVENT(ToolsApplicationRequests::Bus, SetSelectedEntities, selectedEntities);
@@ -215,6 +243,7 @@ namespace AzToolsFramework
 
     void EntityDeleteCommand::Redo()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         EBUS_EVENT(AZ::ComponentApplicationBus, DeleteEntity, m_entityID);
         PreemptiveUndoCache::Get()->PurgeCache(m_entityID);
     }
@@ -232,6 +261,7 @@ namespace AzToolsFramework
 
     void EntityCreateCommand::Undo()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         EBUS_EVENT(AZ::ComponentApplicationBus, DeleteEntity, m_entityID);
         PreemptiveUndoCache::Get()->PurgeCache(m_entityID);
     }

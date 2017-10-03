@@ -29,8 +29,11 @@ namespace Gestures
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
-        virtual void Register(IRecognizer& recognizer) = 0;
-        virtual void Deregister(IRecognizer& recognizer) = 0;
+        virtual void AZ_DEPRECATED(Register(IRecognizer& recognizer) = 0,
+            "GesturesRequests has been deprecated, use IRecognizer::BusConnect instead");
+
+        virtual void AZ_DEPRECATED(Deregister(IRecognizer& recognizer) = 0,
+            "GesturesRequests has been deprecated, use IRecognizer::BusConnect instead");
     };
     using GesturesBus = AZ::EBus<GesturesRequests>;
 } // namespace Gestures

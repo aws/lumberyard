@@ -3065,15 +3065,10 @@ static int init_mparams(void)
         gsize = ((DEFAULT_GRANULARITY != 0) ? DEFAULT_GRANULARITY : psize);
 #else /* WIN32 */
         {
-#if defined(AZ_PLATFORM_X360)
-            psize = 64 * 1024;
-            gsize = /*((DEFAULT_GRANULARITY != 0)?DEFAULT_GRANULARITY : system_info.dwAllocationGranularity)*/ psize;
-#else
             SYSTEM_INFO system_info;
             GetSystemInfo(&system_info);
             psize = system_info.dwPageSize;
             gsize = ((DEFAULT_GRANULARITY != 0) ? DEFAULT_GRANULARITY : system_info.dwAllocationGranularity);
-#endif
         }
 #endif /* WIN32 */
 
@@ -3127,11 +3122,7 @@ static int init_mparams(void)
 #ifdef WIN32
             magic = (size_t)(GetTickCount() ^ (size_t)0x55555555U);
 #else
-#if defined(AZ_PLATFORM_WII)
-            magic = (size_t)OSGetTime();
-#else
             magic = (size_t)(time(0) ^ (size_t)0x55555555U);
-#endif // AZ_PLATFORM_WII
 #endif
             magic |= (size_t)8U; /* ensure nonzero */
             magic &= ~(size_t)7U; /* improve chances of fault for bad values */

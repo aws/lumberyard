@@ -559,9 +559,9 @@ bool CImageDDSFile::SetHeaderFromMemory(byte* pFileStart, byte* pFileAfterHeader
     {
         m_Flags |= FIM_GREYSCALE;
     }
-    if (imageFlags & CImageExtensionHelper::EIF_X360NotPretiled)
+    if (imageFlags & CImageExtensionHelper::EIF_X360NotPretiled) // ACCEPTED_USE
     {
-        m_Flags |= FIM_X360_NOT_PRETILED;
+        m_Flags |= FIM_X360_NOT_PRETILED; // ACCEPTED_USE
     }
     if (imageFlags & CImageExtensionHelper::EIF_AttachedAlpha)
     {

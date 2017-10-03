@@ -86,7 +86,7 @@ public:
 
     ResourceManagementView(QWidget* parent = nullptr);
 
-    static const char* GetWindowTitle() { return "Cloud Canvas Resource Manager"; }
+    static const char* GetWindowTitle() { return "Resource Manager"; }
 
     static const GUID& GetClassID()
     {
@@ -390,7 +390,7 @@ private:
     QString m_waitingForDeployment;
     QString m_waitingForPath;
 
-    // Resource name validation data stored in @devroot@/tools/lmbr_aws/config/aws_name_validation_rules.json
+    // Resource name validation data stored in @devroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json
     QJsonObject m_resourceValidation;
     void LoadResourceValidationData();
 

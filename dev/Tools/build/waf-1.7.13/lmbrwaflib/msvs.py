@@ -91,131 +91,101 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<ItemGroup Label="ProjectConfigurations">
 		${for b in project.build_properties}
-		<ProjectConfiguration Include="${b.configuration}|${b.platform.split()[0]}">
-			<Configuration>${b.configuration}</Configuration>
-			<Platform>${b.platform.split()[0]}</Platform>
-		</ProjectConfiguration>
+			<ProjectConfiguration Include="${b.configuration}|${b.platform.split()[0]}">
+				<Configuration>${b.configuration}</Configuration>
+				<Platform>${b.platform.split()[0]}</Platform>
+			</ProjectConfiguration>
 		${endfor}
 	</ItemGroup>
-
 	<PropertyGroup Label="Globals">
 		<ProjectGuid>{${project.uuid}}</ProjectGuid>
 		<Keyword>MakefileProj</Keyword>
 		<ProjectName>${project.name}</ProjectName>
 	</PropertyGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-
 	${for b in project.build_properties}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'" Label="Configuration">
-		<ConfigurationType>Makefile</ConfigurationType>
-		<OutDir>${b.outdir}</OutDir>
-		${if b.platform == 'ARM'}
-		<Keyword>Android</Keyword>
-		<PlatformToolset>Gcc_4_9</PlatformToolset>
-		<ApplicationType>Android</ApplicationType>
-		<AndroidAPILevel>android-21</AndroidAPILevel>
-		${else}
-		<PlatformToolset>${project.get_platform_toolset(b.platform)}</PlatformToolset>
-		${endif}
-	</PropertyGroup>
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'" Label="Configuration">
+			<ConfigurationType>Makefile</ConfigurationType>
+			<OutDir>${b.outdir}</OutDir>
+			${if b.platform == 'ARM'}
+				<Keyword>Android</Keyword>
+				<PlatformToolset>Gcc_4_9</PlatformToolset>
+				<ApplicationType>Android</ApplicationType>
+				<AndroidAPILevel>android-21</AndroidAPILevel>
+			${else}
+				<PlatformToolset>${project.get_platform_toolset(b.platform)}</PlatformToolset>
+			${endif}
+		</PropertyGroup>
 	${endfor}
-	
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-	<ImportGroup Label="ExtensionSettings">
-	</ImportGroup>
-
+	<ImportGroup Label="ExtensionSettings" />
 	<ImportGroup Label="PropertySheets" Condition="${project.get_all_config_platform_conditional_trimmed()}">
 		<Import Project="$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props" Condition="exists('$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props')"/>
 		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
 	</ImportGroup>
-
 	${for b in project.build_properties}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
-		<NMakeBuildCommandLine>${xml:project.get_build_command(b)}</NMakeBuildCommandLine>
-		<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}</NMakeReBuildCommandLine>
-		<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}</NMakeCleanCommandLine>
-		<NMakeIncludeSearchPath>${xml:b.includes_search_path}</NMakeIncludeSearchPath>
-		<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions};$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-		<IncludePath>${xml:b.includes_search_path}</IncludePath>
-		${if getattr(b, 'output_file', None)}
-		<NMakeOutput>${xml:b.output_file}</NMakeOutput>
-		<ExecutablePath>${xml:b.output_file}</ExecutablePath>
-		${endif}
-		${if not getattr(b, 'output_file', None)}
-		<NMakeOutput>not_supported</NMakeOutput>
-		<ExecutablePath>not_supported</ExecutablePath>
-		${endif}
-		${if getattr(b, 'output_file_name', None)}
-		<TargetName>${b.output_file_name}</TargetName>
-		${endif}
-		${if getattr(b, 'deploy_dir', None)}
-		<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
-		${endif}
-		${if b.platform == 'Durango'}
-		${if 'Debug' in b.configuration}
-		<OutDir>${xml:project.get_output_folder('durango','Debug')}</OutDir>
-		${else}
-		<OutDir>${xml:project.get_output_folder('durango','')}</OutDir>
-		${endif}
-		<LayoutDir>${xml:project.get_layout_folder(b.platform)}</LayoutDir>
-		<LayoutExtensionFilter>*.ilk;*.exp;*.lib;*.winmd;*.appxrecipe;*.pri</LayoutExtensionFilter>
-		${endif}
-		${if b.platform == 'ORBIS'}
-		${if b.configuration == 'Debug'}
-		<OutDir>${xml:project.get_output_folder('orbis','Debug')}</OutDir>
-		${else}
-		<OutDir>${xml:project.get_output_folder('orbis','')}</OutDir>
-		${endif}
-		${endif}
-		${if b.platform == 'Linux X64 GCC'}
-		${if b.configuration == 'Debug'}
-		<OutDir>${xml:project.get_output_folder('linux_x64_gcc','Debug')}</OutDir>
-		${else}
-		<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}</OutDir>
-		${endif}
-		${endif}
-	</PropertyGroup>
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
+			<NMakeBuildCommandLine>${xml:project.get_build_command(b)}</NMakeBuildCommandLine>
+			<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}</NMakeReBuildCommandLine>
+			<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}</NMakeCleanCommandLine>
+			<NMakeIncludeSearchPath>${xml:b.includes_search_path}</NMakeIncludeSearchPath>
+			<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions};$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+			<IncludePath>${xml:b.includes_search_path}</IncludePath>
+			${if getattr(b, 'output_file', None)}
+				<NMakeOutput>${xml:b.output_file}</NMakeOutput>
+				<ExecutablePath>${xml:b.output_file}</ExecutablePath>
+			${endif}
+			${if not getattr(b, 'output_file', None)}
+				<NMakeOutput>not_supported</NMakeOutput>
+				<ExecutablePath>not_supported</ExecutablePath>
+			${endif}
+			${if getattr(b, 'output_file_name', None)}
+				<TargetName>${b.output_file_name}</TargetName>
+			${endif}
+			${if getattr(b, 'deploy_dir', None)}
+				<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
+			${endif}
+
+			${if b.platform == 'Linux X64 GCC'}
+				${if 'Debug' in b.configuration}
+					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','Debug')}</OutDir>
+				${else}
+					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}</OutDir>
+				${endif}
+            <!--
+            -->
+            <!--
+            -->
+            ${endif}
+		</PropertyGroup>
 	${endfor}
-	
 	${for b in project.build_properties}
 		${if getattr(b, 'deploy_dir', None)}
-	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
-		<Deploy>
-			<DeploymentType>CopyToHardDrive</DeploymentType>
-		</Deploy>
-	</ItemDefinitionGroup>
+			<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
+				<Deploy>
+					<DeploymentType>CopyToHardDrive</DeploymentType>
+				</Deploy>
+			</ItemDefinitionGroup>
 		${endif}
 	${endfor}
-
 	<ItemGroup>
 		${for x in project.source}
-		<${project.get_key(x)} Include='${x.abspath()}' />
+			<${project.get_key(x)} Include='${x.abspath()}' />
 		${endfor}
 	</ItemGroup>
-
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 	<Import Project="$(MSBuildProjectDirectory)\..\..\_WAF_\msbuild\waf_build.targets" />
-	
-	<ImportGroup Label="ExtensionTargets">
-	</ImportGroup>
+	<ImportGroup Label="ExtensionTargets" />
 </Project>
 '''
-#Note:
-#<LocalDebuggerWorkingDirectory></LocalDebuggerWorkingDirectory> is not a mistake, do not remove this as this overrides the inherited value
+
 PROJECT_USER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	${for b in project.build_properties}
-	${if b.platform == 'ORBIS'}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
-	<LocalDebuggerWorkingDirectory></LocalDebuggerWorkingDirectory>
-	<LocalMappingFile>$(SolutionDir)..\config.ps4path</LocalMappingFile>
-	</PropertyGroup>
-	${endif}
-	${if b.platform == 'Durango'}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
-	<DeployMode>External</DeployMode>
-	</PropertyGroup>
-	${endif}
+        <!--
+        -->
+        <!--
+        -->
 	${endfor}
 </Project>
 '''
@@ -250,31 +220,31 @@ SOLUTION_TEMPLATE = '''Microsoft Visual Studio Solution File, Format Version ${p
 ${for p in project.all_projects}
 Project("{${p.ptype()}}") = "${p.name}", "${p.title}", "{${p.uuid}}"
 	${if p != project.waf_project}
-	ProjectSection(ProjectDependencies) = postProject
-		{${project.waf_project.uuid}} = {${project.waf_project.uuid}}
-	EndProjectSection
+		ProjectSection(ProjectDependencies) = postProject
+			{${project.waf_project.uuid}} = {${project.waf_project.uuid}}
+		EndProjectSection
 	${endif}
 EndProject${endfor}
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		${if project.all_projects}
-		${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}
-		${configuration}|${platform.split()[0]} = ${configuration}|${platform.split()[0]}
-		${endfor}
+			${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}
+				${configuration}|${platform.split()[0]} = ${configuration}|${platform.split()[0]}
+			${endfor}
 		${endif}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		${for p in project.all_projects}
 			${if hasattr(p, 'source')}
-			${for b in p.build_properties}
-				{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.ActiveCfg = ${b.configuration}|${b.platform.split()[0]}
-				${if getattr(p, 'is_active', None)}
-					{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.Build.0 = ${b.configuration}|${b.platform.split()[0]}
-				${endif}
-				${if getattr(p, 'is_deploy', None) and b.platform.lower() in p.is_deploy}
-				{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.Deploy.0 = ${b.configuration}|${b.platform.split()[0]}
-				${endif}
-			${endfor}
+				${for b in p.build_properties}
+					{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.ActiveCfg = ${b.configuration}|${b.platform.split()[0]}
+					${if getattr(p, 'is_active', None)}
+						{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.Build.0 = ${b.configuration}|${b.platform.split()[0]}
+					${endif}
+					${if getattr(p, 'is_deploy', None) and b.platform.lower() in p.is_deploy}
+						{${p.uuid}}.${b.configuration}|${b.platform.split()[0]}.Deploy.0 = ${b.configuration}|${b.platform.split()[0]}
+					${endif}
+				${endfor}
 			${endif}
 		${endfor}
 	EndGlobalSection
@@ -284,7 +254,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 	${for p in project.all_projects}
 		${if p.parent}
-		{${p.uuid}} = {${p.parent.uuid}}		
+			{${p.uuid}} = {${p.parent.uuid}}
 		${endif}
 	${endfor}
 	EndGlobalSection
@@ -294,95 +264,73 @@ EndGlobal
 PROPERTY_SHEET_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0"
 	xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	
 	${for b in project.build_properties}	
-	${if getattr(b, 'output_file_name', None)}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
-		<WAF_TargetFile>${xml:b.output_file}</WAF_TargetFile>
-		<TargetPath Condition="'$(WAF_TargetFile)' != ''">$(WAF_TargetFile)</TargetPath>
-		<LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
-		<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(OutDir)/AzTestRunner</LocalDebuggerCommand>
-		<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">$(TargetName) AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
-		<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
-	</PropertyGroup>
-	${endif}
-
-	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
-		<ClCompile>
-		
-			<WAF_SingleCompilationMode>Code</WAF_SingleCompilationMode>
-			<WAF_TargetSolution>${xml:project.ctx.get_solution_node().abspath()} </WAF_TargetSolution>
-			
-			${if getattr(b, 'target_spec', None)}
-			<WAF_TargetSpec>${xml:b.target_spec}</WAF_TargetSpec>
-			${endif}		
-			
-			${if getattr(b, 'target_config', None)}
-			<WAF_TargetConfig>${xml:b.target_config}</WAF_TargetConfig>
-			${endif}		
-		
-			${if getattr(b, 'output_file_name', None)}
-			<WAF_TargetName>${xml:b.output_file_name}</WAF_TargetName>
-			${endif}
-			
-			${if getattr(b, 'output_file', None)}
-			<WAF_TargetFile>${xml:b.output_file} </WAF_TargetFile>
-			${endif}
-			
-			${if getattr(b, 'includes_search_path', None)}
-			<WAF_IncludeDirectories>${xml:b.includes_search_path}</WAF_IncludeDirectories>
-			${endif}
-			
-			${if getattr(b, 'preprocessor_definitions', None)}
-			<WAF_PreprocessorDefinitions>${xml:b.preprocessor_definitions}</WAF_PreprocessorDefinitions>
-			${endif}
-			
-			${if getattr(b, 'deploy_dir', None)}
-			<WAF_DeployDir>${xml:b.deploy_dir}</WAF_DeployDir>
-			${endif}
-			
-			${if getattr(b, 'output_dir', None)}
-			<WAF_OutputDir>${xml:b.output_dir}</WAF_OutputDir>
-			${endif}
-			
-			${if getattr(b, 'layout_dir', None)}
-			<LayoutDir>${xml:b.deploy_dir}</LayoutDir>
-			${endif}
-			
-			${if getattr(b, 'layout_extension_filter', None)}
-			<LayoutExtensionFilter>${xml:b.deploy_dir}</LayoutExtensionFilter>
-			${endif}
-						
-			${if getattr(b, 'c_flags', None)}
-			<WAF_CompilerOptions_C>${xml:b.c_flags} </WAF_CompilerOptions_C>
-			${endif}
-			
-			${if getattr(b, 'cxx_flags', None)}
-			<WAF_CompilerOptions_CXX>${xml:b.cxx_flags} </WAF_CompilerOptions_CXX>
-			${endif}
-			
-			${if getattr(b, 'link_flags', None)}
-			<WAF_LinkerOptions>${xml:b.link_flags}</WAF_LinkerOptions>
-			${endif}
-			
-			<WAF_DisableCompilerOptimization>false</WAF_DisableCompilerOptimization>
-			<WAF_ExcludeFromUberFile>false</WAF_ExcludeFromUberFile>
-
-			<WAF_BuildCommandLine>${xml:project.get_build_command(b)}</WAF_BuildCommandLine>
-			<WAF_RebuildCommandLine>${xml:project.get_rebuild_command(b)}</WAF_RebuildCommandLine>
-			<WAF_CleanCommandLine>${xml:project.get_clean_command(b)}</WAF_CleanCommandLine>
-
-		</ClCompile>
-		<Deploy>
-			<DeploymentType>CopyToHardDrive</DeploymentType>
-		</Deploy>
-	</ItemDefinitionGroup>
-
+		${if getattr(b, 'output_file_name', None)}
+			<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
+				<WAF_TargetFile>${xml:b.output_file}</WAF_TargetFile>
+				<TargetPath Condition="'$(WAF_TargetFile)' != ''">$(WAF_TargetFile)</TargetPath>
+				<LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
+				<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(OutDir)/AzTestRunner</LocalDebuggerCommand>
+				<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">"${xml:b.output_file}" AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
+				<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+			</PropertyGroup>
+		${endif}
+		<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform.split()[0]}'">
+			<ClCompile>
+				<WAF_SingleCompilationMode>Code</WAF_SingleCompilationMode>
+				<WAF_TargetSolution>${xml:project.ctx.get_solution_node().abspath()} </WAF_TargetSolution>
+				${if getattr(b, 'target_spec', None)}
+					<WAF_TargetSpec>${xml:b.target_spec}</WAF_TargetSpec>
+				${endif}
+				${if getattr(b, 'target_config', None)}
+					<WAF_TargetConfig>${xml:b.target_config}</WAF_TargetConfig>
+				${endif}
+				${if getattr(b, 'output_file_name', None)}
+					<WAF_TargetName>${xml:b.output_file_name}</WAF_TargetName>
+				${endif}
+				${if getattr(b, 'output_file', None)}
+					<WAF_TargetFile>${xml:b.output_file} </WAF_TargetFile>
+				${endif}
+				${if getattr(b, 'includes_search_path', None)}
+					<WAF_IncludeDirectories>${xml:b.includes_search_path}</WAF_IncludeDirectories>
+				${endif}
+				${if getattr(b, 'preprocessor_definitions', None)}
+					<WAF_PreprocessorDefinitions>${xml:b.preprocessor_definitions}</WAF_PreprocessorDefinitions>
+				${endif}
+				${if getattr(b, 'deploy_dir', None)}
+					<WAF_DeployDir>${xml:b.deploy_dir}</WAF_DeployDir>
+				${endif}
+				${if getattr(b, 'output_dir', None)}
+					<WAF_OutputDir>${xml:b.output_dir}</WAF_OutputDir>
+				${endif}
+				${if getattr(b, 'c_flags', None)}
+					<WAF_CompilerOptions_C>${xml:b.c_flags} </WAF_CompilerOptions_C>
+				${endif}
+				${if getattr(b, 'cxx_flags', None)}
+					<WAF_CompilerOptions_CXX>${xml:b.cxx_flags} </WAF_CompilerOptions_CXX>
+				${endif}
+				${if getattr(b, 'link_flags', None)}
+				<WAF_LinkerOptions>${xml:b.link_flags}</WAF_LinkerOptions>
+				${endif}
+				<WAF_DisableCompilerOptimization>false</WAF_DisableCompilerOptimization>
+				<WAF_ExcludeFromUberFile>false</WAF_ExcludeFromUberFile>
+				<WAF_BuildCommandLine>${xml:project.get_build_command(b)}</WAF_BuildCommandLine>
+				<WAF_RebuildCommandLine>${xml:project.get_rebuild_command(b)}</WAF_RebuildCommandLine>
+				<WAF_CleanCommandLine>${xml:project.get_clean_command(b)}</WAF_CleanCommandLine>
+				${if getattr(b, 'layout_dir', None)}
+					<LayoutDir>${xml:b.layout_dir}</LayoutDir>
+				${elif getattr(b, 'deploy_dir', None)}}
+					<LayoutDir>${xml:b.deploy_dir}</LayoutDir>
+				${endif}
+				<LayoutExtensionFilter>*</LayoutExtensionFilter>
+			</ClCompile>
+			<Deploy>
+				<DeploymentType>CopyToHardDrive</DeploymentType>
+			</Deploy>
+		</ItemDefinitionGroup>
 	${endfor}
-		
-	<ItemDefinitionGroup />		
+	<ItemDefinitionGroup />
 	<ItemGroup />
-	
 </Project>
 '''
 
@@ -414,7 +362,8 @@ SUPPORTED_MSVS_VALUE_TABLE = {
         "numver" : "14.00",
         "vsver": "14",
         "defaultPlatformToolSet": "v120",
-        "platforms": ["win_x64_vs2015", "durango", "orbis"],
+        "platforms": ["win_x64_vs2015",
+	],
         "product_name": "2015"
     }
 }
@@ -924,8 +873,10 @@ class vsnode_project(vsnode):
 
         return '$(SolutionDir)..\\' + relative_path + '\\'
 
-    def get_layout_folder(self, platform):
-        return '$(SolutionDir)..\\' + platform + 'Layout\\'
+    def get_layout_folder(self, platform, mode, projectname):
+       if self.ctx.get_bootstrap_vfs() == '1':
+            return '$(SolutionDir)..\\layouts\\{}\\{}\\vfs'.format(projectname, mode)
+       return '$(SolutionDir)..\\layouts\\{}\\{}\\full'.format(projectname, mode)
 
     def get_rebuild_command(self, props):
 
@@ -1498,7 +1449,7 @@ class vsnode_target(vsnode_project):
             output_folder_nodes = getattr(self.tg, custom_output_folder_key, None)
         if output_folder_nodes is None:
             # If no custom output folder is found, use the default
-            output_folder_node = self.ctx.get_output_folders(waf_platform, waf_configuration)[0]
+            output_folder_node = self.ctx.get_output_folders(waf_platform, waf_configuration, None, self.name)[0]
         elif len(output_folder_nodes) > 0:
             # If a custom output folder was found, convert it to a Node.
             # Note: It is assumed that the output folder is relative to the root folder
@@ -1557,6 +1508,7 @@ class msvs_generator(BuildContext):
         if not is_platform_supported:
             # Platform configured is not selected.  Default to an alternate one that is supported
             alternate_platform_located = False
+            original_msvs_version = msvs_version
             for supported_platform in supported_platforms:
                 if supported_platform in PLATFORM_TO_SUPPORTED_MSVS_DICT:
                     alternate_platform_located = True
@@ -1566,7 +1518,7 @@ class msvs_generator(BuildContext):
                 Logs.error('[ERROR] No eligible platforms supported for visual studio solution generation')
                 return False
             else:
-                Logs.warn('[WARN] Current configure msvs_version ({}) is not supported on this host.  Generating {} solution instead.'.format(msvs_version, selected_msvs_version_platform['name']))
+                Logs.warn('[WARN] Current configure msvs_version ({}) is not supported on this host.  Generating {} solution instead.'.format(original_msvs_version, selected_msvs_version_platform['name']))
         else:
             Logs.info('[INFO] Generating {} solution.'.format(selected_msvs_version_platform['name']))
 

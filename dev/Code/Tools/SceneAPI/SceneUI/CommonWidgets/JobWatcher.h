@@ -39,7 +39,7 @@ namespace AZ
                 Q_OBJECT
 
             public:
-                explicit JobWatcher(const AZStd::string& sourceAssetFullPath);
+                JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag);
 
             signals:
                 void JobQueryFailed();
@@ -56,6 +56,7 @@ namespace AZ
                 bool m_hasReportedAvailableJobs;
                 QTimer* m_jobQueryTimer;
                 AZStd::string m_sourceAssetFullPath;
+                Uuid m_traceTag;
             };
         } // SceneUI
     } //  SceneAPI

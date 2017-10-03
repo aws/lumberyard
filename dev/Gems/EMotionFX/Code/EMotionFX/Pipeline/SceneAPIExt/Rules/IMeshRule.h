@@ -15,22 +15,22 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Rule
         {
-            class IEFXMeshRule
-                : public IRule
+            class IMeshRule
+                : public AZ::SceneAPI::DataTypes::IRule
             {
             public:
-                AZ_RTTI(IEFXMeshRule, "{299934A2-22EC-48AF-AB2B-953AFF8E0B19}", IRule);
+                AZ_RTTI(IMeshRule, "{299934A2-22EC-48AF-AB2B-953AFF8E0B19}", AZ::SceneAPI::DataTypes::IRule);
 
-                ~IEFXMeshRule() override = default;
+                ~IMeshRule() override = default;
 
                 virtual bool GetOptimizeTriangleList() const = 0;
             };
-        }  // DataTypes
-    }  // SceneAPI
-}  // AZ
+        }  // Rule
+    }  // Pipeline
+}  // EMotionFX

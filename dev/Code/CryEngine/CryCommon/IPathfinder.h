@@ -84,13 +84,13 @@ struct NavigationBlocker
     /// 10x more costly. -ve disables the link
     /// radialDecay indicates if the cost modifiers should decay linearly to 0 over the radius of the sphere
     /// directional indicates if the cost should be unaffected for motion in a radial direction
-    NavigationBlocker(const Vec3& pos, float radius, float costAddMod, float costMultMod, bool radialDecay, bool directional)
+    NavigationBlocker(const Vec3& pos, float radius, float _costAddMod, float _costMultMod, bool _radialDecay, bool _directional)
         : sphere(pos, radius)
-        , costAddMod(costAddMod)
-        , costMultMod(costMultMod)
+        , costAddMod(_costAddMod)
+        , costMultMod(_costMultMod)
         , restrictedLocation(false)
-        , radialDecay(radialDecay)
-        , directional(directional) {}
+        , radialDecay(_radialDecay)
+        , directional(_directional) {}
 
     /// Just to allow std::vector::resize(0)
     NavigationBlocker()
@@ -279,8 +279,8 @@ struct PathfindRequest
 
     PathfindingExtraConstraints extraConstraints;
 
-    PathfindRequest(ERequestType type)
-        :   type(type)
+    PathfindRequest(ERequestType _type)
+        : type(_type)
         , startIndex(0)
         , endIndex(0)
         , pRequester(0)
@@ -305,9 +305,9 @@ struct PathfindRequest
 
 struct PathfindingHeuristicProperties
 {
-    PathfindingHeuristicProperties(const AgentPathfindingProperties& properties, const IAIPathAgent* pAgent = 0)
-        : agentproperties(properties)
-        , pAgent(pAgent) {}
+    PathfindingHeuristicProperties(const AgentPathfindingProperties& _properties, const IAIPathAgent* _pAgent = 0)
+        : agentproperties(_properties)
+        , pAgent(_pAgent) {}
 
     PathfindingHeuristicProperties()
         : pAgent(0) {}
@@ -466,21 +466,21 @@ typedef std::list<PathPointDescriptor> TPathPoints;
 
 struct SNavPathParams
 {
-    SNavPathParams(const Vec3& start = Vec3_Zero, const Vec3& end = Vec3_Zero,
-        const Vec3& startDir = Vec3_Zero, const Vec3& endDir = Vec3_Zero,
-        int nForceBuildingID = -1, bool allowDangerousDestination = false, float endDistance = 0.0f,
-        bool continueMovingAtEnd = false, bool isDirectional = false)
-        : start(start)
-        , end(end)
-        , startDir(startDir)
-        , endDir(endDir)
-        , nForceBuildingID(nForceBuildingID)
-        , allowDangerousDestination(allowDangerousDestination)
+    SNavPathParams(const Vec3& _start = Vec3_Zero, const Vec3& _end = Vec3_Zero,
+        const Vec3& _startDir = Vec3_Zero, const Vec3& _endDir = Vec3_Zero,
+        int _nForceBuildingID = -1, bool _allowDangerousDestination = false, float _endDistance = 0.0f,
+        bool _continueMovingAtEnd = false, bool _isDirectional = false)
+        : start(_start)
+        , end(_end)
+        , startDir(_startDir)
+        , endDir(_endDir)
+        , nForceBuildingID(_nForceBuildingID)
+        , allowDangerousDestination(_allowDangerousDestination)
         , precalculatedPath(false)
         , inhibitPathRegeneration(false)
-        , continueMovingAtEnd(continueMovingAtEnd)
-        , endDistance(endDistance)
-        , isDirectional(isDirectional)
+        , continueMovingAtEnd(_continueMovingAtEnd)
+        , endDistance(_endDistance)
+        , isDirectional(_isDirectional)
     {}
 
     Vec3 start;

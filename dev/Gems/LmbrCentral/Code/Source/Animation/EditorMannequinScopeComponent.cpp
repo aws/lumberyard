@@ -26,7 +26,7 @@ namespace LmbrCentral
                 ->Field("Animation Database", &EditorMannequinScopeComponent::m_animationDatabase)
                 ->Field("Scope name", &EditorMannequinScopeComponent::m_scopeContextName)
                 ->Field("Target Entity", &EditorMannequinScopeComponent::m_targetEntityId);
-
+#ifdef ENABLE_LEGACY_ANIMATION
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -34,16 +34,18 @@ namespace LmbrCentral
                 editContext->Class<EditorMannequinScopeComponent>(
                     "Mannequin Scope Context", "The Mannequin Scope Context component associates a runtime character instance with a given scope context and an Animation Database (.adb) file")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MannequinScopeContext")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MannequinScopeContext.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/MannequinScopeContext.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-mannequinscope.html")
                     ->DataElement(0, &EditorMannequinScopeComponent::m_animationDatabase, "Animation Database", "Animation database file that has to be attached to this scope context")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorMannequinScopeComponent::m_scopeContextName, "Context Name", "Name of the Scope that the context is to be set for")
                         ->Attribute(AZ::Edit::Attributes::StringList, &EditorMannequinScopeComponent::GetAvailableScopeContextNames)
                     ->DataElement(0, &EditorMannequinScopeComponent::m_targetEntityId, "Target Entity", "Entity that this scope context setting is bound to; Empty for this entity");
             }
+#endif
         }
     }
 

@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include <AzCore/Component/Component.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <SliceBuilder/Source/TypeFingerprinter.h>
 
 namespace SliceBuilder
 {
@@ -22,7 +22,9 @@ namespace SliceBuilder
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
     public:
-        SliceBuilderWorker() = default;
+        AZ_CLASS_ALLOCATOR(SliceBuilderWorker, AZ::SystemAllocator, 0);
+
+        SliceBuilderWorker();
         ~SliceBuilderWorker() = default;
 
         //! Asset Builder Callback Functions
@@ -38,5 +40,10 @@ namespace SliceBuilder
 
     private:
         bool m_isShuttingDown = false;
+        TypeFingerprinter m_typeFingerprinter;
+
+        //! Band-aid fix to deal with ObjectStream not being able to handle blocking loads for an asset in multiple threads
+        //! This will be removed in an upcoming release when the out-of-process builders feature is brought in
+        mutable AZStd::mutex m_processingMutex;
     };
 }

@@ -116,6 +116,7 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
         // TickBus::Handler
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        int GetTickOrder() override;
         //////////////////////////////////////////////////////////////////////////
 
     protected:
@@ -162,6 +163,37 @@ namespace AzFramework
         SpawnRequestContextContainerType m_spawnRequests;
         BindRequestContextContainerType m_bindRequests;
         AZStd::list<AZStd::pair<AZ::EntityId, GridMate::ReplicaPtr>> m_addMasterRequests;
+
+        /**
+         * \brief override how root slice entities' replicas should be loaded
+         *
+         * We occasionally get GameContextBridge replica (that tells us what level to load) before we get
+         * a replica that tells us that we are connecting to a network sessions, thus we may not figure out in time if we
+         * need to load the root slice entities with NetBindingComponent as master replicas or proxy replicas.
+         * This is a fix until proper order is established.
+         *
+         * \param isAuthoritative true if root slice entities with NetBindingComponents to be loaded authoritatively
+         */
+        void OverrideRootSliceLoadMode(bool isAuthoritative)
+        {
+            m_isAuthoritativeRootSliceLoad = isAuthoritative;
+            m_overrideRootSliceLoadAuthoritative = true;
+        }
+
+    private:
+        /**
+         * \brief True if the root slice is to be loaded authoritatively
+         */
+        bool m_isAuthoritativeRootSliceLoad;
+        /**
+         * \brief True if root slice loading mode was overriden, otherwise the mode would be determined via m_bindingSession
+         */
+        bool m_overrideRootSliceLoadAuthoritative;
+        /**
+         * \brief A helper method to figure the mode of loading root slice entities' replicas
+         * \return True if the root slice entities is to be loaded authoritatively
+         */
+        bool IsAuthoritateLoad() const;
     };
 } // namespace AzFramework
 

@@ -33,19 +33,14 @@ bool CImageUtil_impl::SaveJPEG(const QString& strFileName, CImageEx& image)
     return CImageUtil::SaveJPEG(strFileName, image);
 }
 
-bool CImageUtil_impl::SaveBitmap(const QString& szFileName, CImageEx& image, bool inverseY)
+bool CImageUtil_impl::SaveBitmap(const QString& szFileName, CImageEx& image)
 {
-    return CImageUtil::SaveBitmap(szFileName, image, inverseY);
+    return CImageUtil::SaveBitmap(szFileName, image);
 }
 
 bool CImageUtil_impl::LoadBmp(const QString& file, CImageEx& image)
 {
     return CImageUtil::LoadBmp(file, image);
-}
-
-bool CImageUtil_impl::LoadBmp(const QString& fileName, CImageEx& image, const RECT& rc)
-{
-    return CImageUtil::LoadBmp(fileName, image, rc);
 }
 
 bool CImageUtil_impl::SavePGM(const QString& fileName, const CImageEx& image)

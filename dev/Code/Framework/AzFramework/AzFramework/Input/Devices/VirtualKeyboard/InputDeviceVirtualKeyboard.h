@@ -79,16 +79,20 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::TextEntryStart
+        void TextEntryStart(const VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::TextEntryStop
+        void TextEntryStop() override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::TickInputDevice
         void TickInputDevice() override;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEntryRequests::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEntryRequests::TextEntryStopped
-        void TextEntryStopped() override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,11 +120,6 @@ namespace AzFramework
             static Implementation* Create(InputDeviceVirtualKeyboard& inputDevice);
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Custom factory create function
-            using CustomCreateFunctionType = Implementation*(*)(InputDeviceVirtualKeyboard&);
-            static CustomCreateFunctionType CustomCreateFunctionPointer;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
             //! \param[in] inputDevice Reference to the input device being implemented
             Implementation(InputDeviceVirtualKeyboard& inputDevice);
@@ -139,13 +138,18 @@ namespace AzFramework
             virtual bool IsConnected() const = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Display the virtual keyboard, enabling text input
-            //! \param[in] activeTextFieldNormalizedBottomY The active field's normalized bottom y
-            virtual void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) = 0;
+            //! Query whether the virtual keyboard is being displayed/text input enabled
+            //! \return True if  the virtual keyboard is being displayed, false otherwise
+            virtual bool HasTextEntryStarted() const = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Hide the virtual keyboard, disabling text input
-            virtual void TextEntryStopped() = 0;
+            //! Display the virtual keyboard, enabling text input (pair with StopTextInput)
+            //! \param[in] options Used to specify the appearance/behavior of the virtual keyboard
+            virtual void TextEntryStart(const VirtualKeyboardOptions& options) = 0;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Hide the virtual keyboard, disabling text input (pair with StartTextInput)
+            virtual void TextEntryStop() = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Tick/update the input device to broadcast all input events since the last frame
@@ -181,9 +185,18 @@ namespace AzFramework
             AZStd::vector<AZStd::string>  m_rawTextEventQueue;    //!< The raw text event queue
         };
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Set the implementation of this input device
+        //! \param[in] implementation The new implementation
+        void SetImplementation(AZStd::unique_ptr<Implementation> impl) { m_pimpl = AZStd::move(impl); }
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Private pointer to the platform specific implementation
-        Implementation* m_pimpl;
+        AZStd::unique_ptr<Implementation> m_pimpl;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Helper class that handles requests to create a custom implementation for this device
+        InputDeviceImplementationRequestHandler<InputDeviceVirtualKeyboard> m_implementationRequestHandler;
     };
 } // namespace AzFramework

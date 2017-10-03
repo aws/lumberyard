@@ -5,7 +5,6 @@
         ],
         "Include/Util/FlowSystem": [
             "Include/Util/FlowSystem/AsyncFlowgraphResult.h",
-            "Include/Util/FlowSystem/AWSFlowNodePorts.h",
             "Include/Util/FlowSystem/BaseMaglevFlowNode.h",
             "Include/Util/FlowSystem/FlowGraphContext.h"
         ],

@@ -34,7 +34,6 @@
 #include <QMenu>
 #include <QUrl>
 
-#define ERROR_REPORT_DIAG_CLASSNAME "Error Report"
 
 //////////////////////////////////////////////////////////////////////////
 CErrorReportDialog* CErrorReportDialog::m_instance = 0;
@@ -77,9 +76,10 @@ static int __stdcall CompareErrorRecordItems(LPARAM p1, LPARAM p2, LPARAM sort)
 //////////////////////////////////////////////////////////////////////////
 void CErrorReportDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CErrorReportDialog>(GetIEditor(), ERROR_REPORT_DIAG_CLASSNAME, LyViewPane::CategoryOther, options);
+    options.showInMenu = false;
+    AzToolsFramework::RegisterViewPane<CErrorReportDialog>(LyViewPane::ErrorReport, LyViewPane::CategoryOther, options);
 }
 
 CErrorReportDialog::CErrorReportDialog()
@@ -127,7 +127,7 @@ void CErrorReportDialog::Open(CErrorReport* pReport)
 {
     if (!m_instance)
     {
-        GetIEditor()->OpenView(ERROR_REPORT_DIAG_CLASSNAME);
+        GetIEditor()->OpenView(LyViewPane::ErrorReport);
     }
 
     if (!m_instance)

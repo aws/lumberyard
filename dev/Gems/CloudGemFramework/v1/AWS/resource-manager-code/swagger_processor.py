@@ -23,6 +23,7 @@ API_GATEWAY_INTEGRATION_OBJECT_NAME = 'x-amazon-apigateway-integration'
 
 RESPONSE_DESCRIPTION_400 = "Response indicating the client's request was invalid."
 RESPONSE_DESCRIPTION_403 = "Response indicating the client's request was not authenticated or authorized."
+RESPONSE_DESCRIPTION_404 = "Response indicating the resource requested by the client does not exist."
 RESPONSE_DESCRIPTION_500 = "Response indicating the service encountered an internal error when processing the request."
 ERROR_RESPONSE_SCHEMA_REF = { "$ref": "#/definitions/Error" }
 ERROR_RESPONSE_SCHEMA = {
@@ -48,7 +49,7 @@ def add_cli_commands(subparsers, addCommonArgs):
     # add-service-api-resources
     subparser = subparsers.add_parser('service-api-process-swagger', help='Process the Cloud Canvas defined extension objects in a swagger.json to produce swagger definitions that can be imported into AWS API Gateway. This process is performed automatically before uploading a resource group''s swagger.json file.')
     group = subparser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--resource-group', metavar='GROUP', help='The name of the resource group.')
+    group.add_argument('--resource-group', '-r', metavar='GROUP', help='The name of the resource group.')
     group.add_argument('--input', metavar='FILE-PATH', help='The file from which the swagger will be read.')
     subparser.add_argument('--output', required=False, metavar='FILE-PATH', help='The file to which the processed swagger will be written. By default the output is written to stdout.')
     addCommonArgs(subparser)
@@ -250,6 +251,13 @@ def _add_error_response(operation_object):
         }
         added = True
 
+    if not responses_object.contains('404'):
+        responses_object.value['404'] = {
+            "description": RESPONSE_DESCRIPTION_404,
+            "schema": copy.deepcopy(ERROR_RESPONSE_SCHEMA_REF)
+        }
+        added = True
+
     if not responses_object.contains('500'):
         responses_object.value['500'] = {
             "description": RESPONSE_DESCRIPTION_500,
@@ -277,6 +285,7 @@ def __add_cores_response_headers_to_operation(operation_object):
     __add_cores_header_to_object(responses.get_or_add_object('200'), 'Access-Control-Allow-Origin', 'string')
     __add_cores_header_to_object(responses.get_or_add_object('400'), 'Access-Control-Allow-Origin', 'string')
     __add_cores_header_to_object(responses.get_or_add_object('403'), 'Access-Control-Allow-Origin', 'string')
+    __add_cores_header_to_object(responses.get_or_add_object('404'), 'Access-Control-Allow-Origin', 'string')
     __add_cores_header_to_object(responses.get_or_add_object('500'), 'Access-Control-Allow-Origin', 'string')
 
 def __add_cores_header_to_object(object, headername, headertype):
@@ -422,6 +431,7 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
     response_template_500 = "{{\"errorMessage\":\"Service Error: An internal service error has occurred.\",\"errorType\":\"ServiceError\"{}}}".format(additional_response_template_content.get('500', ''))
     response_template_400 = "{{\"errorMessage\":$input.json('$.errorMessage'),\"errorType\":$input.json('$.errorType'){}}}".format(additional_response_template_content.get('400', ''))
     response_template_403 = "{{\"errorMessage\":$input.json('$.errorMessage'),\"errorType\":$input.json('$.errorType'){}}}".format(additional_response_template_content.get('403', ''))
+    response_template_404 = "{{\"errorMessage\":$input.json('$.errorMessage'),\"errorType\":$input.json('$.errorType'){}}}".format(additional_response_template_content.get('404', ''))
 
     # Construct and return the x-amazon-apigateway-integration object.
 
@@ -435,30 +445,51 @@ def _make_integration_object(dispatch_object_stack, parameters_object_stack, pat
             "application/json": request_template
         },
         "responses": {
+
             "default": {
                 "statusCode": "200",
                 "responseTemplates": {
                     "application/json": response_template_200
                 }
             },
-            "(?!Client Error:|Forbidden:).+": {
+
+            # This one matches all non-empty error strings except for the ones matched
+            # by the expressions below. Note that this pattern has only match non-empty
+            # strings (done by the + on the end), otherwise it will match success 
+            # responses as well.
+            #
+            # Also note the use of (?s) to enable DOTALL mode, which casues . to 
+            # match new lines. See https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#DOTALL.
+
+            "(?s)(?!Client Error:|Forbidden:|Not Found:).+": {
                 "statusCode": "500",
                 "responseTemplates": {
                     "application/json": response_template_500
                 }
             },
-            "Client Error:.*": {
+
+            # The prefixes in these strings correspond to the prefixes used by the
+            # exception classes defined in the errors.py file.
+
+            "(?s)Client Error:.*": {
                 "statusCode": "400",
                 "responseTemplates": {
                     "application/json": response_template_400
                 }
             },
-            "Forbidden:.*": {
+            "(?s)Forbidden:.*": {
                 "statusCode": "403",
                 "responseTemplates": {
                     "application/json": response_template_403
                 }
+            },
+            "(?s)Not Found:.*": {
+                "statusCode": "404",
+                "responseTemplates": {
+                    "application/json": response_template_404
+                }
             }
+
         }
     }
 

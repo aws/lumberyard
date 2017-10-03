@@ -21,24 +21,8 @@ struct ICVar;
 class CInputCVars
 {
 public:
-    int     i_debug;
-    int     i_forcefeedback;
-
-    int     i_mouse_buffered;
-    float   i_mouse_sensitivity;
-    float   i_mouse_accel;
-    float   i_mouse_accel_max;
-    float   i_mouse_smooth;
-    float   i_mouse_inertia;
-
-    int     i_bufferedkeys;
-
-    int     i_xinput;
-    int     i_xinput_poll_time;
-
-    int       i_xinput_deadzone_handling;
-
-    int     i_debugDigitalButtons;
+    int i_debug;
+    int i_debugDigitalButtons;
 
     int i_kinSkeletonSmoothType;
     int i_kinectDebug;
@@ -61,10 +45,8 @@ public:
     ICVar* i_kinectXboxConnectIP;
 #endif
 
-#ifdef USE_SYNERGY_INPUT
     ICVar* i_synergyServer;
     ICVar* i_synergyScreenName;
-#endif
 
     CInputCVars();
     ~CInputCVars();

@@ -55,9 +55,13 @@ static void EnsureGpuDataCreated(CParticleContainer* c)
 {
     if (c->GetGPUData() == nullptr)
     {
-        // create GPU instance if it doesn't exist
-        c->SetGPUData(new CParticleContainerGPU());
-        c->GetGPUData()->Initialize(c);
+        IRenderer* render = c->GetRenderer();
+        if (render && render->GetGPUParticleEngine())
+        {
+            // create GPU instance if it doesn't exist
+            c->SetGPUData(new CParticleContainerGPU());
+            c->GetGPUData()->Initialize(c);
+        }
     }
 }
 
@@ -72,7 +76,11 @@ static void RenderContainer(CParticleContainer* c, SRendParams const& RenParams,
     else
     {
         EnsureGpuDataCreated(c);
-        c->GetGPUData()->Render(RenParams, PartParams, passInfo);
+        CParticleContainerGPU* gpuData = c->GetGPUData();
+        if (gpuData)
+        {
+            gpuData->Render(RenParams, PartParams, passInfo);
+        }
     }
 }
 
@@ -291,7 +299,7 @@ void CParticleEmitter::Activate(bool bActive)
 
 void CParticleEmitter::Restart()
 {
-    //clean all the containers. 
+    //clean all the containers.
     Reset();
 
     float fPrevAge = m_fAge;
@@ -522,7 +530,7 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
         //This ensures that this particle will be faded out at the proper camera distance.
         for (int i = 0; i < pEffect->GetLevelOfDetailCount(); i++)
         {
-            if ((pEffect->GetLevelOfDetail(i)->GetActive() || GetPreviewMode() )&&
+            if ((pEffect->GetLevelOfDetail(i)->GetActive() || GetPreviewMode()) &&
                 pEffect->GetLodParticle(pEffect->GetLevelOfDetail(i))->GetParticleParams().bEnabled)
             {
                 _endLod = static_cast<CLodInfo*>(pEffect->GetLevelOfDetail(i));
@@ -533,7 +541,7 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
 
     CParticleContainer* pContainer = pParentContainer;
 
-    // Add the effect if it is enabled and correct for the current spec, or if it is enabled and is located in 
+    // Add the effect if it is enabled and correct for the current spec, or if it is enabled and is located in
     // the preview window, where we want it to be visible regardless of config
     if (pEffect->IsActive() || pEffect->HasParams() && pEffect->GetParams().bEnabled && GetPreviewMode())
     {
@@ -572,7 +580,7 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
                             pContainer->SetStartLod(_startLod);
 
                             pContainer->SetFadeEffectContainer(nullptr);
-                            if (pContainer->GetEffect()->GetParams().bIsCameraNonFacingFadeParticle)
+                            if (pParentContainer && pContainer->GetEffect()->GetParams().bIsCameraNonFacingFadeParticle)
                             {
                                 pParentContainer->SetFadeEffectContainer(pContainer);
                             }
@@ -591,7 +599,7 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
                 if (void* pMem = pNext ? m_Containers.insert_new(pNext) : m_Containers.push_back_new())
                 {
                     pContainer = new(pMem) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
-                    if (pEffect->GetParams().bIsCameraNonFacingFadeParticle)
+                    if (pParentContainer && pEffect->GetParams().bIsCameraNonFacingFadeParticle )
                     {
                         pParentContainer->SetFadeEffectContainer(pContainer);
                     }
@@ -650,10 +658,9 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
     {
         AddEffect(pContainer, pEffect->GetFadeEffect(), bUpdate, bInEditor, startLod, endLod);
     }
-
 }
 
-void CParticleEmitter::RefreshEffect()
+void CParticleEmitter::RefreshEffect(bool recreateContainer)
 {
     FUNCTION_PROFILER_SYS(PARTICLE);
 
@@ -663,6 +670,11 @@ void CParticleEmitter::RefreshEffect()
     }
 
     m_pTopEffect->LoadResources(true);
+
+    if (recreateContainer)
+    {
+        m_Containers.clear();
+    }
 
     if (m_Containers.empty())
     {
@@ -676,7 +688,9 @@ void CParticleEmitter::RefreshEffect()
 
         // Update existing containers
         for_all_ptrs (CParticleContainer, c, m_Containers)
-        c->SetUsed(false);
+        {
+            c->SetUsed(false);
+        }
 
         AddEffect(0, m_pTopEffect, true, gEnv->IsEditing());
 
@@ -826,7 +840,11 @@ void CParticleEmitter::UpdateContainers()
         if (m_isPrimed)
         {
             EnsureGpuDataCreated(c);
-            c->GetGPUData()->Prime(m_fAge);
+            CParticleContainerGPU* gpuData = c->GetGPUData();
+            if (gpuData)
+            {
+                gpuData->Prime(m_fAge);
+            }
         }
     }
     if (!IsEquivalent(bbPrev, m_bbWorld))
@@ -990,7 +1008,6 @@ void CParticleEmitter::UpdateFromEntity()
                 }
             }
         }
-
     }
 
     bool bShadows = (GetEnvFlags() & REN_CAST_SHADOWS) != 0;
@@ -1628,7 +1645,7 @@ void CParticleEmitter::RenderDebugInfo()
         if (bSelected)
         {
             // Draw emission volume(s)
-            IRenderAuxGeom* pRenAux = GetRenderer()->GetIRenderAuxGeom();
+            IRenderAuxGeom* auxRenderer = GetRenderer()->GetIRenderAuxGeom();
 
             int c = 0;
             for_all_ptrs (const CParticleContainer, pCont, m_Containers)
@@ -1639,7 +1656,7 @@ void CParticleEmitter::RenderDebugInfo()
                     ColorB color(c & 1 ? 255 : 128, c & 2 ? 255 : 128, c & 4 ? 255 : 128, 128);
 
                     const ParticleParams& params = pCont->GetEffect()->GetParams();
-                    pRenAux->DrawAABB(params.GetEmitOffsetBounds(), Matrix34(GetLocation()), false, color, eBBD_Faceted);
+                    auxRenderer->DrawAABB(params.GetEmitOffsetBounds(), Matrix34(GetLocation()), false, color, eBBD_Faceted);
                 }
             }
         }
@@ -1742,7 +1759,7 @@ bool CParticleEmitter::UpdateStreamableComponents(float fImportance, Matrix34A& 
             if (ITexture* pTexture = pRenderer->EF_GetTextureByID(params.nTexId))
             {
                 const float minMipFactor = sqr(fEntDistance) / (params.GetFullTextureArea() + 1e-6f);
-                pRenderer->EF_PrecacheResource(pTexture, minMipFactor, 0.f, bFullUpdate ? FPR_SINGLE_FRAME_PRIORITY_UPDATE : 0, GetObjManager()->m_nUpdateStreamingPrioriryRoundId);
+                pRenderer->EF_PrecacheResource(pTexture, minMipFactor, 0.f, bFullUpdate ? FPR_SINGLE_FRAME_PRIORITY_UPDATE : 0, GetObjManager()->GetUpdateStreamingPrioriryRoundId());
             }
         }
 

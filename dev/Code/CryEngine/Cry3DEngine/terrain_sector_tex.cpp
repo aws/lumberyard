@@ -19,6 +19,7 @@
 #include "terrain.h"
 #include "ObjMan.h"
 #include <AzCore/std/functional.h>
+#include "Terrain/Texture/MacroTextureImporter.h"
 
 uint8 CTerrainNode::GetTextureLOD(float fDistance, const SRenderingPassInfo& passInfo)
 {
@@ -140,12 +141,9 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
     FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
 
     SSectorTextureSet renderSet = m_TextureSet;
-    float colorMultiplier = 1.0f;
 
     if (bMacroTextureExists())
     {
-        colorMultiplier = GetMacroTexture()->GetColorMultiplier();
-
         float tileSizeInPixels = (float)GetMacroTexture()->GetTileSizeInPixels();
         float nodeSizeInUnits = (float)(CTerrain::GetSectorSize() << m_nTreeLevel);
         InitSectorTextureSet(tileSizeInPixels, nodeSizeInUnits, m_nOriginX, m_nOriginY, m_TextureSet);
@@ -197,7 +195,7 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
         pRenderMesh->SetCustomTexID(textureId);
     }
 
-    leafData.m_TextureParams[0].Set(renderSet, colorMultiplier);
+    leafData.m_TextureParams[0].Set(renderSet);
     pRenderMesh->GetChunks()[0].pRE->m_CustomData = leafData.m_TextureParams;
 }
 
@@ -276,7 +274,7 @@ bool CTerrain::OpenTerrainTextureFile(const char* szFileName)
 
     const uint32 MaxElementCountPerPool = max(GetCVars()->e_TerrainTextureStreamingPoolItemsNum, 1);
 
-    m_MacroTexture = MacroTexture::Create(Get3DEngine()->GetLevelFilePath(szFileName), MaxElementCountPerPool);
+    m_MacroTexture = MacroTextureImporter::Import(Get3DEngine()->GetLevelFilePath(szFileName), MaxElementCountPerPool);
     if (!m_MacroTexture)
     {
         return false;

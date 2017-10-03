@@ -49,7 +49,15 @@ bool FolderRootWatch::Start()
 
     CFStringRef rootPath = CFStringCreateWithCString(kCFAllocatorDefault, m_root.toStdString().data(), kCFStringEncodingMacRoman);
     CFArrayRef pathsToWatch = CFArrayCreate(NULL, (const void **)&rootPath, 1, NULL);
-    CFAbsoluteTime timeBetweenKernelUpdateAndNotification = 1.0;
+    
+    // The larger this number, the larger the delay between the kernel knowing a file changed
+    // and us actually consuming the event.  It is very important for asset processor to deal with
+    // file changes as fast as possible, since we use file "fencing" to control network access
+    // For example, if someone asks (over the network) "does file xyz exist?" we actually put a random file on disk
+    // and only answer their query when we see that file appear on our file monitor, so that we know all other
+    // file creations/modifications/deletions have been seen before we answer their question.
+    // as such, having a slow response time here can cause a dramatic slowdown for all other operations.
+    CFAbsoluteTime timeBetweenKernelUpdateAndNotification = 0.001;
 
     // Set ourselves as the value for the context info field so that in the callback
     // we get passed into it and the callback can call our public API to handle

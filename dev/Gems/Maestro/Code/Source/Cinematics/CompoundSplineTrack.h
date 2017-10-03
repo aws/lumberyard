@@ -24,7 +24,17 @@ class CCompoundSplineTrack
     : public IAnimTrack
 {
 public:
+    AZ_CLASS_ALLOCATOR(CCompoundSplineTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CCompoundSplineTrack, "{E6B88EF4-6DB7-48E7-9758-DF6C9E40D4D2}", IAnimTrack);
+
     CCompoundSplineTrack(int nDims, EAnimValue inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS]);
+    CCompoundSplineTrack();
+
+    //////////////////////////////////////////////////////////////////////////
+    // for intrusive_ptr support 
+    void add_ref() override;
+    void release() override;
+    //////////////////////////////////////////////////////////////////////////
 
     void SetNode(IAnimNode* node) override;
     // Return Animation Node that owns this Track.
@@ -38,18 +48,8 @@ public:
     virtual EAnimCurveType GetCurveType() { return eAnimCurveType_BezierFloat; };
     virtual EAnimValue GetValueType() { return m_valueType; };
 
-    virtual CAnimParamType  GetParameterType() const { return m_nParamType; };
+    virtual const CAnimParamType& GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CAnimParamType type) { m_nParamType = type; }
-
-    //////////////////////////////////////////////////////////////////////////
-    virtual void Release()
-    {
-        if (--m_nRefCounter <= 0)
-        {
-            delete this;
-        }
-    }
-    //////////////////////////////////////////////////////////////////////////
 
     virtual int GetNumKeys() const;
     virtual void SetNumKeys(int numKeys) { assert(0); };
@@ -111,16 +111,6 @@ public:
 
     void SetSubTrackName(const int i, const string& name) { assert (i < MAX_SUBTRACKS); m_subTrackNames[i] = name; }
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        for (int i = 0; i < MAX_SUBTRACKS; ++i)
-        {
-            pSizer->AddObject(m_subTrackNames[i]);
-            pSizer->AddObject(m_subTracks[i]);
-        }
-    }
-
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     virtual ColorB GetCustomColor() const
     { return m_customColor; }
@@ -158,23 +148,39 @@ public:
         }
     }
 
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 protected:
+    int m_refCount;
     EAnimValue m_valueType;
     int m_nDimensions;
-    _smart_ptr<IAnimTrack> m_subTracks[MAX_SUBTRACKS];
+    AZStd::vector<AZStd::intrusive_ptr<IAnimTrack>> m_subTracks;
     int m_flags;
     CAnimParamType m_nParamType;
-    string m_subTrackNames[MAX_SUBTRACKS];
+    AZStd::vector<AZStd::string> m_subTrackNames;
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     ColorB m_customColor;
     bool m_bCustomColorSet;
 #endif
 
-    void PrepareNodeForSubTrackSerialization(XmlNodeRef& subTrackNode, XmlNodeRef& xmlNode, int i, bool bLoading);
     float PreferShortestRotPath(float degree, float degree0) const;
     int GetSubTrackIndex(int& key) const;
     IAnimNode* m_node;
 };
 
+//////////////////////////////////////////////////////////////////////////
+inline void CCompoundSplineTrack::add_ref()
+{
+    ++m_refCount;
+}
+
+//////////////////////////////////////////////////////////////////////////
+inline void CCompoundSplineTrack::release()
+{
+    if (--m_refCount <= 0)
+    {
+        delete this;
+    }
+}
 #endif // CRYINCLUDE_CRYMOVIE_COMPOUNDSPLINETRACK_H

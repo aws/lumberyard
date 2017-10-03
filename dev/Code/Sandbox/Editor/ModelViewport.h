@@ -258,7 +258,7 @@ protected:
     ICharacterManager* m_pAnimationSystem;
 
     QString m_loadedFile;
-    std::vector<CDLight> m_VPLights;
+    CDLight m_VPLight;
 
     f32 m_LightRotationRadian;
 
@@ -303,9 +303,7 @@ protected:
     CVariable<Vec3> mv_backgroundColor;
     CVariable<Vec3> mv_objectAmbientColor;
 
-    CVariable<Vec3> mv_lightDiffuseColor0;
-    CVariable<Vec3> mv_lightDiffuseColor1;
-    CVariable<Vec3> mv_lightDiffuseColor2;
+    CVariable<Vec3> mv_lightDiffuseColor;
     CVariable<float> mv_lightMultiplier;
     CVariable<float> mv_lightSpecMultiplier;
     CVariable<float> mv_lightRadius;

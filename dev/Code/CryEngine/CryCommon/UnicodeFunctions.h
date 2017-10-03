@@ -141,8 +141,8 @@ namespace Unicode
         {
             SAnalysisResult& result;
 
-            SAnalysisSink(SAnalysisResult& result)
-                : result(result) {}
+            SAnalysisSink(SAnalysisResult& _result)
+                : result(_result) {}
             void operator()(uint32 cp)
             {
                 const bool isCat2 = cp >= 0x80;

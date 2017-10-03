@@ -148,8 +148,8 @@ def _incredibuild_disclaimer(ctx):
     Logs.info('\nWAF is using Incredibuild for distributed Builds')
     Logs.info('To be able to compile with WAF, various licenses are required:')
     Logs.info('The "IncrediBuild for Make && Build Tools Package"   is always needed')
-    Logs.info('The "IncrediBuild for PlayStation Package"          is needed for PS4 Builds')
-    Logs.info('The "IncrediBuild for Xbox One Package"             is needed for Xbox One Builds')
+    Logs.info('The "IncrediBuild for PlayStation Package"          is needed for PS4 Builds') # ACCEPTED_USE
+    Logs.info('The "IncrediBuild for Xbox One Package"             is needed for Xbox One Builds') # ACCEPTED_USE
     Logs.info('If some packages are missing, please ask IT')
     Logs.info('to assign the needed ones to your machine')
 
@@ -173,12 +173,11 @@ def internal_verify_incredibuild_license(licence_name, platform_name):
 
 
 @conf
-def invoke_waf_recursively(bld, use_local_python, build_metrics_supported=False, metrics_namespace=None):
+def invoke_waf_recursively(bld, build_metrics_supported=False, metrics_namespace=None):
     """
     Check the incredibuild parameters and environment to see if we need to invoke waf through incredibuild
 
     :param bld:                 The BuildContext
-    :param use_local_python:    Flag to determine if we are using the engine local python
 
     :return:    True to short circuit the current build flow (because an incredibuild command has been invoked), False to continue the flow
     """
@@ -223,11 +222,6 @@ def invoke_waf_recursively(bld, use_local_python, build_metrics_supported=False,
         Logs.warn('[WARNING] Incredibuild disabled.  Cannot find incredibuild installation.')
         return False
 
-    # an additonal setting for android incredibuild is required, primarily because this package fails often
-    if not bld.is_option_true('use_incredibuild_android') and 'android' in bld.cmd:
-        Logs.warn('[WARNING] Incredibuild for Android targets disabled by build option')
-        return False
-
     # Get the incredibuild profile file
     ib_profile_xml = getattr(bld.options, 'incredibuild_profile', '')
     if ib_profile_xml == "Code/Tools/waf-1.7.13/profile.xml":
@@ -244,25 +238,13 @@ def invoke_waf_recursively(bld, use_local_python, build_metrics_supported=False,
         Logs.warn('Required Make && Build Tools Package not found.  Build will not be accelerated through Incredibuild')
         return False
 
-    # Determine if the Dev Tool Acceleration package is available.  This package is required for Orbis and Durango
+    # Determine if the Dev Tool Acceleration package is available.  This package is required for consoles
     dev_tool_accelerated = 'IncrediBuild for Dev Tool Acceleration' in result
 
-    # Orbis builds need the Playstation extension and Dev Tool Acceleration Packages
-    if 'orbis' in bld.cmd:
-        if not 'IncrediBuild for PlayStation' in result:
-            Logs.warn('Playstation Extension Package not found! Build will not be accelerated through Incredibuild.')
-            return False
+    # Android builds need the Dev Tools Acceleration Package in order to use the profile.xml to specify how tasks are distributed
+    if 'android' in bld.cmd:
         if not dev_tool_accelerated:
-            Logs.warn('Dev Tool Acceleration Package not found! Required in conjunction with the Playstation Extension Package.  Build will not be accelerated through Incredibuild.')
-            return False
-
-    # Durango builds need the XBox One extension and Dev Tool Acceleration Packages
-    if 'durango' in bld.cmd:
-        if not 'IncrediBuild for Xbox One' in result:
-            Logs.warn('Xbox One Extension Package not found! Build will not be accelerated through Incredibuild.')
-            return False
-        if not dev_tool_accelerated:
-            Logs.warn('Dev Tool Acceleration Package not found! Required in conjunction with the Xbox One Extension Package.  Build will not be accelerated through Incredibuild.')
+            Logs.warn('Dev Tool Acceleration Package not found! This is required in order to use Incredibuild for Android.  Build will not be accelerated through Incredibuild.')
             return False
 
     # Windows builds can be run without the Dev Tools Acceleration Package, but won't distribute Qt tasks.
@@ -354,9 +336,6 @@ def invoke_waf_recursively(bld, use_local_python, build_metrics_supported=False,
     process_call.append('/useidemonitor')
     process_call.append('/nologo')
 
-    if use_local_python:
-        process_call.append('/SETENV=\"PYTHONHOME=Code\\SDKs\\Python\\x64\"')
-        process_call.append('/SETENV=\"PYTHONPATH="')
     Logs.debug('incredibuild: Cmdline: ' + str(process_call))
     if subprocess.call(process_call, env=os.environ.copy()):
         bld.fatal("[ERROR] Build Failed")

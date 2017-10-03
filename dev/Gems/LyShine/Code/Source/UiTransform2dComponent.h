@@ -14,6 +14,7 @@
 #include <LyShine/Bus/UiAnimateEntityBus.h>
 #include <LyShine/Bus/UiTransformBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
+#include <LyShine/Bus/UiLayoutFitterBus.h>
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/UiSerializeHelpers.h>
 
@@ -123,6 +124,9 @@ protected: // member functions
 
     //! Determine whether this element's transform is being overridden by a component on its parent
     virtual bool IsControlledByParent() const;
+
+    //! Get the level of control of a layout fitter
+    virtual UiLayoutFitterInterface::FitType GetLayoutFitterType() const;
 
     //! Determine whether this element's transform is not being overridden by a component on its parent
     //! This just exists to be called from the edit context setup

@@ -430,7 +430,7 @@ struct IUiAnimTrack
 #endif
 
     // Return what parameter of the node, this track is attached to.
-    virtual CUiAnimParamType  GetParameterType() const = 0;
+    virtual const CUiAnimParamType& GetParameterType() const = 0;
     // Assign node parameter ID for this track.
     virtual void SetParameterType(CUiAnimParamType type) = 0;
 
@@ -851,21 +851,21 @@ struct IUiAnimSequence
     //! Flags used for SetFlags(),GetFlags(),SetParentFlags(),GetParentFlags() methods.
     enum EUiAnimSequenceFlags
     {
-        eSeqFlags_PlayOnReset                   = BIT(0),   //!< Start playing this sequence immediately after reset of UI animation system(Level load).
-        eSeqFlags_OutOfRangeConstant    = BIT(1),   //!< Constant Out-Of-Range,time continues normally past sequence time range.
-        eSeqFlags_OutOfRangeLoop            = BIT(2),   //!< Loop Out-Of-Range,time wraps back to the start of range when reaching end of range.
-        eSeqFlags_CutScene                      = BIT(3),   //!< Cut scene sequence.
-        eSeqFlags_NoHUD                             = BIT(4),   //!< Don`t display HUD
-        eSeqFlags_NoPlayer                      = BIT(5),   //!< Disable input and drawing of player
-        eSeqFlags_16To9                             = BIT(8),   //!< 16:9 bars in sequence
-        eSeqFlags_NoGameSounds              = BIT(9),   //!< Suppress all game sounds.
-        eSeqFlags_NoSeek                            = BIT(10), //!< Cannot seek in sequence.
-        eSeqFlags_NoAbort                           = BIT(11), //!< Cutscene can not be aborted
-        eSeqFlags_NoSpeed                           = BIT(13), //!< Cannot modify sequence speed - TODO: add interface control if required
-        eSeqFlags_CanWarpInFixedTime    = BIT(14), //!< Timewarping will work with a fixed time step.
-        eSeqFlags_EarlyAnimationUpdate      = BIT(15), //!< Turn the 'sys_earlyUiAnimationUpdate' on during the sequence.
-        eSeqFlags_LightAnimationSet   = BIT(16), //!< A special unique sequence for light animations
-        eSeqFlags_NoMPSyncingNeeded   = BIT(17), //!< this sequence doesn't require MP net syncing
+        eSeqFlags_PlayOnReset          = BIT(0),   //!< Start playing this sequence immediately after reset of UI animation system(Level load).
+        eSeqFlags_OutOfRangeConstant   = BIT(1),   //!< Constant Out-Of-Range,time continues normally past sequence time range.
+        eSeqFlags_OutOfRangeLoop       = BIT(2),   //!< Loop Out-Of-Range,time wraps back to the start of range when reaching end of range.
+        eSeqFlags_CutScene             = BIT(3),   //!< Cut scene sequence.
+        eSeqFlags_NoHUD                = BIT(4),   //!< @deprecated - Don`t display HUD
+        eSeqFlags_NoPlayer             = BIT(5),   //!< Disable input and drawing of player
+        eSeqFlags_16To9                = BIT(8),   //!< 16:9 bars in sequence
+        eSeqFlags_NoGameSounds         = BIT(9),   //!< Suppress all game sounds.
+        eSeqFlags_NoSeek               = BIT(10), //!< Cannot seek in sequence.
+        eSeqFlags_NoAbort              = BIT(11), //!< Cutscene can not be aborted
+        eSeqFlags_NoSpeed              = BIT(13), //!< Cannot modify sequence speed - TODO: add interface control if required
+     // eSeqFlags_CanWarpInFixedTime   = BIT(14), //!< @deprecated - Timewarp by scaling a fixed time step - removed July 2017
+        eSeqFlags_EarlyAnimationUpdate = BIT(15), //!< Turn the 'sys_earlyUiAnimationUpdate' on during the sequence.
+        eSeqFlags_LightAnimationSet    = BIT(16), //!< A special unique sequence for light animations
+        eSeqFlags_NoMPSyncingNeeded    = BIT(17), //!< this sequence doesn't require MP net syncing
     };
 
     virtual ~IUiAnimSequence() {};
@@ -891,11 +891,6 @@ struct IUiAnimSequence
     virtual void SetActiveDirector(IUiAnimNode* pDirectorNode) = 0;
     //! Get the currently active director node, if any.
     virtual IUiAnimNode* GetActiveDirector() const = 0;
-
-    //! Get the fixed time step for timewarping.
-    virtual float GetFixedTimeStep() const = 0;
-    //! Set the fixed time step for timewarping.
-    virtual void SetFixedTimeStep(float dt) = 0;
 
     //! Set animation sequence flags
     virtual void SetFlags(int flags) = 0;

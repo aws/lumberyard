@@ -151,7 +151,15 @@ public: // member functions
     void SetHorizontalTextAlignment(IDraw2d::HAlign alignment) override;
     IDraw2d::VAlign GetVerticalTextAlignment() override;
     void SetVerticalTextAlignment(IDraw2d::VAlign alignment) override;
+    float GetCharacterSpacing() override;
+    //! Expects 1/1000th ems, where 1 em = font size. This will also affect text size, which can lead to
+    //! formatting changes (with word-wrap enabled for instance).
+    void SetCharacterSpacing(float characterSpacing) override;
+    float GetLineSpacing() override;
+    //! Expects pixels.
+    void SetLineSpacing(float lineSpacing) override;
     int GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBoundingBox) override;
+    int GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mustBeInBoundingBox) override;
     AZ::Vector2 GetPointFromCharIndex(int index) override;
     AZ::Color GetSelectionColor() override;
     void GetSelectionRange(int& startIndex, int& endIndex) override;
@@ -255,6 +263,9 @@ protected: // member functions
     //! ChangeNotify callback for color change
     void OnColorChange();
 
+    //! ChangeNotify callback for font size change
+    void OnFontSizeChange();
+
     //! ChangeNotify callback for font pathname change
     AZ::u32 OnFontPathnameChange();
 
@@ -263,6 +274,12 @@ protected: // member functions
 
     //! ChangeNotify callback for text wrap setting change
     void OnWrapTextSettingChange();
+
+    //! ChangeNotify callback for char spacing change
+    void OnCharSpacingChange();
+
+    //! ChangeNotify callback for line spacing change
+    void OnLineSpacingChange();
 
     //! Populate the list for the font effect combo box in the properties pane
     FontEffectComboBoxVec PopulateFontEffectList();
@@ -303,6 +320,9 @@ protected: // member functions
     //! Returns a prototypical STextDrawContext to be used when interacting with IFont routines..
     STextDrawContext GetTextDrawContextPrototype() const;
 
+    //! Recomputes draw batch lines as appropriate depending on current options when text width properties are modified
+    void OnTextWidthPropertyChanged();
+
 private: // static member functions
 
     static bool VersionConverter(AZ::SerializeContext& context,
@@ -318,6 +338,12 @@ private: // member functions
     //! Given an index into the displayed string, returns the line number that the character is displayed on.
     int GetLineNumberFromCharIndex(const int soughtIndex) const;
 
+    //! Invalidates the parent and this element's layout
+    void InvalidateLayout() const;
+
+    //! Refresh the transform properties in the editor's properties pane
+    void CheckLayoutFitterAndRefreshEditorTransformProperties() const;
+
 private: // data
 
     AZStd::string m_text;
@@ -330,6 +356,11 @@ private: // data
     float m_fontSize;
     IDraw2d::HAlign m_textHAlignment;
     IDraw2d::VAlign m_textVAlignment;
+    float m_charSpacing;
+    float m_lineSpacing;
+
+    float m_currFontSize;                           //!< Needed for PropertyValuesChanged method, used for UI animation
+    float m_currCharSpacing;                        //!< Needed for PropertyValuesChanged method, used for UI animation
 
     AzFramework::SimpleAssetReference<LyShine::FontAsset> m_fontFilename;
     IFFont* m_font;
@@ -341,6 +372,11 @@ private: // data
     float m_overrideAlpha;
     FontFamilyPtr m_overrideFontFamily;
     unsigned int m_overrideFontEffectIndex;
+
+    bool m_isColorOverridden;
+    bool m_isAlphaOverridden;
+    bool m_isFontFamilyOverridden;
+    bool m_isFontEffectOverridden;
 
     AZ::Color m_textSelectionColor;                 //!< color for a selection box drawn as background for a range of text
 

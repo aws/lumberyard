@@ -53,8 +53,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
 
     def __110_add_resource_groups(self):
         self.lmbr_aws(
-            'resource-group', 'add',
-            '--resource-group', self.TEST_RESOURCE_GROUP_NAME
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME,
+            '--initial-content', 'no-resources',
+            '--enable'
         )
 
     def __119_create_deployment_access_template_extensions_file(self):
@@ -147,8 +149,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
             '--confirm-resource-deletion'
         )
 
-    def put_identity_pool_in_resource_group_template(self, resource_group_name, pool_name):
-        with self.edit_resource_group_document(resource_group_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+    def put_identity_pool_in_resource_group_template(self, gem_name, pool_name):
+        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             resources = template['Resources']
             resources[pool_name] = {
                 "Type": "Custom::CognitoIdentityPool",
@@ -164,12 +166,12 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
                 }
             }
 
-    def put_user_pool_in_resource_group_template(self, resource_group_name, pool_name, identities, client_apps):
-        with self.edit_resource_group_document(resource_group_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+    def put_user_pool_in_resource_group_template(self, gem_name, pool_name, identities, client_apps):
+        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             self.put_user_pool_in_template(template, pool_name, identities, client_apps)
 
     def put_user_pool_in_deployment_access_template(self, pool_name, identities, client_apps):
-        with self.edit_project_aws_document(resource_manager.constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME) as template:
+        with self.edit_project_aws_json(resource_manager.constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME) as template:
             self.put_user_pool_in_template(template, pool_name, identities, client_apps)
 
     def put_user_pool_in_template(self, template, pool_name, identities, client_apps):

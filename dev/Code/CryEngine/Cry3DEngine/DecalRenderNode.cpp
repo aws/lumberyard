@@ -26,7 +26,7 @@ CDecalRenderNode::CDecalRenderNode()
     , m_pMaterial(NULL)
     , m_updateRequested(false)
     , m_decalProperties()
-    , m_decals()
+    , m_decal(nullptr)
     , m_nLastRenderedFrameId(0)
     , m_nLayerId(0)
 {
@@ -36,7 +36,7 @@ CDecalRenderNode::CDecalRenderNode()
 
 CDecalRenderNode::~CDecalRenderNode()
 {
-    DeleteDecals();
+    DeleteDecal();
     Get3DEngine()->FreeRenderNodeState(this);
 }
 
@@ -46,47 +46,45 @@ const SDecalProperties* CDecalRenderNode::GetDecalProperties() const
     return &m_decalProperties;
 }
 
-void CDecalRenderNode::DeleteDecals()
+void CDecalRenderNode::DeleteDecal()
 {
-    for (size_t i(0); i < m_decals.size(); ++i)
+    if (m_decal)
     {
-        delete m_decals[ i ];
+        delete m_decal;
+        m_decal = nullptr;
+    }
     }
 
-    m_decals.resize(0);
-}
+void CDecalRenderNode::SetCommonProperties(CryEngineDecalInfo& decalInfo)
+{
+    decalInfo.fSize = m_decalProperties.m_radius;
+    decalInfo.pExplicitRightUpFront = &m_decalProperties.m_explicitRightUpFront;
+    decalInfo.sortPrio = m_decalProperties.m_sortPrio;
 
+    decalInfo.pIStatObj = nullptr;
+    decalInfo.ownerInfo.pRenderNode = nullptr;
+    decalInfo.fLifeTime = 1.0f; // default life time for rendering, decal won't grow older as we don't update it
+    decalInfo.fGrowTime = 0.0f;
+    decalInfo.fAngle = 0.0f;
+	
+    // We don't set decalInfo.szMaterialName here because that is handled in CDecalRenderNode::CreateDecal()
+}
 
 void CDecalRenderNode::CreatePlanarDecal()
 {
     CryEngineDecalInfo decalInfo;
 
+    SetCommonProperties(decalInfo);
+
     // necessary params
     decalInfo.vPos = m_decalProperties.m_pos;
     decalInfo.vNormal = m_decalProperties.m_normal;
-    decalInfo.fSize = m_decalProperties.m_radius;
-    decalInfo.pExplicitRightUpFront = &m_decalProperties.m_explicitRightUpFront;
-    strcpy(decalInfo.szMaterialName, m_pMaterial->GetName());
-    decalInfo.sortPrio = m_decalProperties.m_sortPrio;
 
     // default for all other
-    decalInfo.pIStatObj = NULL;
-    decalInfo.ownerInfo.pRenderNode = NULL;
-    decalInfo.fLifeTime = 1.0f; // default life time for rendering, decal won't grow older as we don't update it
     decalInfo.vHitDirection = Vec3(0, 0, 0);
-    decalInfo.fGrowTime = 0;
     decalInfo.preventDecalOnGround = true;
-    decalInfo.fAngle = 0;
 
-    CDecal* pDecal(new CDecal);
-    if (m_p3DEngine->CreateDecalInstance(decalInfo, pDecal))
-    {
-        m_decals.push_back(pDecal);
-    }
-    else
-    {
-        delete pDecal;
-    }
+    CreateDecal(decalInfo);
 }
 
 void CDecalRenderNode::CreateDecalOnTerrain()
@@ -97,39 +95,37 @@ void CDecalRenderNode::CreateDecalOnTerrain()
     {
         CryEngineDecalInfo decalInfo;
 
+        SetCommonProperties(decalInfo);
+
         // necessary params
         decalInfo.vPos = Vec3(m_decalProperties.m_pos.x, m_decalProperties.m_pos.y, terrainHeight);
         decalInfo.vNormal = Vec3(0, 0, 1);
         decalInfo.vHitDirection = Vec3(0, 0, -1);
-        decalInfo.fSize = m_decalProperties.m_radius;// - terrainDelta;
-        decalInfo.pExplicitRightUpFront = &m_decalProperties.m_explicitRightUpFront;
-        strcpy(decalInfo.szMaterialName, m_pMaterial->GetName());
-        decalInfo.sortPrio = m_decalProperties.m_sortPrio;
-
-        // default for all other
-        decalInfo.pIStatObj = NULL;
-        decalInfo.ownerInfo.pRenderNode = 0;
-        decalInfo.fLifeTime = 1.0f; // default life time for rendering, decal won't grow older as we don't update it
-        decalInfo.fGrowTime = 0;
         decalInfo.preventDecalOnGround = false;
-        decalInfo.fAngle = 0;
 
-        CDecal* pDecal(new CDecal);
-        if (m_p3DEngine->CreateDecalInstance(decalInfo, pDecal))
-        {
-            m_decals.push_back(pDecal);
-        }
-        else
-        {
-            delete pDecal;
-        }
+        CreateDecal(decalInfo);
     }
 }
 
+void CDecalRenderNode::CreateDecal(const CryEngineDecalInfo& decalInfo)
+{
+    m_decal = new CDecal();
+    if (m_p3DEngine->CreateDecalInstance(decalInfo, m_decal))
+    {
+        // Rather than setting decalInfo.szMaterialName in SetCommonProperties(), it's better to set IMaterial directly since we already have the desired material. 
+        // This is more reliable than using the material name. For example, if the material was cloned from another one it would have the same name
+        // as the original, and CreateDecalInstance() would load the original from disk rather than the clone.
+        m_decal->m_pMaterial = m_pMaterial;
+    }
+    else
+    {
+        DeleteDecal();
+    }
+}
 
 void CDecalRenderNode::CreateDecals()
 {
-    DeleteDecals();
+    DeleteDecal();
 
     if (m_decalProperties.m_deferred)
     {
@@ -182,21 +178,18 @@ void CDecalRenderNode::UpdateAABBFromRenderMeshes()
     {
         AABB WSBBox;
         WSBBox.Reset();
-        for (size_t i(0); i < m_decals.size(); ++i)
-        {
-            CDecal* pDecal(m_decals[ i ]);
-            if (pDecal && pDecal->m_pRenderMesh && pDecal->m_eDecalType != eDecalType_OS_OwnersVerticesUsed)
+
+        if (m_decal && m_decal->m_pRenderMesh && m_decal->m_eDecalType != eDecalType_OS_OwnersVerticesUsed)
             {
                 AABB aabb;
-                pDecal->m_pRenderMesh->GetBBox(aabb.min, aabb.max);
-                if (pDecal->m_eDecalType == eDecalType_WS_Merged || pDecal->m_eDecalType == eDecalType_WS_OnTheGround)
+            m_decal->m_pRenderMesh->GetBBox(aabb.min, aabb.max);
+            if (m_decal->m_eDecalType == eDecalType_WS_Merged || m_decal->m_eDecalType == eDecalType_WS_OnTheGround)
                 {
-                    aabb.min += pDecal->m_vPos;
-                    aabb.max += pDecal->m_vPos;
+                aabb.min += m_decal->m_vPos;
+                aabb.max += m_decal->m_vPos;
                 }
                 WSBBox.Add(aabb);
             }
-        }
 
         if (!WSBBox.IsReset())
         {
@@ -392,17 +385,14 @@ void CDecalRenderNode::Render(const SRendParams& rParam, const SRenderingPassInf
     }
 
     float waterLevel(m_p3DEngine->GetWaterLevel());
-    for (size_t i(0); i < m_decals.size(); ++i)
+    if (m_decal && 0 != m_decal->m_pMaterial)
     {
-        CDecal* pDecal(m_decals[i]);
-        if (pDecal && 0 != pDecal->m_pMaterial)
-        {
-            pDecal->m_vAmbient.x = rParam.AmbientColor.r;
-            pDecal->m_vAmbient.y = rParam.AmbientColor.g;
-            pDecal->m_vAmbient.z = rParam.AmbientColor.b;
-            bool bAfterWater = CObjManager::IsAfterWater(pDecal->m_vWSPos, passInfo.GetCamera().GetPosition(), passInfo, waterLevel);
-            pDecal->Render(0, bAfterWater, distFading, rParam.fDistance, passInfo, SRendItemSorter(rParam.rendItemSorter));
-        }
+        m_decal->m_vAmbient.x = rParam.AmbientColor.r;
+        m_decal->m_vAmbient.y = rParam.AmbientColor.g;
+        m_decal->m_vAmbient.z = rParam.AmbientColor.b;
+        bool bAfterWater = GetObjManager()->IsAfterWater(m_decal->m_vWSPos, passInfo.GetCamera().GetPosition(), passInfo, waterLevel);
+
+        m_decal->Render(0, bAfterWater, distFading, rParam.fDistance, passInfo, SRendItemSorter(rParam.rendItemSorter));
     }
 
     // terrain decal meshes are created only during rendering so only after that bbox can be computed
@@ -426,13 +416,9 @@ void CDecalRenderNode::SetPhysics(IPhysicalEntity*)
 
 void CDecalRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
-    for (size_t i(0); i < m_decals.size(); ++i)
+    if (m_decal)
     {
-        CDecal* pDecal(m_decals[ i ]);
-        if (pDecal)
-        {
-            pDecal->m_pMaterial = pMat;
-        }
+        m_decal->m_pMaterial = pMat;
     }
 
     m_pMaterial = pMat;
@@ -456,7 +442,7 @@ void CDecalRenderNode::GetMemoryUsage(ICrySizer* pSizer) const
 {
     SIZER_COMPONENT_NAME(pSizer, "DecalNode");
     pSizer->AddObject(this, sizeof(*this));
-    pSizer->AddObject(m_decals);
+    pSizer->AddObject(m_decal);
 }
 
 void CDecalRenderNode::CleanUpOldDecals()
@@ -464,7 +450,7 @@ void CDecalRenderNode::CleanUpOldDecals()
     if (m_nLastRenderedFrameId != 0 && // was rendered at least once
         (int)GetRenderer()->GetFrameID(false) > (int)m_nLastRenderedFrameId + GetCVars()->e_DecalsMaxValidFrames)
     {
-        DeleteDecals();
+        DeleteDecal();
         m_nLastRenderedFrameId = 0;
         m_updateRequested = true; // make sure if rendered again, that the decal is recreated
     }

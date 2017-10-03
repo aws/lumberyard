@@ -64,16 +64,7 @@ Configure.autoconfig = True
 CRY_WAF_TOOL_DIR='Tools/build/waf-1.7.13/lmbrwaflib'
 
 ###############################################################################
-CURRENT_WAF_EXECUTABLE = ''
-
-try:
-    CURRENT_WAF_EXECUTABLE = '{0} ./Code/Tools/waf-1.7.13/lmbr_waf'.format(os.path.relpath(sys.executable))
-except ValueError:
-    # this can happen if your exe is on a different drive on windows.
-    CURRENT_WAF_EXECUTABLE = '{0} ./Code/Tools/waf-1.7.13/lmbr_waf'.format(sys.executable)
-    
-USE_LOCAL_PYTHON = not sys.executable.startswith(os.getcwd())
-
+CURRENT_WAF_EXECUTABLE = '"{0}" ./Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable)
 
 ###############################################################################
 
@@ -93,6 +84,12 @@ def options(opt):
 ###############################################################################
 ## Configure 'configure' step
 def configure(conf):
+    if BUILD_METRICS_SUPPORTED:
+        build_metrics_reporter.set_build_command(conf.cmd)
+
+    # Read the required lmbr configuration
+    conf.calculate_engine_path()
+
     conf.load_user_settings()
 
     # Run the WAF configure workflow
@@ -113,7 +110,8 @@ def configure(conf):
     conf.process_custom_configure_commands()
 
     # Recurse into sub-folders for auto conf when any wscript changes
-    conf.recurse(dirs=SUBFOLDERS)
+    recurse_subfolders = [os.path.join(conf.engine_path,subfolder) for subfolder in SUBFOLDERS]
+    conf.recurse(dirs=recurse_subfolders)
 
     conf.configure_game_projects()
 
@@ -154,10 +152,14 @@ stored_output_file = ''
 def build(bld):
     if BUILD_METRICS_SUPPORTED:
         build_metrics_reporter.add_output_directory(bld.get_variant_dir())
+        build_metrics_reporter.set_build_command(bld.cmd)
 
     if not isinstance(bld, BuildContext):
         bld.fatal("[Error] Invalid build command: '{}'.  Type in '{} --help' for more information"
                   .format(bld.cmd if hasattr(bld, 'cmd') else str(bld), CURRENT_WAF_EXECUTABLE))
+
+    # Read the required lmbr configuration
+    bld.calculate_engine_path()
 
     bld.validate_build_command()
 
@@ -178,20 +180,20 @@ def build(bld):
     bld.add_group('regular_group')
     bld.set_group('regular_group')
 
+    bld.prepare_build_environment()
+
     bld.add_gems_to_specs()
     bld.add_game_projects_to_specs()
 
     if not bld.check_special_command_timestamps():
         return
 
-    bld.prepare_build_environment()
-
     # Check conditionally loaded modules
     bld.check_module_load_options()
 
     ###########################################
     # Check if we need to start ourself recursively for IB
-    if bld.invoke_waf_recursively(USE_LOCAL_PYTHON, BUILD_METRICS_SUPPORTED, METRICS_NAMESPACE):
+    if bld.invoke_waf_recursively(BUILD_METRICS_SUPPORTED, METRICS_NAMESPACE):
         if BUILD_METRICS_SUPPORTED:
             # we don't need anymore metrics from this build, so stop the reporter
             build_metrics_reporter.stop_metric_reporter()
@@ -207,11 +209,12 @@ def build(bld):
     # Load Core Engine Parts (Engine, Tools, Core Shaders etc)
     bld.game_project = None
 
-    bld.recurse(SUBFOLDERS)
+    recurse_subfolders = [os.path.join(bld.engine_path,subfolder) for subfolder in SUBFOLDERS]
+    bld.recurse(recurse_subfolders)
 
     bld.process_gems()
 
-    if Utils.unversioned_sys_platform() != 'linux' and bld.env['CONFIGURATION'] != 'project_generator':
+    if bld.env['CONFIGURATION'] != 'project_generator':
         # Only attempt to bootstrap Qt if the host is not linux
         bld.qtlib_bootstrap(bld.env['PLATFORM'], bld.env['CONFIGURATION'])
 
@@ -230,8 +233,6 @@ def deploy(ctx):
     ctx.env['PLATFORM'] = platform
     ctx.env['CONFIGURATION'] = configuration
     ctx(features=ctx.features)
-
-
 
 ###############################################################################
 def show_option_dialog(ctx):

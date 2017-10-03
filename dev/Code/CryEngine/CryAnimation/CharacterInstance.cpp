@@ -80,16 +80,23 @@ CCharInstance::CCharInstance(const string& strFileName, _smart_ptr<CDefaultSkele
 //--------------------------------------------------------------------------------------------
 void CCharInstance::RuntimeInit(_smart_ptr<CDefaultSkeleton> pExtDefaultSkeleton)
 {
-    for (uint32 i = 0; i < 3; i++)
+
+    //On reload we need to clear out the motion blur pose array of old data
+    //we need to wait for async jobs to be done using the data before clearing
+    for (uint32 i = 0; i < tripleBufferSize; i++)
     {
-        if (arrSkinningRendererData[i].pSkinningData && arrSkinningRendererData[i].pSkinningData->pPreviousSkinningRenderData)
+        SSkinningData* pSkinningData = arrSkinningRendererData[i].pSkinningData;
+        int expectedNumBones = arrSkinningRendererData[i].nNumBones;
+        if (pSkinningData
+            && pSkinningData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData
+            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
         {
-            if (arrSkinningRendererData[i].pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
-            {
-                gEnv->pJobManager->WaitForJob(*arrSkinningRendererData[i].pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
-            }
+            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
         }
     }
+
     memset(arrSkinningRendererData, 0, sizeof(arrSkinningRendererData));
     m_SkeletonAnim.FinishAnimationComputations();
 
@@ -126,6 +133,7 @@ void CCharInstance::RuntimeInit(_smart_ptr<CDefaultSkeleton> pExtDefaultSkeleton
     m_SkeletonPose.m_physics.m_bHasPhysicsProxies = false;
 
     m_bHasVertexAnimation = false;
+    m_bUseMatrixSkinning = false;
 }
 
 
@@ -813,13 +821,9 @@ void CCharInstance::SkinningTransformationsComputation(SSkinningData* pSkinningD
 {
     DEFINE_PROFILER_FUNCTION();
     CRY_ASSERT(pSkinningData);
-    CRY_ASSERT(pSkinningData->pBoneQuatsS);
     CRY_ASSERT(pSkinningData->pPreviousSkinningRenderData);
     CRY_ASSERT(pSkinningData->pPreviousSkinningRenderData->pBoneQuatsS);
     CRY_ASSERT(pSkinningData->pMasterSkinningDataList);
-
-    DualQuat* pSkinningTransformations = pSkinningData->pBoneQuatsS;
-    DualQuat* pSkinningTransformationsPrevious = pSkinningData->pPreviousSkinningRenderData->pBoneQuatsS;
 
     //  float fColor[4] = {1,0,0,1};
     //  g_pIRenderer->Draw2dLabel( 1,g_YLine, 1.3f, fColor, false,"SkinningTransformationsComputationTask" );
@@ -831,50 +835,92 @@ void CCharInstance::SkinningTransformationsComputation(SSkinningData* pSkinningD
     uint32 jointCount = pDefaultSkeleton->GetJointCount();
     const CDefaultSkeleton::SJoint* pJoints = &pDefaultSkeleton->m_arrModelJoints[0];
 
-    QuatT defaultInverse;
     //--- Deliberate querying off the end of arrays for speed, prefetching off the end of an array is safe & avoids extra branches
     const QuatT* absPose_PreFetchOnly = &pJointsAbsolute[0];
-#ifndef _DEBUG
-    CryPrefetch(&pJointsAbsoluteDefault[0]);
-    CryPrefetch(&absPose_PreFetchOnly[0]);
-    CryPrefetch(&pSkinningTransformations[0]);
-    CryPrefetch(&pJointsAbsoluteDefault[1]);
-    CryPrefetch(&absPose_PreFetchOnly[4]);
-    CryPrefetch(&pSkinningTransformations[4]);
-#endif
-    defaultInverse = pJointsAbsoluteDefault[0].GetInverted();
-    pSkinningTransformations[0] = pJointsAbsolute[0] * defaultInverse;
+
     f32& movement = *pSkinningTransformationsMovement;
     movement = 0.0f;
-    for (uint32 i = 1; i < jointCount; ++i)
+
+    QuatT currentTransform = pJointsAbsolute[0] * pJointsAbsoluteDefault[0].GetInverted();
+
+    if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
     {
-#ifndef _DEBUG
-        CryPrefetch(&pJointsAbsoluteDefault[i + 1]);
-        CryPrefetch(&absPose_PreFetchOnly[i + 4]);
-        CryPrefetch(&pSkinningTransformations[i + 4]);
-        CryPrefetch(&pJoints[i + 1].m_idxParent);
-#endif
-        defaultInverse = pJointsAbsoluteDefault[i].GetInverted();
+        CRY_ASSERT(pSkinningData->pBoneMatrices);
 
-        DualQuat& qd = pSkinningTransformations[i];
-        qd = pJointsAbsolute[i] * defaultInverse;
+        Matrix34* pSkinningMatrices = pSkinningData->pBoneMatrices;
+        Matrix34* pSkinningMatricesPrevious = pSkinningData->pPreviousSkinningRenderData->pBoneMatrices;
 
-        int32 p = pJoints[i].m_idxParent;
-        if (p > -1)
+        pSkinningMatrices[0] = Matrix34(currentTransform);
+
+        for (uint32 i = 1; i < jointCount; ++i)
         {
-            f32 cosine = qd.nq | pSkinningTransformations[p].nq;
-            f32 mul = (f32)fsel(cosine, 1.0f, -1.0f);
-            qd.nq *= mul;
-            qd.dq *= mul;
+#ifndef _DEBUG
+            CryPrefetch(&pJointsAbsoluteDefault[i + 1]);
+            CryPrefetch(&absPose_PreFetchOnly[i + 4]);
+            CryPrefetch(&pSkinningMatrices[i + 4]);
+            CryPrefetch(&pJoints[i + 1].m_idxParent);
+#endif
+            currentTransform = pJointsAbsolute[i] * pJointsAbsoluteDefault[i].GetInverted();
+
+            int32 parentIdx = pJoints[i].m_idxParent;
+
+            if (parentIdx > -1)
+            {
+                Quat parentQuat = Quat(pSkinningMatrices[parentIdx]);
+                f32 cosine = currentTransform.q | parentQuat;
+                f32 mul = (f32)fsel(cosine, 1.0f, -1.0f);
+                currentTransform.q *= mul;
+            }
+
+            // Note for future work:
+            // Uniform and non-uniform scaling should be hooked up here
+            pSkinningMatrices[i] = Matrix34(currentTransform);
+
+            const Quat& q0 = currentTransform.q;
+            const Quat& q1 = Quat(pSkinningMatricesPrevious[i]);
+            f32 fQdot = q0 | q1;
+            f32 fQdotSign = (f32)fsel(fQdot, 1.0f, -1.0f);
+            movement += 1.0f - (fQdot * fQdotSign);
         }
-
-        const Quat& q0 = pSkinningTransformations[i].nq;
-        const Quat& q1 = pSkinningTransformationsPrevious[i].nq;
-        f32 fQdot = q0 | q1;
-        f32 fQdotSign = (f32)fsel(fQdot, 1.0f, -1.0f);
-        movement += 1.0f - (fQdot * fQdotSign);
     }
+    else    // Dual Quaternion skinning
+    {
+        CRY_ASSERT(pSkinningData->pBoneQuatsS);
 
+        DualQuat* pSkinningTransformations = pSkinningData->pBoneQuatsS;
+        DualQuat* pSkinningTransformationsPrevious = pSkinningData->pPreviousSkinningRenderData->pBoneQuatsS;
+
+        pSkinningTransformations[0] = currentTransform;
+
+        for (uint32 i = 1; i < jointCount; ++i)
+        {
+#ifndef _DEBUG
+            CryPrefetch(&pJointsAbsoluteDefault[i + 1]);
+            CryPrefetch(&absPose_PreFetchOnly[i + 4]);
+            CryPrefetch(&pSkinningTransformations[i + 4]);
+            CryPrefetch(&pJoints[i + 1].m_idxParent);
+#endif
+            currentTransform = pJointsAbsolute[i] * pJointsAbsoluteDefault[i].GetInverted();
+
+            int32 parentIdx = pJoints[i].m_idxParent;
+            
+            if (parentIdx > -1)
+            {
+                Quat parentQuat = pSkinningTransformations[parentIdx].nq;
+                f32 cosine = currentTransform.q | parentQuat;
+                f32 mul = (f32)fsel(cosine, 1.0f, -1.0f);
+                currentTransform.q *= mul;
+            }
+
+            pSkinningTransformations[i] = currentTransform;
+
+            const Quat& q0 = currentTransform.q;
+            const Quat& q1 = pSkinningTransformationsPrevious[i].nq;
+            f32 fQdot = q0 | q1;
+            f32 fQdotSign = (f32)fsel(fQdot, 1.0f, -1.0f);
+            movement += 1.0f - (fQdot * fQdotSign);
+        }
+    }
 
     // set the list to NULL to indicate the mainthread that the skinning transformation job has finished
     SSkinningData* pSkinningJobList = NULL;

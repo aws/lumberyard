@@ -84,6 +84,8 @@ public: // member functions
     AZ::Entity* FindDescendantById(LyShine::ElementId id) override;
     void FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) override;
 
+    bool IsAncestor(AZ::EntityId id) override;
+
     bool IsEnabled() override;
     void SetIsEnabled(bool isEnabled) override;
 

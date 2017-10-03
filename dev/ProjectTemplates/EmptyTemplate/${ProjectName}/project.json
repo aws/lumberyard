@@ -1,42 +1,21 @@
 {
-    "project_name": "EmptyTemplate",
-    "product_name": "Empty Template",
-    "executable_name": "EmptyTemplateLauncher",
+    "project_name": "${ProjectName}",
+    "product_name": "${ProjectName}",
+    "executable_name": "${ProjectName}Launcher",
     "modules" : [],
-    "project_id": "EmptyProjectId",
-	
-    "durango_settings" : {
-        "app_id"            : "EmptyTemplate",
-		"entry_point"       : "EmptyTemplate.app",
-        "package_name"      : "EmptyTemplate",
-        "display_name"      : "Lumberyard EmptyTemplate",
-        "publisher"         : "Amazon, Inc",
-        "description"       : "LUMBERYARD",
-        "foreground_text"   : "light",
-        "background_color"  : "#6495ED",
-        "version"           : "1.0.0.0",
-        "titleid"           : "00E7F92C",
-        "scid"              : "65b20100-55fe-49dc-82b9-020000e7f92c",
-        "appxmanifest"      : "../Resources/AppxManifest.xml",
-        "logo"              : "../Resources/DurangoLogo.png",
-        "small_logo"        : "../Resources/DurangoSmallLogo.png",
-        "splash_screen"     : "../Resources/DurangoSplashScreen.png",
-        "store_logo"        : "../Resources/DurangoStoreLogo.png",
-        "wide_logo"         : "../Resources/DurangoWideLogo.png"
-    },
+    "project_id": "${ProjectId}",
 
     "android_settings" : {
-        "package_name" : "com.lumberyard.empty",
+        "package_name" : "com.lumberyard.yourgame",
         "version_number" : 1,
         "version_name" : "1.0.0.0",
         "orientation" : "landscape"
     },
 
+    "durango_settings" : {
+    },
+
     "orbis_settings": {
-        "data_folder": "EmptyTemplate",
-        "nptitle_dat": "",
-        "param_sfo": "../Resources/param.sfo",
-        "trophy_trp": "../Resources/trophies.trp"
     }
 
 }

@@ -96,7 +96,7 @@ enum ECgfStreamType
     CGF_STREAM_VERT_MATS,
     CGF_STREAM_QTANGENTS,
     CGF_STREAM_SKINDATA,
-    CGF_STREAM_DUMMY2_,  // used to be CGF_STREAM_PS3EDGEDATA, dummy is needed to keep existing assets loadable
+    CGF_STREAM_DUMMY2_,  // used to be old console specific, dummy is needed to keep existing assets loadable
     CGF_STREAM_P3S_C4B_T2S,
     CGF_STREAM_NUM_TYPES
 };

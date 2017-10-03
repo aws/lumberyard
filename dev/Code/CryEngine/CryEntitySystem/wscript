@@ -25,6 +25,7 @@ def build(bld):
         platforms          = ['all'],
         configurations     = ['all'],
         pch                = 'stdafx.cpp',
+        defines            = ['ENGINE_EXPORTS'],
         use                = ['AzFramework'],
         
         # Testing

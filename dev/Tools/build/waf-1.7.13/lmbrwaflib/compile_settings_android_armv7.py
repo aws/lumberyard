@@ -72,11 +72,6 @@ def load_android_armv7_common_settings(conf):
 
     env['ANDROID_ARCH'] = 'armeabi-v7a'
 
-    # required 3rd party libs that need to be included in the apk
-    env['EXT_LIBS'] += [
-        os.path.join(ndk_root, 'prebuilt', 'android-arm', 'gdbserver', 'gdbserver')
-    ]
-
 
 ################################################################
 @conf
@@ -88,6 +83,12 @@ def load_debug_android_armv7_settings(conf):
 
     conf.load_android_armv7_common_settings()
 
+    # required 3rd party libs that need to be included in the apk
+    # Note: gdbserver is only required for debuggable builds
+    conf.env['EXT_LIBS'] += [
+        conf.add_to_android_cache(os.path.join(conf.env['ANDROID_NDK_HOME'], 'prebuilt', 'android-arm', 'gdbserver', 'gdbserver'))
+    ]
+
 
 ################################################################
 @conf
@@ -98,6 +99,12 @@ def load_profile_android_armv7_settings(conf):
     """
 
     conf.load_android_armv7_common_settings()
+
+    # required 3rd party libs that need to be included in the apk
+    # Note: gdbserver is only required for debuggable builds
+    conf.env['EXT_LIBS'] += [
+        conf.add_to_android_cache(os.path.join(conf.env['ANDROID_NDK_HOME'], 'prebuilt', 'android-arm', 'gdbserver', 'gdbserver'))
+    ]
 
 
 ################################################################

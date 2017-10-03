@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzTest/AzTest.h>
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <qcoreapplication.h>
 #include "../../utilities/assetUtils.h"
 #include "../../resourcecompiler/RCBuilder.h"
@@ -116,6 +117,20 @@ struct TestInternalRecognizerBasedBuilder
         return mockFileInfoList;
     }
 
+    bool SaveProcessJobRequestFile(const char* /*requestFileDir*/, const char* /*requestFileName*/, const AssetBuilderSDK::ProcessJobRequest& /*request*/) override
+    {
+        m_savedProcessJob = true;
+        return true;
+    }
+    
+    // returns false only if there is a critical failure.
+    bool LoadProcessJobResponseFile(const char* /*responseFileDir*/, const char* /*responseFileName*/, AssetBuilderSDK::ProcessJobResponse& /*response*/, bool& /*responseLoaded*/) override
+    {
+        m_loadedProcessJob = true;
+        return true;
+    }
+
+
     void TestProcessJob(const AssetBuilderSDK::ProcessJobRequest& request,
         AssetBuilderSDK::ProcessJobResponse& response)
     {
@@ -184,9 +199,14 @@ struct TestInternalRecognizerBasedBuilder
         return pTestInternalRecognizer->m_paramID;
     }
 
-
+    void TestProcessRCResultFolder(const QString &dest, const AZ::Uuid& productAssetType, bool responseFromRCCompiler, AssetBuilderSDK::ProcessJobResponse &response)
+    {
+        ProcessRCResultFolder(dest, productAssetType, responseFromRCCompiler, response);
+    }
 
     QList<QFileInfo>    m_testFileInfo;
+    bool m_savedProcessJob = false;
+    bool m_loadedProcessJob = false;
 };
 
 
@@ -196,8 +216,7 @@ class RCBuilderTest
     int         m_argc;
     char**      m_argv;
 
-    QCoreApplication* m_qApp;
-
+    QCoreApplication* m_qApp = nullptr;
 public:
     RCBuilderTest()
         : m_argc(0)

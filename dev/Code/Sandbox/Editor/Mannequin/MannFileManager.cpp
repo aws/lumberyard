@@ -19,6 +19,8 @@
 
 #include "MannequinDialog.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include "IGameFramework.h"
 #include "Helper/MannequinFileChangeWriter.h"
 #include "Util/AbstractSortModel.h"
@@ -118,7 +120,7 @@ public:
         else
         {
             QString message = QObject::tr("Failed to checkout file \"%1\"").arg(m_fileName);
-            QMessageBox::warning(nullptr, QObject::tr("Checkout Failed"), message);
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Checkout Failed"), message);
         }
     }
 

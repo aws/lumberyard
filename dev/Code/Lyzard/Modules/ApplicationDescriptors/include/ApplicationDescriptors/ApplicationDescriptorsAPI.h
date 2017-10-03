@@ -26,6 +26,7 @@
 namespace AZ
 {
     class Entity;
+    class ModuleEntity;
 
     namespace rapidxml
     {
@@ -48,7 +49,7 @@ namespace ApplicationDescriptors
     };
 
     /**
-     * Represents a build "Flavor", consisting of a platform (Windows, PS4, XBone, etc.) and a configuration (Game, Editor, etc.).
+     * Represents a build "Flavor", consisting of a platform (Windows, consoles, etc.) and a configuration (Game, Editor, etc.).
      * Subclasses of IFlavorBase provide different ways of accessing the
      * data in an application descriptor file.
      */
@@ -113,6 +114,12 @@ namespace ApplicationDescriptors
         /// If successful, return a ComponentFilter for adding components to this flavor's system entity.
         /// If failed, return error message.
         virtual AZ::Outcome<AzToolsFramework::ComponentFilter, AZStd::string> GetEligibleSystemComponentsFilter() = 0;
+
+        /// Takes ownership of the system entity from the component application to the Flavor.
+        virtual void TakeOwnershipOfSystemEntity() = 0;
+
+        /// Releases ownership of the system entity back to the component application.
+        virtual void ReleaseOwnershipOfSystemEntity() = 0;
     };
 
     using IFlavorPtr = AZStd::shared_ptr<IFlavor>;
@@ -174,6 +181,9 @@ namespace ApplicationDescriptors
         virtual AZ::Outcome<AZStd::vector<AZ::ComponentDescriptor*>, AZStd::string> GetComponentsAvailableToFlavor(const IFlavor& flavor) = 0;
 
         virtual IFlavorXmlPtr GetFlavorXml(Projects::ProjectId projectId, AZ::PlatformID platform, ConfigurationId configuration) = 0;
+
+        /// Split the system entity into the system entity and a list of ModuleEntities
+        virtual AZStd::vector<AZStd::unique_ptr<AZ::ModuleEntity>> SplitSystemEntity(AZ::Entity& systemEntity) = 0;
 
         //////////////////////////////////////////////////////////////////////////
     };

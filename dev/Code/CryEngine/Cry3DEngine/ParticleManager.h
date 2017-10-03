@@ -209,7 +209,7 @@ public:
     // Emitters.
     //////////////////////////////////////////////////////////////////////////
     CParticleEmitter* CreateEmitter(const QuatTS& loc, const IParticleEffect* pEffect, uint32 uEmitterFlags = 0, const SpawnParams* pSpawnParams = NULL);
-    void UpdateEmitters(IParticleEffect* pEffect);
+    void UpdateEmitters(IParticleEffect* pEffect, bool recreateContainer = false);
 
     //////////////////////////////////////////////////////////////////////////
     // Other methods

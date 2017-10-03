@@ -28,7 +28,9 @@
 #include "ActionManager.h"
 #include <AzQtComponents/Components/ToolButtonComboBox.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+#include <QAbstractNativeEventFilter>
 
+class AssetImporterManager;
 class NetPromoterScoreDialog;
 class DayCountManager;
 class LevelEditorMenuHandler;
@@ -166,16 +168,14 @@ public:
     void ResetAutoSaveTimers(bool bForceInit = false);
     void ResetBackgroundUpdateTimer();
 
-    void UpdateToolsMenu();
-
     int ViewPaneVersion() const;
     void MatEditSend(int param);
+
+    LevelEditorMenuHandler* GetLevelEditorMenuHandler() { return m_levelEditorMenuHandler; }
 
 #ifdef Q_OS_WIN
     bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override;
 #endif
-
-    LevelEditorMenuHandler* GetLevelEditorMenuHandler() { return m_levelEditorMenuHandler; }
 
 Q_SIGNALS:
     void ToggleRefCoordSys();
@@ -197,14 +197,12 @@ protected:
 private:
     QWidget* CreateToolbarWidget(int id);
     void ShowCustomizeToolbarDialog();
-    void UpdateMRU();
     void OnGotoSelected();
     void ToggleConsole();
     void ToggleRollupBar();
     void RegisterOpenWndCommands();
     void InitCentralWidget();
     void InitActions();
-    void InitMenuBar();
     void InitToolActionHandlers();
     void InitToolBars();
     void InitStatusBar();
@@ -213,26 +211,6 @@ private:
 
     // AzToolsFramework::SourceControlNotificationBus::Handler:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
-
-    QMenu* CreateFileMenu();
-    QMenu* CreateEditMenu();
-    QMenu* CreateModifyMenu();
-    QMenu* CreateDisplayMenu();
-    QMenu* CreateAIMenu();
-    QMenu* CreateAudioMenu();
-    QMenu* CreateCloudsMenu();
-    QMenu* CreateGameMenu();
-    QMenu* CreatePhysicsMenu();
-    QMenu* CreatePrefabsMenu();
-    QMenu* CreateTerrainMenu();
-    QMenu* CreateToolsMenu();
-    void UpdateMacrosMenu();
-    QMenu* CreateViewMenu();
-    void CreateOpenViewPaneMenu();
-    void UpdateViewLayoutsMenu();
-    QMenu* CreateAWSMenu();
-    QMenu* CreateCommerceMenu();
-    QMenu* CreateHelpMenu();
 
     QToolButton* CreateLayerSelectButton();
     QToolButton* CreateSnapToGridButton();
@@ -244,11 +222,10 @@ private:
 
     QToolButton* CreateUndoRedoButton(int command);
 
-private slots:
+private Q_SLOTS:
     void ShowKeyboardCustomization();
     void ExportKeyboardShortcuts();
     void ImportKeyboardShortcuts();
-    void UpdateOpenViewPaneMenu();
     void OnStopAllSounds();
     void OnRefreshAudioSystem();
     void SaveLayout();
@@ -259,12 +236,13 @@ private slots:
     void OnConnectionStatusClicked();
     void OnUpdateConnectionStatus();
     void ShowConnectionDisconnectedDialog();
-    void ShowOldMenus();
-    void AWSMenuClicked();
 	void CGPMenuClicked();
+    void OnEscapeAction();
 
     // When signal is sent from ActionManager and MainWindow receives it, call this function as slot to send metrics event
     void SendMetricsEvent(const char* viewPaneName, const char* openLocation);
+
+    void OnOpenAssetImporterManager(const QStringList& list);
 
 private:
     bool IsGemEnabled(const QString& uuid, const QString& version) const;
@@ -283,6 +261,8 @@ private:
     CLayoutViewPane* m_activeView;
     QSettings m_settings;
     ToolbarManager* const m_toolbarManager;
+
+    AssetImporterManager* m_assetImporterManager;
     LevelEditorMenuHandler* m_levelEditorMenuHandler;
 
     DayCountManager* m_dayCountManager;
@@ -290,24 +270,16 @@ private:
 
     CLayoutWnd* m_pLayoutWnd;
 
-    ActionManager::MenuWrapper m_viewPanesMenu;
-    ActionManager::MenuWrapper m_layoutsMenu;
-    ActionManager::MenuWrapper m_macrosMenu;
     AZStd::shared_ptr<EngineConnectionListener> m_connectionListener;
     QTimer* m_connectionLostTimer;
-    QMenu* m_fileMenu = nullptr;
-    QAction* m_mruSeparator = nullptr;
 
     QPointer<ToolbarCustomizationDialog> m_toolbarCustomizationDialog;
     QScopedPointer<AzToolsFramework::QtSourceControlNotificationHandler> m_sourceControlNotifHandler;
 
-    QList<QMenu*> m_topLevelMenus;
-
     static MainWindow* m_instance;
 
-    bool m_useNewMenuLayout;
-
     bool m_useNewDocking;
+    bool m_enableLegacyCryEntities;
 
     QMainWindow* m_viewPaneHost;
 

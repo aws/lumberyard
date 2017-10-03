@@ -609,9 +609,15 @@ void CTerrainModifyTool::Command_Activate()
         // Already active.
         return;
     }
+
+    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
+
+    // This needs to be done after the terrain tab is selected, because in
+    // Cry-Free mode the terrain tool could be closed, whereas in legacy
+    // mode the rollupbar is never deleted, it's only hidden
     pTool = new CTerrainModifyTool;
     GetIEditor()->SetEditTool(pTool);
-    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
+
     MainWindow::instance()->update();
 }
 

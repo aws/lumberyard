@@ -734,9 +734,6 @@ void DeviceInfo::ProcessSystemEvent(ESystemEvent event, UINT_PTR wParam, UINT_PT
                 ResizeDXGIBuffers();
                 gcpRendD3D->GetS3DRend().OnResolutionChanged();
                 gcpRendD3D->OnD3D11PostCreateDevice(m_pDevice);
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-                gEnv->pHardwareMouse->GetSystemEventListener()->OnSystemEvent(event, wParam, lParam);
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
             }
 
             m_activated = activate;

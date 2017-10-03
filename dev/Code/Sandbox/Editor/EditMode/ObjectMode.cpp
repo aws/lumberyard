@@ -37,7 +37,6 @@
 
 #include <QMenu>
 #include <QCursor>
-#include <AzToolsFramework/ToolsComponents/EditorSelectionAccentingBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 CObjectMode::CObjectMode(QObject* parent)
@@ -595,8 +594,6 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
             {
                 GetIEditor()->GetObjectManager()->UnselectObject(hitObj);
             }
-
-            AzToolsFramework::Components::EditorSelectionAccentingRequestBus::Broadcast(&AzToolsFramework::Components::EditorSelectionAccentingRequests::ProcessQueuedSelectionAccents);
         }
         if (view->IsUndoRecording())
         {
@@ -1007,7 +1004,13 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
         return true;
     }
 
-    m_openContext = false;
+    // Has the mouse been intentionally moved or could this be a small jump in movement due to right clicking?
+    if (std::abs(m_prevMousePos.x() - point.x()) > 2 || std::abs(m_prevMousePos.y() - point.y()) > 2)
+    {
+        // This was an intentional mouse movement, disable the context menu
+        m_openContext = false;
+    }
+    m_prevMousePos = point;
     SetObjectCursor(view, 0);
 
     Vec3 pos = view->SnapToGrid(view->ViewToWorld(point));

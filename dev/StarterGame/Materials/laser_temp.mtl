@@ -1,0 +1,4 @@
+<Material MtlFlags="524292" Shader="Geometrybeamscaling" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="1,1,1" Specular="0,0,0" Opacity="1" Shininess="10" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures />
+ <PublicParams StartColor="1,1,1" EndColor="1,1,1" FinalMultiplier="4.4699998" SoftIntersectionFactor="1" viewDependencyFactor="10" AmbStrength="0.88" baseUVScaleV="1.176" age="1" baseUVScaleU="1.103" fadingFeaturing="5"/>
+</Material>

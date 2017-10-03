@@ -19,6 +19,9 @@
 #include <memory>
 #include <string.h>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 using namespace Aws::DynamoDB;
 
@@ -44,7 +47,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Query", _HELP("Activate this to query table data")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to query")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to query")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("The name of the key used in this table")),
             InputPortConfig<string>("Key", _HELP("The key to search for"), "KeyValue"),
             InputPortConfig<string>("Attribute", _HELP("The attribute to query about"), "AttributeToCheck"),
@@ -71,21 +74,15 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_StartQuery))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& tableName = client.GetTableName();
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
             auto& tableKeyName = GetPortString(pActInfo, EIP_TableKeyName);
             auto& keyName = GetPortString(pActInfo, EIP_KeyName);
             auto& attributeName = GetPortString(pActInfo, EIP_AttributeName);
             auto& attributeComparison = GetPortString(pActInfo, EIP_AttributeComparisonType);
 
             Aws::DynamoDB::Model::QueryRequest queryRequest;
-            queryRequest.SetTableName(tableName);
+            queryRequest.SetTableName(tableName.c_str());
 
             Aws::String comparisonString;
 

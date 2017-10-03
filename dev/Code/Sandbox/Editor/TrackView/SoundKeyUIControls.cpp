@@ -77,8 +77,8 @@ bool CSoundKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
             ISoundKey soundKey;
             keyHandle.GetKey(&soundKey);
 
-            mv_startTrigger = soundKey.sStartTrigger;
-            mv_stopTrigger = soundKey.sStopTrigger;
+            mv_startTrigger = soundKey.sStartTrigger.c_str();
+            mv_stopTrigger = soundKey.sStopTrigger.c_str();
             mv_duration = soundKey.fDuration;
             mv_customColor = soundKey.customColor;
 
@@ -112,16 +112,14 @@ void CSoundKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
             if (pVar == mv_startTrigger.GetVar())
             {
                 QString sFilename = mv_startTrigger;
-                bChangedSoundFile = sFilename != soundKey.sStartTrigger;
-                strncpy(soundKey.sStartTrigger, sFilename.toLatin1().data(), sizeof(soundKey.sStartTrigger));
-                soundKey.sStartTrigger[sizeof(soundKey.sStartTrigger) - 1] = '\0';
+                bChangedSoundFile = sFilename != soundKey.sStartTrigger.c_str();
+                soundKey.sStartTrigger = sFilename.toLatin1().data();
             }
             else if (pVar == mv_stopTrigger.GetVar())
             {
                 QString sFilename = mv_stopTrigger;
-                bChangedSoundFile = sFilename != soundKey.sStopTrigger;
-                strncpy(soundKey.sStopTrigger, sFilename.toLatin1().data(), sizeof(soundKey.sStopTrigger));
-                soundKey.sStopTrigger[sizeof(soundKey.sStopTrigger) - 1] = '\0';
+                bChangedSoundFile = sFilename != soundKey.sStopTrigger.c_str();
+                soundKey.sStopTrigger = sFilename.toLatin1().data();
             }
 
             SyncValue(mv_duration, soundKey.fDuration, false, pVar);

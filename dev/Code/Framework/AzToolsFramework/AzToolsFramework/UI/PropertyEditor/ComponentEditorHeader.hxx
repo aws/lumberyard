@@ -47,9 +47,6 @@ namespace AzToolsFramework
         void SetExpanded(bool expanded);
         bool IsExpanded() const;
 
-        void SetSelected(bool selected);
-        bool IsSelected() const;
-
         void SetWarningIcon(const QIcon& icon);
         void SetWarning(bool warning);
         bool IsWarning() const;
@@ -62,6 +59,9 @@ namespace AzToolsFramework
         /// This widget will also display any menu set via SetContextMenu(QMenu*).
         void SetHasContextMenu(bool showContextMenu);
 
+        void SetHelpURL(AZStd::string& url);
+        void ClearHelpURL();
+
     Q_SIGNALS:
         void OnContextMenuClicked(const QPoint& position);
         void OnExpanderChanged(bool expanded);
@@ -72,6 +72,7 @@ namespace AzToolsFramework
         void contextMenuEvent(QContextMenuEvent *event) override;
         void TriggerContextMenuUnderButton();
         void UpdateStyleSheets();
+        void TriggerHelpButton();
 
         // Widgets in header
         QVBoxLayout* m_mainLayout = nullptr;
@@ -82,8 +83,10 @@ namespace AzToolsFramework
         QLabel* m_titleLabel = nullptr;
         QLabel* m_warningLabel = nullptr;
         QPushButton* m_contextMenuButton = nullptr;
-        bool m_selected = false;
+        QPushButton* m_helpButton = nullptr;
         bool m_warning = false;
         bool m_readOnly = false;
+
+        AZStd::string m_helpUrl;
     };
 }

@@ -217,6 +217,46 @@ namespace AzToolsFramework
         return true;
     }
 
+    void StdInOutProcessCommunicator::WaitForReadyOutputs(OutputStatus& status) const
+    {
+        status.outputDeviceReady = m_stdOutRead->IsValid() && !m_stdOutRead->IsBroken();
+        status.errorsDeviceReady = m_stdErrRead->IsValid() && !m_stdErrRead->IsBroken();
+        status.shouldReadOutput = status.shouldReadErrors = false;
+
+        if (status.outputDeviceReady || status.errorsDeviceReady)
+        {
+            DWORD waitResult = 0;
+            HANDLE waitHandles[2];
+            AZ::u32 handleCount = 0;
+
+            if (status.outputDeviceReady)
+            {
+                waitHandles[handleCount++] = m_stdOutRead->GetHandle();
+            }
+
+            if (status.errorsDeviceReady)
+            {
+                waitHandles[handleCount++] = m_stdErrRead->GetHandle();
+            }
+
+            waitResult = WaitForMultipleObjects(handleCount, waitHandles, false, INFINITE);
+            switch (waitResult)
+            {
+            case WAIT_OBJECT_0:
+                // If output handle was present, that's the one that signaled, otherwise it was stdError
+                status.shouldReadOutput = status.outputDeviceReady;
+                status.shouldReadErrors = !status.shouldReadOutput;
+                break;
+            case WAIT_OBJECT_0 + 1:
+                // this can only ever be stdError
+                status.shouldReadErrors = true;
+                break;
+            default:
+                break;
+            };
+        }
+    }
+
     bool StdInOutProcessCommunicatorForChildProcess::AttachToExistingPipes()
     {
         m_stdOutWrite->SetHandle(GetStdHandle(STD_OUTPUT_HANDLE), false);

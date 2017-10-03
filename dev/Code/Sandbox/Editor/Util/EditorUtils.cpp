@@ -251,3 +251,23 @@ QColor ColorToQColor(uint32 color)
         (float)GetGValue(color) / 255.0f,
         (float)GetBValue(color) / 255.0f);
 }
+
+namespace EditorUtils
+{
+    AzWarningAbsorber::AzWarningAbsorber(const char* window)
+        : m_window(window)
+    { 
+        BusConnect();
+    }
+
+    bool AzWarningAbsorber::OnPreWarning(const char* window, const char*, int, const char*, const char*)
+    {
+        if (m_window == window)
+        {
+            return true;
+        }
+
+        return false;
+    }
+} // namespace EditorUtils
+

@@ -13,6 +13,14 @@
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <QApplication>
 #include <QDir>
+#include <QSettings>
+
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QJsonValue>
+
 
 #include <AzCore/base.h>
 #include <AzCore/IO/SystemFile.h>
@@ -36,7 +44,9 @@ namespace AzQtComponents
     // since it will be missing the plugin for your current platform (windows/osx/etc)
     void PrepareQtPaths()
     {
-#if defined(WIN32) || defined(WIN64)
+#if defined(USE_DEFAULT_QT_LIBRARY_PATHS)
+        // Nothing to do
+#elif defined(WIN32) || defined(WIN64)
         char modulePath[_MAX_PATH] = { 0 };
         GetModuleFileName(NULL, modulePath, _MAX_PATH);
         char drive[_MAX_DRIVE] = { 0 };
@@ -79,19 +89,72 @@ namespace AzQtComponents
         // so it must be passed in as a parameter, even if we don't use it.
         (void)app;
 
+        // Attempt to locate the engine by looking for 'engineroot.txt' and walking up the folder path until it is found (or not)
         QDir appPath(QApplication::applicationDirPath());
+        QString engineRootPath;
         while (!appPath.isRoot())
         {
-            if (QFile::exists(appPath.filePath("engineroot.txt")))
+            if (QFile::exists(appPath.filePath("engine.json")))
             {
-                return appPath.absolutePath();
+                engineRootPath = appPath.absolutePath();
+                break;
             }
             if (!appPath.cdUp())
             {
                 break;
             }
         }
-        return QString();
+
+        // If we found the actual root, see if the root should represent the (external) engine root if its defined in engine.json 
+        if (!engineRootPath.isEmpty())
+        {
+
+            while (true)
+            {
+                QString engineJsonFilePath(appPath.filePath("engine.json"));
+
+                QFile engineJsonFile(engineJsonFilePath);
+                if (!engineJsonFile.open(QIODevice::ReadOnly | QIODevice::Text))
+                {
+                    // Only proceed if we can read engine.json
+                    break;
+                }
+
+                QByteArray engineJsonData = engineJsonFile.readAll();
+                engineJsonFile.close();
+                QJsonDocument engineJsonDoc(QJsonDocument::fromJson(engineJsonData));
+                if (engineJsonDoc.isNull())
+                {
+                    // Only proceed if engine.json is a valid json file
+                    break;
+                }
+
+                QJsonObject engineJsonRoot = engineJsonDoc.object();
+                if (!engineJsonRoot.contains("ExternalEnginePath"))
+                {
+                    // Only proceed if engine.json has the "ExternalEnginePath" attribute
+                    break;
+                }
+
+                QJsonValue externalEnginePathObject = engineJsonRoot["ExternalEnginePath"];
+                if (!externalEnginePathObject.isString())
+                {
+                    // Only proceed if engine.json's "ExternalEnginePath" is a string
+                    break;
+                }
+
+                QString externalEnginePathStr = externalEnginePathObject.toString();
+                QDir    externalEnginePathDir = QDir(externalEnginePathStr);
+                if (externalEnginePathDir.exists())
+                {
+                    engineRootPath = externalEnginePathStr;
+                }
+                break;
+            }
+        }
+
+        return engineRootPath;
+
     }
 } // namespace AzQtComponents
 

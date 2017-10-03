@@ -26,8 +26,7 @@
 
 #include <IEditor.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvasEditor.h>
 
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
@@ -165,7 +164,6 @@ QMenu* StackResourcesWidget::GetResourceContextMenu(QMouseEvent* mouseEvent)
     {
         auto viewResource = menu->addAction("View resource in AWS console");
         connect(viewResource, &QAction::triggered, this, [this, physicalResourceId, resourceType]() { StackResourcesWidget::ViewConsoleResource(resourceType, physicalResourceId); });
-
         auto clipboardCopy = menu->addAction("Copy resource ID to clipboard");
         connect(clipboardCopy, &QAction::triggered, [physicalResourceId]() {QApplication::clipboard()->setText(physicalResourceId); });
     }
@@ -174,6 +172,7 @@ QMenu* StackResourcesWidget::GetResourceContextMenu(QMouseEvent* mouseEvent)
 
 void StackResourcesWidget::ViewConsoleResource(const QString& resourceType, const QString& resourceName)
 {
+    QString region = m_stackResourcesModel->GetStackResourceRegion();
     QString destString = "https://console.aws.amazon.com/";
     if (resourceType == "AWS::S3::Bucket")
     {
@@ -182,32 +181,29 @@ void StackResourcesWidget::ViewConsoleResource(const QString& resourceType, cons
     }
     else if (resourceType == "AWS::DynamoDB::Table")
     {
-        destString += "dynamodb/#";
+        destString += "dynamodb/home?region=" + region + "#";
         destString += "tables:selected=" + resourceName;
     }
     else if (resourceType == "AWS::Lambda::Function")
     {
-        destString += "lambda/#";
+        destString += "lambda/home?region=" + region + "#";
         destString += "/functions/" + resourceName;
     }
     else if (resourceType == "AWS::IAM::Role")
     {
-        destString += "iam/#";
+        destString += "iam/home?region=" + region + "#";
         destString += "/roles/" + resourceName;
     }
     else if (resourceType == "AWS::CloudFormation::Stack")
     {
-        destString += "cloudformation/#";
+        destString += "cloudformation/home?region=" + region + "#";
         destString += "/stack/detail?stackId=" + resourceName;
     }
 
-    LmbrAWS::IClientManager* clientManager = gEnv->pLmbrAWS->GetClientManager();
     auto profileName = m_view->GetDefaultProfile();
-    if (clientManager)
-    {
-        clientManager->GetEditorClientSettings().credentialProvider = Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD);
-        clientManager->ApplyEditorConfiguration();
-    }
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, SetCredentials, Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD));
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, ApplyConfiguration);
+
     GetIEditor()->LaunchAWSConsole(destString);
 }
 

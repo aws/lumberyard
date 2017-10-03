@@ -18,16 +18,18 @@ namespace AZ
     {
         CgfGroupExportContext::CgfGroupExportContext(SceneAPI::Events::ExportEventContext& parent,
             const SceneAPI::DataTypes::IMeshGroup& group, Phase phase)
-            : m_scene(parent.GetScene())
+            : m_products(parent.GetProductList())
+            , m_scene(parent.GetScene())
             , m_outputDirectory(parent.GetOutputDirectory())
             , m_group(group)
             , m_phase(phase)
         {
         }
 
-        CgfGroupExportContext::CgfGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-            const SceneAPI::DataTypes::IMeshGroup& group, Phase phase)
-            : m_scene(scene)
+        CgfGroupExportContext::CgfGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, 
+            const AZStd::string& outputDirectory, const SceneAPI::DataTypes::IMeshGroup& group, Phase phase)
+            : m_products(products)
+            , m_scene(scene)
             , m_outputDirectory(outputDirectory)
             , m_group(group)
             , m_phase(phase)
@@ -35,7 +37,8 @@ namespace AZ
         }
 
         CgfGroupExportContext::CgfGroupExportContext(const CgfGroupExportContext& copyContext, Phase phase)
-            : m_scene(copyContext.m_scene)
+            : m_products(copyContext.m_products)
+            , m_scene(copyContext.m_scene)
             , m_outputDirectory(copyContext.m_outputDirectory)
             , m_group(copyContext.m_group)
             , m_phase(phase)

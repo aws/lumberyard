@@ -15,7 +15,6 @@
 #define CRYINCLUDE_CRYCOMMON_ISPLINES_H
 #pragma once
 
-
 #include <CrySizer.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -381,6 +380,8 @@ namespace spline
         }
 
         SplineKey& operator=(const SplineKey& src) { memcpy(this, &src, sizeof(*this)); return *this; }
+
+        static void Reflect(AZ::SerializeContext* serializeContext) {}
     };
 
     template    <class T>
@@ -638,17 +639,10 @@ namespace spline
         virtual void interp_keys(int key1, int key2, float u, value_type& val) = 0;
         //////////////////////////////////////////////////////////////////////////
 
-        virtual void GetMemoryUsage(ICrySizer* pSizer, bool bSelf = false) const
-        {
-            if (bSelf && !pSizer->AddObjectSize(this))
-            {
-                return;
-            }
-            pSizer->AddContainer(m_keys);
-        }
+        static void Reflect(AZ::SerializeContext* serializeContext) {}
 
     protected:
-        DynArray<key_type>  m_keys;     // List of keys.
+        AZStd::vector<key_type> m_keys;                 // List of keys.
         uint8           m_flags;
         uint8           m_ORT;                          // Out-Of-Range type.
         int16           m_curr;                         // Current key in track.
@@ -827,16 +821,6 @@ namespace spline
         {
             return sizeof(*this) + mem_size();
         }
-
-        virtual void GetMemoryUsage(ICrySizer* pSizer, bool bSelf = false) const
-        {
-            if (bSelf && !pSizer->AddObjectSize(this))
-            {
-                return;
-            }
-            pSizer->AddObject(m_coeffs);
-            super_type::GetMemoryUsage(pSizer);
-        }
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -1013,6 +997,8 @@ namespace spline
                 }
             }
         }
+
+        static void Reflect(AZ::SerializeContext* serializeContext) {}
 
     protected:
         virtual void interp_keys(int from, int to, float u, T& val)
@@ -1232,8 +1218,10 @@ namespace spline
         virtual void Interpolate(float time, ValueType& value)
         {
             value_type v;
-            spline_type::interpolate(time, v);
-            ToValueType(v, value);
+            if (spline_type::interpolate(time, v))
+            {
+                ToValueType(v, value);
+            }
         }
 
         virtual ISplineBackup* Backup()
@@ -1247,7 +1235,10 @@ namespace spline
             static_cast<spline_type&>(*this) = *pBackup;
         }
     };
-} //namespace spline
+}
 
-
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKey<Vec2>, "{24A4D7E5-C36D-427D-AB49-CD86573B7288}");
+}
 #endif // CRYINCLUDE_CRYCOMMON_ISPLINES_H

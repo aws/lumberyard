@@ -23,6 +23,9 @@ class CScreenFaderTrack
     : public TAnimTrack<IScreenFaderKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CScreenFaderTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CScreenFaderTrack, "{3279BB19-D32D-482E-BD6E-C2DCD8858328}", IAnimTrack);
+
     //-----------------------------------------------------------------------------
     //!
     CScreenFaderTrack();
@@ -35,9 +38,6 @@ public:
     virtual void SerializeKey(IScreenFaderKey& key, XmlNodeRef& keyNode, bool bLoading);
     void SetFlags(int flags) override;
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const;
-
-public:
     void PreloadTextures();
     ITexture* GetActiveTexture() const;
     void SetScreenFaderTrackDefaults();
@@ -50,10 +50,11 @@ public:
     void SetLastTextureID(int nTextureID){ m_lastTextureID = nTextureID; };
     bool SetActiveTexture(int index);
 
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 private:
     void ReleasePreloadedTextures();
 
-private:
     std::vector<ITexture*> m_preloadedTextures;
     bool m_bTextureVisible;
     Vec4 m_drawColor;

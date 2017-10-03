@@ -47,8 +47,8 @@ public:
         eI_Capture = 0,
         eI_DurationBefore,
         eI_DurationAfter,
-        eI_ClipId,                      // in Xbox One this is the MagicMomentID
-        eI_LocalizedClipName,   // in Xbox One this text is shown in the Toast message
+        eI_ClipId,
+        eI_LocalizedClipName,
         eI_Metadata,
     };
 
@@ -62,10 +62,10 @@ public:
     {
         static const SInputPortConfig inputs[] = {
             InputPortConfig_AnyType("Capture", _HELP("Begins Capturing a Clip")),
-            InputPortConfig<float> ("DurationBefore", 20.0f, _HELP("Record that many seconds before the Capture input is triggered")),
-            InputPortConfig<float> ("DurationAftere", 10.0f, _HELP("Record that many seconds after the Capture input is triggered")),
-            InputPortConfig<string>("ClipName", _HELP("In Xbox One: MagicMoment ID used to look up the description string entered throuhg the Xbox Developr Portal")),
-            InputPortConfig<string>("LocalizedClipName", _HELP("In Xbox One: Clip's Name shown during the Toast pop up")),
+            InputPortConfig<float> ("DurationAftere", 10.0f, _HELP("")),
+            InputPortConfig<string>("ClipName",_HELP("")),
+            InputPortConfig<string>("LocalizedClipName", _HELP("")),
+
             InputPortConfig<string>("Metadata", _HELP("Optional. Use it for instance to tag clips")),
             {0}
         };

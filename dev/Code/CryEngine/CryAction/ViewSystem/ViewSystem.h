@@ -122,7 +122,6 @@ private:
 
     //TViewClassMap m_viewClasses;
     TViewMap m_views;
-    TViewIdVector m_cutsceneViewIdVector;
 
     // Listeners
     std::vector<IViewSystemListener*> m_listeners;

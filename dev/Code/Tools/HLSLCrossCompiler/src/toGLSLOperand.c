@@ -3,6 +3,8 @@
 
 #include "internal_includes/toGLSLOperand.h"
 #include "internal_includes/toGLSLDeclaration.h"
+#include "internal_includes/hlslccToolkit.h"
+#include "internal_includes/languages.h"
 #include "bstrlib.h"
 #include "hlslcc.h"
 #include "internal_includes/debug.h"
@@ -21,6 +23,34 @@
 #define fpcheck(x) (isnan(x) || isinf(x))
 
 extern void AddIndentation(HLSLCrossCompilerContext* psContext);
+
+// Returns true if types are just different precisions of the same underlying type
+static bool AreTypesCompatible(SHADER_VARIABLE_TYPE a, uint32_t ui32TOFlag)
+{
+    SHADER_VARIABLE_TYPE b = TypeFlagsToSVTType(ui32TOFlag);
+
+    if (a == b)
+        return true;
+
+    // Special case for array indices: both uint and int are fine
+    if ((ui32TOFlag & TO_FLAG_INTEGER) && (ui32TOFlag & TO_FLAG_UNSIGNED_INTEGER) &&
+        (a == SVT_INT || a == SVT_INT16 || a == SVT_UINT || a == SVT_UINT16))
+        return true;
+
+    if ((a == SVT_FLOAT || a == SVT_FLOAT16 || a == SVT_FLOAT10) &&
+        (b == SVT_FLOAT || b == SVT_FLOAT16 || b == SVT_FLOAT10))
+        return true;
+
+    if ((a == SVT_INT || a == SVT_INT16 || a == SVT_INT12) &&
+        (b == SVT_INT || b == SVT_INT16 || a == SVT_INT12))
+        return true;
+
+    if ((a == SVT_UINT || a == SVT_UINT16) &&
+        (b == SVT_UINT || b == SVT_UINT16))
+        return true;
+
+    return false;
+}
 
 int GetMaxComponentFromComponentMask(const Operand* psOperand)
 {
@@ -906,7 +936,6 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
             else
                 bformata(glsl, "%d", psOperand->ui32RegisterNumber);
         }
-
         break;
     }
     case OPERAND_TYPE_SPECIAL_IMMCONSTINT:
@@ -1021,16 +1050,21 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
                         switch (psVarType->Type)
                         {
                         case SVT_FLOAT:
+                        case SVT_FLOAT16:
+                        case SVT_FLOAT10:
                         {
                             bformata(glsl, "vec%d(", psVarType->Columns);
                             break;
                         }
                         case SVT_UINT:
+                        case SVT_UINT16:
                         {
                             bformata(glsl, "uvec%d(", psVarType->Columns);
                             break;
                         }
                         case SVT_INT:
+                        case SVT_INT16:
+                        case SVT_INT12:
                         {
                             bformata(glsl, "ivec%d(", psVarType->Columns);
                             break;
@@ -1048,16 +1082,21 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
                         switch (psVarType->Type)
                         {
                         case SVT_FLOAT:
+                        case SVT_FLOAT16:
+                        case SVT_FLOAT10:
                         {
                             bformata(glsl, "float(");
                             break;
                         }
                         case SVT_UINT:
+                        case SVT_UINT16:
                         {
                             bformata(glsl, "uint(");
                             break;
                         }
                         case SVT_INT:
+                        case SVT_INT16:
+                        case SVT_INT12:
                         {
                             bformata(glsl, "int(");
                             break;
@@ -1365,93 +1404,36 @@ void TranslateVariableNameByOperandType(HLSLCrossCompilerContext* psContext, con
 
 void TranslateVariableName(HLSLCrossCompilerContext* psContext, const Operand* psOperand, uint32_t ui32TOFlag, uint32_t* pui32IgnoreSwizzle)
 {
-    int integerConstructor = 0;
+    bool hasConstructor = false;
     bstring glsl = *psContext->currentGLSLString;
+    int numComponents = GetNumSwizzleElements(psOperand);
 
     *pui32IgnoreSwizzle = 0;
 
     if (psOperand->eType != OPERAND_TYPE_IMMEDIATE32 &&
         psOperand->eType != OPERAND_TYPE_IMMEDIATE64)
     {
-        const uint32_t swizCount = psOperand->iNumComponents;
-        SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand);
-
-        if ((ui32TOFlag & (TO_FLAG_INTEGER | TO_FLAG_UNSIGNED_INTEGER)) == (TO_FLAG_INTEGER | TO_FLAG_UNSIGNED_INTEGER))
+        if (ui32TOFlag != TO_FLAG_NONE && !(ui32TOFlag & (TO_FLAG_DESTINATION | TO_FLAG_NAME_ONLY | TO_FLAG_DECLARATION_NAME)))
         {
-            //Can be either int or uint
-            if (eType != SVT_INT && eType != SVT_UINT)
+            SHADER_VARIABLE_TYPE requestedType = TypeFlagsToSVTType(ui32TOFlag);
+            const uint32_t swizCount = psOperand->iNumComponents;
+            SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand);
+
+            if (!AreTypesCompatible(eType, ui32TOFlag))
             {
-                if (eType == SVT_FLOAT)
+                if (CanDoDirectCast(eType, requestedType))
                 {
-                    bformata(glsl, "floatBitsToInt(");
-                }
-                else if (swizCount == 1)
-                {
-                    bformata(glsl, "int(");
+                    bformata(glsl, "%s(", GetConstructorForTypeGLSL(psContext, requestedType, swizCount, false));
                 }
                 else
                 {
-                    bformata(glsl, "ivec%d(", swizCount);
+                    // Direct cast not possible, need to do bitcast.
+                    bformata(glsl, "%s(", GetBitcastOp(eType, requestedType));
                 }
 
-                integerConstructor = 1;
+                hasConstructor = true;
             }
-        }
-        else
-        {
-            if ((ui32TOFlag & (TO_FLAG_INTEGER | TO_FLAG_DESTINATION)) == TO_FLAG_INTEGER &&
-                eType != SVT_INT)
-            {
-                //Convert to int
-                if (eType == SVT_FLOAT)
-                {
-                    bformata(glsl, "floatBitsToInt(");
-                }
-                else if (swizCount == 1)
-                {
-                    bformata(glsl, "int(");
-                }
-                else
-                {
-                    bformata(glsl, "ivec%d(", swizCount);
-                }
-
-                integerConstructor = 1;
-            }
-            if ((ui32TOFlag & (TO_FLAG_UNSIGNED_INTEGER | TO_FLAG_DESTINATION)) == TO_FLAG_UNSIGNED_INTEGER &&
-                eType != SVT_UINT)
-            {
-                //Convert to uint
-                if (eType == SVT_FLOAT)
-                {
-                    bformata(glsl, "floatBitsToUint(");
-                }
-                else if (swizCount == 1)
-                {
-                    bformata(glsl, "uint(");
-                }
-                else
-                {
-                    bformata(glsl, "uvec%d(", swizCount);
-                }
-                integerConstructor = 1;
-            }
-            if ((ui32TOFlag & (TO_FLAG_FLOAT | TO_FLAG_DESTINATION)) == TO_FLAG_FLOAT &&
-                eType != SVT_FLOAT)
-            {
-                if (eType == SVT_UINT)
-                {
-                    bformata(glsl, "uintBitsToFloat(");
-                }
-                else
-                {
-                    ASSERT(eType == SVT_INT);
-                    bformata(glsl, "intBitsToFloat(");
-                }
-
-                integerConstructor = 1;
-            }
-        }
+        } 
     }
 
     if (ui32TOFlag & TO_FLAG_COPY)
@@ -1484,13 +1466,31 @@ void TranslateVariableName(HLSLCrossCompilerContext* psContext, const Operand* p
         TranslateVariableNameByOperandType(psContext, psOperand, ui32TOFlag, pui32IgnoreSwizzle);
     }
 
-    if (integerConstructor)
+    if (hasConstructor)
     {
         bcatcstr(glsl, ")");
     }
 }
 SHADER_VARIABLE_TYPE GetOperandDataType(HLSLCrossCompilerContext* psContext, const Operand* psOperand)
 {
+    if (HavePrecisionQualifers(psContext->psShader->eTargetLanguage))
+    {
+        // The min precision qualifier overrides all of the stuff below
+        switch (psOperand->eMinPrecision)
+        {
+        case OPERAND_MIN_PRECISION_FLOAT_16:
+            return SVT_FLOAT16;
+        case OPERAND_MIN_PRECISION_FLOAT_2_8:
+            return SVT_FLOAT10;
+        case OPERAND_MIN_PRECISION_SINT_16:
+            return SVT_INT16;
+        case OPERAND_MIN_PRECISION_UINT_16:
+            return SVT_UINT16;
+        default:
+            break;
+        }
+    }
+
     switch (psOperand->eType)
     {
     case OPERAND_TYPE_TEMP:

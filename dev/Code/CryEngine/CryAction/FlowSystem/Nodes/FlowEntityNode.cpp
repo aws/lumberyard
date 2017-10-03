@@ -2188,7 +2188,7 @@ public:
 
             if (entityType == FlowEntityType::Component)
             {
-                const AZ::EntityId kInvalidEntityId;
+                const AZ::EntityId invalidEntityId;
 
                 if (GetPortBool(pActInfo, EnablePhysics))
                 {
@@ -2197,11 +2197,11 @@ public:
 
                 if (GetPortBool(pActInfo, KeepTransform))
                 {
-                    EBUS_EVENT_ID(pActInfo->entityId, AZ::TransformBus, SetParent, kInvalidEntityId);
+                    EBUS_EVENT_ID(pActInfo->entityId, AZ::TransformBus, SetParent, invalidEntityId);
                 }
                 else
                 {
-                    EBUS_EVENT_ID(pActInfo->entityId, AZ::TransformBus, SetParentRelative, kInvalidEntityId);
+                    EBUS_EVENT_ID(pActInfo->entityId, AZ::TransformBus, SetParentRelative, invalidEntityId);
                 }
             }
             else if (entityType == FlowEntityType::Legacy)

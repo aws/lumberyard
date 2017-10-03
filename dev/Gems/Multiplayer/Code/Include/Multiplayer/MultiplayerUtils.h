@@ -21,10 +21,15 @@
 
 #include <GridMate/Carrier/Driver.h>
 
+
+#pragma push_macro("max")	// files included through gridmate undef max, which causes later compile issues for modules that have std:max in their header
+
 #ifdef NET_SUPPORT_SECURE_SOCKET_DRIVER
 #   include <GridMate/Carrier/SecureSocketDriver.h>
 #endif
 
+
+#pragma pop_macro("max")	// restore previous disabling of max
 
 #include <Multiplayer/IMultiplayerGem.h>
 #include <CertificateManager/ICertificateManagerGem.h>
@@ -126,7 +131,7 @@ namespace Multiplayer
         }    
     };
 
-    struct Durango
+    struct Durango // ACCEPTED_USE
     {
         static void StartSessionService(GridMate::IGridMate* gridMate)
         {
@@ -137,7 +142,7 @@ namespace Multiplayer
         }
     };
 
-    struct Orbis
+    struct Orbis // ACCEPTED_USE
     {
         static void StartSessionService(GridMate::IGridMate* gridMate)
         {

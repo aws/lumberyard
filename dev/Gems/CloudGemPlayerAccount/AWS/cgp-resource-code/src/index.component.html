@@ -1,4 +1,7 @@
-<sub-nav [tabs]="['Accounts', 'Banned Players']" (tabClicked)="changeSubMenuIndex($event)"></sub-nav>
+<facet-generator [context]="context"
+        [tabs]="['Overview', 'Banned Players']"
+        (tabClicked)="changeSubMenuIndex($event)"
+        [metricIdentifier]="context.identifier"></facet-generator>
 <div *ngIf="activeSubMenuIndex == 0 || activeSubMenuIndex == 1">
     <div *ngIf="activeSubMenuIndex == 0" class="row search-row no-gutters">
         <div class="col-6" [ngSwitch]="mode == modes.Show || mode == modes.Edit">
@@ -65,6 +68,11 @@
                         </tr>
                     </tbody>
                 </table>
+                <ng-container *ngIf="enablePagination">
+                    <pagination type="Token" [showPrevious]="previousPaginationToken && currentPageIndex > 0" 
+                    [showNext]="nextPaginationToken && listModel.length >= 20"
+                    (pageChanged)="pageChanged($event)"></pagination>
+                </ng-container>
             </div>
         </div>
     </div>
@@ -170,7 +178,7 @@
 </div>
 <!-- Modals -->
 <!-- Add player modal -->
-<modal *ngIf="mode == modes.Add" title="Add Account" [autoOpen]="true" (modalSubmitted)="addAccount()" [hasSubmit]="true" submitButtonText="Add account" [onClose]="dismissAddModal" [onDismiss]="dismissAddModal">
+<modal *ngIf="mode == modes.Add" title="Add Account" [metricIdentifier]="context.identifier" [autoOpen]="true" (modalSubmitted)="addAccount()" [hasSubmit]="true" submitButtonText="Add account" [onClose]="dismissAddModal" [onDismiss]="dismissAddModal">
     <div class="modal-body">
         <form>
             <div class="form-group row" [class.has-danger]="addModel.validation.username.isvalid == false">
@@ -233,7 +241,7 @@
 </modal>
 
 <!-- Edit player modal -->
-<modal *ngIf="mode == modes.Edit" [title]="'Edit Player Account'" [autoOpen]="true" (modalSubmitted)="edit(editModel)" [hasSubmit]="true" submitButtonText="Save" [onClose]="dismissEditModal" [onDismiss]="dismissEditModal">
+<modal *ngIf="mode == modes.Edit" [title]="'Edit Player Account'" [metricIdentifier]="context.identifier" [autoOpen]="true" (modalSubmitted)="edit(editModel)" [hasSubmit]="true" submitButtonText="Save" [onClose]="dismissEditModal" [onDismiss]="dismissEditModal">
     <div class="modal-body">
         <form>
             <div class="form-group row">
@@ -317,7 +325,7 @@
     </div>
 </modal>
 
-<modal *ngIf="mode == modes.Ban" [title]="'Ban Player Account'" [autoOpen]="true" (modalSubmitted)="banAccount(currentPlayerAccount)" [hasSubmit]="true" [onDismiss]="dismissAddModal" [onClose]="dismissAddModal">
+<modal *ngIf="mode == modes.Ban" [title]="'Ban Player Account'" [metricIdentifier]="context.identifier" [autoOpen]="true" (modalSubmitted)="banAccount(currentPlayerAccount)" [hasSubmit]="true" [onDismiss]="dismissAddModal" [onClose]="dismissAddModal">
     <div class="modal-body">
         <p>
             Are you sure you want you want to ban player {{currentAccount.CognitoUsername}}?
@@ -325,7 +333,7 @@
     </div>
 </modal>
 
-<modal *ngIf="mode == modes.RemoveBan" [title]="'Ban Player Account'" [autoOpen]="true" (modalSubmitted)="removeBan(currentPlayerAccount)" [hasSubmit]="true" [onDismiss]="dismissAddModal" [onClose]="dismissAddModal">
+<modal *ngIf="mode == modes.RemoveBan" [title]="'Ban Player Account'" [metricIdentifier]="context.identifier" [autoOpen]="true" (modalSubmitted)="removeBan(currentPlayerAccount)" [hasSubmit]="true" [onDismiss]="dismissAddModal" [onClose]="dismissAddModal">
     <div class="modal-body">
         <p>
             Are you sure you want you want to remove the ban on player {{currentAccount.CognitoUsername}}?

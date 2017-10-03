@@ -94,32 +94,6 @@ def _project_setting_entry(ctx, project, entry, required=True):
 
     return ctx.projects_settings[project][entry]
 
-
-def _project_durango_setting_entry(ctx, project, entry):
-    """
-    Util function to load an entry from the projects.json file
-    """
-
-    durango_settings = _project_setting_entry(ctx,project, 'durango_settings')
-
-    if not entry in durango_settings:
-        ctx.cry_file_error('Cannot find entry "%s" for project "%s"' % (entry, project), get_project_settings_node(ctx, project).abspath())
-
-    return durango_settings[entry]
-
-def _project_orbis_setting_entry(ctx, project, entry):
-    """
-    Util function to load an entry from the projects.json file
-    """
-
-    orbis_settings = _project_setting_entry(ctx,project, 'orbis_settings')
-
-    if not entry in orbis_settings:
-        ctx.cry_file_error('Cannot find entry "%s" for project "%s"' % (entry, project), get_project_settings_node(ctx, project).abspath())
-
-    return orbis_settings[entry]
-
-#############################################################################
 #############################################################################
 @conf
 def game_projects(self):
@@ -144,9 +118,7 @@ def project_idx (self, project):
         nIdx += 1
     return nIdx;
 
-
 #############################################################################
-
 @conf
 def get_project_node(self, project):
     return _project_setting_entry(self, project, 'project_node')
@@ -250,10 +222,6 @@ def get_android_app_splash_screens(self, project):
     return _get_android_settings_option(self, project, 'splash_screen', default = None)
 
 @conf
-def get_android_place_assets_in_apk_setting(self, project):
-    return (_get_android_settings_option(self, project, 'place_assets_in_apk', default = 0) == 1)
-
-@conf
 def get_android_app_public_key(self, project):
     return _get_android_settings_option(self, project, 'app_public_key', default = "NoKey")
 
@@ -268,10 +236,6 @@ def get_android_use_main_obb(self, project):
 @conf
 def get_android_use_patch_obb(self, project):
     return _get_android_settings_option(self, project, 'use_patch_obb', default = 'false')
-
-@conf
-def get_android_enable_obb_in_dev(self, project):
-    return _get_android_settings_option(self, project, 'enable_obb_in_dev', default = 'false')
 
 @conf
 def get_android_enable_keep_screen_on(self, project):
@@ -447,9 +411,14 @@ def add_game_projects_to_specs(self):
         spec_dict = self.loaded_specs_dict[spec_name]
         if 'modules' not in spec_dict:
             spec_dict['modules'] = []
+        if 'projects' not in spec_dict:
+            spec_dict['projects'] = []
         spec_list = spec_dict['modules']
+        spec_proj = spec_dict['projects']
 
         for project in game_projects:
+            spec_proj.append(project)
+
             # Add any additional modules from the project's project.json configuration
             for module in project_modules(self, project):
                 if not module in spec_list:
@@ -467,11 +436,10 @@ def add_game_projects_to_specs(self):
                     Logs.debug("lumberyard: Added launcher %s for %s (to %s spec in in %s sub_spec)" % (launcher_name, project, spec_name, available_launcher_spec))
                     spec_list_to_append_to.append(launcher_name)
 
-
 #############################################################################
 @conf
 def get_product_name(self, target, game_project):
-    if target == 'PCLauncher' or target == 'OrbisLauncher' or target == 'DurangoLauncher':
+    if target == 'PCLauncher' or target == 'OrbisLauncher' or target == 'DurangoLauncher': # ACCEPTED_USE
         return self.get_launcher_product_name(game_project)
     elif target == 'DedicatedLauncher':
         return self.get_dedicated_server_product_name(game_project)
@@ -479,91 +447,6 @@ def get_product_name(self, target, game_project):
         return target
 
 #############################################################################
-@conf
-def project_durango_app_id(self,project):
-        return _project_durango_setting_entry(self, project, 'app_id')
-
-@conf
-def project_durango_entry_point(self,project):
-        return _project_durango_setting_entry(self, project, 'entry_point')
-
-@conf
-def project_durango_package_name(self,project):
-        return _project_durango_setting_entry(self, project, 'package_name')
-
-@conf
-def project_durango_version(self,project):
-        return _project_durango_setting_entry(self, project, 'version')
-
-@conf
-def project_durango_display_name(self,project):
-        return _project_durango_setting_entry(self, project, 'display_name')
-
-@conf
-def project_durango_publisher_name(self,project):
-        return _project_durango_setting_entry(self, project, 'publisher')
-
-@conf
-def project_durango_description(self,project):
-        return _project_durango_setting_entry(self, project, 'description')
-
-@conf
-def project_durango_foreground_text(self,project):
-        return _project_durango_setting_entry(self, project, 'foreground_text')
-
-@conf
-def project_durango_background_color(self,project):
-        return _project_durango_setting_entry(self, project, 'background_color')
-
-@conf
-def project_durango_titleid(self,project):
-        return _project_durango_setting_entry(self, project, 'titleid')
-
-@conf
-def project_durango_scid(self,project):
-        return _project_durango_setting_entry(self, project, 'scid')
-
-@conf
-def project_durango_appxmanifest(self,project):
-        return _project_durango_setting_entry(self, project, 'appxmanifest')
-
-@conf
-def project_durango_logo(self,project):
-        return _project_durango_setting_entry(self, project, 'logo')
-
-@conf
-def project_durango_small_logo(self,project):
-        return _project_durango_setting_entry(self, project, 'small_logo')
-
-@conf
-def project_durango_wide_logo(self,project):
-        return _project_durango_setting_entry(self, project, 'wide_logo')
-
-@conf
-def project_durango_splash_screen(self,project):
-        return _project_durango_setting_entry(self, project, 'splash_screen')
-
-@conf
-def project_durango_store_logo(self,project):
-        return _project_durango_setting_entry(self, project, 'store_logo')
-
-#############################################################################
-@conf
-def project_orbis_data_folder(self,project):
-        return _project_orbis_setting_entry     (self, project, 'data_folder')
-
-@conf
-def project_orbis_nptitle_dat(self,project):
-        return _project_orbis_setting_entry     (self, project, 'nptitle_dat')
-
-@conf
-def project_orbis_param_sfo(self,project):
-        return _project_orbis_setting_entry     (self, project, 'param_sfo')
-
-@conf
-def project_orbis_trophy_trp(self,project):
-        return _project_orbis_setting_entry     (self, project, 'trophy_trp')
-
 
 @conf
 def get_enabled_game_project_list(self):
@@ -641,31 +524,14 @@ def get_bootstrap_game(self, default_game='SamplesProject'):
         pass
     return game
 
-
-@conf
-def get_layout_bootstrap_game(self, layout_node):
-    """
-    :param self:
-    :return: Name of the game enabled in layouts bootstrap.cfg
-    """
-    
-    bootstrap_cfg = layout_node.make_node('bootstrap.cfg')
-    if not os.path.exists(bootstrap_cfg.abspath()):
-        return None
-    bootstrap_contents = bootstrap_cfg.read()
-    try:
-        game = re.search('^\s*sys_game_folder\s*=\s*(\w+)', bootstrap_contents, re.MULTILINE).group(1)
-    except:
-        game = 'SamplesProject'
-    return game
-    
 @conf
 def get_bootstrap_vfs(self):
     """
     :param self:
-    :return: Name of the game enabled in bootstrap.cfg
+    :return: if vfs is enabled in bootstrap.cfg
     """
-    bootstrap_cfg = self.path.make_node('bootstrap.cfg')
+    project_folder_node = getattr(self,'srcnode',self.path)
+    bootstrap_cfg = project_folder_node.make_node('bootstrap.cfg')
     bootstrap_contents = bootstrap_cfg.read()
     vfs = '0'
     try:
@@ -675,8 +541,6 @@ def get_bootstrap_vfs(self):
     return vfs
 
 GAME_PLATFORM_MAP = {
-    'durango': 'xbone',
-    'orbis': 'ps4',
 }
 
 @conf

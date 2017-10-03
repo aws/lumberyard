@@ -31,7 +31,7 @@ namespace AZ
             {
                 Q_OBJECT
             public:
-                explicit ExportJobProcessingHandler(const AZStd::string& sourceAssetPath, QObject* parent = nullptr);
+                ExportJobProcessingHandler(Uuid traceTag, const AZStd::string& sourceAssetPath, QObject* parent = nullptr);
                 ~ExportJobProcessingHandler() override = default;
                 void BeginProcessing() override;
 

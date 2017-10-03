@@ -21,9 +21,6 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
 
-#include <LmbrAWS/IAWSClientManager.h>
-#include <LmbrAWS/ILmbrAWS.h>
-
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
 #include <aws/lambda/LambdaClient.h>

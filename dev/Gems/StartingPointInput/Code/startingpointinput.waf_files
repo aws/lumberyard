@@ -11,6 +11,10 @@
         "Source": [
             "Source/Input.h",
             "Source/Input.cpp",
+            "Source/InputLibrary.h",
+            "Source/InputLibrary.cpp",
+            "Source/InputNode.h",
+            "Source/InputNode.cpp",
             "Source/LyToAzInputNameConversions.h",
             "Source/StartingPointInputGem.cpp"
         ]

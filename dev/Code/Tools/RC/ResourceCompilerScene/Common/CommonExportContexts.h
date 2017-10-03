@@ -39,33 +39,11 @@ namespace AZ
     }
     namespace RC
     {
-        // Context for export of data derived from DataTypes::IGroup.
-        struct GroupExportContext
-            : public SceneAPI::Events::ICallContext
-        {
-            AZ_RTTI(GroupExportContext, "{A2E9064E-329D-42F2-A164-4BC23D0B4532}", SceneAPI::Events::ICallContext);
-            GroupExportContext(SceneAPI::Events::ExportEventContext& parent,
-                const SceneAPI::DataTypes::IGroup& group, Phase phase);
-            GroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-                const SceneAPI::DataTypes::IGroup& group, Phase phase);
-            GroupExportContext(const GroupExportContext& copyContext, Phase phase);
-            GroupExportContext(const GroupExportContext& copyContext) = delete;
-            ~GroupExportContext() override = default;
-
-            GroupExportContext& operator=(const GroupExportContext& other) = delete;
-
-
-            const SceneAPI::Containers::Scene& m_scene;
-            const AZStd::string& m_outputDirectory;
-            const SceneAPI::DataTypes::IGroup& m_group;
-            const Phase m_phase;
-        };
-
         // Called while creating, filling and finalizing a CContentCGF container.
         struct ContainerExportContext
-            : public GroupExportContext
+            : public SceneAPI::Events::ICallContext
         {
-            AZ_RTTI(ContainerExportContext, "{667A9E60-F3AA-45E1-8E66-05B0C971A094}", GroupExportContext);
+            AZ_RTTI(ContainerExportContext, "{667A9E60-F3AA-45E1-8E66-05B0C971A094}", SceneAPI::Events::ICallContext);
             ContainerExportContext(SceneAPI::Events::ExportEventContext& parent,
                 const SceneAPI::DataTypes::IGroup& group, CContentCGF& container, Phase phase);
             ContainerExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
@@ -76,7 +54,11 @@ namespace AZ
 
             ContainerExportContext& operator=(const ContainerExportContext& other) = delete;
 
+            const SceneAPI::Containers::Scene& m_scene;
+            const AZStd::string& m_outputDirectory;
+            const SceneAPI::DataTypes::IGroup& m_group;
             CContentCGF& m_container;
+            const Phase m_phase;
         };
 
         // Called when a new CNode is added to a CContentCGF container.

@@ -271,6 +271,8 @@ void CEntityProtLibDialog::InitToolbar(UINT nToolbarResID)
     connect(m_pItemToolBar->getAction("actionItemGetProperties"), &QAction::triggered, this, &CEntityProtLibDialog::OnShowDescription);
     connect(m_pItemToolBar->getAction("actionItemReload"), &QAction::triggered, this, &CEntityProtLibDialog::OnReloadEntityScript);
 
+    m_pItemToolBar->getAction("actionItemGetProperties")->setEnabled(false);
+
     InitItemToolbar();
 }
 

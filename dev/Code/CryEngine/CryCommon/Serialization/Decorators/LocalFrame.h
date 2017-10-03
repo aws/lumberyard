@@ -29,11 +29,11 @@ namespace Serialization
         const char* parentName;
         const void* handle;
 
-        LocalPosition(Vec3& vec, int space, const char* parentName, const void* handle)
-            : value(&vec)
-            , space(space)
-            , parentName(parentName)
-            , handle(handle)
+        LocalPosition(Vec3& _vec, int _space, const char* _parentName, const void* _handle)
+            : value(&_vec)
+            , space(_space)
+            , parentName(_parentName)
+            , handle(_handle)
         {
         }
 
@@ -47,11 +47,11 @@ namespace Serialization
         const char* parentName;
         const void* handle;
 
-        LocalOrientation(Quat& vec, int space, const char* parentName, const void* handle)
-            : value(&vec)
-            , space(space)
-            , parentName(parentName)
-            , handle(handle)
+        LocalOrientation(Quat& _vec, int _space, const char* _parentName, const void* _handle)
+            : value(&_vec)
+            , space(_space)
+            , parentName(_parentName)
+            , handle(_handle)
         {
         }
 
@@ -67,13 +67,13 @@ namespace Serialization
         int positionSpace;
         const void* handle;
 
-        LocalFrame(Quat* rotation, int rotationSpace, Vec3* position, int positionSpace, const char* parentName, const void* handle)
-            : rotation(rotation)
-            , position(position)
-            , parentName(parentName)
-            , rotationSpace(rotationSpace)
-            , positionSpace(positionSpace)
-            , handle(handle)
+        LocalFrame(Quat* _rotation, int _rotationSpace, Vec3* _position, int _positionSpace, const char* _parentName, const void* _handle)
+            : rotation(_rotation)
+            , position(_position)
+            , parentName(_parentName)
+            , rotationSpace(_rotationSpace)
+            , positionSpace(_positionSpace)
+            , handle(_handle)
         {
         }
 

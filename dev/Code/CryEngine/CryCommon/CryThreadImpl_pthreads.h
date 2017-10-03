@@ -152,10 +152,80 @@ void* CryInterlockedFlushSList(SLockFreeSingleLinkedListHeader& list)
     return returnValue;
 }
 
+#elif defined(LINUX32)
+//////////////////////////////////////////////////////////////////////////
+// Implementation for Linux32 with gcc using uint64
+//////////////////////////////////////////////////////////////////////////
+void CryInterlockedPushEntrySList(SLockFreeSingleLinkedListHeader& list,  SLockFreeSingleLinkedListEntry& element)
+{
+    uint32 curSetting[2];
+    uint32 newSetting[2];
+    uint32 newPointer = (uint32) & element;
+    do
+    {
+        curSetting[0] = (uint32)list.pNext;
+        curSetting[1] = list.salt;
+        element.pNext = (SLockFreeSingleLinkedListEntry*)curSetting[0];
+        newSetting[0] = newPointer;     // new pointer
+        newSetting[1] = curSetting[1] + 1;   // new salt
+    }
+    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void* CryInterlockedPopEntrySList(SLockFreeSingleLinkedListHeader& list)
+{
+    uint32 curSetting[2];
+    uint32 newSetting[2];
+    do
+    {
+        curSetting[1] = list.salt;
+        curSetting[0] = (uint32)list.pNext;
+        if (curSetting[0] == 0)
+        {
+            return NULL;
+        }
+        newSetting[0] = *(uint32*)curSetting[0];     // new pointer
+        newSetting[1] = curSetting[1] + 1;   // new salt
+    }
+    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
+    return (void*)curSetting[0];
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CryInitializeSListHead(SLockFreeSingleLinkedListHeader& list)
+{
+    list.salt = 0;
+    list.pNext = NULL;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void* CryInterlockedFlushSList(SLockFreeSingleLinkedListHeader& list)
+{
+    uint32 curSetting[2];
+    uint32 newSetting[2];
+    uint32 newSalt;
+    uint32 newPointer;
+    do
+    {
+        curSetting[1] = list.salt;
+        curSetting[0] = (uint32)list.pNext;
+        if (curSetting[0] == 0)
+        {
+            return NULL;
+        }
+        newSetting[0] = 0;
+        newSetting[1] = curSetting[1] + 1;
+    }
+    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
+    return (void*)curSetting[0];
+}
+#else
+// This implementation get's used on multiple platforms that support uint128 compare and swap.
+
 //////////////////////////////////////////////////////////////////////////
 // LINUX64 Implementation of Lockless Single Linked List
 //////////////////////////////////////////////////////////////////////////
-#elif defined(LINUX64) || defined(APPLE) && !defined (ORBIS)
 typedef __uint128_t uint128;
 
 //////////////////////////////////////////////////////////////////////////
@@ -226,75 +296,6 @@ void* CryInterlockedFlushSList(SLockFreeSingleLinkedListHeader& list)
     }
     //  while (false == __sync_bool_compare_and_swap( (volatile uint128*)&list.pNext,*(uint128*)&curSetting[0],*(uint128*)&newSetting[0] ));
     while (0 == _InterlockedCompareExchange128((volatile int64*)&list.pNext, (int64)newSetting[1], (int64)newSetting[0], (int64*)&curSetting[0]));
-    return (void*)curSetting[0];
-}
-//////////////////////////////////////////////////////////////////////////
-#elif defined(LINUX32)
-//////////////////////////////////////////////////////////////////////////
-// Implementation for Linux32 with gcc using uint64
-//////////////////////////////////////////////////////////////////////////
-void CryInterlockedPushEntrySList(SLockFreeSingleLinkedListHeader& list,  SLockFreeSingleLinkedListEntry& element)
-{
-    uint32 curSetting[2];
-    uint32 newSetting[2];
-    uint32 newPointer = (uint32) & element;
-    do
-    {
-        curSetting[0] = (uint32)list.pNext;
-        curSetting[1] = list.salt;
-        element.pNext = (SLockFreeSingleLinkedListEntry*)curSetting[0];
-        newSetting[0] = newPointer;     // new pointer
-        newSetting[1] = curSetting[1] + 1;   // new salt
-    }
-    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
-}
-
-//////////////////////////////////////////////////////////////////////////
-void* CryInterlockedPopEntrySList(SLockFreeSingleLinkedListHeader& list)
-{
-    uint32 curSetting[2];
-    uint32 newSetting[2];
-    do
-    {
-        curSetting[1] = list.salt;
-        curSetting[0] = (uint32)list.pNext;
-        if (curSetting[0] == 0)
-        {
-            return NULL;
-        }
-        newSetting[0] = *(uint32*)curSetting[0];     // new pointer
-        newSetting[1] = curSetting[1] + 1;   // new salt
-    }
-    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
-    return (void*)curSetting[0];
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CryInitializeSListHead(SLockFreeSingleLinkedListHeader& list)
-{
-    list.salt = 0;
-    list.pNext = NULL;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void* CryInterlockedFlushSList(SLockFreeSingleLinkedListHeader& list)
-{
-    uint32 curSetting[2];
-    uint32 newSetting[2];
-    uint32 newSalt;
-    uint32 newPointer;
-    do
-    {
-        curSetting[1] = list.salt;
-        curSetting[0] = (uint32)list.pNext;
-        if (curSetting[0] == 0)
-        {
-            return NULL;
-        }
-        newSetting[0] = 0;
-        newSetting[1] = curSetting[1] + 1;
-    }
-    while (false == __sync_bool_compare_and_swap((volatile uint64*)&list.pNext, *(uint64*)&curSetting[0], *(uint64*)&newSetting[0]));
     return (void*)curSetting[0];
 }
 //////////////////////////////////////////////////////////////////////////

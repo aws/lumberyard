@@ -15,12 +15,15 @@
 #define CRYINCLUDE_CRY3DENGINE_VEGETATION_H
 #pragma once
 
+#include "ObjMan.h"
+
 class CDeformableNode;
 
 #define VEGETATION_CONV_FACTOR 64.f
 
 template <class T>
-class PodArrayAABB : public PodArray<T>
+class PodArrayAABB
+    : public PodArray<T>
 {
 public:
     AABB m_aabbBox;
@@ -59,7 +62,7 @@ public:
     Vec3 GetPos(bool bWorldOnly = true) const;
     virtual float GetScale(void) const { return (1.f / VEGETATION_CONV_FACTOR) * m_ucScale; }
     void SetScale(float fScale) { m_ucScale = (uint8)SATURATEB(fScale * VEGETATION_CONV_FACTOR); }
-    const char* GetName(void) const;
+    virtual const char* GetName() const override;
     virtual CLodValue ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo) override;
     virtual void Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo){ assert(0); }
     void Render(const SRenderingPassInfo& passInfo, const CLodValue& lodValue, SSectorTextureSet* pTerrainTexInfo, const SRendItemSorter& rendItemSorter) const;
@@ -89,13 +92,15 @@ public:
     virtual void OffsetPosition(const Vec3& delta);
     const float GetRadius() const;
     void UpdateRndFlags();
-    ILINE int GetStatObjGroupSize() const { return GetObjManager()->m_lstStaticTypes[0].Count(); }
-    ILINE StatInstGroup& GetStatObjGroup() const { return GetObjManager()->m_lstStaticTypes[0][m_nObjectTypeIndex]; }
-    ILINE CStatObj* GetStatObj() const { return GetObjManager()->m_lstStaticTypes[0][m_nObjectTypeIndex].GetStatObj(); }
+    int GetStatObjGroupSize() const;
+    StatInstGroup& GetStatObjGroup() const;
+
+    IStatObj* GetStatObj();
+
     float GetZAngle() const;
     AABB CalcBBox();
     void CalcMatrix(Matrix34A& tm, int* pTransFags = NULL);
-    virtual uint8 GetMaterialLayers() const { return GetObjManager()->m_lstStaticTypes[0][m_nObjectTypeIndex].nMaterialLayers; }
+    virtual uint8 GetMaterialLayers() const;
     //  float GetLodForDistance(float fDistance);
     void UpdateSunDotTerrain();
     void Init();

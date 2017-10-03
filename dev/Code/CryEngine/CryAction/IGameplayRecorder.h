@@ -16,6 +16,8 @@
 #pragma once
 
 #include "TestSystem/IGameStateRecorder.h"
+#include <TimeValue.h>
+
 typedef enum
 {
     eGE_DiscreetSample = 0,

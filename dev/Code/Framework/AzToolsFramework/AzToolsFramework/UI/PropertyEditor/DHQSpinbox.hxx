@@ -15,6 +15,9 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
 #include <QtWidgets/QSpinBox>
 
 
@@ -24,6 +27,7 @@ namespace AzToolsFramework
 {
     class DHQSpinbox
         : public QSpinBox
+        , public EditorEvents::Bus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(DHQSpinbox, AZ::SystemAllocator, 0);
@@ -33,12 +37,14 @@ namespace AzToolsFramework
         QSize minimumSizeHint() const override;
 
         bool event(QEvent* event) override;
-        void keyPressEvent(QKeyEvent* event) override;
 
         // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
         // YOU MUST USE A POINTER TO DHQSpinbox, NOT A POINTER TO QSpinBox
         // Needed so that we can track of the last value properly for trapping the Escape key
         void setValue(int value);
+
+        // EditorEvents
+        void OnEscape() override;
 
     protected:
         QPoint lastMousePosition;
@@ -50,6 +56,7 @@ namespace AzToolsFramework
 
     class DHQDoubleSpinbox
         : public QDoubleSpinBox
+        , public EditorEvents::Bus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(DHQDoubleSpinbox, AZ::SystemAllocator, 0);
@@ -58,13 +65,15 @@ namespace AzToolsFramework
 
         QSize minimumSizeHint() const override;
 
-        bool event(QEvent* event) override;
-        void keyPressEvent(QKeyEvent* event) override;
+        bool event(QEvent* event) override;        
 
         // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
         // YOU MUST USE A POINTER TO DHQDoubleSpinbox, NOT A POINTER TO QSpinBox
         // Needed so that we can track of the last value properly for trapping the Escape key
         void setValue(double value);
+
+        // EditorEvents
+        void OnEscape() override;
 
     protected:
         QPoint lastMousePosition;

@@ -27,6 +27,24 @@ def ok_project_stack(permissions = {}):
     result = {
         'StackStatus': 'UPDATE_COMPLETE',
         'StackResources': {
+            'AccessControl': {
+                'ResourceType': 'Custom::AccessControl'
+            },
+            'CloudGemPortal': {
+                'ResourceType': 'AWS::S3::Bucket'
+            },
+            'CloudGemPortalAdministratorRole': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
+            'CloudGemPortalBucketPolicy': {
+                'ResourceType': 'AWS::S3::BucketPolicy'
+            },
+            'CloudGemPortalUserAccess': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
+            },
+            'CloudGemPortalUserRole': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
             'Configuration': {
                 'ResourceType': 'AWS::S3::Bucket'
             },
@@ -36,23 +54,29 @@ def ok_project_stack(permissions = {}):
             'Logs': {
                 'ResourceType': 'AWS::S3::Bucket'
             },
-            'CloudGemPortal': {
-                'ResourceType': 'AWS::S3::Bucket'
+            'Helper': {
+                'ResourceType': 'Custom::Helper'
             },
-            'CloudGemPortalBucketPolicy': {
-                'ResourceType': 'AWS::S3::BucketPolicy'
-            },
-            'CloudGemPortalAccessControl': {
-                'ResourceType': 'Custom::AccessControl'
-            },
-            'CloudGemPortalServiceApi': {
-                'ResourceType': 'Custom::ServiceApi'
-            },
-            'CloudGemPortalServiceLambda': {
+            'PlayerAccessTokenExchange': {
                 'ResourceType': 'AWS::Lambda::Function'
             },
-            'ProjectUserPool': {
-                'ResourceType': 'Custom::CognitoUserPool'
+            'PlayerAccessTokenExchangeExecution': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
+            'ProjectAccess': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
+            },
+            'ProjectAdmin': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
+            'ProjectAdminRestrictions': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
+            },
+            'ProjectOwner': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
+            'ProjectOwnerAccess': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
             },
             'ProjectIdentityPool': {
                 'ResourceType': 'Custom::CognitoIdentityPool'
@@ -63,53 +87,26 @@ def ok_project_stack(permissions = {}):
             'ProjectIdentityPoolUnauthenticatedRole': {
                 'ResourceType': 'AWS::IAM::Role'
             },
-            'CloudGemPortalUserRole': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
-            'CloudGemPortalAdministratorRole': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
-            'CloudGemPortalUserAccess': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
-            'PlayerAccessTokenExchange': {
-                'ResourceType': 'AWS::Lambda::Function'
-            },
-            'PlayerAccessTokenExchangeExecution': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
             'ProjectResourceHandler': {
                 'ResourceType': 'AWS::Lambda::Function'
             },
             'ProjectResourceHandlerExecution': {
                 'ResourceType': 'AWS::IAM::Role'
             },
-            'AccessControl': {
-                'ResourceType': 'Custom::AccessControl'
+            'ProjectUserPool': {
+                'ResourceType': 'Custom::CognitoUserPool'
             },
-            'ProjectAdmin': {
-                'ResourceType': 'AWS::IAM::Role'
+            'ServiceApi': {
+                'ResourceType': 'Custom::ServiceApi'
             },
-            'ProjectOwner': {
-                'ResourceType': 'AWS::IAM::Role'
-            },
-            'ProjectAccess': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
-            'ProjectOwnerAccess': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
-            'ProjectAdminRestrictions': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
-            'Helper': {
-                'ResourceType': 'Custom::Helper'
-            },
-            'ProjectServiceLambda': {
+            'ServiceLambda': {
                 'ResourceType': 'AWS::Lambda::Function'
             },
-            'ProjectServiceLambdaExecution': {
-                'ResourceType': 'AWS::IAM::Role'
+            'ServiceLambdaConfiguration': {
+                'ResourceType': 'Custom::LambdaConfiguration'
+            },
+            'ServiceLambdaExecution': {
+                'ResourceType': 'AWS::IAM::ManagedPolicy'
             }
         }
     }
@@ -124,6 +121,9 @@ def ok_deployment_access_stack(permissions = {}):
         'StackStatus': 'CREATE_COMPLETE',
         'StackResources': {
             'Player': {
+                'ResourceType': 'AWS::IAM::Role'
+            },
+            'Server': {
                 'ResourceType': 'AWS::IAM::Role'
             },
             'AccessControl': {
@@ -165,40 +165,3 @@ def ok_deployment_access_stack(permissions = {}):
     return result
 
 
-def ok_deployment_stack_sample_only(stack_status, sample_group_name, group_stack_status):
-    return {
-                'StackStatus': stack_status,
-                'StackResources': {
-                    sample_group_name+'Configuration': {
-                        'ResourceType': 'Custom::ResourceGroupConfiguration'
-                    },
-                    sample_group_name: {
-                        'ResourceType': 'AWS::CloudFormation::Stack',
-                        'StackStatus': group_stack_status,
-                        'StackResources': {
-                            'Messages': {
-                                'ResourceType': 'AWS::DynamoDB::Table'
-                            },
-                            'SayHelloConfiguration': {
-                                'ResourceType': 'Custom::LambdaConfiguration'
-                            },
-                            'SayHello': {
-                                'ResourceType': 'AWS::Lambda::Function',
-                                'Permissions': [
-                                    {
-                                        'Resources': [
-                                            '$Messages$'
-                                        ],
-                                        'Allow': [
-                                            'dynamodb:PutItem'
-                                        ]
-                                    }
-                                ]
-                            },
-                            'AccessControl': {
-                                'ResourceType': 'Custom::AccessControl'
-                            }
-                        }
-                    }
-                }
-            }

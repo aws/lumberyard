@@ -32,8 +32,10 @@ public:
     virtual void Interpolate(float time, ValueType& value)
     {
         value_type v;
-        interpolate(time, v);
-        ToValueType(v, value);
+        if (interpolate(time, v))
+        {
+            ToValueType(v, value);
+        }
         // Clamp values
         //value[0] = clamp_tpl(value[0],m_fMinValue,m_fMaxValue);
     }
@@ -78,7 +80,6 @@ public:
                 SetKeyFlags(keyIndex, flags);
                 key = keystr.Tokenize(",", curPos);
             }
-
         }
         else
         {
@@ -104,8 +105,10 @@ public:
     virtual void Interpolate(float time, ValueType& value)
     {
         value_type v;
-        interpolate(time, v);
-        ToValueType(v, value);
+        if (interpolate(time, v))
+        {
+            ToValueType(v, value);
+        }
         // Clamp for colors.
         //value[0] = clamp_tpl(value[0],0.0f,1.0f);
         //value[1] = clamp_tpl(value[1],0.0f,1.0f);
@@ -153,7 +156,6 @@ public:
                 SetKeyFlags(keyIndex, flags);
                 key = keystr.Tokenize(",", curPos);
             }
-
         }
         else
         {
@@ -382,7 +384,7 @@ void CTimeOfDay::SetTime(float fHour, bool bForceUpdate, bool bEnvUpdate)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTimeOfDay::SetSunPos( float longitude, float latitude ) 
+void CTimeOfDay::SetSunPos(float longitude, float latitude)
 {
     m_sunRotationLongitude = longitude;
     m_sunRotationLatitude = latitude;
@@ -455,7 +457,7 @@ void CTimeOfDay::Update(bool bInterpolate, bool bForceUpdate, bool bEnvUpdate)
                 }
                 default:
                 {
-                        AZ_Error("TimeOfDay", false, "Invalid TimeOfDay object during CTimeOfDay::Update!");
+                    AZ_Error("TimeOfDay", false, "Invalid TimeOfDay object during CTimeOfDay::Update!");
                 }
                 }
             }
@@ -569,8 +571,8 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     }
     else // when not linked, it behaves like the moon
     {
-        float sunLati(-gf_PI + gf_PI * m_sunRotationLatitude / 180.0f);
-        float sunLong(0.5f * gf_PI - gf_PI * m_sunRotationLongitude / 180.0f);
+        float sunLati(-gf_PI + gf_PI* m_sunRotationLatitude / 180.0f);
+        float sunLong(0.5f * gf_PI - gf_PI* m_sunRotationLongitude / 180.0f);
 
         float sinLon(sinf(sunLong));
         float cosLon(cosf(sunLong));
@@ -658,7 +660,7 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
 
     p3DEngine->SetGlobalParameter(E3DPARAM_SUN_SPECULAR_MULTIPLIER, Vec3(sunSpecMultiplier, 0, 0));
 
-    Vec3 fogColor(fogMultiplier * Vec3(GetVar(PARAM_FOG_COLOR).fValue[ 0 ],
+    Vec3 fogColor(fogMultiplier* Vec3(GetVar(PARAM_FOG_COLOR).fValue[ 0 ],
             GetVar(PARAM_FOG_COLOR).fValue[ 1 ], GetVar(PARAM_FOG_COLOR).fValue[ 2 ]));
     p3DEngine->SetFogColor(fogColor);
 
@@ -686,7 +688,7 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     p3DEngine->SetGlobalParameter(E3DPARAM_VOLFOG_SHADOW_DARKENING, Vec3(GetVar(PARAM_VOLFOG_SHADOW_DARKENING).fValue[0], GetVar(PARAM_VOLFOG_SHADOW_DARKENING_SUN).fValue[0], GetVar(PARAM_VOLFOG_SHADOW_DARKENING_AMBIENT).fValue[0]));
 
     // set HDR sky lighting properties
-    Vec3 sunIntensity(sunIntensityMultiplier * Vec3(GetVar(PARAM_SKYLIGHT_SUN_INTENSITY).fValue[ 0 ],
+    Vec3 sunIntensity(sunIntensityMultiplier* Vec3(GetVar(PARAM_SKYLIGHT_SUN_INTENSITY).fValue[ 0 ],
             GetVar(PARAM_SKYLIGHT_SUN_INTENSITY).fValue[ 1 ], GetVar(PARAM_SKYLIGHT_SUN_INTENSITY).fValue[ 2 ]));
 
     Vec3 rgbWaveLengths(GetVar(PARAM_SKYLIGHT_WAVELENGTH_R).fValue[ 0 ],
@@ -696,11 +698,11 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
         GetVar(PARAM_SKYLIGHT_KR).fValue[ 0 ], GetVar(PARAM_SKYLIGHT_G).fValue[ 0 ], rgbWaveLengths, forceUpdate);
 
     // set night sky color properties
-    Vec3 nightSkyHorizonColor(nightSkyHorizonMultiplier * Vec3(GetVar(PARAM_NIGHSKY_HORIZON_COLOR).fValue[ 0 ],
+    Vec3 nightSkyHorizonColor(nightSkyHorizonMultiplier* Vec3(GetVar(PARAM_NIGHSKY_HORIZON_COLOR).fValue[ 0 ],
             GetVar(PARAM_NIGHSKY_HORIZON_COLOR).fValue[ 1 ], GetVar(PARAM_NIGHSKY_HORIZON_COLOR).fValue[ 2 ]));
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_HORIZON_COLOR, nightSkyHorizonColor);
 
-    Vec3 nightSkyZenithColor(nightSkyZenithMultiplier * Vec3(GetVar(PARAM_NIGHSKY_ZENITH_COLOR).fValue[ 0 ],
+    Vec3 nightSkyZenithColor(nightSkyZenithMultiplier* Vec3(GetVar(PARAM_NIGHSKY_ZENITH_COLOR).fValue[ 0 ],
             GetVar(PARAM_NIGHSKY_ZENITH_COLOR).fValue[ 1 ], GetVar(PARAM_NIGHSKY_ZENITH_COLOR).fValue[ 2 ]));
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_ZENITH_COLOR, nightSkyZenithColor);
 
@@ -710,18 +712,18 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     float nightSkyStarIntensity(GetVar(PARAM_NIGHSKY_START_INTENSITY).fValue[ 0 ]);
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_STAR_INTENSITY, Vec3(nightSkyStarIntensity, 0, 0));
 
-    Vec3 nightSkyMoonColor(nightSkyMoonMultiplier * Vec3(GetVar(PARAM_NIGHSKY_MOON_COLOR).fValue[ 0 ],
+    Vec3 nightSkyMoonColor(nightSkyMoonMultiplier* Vec3(GetVar(PARAM_NIGHSKY_MOON_COLOR).fValue[ 0 ],
             GetVar(PARAM_NIGHSKY_MOON_COLOR).fValue[ 1 ], GetVar(PARAM_NIGHSKY_MOON_COLOR).fValue[ 2 ]));
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_MOON_COLOR, nightSkyMoonColor);
 
-    Vec3 nightSkyMoonInnerCoronaColor(nightSkyMoonInnerCoronaMultiplier * Vec3(GetVar(PARAM_NIGHSKY_MOON_INNERCORONA_COLOR).fValue[ 0 ],
+    Vec3 nightSkyMoonInnerCoronaColor(nightSkyMoonInnerCoronaMultiplier* Vec3(GetVar(PARAM_NIGHSKY_MOON_INNERCORONA_COLOR).fValue[ 0 ],
             GetVar(PARAM_NIGHSKY_MOON_INNERCORONA_COLOR).fValue[ 1 ], GetVar(PARAM_NIGHSKY_MOON_INNERCORONA_COLOR).fValue[ 2 ]));
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_MOON_INNERCORONA_COLOR, nightSkyMoonInnerCoronaColor);
 
     float nightSkyMoonInnerCoronaScale(GetVar(PARAM_NIGHSKY_MOON_INNERCORONA_SCALE).fValue[ 0 ]);
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_MOON_INNERCORONA_SCALE, Vec3(nightSkyMoonInnerCoronaScale, 0, 0));
 
-    Vec3 nightSkyMoonOuterCoronaColor(nightSkyMoonOuterCoronaMultiplier * Vec3(GetVar(PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR).fValue[ 0 ],
+    Vec3 nightSkyMoonOuterCoronaColor(nightSkyMoonOuterCoronaMultiplier* Vec3(GetVar(PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR).fValue[ 0 ],
             GetVar(PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR).fValue[ 1 ], GetVar(PARAM_NIGHSKY_MOON_OUTERCORONA_COLOR).fValue[ 2 ]));
     p3DEngine->SetGlobalParameter(E3DPARAM_NIGHSKY_MOON_OUTERCORONA_COLOR, nightSkyMoonOuterCoronaColor);
 
@@ -754,8 +756,8 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
         const Vec3 cloudShadingCustomSunColor = cloudShadingCustomSunColorMult * Vec3(GetVar(PARAM_CLOUDSHADING_SUNLIGHT_CUSTOM_COLOR).fValue[0], GetVar(PARAM_CLOUDSHADING_SUNLIGHT_CUSTOM_COLOR).fValue[1], GetVar(PARAM_CLOUDSHADING_SUNLIGHT_CUSTOM_COLOR).fValue[2]);
         const float cloudShadingCustomSunColorInfluence = GetVar(PARAM_CLOUDSHADING_SUNLIGHT_CUSTOM_COLOR_INFLUENCE).fValue[0];
 
-        CObjManager* pObjMan = p3DEngine->m_pObjManager;
-        const Vec3 cloudShadingSunColor = pObjMan ? cloudShadingMultipliers.x * pObjMan->m_vSunColor : Vec3(0, 0, 0);
+        IObjManager* pObjMan = p3DEngine->GetObjectManager();
+        const Vec3 cloudShadingSunColor = pObjMan ? cloudShadingMultipliers.x* pObjMan->GetSunColor() : Vec3(0, 0, 0);
 
         p3DEngine->SetGlobalParameter(E3DPARAM_CLOUDSHADING_SUNCOLOR, cloudShadingSunColor + (cloudShadingCustomSunColor - cloudShadingSunColor) * cloudShadingCustomSunColorInfluence);
     }
@@ -1167,32 +1169,32 @@ void CTimeOfDay::LerpWith(const ITimeOfDay& other, float lerpValue, ITimeOfDay& 
     AZ_Assert(GetVariableCount() == other.GetVariableCount() && GetVariableCount() == output.GetVariableCount(), "Attempting to lerp mismatching TimeOfDay objects!");
     CTimeOfDay& todOutput = static_cast<CTimeOfDay&>(output);
     const CTimeOfDay& todOther = static_cast<const CTimeOfDay&>(other);
-        
+
     for (uint32 i = 0; i < static_cast<uint32>(GetVariableCount()); i++)
     {
-        SVariableInfo &outvar = todOutput.m_vars[i];
+        SVariableInfo& outvar = todOutput.m_vars[i];
         const SVariableInfo& var0 = m_vars[i];
         const SVariableInfo& var1 = todOther.m_vars[i];
         if (outvar.nParamId == var0.nParamId && outvar.nParamId == var1.nParamId)
         {
             switch (outvar.type)
             {
-                case TYPE_FLOAT:
-                {
-                    outvar.fValue[0] = Lerp(var0.fValue[0], var1.fValue[0], lerpValue);
-                    break;
-                }
-                case TYPE_COLOR:
-                {
-                    outvar.fValue[0] = Lerp(var0.fValue[0], var1.fValue[0], lerpValue);
-                    outvar.fValue[1] = Lerp(var0.fValue[1], var1.fValue[1], lerpValue);
-                    outvar.fValue[2] = Lerp(var0.fValue[2], var1.fValue[2], lerpValue);
-                    break;
-                }
-                default:
-                {
-                    AZ_Error("TimeOfDay", false, "Attempting to lerp mismatching TimeOfDay objects!");
-                }
+            case TYPE_FLOAT:
+            {
+                outvar.fValue[0] = Lerp(var0.fValue[0], var1.fValue[0], lerpValue);
+                break;
+            }
+            case TYPE_COLOR:
+            {
+                outvar.fValue[0] = Lerp(var0.fValue[0], var1.fValue[0], lerpValue);
+                outvar.fValue[1] = Lerp(var0.fValue[1], var1.fValue[1], lerpValue);
+                outvar.fValue[2] = Lerp(var0.fValue[2], var1.fValue[2], lerpValue);
+                break;
+            }
+            default:
+            {
+                AZ_Error("TimeOfDay", false, "Attempting to lerp mismatching TimeOfDay objects!");
+            }
             }
         }
         else
@@ -1202,14 +1204,14 @@ void CTimeOfDay::LerpWith(const ITimeOfDay& other, float lerpValue, ITimeOfDay& 
     }
 }
 
-void CTimeOfDay::BeginEditMode() 
-{ 
-    m_bEditMode = true; 
+void CTimeOfDay::BeginEditMode()
+{
+    m_bEditMode = true;
     SetTime(m_fEditorTime);
 }
 
-void CTimeOfDay::EndEditMode() 
-{ 
-    m_bEditMode = false; 
+void CTimeOfDay::EndEditMode()
+{
+    m_bEditMode = false;
     m_fEditorTime = m_fTime;
 }

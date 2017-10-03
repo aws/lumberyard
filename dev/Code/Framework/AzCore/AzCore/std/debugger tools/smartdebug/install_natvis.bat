@@ -12,22 +12,31 @@ REM
 REM
 
 echo Installing Visual Studio Visualizers.
+SETLOCAL
 
-SET DOCUMENTS="%USERPROFILE%\Documents"
+SET "DOCUMENTS=%USERPROFILE%\Documents"
 set FOUND=0
 
 REM Set current folder
 cd /d %~dp0
 
 :INSTALL_VS14
-SET FOLDER="%DOCUMENTS%\Visual Studio 2015"
-IF EXIST %FOLDER% (
+SET "FOLDER=%DOCUMENTS%\Visual Studio 2015"
+SET "VISUALIZERFOLDER=%FOLDER%\Visualizers"
+IF EXIST "%FOLDER%" (
     echo     Visual Studio 2015
-    SET VISUALIZERFOLDER="%FOLDER%\Visualizers"
-    IF NOT EXIST "%VISUALIZERFOLDER%\NUL" (
+    IF NOT EXIST "%VISUALIZERFOLDER%" (
         mkdir "%VISUALIZERFOLDER%"
     )
-    copy AZCore.natvis "%VISUALIZERFOLDER%"
+	
+	REM we need to remove azcore.natvis as we had to split it into two versions
+	IF EXIST "%VISUALIZERFOLDER%\azcore.natvis" (
+		del "%VISUALIZERFOLDER%\azcore.natvis"
+	)
+	
+    copy azcore_vs2015.natvis "%VISUALIZERFOLDER%"
+    copy azcore.natjmc "%VISUALIZERFOLDER%"
+    copy azcore.natstepfilter "%VISUALIZERFOLDER%"
 	IF NOT %ERRORLEVEL% == 0 (
 		echo "Failed to find Visual Studio 2015 user folder."
 	) ELSE (
@@ -36,15 +45,23 @@ IF EXIST %FOLDER% (
 )
 
 :INSTALL_VS12
-SET FOLDER="%DOCUMENTS%\Visual Studio 2013"
-IF EXIST %FOLDER% (
+SET "FOLDER=%DOCUMENTS%\Visual Studio 2013"
+SET "VISUALIZERFOLDER=%FOLDER%\Visualizers"
+IF EXIST "%FOLDER%" (
     echo     Visual Studio 2013
-    SET VISUALIZERFOLDER="%FOLDER%\Visualizers"
-    IF NOT EXIST "%VISUALIZERFOLDER%\NUL" (
+    IF NOT EXIST "%VISUALIZERFOLDER%" (
         mkdir "%VISUALIZERFOLDER%"
     )
-    copy AZCore.natvis "%VISUALIZERFOLDER%"
-    IF NOT %ERRORLEVEL% == 0 (
+	
+	REM we need to remove azcore.natvis as we had to split it into two versions
+	IF EXIST "%VISUALIZERFOLDER%\azcore.natvis" (
+		del "%VISUALIZERFOLDER%\azcore.natvis"
+	)
+	
+    copy azcore_vs2013.natvis "%VISUALIZERFOLDER%"
+    copy azcore.natjmc "%VISUALIZERFOLDER%"
+    copy azcore.natstepfilter "%VISUALIZERFOLDER%"
+	IF NOT %ERRORLEVEL% == 0 (
 		echo "Failed to find Visual Studio 2013 user folder."
 	) ELSE (
 		SET FOUND=1

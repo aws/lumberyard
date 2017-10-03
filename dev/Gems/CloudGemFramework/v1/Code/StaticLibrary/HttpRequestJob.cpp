@@ -12,98 +12,427 @@
 
 #include <CloudGemFramework/HttpRequestJob.h>
 
+#include <aws/core/http/HttpRequest.h>
 #include <aws/core/http/HttpResponse.h>
+#include <aws/core/http/HttpClient.h>
+#include <aws/core/http/HttpClientFactory.h>
+#include <aws/core/utils/stream/ResponseStream.h>
+#include <aws/core/utils/memory/stl/AWSStringStream.h>
+#include <aws/core/auth/AWSAuthSigner.h>
 
-#include <sstream>
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 namespace CloudGemFramework
 {
-
-    bool HttpRequestJob::BuildRequest(RequestBuilder& request)
+    namespace
     {
-        request.SetHttpMethod(m_httpMethod);
-        request.SetRequestUrl(m_url);
-        return true;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Mappings from HttpRequestJob nested types to Aws types
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        struct HttpMethodInfo
+        {
+            Aws::Http::HttpMethod m_awsMethod;
+            AZStd::string m_name;
+        };
+
+#define CLOUD_CANVAS_HTTP_METHOD_ENTRY(x)   { HttpRequestJob::HttpMethod::HTTP_##x, HttpMethodInfo{ Aws::Http::HttpMethod::HTTP_##x, #x } }
+
+        using MethodLookup = AZStd::unordered_map<HttpRequestJob::HttpMethod, HttpMethodInfo>;
+
+        const MethodLookup& GetMethodLookup()
+        {
+            static const auto result = AZ::Environment::CreateVariable<MethodLookup>("methodlookup.httprequestjob.cloudcanvas", MethodLookup
+            {
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(GET),
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(POST),
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(DELETE),
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(PUT),
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(HEAD),
+                CLOUD_CANVAS_HTTP_METHOD_ENTRY(PATCH),
+            });
+
+            return *result;
+        }
+
+#undef CLOUD_CANVAS_HTTP_METHOD_ENTRY
+
+#define CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(x)    { Aws::Http::HttpMethod::HTTP_##x, HttpRequestJob::HttpMethod::HTTP_##x }
+
+        using MethodAwsReverseLookup = AZStd::unordered_map<Aws::Http::HttpMethod, HttpRequestJob::HttpMethod>;
+
+        const MethodAwsReverseLookup& GetMethodAwsReverseLookup()
+        {
+            static const auto result = AZ::Environment::CreateVariable<MethodAwsReverseLookup>("methodawsreverselookup.httprequestjob.cloudcanvas", MethodAwsReverseLookup
+            {
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(GET),
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(POST),
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(DELETE),
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PUT),
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(HEAD),
+                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PATCH),
+            });
+
+            return *result;
+        }
+
+#undef CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY
+
+#define CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(x) { #x, HttpRequestJob::HttpMethod::HTTP_##x }
+
+        using MethodStringReverseLookup = AZStd::unordered_map<AZStd::string, HttpRequestJob::HttpMethod>;
+
+        const MethodStringReverseLookup& GetMethodStringReverseLookup()
+        {
+            static const auto result = AZ::Environment::CreateVariable<MethodStringReverseLookup>("methodstringreverselookup.httprequestjob.cloudcanvas", MethodStringReverseLookup
+            {
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(GET),
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(POST),
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(DELETE),
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PUT),
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(HEAD),
+                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PATCH),
+            });
+
+            return *result;
+        }
+
+#undef CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY
+
+#define CLOUD_CANVAS_HEADER_FIELD_ENTRY(x)  { HttpRequestJob::HeaderField::x, Aws::Http::x##_HEADER }
+
+        using HeaderLookup = AZStd::unordered_map<HttpRequestJob::HeaderField, AZStd::string>;
+
+        const HeaderLookup& GetHeaderLookup()
+        {
+            static const auto result = AZ::Environment::CreateVariable<HeaderLookup>("headerlookup.httprequestjob.cloudcanvas", HeaderLookup
+            {
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(DATE),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_DATE),
+                { HttpRequestJob::HeaderField::AWS_SECURITY_TOKEN, Aws::Http::AWS_SECURITY_TOKEN },
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_CHAR_SET),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_ENCODING),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AUTHORIZATION),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_AUTHORIZATION),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(COOKIE),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_LENGTH),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_TYPE),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(USER_AGENT),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(VIA),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(HOST),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AMZ_TARGET),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(X_AMZ_EXPIRES),
+                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_MD5),
+            });
+
+            return *result;
+        }
+
+#undef CLOUD_CANVAS_HEADER_FIELD_ENTRY
+
+        template<typename MapT>
+        inline const typename MapT::mapped_type* FindInMap(const MapT& haystack, const typename MapT::key_type& needle)
+        {
+            const typename MapT::mapped_type* result = nullptr;
+            auto itr = haystack.find(needle);
+
+            if (itr != haystack.end())
+            {
+                result = &itr->second;
+            }
+
+            return result;
+        }
     }
 
-    void HttpRequestJob::SetHttpMethod(AZStd::string method)
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // HttpRequestJob methods
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void HttpRequestJob::SetUrl(AZStd::string url)
     {
-        if (method == "POST")
+        m_url = url;
+    }
+
+    const AZStd::string& HttpRequestJob::GetUrl() const
+    {
+        return m_url;
+    }
+
+    void HttpRequestJob::SetMethod(HttpMethod method)
+    {
+        m_method = method;
+    }
+
+    bool HttpRequestJob::SetMethod(const AZStd::string& method)
+    {
+        bool result = false;
+
+        if (boost::optional<HttpMethod> value = StringToHttpMethod(method))
         {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_POST;
+            SetMethod(*value);
+            result = true;
         }
-        else if (method == "GET")
+
+        return result;
+    }
+
+    HttpRequestJob::HttpMethod HttpRequestJob::GetMethod() const
+    {
+        return m_method;
+    }
+
+    void HttpRequestJob::SetRequestHeader(AZStd::string key, AZStd::string value)
+    {
+        m_requestHeaders.emplace(AZStd::move(key), AZStd::move(value));
+    }
+
+    bool HttpRequestJob::GetRequestHeader(const AZStd::string& key, AZStd::string* result)
+    {
+        bool found = false;
+        auto itr = m_requestHeaders.find(key);
+
+        if (itr != m_requestHeaders.end())
         {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_GET;
+            found = true;
+
+            if (result)
+            {
+                *result = itr->second;
+            }
         }
-        else if (method == "DELETE")
+
+        return found;
+    }
+
+    void HttpRequestJob::SetRequestHeader(HeaderField field, AZStd::string value)
+    {
+        if (auto headerString = FindInMap(GetHeaderLookup(), field))
         {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_DELETE;
-        }
-        else if (method == "PUT")
-        {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_PUT;
-        }
-        else if (method == "HEAD")
-        {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_HEAD;
-        }
-        else if (method == "PATCH")
-        {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_PATCH;
-        }
-        else
-        {
-            m_httpMethod = Aws::Http::HttpMethod::HTTP_GET;
+            SetRequestHeader(*headerString, value);
         }
     }
 
-    std::shared_ptr<Aws::StringStream> HttpRequestJob::GetBodyContent(RequestBuilder& requestBuilder)
+    bool HttpRequestJob::GetRequestHeader(HeaderField field, AZStd::string* result)
     {
-        requestBuilder.WriteJsonBodyRaw(m_jsonBody.c_str());
-        return requestBuilder.GetBodyContent();
-    }
+        bool found = false;
 
-    void HttpRequestJob::Success(int responseCode, AZStd::string content)
-    {
-        if (m_successCallback)
+        if (auto headerString = FindInMap(GetHeaderLookup(), field))
         {
-            m_successCallback(responseCode, content);
-        }
-    }
-
-    void HttpRequestJob::Failure(int responseCode)
-    {
-        if (m_failureCallback)
-        {
-            m_failureCallback(responseCode);
-        }
-    }
-
-    void HttpRequestJob::ProcessResponse(const std::shared_ptr<Aws::Http::HttpResponse>& response)
-    {
-        if (!response)
-        {
-            // If we didn't get a response no request was made.  This happens when the SDK has an internal server error
-            // or if we weren't configured properly - no mappings in order to supply an endpoint URL for example.
-            Failure(0);
-            return;
+            found = GetRequestHeader(*headerString, result);
         }
 
-        // get response code
-        int responseCode = static_cast<int>(response->GetResponseCode());
-        if (responseCode >= 200 && responseCode <= 299)
+        return found;
+    }
+
+    HttpRequestJob::StringMap& HttpRequestJob::GetRequestHeaders()
+    {
+        return m_requestHeaders;
+    }
+
+    const HttpRequestJob::StringMap& HttpRequestJob::GetRequestHeaders() const
+    {
+        return m_requestHeaders;
+    }
+
+    void HttpRequestJob::SetAccept(AZStd::string accept)
+    {
+        SetRequestHeader(HeaderField::ACCEPT, accept);
+    }
+
+    void HttpRequestJob::SetAcceptCharSet(AZStd::string acceptCharSet)
+    {
+        SetRequestHeader(HeaderField::ACCEPT_CHAR_SET, acceptCharSet);
+    }
+
+    void HttpRequestJob::SetContentLength(AZStd::string contentLength)
+    {
+        SetRequestHeader(HeaderField::CONTENT_LENGTH, contentLength);
+    }
+
+    void HttpRequestJob::SetContentType(AZStd::string contentType)
+    {
+        SetRequestHeader(HeaderField::CONTENT_TYPE, contentType);
+    }
+
+    void HttpRequestJob::SetAWSAuthSigner(const std::shared_ptr<Aws::Client::AWSAuthSigner>& authSigner)
+    {
+        m_awsAuthSigner = authSigner;
+    }
+
+    const std::shared_ptr<Aws::Client::AWSAuthSigner>& HttpRequestJob::GetAWSAuthSigner() const
+    {
+        return m_awsAuthSigner;
+    }
+
+    void HttpRequestJob::SetBody(AZStd::string body)
+    {
+        m_requestBody = std::move(body);
+    }
+
+    const AZStd::string& HttpRequestJob::GetBody() const
+    {
+        return m_requestBody;
+    }
+
+    AZStd::string& HttpRequestJob::GetBody()
+    {
+        return m_requestBody;
+    }
+
+    const char* HttpRequestJob::HttpMethodToString(HttpMethod method)
+    {
+        const char* result = nullptr;
+
+        if (auto methodInfo = FindInMap(GetMethodLookup(), method))
         {
-            // read body into string
-            Aws::IOStream& responseBody = response->GetResponseBody();
+            result = methodInfo->m_name.c_str();
+        }
+
+        return result;
+    }
+
+    const char* HttpRequestJob::HttpMethodToString(Aws::Http::HttpMethod method)
+    {
+        const char* result = nullptr;
+
+        if (auto convertedMethod = FindInMap(GetMethodAwsReverseLookup(), method))
+        {
+            result = HttpMethodToString(*convertedMethod);
+        }
+
+        return result;
+    }
+
+    boost::optional<HttpRequestJob::HttpMethod> HttpRequestJob::StringToHttpMethod(const AZStd::string& method)
+    {
+        boost::optional<HttpRequestJob::HttpMethod> result;
+        const auto& haystack = GetMethodStringReverseLookup();
+        auto itr = haystack.find(method);
+
+        if (itr != haystack.end())
+        {
+            *result = itr->second;
+        }
+
+        return result;
+    }
+
+    void HttpRequestJob::Process()
+    {
+        // Someday the AWS Http client may support real async I/O. The 
+        // GetRequest and OnResponse methods are designed with that in 
+        ///mind. When that feature is available, we can use the AZ::Job 
+        // defined IncrementDependentCount method, start the async i/o, 
+        // and call WaitForChildren. When the i/o completes, we would call
+        // DecrementDependentCount, which would cause WaitForChildren to 
+        // return. We would then call OnResponse.
+
+        // Create the request
+        std::shared_ptr<Aws::Http::HttpRequest> request = InitializeRequest();
+        std::shared_ptr<Aws::Http::HttpResponse> httpResponse;
+
+        if (request)
+        {
+            // Populate headers
+            for (const auto& header : m_requestHeaders)
+            {
+                request->SetHeaderValue(Util::ToAwsString(header.first), Util::ToAwsString(header.second));
+            }
+
+            // Populate the body
+            if (!m_requestBody.empty())
+            {
+                auto body = std::make_shared<Aws::StringStream>();
+                body->write(m_requestBody.c_str(), m_requestBody.length());
+                request->AddContentBody(body);
+            }
+
+            // Allow descendant classes to modify the request if desired
+            this->CustomizeRequest(request);
+
+            // Sign the request
+            if (m_awsAuthSigner)
+            {
+                m_awsAuthSigner->SignRequest(*request);
+            }
+
+            httpResponse = m_httpClient->MakeRequest(*request.get(), m_readRateLimiter.get(), m_writeRateLimiter.get());
+        }
+
+        // Allow descendant classes to process the response
+        this->ProcessResponse(httpResponse);
+
+        // Configure and deliver our response
+        auto callbackResponse = AZStd::make_shared<Response>();
+        callbackResponse->m_response = httpResponse;
+        bool failure = true;
+
+        if (httpResponse)
+        {
+            Aws::IOStream& responseBody = httpResponse->GetResponseBody();
             std::istreambuf_iterator<AZStd::string::value_type> eos;
-            AZStd::string responseContent = AZStd::string{std::istreambuf_iterator<AZStd::string::value_type>(responseBody),eos};
-            Success(responseCode, responseContent);
+            callbackResponse->m_responseBody = AZStd::string{ std::istreambuf_iterator<AZStd::string::value_type>(responseBody), eos };
+            callbackResponse->m_responseCode = static_cast<int>(httpResponse->GetResponseCode());
+
+            if (callbackResponse->m_responseCode >= 200 && callbackResponse->m_responseCode <= 299)
+            {
+                failure = false;
+
+                if (m_successCallback)
+                {
+                    auto callback = AZStd::make_shared<SuccessFn>(AZStd::move(m_successCallback));
+                    auto fn = AZStd::function<void()>([callbackResponse, callback]() { (*callback)(callbackResponse); });
+                    EBUS_QUEUE_FUNCTION(AZ::TickBus, fn);
+                }
+            }
         }
-        else
+
+        if (failure && m_failureCallback)
         {
-            Failure(responseCode);
+            auto callback = AZStd::make_shared<SuccessFn>(AZStd::move(m_failureCallback));
+            auto fn = AZStd::function<void()>([callbackResponse, callback]() { (*callback)(callbackResponse); });
+            EBUS_QUEUE_FUNCTION(AZ::TickBus, fn);
         }
     }
+
+    std::shared_ptr<Aws::Http::HttpRequest> HttpRequestJob::InitializeRequest()
+    {
+        std::shared_ptr<Aws::Http::HttpRequest> result;
+        auto methodInfo = FindInMap(GetMethodLookup(), m_method);
+
+        if (!m_url.empty() && methodInfo)
+        {
+            result = Aws::Http::CreateHttpRequest(
+                Util::ToAwsString(m_url),
+                methodInfo->m_awsMethod,
+                &Aws::Utils::Stream::DefaultResponseStreamFactoryMethod
+            );
+        }
+
+        return result;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // HttpRequestJob::Response methods
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const AZStd::string& HttpRequestJob::Response::GetResponseBody() const
+    {
+        return m_responseBody;
+    }
+
+    int HttpRequestJob::Response::GetResponseCode() const
+    {
+        return m_responseCode;
+    }
+
+    const std::shared_ptr<Aws::Http::HttpResponse>& HttpRequestJob::Response::GetUnderlyingResponse() const
+    {
+        return m_response;
+    }
+
 
 } // namespace CloudGemFramework

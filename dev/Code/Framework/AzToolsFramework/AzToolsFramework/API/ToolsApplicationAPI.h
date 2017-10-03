@@ -40,10 +40,10 @@ class QMenu;
 class QWidget;
 class QApplication;
 struct IEditor;
-struct QtViewOptions;
 
 namespace AzToolsFramework
 {
+    struct ViewPaneOptions;
     class PreemptiveUndoCache;
 
     namespace UndoSystem
@@ -56,6 +56,14 @@ namespace AzToolsFramework
     {
         class AssetSelectionModel;
     }
+
+    struct LinearManipulationData;
+    class LinearManipulator;
+    struct PlanarManipulationData;
+    class PlanarManipulator;
+    struct AngularManipulationData;
+    class AngularManipulator;
+    class BasisLinearManipulator;
 
     using EntityIdList = AZStd::vector<AZ::EntityId>;
     using EntityList = AZStd::vector<AZ::Entity*>;
@@ -229,6 +237,11 @@ namespace AzToolsFramework
          * Notifies the application the user intends to reapply the last redo-able operation.
          */
         virtual void RedoPressed() = 0;
+
+        /*!
+         * Notifies the application that the undo stack needs to be flushed
+         */
+        virtual void FlushUndo() = 0;
 
         /*!
          * Notifies the application that the user has selected an entity.
@@ -521,25 +534,37 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
 
         /// Registers a view pane (generally a QMainWindow-derived class) with the main editor.
+        /// It's easier to use AzToolsFramework::RegisterViewPane, as it does not require a widget creation function to be supplied.
         /// \param name - display name for the pane. Will appear in the window header bar, as well as the context menu.
         /// \param category - category under the Tools menu that will contain the option to open the pane.
         /// \param viewOptions - structure defining various UI options for the pane.
         /// \param widgetCreationFunc - function callback for constructing the pane.
         typedef AZStd::function<QWidget*()> WidgetCreationFunc;
-        virtual void RegisterViewPane(const char* /*name*/, const char* /*category*/, const QtViewOptions& /*viewOptions*/, const WidgetCreationFunc& /*widgetCreationFunc*/) {};
+        virtual void RegisterViewPane(const char* /*name*/, const char* /*category*/, const ViewPaneOptions& /*viewOptions*/, const WidgetCreationFunc& /*widgetCreationFunc*/) {};
 
         /// Unregisters a view pane by name from the main editor.
         /// \param name - the name of the pane to be unregistered. This must match the name used for registration.
         virtual void UnregisterViewPane(const char* /*name*/) {};
 
         /// Show an Editor window by name.
-        virtual void ShowViewPane(const char* /*paneName*/) {}
+        void ShowViewPane(const char* paneName) { OpenViewPane(paneName); }
+
+        /// Opens an Editor window by name. Shows it if it was previously hidden, and activates it even if it's already visible.
+        virtual void OpenViewPane(const char* /*paneName*/) {}
+
+        /// Closes an Editor window by name.
+        /// If the view pane was registered with the ViewPaneOptions.isDeletable set to true (the default), this will delete the view pane, if it was open.
+        /// If the view pane was not registered with the ViewPaneOptions.isDeletable set to true, the view pane will be hidden instead.
+        virtual void CloseViewPane(const char* /*paneName*/) {}
 
         /// Request generation of all level cubemaps.
         virtual void GenerateAllCubemaps() {}
 
         /// Regenerate cubemap for a particular entity.
-        virtual void GenerateCubemapForEntity(AZ::EntityId /*entityId*/, AZStd::string* /*cubemapOutputPath*/) {}
+        /// \param entityId ID of the entity that the cubemap is for
+        /// \param cubemapOutputPath path to a image file to generate
+        /// \param hideEntity Indicates whether the entity should be hidden during cubemap generation. Controls whether the entity's current cubemap output is baked into the new cubemap.
+        virtual void GenerateCubemapForEntity(AZ::EntityId /*entityId*/, AZStd::string* /*cubemapOutputPath*/, bool /*hideEntity*/) {}
 
         //! Spawn asset browser for the appropriate asset types.
         virtual void BrowseForAssets(AssetBrowser::AssetSelectionModel& /*selection*/) = 0;
@@ -549,6 +574,11 @@ namespace AzToolsFramework
 
         /// Allow interception of cursor, for customizing selection behavior.
         virtual void UpdateObjectModeCursor(AZ::u32& /*cursorId*/, AZStd::string& /*cursorStr*/) {}
+
+        /// Starts object pick mode -- next object selection will broadcasted via EntitySelectionEventBus::OnPickModeSelect,
+        /// and will not affect general object selection.
+        virtual void StartObjectPickMode() {};
+        virtual void StopObjectPickMode() {};
 
         /// Creates editor-side representation of an underlying entity.
         virtual void CreateEditorRepresentation(AZ::Entity* /*entity*/) { }
@@ -602,7 +632,7 @@ namespace AzToolsFramework
          * \param componentIconAttrib   edit attribute describing where the icon is used, it could be one of Icon, Viewport and HidenIcon
          * \return the path of the icon image
          */
-        virtual AZStd::string GetComponentIconPath(const AZ::Uuid& /*componentType*/, AZ::Crc32 /*componentIconAttrib*/) { return AZStd::string(); }
+        virtual AZStd::string GetComponentIconPath(const AZ::Uuid& /*componentType*/, AZ::Crc32 /*componentIconAttrib*/, AZ::Component* /*component*/) { return AZStd::string(); }
 
         /// Resource Selector hook, returns a path for a resource.
         virtual AZStd::string SelectResource(const AZStd::string& /*resourceType*/, const AZStd::string& /*previousValue*/) { return AZStd::string(); }
@@ -621,6 +651,9 @@ namespace AzToolsFramework
     {
     public:
         using Bus = AZ::EBus<EditorEvents>;
+
+        virtual void OnPickModeSelect(AZ::EntityId /*id*/) {}
+        virtual void OnEscape() {}
 
         /// The editor has changed performance specs.
         virtual void OnEditorSpecChange() {}
@@ -666,7 +699,8 @@ namespace AzToolsFramework
             EBUS_EVENT(ToolsApplicationRequests::Bus, EndUndoBatch);
         }
 
-        void MarkEntityDirty(const AZ::EntityId& id)
+        // utility/convenience function for adding dirty entity
+        static void MarkEntityDirty(const AZ::EntityId& id)
         {
             EBUS_EVENT(ToolsApplicationRequests::Bus, AddDirtyEntity, id);
         }
@@ -684,6 +718,68 @@ namespace AzToolsFramework
         ScopedUndoBatch(ScopedUndoBatch&&) = delete;
         ScopedUndoBatch& operator=(const ScopedUndoBatch&) = delete;
     };
+
+    /// Registers a view pane with the main editor. It will be listed under the "Tools" menu on the main window's menubar.
+    /// Note that if a view pane is registered with it's ViewPaneOptions.isDeletable set to true, the widget will be deallocated and destructed on close.
+    /// Otherwise, it will be hidden instead.
+    /// If you'd like to be able to veto the close (for instance, if the user has unsaved data), override the closeEvent() on your custom
+    /// viewPane widget and call ignore() on the QCloseEvent* parameter.
+    ///
+    /// \param viewPaneName - name for the pane. This is what will appear in the dock window's title bar, as well as in the main editor window's menubar, if the optionalMenuText is not set in the viewOptions parameter.
+    /// \param category - category under the "Tools" menu that will contain the option to open the newly registered pane.
+    /// \param viewOptions - structure defining various options for the pane.
+    template <typename TWidget>
+    inline void RegisterViewPane(const char* name, const char* category, const ViewPaneOptions& viewOptions)
+    {
+        AZStd::function<QWidget*()> windowCreationFunc = []()
+        {
+            return new TWidget();
+        };
+
+        EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, name, category, viewOptions, windowCreationFunc);
+    }
+
+    /// Registers a view pane with the main editor. It will be listed under the "Tools" menu on the main window's menubar.
+    /// This variant is most useful when dealing with singleton view widgets.
+    /// Note that if the new view is a singleton, and shouldn't be destroyed by the view pane manager, viewOptions.isDeletable must be set to false.
+    /// Note that if a view pane is registered with it's ViewPaneOptions.isDeletable set to true, the widget will be deallocated and destructed on close.
+    /// Otherwise, it will be hidden instead.
+    /// If you'd like to be able to veto the close (for instance, if the user has unsaved data), override the closeEvent() on your custom
+    /// viewPane widget and call ignore() on the QCloseEvent* parameter.
+    ///
+    /// \param viewPaneName - name for the pane. This is what will appear in the dock window's title bar, as well as in the main editor window's menubar, if the optionalMenuText is not set in the viewOptions parameter.
+    /// \param category - category under the "Tools" menu that will contain the option to open the newly registered pane.
+    /// \param viewOptions - structure defining various options for the pane.
+    template <typename TWidget>
+    inline void RegisterViewPane(const char* viewPaneName, const char* category, const ViewPaneOptions& viewOptions, AZStd::function<QWidget*()> windowCreationFunc)
+    {
+        EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, viewPaneName, category, viewOptions, windowCreationFunc);
+    }
+
+    /// Unregisters a view pane with the main editor. It will no longer be listed under the "Tools" menu on the main window's menubar.
+    /// Any currently open view panes of this type will be closed before the view pane handlers are unregistered.
+    ///
+    /// \param viewPaneName - name of the pane to unregister. Must be the same as the name previously registered with RegisterViewPane.
+    inline void UnregisterViewPane(const char* viewPaneName)
+    {
+        EditorRequests::Bus::Broadcast(&EditorRequests::UnregisterViewPane, viewPaneName);
+    }
+
+    /// Opens a view pane if not already open, and activating the view pane if it was already opened.
+    ///
+    /// \param viewPaneName - name of the pane to open/activate. Must be the same as the name previously registered with RegisterViewPane.
+    inline void OpenViewPane(const char* viewPaneName)
+    {
+        EditorRequests::Bus::Broadcast(&EditorRequests::OpenViewPane, viewPaneName);
+    }
+
+    /// Closes a view pane if it is currently open.
+    ///
+    /// \param viewPaneName - name of the pane to open/activate. Must be the same as the name previously registered with RegisterViewPane.
+    inline void CloseViewPane(const char* viewPaneName)
+    {
+        EditorRequests::Bus::Broadcast(&EditorRequests::CloseViewPane, viewPaneName);
+    }
 } // namespace AzToolsFramework
 
 #endif // AZTOOLSFRAMEWORK_TOOLSAPPLICATIONAPI_H

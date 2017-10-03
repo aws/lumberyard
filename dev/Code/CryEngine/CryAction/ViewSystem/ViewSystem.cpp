@@ -287,10 +287,6 @@ unsigned int CViewSystem::AddView(IView* pView)
     assert(pView);
 
     m_views.insert(TViewMap::value_type(m_nextViewIdToAssign, pView));
-    if (IsPlayingCutScene())
-    {
-        m_cutsceneViewIdVector.push_back(m_nextViewIdToAssign);
-    }
     return m_nextViewIdToAssign++;
 }
 
@@ -310,6 +306,14 @@ void CViewSystem::RemoveViewById(unsigned int viewId)
 
     if (iter != m_views.end())
     {
+        if (viewId == m_activeViewId)
+        {
+            m_activeViewId = 0;
+        }
+        if (viewId == m_preSequenceViewId)
+        {
+            m_preSequenceViewId = 0;
+        }
         SAFE_RELEASE(iter->second);
         m_views.erase(iter);
     }
@@ -754,27 +758,6 @@ void CViewSystem::ClearCutsceneViews()
         camParams.justActivated = true;
         SetActiveCamera(camParams);
     }
-
-    //Delete views created during the cut-scene
-    const int count = m_cutsceneViewIdVector.size();
-    for (int i = 0; i < count; ++i)
-    {
-        TViewMap::iterator it = m_views.find(m_cutsceneViewIdVector[i]);
-        if (it != m_views.end())
-        {
-            it->second->Release();
-            if (it->first == m_activeViewId)
-            {
-                m_activeViewId = 0;
-            }
-            if (it->first == m_preSequenceViewId)
-            {
-                m_preSequenceViewId = 0;
-            }
-            m_views.erase(it);
-        }
-    }
-    stl::free_container(m_cutsceneViewIdVector);
 }
 
 ///////////////////////////////////////////
@@ -786,7 +769,6 @@ void CViewSystem::ClearAllViews()
         SAFE_RELEASE(it->second);
     }
     stl::free_container(m_views);
-    stl::free_container(m_cutsceneViewIdVector);
     m_preSequenceViewId = 0;
     m_activeViewId = 0;
 }
@@ -811,26 +793,9 @@ void CViewSystem::DebugDraw()
             IView* pView = it->second;
             const CCamera& cam = pView->GetCamera();
             bool isActive = (pView == pActiveView);
-            bool cutSceneCamera = false;
-            for (int i = 0; i < m_cutsceneViewIdVector.size(); i++)
-            {
-                if (m_cutsceneViewIdVector[i] == it->first)
-                {
-                    cutSceneCamera = true;
-                    break;
-                }
-            }
-
             Vec3 pos = cam.GetPosition();
             Ang3 ang = cam.GetAngles();
-            if (!cutSceneCamera)
-            {
-                pRenderer->Draw2dLabel(xpos, ypos, 1.35f, isActive ? fColorGreen : fColorRed, false, "View Camera: %p . View Id: %d, pos (%f, %f, %f), ang (%f, %f, %f)", &cam, it->first, pos.x, pos.y, pos.z, ang.x, ang.y, ang.z);
-            }
-            else
-            {
-                pRenderer->Draw2dLabel(xpos, ypos, 1.35f, isActive ? fColorGreen : fColorRed, false, "View Camera: %p . View Id: %d, pos (%f, %f, %f), ang (%f, %f, %f) - Created during Cut-Scene", &cam, it->first, pos.x, pos.y, pos.z, ang.x, ang.y, ang.z);
-            }
+            pRenderer->Draw2dLabel(xpos, ypos, 1.35f, isActive ? fColorGreen : fColorRed, false, "View Camera: %p . View Id: %d, pos (%f, %f, %f), ang (%f, %f, %f)", &cam, it->first, pos.x, pos.y, pos.z, ang.x, ang.y, ang.z);
 
             ypos += 11;
         }

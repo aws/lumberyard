@@ -422,7 +422,6 @@ void  CryLeaveCriticalSection(void* cs)
 //////////////////////////////////////////////////////////////////////////
 uint32 CryGetFileAttributes(const char* lpFileName)
 {
-    // Normal GetFileAttributes not available anymore in non desktop applications (eg Durango)
     WIN32_FILE_ATTRIBUTE_DATA data;
     BOOL res;
     res = GetFileAttributesEx(lpFileName, GetFileExInfoStandard, &data);

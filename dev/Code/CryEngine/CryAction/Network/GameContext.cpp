@@ -335,8 +335,8 @@ void CGameContext::OnEvent(IEntity* pEntity, SEntityEvent& event)
 {
     struct SGetEntId
     {
-        ILINE SGetEntId(IEntity* pEntity)
-            : m_pEntity(pEntity)
+        ILINE SGetEntId(IEntity* entity)
+            : m_pEntity(entity)
             , m_id(0) {}
 
         ILINE operator EntityId()
@@ -355,8 +355,8 @@ void CGameContext::OnEvent(IEntity* pEntity, SEntityEvent& event)
 
     struct SEntIsMP
     {
-        ILINE SEntIsMP(IEntity* pEntity)
-            : m_pEntity(pEntity)
+        ILINE SEntIsMP(IEntity* entity)
+            : m_pEntity(entity)
             , m_got(false) {}
 
         ILINE operator bool()

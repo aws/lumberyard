@@ -60,7 +60,7 @@ namespace LmbrCentral
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private LensFlareComponentEditorRequestBus::Handler
+        , private EditorLensFlareComponentRequestBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AZ::Data::AssetBus::Handler
     {

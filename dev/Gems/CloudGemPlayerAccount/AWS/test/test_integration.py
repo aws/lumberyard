@@ -69,9 +69,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
         self.run_all_tests()
 
     def __000_create_stacks(self):
-        # self.lmbr_aws doesn't work during setUp().
-        gem_path = self.add_to_gems_file(self.GEM_NAME)
-        self.lmbr_aws('resource-group', 'add', '--resource-group', self.GEM_NAME, '--gem', gem_path, ignore_failure=True)
+        self.enable_real_gem(self.GEM_NAME)
 
         if not self.__has_project_stack():
             self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
@@ -649,17 +647,8 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
     # ------------------------------------------------ Admin Search API ------------------------------------------------
 
     def __600_setup_search_test_data(self):
-        # Remove all users
-        listUsersResponse = self.aws_cognito_idp.list_users(UserPoolId=self.context['user_pool_id'])
-        for user in listUsersResponse['Users']:
-            self.aws_cognito_idp.admin_delete_user(UserPoolId=self.context['user_pool_id'], Username=user['Username'])
-            print 'Deleted user {}'.format(user['Username'])
-
-        # Remove all accounts
-        scanResponse = self.aws_dynamo.scan(TableName=self.context['accounts_table'])
-        for account in scanResponse['Items']:
-            self.aws_dynamo.delete_item(TableName=self.context['accounts_table'], Key={'AccountId': account['AccountId']})
-            print 'Deleted account {}'.format(account['AccountId'])
+        self.__delete_all_users()
+        self.__delete_all_accounts()
 
         # Add test accounts
         testAccounts = {}
@@ -680,6 +669,8 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
         testAccounts['user2'] = self.__create_account(None, {'email': self.TEST_EMAIL})
 
         self.context['testAccounts'] = testAccounts
+
+        time.sleep(10) # wait for cloud state to stabalize
 
     def __605_call_admin_account_search_no_parameters(self):
         result = self.__service_get('/admin/accountSearch', admin_auth=True)
@@ -730,6 +721,39 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
     def __645_call_admin_account_search_with_no_credentials(self):
         self.__service_get('/admin/accountSearch', expected_status_code=403)
 
+    def __650_create_pagination_test_accounts(self):
+        self.__delete_all_accounts()
+
+        for index in range(50):
+            self.__create_account({'AccountId': 'testAccount{}'.format(index), 'PlayerName': 'Test{}'.format(str(index).rjust(2,'0'))}, None)
+
+    def __655_player_name_search_pagination(self):
+        def check_page_results(results, page_size, page_offset, has_next, has_previous):
+            print results
+            self.assertEqual('next' in results, has_next)
+            self.assertEqual('previous' in results, has_previous)
+            self.assertEqual(len(results['Accounts']), page_size)
+            for index in range(page_size):
+                self.assertEqual(results['Accounts'][index]['PlayerName'], 'Test{}'.format(str(index + page_offset).rjust(2,'0')))
+
+        # Get the first page.
+        result1 = self.__service_get('/admin/accountSearch', {'StartPlayerName': ' '}, admin_auth=True)
+        check_page_results(result1, 20, 0, has_next=True, has_previous=True)
+
+        # Get the next two pages using next tokens.
+        result2 = self.__service_get('/admin/accountSearch', {'PageToken': result1['next']}, admin_auth=True)
+        check_page_results(result2, 20, 20, has_next=True, has_previous=True)
+
+        result3 = self.__service_get('/admin/accountSearch', {'PageToken': result2['next']}, admin_auth=True)
+        check_page_results(result3, 10, 40, has_next=False, has_previous=True)
+
+        # Check the previous tokens.
+        result2_previous = self.__service_get('/admin/accountSearch', {'PageToken': result2['previous']}, admin_auth=True)
+        check_page_results(result2_previous, 20, 0, has_next=True, has_previous=False)
+
+        result3_previous = self.__service_get('/admin/accountSearch', {'PageToken': result3['previous']}, admin_auth=True)
+        check_page_results(result3_previous, 20, 20, has_next=True, has_previous=True)
+
     # ------------------------------------------------ C++ ------------------------------------------------
 
     def __900_run_cpp_tests(self):
@@ -740,7 +764,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
 
             self.lmbr_aws('update-mappings', '--release')
 
-            mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.awsLogicalMappings.json')
+            mappings_file = os.path.join(self.GAME_DIR, 'Config', self.TEST_DEPLOYMENT_NAME + '.player.awsLogicalMappings.json')
             print 'Using mappings from', mappings_file
             os.environ["cc_override_resource_map"] = mappings_file
 
@@ -958,6 +982,18 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
 
         return result
 
+    def __delete_all_users(self):
+        listUsersResponse = self.aws_cognito_idp.list_users(UserPoolId=self.context['user_pool_id'])
+        for user in listUsersResponse['Users']:
+            self.aws_cognito_idp.admin_delete_user(UserPoolId=self.context['user_pool_id'], Username=user['Username'])
+            print 'Deleted user {}'.format(user['Username'])
+
+    def __delete_all_accounts(self):
+        scanResponse = self.aws_dynamo.scan(TableName=self.context['accounts_table'])
+        for account in scanResponse['Items']:
+            self.aws_dynamo.delete_item(TableName=self.context['accounts_table'], Key={'AccountId': account['AccountId']})
+            print 'Deleted account {}'.format(account['AccountId'])
+
     def __get_identity_id(self, auth_tokens):
         logins = {self.context['user_pool_provider_id']: auth_tokens['IdToken']}
         identity_response = self.aws_cognito_identity.get_id(IdentityPoolId=self.context['identity_pool_id'], Logins=logins)
@@ -1006,7 +1042,9 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
 
                 expectedAccount['matched'] = True
             else:
-                expectedUser = expectedUsers.get(account.get('CognitoUsername'))
+                username = account.get('CognitoUsername')
+                expectedUser = expectedUsers.get(username)
+                self.assertIsNotNone(expectedUser, 'User {} should not have been in the search results.'.format(username))
                 self.assertFalse(expectedUser.get('matched'))
                 print 'Expected: ', expectedUser
 
@@ -1022,6 +1060,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(lmbr_aws_test_support.lmbr_
             self.assertTrue(user.get('matched'), 'User {} should have been in the search results'.format(username))
 
     def __assert_cognito_user_equals(self, actual, expectedAttributes, username):
+        time.sleep(3) # wait to allow cognito to refresh
         if not username:
             self.assertFalse(actual)
         else:

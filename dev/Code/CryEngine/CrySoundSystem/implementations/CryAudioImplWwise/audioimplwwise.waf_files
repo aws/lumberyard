@@ -14,6 +14,8 @@
         [
             "AudioInput/AudioInputFile.cpp",
             "AudioInput/AudioInputFile.h",
+            "AudioInput/AudioInputMicrophone.cpp",
+            "AudioInput/AudioInputMicrophone.h",
             "AudioInput/WavParser.cpp",
             "AudioInput/WavParser.h"
         ],

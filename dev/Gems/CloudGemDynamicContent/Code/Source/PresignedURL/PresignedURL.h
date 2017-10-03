@@ -25,10 +25,10 @@ namespace CloudCanvas
         PresignedURLManager();
         virtual ~PresignedURLManager();
 
-        virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName) override;
-        virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName) override;
+        virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
+        virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
 
-        AZ::Job* CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName) const;
+        AZ::Job* CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) const;
     };
 } // namespace CloudCanvas
 

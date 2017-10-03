@@ -17,6 +17,8 @@
 #include <AzCore/IO/SystemFile.h>
 #include <Util/PathUtil.h>
 #include <GFxFramework/MaterialIO/IMaterial.h>
+#include <SceneAPI/SceneCore/Containers/Views/PairIterator.h>
+#include <SceneAPI/SceneCore/Containers/Views/FilterIterator.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
@@ -24,19 +26,11 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkeletonGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkinGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IAnimationGroup.h>
-
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-    #include <SceneAPI/SceneCore/DataTypes/Groups/IEFXMotionGroup.h>
-    #include <SceneAPI/SceneCore/DataTypes/Groups/IActorGroup.h>
-#endif
-
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
-#include <SceneAPI/SceneCore/Containers/Views/PairIterator.h>
-#include <SceneAPI/SceneCore/Containers/Views/FilterIterator.h>
+#include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
 #include <SceneAPI/SceneCore/Import/Utilities/FileFinder.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
-#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 #include <IEditor.h>
 #include <ISourceControl.h>
@@ -57,8 +51,8 @@ AssetImporterDocument::AssetImporterDocument()
 
 bool AssetImporterDocument::LoadScene(const AZStd::string& sceneFullPath)
 {
-    m_scene = AZ::SceneAPI::Events::AssetImportRequest::LoadScene(sceneFullPath,
-            AZ::SceneAPI::Events::AssetImportRequest::RequestingApplication::Editor);
+    namespace SceneEvents = AZ::SceneAPI::Events;
+    SceneEvents::SceneSerializationBus::BroadcastResult(m_scene, &SceneEvents::SceneSerializationBus::Events::LoadScene, sceneFullPath, AZ::Uuid::CreateNull());
     return !!m_scene;
 }
 
@@ -112,6 +106,11 @@ void AssetImporterDocument::SaveScene(AZStd::shared_ptr<AZ::ActionOutput>& outpu
 
             m_saveRunner = nullptr;
     }, AZ::AsyncSaveRunner::ControllerOrder::Sequential);
+}
+
+void AssetImporterDocument::ClearScene()
+{
+    m_scene.reset();
 }
 
 void AssetImporterDocument::SaveManifest()
@@ -204,7 +203,7 @@ bool AssetImporterDocument::SaveMaterials(AZStd::shared_ptr<AZ::ActionOutput>& o
                 [this, materialExporter](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
                 {
                     // Write the material
-                    if (!materialExporter->WriteToFile(fullPath.c_str(), *m_scene) && actionOutput)
+                    if (!materialExporter->WriteToFile(fullPath.c_str(), true) && actionOutput)
                     {
                         actionOutput->AddError("Failed to save converted material to file.", fullPath);
                         return false;

@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "CaptureTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -43,12 +45,12 @@ void CCaptureTrack::SerializeKey(ICaptureKey& key, XmlNodeRef& keyNode, bool bLo
             key.FormatTGA();
         }
         desc = keyNode->getAttr("folder");
-        cry_strcpy(key.folder, desc);
+        key.folder = desc;
         keyNode->getAttr("once", key.once);
         desc = keyNode->getAttr("prefix");
         if (desc)
         {
-            cry_strcpy(key.prefix, desc);
+            key.prefix = desc;
         }
         int intAttr;
         keyNode->getAttr("bufferToCapture", intAttr);
@@ -61,9 +63,9 @@ void CCaptureTrack::SerializeKey(ICaptureKey& key, XmlNodeRef& keyNode, bool bLo
         keyNode->setAttr("duration", key.duration);
         keyNode->setAttr("timeStep", key.timeStep);
         keyNode->setAttr("format", key.GetFormat());
-        keyNode->setAttr("folder", key.folder);
+        keyNode->setAttr("folder", key.folder.c_str());
         keyNode->setAttr("once", key.once);
-        keyNode->setAttr("prefix", key.prefix);
+        keyNode->setAttr("prefix", key.prefix.c_str());
         keyNode->setAttr("bufferToCapture", key.captureBufferIndex);
     }
 }
@@ -76,17 +78,38 @@ void CCaptureTrack::GetKeyInfo(int key, const char*& description, float& duratio
     CheckValid();
     duration = m_keys[key].once ? 0 : m_keys[key].duration;
     char prefix[64] = "Frame";
-    if (strlen(m_keys[key].prefix) > 0)
+    if (!m_keys[key].prefix.empty())
     {
-        cry_strcpy(prefix, m_keys[key].prefix);
+        cry_strcpy(prefix, m_keys[key].prefix.c_str());
     }
     description = buffer;
-    if (strlen(m_keys[key].folder) > 0)
+    if (!m_keys[key].folder.empty())
     {
-        sprintf_s(buffer, "[%s] %s, %.3f, %s", prefix, m_keys[key].GetFormat(), m_keys[key].timeStep, m_keys[key].folder);
+        sprintf_s(buffer, "[%s] %s, %.3f, %s", prefix, m_keys[key].GetFormat(), m_keys[key].timeStep, m_keys[key].folder.c_str());
     }
     else
     {
         sprintf_s(buffer, "[%s] %s, %.3f", prefix, m_keys[key].GetFormat(), m_keys[key].timeStep);
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ICaptureKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ICaptureKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ICaptureKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ICaptureKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ICaptureKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ICaptureKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCaptureTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ICaptureKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CCaptureTrack, TAnimTrack<ICaptureKey> >()
+        ->Version(1);
 }

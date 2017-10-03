@@ -20,17 +20,19 @@
 #define TM_API_PTR g_radTmApi
 #include <rad_tm.h>
 
+#define  AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category) (1 << static_cast<AZ::Debug::ProfileCategoryPrimitiveType>(category))
 // Helpers
 #define AZ_INTERNAL_PROF_VERIFY_CAT(category) static_assert(category < AZ::Debug::ProfileCategory::Count, "Invalid profile category")
-#define AZ_INTERNAL_PROF_CAT_TO_FLAGS(category) (1 << static_cast<AZ::Debug::ProfileCategoryPrimitiveType>(category))
+#define AZ_INTERNAL_PROF_MEMORY_CAT_TO_FLAGS(category) (AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category) | \
+        AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(AZ::Debug::ProfileCategory::MemoryReserved))
 
 #define AZ_INTERNAL_PROF_TM_FUNC_VERIFY_CAT(category, flags) \
     AZ_INTERNAL_PROF_VERIFY_CAT(category); \
-    tmFunction(AZ_INTERNAL_PROF_CAT_TO_FLAGS(category), flags)
+    tmFunction(AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category), flags)
 
 #define AZ_INTERNAL_PROF_TM_ZONE_VERIFY_CAT(category, flags, ...) \
     AZ_INTERNAL_PROF_VERIFY_CAT(category); \
-    tmZone(AZ_INTERNAL_PROF_CAT_TO_FLAGS(category), flags, __VA_ARGS__)
+    tmZone(AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category), flags, __VA_ARGS__)
 
 // AZ_PROFILE_FUNCTION
 #define AZ_PROFILE_FUNCTION(category) \
@@ -65,5 +67,22 @@
 
 #define AZ_PROFILE_SCOPE_IDLE_DYNAMIC(category, ...) \
         AZ_INTERNAL_PROF_TM_ZONE_VERIFY_CAT(category, TMZF_IDLE, __VA_ARGS__)
+
+// AZ_PROFILE_MEMORY_ALLOC
+#define AZ_PROFILE_MEMORY_ALLOC(category, address, size, context) \
+    AZ_INTERNAL_PROF_VERIFY_CAT(category); \
+    tmAlloc(AZ_INTERNAL_PROF_MEMORY_CAT_TO_FLAGS(category), address, size, context)
+
+#define AZ_PROFILE_MEMORY_ALLOC_EX(category, filename, lineNumber, address, size, context) \
+    AZ_INTERNAL_PROF_VERIFY_CAT(category); \
+    tmAllocEx(AZ_INTERNAL_PROF_MEMORY_CAT_TO_FLAGS(category), filename, lineNumber, address, size, context)
+
+#define AZ_PROFILE_MEMORY_FREE(category, address) \
+    AZ_INTERNAL_PROF_VERIFY_CAT(category); \
+    tmFree(AZ_INTERNAL_PROF_MEMORY_CAT_TO_FLAGS(category), address)
+
+#define AZ_PROFILE_MEMORY_FREE_EX(category, filename, lineNumber, address) \
+    AZ_INTERNAL_PROF_VERIFY_CAT(category); \
+    tmFreeEx(AZ_INTERNAL_PROF_MEMORY_CAT_TO_FLAGS(category), filename, lineNumber, address)
 
 #endif

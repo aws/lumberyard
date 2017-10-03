@@ -16,6 +16,9 @@
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/core/http/HttpTypes.h>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::S3::Model;
 using namespace Aws::Http;
 
@@ -32,7 +35,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("PresignUrl", _HELP("Activate this to write data to the cloud. Should be the name of a file you want to upload.")),
-            m_bucketClientPort.GetConfiguration("BucketName", _HELP("The name of the bucket to use")),
+            InputPortConfig<string>("BucketName", _HELP("The name of the bucket to use")),
             InputPortConfig<string>("KeyName", _HELP("What to name the key to presign against")),
             InputPortConfig<string>("RequestMethod", _HELP("The method to presign against"), "Http Request Method",
                 _UICONFIG("enum_string:GET=GET,PUT=PUT,POST=POST,DELETE=DELETE"))
@@ -55,14 +58,8 @@ namespace LmbrAWS
         //Upload File
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_PresignUrl))
         {
-            auto client = m_bucketClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& bucketName = client.GetBucketName();
+            AZStd::string bucketName = GetPortString(pActInfo, EIP_BucketClient).c_str();
+            EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, bucketName);
             auto& keyName = GetPortString(pActInfo, EIP_KeyName);
             auto& method = GetPortString(pActInfo, EIP_RequestMethod);
 
@@ -85,7 +82,10 @@ namespace LmbrAWS
                 httpMethod = HttpMethod::HTTP_GET;
             }
 
-            Aws::String url = client->GeneratePresignedUrl(bucketName.c_str(), keyName.c_str(), httpMethod);
+            CloudGemFramework::AwsApiClientJobConfig<Aws::S3::S3Client> clientConfig;
+            auto s3Client = clientConfig.GetClient();
+
+            Aws::String url = s3Client->GeneratePresignedUrl(bucketName.c_str(), keyName.c_str(), httpMethod);
             if (!url.empty())
             {
                 SFlowAddress addr(pActInfo->myID, EOP_SignedUrl, true);

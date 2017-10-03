@@ -16,8 +16,11 @@
 #pragma once
 
 #include <CryListenerSet.h>
+#include <IEntitySystem.h>
+#include <IGameplayRecorder.h>
+#include <IInput.h>
 #include <ITimeDemoRecorder.h>
-#include "ITestModule.h"
+#include <TestSystem/ITestModule.h>
 
 struct SRecordedGameEvent;
 
@@ -30,18 +33,8 @@ struct STimeDemoGameEvent
     float value;
     int extra;
 
-    STimeDemoGameEvent() {};
-    STimeDemoGameEvent(IEntity* pEntity, const GameplayEvent& event)
-    {
-        if (pEntity)
-        {
-            entityName = pEntity->GetName();
-        }
-        gameEventType = event.event;
-        value = event.value;
-        description = event.description;
-        description2 = (const char*)(event.extra);
-    };
+    STimeDemoGameEvent() {}
+    STimeDemoGameEvent(IEntity* pEntity, const GameplayEvent& event);
 
     STimeDemoGameEvent(const SRecordedGameEvent& event);
 
@@ -55,7 +48,7 @@ struct STimeDemoGameEvent
 typedef std::vector<STimeDemoGameEvent> TGameEventRecords;
 
 class CTimeDemoRecorder
-    : public ITimeDemoRecorder
+    : public TimeDemoRecorderBus::Handler
     , IFrameProfilePeakCallback
     , IInputEventListener
     , IEntitySystemSink
@@ -65,24 +58,25 @@ public:
     CTimeDemoRecorder();
     virtual ~CTimeDemoRecorder();
 
-    void Reset();
 
-    void PreUpdate();
-    void PostUpdate();
 
-    void GetMemoryStatistics(class ICrySizer* pSizer) const;
-
-    bool IsTimeDemoActive() const { return m_bChainloadingDemo || m_bPlaying || m_bRecording; }
-    bool IsChainLoading() const { return m_bChainloadingDemo; }
 
     //////////////////////////////////////////////////////////////////////////
-    // Implements ITimeDemoRecorder interface.
+    // TimeDemoRecorder interface implementation.
     //////////////////////////////////////////////////////////////////////////
-    virtual bool IsRecording() const override { return m_bRecording; };
-    virtual bool IsPlaying() const override { return m_bPlaying; };
-    virtual void RegisterListener(ITimeDemoListener* pListener) override;
-    virtual void UnregisterListener(ITimeDemoListener* pListener) override;
-    virtual void GetCurrentFrameRecord(STimeDemoFrameRecord& externalRecord) const override;
+    bool IsRecording() const override { return m_bRecording; }
+    bool IsPlaying() const override { return m_bPlaying; }
+    void RegisterListener(ITimeDemoListener* pListener) override;
+    void UnregisterListener(ITimeDemoListener* pListener) override;
+    void GetCurrentFrameRecord(STimeDemoFrameRecord& externalRecord) const override;
+
+    void PreUpdate() override;
+    void PostUpdate() override;
+    void Reset() override;
+
+    bool IsChainLoading() const override { return m_bChainloadingDemo; }
+    bool IsTimeDemoActive() const override { return m_bChainloadingDemo || m_bPlaying || m_bRecording; }
+    void GetMemoryStatistics(class ICrySizer* pSizer) const override;
     //////////////////////////////////////////////////////////////////////////
 
 private:

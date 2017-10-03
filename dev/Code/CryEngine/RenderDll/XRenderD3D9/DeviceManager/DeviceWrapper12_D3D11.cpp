@@ -17,7 +17,7 @@
 #include "../../Common/ReverseDepth.h"
 #include "CryUtils.h"
 
-#if !defined(CRY_USE_DX12_NATIVE)
+#if !defined(CRY_USE_DX12_NATIVE) && !defined(CRY_USE_GNM_DEVICE)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define DX11_COMMANDLIST_REDUNDANT_STATE_FILTERING
 

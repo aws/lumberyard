@@ -1,0 +1,71 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <Core/GraphBus.h>
+#include <ScriptCanvas/Bus/ScriptCanvasBus.h>
+#include <ScriptCanvas/Assets/ScriptCanvasDocumentContext.h>
+
+#include <AzCore/Component/Component.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
+namespace ScriptCanvasEditor
+{
+    class SystemComponent
+        : public AZ::Component
+        , private SystemRequestBus::Handler
+        , private AzToolsFramework::EditorEvents::Bus::Handler
+    {
+    public:
+        AZ_COMPONENT(SystemComponent, "{1DE7A120-4371-4009-82B5-8140CB1D7B31}");
+
+        SystemComponent();
+        ~SystemComponent() override;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
+
+        ////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Init() override;
+        void Activate() override;
+        void Deactivate() override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // SystemRequestBus::Handler        
+        void AddAsyncJob(AZStd::function<void()>&& jobFunc) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        // AztoolsFramework::EditorEvents::Bus::Handler overrides
+        void PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags) override;
+        void NotifyRegisterViews() override;
+        ////////////////////////////////////////////////////////////////////////
+
+    private:
+		SystemComponent(const SystemComponent&) = delete;
+
+        void FilterForScriptCanvasEnabledEntities(AzToolsFramework::EntityIdList& sourceList, AzToolsFramework::EntityIdList& targetList);
+
+        AZStd::unique_ptr<AZ::JobManager> m_jobManager;
+        AZStd::unique_ptr<AZ::JobContext> m_jobContext;
+        DocumentContext m_documentContext;
+    };
+}

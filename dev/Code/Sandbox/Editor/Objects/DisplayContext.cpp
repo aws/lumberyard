@@ -144,12 +144,15 @@ void DisplayContext::DrawSolidCylinder(const Vec3& center, const Vec3& axis, flo
         // determine scale in dir direction, apply to height
         Vec3 axisNormalized = axis.GetNormalized();
         Vec3 wsAxis = ToWorldSpaceVector(axisNormalized);
-        float wsHeight = height * wsAxis.GetLengthFast();
+        float wsAxisLength = wsAxis.GetLength();
+        float wsHeight = height * wsAxisLength;
 
         // determine scale in orthogonal direction, apply to radius
         Vec3 radiusDirNormalized = axisNormalized.GetOrthogonal();
+        radiusDirNormalized.Normalize();
         Vec3 wsRadiusDir = ToWorldSpaceVector(radiusDirNormalized);
-        float wsRadius = radius * wsRadiusDir.GetLengthFast();
+        float wsRadiusDirLen = wsRadiusDir.GetLength();
+        float wsRadius = radius * wsRadiusDirLen;
 
         pRenderAuxGeom->DrawCylinder(wsCenter, wsAxis, wsRadius, wsHeight, m_color4b);
     }
@@ -196,6 +199,16 @@ void DisplayContext::DrawWireBox(const Vec3& min, const Vec3& max)
 void DisplayContext::DrawSolidBox(const Vec3& min, const Vec3& max)
 {
     pRenderAuxGeom->DrawAABB(AABB(min, max), m_matrixStack[m_currentMatrix], true, m_color4b, eBBD_Faceted);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void DisplayContext::DrawSolidOBB(const Vec3& center, const Vec3& axisX, const Vec3& axisY, const Vec3& axisZ, const Vec3& halfExtents)
+{
+    OBB obb;
+    obb.m33 = Matrix33::CreateFromVectors(axisX, axisY, axisZ);
+    obb.c = Vec3(0, 0, 0);
+    obb.h = halfExtents;
+    pRenderAuxGeom->DrawOBB(obb, center, true, m_color4b, eBBD_Faceted);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -314,7 +327,9 @@ void DisplayContext::DrawArc(const Vec3& pos, float radius, float startAngleDegr
     Vec3 p1;
     for (int i = 0; i < numSteps; ++i)
     {
-        angle += step;
+        angle += std::min(step, sweepAngleRadians); // Don't go past sweepAngleRadians when stepping or the arc will be too long.
+        sweepAngleRadians -= step;
+
         p1[referenceAxis0] = pos[referenceAxis0];
         p1[referenceAxis1] = pos[referenceAxis1] + radius * sin(angle);
         p1[referenceAxis2] = pos[referenceAxis2] + radius * cos(angle);
@@ -357,7 +372,9 @@ void DisplayContext::DrawArc(const Vec3& pos, float radius, float startAngleDegr
     Vec3 p1;
     for (int i = 0; i < numSteps; ++i)
     {
-        angle += step;
+        angle += std::min(step, sweepAngleRadians); // Don't go past sweepAngleRadians when stepping or the arc will be too long.
+        sweepAngleRadians -= step;
+
         float cosAngle = cos(angle) * radius;
         float sinAngle = sin(angle) * radius;
 

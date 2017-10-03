@@ -159,6 +159,24 @@ namespace NCryOpenGL
         typedef std::vector<SShaderReflectionResource> TResources;
         typedef std::vector<SShaderReflectionParameter> TParameters;
 
+        SShaderReflection()
+            : m_uGLSLSourceOffset(0)
+            , m_uSamplersOffset(0)
+            , m_uNumSamplers(0)
+            , m_uImagesOffset(0)
+            , m_uNumImages(0)
+            , m_uStorageBuffersOffset(0)
+            , m_uNumStorageBuffers(0)
+            , m_uUniformBuffersOffset(0)
+            , m_uNumUniformBuffers(0)
+            , m_uImportsOffset(0)
+            , m_uImportsSize(0)
+            , m_uExportsOffset(0)
+            , m_uExportsSize(0)
+            , m_uInputHash(0)
+            , m_uSymbolsOffset(0)
+        {}
+
         uint32 m_uGLSLSourceOffset;
         uint32 m_uSamplersOffset;
         uint32 m_uNumSamplers;
@@ -369,6 +387,50 @@ namespace NCryOpenGL
 #endif //DXGL_SUPPORT_VERTEX_ATTRIB_BINDING
     };
 
+    namespace DXBC
+    {
+        const uint32 TextureIndexEncodeShift    = 22;
+        const uint32 SamplerIndexEncodeShift    = 12;
+        const uint32 TextureUnitEncodeShift     = 2;
+        const uint32 NormalSampleEncodeShift    = 1;
+        const uint32 EmbeddedNameEncodeShift    = 12;
+        const uint32 EncodeMask                 = 0x3FF;
+        const uint32 EncodeSampleModeMask       = 0x1;
+
+        template <size_t uSize>
+        bool GetEmbeddedName(char(&acBuffer)[uSize], const char* szGLSL, uint32 uNameMask)
+        {
+            uint32 uNameOffset = uNameMask >> EmbeddedNameEncodeShift;
+            uint32 uNameSize = uNameMask & EncodeMask;
+            if (uNameSize + 1 >= uSize)
+            {
+                DXGL_ERROR("Embedded name is too big");
+                return false;
+            }
+
+            memcpy(acBuffer, szGLSL + uNameOffset, uNameSize);
+            acBuffer[uNameSize] = '\0';
+            return true;
+        }
+
+        inline uint32 DecodeTextureIndex(uint32 uSamplerField) { return uSamplerField >> TextureIndexEncodeShift; }
+        inline uint32 DecodeSamplerIndex(uint32 uSamplerField) { return (uSamplerField >> SamplerIndexEncodeShift) & EncodeMask; }
+        inline uint32 DecodeTextureUnitIndex(uint32 uSamplerField) { return (uSamplerField >> TextureUnitEncodeShift) & EncodeMask; }
+        inline bool DecodeNormalSample(uint32 uSamplerField) { return ((uSamplerField >> NormalSampleEncodeShift) & EncodeSampleModeMask) == 1; }
+        inline bool DecodeCompareSample(uint32 uSamplerField) { return (uSamplerField & 0x1) == 1; }
+        inline uint32 DecodeResourceIndex(uint32 uResourceField) { return uResourceField; }
+        inline uint32 EncodeEmbeddedName(uint32 uNameOffset, uint32 uNameSize) { return uNameOffset << EmbeddedNameEncodeShift | uNameSize & EncodeMask; }
+        inline uint32 EncodeTextureData(uint32 uTextureIndex, uint32 uSamplerIndex, uint32 uTextureUnitIndex, bool bNormalSample, bool bCompareSample)
+        {
+            return uTextureIndex << TextureIndexEncodeShift | 
+                    (uSamplerIndex & EncodeSampleModeMask) << SamplerIndexEncodeShift |
+                    (uTextureUnitIndex & EncodeSampleModeMask) << TextureUnitEncodeShift |
+                    ((static_cast<uint32>(bNormalSample) & EncodeSampleModeMask) << NormalSampleEncodeShift) |
+                    static_cast<uint32>(bCompareSample);
+        }
+        inline uint32 EncodeResourceIndex(uint32 uResourceField) { return uResourceField; }
+    }
+
 
     typedef SShaderReflection TShaderReflection;
 
@@ -387,6 +449,9 @@ namespace NCryOpenGL
     bool VerifyShaderStatus(GLuint uShader, GLenum eStatus);
     bool VerifyProgramStatus(GLuint uProgram, GLenum eStatus);
     bool VerifyProgramPipelineStatus(GLuint uPipeline, GLenum eStatus);
+
+    bool BindUniformToUnit(GLuint uProgramName, uint32 uUnit, const char* szName, CContext* pContext);
+    bool BindUniformBufferToUnit(GLuint uProgramName, uint32 uUnit, const char* szName, CContext* pContext);
 }
 
 #endif //__GLSHADER__

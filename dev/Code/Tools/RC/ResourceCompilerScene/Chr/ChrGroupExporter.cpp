@@ -14,10 +14,13 @@
 
 #include <Cry_Geo.h> // Needed for CGFContent.h
 #include <CGFContent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <RC/ResourceCompilerScene/Common/CommonExportContexts.h>
 #include <RC/ResourceCompilerScene/Chr/ChrExportContexts.h>
 #include <RC/ResourceCompilerScene/Chr/ChrGroupExporter.h>
+#include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkeletonGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
@@ -74,7 +77,30 @@ namespace AZ
             AZ_Assert(m_assetWriter != nullptr, "Unable to write CHR due to invalid asset writer.");
             if (m_assetWriter)
             {
-                if (!m_assetWriter->WriteCHR(&cgfContent, m_convertContext))
+                if (m_assetWriter->WriteCHR(&cgfContent, m_convertContext))
+                {
+                    static const AZ::Data::AssetType skeletonAssetType("{60161B46-21F0-4396-A4F0-F2CCF0664CDE}");
+                    
+                    auto& list = context.m_products.GetProducts();
+                    bool isFirst = AZStd::find_if(list.begin(), list.end(),
+                        [](const SceneAPI::Events::ExportProduct& it) -> bool
+                        {
+                            return it.m_assetType == skeletonAssetType;
+                        }) == list.end();
+
+                    SceneAPI::Events::ExportProduct& product = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skeletonAssetType);
+
+                    // Previously only a single skeleton would be exported that was named after the source file. This was changed to exporting all
+                    //      skeletons now named after the root node. This means that the first skeleton would previously have been known under
+                    //      another name.
+                    if (isFirst)
+                    {
+                        AZStd::string legacyName = product.m_filename;
+                        AzFramework::StringFunc::Path::ReplaceFullName(legacyName, context.m_scene.GetName().c_str(), fileExtension.c_str());
+                        product.m_legacyFileNames.emplace_back(AZStd::move(legacyName));
+                    }
+                }
+                else
                 {
                     AZ_TracePrintf(SceneUtil::ErrorWindow, "Failed writing CHR file ('%s')\n", filename.c_str());
                     result += SceneEvents::ProcessingResult::Failure;

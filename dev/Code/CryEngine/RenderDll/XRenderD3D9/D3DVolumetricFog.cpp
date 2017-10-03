@@ -878,17 +878,17 @@ void CVolumetricFog::PrepareLightList(TArray<SRenderLight>* envProbes, TArray<SR
                         Vec3 vProbeExtents = renderLight.m_ProbeExtents;
                         if (fabs(vCenterOBBSpace.x) < vProbeExtents.x && fabs(vCenterOBBSpace.y) < vProbeExtents.y && fabs(vCenterOBBSpace.z) < vProbeExtents.z)
                         {
-                            Vec3 pos;
-                            pos.x = vCenterOBBSpace.x / vProbeExtents.x;
-                            pos.y = vCenterOBBSpace.y / vProbeExtents.y;
-                            pos.z = vCenterOBBSpace.z / vProbeExtents.z;
-                            Vec3 pos2 = pos.CompMul(pos);
+                            Vec3 probePos;
+                            probePos.x = vCenterOBBSpace.x / vProbeExtents.x;
+                            probePos.y = vCenterOBBSpace.y / vProbeExtents.y;
+                            probePos.z = vCenterOBBSpace.z / vProbeExtents.z;
+                            Vec3 pos2 = probePos.CompMul(probePos);
                             Vec3 t;
                             t.x = sqrt(1.0f - 0.5f * pos2.y - 0.5f * pos2.z + 0.333f * pos2.y * pos2.z);
                             t.y = sqrt(1.0f - 0.5f * pos2.z - 0.5f * pos2.x + 0.333f * pos2.z * pos2.x);
                             t.z = sqrt(1.0f - 0.5f * pos2.x - 0.5f * pos2.y + 0.333f * pos2.x * pos2.y);
-                            pos = pos.CompMul(t);
-                            float falloff = max(0.0f, min(1.0f, 1.0f + pos.Dot(-pos)));
+                            probePos = probePos.CompMul(t);
+                            float falloff = max(0.0f, min(1.0f, 1.0f + probePos.Dot(-probePos)));
                             const static float AttenuationFalloffMax = 0.2f;
                             falloff = min(1.0f, falloff / max(renderLight.GetFalloffMax(), AttenuationFalloffMax));
                             float attenuation = falloff * falloff * (3.0f - 2.0f * falloff) * renderLight.m_Color.a;
@@ -1004,8 +1004,8 @@ void CVolumetricFog::PrepareLightList(TArray<SRenderLight>* envProbes, TArray<SR
                     lightCullInfo.volumeParams1 = Vec4(u1.x, u1.y, u1.z, areaLightMat.GetColumn1().GetLength() * 0.5f);
                     lightCullInfo.volumeParams2 = Vec4(u2.x, u2.y, u2.z, areaLightMat.GetColumn2().GetLength() * 0.5f);
 
-                    float volumeSize = renderLight.m_fRadius + max(renderLight.m_fAreaWidth, renderLight.m_fAreaHeight);
-                    lightCullInfo.depthBounds = Vec2(posVS.z - volumeSize, posVS.z + volumeSize);
+                    float volumeExtent = renderLight.m_fRadius + max(renderLight.m_fAreaWidth, renderLight.m_fAreaHeight);
+                    lightCullInfo.depthBounds = Vec2(posVS.z - volumeExtent, posVS.z + volumeExtent);
 
                     float areaFov = renderLight.m_fLightFrustumAngle * 2.0f;
                     if (renderLight.m_Flags & DLF_CASTSHADOW_MAPS)

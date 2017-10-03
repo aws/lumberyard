@@ -8,12 +8,13 @@
     "auto": {
         "Include": [
             "Include/CloudGemMessageOfTheDay/CloudGemMessageOfTheDayBus.h",
-            "Include/AWS/ServiceAPI/CloudGemMessageOfTheDayClientComponent.h"
+            "AWS/ServiceAPI/CloudGemMessageOfTheDayClientComponent.h"
         ],
         "Source": [
             "Source/CloudGemMessageOfTheDayModule.cpp",
             "Source/CloudGemMessageOfTheDaySystemComponent.cpp",
-            "Source/CloudGemMessageOfTheDaySystemComponent.h"
+            "Source/CloudGemMessageOfTheDaySystemComponent.h",
+            "AWS/ServiceAPI/CloudGemMessageOfTheDayClientComponent.cpp"
         ]
     }
 }

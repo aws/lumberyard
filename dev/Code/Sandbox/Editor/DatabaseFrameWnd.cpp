@@ -32,6 +32,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include "QtUtil.h"
 
 class CUndoSelectLibraryUndo
@@ -989,7 +990,7 @@ bool LibraryItemTreeModel::setData(const QModelIndex& index, const QVariant& val
 
     if (text.contains(QLatin1Char('.')))
     {
-        QMessageBox::warning(nullptr, tr("Warning"), tr("The name must not contain \".\""));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), tr("Warning"), tr("The name must not contain \".\""));
         return false;
     }
 
@@ -1007,7 +1008,7 @@ bool LibraryItemTreeModel::setData(const QModelIndex& index, const QVariant& val
 
         if (m_groups.find(text) != std::end(m_groups))
         {
-            QMessageBox::warning(nullptr, tr("Warning"), tr("The identical name exists."));
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), tr("Warning"), tr("The identical name exists."));
             return false;
         }
 
@@ -1065,7 +1066,7 @@ bool LibraryItemTreeModel::setData(const QModelIndex& index, const QVariant& val
                     return item->GetName() == name;
                 }) != std::end(items))
         {
-            QMessageBox::warning(nullptr, tr("Warning"), tr("The identical name exists."));
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), tr("Warning"), tr("The identical name exists."));
             return false;
         }
 

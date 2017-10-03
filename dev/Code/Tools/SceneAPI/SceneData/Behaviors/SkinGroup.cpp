@@ -38,16 +38,20 @@ namespace AZ
 
             void SkinGroup::Activate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::ManifestMetaInfoBus::Handler::BusConnect();
                 Events::GraphMetaInfoBus::Handler::BusConnect();
                 Events::AssetImportRequestBus::Handler::BusConnect();
+#endif // ENABLE_LEGACY_ANIMATION
             }
 
             void SkinGroup::Deactivate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::AssetImportRequestBus::Handler::BusDisconnect();
                 Events::GraphMetaInfoBus::Handler::BusDisconnect();
                 Events::ManifestMetaInfoBus::Handler::BusDisconnect();
+#endif // ENABLE_LEGACY_ANIMATION
             }
 
             void SkinGroup::Reflect(ReflectContext* context)
@@ -139,6 +143,14 @@ namespace AZ
                 }
             }
 
+            void SkinGroup::GetAllVirtualTypes(AZStd::set<Crc32>& types)
+            {
+                if (types.find(s_skinVirtualType) == types.end())
+                {
+                    types.insert(s_skinVirtualType);
+                }
+            }
+
             Events::ProcessingResult SkinGroup::BuildDefault(Containers::Scene& scene) const
             {
                 if (SceneHasSkinGroup(scene) || !Utilities::DoesSceneGraphContainDataLike<DataTypes::ISkinWeightData>(scene, true))
@@ -148,6 +160,11 @@ namespace AZ
 
                 // There are skins but no skin group, so add a default skin group to the manifest.
                 AZStd::shared_ptr<SceneData::SkinGroup> group = AZStd::make_shared<SceneData::SkinGroup>();
+
+                // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
+                //      in the same way again. To guarantee the same uuid, generate a stable one instead.
+                group->OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::SkinGroup::TYPEINFO_Uuid()));
+
                 EBUS_EVENT(Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
                 scene.GetManifest().AddEntry(AZStd::move(group));
 
@@ -165,6 +182,12 @@ namespace AZ
                     if (group.GetName().empty())
                     {
                         group.SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::ISkinGroup>(scene.GetName(), scene.GetManifest()));
+                    }
+                    if (group.GetId().IsNull())
+                    {
+                        // When the uuid is null it's likely because the manifest has been updated from an older version. Include the 
+                        // name of the group as there could be multiple groups.
+                        group.OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::SkinGroup::TYPEINFO_Uuid(), group.GetName()));
                     }
                     Utilities::SceneGraphSelector::UpdateNodeSelection(scene.GetGraph(), group.GetSceneNodeSelectionList());
                     updated = true;

@@ -25,7 +25,7 @@ namespace AZ
         {
         }
 
-        FbxAxisSystemWrapper::UpVector FbxAxisSystemWrapper::GetUpVector(int sign) const
+        FbxAxisSystemWrapper::UpVector FbxAxisSystemWrapper::GetUpVector(int& sign) const
         {
             switch (m_fbxAxisSystem.GetUpVector(sign))
             {

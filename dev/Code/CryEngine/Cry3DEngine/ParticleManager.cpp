@@ -852,7 +852,7 @@ void CParticleManager::DeleteEmitters(uint32 mask)
     }
 }
 
-void CParticleManager::UpdateEmitters(IParticleEffect* pEffect)
+void CParticleManager::UpdateEmitters(IParticleEffect* pEffect, bool recreateContainer)
 {
     // Update all emitters with this effect tree.
     for_all_ptrs (CParticleEmitter, e, m_Emitters)
@@ -861,7 +861,7 @@ void CParticleManager::UpdateEmitters(IParticleEffect* pEffect)
         {
             if (e->GetEffect() == pTest)
             {
-                e->RefreshEffect();
+                e->RefreshEffect(recreateContainer);
                 break;
             }
         }

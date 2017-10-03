@@ -57,8 +57,5 @@ namespace LmbrAWS
         };
 
         bool m_isValid;
-        LmbrAWS::SNS::TopicClientInputPort m_topicClientPort {
-            EIP_TopicClient
-        };
     };
 } // namespace AWS

@@ -17,7 +17,7 @@
 #include "StdAfx.h"
 #include "FlowBaseNode.h"
 #include "IInput.h"
-#include "IHardwareMouse.h"
+#include <LyShine/Bus/UiCursorBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -753,7 +753,7 @@ public:
         {
             if (m_isShowing)
             {
-                gEnv->pHardwareMouse->IncrementCounter();
+                UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
             }
         }
     }
@@ -763,7 +763,7 @@ public:
         // make sure to put the cursor at the correct counter before deleting this
         if (m_isShowing)
         {
-            gEnv->pHardwareMouse->DecrementCounter();
+            UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
         }
     }
 
@@ -807,7 +807,7 @@ public:
             // hide cursor from start (default behavior)
             if (m_isShowing)
             {
-                gEnv->pHardwareMouse->DecrementCounter();
+                UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
                 m_isShowing = false;
             }
             break;
@@ -818,7 +818,7 @@ public:
             {
                 if (!m_isShowing)
                 {
-                    gEnv->pHardwareMouse->IncrementCounter();
+                    UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
                     m_isShowing = true;
                 }
 
@@ -829,7 +829,7 @@ public:
             {
                 if (m_isShowing)
                 {
-                    gEnv->pHardwareMouse->DecrementCounter();
+                    UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
                     m_isShowing = false;
                 }
 
@@ -1122,17 +1122,12 @@ void CFlowMouseSetPosNode::ProcessEvent(EFlowEvent event, SActivationInfo* pActI
         {
             if (mouseCoord.x >= 0 && mouseCoord.y >= 0)
             {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
                 const float normalizedX = static_cast<float>(mouseCoord.x) / static_cast<float>(gEnv->pRenderer->GetWidth());
                 const float normalizedY = static_cast<float>(mouseCoord.y) / static_cast<float>(gEnv->pRenderer->GetHeight());
                 const AZ::Vector2 systemCursorPositionNormalized(normalizedX, normalizedY);
                 AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
                                                                 &AzFramework::InputSystemCursorRequests::SetSystemCursorPositionNormalized,
                                                                 systemCursorPositionNormalized);
-#else
-                gEnv->pHardwareMouse->
-                    SetHardwareMouseClientPosition(float(mouseCoord.x), float(mouseCoord.y));
-#endif
             }
             ActivateOutput(pActInfo, OUT_SOCKET, true);
         }

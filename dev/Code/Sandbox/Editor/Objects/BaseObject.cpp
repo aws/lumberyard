@@ -2219,11 +2219,6 @@ bool CBaseObject::IsSelectable() const
     {
         return true;
     }
-    // Not selectable if hidden.
-    if (IsHidden())
-    {
-        return false;
-    }
 
     // Not selectable if frozen.
     if (IsFrozen())

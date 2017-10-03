@@ -1,0 +1,6 @@
+<Material MtlFlags="524288" Shader="Illum" GenMask="80000801" StringGenMask="%ALLOW_SILHOUETTE_POM%DECAL%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="0.049706571,0.049706571,0.049706571" Specular="0.021219011,0.021219011,0.021219011" Opacity="1" Shininess="180" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="materials/decals/decal_brushstoke_01_diff.dds"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" DecalDiffuseOpacity="1" DecalFalloff="1" DecalAlphaMult="0.60000002" IndirectColor="0.25,0.25,0.25"/>
+</Material>

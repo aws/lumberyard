@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include <AzFramework/Input/System/InputSystemComponent.h>
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
-
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 #include <AzCore/std/parallel/mutex.h>
@@ -56,12 +53,16 @@ namespace SynergyInput
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStopped
-        void TextEntryStopped() override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStart
+        void TextEntryStart(const AzFramework::InputTextEntryRequests::VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStop
+        void TextEntryStop() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceKeyboard::Implementation::TickInputDevice
@@ -112,34 +113,3 @@ namespace SynergyInput
         bool                         m_hasTextEntryStarted;
     };
 } // namespace SynergyInput
-
-#elif defined(USE_SYNERGY_INPUT)
-
-#include "InputDevice.h"
-
-struct IInput;
-class CSynergyContext;
-
-class CSynergyKeyboard
-    : public CInputDevice
-{
-public:
-    CSynergyKeyboard(IInput& input, CSynergyContext* pContext);
-    virtual ~CSynergyKeyboard();
-
-    // IInputDevice overrides
-    virtual int GetDeviceIndex() const { return eIDT_Keyboard; }
-    virtual bool Init();
-    virtual void Update(bool bFocus);
-    virtual char GetInputCharAscii(const SInputEvent& event);
-    // ~IInputDevice
-
-private:
-    _smart_ptr<CSynergyContext> m_pContext;
-    void SetupKeys();
-    void ProcessKey(uint32 key, bool bPressed, bool bRepeat, uint32 modificators);
-    uint32 PackModificators(uint32 modificators);
-    void TypeASCIIString(const char* pString);
-};
-
-#endif // USE_SYNERGY_INPUT

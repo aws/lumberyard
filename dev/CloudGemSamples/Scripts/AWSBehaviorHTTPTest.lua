@@ -5,13 +5,13 @@ local AWSBehaviorHTTPTest = {
 }
 
 function AWSBehaviorHTTPTest:OnActivate()
-    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.gamePlayHandler = GameplayNotificationBus.Connect(self, runTestEventId)
 
     self.httpHandler = AWSBehaviorHTTPNotificationsBus.Connect(self, self.entityId)
 end
 
-function AWSBehaviorHTTPTest:OnEventBegin()
+function AWSBehaviorHTTPTest:OnEventBegin(message)
      if isActive == false then
         Debug.Log("AWSBehaviorHTTPTest not active")
         self:NotifyMainEntity("success")
@@ -55,7 +55,7 @@ end
 
 function AWSBehaviorHTTPTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 

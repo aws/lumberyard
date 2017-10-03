@@ -72,11 +72,6 @@ namespace AZ
          */
         virtual ComponentTypeList GetRequiredSystemComponents() const { return ComponentTypeList(); }
 
-        /**
-         * \deprecated Use GetRequiredSystemComponents() instead.
-         */
-        virtual void AddSystemComponents(AZ::Entity* systemEntity) { (void)systemEntity; }
-
         // Non virtual, just registers component descriptors
         void RegisterComponentDescriptors();
 

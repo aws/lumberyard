@@ -14,6 +14,7 @@
 #include <LyShine/Bus/UiLayoutBus.h>
 #include <LyShine/Bus/UiLayoutRowBus.h>
 #include <LyShine/Bus/UiLayoutCellDefaultBus.h>
+#include <LyShine/Bus/UiLayoutControllerBus.h>
 #include <LyShine/UiComponentTypes.h>
 
 #include <AzCore/Component/Component.h>
@@ -25,6 +26,7 @@
 //! This component overrides the transforms of immediate children to organize them into a vertical column
 class UiLayoutRowComponent
     : public AZ::Component
+    , public UiLayoutControllerBus::Handler
     , public UiLayoutBus::Handler
     , public UiLayoutRowBus::Handler
     , public UiLayoutCellDefaultBus::Handler
@@ -37,9 +39,12 @@ public: // member functions
     UiLayoutRowComponent();
     ~UiLayoutRowComponent() override;
 
-    // UiLayoutInterface
+    // UiLayoutControllerInterface
     virtual void ApplyLayoutWidth() override;
     virtual void ApplyLayoutHeight() override;
+    // ~UiLayoutControllerInterface
+
+    // UiLayoutInterface
     virtual bool IsUsingLayoutCellsToCalculateLayout() override;
     virtual bool GetIgnoreDefaultLayoutCells() override;
     virtual void SetIgnoreDefaultLayoutCells(bool ignoreDefaultLayoutCells) override;
@@ -107,6 +112,9 @@ protected: // member functions
 
     //! Called when a property that is used to calculate default layout cell values has changed
     void InvalidateParentLayout();
+
+    //! Refresh the transform properties in the editor's properties pane
+    void CheckLayoutFitterAndRefreshEditorTransformProperties() const;
 
     //! Helper functions to set the child elements' transform properties.
     //! Element widths are calculated first since layout cell height

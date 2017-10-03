@@ -97,10 +97,10 @@ namespace AZ
         return m_color != rhs.m_color;
     }
 
-    // Color to u32 => 0xAAGGBBRR (COLREF format)
+    // Color to u32 => 0xAABBGGRR (COLREF format)
     AZ_MATH_FORCE_INLINE u32 Color::ToU32()  const { return (GetA8() << 24) | (GetB8() << 16) | (GetG8() << 8) | GetR8(); }
 
-    // Color from u32 => 0xAAGGBBRR (COLREF format)
+    // Color from u32 => 0xAABBGGRR (COLREF format)
     AZ_MATH_FORCE_INLINE void Color::FromU32(u32 c) 
     {
         SetA(static_cast<VectorFloat>(static_cast<float>(c >> 24) * (1.0f / 255.0f)));
@@ -153,9 +153,9 @@ namespace AZ
     {
         return (m_color.Dot(rhs.m_color));
     }
-    AZ_MATH_FORCE_INLINE const VectorFloat Color::Dot3(const Vector3& rhs) const
+    AZ_MATH_FORCE_INLINE const VectorFloat Color::Dot3(const Color& rhs) const
     {
-        return (m_color.Dot3(rhs));
+        return (m_color.Dot3(rhs.m_color.GetAsVector3()));
     }
 
     AZ_MATH_FORCE_INLINE const Color Color::operator-() const

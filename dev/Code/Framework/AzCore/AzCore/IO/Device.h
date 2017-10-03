@@ -54,7 +54,7 @@ namespace AZ
 
             /**
              * \param threadSleepTimeMS use with EXTREME caution, it will if != -1 it will insert a sleep after every read
-             * to the device. This is used for internal performance tweaking in rare cases (PS3).
+             * to the device. This is used for internal performance tweaking in rare cases.
              */
             Device(const AZStd::string& name, FileIOBase* ioBase,  const AZStd::thread_desc* threadDesc = nullptr, int threadSleepTimeMS = -1);
             virtual ~Device();
@@ -202,7 +202,7 @@ namespace AZ
          * This ensures a few things:
          *      - We read data in \ref m_blockSize, which caches small read request (read ahead)
          *      - We request data (read) from the device on \ref m_blockSize offsets (which is a multiple of the m_sectorSize),
-         *      this allows us to use UNBUFFERED system reads (like: FILE_FLAG_NO_BUFFERING on windows/x360)
+         *      this allows us to use UNBUFFERED system reads (like: FILE_FLAG_NO_BUFFERING on windows)
          */
         class ReadCache
         {

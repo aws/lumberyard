@@ -1,0 +1,8 @@
+{
+    "name": "@cloud-gems/cloudgemleaderboard",
+    "version": "1.0.0",
+    "description": "Cloud Gem - Leaderboard",
+    "private": true,
+    "dependencies": {
+    }
+}

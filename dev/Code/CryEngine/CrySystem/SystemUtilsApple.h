@@ -21,6 +21,7 @@
 
 #include <sys/resource.h>
 #include <sys/types.h>
+#include <AzCore/std/string/string.h>
 
 namespace SystemUtilsApple
 {
@@ -67,6 +68,11 @@ namespace SystemUtilsApple
     // Get the user's name.
     // - Returns length of the string or 0 on failure.
     size_t GetUserName(char* buffer, size_t bufferLen);
+
+    // Get the device's machine name
+    // - Returns string representing device identifier or empty string on failure
+    // - Unique for each model
+    AZStd::string GetMachineName();
 }
 
 #endif // CRYINCLUDE_CRYSYSTEM_SYSTEMUTILSAPPLE_H

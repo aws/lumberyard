@@ -106,12 +106,7 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
     mv_objectAmbientColor = Vec3(0.25f, 0.25f, 0.25f);
     mv_backgroundColor      = Vec3(0.25f, 0.25f, 0.25f);
 
-    m_VPLights.resize(3);
-
-    Vec3 d0 = Vec3(0.70f, 0.70f, 0.70f);
-    mv_lightDiffuseColor0 = d0;
-    mv_lightDiffuseColor1 = d0;
-    mv_lightDiffuseColor2 = d0;
+    mv_lightDiffuseColor = Vec3(0.70f, 0.70f, 0.70f);
     mv_lightMultiplier = 3.0f;
     mv_lightOrbit = 15.0f;
     mv_lightRadius = 400.0f;
@@ -150,9 +145,7 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
     m_vars.AddVariable(mv_backgroundColor, "BackgroundColor", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
     m_vars.AddVariable(mv_objectAmbientColor, "ObjectAmbient", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
 
-    m_vars.AddVariable(mv_lightDiffuseColor0, "LightDiffuse1", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
-    m_vars.AddVariable(mv_lightDiffuseColor1, "LightDiffuse2", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
-    m_vars.AddVariable(mv_lightDiffuseColor2, "LightDiffuse3", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
+    m_vars.AddVariable(mv_lightDiffuseColor, "LightDiffuse", functor(*this, &CModelViewport::OnLightColor), IVariable::DT_COLOR);
     m_vars.AddVariable(mv_lightMultiplier, "Light Multiplier", functor(*this, &CModelViewport::OnLightMultiplier), IVariable::DT_SIMPLE);
     m_vars.AddVariable(mv_lightSpecMultiplier, "Light Specular Multiplier", functor(*this, &CModelViewport::OnLightMultiplier), IVariable::DT_SIMPLE);
     m_vars.AddVariable(mv_lightRadius, "Light Radius", functor(*this, &CModelViewport::OnLightMultiplier), IVariable::DT_SIMPLE);
@@ -1222,11 +1215,7 @@ void CModelViewport::DrawModel(const SRenderingPassInfo& passInfo)
     //////////////////////////////////////////////////////////////////////////
     if (mv_lighting == true)
     {
-        uint32 numLights = m_VPLights.size();
-        for (int i = 0; i < numLights; i++)
-        {
-            pAuxGeom->DrawSphere(m_VPLights[i].m_Origin, 0.2f, ColorB(255, 255, 0, 255));
-        }
+        pAuxGeom->DrawSphere(m_VPLight.m_Origin, 0.2f, ColorB(255, 255, 0, 255));
     }
 
     gEnv->pConsole->GetCVar("ca_DrawWireframe")->Set(mv_showWireframe2);
@@ -1352,65 +1341,18 @@ void CModelViewport::DrawLights(const SRenderingPassInfo& passInfo)
     }
 
     Matrix33 LightRot33 =   Matrix33::CreateRotationZ(m_LightRotationRadian);
-    uint32 numLights = m_VPLights.size();
 
     Vec3 LPos0 = Vec3(-mv_lightOrbit, mv_lightOrbit, mv_lightOrbit);
-    m_VPLights[0].SetPosition(LightRot33 * LPos0 + m_PhysicalLocation.t);
-    Vec3 d0 = mv_lightDiffuseColor0;
-    m_VPLights[0].SetLightColor(ColorF(d0.x * mv_lightMultiplier, d0.y * mv_lightMultiplier, d0.z * mv_lightMultiplier, 0));
-    m_VPLights[0].SetSpecularMult(mv_lightSpecMultiplier);
-    m_VPLights[0].m_fRadius = mv_lightRadius;
-    m_VPLights[0].m_Flags |= DLF_POINT;
-
-    //-----------------------------------------------
-
-    Vec3 LPos1 = Vec3(-mv_lightOrbit, -mv_lightOrbit, -mv_lightOrbit / 2);
-    m_VPLights[1].SetPosition(LightRot33 * LPos1 + m_PhysicalLocation.t);
-    Vec3 d1 = mv_lightDiffuseColor1;
-    m_VPLights[1].SetLightColor(ColorF(d1.x * mv_lightMultiplier, d1.y * mv_lightMultiplier, d1.z * mv_lightMultiplier, 0));
-    m_VPLights[1].SetSpecularMult(mv_lightSpecMultiplier);
-    m_VPLights[1].m_fRadius = mv_lightRadius;
-    m_VPLights[1].m_Flags |= DLF_POINT;
-
-    //---------------------------------------------
-
-    Vec3 LPos2 = Vec3(mv_lightOrbit, -mv_lightOrbit, 0);
-    m_VPLights[2].SetPosition(LightRot33 * LPos2 + m_PhysicalLocation.t);
-    Vec3 d2 = mv_lightDiffuseColor2;
-    m_VPLights[2].SetLightColor(ColorF(d2.x * mv_lightMultiplier, d2.y * mv_lightMultiplier, d2.z * mv_lightMultiplier, 0));
-    m_VPLights[2].SetSpecularMult(mv_lightSpecMultiplier);
-    m_VPLights[2].m_fRadius = mv_lightRadius;
-    m_VPLights[2].m_Flags |= DLF_POINT;
+    m_VPLight.SetPosition(LightRot33 * LPos0 + m_PhysicalLocation.t);
+    Vec3 d = mv_lightDiffuseColor;
+    m_VPLight.SetLightColor(ColorF(d.x * mv_lightMultiplier, d.y * mv_lightMultiplier, d.z * mv_lightMultiplier, 0));
+    m_VPLight.SetSpecularMult(mv_lightSpecMultiplier);
+    m_VPLight.m_fRadius = mv_lightRadius;
+    m_VPLight.m_Flags = DLF_SUN | DLF_DIRECTIONAL;
 
     if (mv_lighting == true)
     {
-#if 0
-        // Add lights.
-        if (numLights == 1)
-        {
-            m_renderer->EF_ADDDlight(&m_VPLights[0], passInfo);
-        }
-
-        if (numLights == 2)
-        {
-            m_renderer->EF_ADDDlight(&m_VPLights[0], passInfo);
-            m_renderer->EF_ADDDlight(&m_VPLights[1], passInfo);
-        }
-
-        if (numLights == 3)
-        {
-            m_renderer->EF_ADDDlight(&m_VPLights[0], passInfo);
-            m_renderer->EF_ADDDlight(&m_VPLights[1], passInfo);
-            m_renderer->EF_ADDDlight(&m_VPLights[2], passInfo);
-        }
-#else
-        // Just one directional light until tiled forward shading is fully supported
-        if (numLights >= 1)
-        {
-            m_VPLights[0].m_Flags = DLF_SUN | DLF_DIRECTIONAL;
-            m_renderer->EF_ADDDlight(&m_VPLights[0], passInfo);
-        }
-#endif
+        m_renderer->EF_ADDDlight(&m_VPLight, passInfo);
     }
 }
 

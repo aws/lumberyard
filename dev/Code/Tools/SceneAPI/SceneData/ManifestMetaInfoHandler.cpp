@@ -31,16 +31,6 @@
 #include <SceneAPI/SceneData/Rules/SkeletonProxyRule.h>
 #include <SceneAPI/SceneData/Rules/SkinMeshAdvancedRule.h>
 
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-#include <SceneAPI/SceneData/Groups/ActorGroup.h>
-#include <SceneAPI/SceneData/Groups/EFXMotionGroup.h>
-#include <SceneAPI/SceneData/Rules/EFXMeshRule.h>
-#include <SceneAPI/SceneData/Rules/EFXSkinRule.h>
-#include <SceneAPI/SceneData/Rules/EFXMotionCompressionSettingsRule.h>
-#include <SceneAPI/SceneData/Rules/EFXMotionScaleRule.h>
-#include <SceneAPI/SceneData/Rules/EFXActorScaleRule.h>
-#endif
-
 namespace AZ
 {
     namespace SceneAPI
@@ -140,67 +130,16 @@ namespace AZ
                         existingRules.insert(rules.GetRule(i)->RTTI_GetType());
                     }
 
-                    if (existingRules.find(SceneData::SkeletonProxyRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::SkeletonProxyRule::TYPEINFO_Uuid());
-                    }
+                    // Temporarily remove skeleton proxy rule because we currently don't support that.
+                    // if (existingRules.find(SceneData::SkeletonProxyRule::TYPEINFO_Uuid()) == existingRules.end())
+                    // {
+                    //     modifiers.push_back(SceneData::SkeletonProxyRule::TYPEINFO_Uuid());
+                    // }
                 }
                 else if (target.RTTI_IsTypeOf(DataTypes::IAnimationGroup::TYPEINFO_Uuid()))
                 {
                     modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
                 }
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-                else if (target.RTTI_IsTypeOf(DataTypes::IActorGroup::TYPEINFO_Uuid()))
-                {
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
-                    const DataTypes::IActorGroup* group = azrtti_cast<const DataTypes::IActorGroup*>(&target);
-                    const Containers::RuleContainer& rules = group->GetRuleContainerConst();
-
-                    AZStd::unordered_set<AZ::Uuid> existingRules;
-                    const size_t ruleCount = rules.GetRuleCount();
-                    for (size_t i = 0; i < ruleCount; ++i)
-                    {
-                        existingRules.insert(rules.GetRule(i)->RTTI_GetType());
-                    }
-                    if (existingRules.find(SceneData::EFXMeshRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::EFXMeshRule::TYPEINFO_Uuid());
-                    }
-                    if (existingRules.find(SceneData::MaterialRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::MaterialRule::TYPEINFO_Uuid());
-                    }
-                    if (existingRules.find(SceneData::EFXSkinRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::EFXSkinRule::TYPEINFO_Uuid());
-                    }
-                    if (existingRules.find(SceneData::EFXActorScaleRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::EFXActorScaleRule::TYPEINFO_Uuid());
-                    }
-                }
-                else if (target.RTTI_IsTypeOf(DataTypes::IEFXMotionGroup::TYPEINFO_Uuid()))
-                {
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
-                    const DataTypes::IEFXMotionGroup* group = azrtti_cast<const DataTypes::IEFXMotionGroup*>(&target);
-                    const Containers::RuleContainer& rules = group->GetRuleContainerConst();
-
-                    AZStd::unordered_set<AZ::Uuid> existingRules;
-                    const size_t ruleCount = rules.GetRuleCount();
-                    for (size_t i = 0; i < ruleCount; ++i)
-                    {
-                        existingRules.insert(rules.GetRule(i)->RTTI_GetType());
-                    }
-                    if (existingRules.find(SceneData::EFXMotionCompressionSettingsRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::EFXMotionCompressionSettingsRule::TYPEINFO_Uuid());
-                    }
-                    if (existingRules.find(SceneData::EFXMotionScaleRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::EFXMotionScaleRule::TYPEINFO_Uuid());
-                    }
-                }
-#endif
             }
 
             void ManifestMetaInfoHandler::InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target)

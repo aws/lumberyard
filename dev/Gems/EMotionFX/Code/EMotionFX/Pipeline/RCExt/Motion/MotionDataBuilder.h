@@ -11,24 +11,35 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
+#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 
-namespace MotionCanvasPipeline
+namespace EMotionFX
 {
-    struct MotionDataBuilderContext;
-
-    class MotionDataBuilder
-        : public AZ::SceneAPI::Events::CallProcessorBinder
+    namespace Pipeline
     {
-    public:
-        MotionDataBuilder();
-        ~MotionDataBuilder() override = default;
+        struct MotionDataBuilderContext;
 
-        AZ::SceneAPI::Events::ProcessingResult BuildMotionData(MotionDataBuilderContext& context);
-    };
+        class MotionDataBuilder
+            : public AZ::SceneAPI::SceneCore::ExportingComponent
+        {
+        public:
+            AZ_COMPONENT(MotionDataBuilder, "{F60AFB28-BB51-463F-BD9F-04C05656EF78}", AZ::SceneAPI::SceneCore::ExportingComponent);
 
-} // MotionCanvasPipeline
-#endif //MOTIONCANVAS_GEM_ENABLED
+            MotionDataBuilder();
+            ~MotionDataBuilder() override = default;
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            AZ::SceneAPI::Events::ProcessingResult BuildMotionData(MotionDataBuilderContext& context);
+
+        private:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+            // Workaround for VS2013 - Delete the copy constructor and make it private
+            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+            MotionDataBuilder(const MotionDataBuilder&) = delete;
+#endif
+        };
+    }
+}

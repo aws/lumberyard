@@ -1,0 +1,25 @@
+
+
+def build(bld):
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemtexttospeech.waf_files')
+        file_list.append('lmbraws_unsupported.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('cloudgemtexttospeech.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')
+
+    bld.DefineGem(
+        includes    = [bld.Path('Code/SDKs'),
+                       bld.Path('Code/CryEngine/CryAction'),
+                       bld.Path('Code/CryEngine/CrySoundSystem')],
+        
+        file_list = file_list,
+        shared_settings = ['awsgem.json'],
+        uselib = ['AWS_CPP_SDK_CORE', 'MD5'],
+        use = ['CloudGemFrameworkStaticLibrary', 'CrySoundSystem']
+    )

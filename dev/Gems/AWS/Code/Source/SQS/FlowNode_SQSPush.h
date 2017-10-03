@@ -57,8 +57,5 @@ namespace LmbrAWS
             EOP_ResponseBody = EOP_StartIndex
         };
 
-        LmbrAWS::SQS::QueueClientInputPort m_queueClientPort {
-            EIP_QueueClient
-        };
     };
 } // namespace AWS

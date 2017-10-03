@@ -49,10 +49,12 @@ namespace LyEditorMetrics
         void EntityCreated(const AZ::EntityId& entityId) override;
         void EntityDeleted(const AZ::EntityId& entityId) override;
 
+        void SliceInstantiated(const AZ::Crc32& sliceIdentifier) override;
+
         void ComponentAdded(const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId) override;
         void ComponentRemoved(const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId) override;
 
-        void EntityParentChanged(const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId) override;
+        void UpdateTransformParentEntity(const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId) override;
 
         void LegacyEntityCreated(const char* entityType, const char* scriptEntityType);
 
@@ -86,6 +88,9 @@ namespace LyEditorMetrics
 
         void InitializeLegacyEntityList();
         void InitializeLegacyScriptEntityList();
+
+        // helper function for instantiating slice metrics events
+        void SendSliceInstantiatedMetricsEvent(const char* eventName, const AZ::Crc32& sliceIdentifier);
 
         // helper function for create/delete entity metrics events
         void SendEntitiesMetricsEvent(const char* eventName, const AZ::EntityId& entityId);

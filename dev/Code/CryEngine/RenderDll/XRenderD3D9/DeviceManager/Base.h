@@ -58,8 +58,17 @@ namespace AzRHI
         }
     }
 
-    // BitScanReverse/BitScanForward are not avilable on orbis
-#if defined(ORBIS) || defined(LINUX) || defined(APPLE)
+    // BitScanReverse/BitScanForward available?
+
+#if   defined(LINUX)
+#define HAS_BIT_SCAN_REVERSE_FORWARD 0
+#elif defined(APPLE)
+#define HAS_BIT_SCAN_REVERSE_FORWARD 0
+#else
+#define HAS_BIT_SCAN_REVERSE_FORWARD 1
+#endif
+
+#if !HAS_BIT_SCAN_REVERSE_FORWARD
     inline AZ::u32 ScanBitsReverse(AZ::u32 input)
     {
         signed mask = iszero((signed)input) - 1;

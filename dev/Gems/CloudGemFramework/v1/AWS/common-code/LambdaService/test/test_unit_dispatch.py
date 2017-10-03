@@ -9,6 +9,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
+
+import __builtin__
+
 import unittest
 import mock
 
@@ -33,7 +37,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
         
         mock_handler.response = 'expected response'
         
@@ -59,7 +63,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
         
         mock_handler.response = 'expected response'
         
@@ -86,7 +90,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
         
         mock_handler.response = 'expected response'
         
@@ -114,7 +118,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
         
         mock_handler.response = 'expected response'
         
@@ -140,7 +144,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'No "module" property'):
             service.dispatch(event, context)
@@ -156,7 +160,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'No "function" property'):
             service.dispatch(event, context)
@@ -173,7 +177,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaises(ImportError):
             service.dispatch(event, context)
@@ -192,7 +196,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'does not have an "does_not_exist" attribute'):
             service.dispatch(event, context)
@@ -211,7 +215,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'attribute "test_not_a_function" is not a function'):
             service.dispatch(event, context)
@@ -230,7 +234,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(ValueError, 'not a service dispatch handler'):
             service.dispatch(event, context)
@@ -249,7 +253,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             #}
         }
         
-        context = {}
+        context = self.__get_context()
 
         mock_handler.response = 'expected response'
         
@@ -273,7 +277,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             #}
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'Expected the following parameters: param_a'):
             service.dispatch(event, context)
@@ -292,7 +296,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'Expected the following parameters: param_a'):
             service.dispatch(event, context)
@@ -312,7 +316,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'Expected the following parameters: param_a'):
             service.dispatch(event, context)
@@ -332,7 +336,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'Expected the following parameters: param_a'):
             service.dispatch(event, context)
@@ -353,7 +357,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'Expected the following parameters: param_a'):
             service.dispatch(event, context)
@@ -373,7 +377,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         with self.assertRaisesRegexp(errors.ClientError, 'The following parameters are unexpected: param_b'):
             service.dispatch(event, context)
@@ -393,7 +397,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         mock_handler.response = 'expected response'
         
@@ -418,7 +422,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         mock_handler.response = 'expected response'
         
@@ -443,7 +447,7 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
             }
         }
         
-        context = {}
+        context = self.__get_context()
 
         mock_handler.response = 'expected response'
         
@@ -456,3 +460,59 @@ class UnitTest_CloudGemFramework_DefaultServiceApiContent_ServiceApiDispatch(uni
 
         mock_import_module.assert_called_once_with('api.test_module')
 
+
+    @mock.patch('importlib.import_module', return_value = mock_handler)
+    def test_first_parameter_name_conflict(self, mock_import_module):
+
+        event = {
+            'module': 'test_module',
+            'function': 'test_function_with_first_parameter_name_conflict',
+            'parameters': {
+                'param_a': 'param_a_value',
+                'param_b': 'param_b_value'
+            }
+        }
+        
+        context = self.__get_context()
+
+        with self.assertRaisesRegexp(ValueError, 'The first parameter\'s name, param_a, matches an api parameter name.'):
+            service.dispatch(event, context)
+
+        mock_import_module.assert_called_once_with('api.test_module')
+   
+    @mock.patch('importlib.import_module', return_value = mock_handler)
+    def test_logging_filter(self, mock_import_module):
+
+        event = {
+            'module': 'test_module',
+            'function': 'test_function_with_parameter_logging_filter',
+            'parameters': {
+                'param_a': {'key1': 'DO_NOT_LOG', 'key2': 'THIS_SHOULD_BE_LOGGED'},
+                'param_b': 'DO_NOT_LOG'
+            }
+        }
+        
+        context = self.__get_context()
+
+        mock_handler.response = 'expected response'
+        
+        printed_lines = []
+        with mock.patch('__builtin__.print', lambda line: printed_lines.append(line)):
+            response = service.dispatch(event, context)
+
+        output = '\n'.join(printed_lines)
+        print(output)
+        print()
+
+        self.assertEquals(mock_handler.response, response)
+        self.assertEquals(event['parameters']['param_a'], mock_handler.received_param_a)
+        self.assertEquals(event['parameters']['param_b'], mock_handler.received_param_b)
+        self.assertIs(event, mock_handler.received_request.event)
+        self.assertIs(context, mock_handler.received_request.context)
+
+        self.assertTrue('THIS_SHOULD_BE_LOGGED' in output)
+        self.assertFalse('DO_NOT_LOG' in output)
+        self.assertTrue('REPLACEMENT_VALUE' in output)
+
+    def __get_context(self):
+        return mock.Mock(aws_request_id='test_request_id')

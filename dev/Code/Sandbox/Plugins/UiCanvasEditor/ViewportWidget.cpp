@@ -15,8 +15,9 @@
 
 #include "EditorDefs.h"
 #include "Settings.h"
-#include <IInput.h>
 #include <AzCore/std/containers/map.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY         "ViewportWidget::m_drawElementBordersFlags"
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT     ( ViewportWidget::DrawElementBorders_Unselected )
@@ -52,84 +53,67 @@ namespace
     }
 
     // Map Qt event key codes to the game input system keyboard codes
-    EKeyId MapQtKeyToGameInputKey(int qtKey)
+    const AzFramework::InputChannelId* MapQtKeyToAzInputChannelId(int qtKey)
     {
         // The UI runtime only cares about a few special keys
-        static AZStd::map<Qt::Key, EKeyId> qtKeyToEKeyIdMap
+        switch (qtKey)
         {
-            {
-                Qt::Key_Tab, eKI_Tab
-            },
-            {
-                Qt::Key_Backspace, eKI_Backspace
-            },
-            {
-                Qt::Key_Return, eKI_Enter
-            },
-            {
-                Qt::Key_Enter, eKI_Enter
-            },
-            {
-                Qt::Key_Delete, eKI_Delete
-            },
-            {
-                Qt::Key_Left, eKI_Left
-            },
-            {
-                Qt::Key_Up, eKI_Up
-            },
-            {
-                Qt::Key_Right, eKI_Right
-            },
-            {
-                Qt::Key_Down, eKI_Down
-            },
-            {
-                Qt::Key_Home, eKI_Home
-            },
-            {
-                Qt::Key_End, eKI_End
-            },
-        };
-
-        // if no match we will return unknown
-        EKeyId result = eKI_Unknown;
-
-        auto iter = qtKeyToEKeyIdMap.find(static_cast<Qt::Key>(qtKey));
-        if (iter != qtKeyToEKeyIdMap.end())
-        {
-            result = iter->second;
+            case Qt::Key_Tab: return &AzFramework::InputDeviceKeyboard::Key::EditTab;
+            case Qt::Key_Backspace: return &AzFramework::InputDeviceKeyboard::Key::EditBackspace;
+            case Qt::Key_Return: return &AzFramework::InputDeviceKeyboard::Key::EditEnter;
+            case Qt::Key_Enter: return &AzFramework::InputDeviceKeyboard::Key::EditEnter;
+            case Qt::Key_Delete: return &AzFramework::InputDeviceKeyboard::Key::NavigationDelete;
+            case Qt::Key_Left: return &AzFramework::InputDeviceKeyboard::Key::NavigationArrowLeft;
+            case Qt::Key_Up: return &AzFramework::InputDeviceKeyboard::Key::NavigationArrowUp;
+            case Qt::Key_Right: return &AzFramework::InputDeviceKeyboard::Key::NavigationArrowRight;
+            case Qt::Key_Down: return &AzFramework::InputDeviceKeyboard::Key::NavigationArrowDown;
+            case Qt::Key_Home: return &AzFramework::InputDeviceKeyboard::Key::NavigationHome;
+            case Qt::Key_End: return &AzFramework::InputDeviceKeyboard::Key::NavigationEnd;
+            default: return nullptr;
         }
-        return result;
     }
 
-    // Map Qt event modifiers to the game input system modifiers
-    int MapQtModifiersToGameInputModifiers(Qt::KeyboardModifiers qtMods)
+    // Map Qt event modifiers to the AzFramework input system modifiers
+    AzFramework::ModifierKeyMask MapQtModifiersToAzInputModifierKeys(Qt::KeyboardModifiers qtMods)
     {
-        int gameModifiers = 0;
+        int modifiers = static_cast<int>(AzFramework::ModifierKeyMask::None);
 
         if (qtMods & Qt::ShiftModifier)
         {
-            gameModifiers |= eMM_Shift;
+            modifiers |= static_cast<int>(AzFramework::ModifierKeyMask::ShiftAny);
         }
 
         if (qtMods & Qt::ControlModifier)
         {
-            gameModifiers |= eMM_Ctrl;
+            modifiers |= static_cast<int>(AzFramework::ModifierKeyMask::CtrlAny);
         }
 
         if (qtMods & Qt::AltModifier)
         {
-            gameModifiers |= eMM_Alt;
+            modifiers |= static_cast<int>(AzFramework::ModifierKeyMask::AltAny);
         }
 
-        return gameModifiers;
+        return static_cast<AzFramework::ModifierKeyMask>(modifiers);
     }
 
-    bool HandleCanvasInputEvent(AZ::EntityId canvasEntityId, const SInputEvent& gameEvent)
+    bool HandleCanvasInputEvent(AZ::EntityId canvasEntityId,
+                                const AzFramework::InputChannel::Snapshot& inputSnapshot,
+                                const AZ::Vector2* viewportPos = nullptr,
+                                const AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None)
     {
         bool handled = false;
-        EBUS_EVENT_ID_RESULT(handled, canvasEntityId, UiCanvasBus, HandleInputEvent, gameEvent);
+        EBUS_EVENT_ID_RESULT(handled, canvasEntityId, UiCanvasBus, HandleInputEvent, inputSnapshot, viewportPos, activeModifierKeys);
+
+        // Execute events that have been queued during the input event handler
+        gEnv->pLyShine->ExecuteQueuedEvents();
+
+        return handled;
+    }
+
+    bool HandleCanvasTextEvent(AZ::EntityId canvasEntityId, const AZStd::string& textUTF8)
+    {
+        bool handled = false;
+        EBUS_EVENT_ID_RESULT(handled, canvasEntityId, UiCanvasBus, HandleTextEvent, textUTF8);
 
         // Execute events that have been queued during the input event handler
         gEnv->pLyShine->ExecuteQueuedEvents();
@@ -326,12 +310,11 @@ void ViewportWidget::mousePressEvent(QMouseEvent* ev)
             if (ev->button() == Qt::LeftButton)
             {
                 // Send event to this canvas
-                SInputEvent gameEvent;
-                gameEvent.deviceType = eIDT_Mouse;
-                gameEvent.screenPosition = Vec2(ev->x(), ev->y());
-                gameEvent.keyId = eKI_Mouse1;
-                gameEvent.state = eIS_Pressed;
-                HandleCanvasInputEvent(canvasEntityId, gameEvent);
+                const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+                const AzFramework::InputChannel::Snapshot inputSnapshot(AzFramework::InputDeviceMouse::Button::Left,
+                                                                        AzFramework::InputDeviceMouse::Id,
+                                                                        AzFramework::InputChannel::State::Began);
+                HandleCanvasInputEvent(canvasEntityId, inputSnapshot, &viewportPosition);
             }
         }
     }
@@ -358,16 +341,14 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* ev)
         AZ::EntityId canvasEntityId = m_editorWindow->GetPreviewModeCanvas();
         if (canvasEntityId.IsValid())
         {
-            // Send event to this canvas
-            SInputEvent gameEvent;
-            gameEvent.deviceType = eIDT_Mouse;
-            gameEvent.screenPosition = Vec2(ev->x(), ev->y());
-            gameEvent.keyId = eKI_Mouse1;
-            if (ev->buttons() & Qt::LeftButton)
-            {
-                gameEvent.state = eIS_Down;
-            }
-            HandleCanvasInputEvent(canvasEntityId, gameEvent);
+            const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+            const AzFramework::InputChannelId& channelId = (ev->buttons() & Qt::LeftButton) ?
+                                                            AzFramework::InputDeviceMouse::Button::Left :
+                                                            AzFramework::InputDeviceMouse::SystemCursorPosition;
+            const AzFramework::InputChannel::Snapshot inputSnapshot(channelId,
+                                                                    AzFramework::InputDeviceMouse::Id,
+                                                                    AzFramework::InputChannel::State::Updated);
+            HandleCanvasInputEvent(canvasEntityId, inputSnapshot, &viewportPosition);
         }
     }
 
@@ -395,12 +376,11 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* ev)
             if (ev->button() == Qt::LeftButton)
             {
                 // Send event to this canvas
-                SInputEvent gameEvent;
-                gameEvent.deviceType = eIDT_Mouse;
-                gameEvent.screenPosition = Vec2(ev->x(), ev->y());
-                gameEvent.keyId = eKI_Mouse1;
-                gameEvent.state = eIS_Released;
-                HandleCanvasInputEvent(canvasEntityId, gameEvent);
+                const AZ::Vector2 viewportPosition(ev->x(), ev->y());
+                const AzFramework::InputChannel::Snapshot inputSnapshot(AzFramework::InputDeviceMouse::Button::Left,
+                                                                        AzFramework::InputDeviceMouse::Id,
+                                                                        AzFramework::InputChannel::State::Ended);
+                HandleCanvasInputEvent(canvasEntityId, inputSnapshot, &viewportPosition);
             }
         }
     }
@@ -474,15 +454,14 @@ void ViewportWidget::keyPressEvent(QKeyEvent* event)
         if (canvasEntityId.IsValid())
         {
             // Send event to this canvas
-            SInputEvent gameEvent;
-            gameEvent.keyId = MapQtKeyToGameInputKey(event->key());
-            gameEvent.modifiers = MapQtModifiersToGameInputModifiers(event->modifiers());
-            if (gameEvent.keyId != eKI_Unknown)
+            const AzFramework::InputChannelId* inputChannelId = MapQtKeyToAzInputChannelId(event->key());
+            const AzFramework::ModifierKeyMask activeModifierKeys = MapQtModifiersToAzInputModifierKeys(event->modifiers());
+            if (inputChannelId)
             {
-                gameEvent.deviceType = eIDT_Keyboard;
-                gameEvent.screenPosition = Vec2(0.0f, 0.0f);
-                gameEvent.state = eIS_Pressed;
-                HandleCanvasInputEvent(canvasEntityId, gameEvent);
+                const AzFramework::InputChannel::Snapshot inputSnapshot(*inputChannelId,
+                                                                        AzFramework::InputDeviceKeyboard::Id,
+                                                                        AzFramework::InputChannel::State::Began);
+                HandleCanvasInputEvent(canvasEntityId, inputSnapshot, nullptr, activeModifierKeys);
             }
         }
     }
@@ -513,29 +492,21 @@ void ViewportWidget::keyReleaseEvent(QKeyEvent* event)
             bool handled = false;
 
             // Send event to this canvas
-            SInputEvent gameEvent;
-            gameEvent.keyId = MapQtKeyToGameInputKey(event->key());
-            gameEvent.modifiers = MapQtModifiersToGameInputModifiers(event->modifiers());
-            if (gameEvent.keyId != eKI_Unknown)
+            const AzFramework::InputChannelId* inputChannelId = MapQtKeyToAzInputChannelId(event->key());
+            const AzFramework::ModifierKeyMask activeModifierKeys = MapQtModifiersToAzInputModifierKeys(event->modifiers());
+            if (inputChannelId)
             {
-                gameEvent.deviceType = eIDT_Keyboard;
-                gameEvent.screenPosition = Vec2(0.0f, 0.0f);
-                gameEvent.state = eIS_Released;
-                handled = HandleCanvasInputEvent(canvasEntityId, gameEvent);
+                const AzFramework::InputChannel::Snapshot inputSnapshot(*inputChannelId,
+                                                                        AzFramework::InputDeviceKeyboard::Id,
+                                                                        AzFramework::InputChannel::State::Ended);
+                HandleCanvasInputEvent(canvasEntityId, inputSnapshot, nullptr, activeModifierKeys);
             }
 
             QString string = event->text();
             if (string.length() != 0 && !handled)
             {
-                wchar_t inputChars[10];
-                int wcharCount = string.toWCharArray(inputChars);
-                if (wcharCount > 0)
-                {
-                    wchar_t inputChar = inputChars[0];
-                    gameEvent.inputChar = inputChar;
-                    gameEvent.state = eIS_UI;
-                    HandleCanvasInputEvent(canvasEntityId, gameEvent);
-                }
+                AZStd::string textUTF8 = string.toUtf8().data();
+                HandleCanvasTextEvent(canvasEntityId, textUTF8);
             }
         }
     }

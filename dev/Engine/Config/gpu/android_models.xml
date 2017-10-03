@@ -1,0 +1,11 @@
+<DeviceList>
+    <!-- TODO: Expand list -->
+    <Device model="KFTHWI" file="android_low.cfg"/> <!-- Amazon Kindle Fire HDX -->
+    <Device model="Nexus 7" file="android_low.cfg"/> <!-- Nexus 7 -->
+    <Device model="Nexus 5" file="android_low.cfg"/> <!-- Nexus 5 -->
+    <Device model="SM-N910H" file="android_low.cfg"/> <!-- Samsung Galaxy Note 4  (Asia-Pacific)-->
+    <Device model="SM-T217S" file="android_medium.cfg"/> <!-- Samsung Galaxy Tab 3 -->
+    <Device model="SM-N920C" file="android_medium.cfg"/> <!-- Samsung Note 5 -->    
+    <Device model="Nexus 6" file="android_high.cfg"/> <!-- Motorola Nexus 6 -->
+    <Device model="Pixel" file="android_high.cfg"/> <!-- Google Pixel -->
+</DeviceList>

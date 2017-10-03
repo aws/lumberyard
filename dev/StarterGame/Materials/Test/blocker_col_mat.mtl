@@ -1,0 +1,5 @@
+<Material MtlFlags="525344" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_nodraw" Diffuse="1,0,0" Specular="0,0,0" Opacity="0.5" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="textures/test/blackwhite_64_01_diff.dds"/>
+ </Textures>
+</Material>

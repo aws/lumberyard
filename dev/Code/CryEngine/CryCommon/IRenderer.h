@@ -17,6 +17,7 @@
 
 #include "Cry_Geo.h"
 #include "Cry_Camera.h"
+#include <CryEngineAPI.h>
 #include <IFlares.h> // <> required for Interfuscator
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -25,6 +26,7 @@
 // forward declarations
 struct SRenderingPassInfo;
 struct IFoliage;
+struct SRTStack;
 
 // Callback used for DXTCompress
 typedef void (* MIPDXTcallback)(const void* buffer, size_t count, void* userData);
@@ -104,6 +106,9 @@ struct IClipVolume;
 struct SClipVolumeBlendInfo;
 class IImageFile;
 class CRenderView;
+struct SDynTexture2;
+
+class CTexture;
 
 //////////////////////////////////////////////////////////////////////
 typedef unsigned char bvec4[4];
@@ -780,7 +785,7 @@ enum EDrawTextFlags
     eDrawText_Framed        = BIT(8),   // draw a transparent, rectangular frame behind the text to ease readability independent from the background
 
     eDrawText_DepthTest     = BIT(9),   // text should be occluded by world geometry using the depth buffer
-    eDrawText_IgnoreOverscan= BIT(10),  // ignore the overscan borders, text should be drawn at the location specified
+    eDrawText_IgnoreOverscan = BIT(10),  // ignore the overscan borders, text should be drawn at the location specified
     eDrawText_UseTransform  = BIT(11),  // use a transform for the text
 };
 
@@ -879,8 +884,8 @@ enum ERenderType
     eRT_Null,
     eRT_DX11,
     eRT_DX12,
-    eRT_XboxOne,
-    eRT_PS4,
+    eRT_XboxOne, // ACCEPTED_USE
+    eRT_PS4, // ACCEPTED_USE
     eRT_OpenGL,
     eRT_Metal,
 };
@@ -1061,7 +1066,31 @@ struct ISvoRenderer
 };
 
 //////////////////////////////////////////////////////////////////////
-struct IRenderer//: public IRendererCallbackServer
+struct SRenderPipeline;
+struct SRenderThread;
+struct SShaderTechnique;
+struct SShaderPass;
+struct SDepthTexture;
+struct SRenderTileInfo;
+
+class CShaderMan;
+class CDeviceBufferManager;
+class CShaderResources;
+
+namespace AZ {
+    namespace Vertex {
+        class Format;
+    }
+}
+enum eRenderPrimitiveType : int8;
+enum RenderIndexType : int;
+
+struct IRenderAPI
+{
+};
+
+struct IRenderer
+    : public IRenderAPI
 {
     virtual ~IRenderer(){}
 
@@ -1166,10 +1195,14 @@ struct IRenderer//: public IRendererCallbackServer
     virtual void SetViewport(int x, int y, int width, int height, int id = 0) = 0;
     virtual void SetRenderTile(f32 nTilesPosX = 0.f, f32 nTilesPosY = 0.f, f32 nTilesGridSizeX = 1.f, f32 nTilesGridSizeY = 1.f) = 0;
     virtual void SetScissor(int x = 0, int y = 0, int width = 0, int height = 0) = 0;
+    virtual Matrix44A& GetViewProjectionMatrix() = 0;
+    virtual void SetTranspOrigCameraProjMatrix(Matrix44A& matrix) = 0;
 
     virtual EScreenAspectRatio GetScreenAspect(int nWidth, int nHeight) = 0;
 
     virtual Vec2 SetViewportDownscale(float xscale, float yscale) = 0;
+    virtual void SetViewParameters(const CameraViewParameters& viewParameters) = 0; // Direct setter
+    virtual void ApplyViewParameters(const CameraViewParameters& viewParameters) = 0; // Uses CameraViewParameters to create matrices.
 
     // Summary:
     //  Draws user primitives.
@@ -1792,7 +1825,7 @@ struct IRenderer//: public IRendererCallbackServer
     virtual void Set2DMode(uint32 orthoX, uint32 orthoY, TransformationMatrices& backupMatrices, float znear = -1e10f, float zfar = 1e10f) = 0;
 
     virtual void Unset2DMode(const TransformationMatrices& restoringMatrices) = 0;
-    
+
     virtual int ScreenToTexture(int nTexID) = 0;
     virtual void EnableSwapBuffers(bool bEnable) = 0;
     virtual WIN_HWND GetHWND() = 0;
@@ -2083,7 +2116,7 @@ struct IRenderer//: public IRendererCallbackServer
         DrawTextQueued(Vec3(x, y, 0.5f), ti, label_text, args);
         va_end(args);
     }
-    
+
     /**
     * Used to determine if the renderer has loaded default system
     * textures yet.
@@ -2095,7 +2128,7 @@ struct IRenderer//: public IRendererCallbackServer
     virtual bool HasLoadedDefaultResources() { return false; }
 
     // Summary:
-    virtual SSkinningData* EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobSyncVar) = 0;
+    virtual SSkinningData* EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobSyncVar, bool bUseMatrixSkinning = false) = 0;
     virtual SSkinningData* EF_CreateRemappedSkinningData(uint32 nNumBones, SSkinningData* pSourceSkinningData, uint32 nCustomDataSize, uint32 pairGuid) = 0;
     virtual void EF_ClearSkinningDataPool() = 0;
     virtual int EF_GetSkinningPoolID() = 0;
@@ -2143,7 +2176,140 @@ struct IRenderer//: public IRendererCallbackServer
     virtual bool LoadShaderLevelCache() = 0;
     virtual void UnloadShaderLevelCache() = 0;
 
+    virtual void StartScreenShot(int e_ScreenShot) {};
+    virtual void EndScreenShot(int e_ScreenShot) {};
+
+    // Sets a renderer tracked cvar
     virtual void SetRendererCVar(ICVar* pCVar, const char* pArgText, const bool bSilentMode = false) = 0;
+
+    // Get the render piepline
+    virtual SRenderPipeline* GetRenderPipeline() = 0;
+
+    // Get the sahder manager
+    virtual CShaderMan* GetShaderManager() = 0;
+
+    // Get render thread
+    virtual SRenderThread* GetRenderThread() = 0;
+
+    // Get premade white texture
+    virtual ITexture* GetWhiteTexture() = 0;
+
+    // Get the texture for the name and format given
+    virtual ITexture* GetTextureForName(const char* name, uint32 nFlags, ETEX_Format eFormat) = 0;
+
+    // Get the camera view parameters
+    virtual const CameraViewParameters& GetViewParameters() = 0;
+
+    // Get frame reset number
+    virtual uint32 GetFrameReset() = 0;
+
+    // Get original depth buffer
+    virtual SDepthTexture* GetDepthBufferOrig() = 0;
+
+    // Get width of backbuffer
+    virtual uint32 GetBackBufferWidth() = 0;
+
+    // Get height of backbuffer
+    virtual uint32 GetBackBufferHeight() = 0;
+
+    // Get the device buffer manager
+    virtual CDeviceBufferManager* GetDeviceBufferManager() = 0;
+
+    // Get render tile info
+    virtual const SRenderTileInfo* GetRenderTileInfo() const = 0;
+
+    // Returns precomputed identity matrix
+    virtual Matrix44A GetIdentityMatrix() = 0;
+
+    // Get current GPU group Id. Used for tracking which GPU is being used
+    virtual int32 RT_GetCurrGpuID() const = 0;
+
+    // Generate the next texture id
+    virtual int GenerateTextureId() = 0;
+
+    // Set culling mode
+    virtual void SetCull(ECull eCull, bool bSkipMirrorCull = false) = 0;
+
+    // Draw a quad
+    virtual void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color, float ftx0, float fty0, float ftx1, float fty1) = 0;
+
+    // Gets an (existing) depth surface of the dimensions given
+    virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
+
+    // Creates a new depth surface
+    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
+
+    // Check to see if buffers are full and if so flush
+    virtual void FX_CheckOverflow(int nVerts, int nInds, CRendElementBase* re, int* nNewVerts = nullptr, int* nNewInds = nullptr) = 0;
+
+    // Perform pre render work
+    virtual void FX_PreRender(int Stage) = 0;
+
+    // Perform post render work
+    virtual void FX_PostRender() = 0;
+
+    // Set render states
+    virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0) = 0;
+
+    // Commit render states
+    virtual void FX_CommitStates(const SShaderTechnique* pTech, const SShaderPass* pPass, bool bUseMaterialState) = 0;
+
+    // Commit changes made thus dar
+    virtual void FX_Commit(bool bAllowDIP = false) = 0;
+
+    // Sets vertex declaration
+    virtual long FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat) = 0;
+
+    // Draw indexed prim
+    virtual void FX_DrawIndexedPrimitive(const eRenderPrimitiveType eType, const int nVBOffset, const int nMinVertexIndex, const int nVerticesCount, const int nStartIndex, const int nNumIndices, bool bInstanced = false) = 0;
+
+    // Set Index stream
+    virtual long FX_SetIStream(const void* pB, uint32 nOffs, RenderIndexType idxType) = 0;
+
+    // Set vertex stream
+    virtual long FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1) = 0;
+
+    // Draw primitives
+    virtual void FX_DrawPrimitive(const eRenderPrimitiveType eType, const int nStartVertex, const int nVerticesCount, const int nInstanceVertices = 0) = 0;
+
+    // Clear texture
+    virtual void FX_ClearTarget(CTexture* pTex) = 0;
+
+    // Clear depth
+    virtual void FX_ClearTarget(SDepthTexture* pTex) = 0;
+
+    // Set render target
+    virtual bool FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) = 0;
+
+    // Pushes render target
+    virtual bool FX_PushRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) = 0;
+
+    // Sets up the render target
+    virtual bool FX_SetRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, bool bPush = false, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) = 0;
+
+    // Push render target
+    virtual bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) = 0;
+
+    // Restore render target
+    virtual bool FX_RestoreRenderTarget(int nTarget) = 0;
+
+    // Pop render target
+    virtual bool FX_PopRenderTarget(int nTarget) = 0;
+
+    // Start an effect / shader / etc..
+    virtual void FX_Start(CShader* ef, int nTech, CShaderResources* Res, CRendElementBase* re) = 0;
+
+    // Pop render target on render thread
+    virtual void RT_PopRenderTarget(int nTarget) = 0;
+
+    // Sets viewport dimensions on render thread
+    virtual void RT_SetViewport(int x, int y, int width, int height, int id = -1) = 0;
+
+    // Push render target on render thread
+    virtual void RT_PushRenderTarget(int nTarget, CTexture* pTex, SDepthTexture* pDS, int nS) = 0;
+
+    // Setup scissors rect
+    virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) = 0;
 
 #ifdef SUPPORT_HW_MOUSE_CURSOR
     virtual IHWMouseCursor* GetIHWMouseCursor() = 0;

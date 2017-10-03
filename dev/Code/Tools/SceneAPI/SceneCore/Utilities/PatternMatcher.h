@@ -12,12 +12,15 @@
 *
 */
 
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/JSON/document.h>
 #include <SceneAPI/SceneCore/SceneCoreConfiguration.h>
 
 namespace AZ
 {
+    class ReflectContext;
+
     namespace SceneAPI
     {
         namespace SceneCore
@@ -31,6 +34,9 @@ namespace AZ
             class PatternMatcher
             {
             public:
+                AZ_RTTI(PatternMatcher, "{F043EC4E-FA29-4A5E-BEF6-13C661048FC4}");
+                virtual ~PatternMatcher() = default;
+
                 enum class MatchApproach
                 {
                     PreFix,
@@ -56,9 +62,10 @@ namespace AZ
                 SCENE_CORE_API const AZStd::string& GetPattern() const;
                 SCENE_CORE_API MatchApproach GetMatchApproach() const;
 
+                static void Reflect(AZ::ReflectContext* context);
             private:
                 AZStd::string m_pattern;
-                MatchApproach m_matcher;
+                MatchApproach m_matcher = MatchApproach::PostFix;
             };
         } // SceneCore
     } // SceneAPI

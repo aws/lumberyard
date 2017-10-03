@@ -289,9 +289,10 @@ CMissingAssetDialog::~CMissingAssetDialog()
 //////////////////////////////////////////////////////////////////////////
 void CMissingAssetDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CMissingAssetDialog>(GetIEditor(), ASSET_RESOLVE_DIAG_CLASSNAME, LyViewPane::CategoryOther, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CMissingAssetDialog>(ASSET_RESOLVE_DIAG_CLASSNAME, LyViewPane::CategoryOther, options);
 }
 
 //////////////////////////////////////////////////////////////////////////

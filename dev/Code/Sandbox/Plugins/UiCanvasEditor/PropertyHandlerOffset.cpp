@@ -19,27 +19,41 @@
 #include <QtWidgets>
 #include <QtWidgets/QWidget>
 
+#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+
 #include <LyShine/Bus/UiTransform2dBus.h>
+#include <LyShine/Bus/UiLayoutFitterBus.h>
 
 Q_DECLARE_METATYPE(UiTransform2dInterface::Anchors);
+
+void PropertyHandlerOffset::ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+{
+    UIVectorPropertyHandlerBase::ConsumeAttribute(GUI, attrib, attrValue, debugName);
+
+    if (attrib == AZ_CRC("LayoutFitterType", 0x7c009203))
+    {
+        UiLayoutFitterInterface::FitType fitType = UiLayoutFitterInterface::FitType::None;
+        if (attrValue->Read<UiLayoutFitterInterface::FitType>(fitType))
+        {
+            bool horizFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::HorizontalOnly);
+            bool vertFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::VerticalOnly);
+
+            AzToolsFramework::VectorElement** elements = GUI->getElements();
+
+            elements[2]->GetSpinBox()->setEnabled(!horizFit);
+            elements[3]->GetSpinBox()->setEnabled(!vertFit);
+        }
+        else
+        {
+            // emit a warning!
+            AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'LayoutFitterType' attribute from property '%s' into string box", debugName);
+        }
+    }
+}
 
 void PropertyHandlerOffset::WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI, UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)
 {
     AZ::EntityId id = GetParentEntityId(node, index);
-
-    // Check if this element is being controlled by its parent
-    bool isControlledByParent = false;
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, id, UiElementBus, GetParent);
-    if (parentElement)
-    {
-        EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, id);
-    }
-
-    if (isControlledByParent)
-    {
-        return;
-    }
 
     UiTransform2dInterface::Anchors anchors;
     EBUS_EVENT_ID_RESULT(anchors, id, UiTransform2dBus, GetAnchors);

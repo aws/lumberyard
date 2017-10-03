@@ -15,6 +15,7 @@
             "Allocator.h",
             "ArgumentParser.h",
             "FinalizingSpline.h",
+            "Gem.h",
             "I3DEngine.h",
             "I3DEngine_info.h",
             "I3DSampler.h",
@@ -87,7 +88,6 @@
             "IGeomCache.h",
             "IGoalPipe.h",
             "IGPUParticleEngine.h",
-            "IHardwareMouse.h",
             "IImage.h",
             "IIndexedMesh.h",
             "IIndexedMesh_info.h",
@@ -165,6 +165,7 @@
             "ITextModeConsole.h",
             "ITexture.h",
             "IThreadTask.h",
+            "ITimeDemoRecorder.h",
             "ITimeOfDay.h",
             "ITimer.h",
             "IValidator.h",
@@ -176,9 +177,12 @@
             "IZlibDecompressor.h",
             "INetworkingState.h",
             "IProximityTriggerSystem.h",
+            "MicrophoneBus.h",
+            "NativeUIRequests.h",
             "ParticleParams.h",
             "ParticleParams_info.h",
             "physinterface.h",
+            "ScreenFaderBus.h",
             "Version.h",
             "Version_override.h",
             "CopyProtection.h",
@@ -187,7 +191,8 @@
             "VRControllerBus.h",
             "VRCommon.h",
             "StereoRendererBus.h",
-            "CharacterBoundsBus.h"
+            "CharacterBoundsBus.h",
+            "ColorGradingBus.h"
         ],
         "Interfaces_h/AI Interfaces":
         [
@@ -261,6 +266,7 @@
             "CREGeomCache.h",
             "SerializationTypes.h",
             "CryEndian.h",
+            "CryEngineAPI.h",
             "CryRandomInternal.h",
             "Random.h",
             "LCGRandom.h",
@@ -274,9 +280,7 @@
             "CryFlags.h",
             "CryPhysics.h",
             "CryProfileMarker.h",
-            "CryProfileMarker_impl.durango.h",
             "CryProfileMarker_impl.h",
-            "CryProfileMarker_impl.orbis.h",
             "CryProfileMarker_impl.pc.h",
             "CryProfileMarker_impl.android.h",
             "CryThreadSafeWorkerContainer.h",
@@ -324,7 +328,6 @@
             "CryMemoryManager.h",
             "CryMemReplay.h",
             "CryMemReplayTrackedPtr.h",
-            "CryModuleDefs.h",
             "CryName.h",
             "CryParticleSpawnInfo.h",
             "CryPath.h",
@@ -428,7 +431,8 @@
             "RenderBus.h",
             "MainThreadRenderRequestBus.h",
             "ManualResetEvent.h",
-            "UniqueManualEvent.h"
+            "UniqueManualEvent.h",
+            "CryCommonReflection.h"
         ],
         "Common_h/RenderElements":
         [
@@ -496,7 +500,6 @@
             "AppleSpecific.h",
             "Console_std.h",
             "CryAssert_Android.h",
-            "CryAssert_Durango.h",
             "CryAssert_impl.h",
             "CryAssert_IOS.h",
             "CryAssert_Linux.h",
@@ -507,9 +510,7 @@
             "CryPlatform.fwd.h",
             "CryPlatform.h",
             "CryPlatform.Darwin.h",
-            "CryPlatform.Durango.h",
             "CryPlatform.Linux.h",
-            "CryPlatform.Orbis.h",
             "CryPlatform.Win32.h",
             "CryPlatform.Win64.h",
             "CryStructPack.cpp",
@@ -519,9 +520,6 @@
             "CryThreadImpl_pthreads.h",
             "CryThreadImpl_windows.h",
             "CryWindows.h",
-            "Durango_Win32Legacy.cpp",
-            "DurangoSpecific.h",
-            "Durango_Win32Legacy.h",
             "LevelHeap.h",
             "Linux32Specific.h",
             "Linux64Specific.h",
@@ -532,8 +530,6 @@
             "LoadScreenComponent.h",
             "MacSpecific.h",
             "MSVCspecific.h",
-            "OrbisSpecific.h",
-            "Orbis_Win32Wrapper.h",
             "platform.h",
             "platform_impl.h",
             "STLPortConfig.h",
@@ -682,11 +678,15 @@
             "LyShine/Bus/UiCanvasBus.h",
             "LyShine/Bus/UiCanvasManagerBus.h",
             "LyShine/Bus/UiCheckboxBus.h",
+            "LyShine/Bus/UiCursorBus.h",
             "LyShine/Bus/UiDraggableBus.h",
             "LyShine/Bus/UiDropTargetBus.h",
+            "LyShine/Bus/UiDropdownBus.h",
+            "LyShine/Bus/UiDropdownOptionBus.h",
             "LyShine/Bus/UiDynamicLayoutBus.h",
             "LyShine/Bus/UiDynamicScrollBoxBus.h",
             "LyShine/Bus/UiEditorBus.h",
+            "LyShine/Bus/UiEditorChangeNotificationBus.h",
             "LyShine/Bus/UiElementBus.h",
             "LyShine/Bus/UiEntityContextBus.h",
             "LyShine/Bus/UiFaderBus.h",
@@ -699,11 +699,17 @@
             "LyShine/Bus/UiLayoutCellBus.h",
             "LyShine/Bus/UiLayoutCellDefaultBus.h",
             "LyShine/Bus/UiLayoutColumnBus.h",
+            "LyShine/Bus/UiLayoutControllerBus.h",
+            "LyShine/Bus/UiLayoutFitterBus.h",
             "LyShine/Bus/UiLayoutGridBus.h",
             "LyShine/Bus/UiLayoutManagerBus.h",
             "LyShine/Bus/UiLayoutRowBus.h",
             "LyShine/Bus/UiMaskBus.h",
             "LyShine/Bus/UiNavigationBus.h",
+            "LyShine/Bus/UiRadioButtonBus.h",
+            "LyShine/Bus/UiRadioButtonCommunicationBus.h",
+            "LyShine/Bus/UiRadioButtonGroupBus.h",
+            "LyShine/Bus/UiRadioButtonGroupCommunicationBus.h",
             "LyShine/Bus/UiRenderBus.h",
             "LyShine/Bus/UiRenderControlBus.h",
             "LyShine/Bus/UiScrollableBus.h",
@@ -732,14 +738,19 @@
         [
             "LyShine/Bus/Tools/UiSystemToolsBus.h"
         ],
-        "LmbrAWS":
+        "CloudCanvas": 
         [
-            "LmbrAWS/IAWSClientManager.h",
-            "LmbrAWS/ILmbrAWS.h"
+            "CloudCanvas/CloudCanvasMappingsBus.h",
+            "CloudCanvas/CloudCanvasIdentityBus.h",
+            "CloudCanvas/ICloudCanvas.h",
+            "CloudCanvas/ICloudCanvasEditor.h"
         ],
-        "AzInput":
+       "Maestro/Bus":
         [
-            "AzInput/KeyboardEvents.h"
-        ]
+            "Maestro/Bus/EditorSequenceAgentComponentBus.h",
+            "Maestro/Bus/EditorSequenceComponentBus.h",
+            "Maestro/Bus/SequenceComponentBus.h",
+            "Maestro/Bus/SequenceAgentComponentBus.h"
+        ]    
     }
 }

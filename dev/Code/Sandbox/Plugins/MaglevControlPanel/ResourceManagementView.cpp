@@ -881,7 +881,7 @@ void ResourceManagementView::OnMenuNewResourceGroup()
     QComboBox includedContentComboBox {
         &dialog
     };
-    includedContentComboBox.addItems({"None", "HelloWorld"});
+    includedContentComboBox.addItems({"None", "API, Lambda, DynamoDB"});
     includedContentComboBox.setCurrentIndex(0);
     includedContentComboBox.setToolTip(tr("Example resources to be included in the resource group."));
     dialog.AddWidgetPairRow(new QLabel {tr("Example resources")}, &includedContentComboBox);
@@ -918,9 +918,9 @@ void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& res
 {
     QObject::disconnect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, 0);
 
-    if (m_resourceManager->DeploymentTemplateNeedsCheckout())
+    if (m_resourceManager->GemsFileNeedsCheckout())
     {
-        QString fileName = m_resourceManager->GetProjectModel()->GetProjectSettingsFile();
+        QString fileName = m_resourceManager->GetProjectModel()->GetGemsFile();
         QString checkoutString = fileName + GetSourceCheckoutString();
         auto reply = QMessageBox::question(
                 this,
@@ -930,9 +930,8 @@ void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& res
 
         if (reply == QMessageBox::Yes)
         {
-            QObject::connect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, resourceGroupName, includeExample]() { SourceChangedCreateResourceGroup(resourceGroupName, includeExample); });
-
-            GetIEditor()->GetAWSResourceManager()->RequestEditDeploymentTemplate();
+            QObject::connect(&*m_resourceManager->GetGemsFileSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, resourceGroupName, includeExample]() { SourceChangedCreateResourceGroup(resourceGroupName, includeExample); });
+            GetIEditor()->GetAWSResourceManager()->RequestEditGemsFile();
         }
         return;
     }
@@ -1013,18 +1012,24 @@ void ResourceManagementView::OnMenuNewDeployment(bool required)
         dialog.setMinimumSize(CREATE_DEPLOYMENT_DIALOG_MINIMUM_WIDTH, CREATE_DEPLOYMENT_DIALOG_MINIMUM_HEIGHT);
     }
 
+    AZStd::string learnMoreLabelContent = "<a href=\"";
+    learnMoreLabelContent.append(MaglevControlPanelPlugin::GetDeploymentHelpLink());
+    learnMoreLabelContent.append("\" >Learn more</a>");
     QLabel learnMoreLabel{
-        tr("<a href=\"http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-core-concepts.html\" >Learn more</a>")
+        tr(learnMoreLabelContent.c_str())
     };
     learnMoreLabel.setObjectName("LearnMore");
     learnMoreLabel.setProperty("class", "Message");
-    connect(&learnMoreLabel, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString("http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-core-concepts.html"))); });
+    connect(&learnMoreLabel, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
     dialog.AddSpanningWidgetRow(&learnMoreLabel);
     learnMoreLabel.setVisible(required);
 
     // This version matches the style of the add resource dialog and is visible when requiredLabel is not visible.
+    AZStd::string learnMoreLabel2Content = "You must provide the following to create a deployment.  <a href=\"";
+    learnMoreLabel2Content.append(MaglevControlPanelPlugin::GetDeploymentHelpLink());
+    learnMoreLabel2Content.append("\" >Learn more</a> about deployments.");
     QLabel learnMoreLabel2{
-        tr("You must provide the following to create a deployment.  <a href=\"http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-core-concepts.html\" >Learn more</a> about deployments.")
+        tr(learnMoreLabel2Content.c_str())
     };
     learnMoreLabel2.setObjectName("LearnMore2");
     learnMoreLabel2.setProperty("class", "Message");
@@ -1032,7 +1037,7 @@ void ResourceManagementView::OnMenuNewDeployment(bool required)
     learnMoreLabel2.setMinimumHeight(55);
     learnMoreLabel2.setAlignment(Qt::AlignTop);
     learnMoreLabel2.setTextInteractionFlags(Qt::LinksAccessibleByMouse);
-    connect(&learnMoreLabel2, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString("http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-core-concepts.html"))); });
+    connect(&learnMoreLabel2, &QLabel::linkActivated, [this]() { QDesktopServices::openUrl(QUrl(QString(MaglevControlPanelPlugin::GetDeploymentHelpLink()))); });
     dialog.AddSpanningWidgetRow(&learnMoreLabel2);
     learnMoreLabel2.setVisible(!required);
 

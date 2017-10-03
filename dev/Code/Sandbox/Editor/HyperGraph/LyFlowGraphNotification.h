@@ -36,4 +36,5 @@ protected:
 
     QCheckBox* m_dontShowAgainCheckbox;
 
+    void OnTryScriptCanvas();
 };

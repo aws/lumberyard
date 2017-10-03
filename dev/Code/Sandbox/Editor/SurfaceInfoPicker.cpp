@@ -478,9 +478,9 @@ void CSurfaceInfoPicker::FindNearestInfoFromEntities(
             EBUS_EVENT_ID_RESULT(id, entityObject, AzToolsFramework::ComponentEntityObjectRequestBus, GetAssociatedEntityId);
 
             AZ::EBusAggregateResults<IStatObj*> statObjs;
-            EBUS_EVENT_ID_RESULT(statObjs, id, LmbrCentral::StaticMeshComponentRequestBus, GetStatObj);
+            EBUS_EVENT_ID_RESULT(statObjs, id, LmbrCentral::LegacyMeshComponentRequestBus, GetStatObj);
             
-            // If the entity has a StaticMeshComponent, it will hit here
+            // If the entity has a MeshComponent, it will hit here
             for (IStatObj* statObj : statObjs.values)
             {
                 hit = RayIntersection(vWorldRaySrc, vWorldRayDir, nullptr, nullptr, statObj, nullptr, object->GetWorldTM(), outHitInfo, &statObjDefaultMaterial);

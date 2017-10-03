@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CryEntityRemoval/CryEntityRemovalBus.h"
+        ],
+        "Source": [
+            "Source/CryEntityRemovalModule.cpp",
+            "Source/CryEntityRemovalSystemComponent.cpp",
+            "Source/CryEntityRemovalSystemComponent.h"
+        ]
+    }
+}

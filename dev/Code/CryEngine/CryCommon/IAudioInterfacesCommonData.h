@@ -173,22 +173,22 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum class AudioInputSourceType
     {
-        Unsupported,    ///< Unsupported type
-        //OggFile,      ///< Audio Input from an Ogg file
-        //OpusFile,     ///< Audio Input from an Opus file
-        PcmFile,        ///< Audio Input from a raw PCM file
-        WavFile,        ///< Audio Input from a Wav file
-        Synthesis,      ///< Audio Input that is synthesized (user-provided systhesis function)
-        ExternalStream, ///< Audio Input from a stream source (video stream, network stream, etc)
-        //Microphone,   ///< Audio Input from a Microphone
+        Unsupported,    // Unsupported type
+        //OggFile,      // Audio Input from an Ogg file
+        //OpusFile,     // Audio Input from an Opus file
+        PcmFile,        // Audio Input from a raw PCM file
+        WavFile,        // Audio Input from a Wav file
+        Microphone,     // Audio Input from a Microphone
+        Synthesis,      // Audio Input that is synthesized (user-provided systhesis function)
+        ExternalStream, // Audio Input from a stream source (video stream, network stream, etc)
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum class AudioInputSampleType
     {
-        Unsupported,    ///< Unsupported type
-        Int,            ///< Integer type, probably don't need to differentiate signed vs unsigned
-        Float,          ///< Floating poitn type
+        Unsupported,    // Unsupported type
+        Int,            // Integer type, probably don't need to differentiate signed vs unsigned
+        Float,          // Floating poitn type
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -231,30 +231,44 @@ namespace Audio
             , m_autoUnloadFile(false)
         {}
 
+        void SetBufferSizeFromFrameCount(AZ::u32 frameCount)
+        {
+            m_bufferSize = (m_numChannels * frameCount * (m_bitsPerSample >> 3));
+        }
+
+        AZ::u32 GetSampleCountFromBufferSize() const
+        {
+            AZ_Assert(m_bitsPerSample >= 8, "Bits Per Sample is set too low!\n");
+            return m_bufferSize / (m_bitsPerSample >> 3);
+        }
+
         TAudioSourceId m_sourceId;          // This is set later after the source is created
-        AZ::u32 m_sampleRate;
-        AZ::u32 m_numChannels;
-        AZ::u32 m_bitsPerSample;
-        AZ::u32 m_bufferSize;
-        AudioInputSourceType m_sourceType;
-        AudioInputSampleType m_sampleType;
+        AZ::u32 m_sampleRate;               // 44100, 48000, ...
+        AZ::u32 m_numChannels;              // 1 = Mono, 2 = Stereo
+        AZ::u32 m_bitsPerSample;            // e.g. 16, 32
+        AZ::u32 m_bufferSize;               // Size in bytes
+        AudioInputSourceType m_sourceType;  // File, Synthesis, Microphone, ...
+        AudioInputSampleType m_sampleType;  // Int, Float
         AZStd::string m_sourceFilename;
         bool m_autoUnloadFile;              // For file types, specifies whether file should unload after playback finishes
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    struct SAudioInputData
+    struct AudioStreamData
     {
-        SAudioInputData(AZStd::size_t numChannels, void* buffer, AZStd::size_t dataSize)
-            : m_numChannels(numChannels)
-            , m_dataBuffer(buffer)
-            , m_dataSize(dataSize)
+        AudioStreamData()
         {}
 
-        // Todo, finalize the data structure members
-        void* m_dataBuffer;             // points to start of raw data
-        AZStd::size_t m_numChannels;    // 1 = mono, 2 = stereo, ...
-        AZStd::size_t m_dataSize;       // in bytes
+        AudioStreamData(AZStd::size_t numChannels, AZ::u8* buffer, AZStd::size_t dataSize)
+            : m_data(buffer)
+            , m_sizeBytes(dataSize)
+        {}
+
+        AZ::u8* m_data = nullptr;           // points to start of raw data
+        union {
+            AZStd::size_t m_sizeBytes = 0;  // in bytes
+            AZStd::size_t m_offsetBytes;    // if using this structure as a read/write bookmark, use this alias
+        };
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +288,8 @@ namespace Audio
     {
         struct UserData
         {
-            UserData(void* pUserData)
-                : m_pUserData(pUserData)
+            UserData(void* userData)
+                : m_pUserData(userData)
             {}
 
             UserData(uint64_t userData)
@@ -304,9 +318,9 @@ namespace Audio
                 return m_userData;
             }
 
-            bool operator==(void* const pUserData)
+            bool operator==(void* const userData)
             {
-                return this->m_pUserData == pUserData;
+                return this->m_pUserData == userData;
             }
 
             bool operator==(uint64_t userData)

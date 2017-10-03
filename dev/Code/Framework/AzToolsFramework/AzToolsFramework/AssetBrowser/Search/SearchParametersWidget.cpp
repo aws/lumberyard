@@ -25,7 +25,7 @@ namespace AzToolsFramework
         {
             m_ui->setupUi(this);
             hide();
-            connect(m_ui->m_clearAllButton, &QBetterLabel::clicked, this, &SearchParametersWidget::ClearAllSignal);
+            connect(m_ui->m_clearFiltersButton, &QBetterLabel::clicked, this, &SearchParametersWidget::ClearAllSignal);
         }
 
         SearchParametersWidget::~SearchParametersWidget() = default;
@@ -39,11 +39,11 @@ namespace AzToolsFramework
                 m_ui->m_filtersLabel->setText("<b>Filtered by:</b> " + filterName);
                 if (m_allowClear)
                 {
-                    m_ui->m_clearAllButton->show();
+                    m_ui->m_clearFiltersButton->show();
                 }
                 else
                 {
-                    m_ui->m_clearAllButton->hide();
+                    m_ui->m_clearFiltersButton->hide();
                 }
             }
             else

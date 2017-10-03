@@ -30,12 +30,24 @@ namespace AZ
             TraceDrillerHook();
             ~TraceDrillerHook() override;
 
+            // Support for legacy Cry system cause AzCoreLogSink to eat asserts and errors, so registering for these
+            // callbacks never fires them. To still receive messages the OnPre* calls are hooked into. This isn't needed
+            // for warning, but is still done for consistency.
+
+            bool OnPreAssert(const char* fileName, int line, const char* func, const char* message) override;
+            bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message) override;
+            bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override;
+
             bool OnPrintf(const char* window, const char* message) override;
 
+            size_t GetErrorCount() const;
+
         private:
+            void DumpContextStack() const;
             size_t CalculateLineLength(const char* message) const;
 
             AzToolsFramework::Debug::TraceContextMultiStackHandler m_stacks;
+            size_t m_errorCount;
         };
     } // RC
 } // AZ

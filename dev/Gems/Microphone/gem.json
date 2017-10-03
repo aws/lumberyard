@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "e70dd59f02f14ea49e6b38434e86ebf1",
+    "Name": "Microphone",
+    "DisplayName": "Microphone",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides access to connected Microphone Devices and ability to read their input.",
+    "Tags": ["Audio", "Microphone"],
+    "IconPath": "preview.png"
+}

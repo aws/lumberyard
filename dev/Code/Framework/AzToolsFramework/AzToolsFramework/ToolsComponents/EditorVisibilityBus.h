@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/std/parallel/mutex.h>
 
 namespace AzToolsFramework
 {
@@ -28,6 +29,8 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
+        using MutexType = AZStd::recursive_mutex;
+
         /// Set whether this entity can ever be shown in the editor.
         virtual void SetVisibilityFlag(bool flag) = 0;
 

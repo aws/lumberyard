@@ -38,4 +38,9 @@ namespace RenderCapabilities
     {
         return true;
     }
+
+    bool SupportsDualSourceBlending()
+    {
+        return true;
+    }
 }

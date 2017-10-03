@@ -17,6 +17,7 @@
 
 
 //=============================================================
+#include <CryEngineAPI.h>
 
 #include "VertexFormats.h"
 
@@ -65,6 +66,7 @@ enum EDataType
     eDATA_GameEffect,
     eDATA_BreakableGlass,
     eDATA_GeomCache,
+    eDATA_Gem,
 };
 
 #include <Cry_Color.h>
@@ -97,6 +99,41 @@ enum EDataType
 
 #define MAX_CUSTOM_TEX_BINDS_NUM 2
 
+struct SGeometryInfo;
+class CRendElement;
+struct IRenderElement
+{
+    virtual int mfGetMatId() = 0;
+    virtual uint16 mfGetFlags() = 0;
+    virtual void mfSetFlags(uint16 fl) = 0;
+    virtual void mfUpdateFlags(uint16 fl) = 0;
+    virtual void mfClearFlags(uint16 fl) = 0;
+    virtual void mfPrepare(bool bCheckOverflow) = 0;
+    virtual void mfCenter(Vec3& centr, CRenderObject* pObj) = 0;
+    virtual void mfGetBBox(Vec3& vMins, Vec3& vMaxs) = 0;
+    virtual void mfReset() = 0;
+    virtual void mfGetPlane(Plane& pl) = 0;
+    virtual void mfExport(struct SShaderSerializeContext& SC) = 0;
+    virtual void mfImport(struct SShaderSerializeContext& SC, uint32& offset) = 0;
+    virtual void mfPrecache(const SShaderItem& SH) = 0;
+    virtual bool mfIsHWSkinned() = 0;
+    virtual bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false) = 0;
+    virtual bool mfUpdate(int Flags, bool bTessellation = false) = 0;
+    virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) = 0;
+    virtual bool mfDraw(CShader* ef, SShaderPass* sfm) = 0;
+    virtual bool mfPreDraw(SShaderPass* sl) = 0;
+
+    virtual CRendElementBase* mfCopyConstruct() = 0;
+    virtual CRenderChunk* mfGetMatInfo() = 0;
+    virtual TRenderChunkArray* mfGetMatInfoList() = 0;
+
+    virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) = 0;
+
+    virtual AZ::Vertex::Format GetVertexFormat() const = 0;
+    //virtual bool GetGeometryInfo(SGeometryInfo& streams) = 0;
+    virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) = 0;
+};
+
 class CRendElement
 {
 public:
@@ -108,7 +145,7 @@ public:
     EDataType m_Type;
 
 protected:
-    _inline void UnlinkGlobal()
+    virtual void UnlinkGlobal()
     {
         if (!m_NextGlobal || !m_PrevGlobal)
         {
@@ -118,7 +155,8 @@ protected:
         m_PrevGlobal->m_NextGlobal = m_NextGlobal;
         m_NextGlobal = m_PrevGlobal = NULL;
     }
-    _inline void LinkGlobal(CRendElement* Before)
+
+    virtual void LinkGlobal(CRendElement* Before)
     {
         if (m_NextGlobal || m_PrevGlobal)
         {
@@ -131,26 +169,26 @@ protected:
     }
 
 public:
-    CRendElement();
-    virtual ~CRendElement();
-    virtual void Release(bool bForce = false);
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const { /*nothing*/}
+    ENGINE_API CRendElement();
+    ENGINE_API virtual ~CRendElement();
+    ENGINE_API virtual void Release(bool bForce = false);
+    ENGINE_API virtual const char* mfTypeString();
 
-    const char* mfTypeString();
-    _inline EDataType mfGetType() { return m_Type; }
-    void mfSetType(EDataType t) { m_Type = t; }
+    virtual EDataType mfGetType() { return m_Type; }
+    virtual void mfSetType(EDataType t) { m_Type = t; }
 
+    virtual void GetMemoryUsage(ICrySizer* pSizer) const {}
     virtual int Size() { return 0; }
-    virtual void mfReset() {}
+
 
     static void ShutDown();
     static void Tick();
-
     static void Cleanup();
 };
 
 class CRendElementBase
     : public CRendElement
+    , public IRenderElement
 {
 public:
     uint16 m_Flags;
@@ -189,14 +227,33 @@ public:
     };
 
 public:
-    CRendElementBase();
-    virtual ~CRendElementBase();
+    ENGINE_API CRendElementBase();
+    ENGINE_API virtual ~CRendElementBase();
 
-    inline uint16 mfGetFlags(void) { return m_Flags; }
-    inline void mfSetFlags(uint16 fl) { m_Flags = fl; }
-    inline void mfUpdateFlags(uint16 fl) { m_Flags |= fl; }
-    inline void mfClearFlags(uint16 fl) { m_Flags &= ~fl; }
-    inline bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false)
+    ENGINE_API virtual void mfPrepare(bool bCheckOverflow) override; // False - mergable, True - static mesh
+    ENGINE_API virtual CRenderChunk* mfGetMatInfo() override;
+    ENGINE_API virtual TRenderChunkArray* mfGetMatInfoList() override;
+    ENGINE_API virtual int mfGetMatId() override;
+    ENGINE_API virtual void mfReset() override;
+    ENGINE_API virtual CRendElementBase* mfCopyConstruct() override;
+    ENGINE_API virtual void mfCenter(Vec3& centr, CRenderObject* pObj) override;
+
+    ENGINE_API virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) override { return false; }
+    ENGINE_API virtual bool mfPreDraw(SShaderPass* sl) override { return true; }
+    ENGINE_API virtual bool mfUpdate(int Flags, bool bTessellation = false) override { return true; }
+    ENGINE_API virtual void mfPrecache(const SShaderItem& SH) override {}
+    ENGINE_API virtual void mfExport(struct SShaderSerializeContext& SC) override { CryFatalError("mfExport has not been implemented for this render element type"); }
+    ENGINE_API virtual void mfImport(struct SShaderSerializeContext& SC, uint32& offset) override { CryFatalError("mfImport has not been implemented for this render element type"); }
+
+    ENGINE_API virtual void mfGetPlane(Plane& pl) override;
+    ENGINE_API virtual bool mfDraw(CShader* ef, SShaderPass* sfm) override;
+    ENGINE_API virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) override;
+
+    virtual uint16 mfGetFlags()  override { return m_Flags; }
+    virtual void mfSetFlags(uint16 fl)  override { m_Flags = fl; }
+    virtual void mfUpdateFlags(uint16 fl)  override { m_Flags |= fl; }
+    virtual void mfClearFlags(uint16 fl)  override { m_Flags &= ~fl; }
+    virtual bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false) override
     {
         if (nFrame != m_nFrameUpdated || (m_Flags & (FCEF_DIRTY | FCEF_SKINNED | FCEF_UPDATEALWAYS)))
         {
@@ -205,37 +262,17 @@ public:
         }
         return true;
     }
-
-    virtual void mfPrepare(bool bCheckOverflow); // False - mergable, True - static mesh
-    virtual CRenderChunk* mfGetMatInfo();
-    virtual TRenderChunkArray* mfGetMatInfoList();
-    virtual int mfGetMatId();
-    virtual void mfReset();
-    virtual bool mfIsHWSkinned() { return false; }
-    virtual CRendElementBase* mfCopyConstruct(void);
-    virtual void mfCenter(Vec3& centr, CRenderObject* pObj);
-    virtual void mfGetBBox(Vec3& vMins, Vec3& vMaxs)
+    virtual void mfGetBBox(Vec3& vMins, Vec3& vMaxs) override
     {
         vMins.Set(0, 0, 0);
         vMaxs.Set(0, 0, 0);
     }
-    virtual void mfGetPlane(Plane& pl);
-    virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) { return false; }
-    virtual bool mfDraw(CShader* ef, SShaderPass* sfm);
-    virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags);
-    virtual bool mfPreDraw(SShaderPass* sl) { return true; }
-    virtual bool mfUpdate(int Flags, bool bTessellation = false) { return true; }
-    virtual void mfPrecache(const SShaderItem& SH) {}
-    virtual void mfExport(struct SShaderSerializeContext& SC) { CryFatalError("mfExport has not been implemented for this render element type"); }
-    virtual void mfImport(struct SShaderSerializeContext& SC, uint32& offset) { CryFatalError("mfImport has not been implemented for this render element type"); }
-
-    // New Pipeline
-    virtual AZ::Vertex::Format GetVertexFormat() const { return AZ::Vertex::Format(eVF_Unknown); };
+    virtual bool mfIsHWSkinned() override { return false; }
+    virtual int Size() override { return 0; }
+    virtual void GetMemoryUsage(ICrySizer* pSizer) const  override {}
+    virtual AZ::Vertex::Format GetVertexFormat() const override { return AZ::Vertex::Format(eVF_Unknown); };
     virtual bool GetGeometryInfo(SGeometryInfo& streams) { return false; }
-    virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) {};
-
-    virtual int Size() {return 0; }
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const {}
+    virtual void Draw(CRenderObject* pObj, const struct SGraphicsPiplinePassContext& ctx) override {};
 };
 
 #include "CREMesh.h"

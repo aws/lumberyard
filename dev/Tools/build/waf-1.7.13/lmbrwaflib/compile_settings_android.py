@@ -43,6 +43,8 @@ def load_android_common_settings(conf):
 
     append_to_unique_list(env['DEFINES'], defines)
 
+    env['CFLAGS'] += ['-ffunction-sections', '-fdata-sections'] # Discard unused sections (flag is common to GCC and Clang)
+
     env['LIB'] += [
         'android',              # android library
         'c',                    # c library for android
@@ -86,17 +88,65 @@ def load_android_common_settings(conf):
     env['AIDL_PREPROC_ST'] = '-p%s'
     env['AIDL_PREPROCESSES'] = [ os.path.join(platform, 'framework.aidl') ]
 
-    # appt settings
-    env['APPT_RESOURCE_ST'] = [ '-S' ]
-    env['APPT_RESOURCES'] = []
+    # aapt settings
+    env['AAPT_ASSETS_ST'] = [ '-A' ]
+    env['AAPT_ASSETS'] = []
 
-    env['APPT_INLC_ST'] = [ '-I' ]
-    env['APPT_INCLUDES'] = [ android_jar ]
-    env['APP_PACKAGE_FLAGS'] = [ ]
+    env['AAPT_RESOURCE_ST'] = [ '-S' ]
+    env['AAPT_RESOURCES'] = []
+
+    env['AAPT_INLC_ST'] = [ '-I' ]
+    env['AAPT_INCLUDES'] = [ android_jar ]
+
+    env['AAPT_PACKAGE_FLAGS'] = [ '--auto-add-overlay' ]
 
     # apk packaging settings
     env['ANDROID_MANIFEST'] = ''
     env['ANDROID_DEBUG_MODE'] = ''
+
+    # manifest merger settings
+    tools_path = os.path.join(env['ANDROID_SDK_HOME'], 'tools', 'lib')
+    tools_contents = os.listdir(tools_path)
+    tools_jars = [ entry for entry in tools_contents if entry.lower().endswith('.jar') ]
+
+    # try to detect older versions of the merger
+    if 'manifest-merger.jar' in tools_jars or 'manifmerger.jar' in tools_jars:
+        env['MANIFEST_MERGER_ENTRY_POINT'] = [ 'com.android.manifmerger.Main','merge' ]
+        env['MANIFEST_MERGER_OLD_VERSION'] = True
+
+        if 'manifest-merger.jar' in tools_jars:
+            merger_jar = 'manifest-merger.jar'
+        else:
+            merger_jar = 'manifmerger.jar'
+
+        env['MANIFEST_MERGER_CLASSPATH'] = os.path.join(tools_path, merger_jar)
+
+    else:
+
+        env['MANIFEST_MERGER_ENTRY_POINT'] = 'com.android.manifmerger.Merger'
+        env['MANIFEST_MERGER_OLD_VERSION'] = False
+
+        manifest_merger_lib_names = [
+            # entry point for the merger
+            'manifest-merger', 
+
+            # dependent libs
+            'sdk-common',
+            'common-'
+        ]
+
+        manifest_merger_libs = []
+        for jar in tools_jars:
+            if any(lib_name for lib_name in manifest_merger_lib_names if jar.lower().startswith(lib_name)):
+                manifest_merger_libs.append(jar)
+
+        if len(manifest_merger_libs) < len(manifest_merger_lib_names):
+            conf.fatal('[ERROR] Failed to find the required file(s) for the Manifest Merger.  Please use the Android SDK Manager to update to the latest SDK Tools version and run the configure command again.')
+
+        env['MANIFEST_MERGER_CLASSPATH'] = os.pathsep.join([ os.path.join(tools_path, jar_file) for jar_file in manifest_merger_libs ])
+
+    # zipalign settings
+    env['ZIPALIGN_SIZE'] = '4' # alignment in bytes, e.g. '4' provides 32-bit alignment (has to be a string)
 
     # jarsigner settings
     env['KEYSTORE_ALIAS'] = conf.get_android_env_keystore_alias()

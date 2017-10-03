@@ -726,9 +726,7 @@
         ],
         "Test System":
         [
-            "TestSystem/TimeDemoRecorder.cpp",
-            "TestSystem/IGameStateRecorder.h",
-            "TestSystem/TimeDemoRecorder.h"
+            "TestSystem/IGameStateRecorder.h"
         ],
         "Animation/PoseAligner":
         [
@@ -1008,7 +1006,9 @@
         "Graphics":
         [
             "Graphics/ColorGradientManager.cpp",
-            "Graphics/ColorGradientManager.h"
+            "Graphics/ColorGradientManager.h",
+            "Graphics/ScreenFader.h",
+            "Graphics/ScreenFader.cpp"
         ]
         
     },
@@ -1054,7 +1054,6 @@
             "ISaveGame.h",
             "ISharedParamsManager.h",
             "ISubtitleManager.h",
-            "ITimeDemoRecorder.h",
             "IUIDraw.h",
             "IVehicleSystem.h",
             "IViewSystem.h",

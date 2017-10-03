@@ -34,9 +34,6 @@ using namespace UnitTestInternal;
     AZ_TEST_ASSERT((_NumElements > 0) ? !_List.empty() : _List.empty()); \
     AZ_TEST_ASSERT((_NumElements > 0) ? _List.begin() != _List.end() : _List.begin() == _List.end());
 
-#ifdef AZ_PLATFORM_WII
-    #pragma opt_usedef_mem_limit 500
-#endif
 namespace UnitTest
 {
     /**

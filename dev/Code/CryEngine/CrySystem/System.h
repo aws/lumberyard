@@ -182,7 +182,7 @@ struct SSystemCVars
 
     PakVars pakVars;
 
-#if defined(WIN32) || defined (DURANGO)
+#if defined(WIN32)
     int sys_display_threads;
 #endif
 };
@@ -252,6 +252,7 @@ class CSystem
     , public ISystemEventListener
     , public IWindowMessageHandler
     , public AZ::RenderNotificationsBus::Handler
+    , public CrySystemRequestBus::Handler
 {
 public:
 
@@ -301,6 +302,11 @@ public:
 
     //Called when the renderer finishes rendering the scene
     void OnScene3DEnd() override;
+
+    ////////////////////////////////////////////////////////////////////////
+    // CrySystemRequestBus interface implementation
+    ISystem* GetCrySystem() override;
+    ////////////////////////////////////////////////////////////////////////
 
     //! Update screen during loading.
     void UpdateLoadingScreen();
@@ -517,8 +523,10 @@ public:
     virtual void SaveConfiguration();
     virtual void LoadConfiguration(const char* sFilename, ILoadConfigurationEntrySink* pSink = 0, bool warnIfMissing = true);
     virtual ESystemConfigSpec GetConfigSpec(bool bClient = true);
-    virtual void SetConfigSpec(ESystemConfigSpec spec, bool bClient);
+    virtual void SetConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient);
     virtual ESystemConfigSpec GetMaxConfigSpec() const;
+    virtual ESystemConfigPlatform GetConfigPlatform() const;
+    virtual void SetConfigPlatform(const ESystemConfigPlatform platform);
     //////////////////////////////////////////////////////////////////////////
 
     virtual int SetThreadState(ESubsystem subsys, bool bActive);
@@ -611,7 +619,6 @@ private:
     bool InitAudioSystem(const SSystemInitParams& initParams);
     bool InitAnimationSystem(const SSystemInitParams& initParams);
     bool InitShine(const SSystemInitParams& initParams);
-    bool InitMovieSystem(const SSystemInitParams& initParams);
     bool InitEntitySystem(const SSystemInitParams& initParams);
     bool InitDynamicResponseSystem(const SSystemInitParams& initParams);
     bool OpenRenderLibrary(int type, const SSystemInitParams& initParams);
@@ -739,6 +746,8 @@ public:
 
     
     std::shared_ptr<AZ::IO::FileIOBase> CreateLocalFileIO();
+
+    void ForceMaxFps(bool enable, int maxFps) override;
 
     // Gets the dimensions (in pixels) of the primary physical display.
     // Returns true if this info is available, returns false otherwise.
@@ -914,7 +923,7 @@ private: // ------------------------------------------------------
     ICVar* m_sys_job_system_enable;
     ICVar* m_sys_job_system_profiler;
     ICVar* m_sys_job_system_max_worker;
-    ICVar* m_sys_spec;
+    ICVar* m_sys_GraphicsQuality;
     ICVar* m_sys_firstlaunch;
     ICVar* m_sys_skip_input;
     ICVar* m_sys_asset_processor;
@@ -985,6 +994,7 @@ private: // ------------------------------------------------------
 
     ESystemConfigSpec m_nServerConfigSpec;
     ESystemConfigSpec m_nMaxConfigSpec;
+    ESystemConfigPlatform m_ConfigPlatform;
 
     std::unique_ptr<CServerThrottle> m_pServerThrottle;
 
@@ -1141,6 +1151,9 @@ protected: // -------------------------------------------------------------
     std::vector<IWindowMessageHandler*> m_windowMessageHandlers;
     bool m_initedOSAllocator = false;
     bool m_initedSysAllocator = false;
+
+    bool m_forceMaxFps = false;
+    int m_forcedMaxFps = 0;
 };
 
 /*extern static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index);

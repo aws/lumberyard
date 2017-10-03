@@ -151,8 +151,8 @@ namespace NCryMetal
     {
 #if defined(AZ_PLATFORM_APPLE_OSX)
         CGRect screenBounds = CGRectMake(0, 0, width, height);
-        //Make the window resizable, closeable and minimizeable. 
-        NSUInteger styleMask = NSClosableWindowMask|NSTitledWindowMask|NSMiniaturizableWindowMask|NSResizableWindowMask;
+        //Make the window closeable and minimizeable.
+        NSUInteger styleMask = NSClosableWindowMask|NSTitledWindowMask|NSMiniaturizableWindowMask;
         NativeWindowType* nativeWindow = [[NativeWindowType alloc] initWithContentRect: screenBounds styleMask: styleMask backing: NSBackingStoreBuffered defer:false];
 
         [nativeWindow makeKeyAndOrderFront:nil];

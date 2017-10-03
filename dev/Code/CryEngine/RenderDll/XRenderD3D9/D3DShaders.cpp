@@ -929,14 +929,14 @@ bool CShaderMan::mfPreactivateShaders2(
         szPathPerLevel += "metal/";
     }
     else
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
-        szPathPerLevel += "orbis/";
+        szPathPerLevel += "orbis/"; // ACCEPTED_USE
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
-        szPathPerLevel += "durango/";
+        szPathPerLevel += "durango/"; // ACCEPTED_USE
     }
 
     string szPathGlobal = gRenDev->m_cEF.m_ShadersCache;

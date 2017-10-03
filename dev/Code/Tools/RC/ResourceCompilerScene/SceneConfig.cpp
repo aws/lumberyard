@@ -121,5 +121,10 @@ namespace AZ
 
             m_modules.push_back(AZStd::move(module));
         }
+
+        size_t SceneConfig::GetErrorCount() const
+        {
+            return traceHook.GetErrorCount();
+        }
     } // namespace RC
 } // namespace AZ

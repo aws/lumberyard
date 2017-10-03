@@ -25,13 +25,15 @@
 #include <QMouseEvent>
 #include <QTimer>
 #include <QElapsedTimer>
+#include <QApplication>
 
 #include "QViewport.h"
 #include "QViewportEvents.h"
 #include "QViewportConsumer.h"
 #include "QViewportSettings.h"
 #include "Serialization.h"
-#include <QApplication>
+
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
 
 struct QViewport::SPreviousContext
 {
@@ -506,7 +508,7 @@ void QViewport::ProcessMouse()
                 m_state->orbitRadius = at.GetLength();
             }
 
-            QCursor::setPos(mapToGlobal(m_mousePressPos));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_mousePressPos));
         }
     }
     else if (m_cameraControlMode == CameraControlMode::ROTATE)
@@ -533,7 +535,7 @@ void QViewport::ProcessMouse()
 
             CameraMoved(qt, false);
 
-            QCursor::setPos(mapToGlobal(m_mousePressPos));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_mousePressPos));
         }
     }
     else if (m_cameraControlMode == CameraControlMode::PAN)
@@ -557,7 +559,7 @@ void QViewport::ProcessMouse()
 
             CameraMoved(qt, false);
 
-            QCursor::setPos(mapToGlobal(m_mousePressPos));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_mousePressPos));
         }
     }
     else if (m_cameraControlMode == CameraControlMode::ORBIT)
@@ -593,7 +595,7 @@ void QViewport::ProcessMouse()
 
         CameraMoved(cameraTarget, true);
 
-        QCursor::setPos(mapToGlobal(m_mousePressPos));
+        AzQtComponents::SetCursorPos(mapToGlobal(m_mousePressPos));
     }
 }
 
@@ -894,6 +896,24 @@ void QViewport::Render()
 
 void QViewport::RenderInternal()
 {
+    {
+        threadID mainThread = 0;
+        threadID renderThread = 0;
+        GetIEditor()->GetEnv()->pRenderer->GetThreadIDs(mainThread, renderThread);
+        const threadID currentThreadId = CryGetCurrentThreadId();
+
+        // I'm not sure if this criteria is right. It might not be restrictive enough, but it's at least strict enough to prevent
+        // the crash we encountered.
+        const bool isValidThread = JobManager::IsWorkerThread() || mainThread == currentThreadId || renderThread == currentThreadId;
+
+        if (!isValidThread)
+        {
+            AZ_Assert(false, "Attempting to render QViewport on unsupported thread %" PRI_THREADID, currentThreadId);
+            return;
+        }
+    }
+
+
     SetCurrentContext();
     GetIEditor()->GetEnv()->pSystem->RenderBegin();
 
@@ -1177,7 +1197,7 @@ void QViewport::keyReleaseEvent(QKeyEvent* ev)
 void QViewport::resizeEvent(QResizeEvent* ev)
 {
     QWidget::resizeEvent(ev);
-
+    
     int cx = ev->size().width();
     int cy = ev->size().height();
     if (cx == 0 || cy == 0)

@@ -1422,7 +1422,7 @@ void CGeomCacheRenderNode::UpdatePhysicalMaterials()
 
 void CGeomCacheRenderNode::UpdateStreamableComponents(float fImportance, float fDistance, bool bFullUpdate, int nLod, const float fInvScale, bool bDrawNear)
 {
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
     Matrix34A matrix = GetMatrix();
 
     const bool bAllowStandIn = GetCVars()->e_Lods != 0;
@@ -1446,7 +1446,7 @@ void CGeomCacheRenderNode::PrecacheStandIn(IStatObj* pStandIn, float fImportance
         IStatObj* pLod = pStandIn->GetLodObject(nLod, true);
         if (pLod)
         {
-            CObjManager* pObjManager = GetObjManager();
+            IObjManager* pObjManager = GetObjManager();
             Matrix34A matrix = GetMatrix();
             static_cast<CStatObj*>(pLod)->UpdateStreamableComponents(fImportance, matrix, bFullUpdate, nLod);
             pObjManager->PrecacheStatObjMaterial(pLod->GetMaterial(), fDistance * fInvScale, pLod, bFullUpdate, bDrawNear);

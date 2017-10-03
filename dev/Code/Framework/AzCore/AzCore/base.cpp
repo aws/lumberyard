@@ -22,16 +22,16 @@ namespace AZ
             return "Win32";
         case PLATFORM_WINDOWS_64:
             return "Win64";
-        case PLATFORM_XBOX_360:
-            return "X360";
-        case PLATFORM_XBONE:
-            return "XB1";
-        case PLATFORM_PS3:
-            return "PS3";
-        case PLATFORM_PS4:
-            return "PS4";
-        case PLATFORM_WII:
-            return "WII";
+        case PLATFORM_XBOX_360: // ACCEPTED_USE
+            return "X360"; // ACCEPTED_USE
+        case PLATFORM_XBONE: // ACCEPTED_USE
+            return "XB1"; // ACCEPTED_USE
+        case PLATFORM_PS3: // ACCEPTED_USE
+            return "PS3"; // ACCEPTED_USE
+        case PLATFORM_PS4: // ACCEPTED_USE
+            return "PS4"; // ACCEPTED_USE
+        case PLATFORM_WII: // ACCEPTED_USE
+            return "WII"; // ACCEPTED_USE
         case PLATFORM_LINUX_64:
             return "Linux";
         case PLATFORM_ANDROID:

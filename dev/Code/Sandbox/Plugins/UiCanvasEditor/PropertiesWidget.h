@@ -44,6 +44,8 @@ public:
     // Notify the properties pane when a selected entity has been recreated
     void SelectedEntityPointersChanged();
 
+    void SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget);
+
 public slots:
 
     void UserSelectionChanged(HierarchyItemRawPtrList* items);

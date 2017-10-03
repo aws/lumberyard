@@ -48,7 +48,11 @@ bool AddS3Bucket::TypeSpecificValidateResource(const QString& resourceName)
         QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name must begin with a lowercase a-z"));
         return false;
     }
-
+    if (resourceName.contains("-"))
+    {
+        QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name cannot contain '-'"));
+        return false;
+    }
     if (resourceName.right(1).contains(QRegExp("[^a-z0-9]")))
     {
         QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name must end with a lowercase a-z or digit"));

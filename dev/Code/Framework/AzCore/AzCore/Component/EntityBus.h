@@ -40,6 +40,11 @@ namespace AZ
          */
         virtual ~EntitySystemEvents() {}
 
+        /**
+         * Global entity initialization notification.
+         * @param id The ID of the initialized entity.
+         */
+        virtual void OnEntityInitialized(const AZ::EntityId&) {}
 
         /**
          * Signals that an entity was activated.
@@ -88,9 +93,19 @@ namespace AZ
 
                 Entity* entity = nullptr;
                 EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, id);
-                if (entity && (entity->GetState() == Entity::ES_ACTIVE))
+                if (entity)
                 {
-                    handler->OnEntityActivated(id);
+                    const AZ::Entity::State entityState = entity->GetState();
+
+                    if (entityState >= Entity::ES_INIT)
+                    {
+                        handler->OnEntityExists(id);
+                    }
+                    
+                    if (entityState == Entity::ES_ACTIVE)
+                    {
+                        handler->OnEntityActivated(id);
+                    }
                 }
             }
         };
@@ -98,8 +113,9 @@ namespace AZ
     public:
 
         /**
-         * With this connection policy, an AZ::EntityEvents::OnEntityActivated event is  
-         * immediately dispatched if the entity is active when a handler connects to the bus.
+         * With this connection policy, AZ::EntityEvents::OnEntityExists and
+         * AZ::EntityEvents::OnEntityActivated events may be immediately
+         * dispatched when a handler connects to the bus.
          */
         template<class Bus>
         using ConnectionPolicy = EntityEventsConnectionPolicy<Bus>;
@@ -108,6 +124,16 @@ namespace AZ
          * Destroys the instance of the class.
          */
         virtual ~EntityEvents() {}
+
+        /**
+         * Signals that an entity has come into existence.
+         * This event is dispatched after initialization of the entity.
+         * It is also dispatched to handlers immediately upon connecting
+         * to the bus if the entity has already been initialized.
+         * Note that in this case the entity may or may not be activated.
+         * @param id The ID of the entity.
+         */
+        virtual void OnEntityExists(const AZ::EntityId&) {}
 
         /**
          * Signals that an entity was activated. 

@@ -36,11 +36,12 @@ namespace CloudGemPlayerAccount
         if (behaviorContext)
         {
             behaviorContext->Class<BasicResultInfo>()
-                ->Property("wasSuccessful", BehaviorValueProperty(&BasicResultInfo::wasSuccessful))
-                ->Property("username", BehaviorValueProperty(&BasicResultInfo::username))
-                ->Property("errorTypeName", BehaviorValueProperty(&BasicResultInfo::errorTypeName))
-                ->Property("errorTypeValue", BehaviorValueProperty(&BasicResultInfo::errorTypeValue))
-                ->Property("errorMessage", BehaviorValueProperty(&BasicResultInfo::errorMessage))
+                ->Property("requestId", BehaviorValueGetter(&BasicResultInfo::requestId), nullptr)
+                ->Property("wasSuccessful", BehaviorValueGetter(&BasicResultInfo::wasSuccessful), nullptr)
+                ->Property("username", BehaviorValueGetter(&BasicResultInfo::username), nullptr)
+                ->Property("errorTypeName", BehaviorValueGetter(&BasicResultInfo::errorTypeName), nullptr)
+                ->Property("errorTypeValue", BehaviorValueGetter(&BasicResultInfo::errorTypeValue), nullptr)
+                ->Property("errorMessage", BehaviorValueGetter(&BasicResultInfo::errorMessage), nullptr)
                 ;
         }
     }

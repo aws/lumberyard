@@ -11,11 +11,11 @@
 */
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/Environment.h>
+#include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/osstring.h>
 
 #include <jni.h>
 #include <pthread.h>
@@ -30,14 +30,22 @@ namespace AZ
     {
         namespace JNI
         {
-           class Object;
-        }
+            namespace Internal
+            {
+                template<typename Allocator>
+                class Object;
+
+                template<typename StringType>
+                class ClassName;
+            } // namespace Internal
+        } // namespace JNI
+
 
         class AndroidEnv
         {
         public:
             AZ_TYPE_INFO(AndroidEnv, "{E51A8876-7A26-4CB1-BA88-394A128728C7}")
-            AZ_CLASS_ALLOCATOR(AndroidEnv, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(AndroidEnv, AZ::OSAllocator, 0);
 
 
             //! Creation POD for the AndroidEnv
@@ -47,8 +55,8 @@ namespace AZ
                     : m_jvm(nullptr)
                     , m_activityRef(nullptr)
                     , m_assetManager(nullptr)
-                    , m_internalStoragePath()
-                    , m_externalStoragePath()
+                    , m_appPrivateStoragePath()
+                    , m_appPublicStoragePath()
                     , m_obbStoragePath()
                 {
                 }
@@ -56,18 +64,18 @@ namespace AZ
                 JavaVM* m_jvm; //!< Global pointer to the Java virtual machine
                 jobject m_activityRef; //!< Local or global reference to the activity instance
                 AAssetManager* m_assetManager; //!< Global pointer to the Android asset manager, used for APK file i/o
-                AZStd::string m_internalStoragePath; //!< Access restricted location. E.G. /data/data/<package_name>/files
-                AZStd::string m_externalStoragePath; //!< Public storage specifically for the application. E.G. <public_storage>/Android/data/<package_name>/files
-                AZStd::string m_obbStoragePath; //!< Public storage specifically for the application's obb files. E.G. <public_storage>/Android/obb/<package_name>/files
+                AZ::OSString m_appPrivateStoragePath; //!< Access restricted location. E.G. /data/data/<package_name>/files
+                AZ::OSString m_appPublicStoragePath; //!< Public storage specifically for the application. E.G. <public_storage>/Android/data/<package_name>/files
+                AZ::OSString m_obbStoragePath; //!< Public storage specifically for the application's obb files. E.G. <public_storage>/Android/obb/<package_name>/files
             };
 
             //! Public accessor to the global AndroidEnv instance
             static AndroidEnv* Get();
 
-            //! The prefered entry point for the construction of the global AndoridEnv instance
+            //! The preferred entry point for the construction of the global AndroidEnv instance
             static bool Create(const Descriptor& descriptor);
 
-            //! Public accessor to destory the AndroidEnv global instance
+            //! Public accessor to destroy the AndroidEnv global instance
             static void Destroy();
 
 
@@ -86,35 +94,27 @@ namespace AZ
             //! Get the global pointer to the Android asset manager, which is used for APK file i/o.
             AAssetManager* GetAssetManager() const { return m_assetManager; }
 
-            //! Get the hidden internal storage, typically this is where the application is installed
-            //! on the device.
+            //! Get the hidden internal storage, typically this is where the application is installed on the device.
             //! e.g. /data/data/<package_name/files
-            const AZStd::string& GetInternalStoragePath() const { return m_internalStoragePath; }
+            const char* GetAppPrivateStoragePath() const { return m_appPrivateStoragePath.c_str(); }
 
-            //! Get the root directory for external (or public) storage.
-            //! e.g. /storage/sdcard0/, /storage/self/primary/, etc.
-            const AZStd::string& GetExternalStorageRoot() const { return m_externalStorageRoot; }
-
-            //! Get the application specific directory for external (or public) storage.
+            //! Get the application specific directory for public storage.
             //! e.g. <public_storage>/Android/data/<package_name/files
-            const AZStd::string& GetExternalStoragePath() const { return m_externalStoragePath; }
+            const char* GetAppPublicStoragePath() const { return m_appPublicStoragePath.c_str(); }
 
             //! Get the application specific directory for obb files.
             //! e.g. <public_storage>/Android/obb/<package_name/files
-            const AZStd::string& GetObbStoragePath() const { return m_obbStoragePath; }
+            const char* GetObbStoragePath() const { return m_obbStoragePath.c_str(); }
 
             //! Get the dot separated package name for the current application.
             //! e.g. com.lumberyard.samples for SamplesProject
-            const AZStd::string& GetPackageName() const { return m_packageName; }
-
-            //! Get the game project name from the Java string resources.
-            const AZStd::string& GetGameProjectName() const { return m_gameProjectName; }
+            const char* GetPackageName() const { return m_packageName.c_str(); }
 
             //! Get the app version code (android:versionCode in the manifest).
             int GetAppVersionCode() const { return m_appVersionCode; }
 
             //! Get the filename of the obb. This doesn't include the path to the obb folder.
-            AZStd::string GetObbFileName(bool mainFile) const;
+            const char* GetObbFileName(bool mainFile) const;
 
             //! Check to see if the application should be running, e.g. not paused.
             bool IsRunning() const { return m_isRunning; }
@@ -131,24 +131,69 @@ namespace AZ
             //!         call to DeleteGlobalJniRef when the jclass is no longer needed.
             jclass LoadClass(const char* classPath);
 
-            //! Get the fully qualified forward slash separated Java class path of Java class ref.
-            //! e.g. android.app.NativeActivity ==> android/app/NativeActivity
+
+            // ----
+
+
+            //! \deprecated Use AZ::Android::JNI::GetClassName instead
+            //! \brief Get the fully qualified forward slash separated Java class path of Java class ref.
+            //!        e.g. android.app.NativeActivity ==> android/app/NativeActivity
             //! \param classRef A valid reference to a java class
             //! \return A copy of the class name
-            AZStd::string GetClassName(jclass classRef) const;
+            AZStd::string AZ_DEPRECATED(GetClassName(jclass classRef) const, "Use AZ::Android::JNI::GetClassName instead");
 
-            //! Get just the name of the Java class from a Java class ref.
-            //! e.g. android.app.NativeActivity ==> NativeActivity
+            //! \deprecated Use AZ::Android::JNI::GetSimpleClassName instead
+            //! \brief Get just the name of the Java class from a Java class ref.
+            //!        e.g. android.app.NativeActivity ==> NativeActivity
             //! \param classRef A valid reference to a java class
             //! \return A copy of the class name
-            AZStd::string GetSimpleClassName(jclass classRef) const;
+            AZStd::string AZ_DEPRECATED(GetSimpleClassName(jclass classRef) const, "Use AZ::Android::JNI::GetSimpleClassName instead");
 
-            //! Retrieve a boolean resource from the android resources
+            //! \deprecated This function is no longer available
+            //! \brief Get the game project name from the Java string resources.
+            const char* AZ_DEPRECATED(GetGameProjectName() const, "This function is no longer available")
+            {
+                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetGameProjectName.");
+                return "";
+            }
+
+            //! \deprecated This function is no longer available
+            //! \brief Get the root directory for external (or public) storage.
+            //!        e.g. /storage/sdcard0/, /storage/self/primary/, etc.
+            const char* AZ_DEPRECATED(GetExternalStorageRoot() const, "This function is no longer available")
+            {
+                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetExternalStorageRoot.");
+                return "";
+            }
+
+            //! \deprecated This function is no longer available
+            //! \brief Retrieve a boolean resource from the android resources
             //! \param resourceName The name of the boolean resource.
             //! \return The boolean value of the resource.
-            bool GetBooleanResource(const char* resourceName) const;
+            bool AZ_DEPRECATED(GetBooleanResource(const char* resourceName) const, "This function is no longer available")
+            {
+                AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetBooleanResource.");
+                return false;
+            }
+
+            //! \deprecated Use AndroidEnv::GetAppPrivateStoragePath instead
+            //! \brief Get the hidden internal storage, typically this is where the application is installed on the device.
+            //!        e.g. /data/data/<package_name/files
+            const char* AZ_DEPRECATED(GetInternalStoragePath() const, "Use AndroidEnv::GetAppPrivateStoragePath instead") { return m_appPrivateStoragePath.c_str(); }
+
+            //! \deprecated Use AndroidEnv::GetAppPublicStoragePath instead
+            //! \brief Get the application specific directory for external (or public) storage.
+            //!        e.g. <public_storage>/Android/data/<package_name/files
+            const char* AZ_DEPRECATED(GetExternalStoragePath() const, "Use AndroidEnv::GetAppPublicStoragePath instead") { return m_appPublicStoragePath.c_str(); }
+
 
         private:
+            template<typename StringType>
+            friend class JNI::Internal::ClassName;
+
+            typedef JNI::Internal::Object<OSAllocator> JniObject; //!< Internal usage of \ref AZ::Android::JNI::Internal::Object that uses the OSAllocator
+
+
             //! Callback for when a thread exists to detach the jni env from the thread
             //! \param threadData Expected to be the JNIEnv pointer
             static void DestroyJniEnv(void* threadData);
@@ -172,15 +217,12 @@ namespace AZ
             void Cleanup();
 
             //! Finds the java/lang/Class jclass to get the method IDs to getName and getSimpleName
-            //! \return True if succesfully, False otherwise
+            //! \return True if successfully, False otherwise
             bool LoadClassNameMethods(JNIEnv* jniEnv);
 
             //! Calls some java methods on the activity instance and constructs the class loader
-            //! \return True if succesfully, False otherwise
+            //! \return True if successfully, False otherwise
             bool CacheActivityData(JNIEnv* jniEnv);
-
-            //! Helper to call one of the get*Name methods on a jclass reference
-            AZStd::string GetClassNameInternal(jclass classRef, jmethodID methodId) const;
 
 
             // ----
@@ -194,26 +236,26 @@ namespace AZ
             jobject m_activityRef; //!< Reference to the global instance of the current activity object, used for instance method invocation, field access
             jclass m_activityClass; //!< Reference to the global instance of the current activity class, used for method / field extraction, static method invocation
 
-            AZStd::unique_ptr<JNI::Object> m_classLoader; //!< Class loader instance, used for finding Java classes on any thread
+            AZStd::unique_ptr<JniObject> m_classLoader; //!< Class loader instance, used for finding Java classes on any thread
 
             jmethodID m_getClassNameMethod; //!< Method ID for getName from java/lang/Class which returns a fully qualified dot separated Java class path
             jmethodID m_getSimpleClassNameMethod; //!< Method ID for getSimpleName from java/lang/Class which returns just the class name from a Java class path
 
             AAssetManager* m_assetManager; //!< Used for file i/o from the APK
 
-            AZStd::string m_internalStoragePath;  //!< Access restricted location. E.G. /data/data/<package_name>/files
+            AZ::OSString m_appPrivateStoragePath; //!< Access restricted location. E.G. /data/data/<package_name>/files
+            AZ::OSString m_appPublicStoragePath; //!< Public storage specifically for the application. E.G. <public_storage>/Android/data/<package_name>/files
+            AZ::OSString m_obbStoragePath; //!< Public storage specifically for the application's obb files. E.G. <public_storage>/Android/obb/<package_name>/files
 
-            AZStd::string m_externalStorageRoot; //!< Root of the public storage directory. E.G. /storage/emulated/0, /storage/self/primary, etc.
-            AZStd::string m_externalStoragePath;  //!< Public storage specifically for the application. E.G. <public_storage>/Android/data/<package_name>/files
-            AZStd::string m_obbStoragePath; //!< Public storage  specifically for the application's obb files. E.G. <public_storage>/Android/obb/<package_name>/files
+            AZ::OSString m_mainObbFileName; //!< File name for the main OBB
+            AZ::OSString m_patchObbFileName; //!< File name for the patch OBB
 
-            AZStd::string m_packageName; //!< The dot separated package id of the application
-            AZStd::string m_gameProjectName; //!< The name of the game project to load, retrieved from the Java string resources
+            AZ::OSString m_packageName; //!< The dot separated package id of the application
             int m_appVersionCode; //!< The version code of the app (android:versionCode in the AndroidManifest.xml)
 
             bool m_ownsActivityRef; //!< For when a local activity ref is passed into the construction and needs to be cleaned up
             bool m_isRunning; //!< Used to pause the main loop (lumberyard code)
             bool m_isReady; //!< Set only once the object has been successfully constructed
         };
-    }
-}
+    } // namespace Android
+} // namespace AZ

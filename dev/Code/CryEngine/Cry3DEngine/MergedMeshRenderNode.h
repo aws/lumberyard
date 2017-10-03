@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRY3DENGINE_MERGEDMESHRENDERNODE_H
 #pragma once
 
+#include "ObjMan.h"
 
 // Global define to enable and disable some debugging features (defined &
 // described below) to help finding issues in merged meshes at runtime.
@@ -542,13 +543,13 @@ public:
     float GetMaxViewDist();
     void GetMemoryUsage(ICrySizer* pSizer) const {}
 
-    ILINE StatInstGroup& GetStatObjGroup(const int index) const
+    StatInstGroup& GetStatObjGroup(const int index) const
     {
-        return GetObjManager()->m_lstStaticTypes[0][index];
+        return GetObjManager()->GetListStaticTypes()[0][index];
     }
-    ILINE CStatObj* GetStatObj(const int index) const
+    IStatObj* GetStatObj(const int index) const
     {
-        return GetObjManager()->m_lstStaticTypes[0][index].GetStatObj();
+        return GetObjManager()->GetListStaticTypes()[0][index].GetStatObj();
     }
 };
 

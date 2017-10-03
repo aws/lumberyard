@@ -46,10 +46,10 @@ namespace Serialization
         const void* GetHandle() const { return &value; }
         Serialization::TypeID GetType() const { return Serialization::TypeID::get<TString>(); }
 
-        ResourceSelector(TString& value, const char* resourceType)
-            : value(value)
+        ResourceSelector(TString& _value, const char* _resourceType)
+            : value(_value)
         {
-            this->resourceType = resourceType;
+            this->resourceType = _resourceType;
         }
     };
 
@@ -65,11 +65,11 @@ namespace Serialization
         const void* GetHandle() const { return &value; }
         Serialization::TypeID GetType() const { return Serialization::TypeID::get<string>(); }
 
-        ResourceSelectorWithId(string& value, const char* resourceType, int id)
-            : value(value)
-            , id(id)
+        ResourceSelectorWithId(string& _value, const char* _resourceType, int _id)
+            : value(_value)
+            , id(_id)
         {
-            this->resourceType = resourceType;
+            this->resourceType = _resourceType;
         }
     };
 

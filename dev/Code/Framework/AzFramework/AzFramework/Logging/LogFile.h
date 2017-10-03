@@ -52,6 +52,9 @@ namespace AzFramework
         void AppendLog(SeverityLevel severity, const char* dataSource);
         void AppendLog(SeverityLevel severity, const char* dataSource, int dataLength, const char* category = NULL, int categoryLen = 0);
 
+        //! Only call FlushLog in cases of emergencies such as access violation termination.  Do not call it after appending.
+        void FlushLog();
+
         //! If you flip the log file into Machine Readable = false, it will no longer delimit, and it will format it for human eyes instead
         //! This makes it much slower or ambiguous to parse with machines, but may be easier for humans to read.
         //! This is set to true by default, because the recommended way to peruse logs is to use a log viewer.

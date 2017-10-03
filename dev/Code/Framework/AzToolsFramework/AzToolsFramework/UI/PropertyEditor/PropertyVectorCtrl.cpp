@@ -122,8 +122,6 @@ namespace AzToolsFramework
                     numberOfElementsRemaining--;
                 }
             }
-            auto spacer = aznew QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
-            layout->addItem(spacer);
 
             // Add internal layout to the external grid layout
             pLayout->addLayout(layout, rowIdx, 0);
@@ -195,9 +193,20 @@ namespace AzToolsFramework
         }
     }
 
-    void PropertyVectorCtrl::OnValueChangedInElement(double newValue, int)
+    void PropertyVectorCtrl::setDecimals(int value)
+    {
+        for (size_t i = 0; i < m_elementCount; ++i)
+        {
+            m_elements[i]->GetSpinBox()->blockSignals(true);
+            m_elements[i]->GetSpinBox()->setDecimals(value);
+            m_elements[i]->GetSpinBox()->blockSignals(false);
+        }
+    }
+
+    void PropertyVectorCtrl::OnValueChangedInElement(double newValue, int elementIndex)
     {
         Q_EMIT valueChanged(newValue);
+        Q_EMIT valueAtIndexChanged(elementIndex, newValue);
     }
 
     void PropertyVectorCtrl::setSuffix(const AZStd::string label)
@@ -244,7 +253,7 @@ namespace AzToolsFramework
         return newCtrl;
     }
 
-    void VectorPropertyHandlerCommon::ConsumeAttributes(PropertyVectorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char*) const
+    void VectorPropertyHandlerCommon::ConsumeAttributes(PropertyVectorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) const
     {
         if (attrib == AZ::Edit::Attributes::Suffix)
         {
@@ -309,6 +318,23 @@ namespace AzToolsFramework
             {
                 GUI->setStep(value);
             }
+        }
+        else if (attrib == AZ::Edit::Attributes::Decimals)
+        {
+            int intValue = 0;
+            if (attrValue->Read<int>(intValue))
+            {
+                GUI->setDecimals(intValue);
+            }
+            else
+            {
+                // debugName is unused in release...
+                Q_UNUSED(debugName);
+
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Decimals' attribute from property '%s' into Vector", debugName);
+            }
+            return;
         }
 
         if (m_elementCount > 2)

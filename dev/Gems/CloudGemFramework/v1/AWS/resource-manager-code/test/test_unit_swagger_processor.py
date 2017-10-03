@@ -1067,6 +1067,10 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_SwaggerPr
             "description": swagger_processor.RESPONSE_DESCRIPTION_403,
             "schema": swagger_processor.ERROR_RESPONSE_SCHEMA_REF
         }
+        operation_object['responses']['404'] = {
+            "description": swagger_processor.RESPONSE_DESCRIPTION_404,
+            "schema": swagger_processor.ERROR_RESPONSE_SCHEMA_REF
+        }
         operation_object['responses']['500'] = {
             "description": swagger_processor.RESPONSE_DESCRIPTION_500,
             "schema": swagger_processor.ERROR_RESPONSE_SCHEMA_REF
@@ -1211,23 +1215,29 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_SwaggerPr
                 "application/json": self.__RequestTemplateMatcher(module, function, actual_parameters, additional_request_template_content)
             }, 
             "responses": {
-                "(?!Client Error:|Forbidden:).+": {
+                "(?s)(?!Client Error:|Forbidden:|Not Found:).+": {
                     "responseTemplates": {
                         "application/json": self.__ErrorResponseTemplateMatcher(additional_response_template_content.get('500', None))
                     }, 
                     "statusCode": "500"
                 }, 
-                "Client Error:.*": {
+                "(?s)Client Error:.*": {
                     "responseTemplates": {
                         "application/json": self.__ErrorResponseTemplateMatcher(additional_response_template_content.get('400', None))
                     }, 
                     "statusCode": "400"
                 }, 
-                "Forbidden:.*": {
+                "(?s)Forbidden:.*": {
                     "responseTemplates": {
                         "application/json": self.__ErrorResponseTemplateMatcher(additional_response_template_content.get('403', None))
                     }, 
                     "statusCode": "403"
+                }, 
+                "(?s)Not Found:.*": {
+                    "responseTemplates": {
+                        "application/json": self.__ErrorResponseTemplateMatcher(additional_response_template_content.get('404', None))
+                    }, 
+                    "statusCode": "404"
                 }, 
                 "default": {
                     "responseTemplates": {
@@ -1333,7 +1343,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_swagger_processor_SwaggerPr
         }
 
     def __add_cors_response_headers(self, operation):
-        for code in ['200', '400', '403', '500']:
+        for code in ['200', '400', '403', '404', '500']:
             operation['responses'][code]['headers'] = {
                 'Access-Control-Allow-Origin': {'type': 'string'}
             }

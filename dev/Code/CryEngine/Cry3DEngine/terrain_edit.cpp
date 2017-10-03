@@ -44,14 +44,14 @@ IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPo
     }
     IRenderNode* renderNode = NULL;
 
-    assert(DEFAULT_SID >= 0 && DEFAULT_SID < GetObjManager()->m_lstStaticTypes.Count());
+    assert(DEFAULT_SID >= 0 && DEFAULT_SID < GetObjManager()->GetListStaticTypes().Count());
 
-    if (nStaticGroupID < 0 || nStaticGroupID >= GetObjManager()->m_lstStaticTypes[DEFAULT_SID].Count())
+    if (nStaticGroupID < 0 || nStaticGroupID >= GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Count())
     {
         return 0;
     }
 
-    StatInstGroup& group = GetObjManager()->m_lstStaticTypes[DEFAULT_SID][nStaticGroupID];
+    StatInstGroup& group = GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nStaticGroupID];
     if (!group.GetStatObj())
     {
         Warning("I3DEngine::AddStaticObject: Attempt to add object of undefined type");

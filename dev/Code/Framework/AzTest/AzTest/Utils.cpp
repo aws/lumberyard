@@ -75,10 +75,10 @@ namespace AZ
             if (index > 0 && index < (argc - 1))
             {
                 value = argv[index + 1];
-            }
-            if (removeOnReturn)
-            {
-                RemoveParameters(argc, argv, index, index + 1);
+                if (removeOnReturn)
+                {
+                    RemoveParameters(argc, argv, index, index + 1);
+                }
             }
             return value;
         }

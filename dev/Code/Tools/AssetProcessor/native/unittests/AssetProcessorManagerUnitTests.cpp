@@ -171,8 +171,9 @@ namespace AssetProcessor
             }
 
             //Calculating fingerprints for the file for pc and es3 platforms
-            JobEntry jobEntryPC(filePath, relPath, 0, "pc", "", 0, 1);
-            JobEntry jobEntryES3(filePath, relPath, 0, "es3", "", 0, 2);
+            AZ::Uuid sourceId = AZ::Uuid("{2206A6E0-FDBC-45DE-B6FE-C2FC63020BD5}");
+            JobEntry jobEntryPC(filePath, relPath, 0, "pc", "", 0, 1, sourceId);
+            JobEntry jobEntryES3(filePath, relPath, 0, "es3", "", 0, 2, sourceId);
 
             JobDetails jobDetailsPC;
             jobDetailsPC.m_extraInformationForFingerprinting = extraInfoForPC;
@@ -201,8 +202,8 @@ namespace AssetProcessor
         mockAppManager.BusConnect();
 
         QDir oldRoot;
-        AssetUtilities::ComputeEngineRoot(oldRoot);
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ComputeAssetRoot(oldRoot);
+        AssetUtilities::ResetAssetRoot();
         QStringList collectedChanges;
         FileWatcher fileWatcher;
         FolderWatchCallbackEx folderWatch(oldRoot.absolutePath(), QString(), true);
@@ -224,6 +225,7 @@ namespace AssetProcessor
         NetworkRequestID requestId(1, 1);
 
         fileWatcher.AddFolderWatch(&folderWatch);
+        fileWatcher.StartWatching();
 
         CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("sys_game_folder=SamplesProject\n"));
 
@@ -231,9 +233,9 @@ namespace AssetProcessor
         QString gameName = AssetUtilities::ComputeGameName();
 
         // update the engine root
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ResetAssetRoot();
         QDir newRoot;
-        AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+        AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
         // should create cache folder in the root, and read everything from there.
@@ -313,7 +315,7 @@ namespace AssetProcessor
 
         config.EnablePlatform("pc", true);
         config.EnablePlatform("es3", true);
-        config.EnablePlatform("durango", false);
+        config.EnablePlatform("durango", false); // ACCEPTED_USE
 
         config.AddMetaDataType("exportsettings", QString());
 
@@ -794,6 +796,12 @@ namespace AssetProcessor
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(es3outs[0].toUtf8().constData()));
         response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(es3outs[1].toUtf8().constData()));
+        
+        // make sure legacy SubIds get stored in the DB and in asset response messages.
+        // also make sure they don't get filed for the wrong asset.
+        response.m_outputProducts[0].m_legacySubIDs.push_back(1234);
+        response.m_outputProducts[0].m_legacySubIDs.push_back(5678);
+        response.m_outputProducts[1].m_legacySubIDs.push_back(2222);
 
         QMetaObject::invokeMethod(&apm, "AssetProcessed", Qt::QueuedConnection, Q_ARG(JobEntry, processResults[0].m_jobEntry), Q_ARG(AssetBuilderSDK::ProcessJobResponse, response));
 
@@ -822,6 +830,13 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[0].IsValid());
         UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[0] != assetMessages[0].second.m_assetId);
         UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[0] != assetMessages[1].second.m_assetId);
+
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds.size() == 3);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds.size() == 2);
+
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[1].m_subId == 1234);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[0].second.m_legacyAssetIds[2].m_subId == 5678);
+        UNIT_TEST_EXPECT_TRUE(assetMessages[1].second.m_legacyAssetIds[1].m_subId == 2222);
 
         UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(changedInputResults[0].first) == AssetUtilities::NormalizeFilePath(inputFilePath));
 
@@ -2711,7 +2726,10 @@ namespace AssetProcessor
             UNIT_TEST_EXPECT_TRUE(mockAppManager.GetBuilderByID(buildInfo.m_name, builder));
 
             UNIT_TEST_EXPECT_TRUE(builder->GetCreateJobCalls() == 1);
-
+            
+            // note, uuid does not include watch folder name.  This is a quick test to make sure that the source file UUID actually makes it into the CreateJobRequest.
+            // the ProcessJobRequest is populated frmo the CreateJobRequest.
+            UNIT_TEST_EXPECT_TRUE(builder->GetLastCreateJobRequest().m_sourceFileUUID == AssetUtilities::CreateSafeSourceUUIDFromName("uniquefile.txt"));
             QString watchedFolder(AssetUtilities::NormalizeFilePath(builder->GetLastCreateJobRequest().m_watchFolder.c_str()));
             QString expectedWatchedFolder(tempPath.absoluteFilePath("subfolder3"));
             UNIT_TEST_EXPECT_TRUE(QString::compare(watchedFolder, expectedWatchedFolder, Qt::CaseInsensitive) == 0); // verify watchfolder
@@ -2750,8 +2768,8 @@ namespace AssetProcessor
         MockAssetBuilderInfoHandler mockAssetBuilderInfoHandler;
 
         QDir oldRoot;
-        AssetUtilities::ComputeEngineRoot(oldRoot);
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ComputeAssetRoot(oldRoot);
+        AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
         UnitTestUtils::ScopedDir changeDir(dir.path());
@@ -2763,9 +2781,9 @@ namespace AssetProcessor
         QString gameName = AssetUtilities::ComputeGameName();
 
         // update the engine root
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ResetAssetRoot();
         QDir newRoot;
-        AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+        AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
 
@@ -2960,8 +2978,8 @@ namespace AssetProcessor
         mockAppManager.BusConnect();
 
         QDir oldRoot;
-        AssetUtilities::ComputeEngineRoot(oldRoot);
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ComputeAssetRoot(oldRoot);
+        AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
         UnitTestUtils::ScopedDir changeDir(dir.path());
@@ -2973,9 +2991,9 @@ namespace AssetProcessor
         QString gameName = AssetUtilities::ComputeGameName();
 
         // update the engine root
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ResetAssetRoot();
         QDir newRoot;
-        AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+        AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
         // should create cache folder in the root, and read everything from there.
@@ -3141,8 +3159,8 @@ namespace AssetProcessor
         mockAppManager.BusConnect();
 
         QDir oldRoot;
-        AssetUtilities::ComputeEngineRoot(oldRoot);
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ComputeAssetRoot(oldRoot);
+        AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
         UnitTestUtils::ScopedDir changeDir(dir.path());
@@ -3154,9 +3172,9 @@ namespace AssetProcessor
         QString gameName = AssetUtilities::ComputeGameName();
 
         // update the engine root
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ResetAssetRoot();
         QDir newRoot;
-        AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+        AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
         // should create cache folder in the root, and read everything from there.
@@ -3196,6 +3214,7 @@ namespace AssetProcessor
         //Adding FileB.txt in the database as a source file, it will enable us to search this source file by Uuid
         const ScanFolderInfo* scanFolderInfo = apm.UNITTEST_GetScanFolderForFile(sourceFileBPath.toUtf8().constData());
         AZ::Uuid fileBUuid = AssetUtilities::CreateSafeSourceUUIDFromName("subfolder2/FileB.txt");
+        AZ::Uuid fileDUuid = AssetUtilities::CreateSafeSourceUUIDFromName("subfolder2/FileD.txt");
         AzToolsFramework::AssetDatabase::SourceDatabaseEntry sourceDatabaseEntry(-1, scanFolderInfo->ScanFolderID(), "subfolder2/FileB.txt", fileBUuid);
         apm.UNITTEST_SetSource(sourceDatabaseEntry); 
         QStringList sourceFiles = apm.UNITTEST_CheckSourceFileDependency(sourceFileBPath);
@@ -3206,7 +3225,7 @@ namespace AssetProcessor
         {
             // here we are just providing the source file dependency path which is not relative to any watch folders in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileB.txt"; //path is not relative to the watch folder
@@ -3225,7 +3244,7 @@ namespace AssetProcessor
         {
             // here we are just providing the source file dependency path which is relative to one of the watch folders in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder2/FileB.txt"; //path is relative to the watch folder
@@ -3244,7 +3263,7 @@ namespace AssetProcessor
         {
             // here we are providing source uuid instead of a file path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyUUID = fileBUuid; //file uuid instead of file path
@@ -3262,7 +3281,7 @@ namespace AssetProcessor
         {
             // here we are providing an invalid path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder1/FileB.txt"; 
@@ -3279,7 +3298,7 @@ namespace AssetProcessor
         {
             // here we are providing an absolute path in sourceFileDependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = sourceFileBPath.toUtf8().data();
@@ -3298,7 +3317,7 @@ namespace AssetProcessor
         {
             // here we are emitting a source file dependency on a file which AP only becomes aware of later on 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyUUID = fileEUuid;//FileE is not present in the database and AP has never seen any such file
@@ -3371,7 +3390,7 @@ namespace AssetProcessor
             // since FileA depends on FileB.txt and FileE. Here we are adding another dependency to FileE i.e FileE depends on FileD 
             // therefore when we process FileA we should see only the following dependencies FileB, FileE and FileD 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileE.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileE.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileEUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "subfolder2/FileD.txt";
@@ -3413,7 +3432,7 @@ namespace AssetProcessor
             // since FileA depends on FileB.txt and FileE.And FileE depends on FileD. We are adding another dependency to FileD i.e FileD depends on FileA.
             // This can result on circular dependency but when we process FileA we should see only the following dependencies FileB, FileE and FileD. 
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "subfolder2/FileD.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileDUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileA.txt";
@@ -3463,10 +3482,12 @@ namespace AssetProcessor
             return false;
         };
 
+        AZ::Uuid fileFUuid = AssetUtilities::CreateSafeSourceUUIDFromName("FileF.txt");
+
         {
             // Process a file that outputs 2 dependencies
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileG.txt";
@@ -3499,7 +3520,7 @@ namespace AssetProcessor
         {
             // Now process the same file again, but this time remove a dependency
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builderUuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileG.txt";
@@ -3528,7 +3549,7 @@ namespace AssetProcessor
         {
             // And again the same file, but with a different builder
             sourceFiles.clear();
-            AssetBuilderSDK::CreateJobsRequest jobRequest(builder2Uuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC);
+            AssetBuilderSDK::CreateJobsRequest jobRequest(builder2Uuid, "FileF.txt", tempPath.filePath("subfolder1").toUtf8().data(), AssetBuilderSDK::Platform_PC, fileFUuid);
             AssetBuilderSDK::CreateJobsResponse jobResponse;
             AssetBuilderSDK::SourceFileDependency sourceFileDependency;
             sourceFileDependency.m_sourceFileDependencyPath = "FileH.txt";
@@ -3579,8 +3600,8 @@ namespace AssetProcessor
         MockAssetBuilderInfoHandler mockAssetBuilderInfoHandler;
 
         QDir oldRoot;
-        AssetUtilities::ComputeEngineRoot(oldRoot);
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ComputeAssetRoot(oldRoot);
+        AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
         UnitTestUtils::ScopedDir changeDir(dir.path());
@@ -3592,9 +3613,9 @@ namespace AssetProcessor
         QString gameName = AssetUtilities::ComputeGameName();
 
         // update the engine root
-        AssetUtilities::ResetEngineRoot();
+        AssetUtilities::ResetAssetRoot();
         QDir newRoot;
-        AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+        AssetUtilities::ComputeAssetRoot(newRoot, &tempPath);
 
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
 

@@ -14,9 +14,44 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <LmbrCentral/Cinematics/SequenceAgentComponentBus.h>
+#include <Maestro/Bus/SequenceAgentComponentBus.h>
 
-namespace LmbrCentral
+#include "../Cinematics/Movie.h"
+#include "../Cinematics/AnimSplineTrack.h"
+#include "../Cinematics/CompoundSplineTrack.h"
+#include "../Cinematics/BoolTrack.h"
+#include "../Cinematics/CharacterTrack.h"
+#include "../Cinematics/CaptureTrack.h"
+#include "../Cinematics/CommentTrack.h"
+#include "../Cinematics/ConsoleTrack.h"
+#include "../Cinematics/EventTrack.h"
+#include "../Cinematics/GotoTrack.h"
+#include "../Cinematics/LookAtTrack.h"
+#include "../Cinematics/MannequinTrack.h"
+#include "../Cinematics/ScreenFaderTrack.h"
+#include "../Cinematics/SelectTrack.h"
+#include "../Cinematics/SequenceTrack.h"
+#include "../Cinematics/SoundTrack.h"
+#include "../Cinematics/TrackEventTrack.h"
+
+#include "../Cinematics/AnimSequence.h"
+#include "../Cinematics/AnimNode.h"
+#include "../Cinematics/SceneNode.h"
+#include "../Cinematics/AnimAZEntityNode.h"
+#include "../Cinematics/AnimComponentNode.h"
+#include "../Cinematics/AnimScreenFaderNode.h"
+#include "../Cinematics/CommentNode.h"
+#include "../Cinematics/CVarNode.h"
+#include "../Cinematics/ScriptVarNode.h"
+#include "../Cinematics/AnimEnvironmentNode.h"
+#include "../Cinematics/AnimPostFXNode.h"
+#include "../Cinematics/EntityNode.h"
+#include "../Cinematics/EventNode.h"
+#include "../Cinematics/LayerNode.h"
+#include "../Cinematics/MaterialNode.h"
+#include "../Cinematics/ShadowsSetupNode.h"
+
+namespace Maestro
 {
     /**
     * Reflect the SequenceComponentNotificationBus to the Behavior Context
@@ -77,11 +112,15 @@ namespace LmbrCentral
         {
             serializeContext->Class<SequenceComponent>()
                 ->Version(1);
+
+            // Reflect the Cinematics library
+            ReflectCinematicsLib(serializeContext);
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<SequenceComponentRequestBus>("SequenceComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("Play", &SequenceComponentRequestBus::Events::Play)
                 ->Event("PlayBetweenTimes", &SequenceComponentRequestBus::Events::PlayBetweenTimes)
                 ->Event("Stop", &SequenceComponentRequestBus::Events::Stop)
@@ -94,11 +133,56 @@ namespace LmbrCentral
                 ->Event("GetCurrentPlayTime", &SequenceComponentRequestBus::Events::GetCurrentPlayTime)
                 ->Event("GetPlaySpeed", &SequenceComponentRequestBus::Events::GetPlaySpeed)
                 ;
-            behaviorContext->Class<SequenceComponent>()->RequestBus("SequenceComponentRequestBus");
+            behaviorContext->Class<SequenceComponent>()->RequestBus("SequenceComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview);
 
             behaviorContext->EBus<SequenceComponentNotificationBus>("SequenceComponentNotificationBus")->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
                 Handler<BehaviorSequenceComponentNotificationBusHandler>();
         }
+    }
+
+    /*static*/ void SequenceComponent::ReflectCinematicsLib(AZ::SerializeContext* context)
+    {
+        // The Movie System itself
+        CMovieSystem::Reflect(context);
+        
+        // Tracks
+        TAnimSplineTrack<Vec2>::Reflect(context);
+        CBoolTrack::Reflect(context);
+        CCaptureTrack::Reflect(context);
+        CCharacterTrack::Reflect(context);
+        CCompoundSplineTrack::Reflect(context);
+        CCommentTrack::Reflect(context);
+        CConsoleTrack::Reflect(context);
+        CEventTrack::Reflect(context);
+        CGotoTrack::Reflect(context);
+        CLookAtTrack::Reflect(context);
+        CMannequinTrack::Reflect(context);
+        CScreenFaderTrack::Reflect(context);
+        CSelectTrack::Reflect(context);
+        CSequenceTrack::Reflect(context);
+        CSoundTrack::Reflect(context);
+        CTrackEventTrack::Reflect(context);
+
+        // Nodes
+        CAnimSequence::Reflect(context);
+        CAnimSceneNode::Reflect(context);
+        CAnimNode::Reflect(context);
+        CAnimAzEntityNode::Reflect(context);
+        CAnimComponentNode::Reflect(context);
+        CAnimScreenFaderNode::Reflect(context);
+        CCommentNode::Reflect(context);
+        CAnimCVarNode::Reflect(context);
+        CAnimScriptVarNode::Reflect(context);
+        CAnimEnvironmentNode::Reflect(context);
+        CAnimNodeGroup::Reflect(context);
+        CAnimPostFXNode::Reflect(context);
+        CAnimEntityNode::Reflect(context);
+        CAnimEventNode::Reflect(context);
+        CLayerNode::Reflect(context);
+        CAnimMaterialNode::Reflect(context);
+        CShadowsSetupNode::Reflect(context);
     }
 
     void SequenceComponent::Init()
@@ -108,21 +192,21 @@ namespace LmbrCentral
 
     void SequenceComponent::Activate()
     {
-        LmbrCentral::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
+        Maestro::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void SequenceComponent::Deactivate()
     {
-        LmbrCentral::SequenceComponentRequestBus::Handler::BusDisconnect();
+        Maestro::SequenceComponentRequestBus::Handler::BusDisconnect();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     bool SequenceComponent::SetAnimatedPropertyValue(const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
     {
-        const LmbrCentral::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
         bool changed = false;
         
-        EBUS_EVENT_ID_RESULT(changed, busId, LmbrCentral::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
+        EBUS_EVENT_ID_RESULT(changed, busId, Maestro::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
         
         return changed;
     }
@@ -130,19 +214,19 @@ namespace LmbrCentral
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress)
     {
-        const LmbrCentral::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
         float retVal = .0f;
 
-        EBUS_EVENT_ID(busId, LmbrCentral::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
+        EBUS_EVENT_ID(busId, Maestro::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    AZ::Uuid SequenceComponent::GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    AZ::Uuid SequenceComponent::GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
     {
         AZ::Uuid typeId = AZ::Uuid::CreateNull();
-        const LmbrCentral::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
 
-        LmbrCentral::SequenceAgentComponentRequestBus::EventResult(typeId, ebusId, &LmbrCentral::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, animatableAddress);
+        Maestro::SequenceAgentComponentRequestBus::EventResult(typeId, ebusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, animatableAddress);
 
         return typeId;
     }
@@ -258,4 +342,4 @@ namespace LmbrCentral
         }
         return 1.0f;
     }
-}// namespace LmbrCentral
+}// namespace Maestro

@@ -74,6 +74,7 @@ namespace AzFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;   // single listener
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;   // single bus
+            using MutexType = AZStd::recursive_mutex;
 
             virtual ~AssetSystemRequests() = default;
 
@@ -94,6 +95,8 @@ namespace AzFramework
 
             //! Compute the ping time between this client and the Asset Processor that's actually handling our requests (proxy relaying is included in the time)
             virtual float GetAssetProcessorPingTimeMilliseconds() = 0;
+            //! Saves the catalog synchronously
+            virtual bool SaveCatalog() = 0;
         };
 
         //! AssetSystemNegotiationBusTraits

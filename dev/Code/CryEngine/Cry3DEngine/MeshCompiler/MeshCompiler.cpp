@@ -817,7 +817,7 @@ namespace mesh_compiler
         }
         if (mesh.m_pColor1)
         {
-            outMesh.ReallocStream(CMesh::COLORS, 0, max_vert_num);
+            outMesh.ReallocStream(CMesh::COLORS, 1, max_vert_num);
         }
 
         // temporarily store original subset index in subset's nNumVerts

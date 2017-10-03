@@ -63,8 +63,8 @@ public:
     void SetMatrixFull(const Matrix34& mat);
 public:
     CDecalRenderNode();
-    void RequestUpdate() { m_updateRequested = true; DeleteDecals(); }
-    void DeleteDecals();
+    void RequestUpdate() { m_updateRequested = true; DeleteDecal(); }
+    void DeleteDecal();
 
 private:
     ~CDecalRenderNode();
@@ -73,8 +73,10 @@ private:
     void UpdateAABBFromRenderMeshes();
     bool CheckForceDeferred();
 
+    void SetCommonProperties(CryEngineDecalInfo& decalInfo);
     void CreatePlanarDecal();
     void CreateDecalOnTerrain();
+    void CreateDecal(const CryEngineDecalInfo& decalInfo);
 
 private:
     Vec3 m_pos;
@@ -82,7 +84,7 @@ private:
     _smart_ptr<IMaterial> m_pMaterial;
     bool m_updateRequested;
     SDecalProperties m_decalProperties;
-    std::vector< CDecal* > m_decals;
+    CDecal* m_decal;
     AABB m_WSBBox;
     Matrix34 m_Matrix;
     uint32 m_nLastRenderedFrameId;

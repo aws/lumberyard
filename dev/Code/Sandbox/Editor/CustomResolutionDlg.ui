@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>198</width>
-    <height>83</height>
+    <height>102</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -43,19 +43,19 @@
      </property>
     </widget>
    </item>
-    <item row="2" column="0" colspan="3">
-        <widget class="QLabel" name="m_maxDimension">
-            <property name="sizePolicy">
-                <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                </sizepolicy>
-            </property>
-            <property name="text">
-                <string>Max Dimension: </string>
-            </property>
-        </widget> 
-    </item>   
+   <item row="2" column="0" colspan="3">
+    <widget class="QLabel" name="m_maxDimension">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Max Dimension: </string>
+     </property>
+    </widget>
+   </item>
    <item row="3" column="0" colspan="3">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
@@ -91,6 +91,10 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>m_width</tabstop>
+  <tabstop>m_height</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

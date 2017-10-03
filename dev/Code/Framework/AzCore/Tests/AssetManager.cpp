@@ -1366,7 +1366,7 @@ namespace UnitTest
 
             AZStd::vector<AZStd::thread> threads;
             AZStd::mutex mutex;
-            AZStd::atomic<int> threadCount = (int)assetUuids.size();
+            AZStd::atomic<int> threadCount((int)assetUuids.size());
             AZStd::condition_variable cv;
             
             for(const auto& assetUuid : assetUuids)

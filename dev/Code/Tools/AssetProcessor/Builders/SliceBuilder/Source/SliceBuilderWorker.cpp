@@ -21,12 +21,60 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/std/sort.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzCore/Component/ComponentApplication.h>
 
 namespace SliceBuilder
 {
+    namespace
+    {
+        TypeFingerprint GetFingerprintForAllTypesInSlice(const AZ::SliceComponent& slice, const TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
+        {
+            // Find all unique types contained in slice.
+            AZStd::unordered_set<AZ::TypeId> typesInSlice;
+            AZ::SerializeContext::BeginElemEnumCB elementCallback =
+                [&typesInSlice](void* /* instance pointer */, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* /* classElement*/)
+                {
+                    typesInSlice.insert(classData->m_typeId);
+                    return true;
+                };
+
+            serializeContext.EnumerateObject(&slice, elementCallback, nullptr, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+
+            // TODO: find all types contained in DataPatches
+
+            // Sort all types before fingerprinting
+            AZStd::vector<AZ::TypeId> sortedTypes;
+            sortedTypes.reserve(typesInSlice.size());
+            sortedTypes.insert(sortedTypes.begin(), typesInSlice.begin(), typesInSlice.end());
+            AZStd::sort(sortedTypes.begin(), sortedTypes.end());
+        
+            // Create a fingerprint from all types found in the slice.
+            TypeFingerprint fingerprint = 0;
+            for (const AZ::TypeId& typeId : sortedTypes)
+            {
+                AZStd::hash_combine(fingerprint, typeFingerprinter.GetFingerprint(typeId));
+            }
+
+            return fingerprint;
+        }
+    } // namespace anonymous
+
     static const char* const s_sliceBuilder = "SliceBuilder";
+
+    SliceBuilderWorker::SliceBuilderWorker()
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        AZ_Assert(serializeContext, "SerializeContext not found");
+        if (serializeContext)
+        {
+            m_typeFingerprinter.CreateFingerprintsForAllTypes(*serializeContext);
+        }
+
+        AssetBuilderSDK::AssetBuilderCommandBus::Handler::BusConnect(GetUUID());
+    }
 
     void SliceBuilderWorker::ShutDown()
     {
@@ -66,6 +114,13 @@ namespace SliceBuilder
                     response.m_sourceFileDependencyList.push_back(dependency);
                 }
             }
+            else if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
+            {
+                AssetBuilderSDK::SourceFileDependency dependency;
+                dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
+
+                response.m_sourceFileDependencyList.push_back(dependency);
+            }
 
             return false;
         };
@@ -97,6 +152,10 @@ namespace SliceBuilder
 
         if (sourcePrefab->IsDynamic())
         {
+            AZ::SerializeContext* context;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            TypeFingerprint sourceSliceTypeFingerprint = GetFingerprintForAllTypesInSlice(*sourcePrefab, m_typeFingerprinter, *context);
+
             const char* compilerVersion = "3";
             const size_t platformCount = request.GetEnabledPlatformsCount();
 
@@ -107,7 +166,8 @@ namespace SliceBuilder
                 jobDescriptor.m_critical = true;
                 jobDescriptor.m_jobKey = "RC Slice";
                 jobDescriptor.m_platform = request.GetEnabledPlatformAt(i);
-                jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion).append(azrtti_typeid<AZ::DynamicSliceAsset>().ToString<AZStd::string>());
+                jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
+                    .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
 
                 response.m_createJobOutputs.push_back(jobDescriptor);
             }
@@ -172,7 +232,11 @@ namespace SliceBuilder
         AZ::Data::Asset<AZ::SliceAsset> asset;
         asset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
         AZ::SliceAssetHandler assetHandler(context);
-        assetHandler.LoadAssetData(asset, &stream, AZ::ObjectStream::AssetFilterSlicesOnly);
+
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_processingMutex);
+            assetHandler.LoadAssetData(asset, &stream, AZ::ObjectStream::AssetFilterSlicesOnly);
+        }
 
         // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
         AZ::Data::AssetManager::Instance().DispatchEvents();
@@ -241,6 +305,7 @@ namespace SliceBuilder
             for (AZ::Entity* sourceEntity : sourceEntities)
             {
                 AZ::Entity* exportEntity = aznew AZ::Entity(sourceEntity->GetId(), sourceEntity->GetName().c_str());
+                exportEntity->SetRuntimeActiveByDefault(sourceEntity->IsRuntimeActiveByDefault());
 
                 const AZ::Entity::ComponentArrayType& editorComponents = sourceEntity->GetComponents();
                 for (AZ::Component* component : editorComponents)

@@ -53,16 +53,17 @@ namespace AzFramework
         AZ::Uuid GetGameEntityContextId() override { return GetContextId(); }
         void ResetGameContext() override;
         AZ::Entity* CreateGameEntity(const char* name) override;
+        BehaviorEntity CreateGameEntityForBehaviorContext(const char* name) override;
         void AddGameEntity(AZ::Entity* entity) override;
         void DestroyGameEntity(const AZ::EntityId&) override;
         void DestroyGameEntityAndDescendants(const AZ::EntityId&) override;
         bool DestroyDynamicSliceByEntity(const AZ::EntityId&) override;
         void ActivateGameEntity(const AZ::EntityId&) override;
         void DeactivateGameEntity(const AZ::EntityId&) override;
-        SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::EntityUtils::EntityIdMapper& customIdMapper) override;
+        SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper) override;
         bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds) override;
-        void MarkEntityForNoActivation(AZ::EntityId entityId) override;
         AZStd::string GetEntityName(const AZ::EntityId& id) override;
+        void MarkEntityForNoActivation(AZ::EntityId entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -78,6 +79,7 @@ namespace AzFramework
 
         //////////////////////////////////////////////////////////////////////////
         // EntityContext
+        AZ::Entity* CreateEntity(const char* name) override;
         void OnRootSliceCreated() override;
         void OnContextEntitiesAdded(const EntityList& entities);
         void OnContextReset() override;
@@ -100,8 +102,6 @@ namespace AzFramework
         }
 
     protected:
-
-        AZStd::unordered_set<AZ::EntityId> m_noActivateEntities;
 
         using InstantiatingSlicePair = AZStd::pair<AZ::Data::Asset<AZ::Data::AssetData>, AZ::Transform>;
         AZStd::vector<InstantiatingSlicePair> m_instantiatingDynamicSlices;

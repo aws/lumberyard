@@ -220,13 +220,13 @@ struct SCooperativeAnimParams
     bool                    bNoCollisionsBetweenFirstActorAndRest;
 
     SCooperativeAnimParams(bool forceStart = false, bool looping = false, EAlignmentRef alignment = animParamDefaultAlignment,
-        const QuatT& location = animParamDefaultLoc, bool bPreventFallingThroughTerrain = true)
+        const QuatT& location = animParamDefaultLoc, bool _bPreventFallingThroughTerrain = true)
         : bForceStart(forceStart)
         , bLooping(looping)
         , bIgnoreCharacterDeath(false)
         , eAlignment(alignment)
         , qLocation(location)
-        , bPreventFallingThroughTerrain(bPreventFallingThroughTerrain)
+        , bPreventFallingThroughTerrain(_bPreventFallingThroughTerrain)
         , bNoCollisionsBetweenFirstActorAndRest(false)
     {
     }

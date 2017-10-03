@@ -15,6 +15,7 @@
 #include <AzFramework/Input/Devices/InputDeviceId.h>
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
@@ -24,6 +25,17 @@ namespace AzFramework
     class InputTextEntryRequests : public AZ::EBusTraits
     {
     public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Options to specify the appearance and/or behavior of any on-screen virtual keyboard that
+        //! may be displayed to the user for entering text. Depending on the specific implementation,
+        //! not all of these options will be relevant, in which case they will be completely ignored.
+        struct VirtualKeyboardOptions
+        {
+            AZStd::string m_initialText;   //!< The virtual keyboard's initial text
+            AZStd::string m_titleText;     //!< The virtual keyboard's title text
+            float m_normalizedMinY = 0.0f; //!< The virtual keyboard's minimum y position normalized
+        };
+
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests can be addressed to a specific InputDeviceId using EBus<>::Event,
         //! which should be handled by only one device that has connected to the bus using that id.
@@ -40,22 +52,32 @@ namespace AzFramework
         using BusIdType = InputDeviceId;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Inform input devices that text input is expected (pair with StopTextInput)
+        //! Query whether text entry has already been started
         //!
         //! Called using either:
         //! - EBus<>::Broadcast (any input device can respond to the request)
         //! - EBus<>::Event(id) (the given device can respond to the request)
         //!
-        //! \param[in] activeTextFieldNormalizedBottomY The active text field's normalized bottom y
-        virtual void TextEntryStarted(float /*activeTextFieldNormalizedBottomY*/ = 0.0f) {}
+        //! \return True if text entry has already been started, false otherwise
+        virtual bool HasTextEntryStarted() const { return false; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Inform input devices that text input is no longer expected (pair with StartTextInput)
+        //! Inform input devices that text input is expected to start (pair with StopTextInput)
         //!
         //! Called using either:
         //! - EBus<>::Broadcast (any input device can respond to the request)
         //! - EBus<>::Event(id) (the given device can respond to the request)
-        virtual void TextEntryStopped() {}
+        //!
+        //! \param[in] options Used to specify the appearance/behavior of any virtual keyboard shown
+        virtual void TextEntryStart(const VirtualKeyboardOptions& /*options*/) {}
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Inform input devices that text input is expected to stop (pair with StartTextInput)
+        //!
+        //! Called using either:
+        //! - EBus<>::Broadcast (any input device can respond to the request)
+        //! - EBus<>::Event(id) (the given device can respond to the request)
+        virtual void TextEntryStop() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor

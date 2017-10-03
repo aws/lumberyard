@@ -23,6 +23,5 @@ def build(bld):
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
         shared_settings = ['awsgem.json'],
 
-        use = ['CloudGemFrameworkStaticLibrary']
-
+       
     )

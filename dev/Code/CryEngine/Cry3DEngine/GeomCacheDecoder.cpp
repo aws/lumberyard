@@ -25,6 +25,7 @@
 #include "IZlibDecompressor.h"
 #include "ILZ4Decompressor.h"
 
+
 namespace GeomCacheDecoder
 {
     // This namespace will provide the different vertex decode function permutations to avoid dynamic branching
@@ -48,7 +49,7 @@ namespace GeomCacheDecoder
         return permutation;
     }
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_CONSOLE_HAS_mm_cvtepi16_epi32)
     #define vec4f_swizzle(v, p, q, r, s) (_mm_shuffle_ps((v), (v), ((s) << 6 | (r) << 4 | (q) << 2 | (p))))
 
     void ConvertToTangentAndBitangentVec4f(const __m128 interpolated, const __m128 floor, __m128& tangent, __m128& bitangent)
@@ -90,6 +91,9 @@ namespace GeomCacheDecoder
 
     __m128i _mm_cvtepi16_epi32_emu(const __m128i& a)
     {
+#if defined(AZ_CONSOLE_HAS_mm_cvtepi16_epi32)
+        return _mm_cvtepi16_epi32(a);
+#else
         // 5 instructions (unpack, and, cmp, and, or). Idea is to fill 0xFFFF in the hi-word if the sign bit of the lo-word 1.
         const __m128i signBitsMask = _mm_set1_epi32(0x00008000);
         const __m128i hiWordBitMask = _mm_set1_epi32(0xFFFF0000);
@@ -108,13 +112,14 @@ namespace GeomCacheDecoder
 
         // Finally sign extend with 0xFFFF0000 if sign bit was set
         return _mm_or_si128(unpacked, signExtendBits);
+#endif
     }
 #endif
 
     void DecodeAndInterpolateTangents(const uint numVertices, const float lerpFactor, const GeomCacheFile::QTangent* __restrict pFloorQTangents,
         const GeomCacheFile::QTangent* __restrict pCeilQTangents, strided_pointer<SPipTangents> pTangents)
     {
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_CONSOLE_HAS_mm_cvtepi16_epi32)
         const uint numVerticesPerIteration = 2;
         const uint numSIMDIterations = numVertices / numVerticesPerIteration;
 
@@ -307,7 +312,7 @@ namespace GeomCacheDecoder
                 1.0f / float((2 << (staticMeshData.m_positionPrecision[1] - 1)) - 1),
                 1.0f / float((2 << (staticMeshData.m_positionPrecision[2] - 1)) - 1));
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_CONSOLE_HAS_mm_cvtepi16_epi32)
         const uint numVerticesPerIteration = 8;
         const uint numPackedFloatsPerIteration = (numVerticesPerIteration * sizeof(Vec3)) / 16;
         const uint numPackedUInt16PerIteration = (numVerticesPerIteration * sizeof(Vec3_tpl<uint16>)) / 16;

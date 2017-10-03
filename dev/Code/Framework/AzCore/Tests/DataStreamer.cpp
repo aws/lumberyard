@@ -428,11 +428,6 @@ namespace UnitTest
 
             Streamer::Descriptor desc;
             desc.m_fileMountPoint = NULL;
-#if defined(AZ_PLATFORM_X360)
-            AZStd::thread_desc td;
-            td.m_cpuId = 4;
-            desc.m_threadDesc = &td;
-#endif
             Streamer::Create(desc);
 
             const int len = TOTAL_READ_SIZE;
@@ -538,10 +533,14 @@ namespace UnitTest
         , public FileIOEventBus::Handler
     {
         int m_fileErrors = 0;
-        AZStd::atomic_int m_numRequestsToProcess = 0;
+        AZStd::atomic_int m_numRequestsToProcess;
         static TestFileIOBase m_fileIO;
         static AZ::IO::FileIOBase* m_prevFileIO;
     public:
+        PERF_FileReadWriteSpeedTest()
+            : m_numRequestsToProcess(0)
+        {}
+
         static void SetUpTestCase()
         {
             m_prevFileIO = FileIOBase::GetInstance();

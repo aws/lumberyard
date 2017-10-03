@@ -168,6 +168,9 @@ namespace AZ
         ///Returns the reciprocal square root of the value, full accuracy
         const VectorFloat GetSqrtReciprocalExact() const;
 
+        // Linear interpolation between VecFloat and a destination
+        AZ_MATH_FORCE_INLINE const VectorFloat Lerp(const VectorFloat dest, const VectorFloat& t) const { VectorFloat one = VectorFloat::CreateOne(); return (*this) * (one - t) + dest * t; }
+
         //TODO: optimize properly per platform
         ///Returns +1.0 if the value is greater or equal to 0.0, otherwise returns -1.0
         AZ_MATH_FORCE_INLINE const VectorFloat GetSign() const { VectorFloat one = VectorFloat::CreateOne(); return IsGreaterEqualThan(VectorFloat::CreateZero()) ? one : -one; }
@@ -231,10 +234,6 @@ AZSTD_DECLARE_POD_TYPE(AZ::VectorFloat);
 
 #if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
     #include <AzCore/Math/Internal/VectorFloatWin32.inl>
-#elif defined(AZ_SIMD_X360)
-    #include <AzCore/Math/Internal/VectorFloatX360.inl>
-#elif defined(AZ_SIMD_PS3)
-    #include <AzCore/Math/Internal/VectorFloatPs3.inl>
 #elif defined(AZ_SIMD_WII)
     #include <AzCore/Math/Internal/VectorFloatWii.inl>
 #else

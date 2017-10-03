@@ -352,7 +352,10 @@ private:
 inline CrySemaphore::CrySemaphore(int nMaximumCount, int nInitialCount)
 {
 #if   defined(APPLE)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wdeprecated-declarations"
     tmpnam(m_semaphoreName);
+#   pragma clang diagnostic pop
     m_Semaphore = sem_open(m_semaphoreName, O_CREAT | O_EXCL, 0644, nInitialCount);
 #else
     m_Semaphore = new sem_t;

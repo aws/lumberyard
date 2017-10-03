@@ -24,7 +24,7 @@
             "Input/Devices/Touch/InputDeviceTouch_pimpl_none.cpp"
         ],
         "Input/Devices/VirtualKeyboard": [
-            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_appletv.mm"
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_ios.mm"
         ],
         "Input/System": [
             "Input/System/InputSystemComponent_pimpl_none.cpp"

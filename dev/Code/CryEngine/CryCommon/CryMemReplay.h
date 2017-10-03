@@ -522,11 +522,7 @@ private:
     bool m_bNeedsExit;
 };
 
-#ifdef eCryModule
-#define MEMREPLAY_SCOPE(cls, subCls) CMemReplayScope _mrCls((cls), (subCls), eCryModule)
-#else
-#define MEMREPLAY_SCOPE(cls, subCls) CMemReplayScope _mrCls((cls), (subCls), eCryM_Launcher)
-#endif
+#define MEMREPLAY_SCOPE(cls, subCls) CMemReplayScope _mrCls((cls), (subCls), 0)
 #define MEMREPLAY_SCOPE_ALLOC(id, sz, align) _mrCls.Alloc((UINT_PTR)(id), (sz), (align))
 #define MEMREPLAY_SCOPE_REALLOC(oid, nid, sz, align) _mrCls.Realloc((UINT_PTR)(oid), (UINT_PTR)nid, (sz), (align))
 #define MEMREPLAY_SCOPE_FREE(id) _mrCls.Free((UINT_PTR)(id))

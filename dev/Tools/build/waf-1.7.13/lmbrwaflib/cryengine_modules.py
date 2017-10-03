@@ -12,16 +12,18 @@
 #
 from waflib.Configure import conf
 from waflib.TaskGen import feature, before_method, after_method
-from waflib import Utils, Logs, Errors, Task
-import os, errno
+from waflib import Utils, Logs, Errors, Task, Node
+import os, stat, errno
 from os import stat
-from cry_utils import append_kw_entry, append_to_unique_list, sanitize_kw_input_lists, clean_duplicates_in_list, prepend_kw_entry, get_configuration
+from cry_utils import append_kw_entry, append_to_unique_list, sanitize_kw_input_lists, clean_duplicates_in_list, prepend_kw_entry, get_configuration, get_output_folder_name, flatten_list
+from copy_tasks import should_overwrite_file,fast_copy2
 import re
 from collections import defaultdict
 from waf_branch_spec import CONFIGURATIONS, CONFIGURATION_SHORTCUT_ALIASES
 from branch_spec import PLATFORM_SHORTCUT_ALIASES
 import json
 from third_party import is_third_party_uselib_configured, get_third_party_platform_name, get_third_party_configuration_name
+from gems import Gem
 
 def get_common_inputs():
     inputs = [
@@ -72,55 +74,6 @@ def get_all_supported_platforms(ctx):
 
     return all_supported_platforms
 
-LEGACY_LMBR_CENTRAL_INCLUDE = os.path.normcase('Code/Engine/LmbrCentral/include')
-GEM_LMBR_CENTRAL_INCLUDE = None
-
-
-def apply_legacy_lmbrcentral_fix(ctx, kw):
-    """
-    Fix for legacy modules that still include the old LmbrCentral module that was in the Code/Engine folder
-    prior to version 1.10
-
-    :param ctx: Build context
-    :param kw:  keywords to read/update the includes path if needed
-    """
-
-    legacy_lmbr_central_include = None
-
-    # Search for the legacy include path
-    wscript_includes = kw.get('includes',[])
-    for wscript_include in wscript_includes:
-        if isinstance(wscript_include,str):
-            normalize_include = os.path.normcase(wscript_include)
-            if normalize_include.endswith(LEGACY_LMBR_CENTRAL_INCLUDE):
-                legacy_lmbr_central_include = wscript_include
-                break
-
-    if legacy_lmbr_central_include is not None:
-        # If a legacy include was detected, remove it and add the gemified lmbrcentral include path
-        global GEM_LMBR_CENTRAL_INCLUDE
-        if GEM_LMBR_CENTRAL_INCLUDE is None:
-            required_gems = ctx.get_required_gems()
-            for required_gem in required_gems:
-                if required_gem.name == 'LmbrCentral':
-                    GEM_LMBR_CENTRAL_INCLUDE = required_gem.get_include_path()
-                    break
-
-        if GEM_LMBR_CENTRAL_INCLUDE is None:
-            ctx.warn_once('Required gem "LmbrCentral" is missing or not registered, this may cause build errors in modules that depend on it.')
-            return
-
-        ctx.warn_once('The wscript for module/gem "{}" refers to a deprecated version of LmbrCentral in the includes. '
-                      '("{}").  If this is a gem, update the gem definition to add LmbrCentral as a gem dependency instead.  If '
-                      'this is a module, then add "use_required_gems=True" in the list of keywords in the wscript declaration.'
-                      .format(kw['target'], legacy_lmbr_central_include))
-
-        # Legacy lmbr_central include found, remove it and inject the gem version
-        updated_wscript_includes = [GEM_LMBR_CENTRAL_INCLUDE]
-        updated_wscript_includes += [wscript_include_filtered for wscript_include_filtered in wscript_includes if wscript_include_filtered != legacy_lmbr_central_include]
-        kw['includes'] = updated_wscript_includes
-
-
 def AddGlobalKeywords(ctx, kw):
     """
     Helper function to add the global keywords that are added for every single compile ever.
@@ -138,14 +91,14 @@ def get_platform_list(self, platform):
     """
     Util-function to find valid platform aliases for the current platform
     """
-    if platform in ['win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013',  ]:
+    if platform in ['win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2012', 'win_x64_vs2010']:
         return [platform, 'win']
     if platform in ['linux_x64']:
         return [platform, 'linux']
     if platform in ['darwin_x86', 'darwin_x64']:
         return [platform, 'darwin']
-    if platform in []:
-        return []
+    if platform in ['durango']: # ACCEPTED_USE
+        return ['durango'] # ACCEPTED_USE
     if platform in ['ios']:
         return ['ios']
     if platform in ['appletv']:
@@ -184,6 +137,15 @@ def is_mac_platform(self, platform):
         if 'darwin' == name:
             return True
 
+    return False
+
+###############################################################################
+# DX12 detection and configuration.  DX12_INCLUDES and DX12_LIBPATH are set in compile_rules_win_x64_host
+@conf
+def has_dx12(conf):
+
+    if conf.env['DX12_INCLUDES'] and conf.env['DX12_LIBPATH']:
+        return True
     return False
 
 
@@ -293,7 +255,7 @@ def TrackFileListChanges(ctx, kw):
     for (key,value) in kw.items():
         if 'file_list' in key:
             files_to_track += _to_list(value)
-        # Collect potential file lists from addional options
+        # Collect potential file lists from additional options
         if 'additional_settings' in key:
             for settings_container in kw['additional_settings']:
                 for (key2,value2) in settings_container.items():
@@ -306,9 +268,9 @@ def TrackFileListChanges(ctx, kw):
     # Add results to global lists
     for file in files_to_track:
         file_node = ctx.path.make_node(file)
-        if not hasattr(ctx, 'addional_files_to_track'):
-            ctx.addional_files_to_track = []
-        ctx.addional_files_to_track += [ file_node ]
+        if not hasattr(ctx, 'additional_files_to_track'):
+            ctx.additional_files_to_track = []
+        ctx.additional_files_to_track += [ file_node ]
         append_kw_entry(kw,'waf_file_entries',[ file_node ])
 
 def LoadFileLists(ctx, kw, file_lists):
@@ -421,16 +383,28 @@ def LoadFileLists(ctx, kw, file_lists):
 
             generate_uber_file = uber_file != 'none' and uber_file != 'NoUberFile' and not disable_uber_file # TODO: Deprecate 'NoUberfile'
             if generate_uber_file:
-                # Collect Uber file related informations
-                uber_file_node = uber_file_folder.make_node(uber_file)
-                uber_file_relative = uber_file_node.path_from(ctx.path)
 
                 if uber_file in uber_files:
                     ctx.cry_file_error('[%s] UberFile "%s" was specifed twice. Please choose a different name' % (kw['target'], uber_file), file_list_file)
 
+                # Collect Uber file related informations
+
+                # Determine if we need to do a relative path or an absolute path
+                uber_file_node = uber_file_folder.make_node(uber_file)
+                uber_file_node_abs = uber_file_node.abspath()
+                ctx_node_abs = ctx.path.abspath()
+                common_path = os.path.commonprefix([uber_file_node_abs, ctx_node_abs])
+
+
                 task_generator_files.add(uber_file_node.abspath().lower())
                 uber_files.add(uber_file)
-                uber_file_relative_list.add(uber_file_relative)
+
+                if len(common_path)>0:
+                    uber_file_relative = uber_file_node.path_from(ctx.path)
+                    uber_file_relative_list.add(uber_file_relative)
+                else:
+                    uber_file_relative_list.add(uber_file_node_abs)
+
                 file_to_project_filter[uber_file_node.abspath()] = 'Uber Files'
 
             for (filter_name, file_entries) in project_filter_list.items():
@@ -563,6 +537,11 @@ def LoadFileLists(ctx, kw, file_lists):
     kw['source'] = list(kw['source'])
     kw['header_files'] = list(kw['header_files'])
 
+    # In the uber files, paths are relative to the current module path, so make sure the root of the project is included in the include search path
+    if '.' not in kw.get('includes',[]):
+        kw.get('includes', []).append('.')
+
+
 def VerifyInput(ctx, kw):
     """
     Helper function to verify passed input values
@@ -577,9 +556,6 @@ def VerifyInput(ctx, kw):
 
     if 'source' in kw:
         ctx.cry_file_error('TaskGenerator "%s" is using unsupported parameter "source", please use "file_list"' % target_name, wscript_file )
-
-    # Apply the include path fix for any legacy lmbrcentral includes
-    apply_legacy_lmbrcentral_fix(ctx, kw)
 
     # Loop through and check the follow type of keys that represent paths and validate that they exist on the system.
     # If they do not exist, this does not mean its an error, but we want to be able to display a warning instead as
@@ -621,7 +597,7 @@ def VerifyInput(ctx, kw):
 
 def InitializeTaskGenerator(ctx, kw):
     """
-    Helper function to call all initialization routines requiered for a task generator
+    Helper function to call all initialization routines required for a task generator
     """
     AddGlobalKeywords(ctx, kw)
     SanitizeInput(ctx, kw)
@@ -648,7 +624,7 @@ def AppendCommonModules(ctx,kw):
         kw['use'] = []
 
     # Append common module's dependencies
-    if any(p == ctx.env['PLATFORM'] for p in ('win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', )):
+    if any(p == ctx.env['PLATFORM'] for p in ('win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', 'durango')): # ACCEPTED_USE
         common_modules_dependencies = ['bcrypt']
 
     if 'test' in ctx.env['CONFIGURATION'] or 'project_generator' == ctx.env['PLATFORM']:
@@ -659,9 +635,9 @@ def AppendCommonModules(ctx,kw):
 
     append_kw_entry(kw,'lib',common_modules_dependencies)
 
-def LoadAddionalFileSettings(ctx, kw):
+def LoadAdditionalFileSettings(ctx, kw):
     """
-    Load all settings from the addional_settings parameter, and store them in a lookup map
+    Load all settings from the additional_settings parameter, and store them in a lookup map
     """
     append_kw_entry(kw,'features',[ 'apply_additional_settings' ])
     kw['file_specifc_settings'] = {}
@@ -696,13 +672,12 @@ def LoadAddionalFileSettings(ctx, kw):
 
         for file in file_list:
             file_abspath = ctx.path.make_node(file).abspath()
-            uber_file_abspath = uber_file_folder.make_node(file).abspath()
 
             if 'uber_file_lookup' in kw:
                 for uber_file in kw['uber_file_lookup']:
 
                     # Uber files are not allowed for additional settings
-                    if uber_file_abspath == uber_file:
+                    if file_abspath == uber_file:
                         ctx.cry_file_error("Additional File Settings are not supported for UberFiles (%s) to ensure a consistent behavior without UberFiles, please adjust your setup" % file, ctx.path.make_node('wscript').abspath())
 
                     for entry in kw['uber_file_lookup'][uber_file]:
@@ -725,6 +700,11 @@ def ConfigureTaskGenerator(ctx, kw):
     if 'name' not in kw:
         kw['name'] = target
 
+    # Provide the module name to the test framework.
+    if 'test' in ctx.env['CONFIGURATION']:
+        module_define = 'AZ_MODULE_NAME="{}"'.format(target.upper())
+        append_kw_entry(kw, 'defines', module_define)
+
     # Special case:  Only non-android launchers can use required gems
     apply_required_gems = kw.get('use_required_gems', False)
     if kw.get('is_launcher', False):
@@ -742,7 +722,9 @@ def ConfigureTaskGenerator(ctx, kw):
 
     platform = ctx.env['PLATFORM']
 
-    # Load all file lists (including addional settings)
+    is_engine_project = ctx.path.is_child_of(ctx.engine_node)
+
+    # Load all file lists (including additional settings)
     file_list = kw['file_list']
     for setting in kw['additional_settings']:
         file_list += setting.get('file_list', [])
@@ -755,7 +737,7 @@ def ConfigureTaskGenerator(ctx, kw):
             file_list += ctx.GetPlatformSpecificSettings(kw, 'file_list', platform, alias)
 
     LoadFileLists(ctx, kw, file_list)
-    LoadAddionalFileSettings(ctx, kw)
+    LoadAdditionalFileSettings(ctx, kw)
 
     # If uselib is set, validate them
     uselib_names = kw.get('uselib', None)
@@ -785,9 +767,14 @@ def ConfigureTaskGenerator(ctx, kw):
         if len(copy_dependent_files)>0:
             append_kw_entry(kw,'features','copy_module_dependent_files')
             copy_dependent_env_key = 'COPY_DEPENDENT_FILES_{}'.format(target.upper())
-            ctx.env[copy_dependent_env_key] = []
+            if copy_dependent_env_key not in ctx.env:
+                ctx.env[copy_dependent_env_key] = []
             for copy_dependent_file in copy_dependent_files:
-                ctx.env[copy_dependent_env_key].append(copy_dependent_file)
+                if is_engine_project:
+                    copy_dependent_file_abs = os.path.normpath(os.path.join(ctx.engine_path,copy_dependent_file))
+                else:
+                    copy_dependent_file_abs = os.path.normpath(os.path.join(ctx.path.abspath(),copy_dependent_file))
+                ctx.env[copy_dependent_env_key].append(copy_dependent_file_abs)
 
     if ctx.is_windows_platform(platform):
         # Handle meta includes for WinRT
@@ -819,6 +806,232 @@ def ConfigureTaskGenerator(ctx, kw):
         kw['copyright_org'] = ['Amazon']
 
 
+def RunTaskGenerator(ctx, build_type, *k, **kw ):
+
+    process_table = {
+        "shlib":    (['cshlib_PATTERN','cstlib_PATTERN'],
+                     'shlib'
+                     ),
+        "stlib":    (['cstlib_PATTERN'],
+                     'stlib'
+                     ),
+        "program":  (['cprogram_PATTERN'],
+                     'program'
+                     )
+    }
+
+    COPY_TARGETS_INDEX = 0
+    CTX_TYPE_INDEX = 1
+
+    if build_type not in process_table:
+        ctx.fatal('[ERROR] Unsupported build type: {}'.format(build_type))
+        return
+
+    platform = ctx.env['PLATFORM']
+    configuration = ctx.env['CONFIGURATION']
+    target = kw['target']
+
+    # If this is a non-build or project_generator (msvs, uber_file, etc), do the normal processing
+    if platform == 'project_generator':
+        getattr(ctx,process_table[build_type][CTX_TYPE_INDEX])(*k,**kw)
+        return
+
+    # Only process if the engine is not local
+    always_build_engine_from_source = ctx.is_option_true('always_build_engine_and_tools')
+    if ctx.is_engine_local() or always_build_engine_from_source or getattr(ctx,'is_game_gem',False):
+        getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
+        return
+
+    # If this target is marked as 'suppress_external_copy' and this is not a local engine build, then dont process or copy to the target.
+    if kw.get('suppress_external_copy',False) and not ctx.is_engine_local():
+        return
+
+    # Determine the output name and whether or not this is a GEM
+    output_name = kw['output_file_name'] if 'output_file_name' in kw and len(kw['output_file_name'])>0 else kw['target']
+
+    output_sub_folder = kw.get('output_sub_folder', None)
+
+    is_gem = kw.get('is_gem', False)
+
+    # The source and destination folders will be based on the root directory for the project, engine, and list of
+    # relative paths within the engine.
+    engine_root_abs = ctx.engine_node.abspath()
+    project_root_abs = ctx.srcnode.abspath()
+    output_folder = get_output_folder_name(ctx, platform, configuration)
+    if 'output_sub_folder' in kw:
+        output_sub_folder = kw['output_sub_folder']
+        if isinstance(output_sub_folder, str):
+            output_folder = os.path.join(output_folder, output_sub_folder)
+        elif isinstance(output_sub_folder, Node.Node):
+            output_folder = os.path.join(output_folder, output_sub_folder.path_from(ctx.engine_node))
+        else:
+            raise Errors.WafError("[ERROR] kw['output_sub_folder'] must be a string type ({})".format(kw['target']))
+
+    # Calculate the source and target folder as a mirror of the engine root and this project root
+    source_folder = os.path.realpath(os.path.join(engine_root_abs, output_folder))
+    target_folder = os.path.realpath(os.path.join(project_root_abs, output_folder))
+    if not os.path.exists(source_folder):
+        Logs.warn('[WARN] Lumberyard Engine Binary folder {0} is missing for ({1}/{2}).  '
+                  'Re-install or rebuild the Lumberyard for ({1}/{2}).'.format(source_folder, platform, configuration))
+        return
+
+    if not os.path.exists(target_folder):
+        target_node = ctx.srcnode.make_node(output_folder)
+        target_node.mkdir()
+
+    # Collect the target's output(s)
+    output_patterns = process_table[build_type][COPY_TARGETS_INDEX]
+    source_paths = []
+    for output_pattern in output_patterns:
+        output_filename = ctx.env[output_pattern] % output_name
+        source_path = os.path.join(source_folder, output_filename)
+        if os.path.exists(source_path):
+            append_to_unique_list(source_paths,source_path)
+        else:
+            Logs.warn('[WARN] Lumberyard Engine Module {0} is missing for ({1}/{2}).  '
+                      'The module will be built from source in the current project folder..'.format(target, platform, configuration))
+            getattr(ctx, process_table[build_type][CTX_TYPE_INDEX])(*k, **kw)
+            return
+
+    # Collect any use or uselib reference to a 3rd party shared library
+    dep_keys = [key for key in kw.get('use',[]) + kw.get('uselib',[])]
+    for dep_key in dep_keys:
+        uselib_path_varname = 'SHAREDLIBPATH_{}'.format(dep_key)
+        uselib_filename_varname = 'SHAREDLIB_{}'.format(dep_key)
+        if uselib_path_varname in ctx.env and uselib_filename_varname in ctx.env:
+            uselib_source_paths = ctx.env[uselib_path_varname]
+            uselib_source_files = ctx.env[uselib_filename_varname]
+
+            # Keep track and warn for duplicates that will be ignored
+            process_source_filename = set()
+            for uselib_source_path in uselib_source_paths:
+                for uselib_source_file in uselib_source_files:
+                    sharedlib_fullpath = os.path.normpath(os.path.join(uselib_source_path, uselib_source_file))
+                    if os.path.exists(sharedlib_fullpath):
+                        if uselib_source_file not in process_source_filename:
+                            append_to_unique_list(source_paths, sharedlib_fullpath)
+                            process_source_filename.add(uselib_source_file)
+
+    # Collect any export includes or export defines
+    extern_export_includes = []
+    for export_include in kw.get('export_includes',[]):
+        append_to_unique_list(extern_export_includes, export_include)
+
+    extern_export_defines = []
+    for export_define in kw.get('export_defines',[]):
+        append_to_unique_list(extern_export_defines,export_define)
+
+    extern_source_artifacts_include = kw.get('source_artifacts_include', None)
+    extern_source_artifacts_exclude = kw.get('source_artifacts_exclude', None)
+    extern_copy_external = kw.get('copy_external', None)
+
+    extern_output_sub_folder_copy = kw.get('output_sub_folder_copy', None)
+    if extern_output_sub_folder_copy is not None:
+        if isinstance(extern_output_sub_folder_copy,str):
+            extern_output_sub_folder_copy = [extern_output_sub_folder_copy]
+
+    ctx_type = 'gem' if is_gem else process_table[build_type][CTX_TYPE_INDEX]
+
+    extern_features = ['fake_extern_engine_lib'] + list(set(kw['features']).intersection(['copy_module_dependent_files','copy_external_files']))
+
+    ctx(name=target,
+        target=target,
+        output_name=output_name,
+        output_sub_folder=output_sub_folder,
+        features=extern_features,
+        source_paths=source_paths,
+        target_folder=target_folder,
+        lib_type=ctx_type,
+        source_artifacts_include=extern_source_artifacts_include,
+        source_artifacts_exclude=extern_source_artifacts_exclude,
+        output_sub_folder_copy=extern_output_sub_folder_copy,
+        copy_external=extern_copy_external,
+        export_includes=extern_export_includes,
+        export_defines=extern_export_defines)
+
+
+@feature('fake_extern_engine_lib')
+@after_method('copy_module_dependent_files')
+def process_extern_engine_lib(self):
+    """
+    Feature implementation that will replaces a normal shlib or stlib task definition that normally takes in
+     source files but instead will create a 'fake' library definition from a prebuilt binary.  It also does
+     an extra step by copying the prebuilt binary to its target destination
+
+    :param self:    Context
+    """
+    def _copy_file(src, dst):
+        if should_overwrite_file(src, dst):
+            try:
+                # In case the file is readonly, we'll remove the existing file first
+                if os.path.exists(dst):
+                    os.chmod(dst, stat.S_IWRITE)
+                fast_copy2(src, dst)
+            except:
+                Logs.warn('[WARN] Unable to copy {} to destination {}.  '
+                          'Check the file permissions or any process that may be locking it.'
+                          .format(src, dst))
+
+        pass
+
+    def _copy_dir(src, dst_path_base):
+
+        basename = os.path.basename(src)
+        dst_path_abs = os.path.join(dst_path_base,basename)
+        if not os.path.exists(dst_path_abs):
+            os.mkdir(dst_path_abs)
+
+        items = os.listdir(src)
+        for item in items:
+            src_item_abs = os.path.join(src, item)
+            if os.path.isdir(src_item_abs):
+                _copy_dir(src_item_abs, dst_path_abs)
+            else:
+                dst_item_abs = os.path.join(dst_path_abs, item)
+                _copy_file(src_item_abs, dst_item_abs)
+
+    # Perform the copy of files here if needed, without using WAF's task dependency
+    base_target_path = self.target_folder
+    target_paths = [base_target_path]
+    output_subfolder_copies = getattr(self,'output_sub_folder_copy',[]) or []
+    for output_subfolder_copy in output_subfolder_copies:
+        output_subfolder_path = os.path.realpath(os.path.join(base_target_path,output_subfolder_copy))
+        if not os.path.exists(output_subfolder_path):
+            try:
+                os.makedirs(output_subfolder_path)
+                target_paths.append(output_subfolder_path)
+            except:
+                Logs.warn('[WARN] Target folder "{}" for engine output cannot be created.'.format(output_subfolder_path))
+                pass
+
+    for source_path in getattr(self,'source_paths',[]):
+        if os.path.isfile(source_path):
+            for target_path in target_paths:
+                dest_path = os.path.join(target_path,os.path.basename(source_path))
+                _copy_file(source_path, dest_path)
+        elif os.path.isdir(source_path):
+            for target_path in target_paths:
+                _copy_dir(source_path, target_path)
+
+    # Calculate the module target
+
+    # Create a link task only for stlib or shlib
+    if self.lib_type in ('stlib','shlib'):
+
+        output_filename = self.env['c{}_PATTERN'.format(self.lib_type)] % self.output_name
+        output_file = os.path.join(self.target_folder, output_filename)
+        if not os.path.exists(output_file):
+            raise Errors.WafError('could not find library %r' % self.output_name)
+
+        output_file_node = self.bld.root.find_node(output_file)
+        output_file_node.sig = Utils.h_file(output_file_node.abspath())
+        self.link_task = self.create_task('fake_%s' % self.lib_type, [], [output_file_node])
+        if not getattr(self, 'target', None):
+            self.target = self.name
+        if not getattr(self, 'output_file_name', None):
+            self.output_file_name = self.target
+
+
 def MonolithicBuildModule(ctx, *k, **kw):
     """
     Util function to collect all libs and linker settings for monolithic builds
@@ -847,9 +1060,13 @@ def MonolithicBuildModule(ctx, *k, **kw):
         _append(prefix + 'libpath',       kw['libpath'] )
         _append(prefix + 'linkflags',     kw['linkflags'] )
         _append(prefix + 'framework',     kw['framework'] )
+
+    # iOS needs gems to be able to specify frameworks because the IAP gem uses the StoreKit framework
+    elif ctx.env['PLATFORM'] in ('ios'):
+        _append(prefix + 'framework',     kw['framework'] )
+
     if 'uselib' in kw:
         _append(prefix + 'uselib',        kw['uselib'] )
-
 
     # Adjust own task gen settings
     append_kw_entry(kw, 'defines',[ '_LIB', 'AZ_MONOLITHIC_BUILD' ])
@@ -883,6 +1100,7 @@ def BuildTaskGenerator(ctx, kw):
             use_module_list=kw['use'],
             platform_list=kw.get('platforms', []),
             configuration_list=kw.get('configurations', []),
+            export_internal_3p_libs=kw.get('export_internal_3rd_party_libs', False),
             target=target)
         return False
 
@@ -890,7 +1108,7 @@ def BuildTaskGenerator(ctx, kw):
         return True         # Always include all projects when generating project for IDEs
 
     if kw and kw.get('dx12_only',False):
-        if not getattr(ctx, 'has_dx12', None) or not ctx.has_dx12():
+        if not ctx.has_dx12():
             return False
 
     # if we're restricting to a platform, only build it if appropriate:
@@ -927,10 +1145,10 @@ def BuildTaskGenerator(ctx, kw):
 @before_method('extract_vcxproj_overrides')
 def tg_apply_additional_settings(self):
     """
-    Apply all settings found in the addional_settings parameter after all compile tasks are generated
+    Apply all settings found in the additional_settings parameter after all compile tasks are generated
     """
     if len(self.file_specifc_settings) == 0:
-        return # no file specifc settings found
+        return # no file specific settings found
 
     for t in getattr(self, 'compiled_tasks', []):
         input_file = t.inputs[0].abspath()
@@ -1041,7 +1259,7 @@ def CryEngineModule(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1078,7 +1296,8 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1202,8 +1421,14 @@ def codegen_static_modules_cpp_for_launcher(ctx, project, k, kw):
     # Gather modules used by this project
     static_modules = ctx.project_flavor_modules(project, 'Game')
     for gem in ctx.get_game_gems(project):
-        if gem.link_type != 'NoCode' and not gem.is_legacy_igem:
-            static_modules.append('{}_{}'.format(gem.name, gem.id.hex))
+        if not gem.is_legacy_igem:
+            for module in gem.modules:
+                # Only include game modules in static module list
+                if module.type == Gem.Module.Type.GameModule:
+                    if module.name:
+                        static_modules.append('{}_{}_{}'.format(gem.name, module.name, gem.id.hex))
+                    else:
+                        static_modules.append('{}_{}'.format(gem.name, gem.id.hex))
 
     # Write out json file listing modules. This will be fed into codegen.
     static_modules_json = {'modules' : static_modules}
@@ -1248,7 +1473,7 @@ def read_project_game_folder_and_dll(ctx, project_name):
 
 
 def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
-    kw_per_launcher['vs_filter'] = project + '/Launchers'
+    kw_per_launcher['vs_filter'] = 'Launchers'
 
     # Initialize the Task Generator
     InitializeTaskGenerator(ctx, kw_per_launcher)
@@ -1308,7 +1533,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
         append_kw_entry(kw_per_launcher,'features',[ 'apply_monolithic_build_settings' ])
 
     if not is_monolithic_build(ctx) and 'mac_launcher' in kw_per_launcher:
-        append_kw_entry(kw_per_launcher, 'features', ['apply_non_monolithic_launcher_settings'])
+    	append_kw_entry(kw_per_launcher, 'features', ['apply_non_monolithic_launcher_settings'])
 
     # android doesn't have the concept of native executables so we need to build it as a lib
     if ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang'):
@@ -1344,7 +1569,7 @@ def CryDedicatedServer(ctx, *k, **kw):
         CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher)
 
 def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
-    kw_per_launcher['vs_filter'] = project + '/Launchers'
+    kw_per_launcher['vs_filter'] = 'Launchers'
 
     if ctx.env['PLATFORM'] != 'project_generator': # if we're making project files for an IDE, then don't quit early
         if not ctx.is_building_dedicated_server():
@@ -1433,7 +1658,8 @@ def CryConsoleApplication(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1460,7 +1686,8 @@ def CryBuildUtility(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1517,7 +1744,8 @@ def CryEditor(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1537,9 +1765,12 @@ def LumberyardApp(ctx, *k, **kw):
 
     ConfigureTaskGenerator(ctx, kw)
 
-    if BuildTaskGenerator(ctx, kw):
-        append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
-        ctx.program(*k, **kw)
+    if not BuildTaskGenerator(ctx, kw):
+        return
+
+    append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
+
+    RunTaskGenerator(ctx, 'program', *k, **kw)
 
 ###############################################################################
 @conf
@@ -1573,7 +1804,7 @@ def CryEditorCore(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1615,7 +1846,7 @@ def CryEditorUiQt(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1652,15 +1883,15 @@ def CryPlugin(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
-    
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
     ###############################################################################
 @conf
 def BuilderPlugin(ctx, *k, **kw):
     """
     Wrapper for CryEngine Editor Plugins
     """
-    append_kw_entry(kw, 'output_sub_folder', ['Builders'])
+    kw['output_sub_folder']='Builders'
     append_kw_entry(kw, 'win_cxxflags', ['/EHsc'])
     append_kw_entry(kw, 'win_cflags', ['/EHsc'])
     append_kw_entry(kw, 'win_defines', ['UNICODE'])
@@ -1692,7 +1923,8 @@ def BuilderPlugin(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1735,7 +1967,8 @@ def CryStandAlonePlugin(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1776,7 +2009,8 @@ def CryPluginModule(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1812,7 +2046,7 @@ def CryEditorCommon(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
 
 
 ###############################################################################
@@ -1852,7 +2086,8 @@ def CryResourceCompiler(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1886,13 +2121,15 @@ def CryResourceCompilerModule(ctx, *k, **kw):
 
     if not BuildTaskGenerator(ctx, kw):
         return
+
     if ctx.is_windows_platform(ctx.env['PLATFORM']):
         append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:CONSOLE' ])
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1926,7 +2163,8 @@ def CryPipelineModule(ctx, *k, **kw):
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
-    ctx.shlib(*k, **kw)
+    RunTaskGenerator(ctx, 'shlib', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1956,7 +2194,8 @@ def CryQtApplication(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 @conf
@@ -1985,7 +2224,8 @@ def CryQtConsoleApplication(ctx, *k, **kw):
 
     append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
 
-    ctx.program(*k, **kw)
+    RunTaskGenerator(ctx, 'program', *k, **kw)
+
 
 ###############################################################################
 # Helper function to set Flags based on options
@@ -2249,7 +2489,7 @@ def ApplyPlatformSpecificSettings(ctx, kw, target):
         if not entry in kw or kw[entry] == []: # No general one set yet
             kw[entry] = GetPlatformSpecificSettings(ctx, kw, entry, platform, configuration)
 
-    # Recurse for addional settings
+    # Recurse for additional settings
     for setting in kw['additional_settings']:
         ApplyPlatformSpecificSettings(ctx, setting, target)
 
@@ -2473,6 +2713,9 @@ def allow_non_bld_outputs(self):
 def set_link_outputs(self):
     if self.env['PLATFORM'] == 'project_generator' or not getattr(self, 'link_task', None):
         return
+    # If no type is defined, this is just a stub task that shouldnt handle any additional build/link tasks
+    if not hasattr(self,'_type'):
+        return
 
     # apply_link creates the link task, and uses the output_file_name to create the outputs for the task
     # unfortunately, it will only create outputs in the build folder (BinTemp/) only.  The outputs are deleted here and
@@ -2609,7 +2852,12 @@ def set_link_outputs(self):
                         # if we're trying to do an install
                         _, ext = os.path.splitext(output.name)
                         if is_secondary_copy_install or (ext in ['.dll', '.pdb', '.dylib', '.so']):
-                            _create_sub_folder_copy_task(output_sub_folder_copy_attr_item, output)
+
+                            # For secondary copies, we only want to perform them if we are building specifically for a spec
+                            # that contains the current target, otherwise skip because this task may have been pulled in
+                            # by the dependency tree check
+                            if (self.bld.is_project_spec_specified() and self.target in self.bld.spec_modules(self.bld.options.project_spec)) or not self.bld.is_project_spec_specified():
+                                _create_sub_folder_copy_task(output_sub_folder_copy_attr_item, output)
                     else:
                         Logs.warn("[WARN] attribute items in 'output_sub_folder_copy' must be a string.")
 
@@ -2751,4 +2999,3 @@ def patch_run_method(self):
     if self._type in ['program', 'shlib']:
         # replace the run method with a lambda, save the old run method so we can wrap/call it
         self.link_task.run = patch_run
-

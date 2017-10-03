@@ -38,8 +38,6 @@
 #include <array>
 #include <string>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Action
 #define RWI_NAME_TAG "RayWorldIntersection(Action)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(Action)"
 
@@ -54,7 +52,6 @@
 #include <Cry_Camera.h>
 #include <ISystem.h>
 #include <INetwork.h>
-#include <IInput.h>
 #include <IScriptSystem.h>
 #include <IEntitySystem.h>
 #include <IEntityHelper.h>

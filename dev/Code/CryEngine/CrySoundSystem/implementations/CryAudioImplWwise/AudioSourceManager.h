@@ -25,8 +25,6 @@
 
 namespace Audio
 {
-    class SAudioStreamData;
-
     /**
      * Base class for Audio Input Source types.
      * Represents an Audio Input Source, which has input/output routines and configuration information.
@@ -39,7 +37,7 @@ namespace Audio
         AudioInputSource() = default;
         virtual ~AudioInputSource() = default;
 
-        virtual void ReadInput(const SAudioStreamData& data) = 0;
+        virtual void ReadInput(const AudioStreamData& data) = 0;
         virtual void WriteOutput(AkAudioBuffer* akBuffer) = 0;
 
         virtual bool IsOk() const = 0;
@@ -82,9 +80,9 @@ namespace Audio
          * CreateSource a new AudioInputSource.
          * Creates an AudioInputSource, based on the SAudioInputConfig and stores it in an inactive state.
          * @param sourceConfig Configuration of the AudioInputSource.
-         * @return Source ID of the created object.
+         * @return True if the source was created successfully, false otherwise.
          */
-        TAudioSourceId CreateSource(const SAudioInputConfig& sourceConfig);
+        bool CreateSource(const SAudioInputConfig& sourceConfig);
 
         /**
          * Activates an AudioInputSource.
@@ -116,8 +114,6 @@ namespace Audio
         AkPlayingID FindPlayingSource(TAudioSourceId sourceId);
 
     private:
-        static TAudioSourceId NextSourceId();
-
         /**
          * Wwise Audio Input Plugin "Execute" callback function.
          * This will be called whenever a playing Audio Input Source needs to be fed.
@@ -133,8 +129,6 @@ namespace Audio
          * @param audioFormat The format structure that should be filled with format information.
          */
         static void GetFormatCallback(AkPlayingID playingId, AkAudioFormat& audioFormat);
-
-        static TAudioSourceId s_nextSourceId;
 
         AZStd::mutex m_inputMutex;      ///< Callbacks will come from the Wwise event processing thread.
 

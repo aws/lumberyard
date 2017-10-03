@@ -25,8 +25,9 @@
 
 #include <SceneAPI/SceneCore/Containers/RuleContainer.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
-
 #include <SceneAPI/SceneCore/DataTypes/IManifestObject.h>
+#include <SceneAPI/SceneCore/DataTypes/IGraphObject.h>
+
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkeletonGroup.h>
@@ -41,23 +42,25 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/ILodRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/ISkeletonProxyRule.h>
-
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-#include <SceneAPI/SceneCore/DataTypes/Groups/IActorGroup.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IEFXMotionGroup.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMeshRule.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXSkinRule.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMotionCompressionSettingsRule.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMotionScaleRule.h>
-#endif
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IBlendShapeData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMaterialData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexUVData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/ITransform.h>
 
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
-
+#include <SceneAPI/SceneCore/Export/MtlMaterialExporter.h>
 #include <SceneAPI/SceneCore/Import/ManifestImportRequestHandler.h>
+#include <SceneAPI/SceneCore/Utilities/PatternMatcher.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 static AZ::Entity* g_behaviors = nullptr;
 static AZ::SceneAPI::Import::ManifestImportRequestHandler* g_manifestImporter = nullptr;
+static AZStd::vector<AZ::ComponentDescriptor*> g_componentDescriptors;
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
@@ -88,7 +91,6 @@ bool IMeshGroupConverter(AZ::SerializeContext& context, AZ::SerializeContext::Da
                 AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Failed to upgrade IMeshGroup from version 1.");
                 return false;
             }
-
         }
     }
     return true;
@@ -118,10 +120,7 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
         context->Class<AZ::SceneAPI::DataTypes::ISkeletonGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::ISkinGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::IAnimationGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-        context->Class<AZ::SceneAPI::DataTypes::IActorGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
-        context->Class<AZ::SceneAPI::DataTypes::IEFXMotionGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
-#endif
+
         // Register rule interfaces
         context->Class<AZ::SceneAPI::DataTypes::IRule, AZ::SceneAPI::DataTypes::IManifestObject>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::IBlendShapeRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
@@ -132,12 +131,16 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
         context->Class<AZ::SceneAPI::DataTypes::IPhysicsRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::ILodRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::ISkeletonProxyRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-        context->Class<AZ::SceneAPI::DataTypes::IEFXMeshRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
-        context->Class<AZ::SceneAPI::DataTypes::IEFXSkinRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
-        context->Class<AZ::SceneAPI::DataTypes::IEFXMotionCompressionSettingsRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
-        context->Class<AZ::SceneAPI::DataTypes::IEFXMotionScaleRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
-#endif
+        // Register graph data interfaces
+        context->Class<AZ::SceneAPI::DataTypes::IAnimationData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IBlendShapeData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IBoneData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IMaterialData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IMeshData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IMeshVertexColorData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::IMeshVertexUVData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::ISkinWeightData, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
+        context->Class<AZ::SceneAPI::DataTypes::ITransform, AZ::SceneAPI::DataTypes::IGraphObject>()->Version(1);
 
         // Register base manifest types
         context->Class<AZ::SceneAPI::DataTypes::ISceneNodeSelectionList>()->Version(1);
@@ -145,15 +148,27 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
         // Register containers
         AZ::SceneAPI::Containers::RuleContainer::Reflect(context);
         AZ::SceneAPI::Containers::SceneManifest::Reflect(context);
+
+       // Register utilities
+        AZ::SceneAPI::SceneCore::PatternMatcher::Reflect(context);
+    }
+
+    if (g_componentDescriptors.empty())
+    {
+        g_componentDescriptors.push_back(AZ::SceneAPI::Export::MaterialExporterComponent::CreateDescriptor());
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::RegisterComponentDescriptor, descriptor);
+        }
     }
 }
 
 extern "C" AZ_DLL_EXPORT void Activate()
 {
-    AZ::SerializeContext* context = nullptr;
-    AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-    
-    AZ_Assert(!g_behaviors, "Behaviors in SceneData have already been initialized.");
+    if (g_behaviors)
+    {
+        return;
+    }
     g_behaviors = AZ::SceneAPI::SceneCore::EntityConstructor::BuildEntityRaw("Scene Behaviors", 
         AZ::SceneAPI::SceneCore::BehaviorComponent::TYPEINFO_Uuid());
 }
@@ -170,6 +185,16 @@ extern "C" AZ_DLL_EXPORT void Deactivate()
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
+    if (!g_componentDescriptors.empty())
+    {
+        for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::UnregisterComponentDescriptor, descriptor);
+        }
+        g_componentDescriptors.clear();
+        g_componentDescriptors.shrink_to_fit();
+    }
+
     if (g_manifestImporter)
     {
         g_manifestImporter->Deactivate();

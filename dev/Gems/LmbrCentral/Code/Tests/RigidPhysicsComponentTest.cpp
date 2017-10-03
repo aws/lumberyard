@@ -60,7 +60,19 @@ R"DELIMITER(<ObjectStream version="1">
 class LoadRigidPhysicsComponentFromLegacyData
     : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentralModule, RigidPhysicsComponent>
 {
+protected:
+    void SetUp() override
+    {
+        LoadReflectedObjectTest::SetUp();
+        if (m_object)
+        {
+            m_object->GetConfiguration(m_rigidPhysicsConfig);
+        }
+    }
+
     const char* GetSourceDataBuffer() const override { return kLegacyPhysicsComponentWithRigidBehavior; }
+
+    RigidPhysicsConfig m_rigidPhysicsConfig;
 };
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, Application_IsRunning)
@@ -80,65 +92,65 @@ TEST_F(LoadRigidPhysicsComponentFromLegacyData, ComponentId_MatchesSourceData)
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, EnabledInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_enabledInitially, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_enabledInitially, false);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, SpecifyMassOrDensity_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_specifyMassOrDensity, static_cast<RigidPhysicsConfiguration::MassOrDensity>(0));
+    EXPECT_EQ(m_rigidPhysicsConfig.m_specifyMassOrDensity, static_cast<RigidPhysicsConfig::MassOrDensity>(0));
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, Mass_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_mass, 33.f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_mass, 33.f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, Density_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_density, 555.f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_density, 555.f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, AtRestInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_atRestInitially, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_atRestInitially, false);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, InteractsWithTriggers_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_interactsWithTriggers, false);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_interactsWithTriggers, false);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, RecordCollision_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_recordCollisions, true);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_recordCollisions, true);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, MaxRecordedCollision_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_maxRecordedCollisions, 3);
+    EXPECT_EQ(m_rigidPhysicsConfig.m_maxRecordedCollisions, 3);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, SimulationDamping_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_simulationDamping, 0.1f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_simulationDamping, 0.1f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, SimulationMinEnergy_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_simulationMinEnergy, 0.003f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_simulationMinEnergy, 0.003f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, BuoyancyDamping_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_buoyancyDamping, 0.3f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyDamping, 0.3f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, BuoyancyDensity_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_buoyancyDensity, 1.3f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyDensity, 1.3f);
 }
 
 TEST_F(LoadRigidPhysicsComponentFromLegacyData, BuoyancyResistance_MatchesSourceData)
 {
-    EXPECT_FLOAT_EQ(m_object->GetConfiguration().m_buoyancyResistance, 1.6f);
+    EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyResistance, 1.6f);
 }

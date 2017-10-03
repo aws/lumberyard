@@ -121,6 +121,9 @@ void CLensGhost::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
     shader->FXEnd();
 }
 
+
+const int CMultipleGhost::MAX_COUNT = 1000;
+
 #if defined(FLARES_SUPPORT_EDITING)
 #define MFPtr(FUNC_NAME) (Optics_MFPtr)(&CMultipleGhost::FUNC_NAME)
 void  CMultipleGhost::InitEditorParamGroups(DynArray<FuncVariableGroup>& groups)
@@ -129,7 +132,7 @@ void  CMultipleGhost::InitEditorParamGroups(DynArray<FuncVariableGroup>& groups)
     FuncVariableGroup ghostGroup;
     ghostGroup.SetName("MultiGhost", "Multi Ghost");
     ghostGroup.AddVariable(new OpticsMFPVariable(e_TEXTURE2D, "Texture", "The texture for lens ghosts", this, MFPtr(SetTexture), MFPtr(GetTexture)));
-    ghostGroup.AddVariable(new OpticsMFPVariable(e_INT, "Count", "The number of ghosts", this, MFPtr(SetCount), MFPtr(GetCount), 0, 1000.0f));
+    ghostGroup.AddVariable(new OpticsMFPVariable(e_INT, "Count", "The number of ghosts", this, MFPtr(SetCount), MFPtr(GetCount), 0, static_cast<float>(MAX_COUNT)));
     ghostGroup.AddVariable(new OpticsMFPVariable(e_INT, "Random Seed", "The Seed of random generator", this, MFPtr(SetRandSeed), MFPtr(GetRandSeed), -255.0f, 255.0f));
     ghostGroup.AddVariable(new OpticsMFPVariable(e_VEC2, "Scattering range", "The scattering range for sub ghosts", this, MFPtr(SetRange), MFPtr(GetRange)));
     ghostGroup.AddVariable(new OpticsMFPVariable(e_VEC2, "position factor", "multiplier of position", this, MFPtr(SetPositionFactor), MFPtr(GetPositionFactor)));
@@ -226,6 +229,27 @@ void CMultipleGhost::Load(IXmlNode* pNode)
             SetColorNoise(fColorNoise);
         }
     }
+}
+
+void CMultipleGhost::SetCount(int count)
+{
+    if (count < 0)
+    {
+        return;
+    }
+    m_nCount = min(count, MAX_COUNT);
+    RemoveAll();
+    for (int i = 0; i < m_nCount; i++)
+    {
+        CLensGhost* ghost = new CLensGhost("SubGhost");
+        ghost->SetAutoRotation(true);
+        ghost->SetAspectRatioCorrection(true);
+        ghost->SetOccBokehEnabled(true);
+        ghost->SetSensorSizeFactor(1);
+        ghost->SetSensorBrightnessFactor(1);
+        Add(ghost);
+    }
+    m_bContentDirty = true;
 }
 
 void CMultipleGhost::GenGhosts(SAuxParams& aux)

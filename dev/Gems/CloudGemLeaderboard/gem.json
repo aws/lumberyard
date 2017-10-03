@@ -5,8 +5,8 @@
     "DisplayName": "Cloud Gem Leaderboard",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Track player scores and estimate their rank among total population of players",
-    "Tags": ["AWS", "Cloud Canvas"],
+    "Summary": "Enable your players to record their scores while competing for the top ranked position on the leaderboard. This Cloud Gem is best for cases when you want to have a ranking amongst your player population.",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda", "S3"],
     "IconPath": "preview.png",
     "Dependencies": [
         {

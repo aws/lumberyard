@@ -455,21 +455,24 @@ void UiLayoutGridComponent::Reflect(AZ::ReflectContext* context)
             editInfo->DataElement(AZ::Edit::UIHandlers::LayoutPadding, &UiLayoutGridComponent::m_padding, "Padding", "The layout padding")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show) // needed because sub-elements are hidden
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             editInfo->DataElement(0, &UiLayoutGridComponent::m_spacing, "Spacing", "The spacing between children")
                 ->Attribute(AZ::Edit::Attributes::LabelForX, "Horizontal")
                 ->Attribute(AZ::Edit::Attributes::LabelForY, "Vertical")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show) // needed because sub-elements are hidden
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             editInfo->DataElement(0, &UiLayoutGridComponent::m_cellSize, "Cell size", "The size of the cells")
                 ->Attribute(AZ::Edit::Attributes::LabelForX, "Width")
                 ->Attribute(AZ::Edit::Attributes::LabelForY, "Height")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show) // needed because sub-elements are hidden
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutGridComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             // Order group
             {
@@ -523,6 +526,7 @@ void UiLayoutGridComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiLayoutGridInterface::StartingDirection::VerticalOrder>("eUiLayoutGridStartingDirection_VerticalOrder");
 
         behaviorContext->EBus<UiLayoutGridBus>("UiLayoutGridBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetPadding", &UiLayoutGridBus::Events::GetPadding)
             ->Event("SetPadding", &UiLayoutGridBus::Events::SetPadding)
             ->Event("GetSpacing", &UiLayoutGridBus::Events::GetSpacing)
@@ -546,6 +550,7 @@ void UiLayoutGridComponent::Reflect(AZ::ReflectContext* context)
 void UiLayoutGridComponent::Activate()
 {
     UiLayoutBus::Handler::BusConnect(m_entity->GetId());
+    UiLayoutControllerBus::Handler::BusConnect(m_entity->GetId());
     UiLayoutGridBus::Handler::BusConnect(m_entity->GetId());
     UiLayoutCellDefaultBus::Handler::BusConnect(m_entity->GetId());
     UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
@@ -557,6 +562,7 @@ void UiLayoutGridComponent::Activate()
 void UiLayoutGridComponent::Deactivate()
 {
     UiLayoutBus::Handler::BusDisconnect();
+    UiLayoutControllerBus::Handler::BusDisconnect();
     UiLayoutGridBus::Handler::BusDisconnect();
     UiLayoutCellDefaultBus::Handler::BusDisconnect();
     UiTransformChangeNotificationBus::Handler::BusDisconnect();
@@ -612,6 +618,12 @@ void UiLayoutGridComponent::InvalidateLayout()
 void UiLayoutGridComponent::InvalidateParentLayout()
 {
     UiLayoutHelpers::InvalidateParentLayout(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiLayoutGridComponent::CheckLayoutFitterAndRefreshEditorTransformProperties() const
+{
+    UiLayoutHelpers::CheckFitterAndRefreshEditorTransformProperties(GetEntityId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -18,8 +18,8 @@ enum class PlatformOptions
 {
     Android,
     iOS,
-    XBoxOne,
-    PS4
+    XBoxOne, // ACCEPTED_USE
+    PS4 // ACCEPTED_USE
 };
 
 struct DeploymentConfig

@@ -20,6 +20,8 @@
 
 #include <AzCore/std/functional.h>
 
+#include <AzCore/Debug/Profiler.h>
+
 #define AZCORE_SYS_ALLOCATOR_HPPA  // If you disable this make sure you start building the heapschema.cpp
 
 #ifdef AZCORE_SYS_ALLOCATOR_HPPA
@@ -253,6 +255,8 @@ SystemAllocator::Allocate(size_type byteSize, size_type alignment, int flags, co
     }
 #endif // AZCORE_ENABLE_MEMORY_TRACKING
 
+    AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, fileName, lineNum, address, byteSize, name);
+
     return address;
 }
 
@@ -263,6 +267,7 @@ SystemAllocator::Allocate(size_type byteSize, size_type alignment, int flags, co
 void
 SystemAllocator::DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment)
 {
+    AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
     if (m_records)
     {

@@ -48,6 +48,7 @@ namespace AZ
 
                 void GetVirtualTypes(AZStd::set<Crc32>& types, const Containers::Scene& scene,
                     Containers::SceneGraph::NodeIndex node) override;
+                void GetAllVirtualTypes(AZStd::set<Crc32>& types) override;
                 void GetVirtualTypeName(AZStd::string& name, Crc32 type) override;
 
             private:

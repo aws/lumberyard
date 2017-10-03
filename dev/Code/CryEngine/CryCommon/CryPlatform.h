@@ -22,7 +22,7 @@
 // this define allows including the detail headers which are setting platfrom specific settings
 #define CRYPLATFROM_ALLOW_DETAIL_INCLUDES
 
-// this file cannot include azcore since it is included by tools that use ancient compilers
+// this file can't include azcore since it is included by tools that use ancient compilers
 
 #if defined(IOS)
 #define CURRENT_PLATFORM_NAME "ios"
@@ -42,10 +42,10 @@
 
 ////////////////////////////////////////////////////////////////////////////
 // some ifdef selection to include the correct platfrom implementation
-#if defined(WIN32) && !defined(WIN64) && !defined(DURANGO)
-#   include "CryPlatform.Win32.h"
-#elif defined(WIN64)
+#if defined(WIN64)
 #   include "CryPlatform.Win64.h"
+#elif defined(WIN32)
+#   include "CryPlatform.Win32.h"
 #elif defined(LINUX)
 #   include "CryPlatform.Linux.h"
 #elif defined(APPLE)

@@ -14,7 +14,7 @@
 
 #include "AWSBehaviorS3Download.h"
 
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(push)
@@ -109,7 +109,7 @@ namespace CloudGemAWSScriptBehaviors
         );
 
         AZStd::string bucketName;
-        EBUS_EVENT_RESULT(bucketName, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
+        EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
 
         job->request.SetBucket(Aws::String(bucketName.c_str()));
         job->request.SetKey(Aws::String(m_keyName.c_str()));

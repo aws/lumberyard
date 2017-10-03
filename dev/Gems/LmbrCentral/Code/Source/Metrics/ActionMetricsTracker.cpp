@@ -169,7 +169,8 @@ void ActionMetricsTracker::SendMetrics(const char* metricsText, AzToolsFramework
         "MenuClick",    // ActionTriggerType::MenuClick,
         "MenuAltKey",   // ActionTriggerType::MenuAltKey,
         "ToolButton",   // ActionTriggerType::ToolButton,
-        "Shortcut"      // ActionTriggerType::Shortcut,
+        "Shortcut",      // ActionTriggerType::Shortcut,
+        "DragAndDrop"   // ActionTriggerType::DragAndDrop
     };
 
     // make sure the array has the right number of items

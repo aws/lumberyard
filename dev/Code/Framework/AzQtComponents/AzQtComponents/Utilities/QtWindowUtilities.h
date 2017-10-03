@@ -26,6 +26,9 @@ namespace AzQtComponents
     AZ_QT_COMPONENTS_API void EnsureWindowWithinScreenGeometry(QWidget* widget);
 
     AZ_QT_COMPONENTS_API void SetClipRegionForDockingWidgets(QWidget* widget, QPainter& painter, QMainWindow* mainWindow);
+    
+    AZ_QT_COMPONENTS_API void SetCursorPos(const QPoint& point);
+    AZ_QT_COMPONENTS_API void SetCursorPos(int x, int y);
 
 } // namespace AzQtComponents
 

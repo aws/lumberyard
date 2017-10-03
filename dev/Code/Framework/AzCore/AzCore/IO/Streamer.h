@@ -40,9 +40,6 @@ namespace AZ
         /**
          * Data streamer.
          *
-         * \note on PS3 we use the cellFs. So when the data streamer is created we call cellSysmoduleLoadModule(CELL_SYSMODULE_FS)
-         * and when we destroy it we call cellSysmoduleUnloadModule(CELL_SYSMODULE_FS). So you should consider that if you are using
-         * cellFs while the Streamer is not used in your code.
          */
         class Streamer
         {

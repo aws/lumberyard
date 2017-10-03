@@ -67,7 +67,7 @@ COctreeNode::~COctreeNode()
 
     m_arrEmptyNodes.Delete(this);
 
-    GetObjManager()->m_arrStreamingNodeStack.Delete(this);
+    GetObjManager()->GetArrStreamingNodeStack().Delete(this);
 
     if (m_pRNTmpData)
     {
@@ -258,7 +258,7 @@ void COctreeNode::CompileObjects()
 
     m_lstCasters.reserve(numCasters);
 
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
 
     // update node
     for (int l = 0; l < eRNListType_ListsNum; l++)
@@ -327,7 +327,7 @@ void COctreeNode::CompileObjects()
                         }
                     }
 
-                    if (eRType == eERType_RenderComponent || eRType == eERType_StaticMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
+                    if (eRType == eERType_RenderComponent ||eRType == eERType_StaticMeshRenderComponent || eRType == eERType_DynamicMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
                     {
                         int nSlotCount = pObj->GetSlotCount();
 
@@ -434,18 +434,18 @@ void COctreeNode::UpdateStaticInstancing()
     {
         for (auto it = m_pStaticInstancingInfo->begin(); it != m_pStaticInstancingInfo->end(); ++it)
         {
-            PodArray<SNodeInstancingInfo> * & pInfo = it->second;
+            PodArray<SNodeInstancingInfo>*& pInfo = it->second;
 
             pInfo->Clear();
         }
     }
 
     // group objects by CStatObj *
-    for (IRenderNode * pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, *pNext; pObj; pObj = pNext)
+    for (IRenderNode* pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, * pNext; pObj; pObj = pNext)
     {
         pNext = pObj->m_pNext;
 
-        CVegetation * pInst = (CVegetation*)pObj;
+        CVegetation* pInst = (CVegetation*)pObj;
 
         pObj->m_dwRndFlags &= ~ERF_STATIC_INSTANCING;
 
@@ -459,40 +459,50 @@ void COctreeNode::UpdateStaticInstancing()
             }
         }
 
-        IF(pObj->m_dwRndFlags&ERF_HIDDEN, 0)
+        IF (pObj->m_dwRndFlags & ERF_HIDDEN, 0)
+        {
             continue;
+        }
 
         Matrix34A objMatrix;
-        CStatObj * pStatObj = (CStatObj *)pInst->GetEntityStatObj(0, 0, &objMatrix);
+        CStatObj* pStatObj = (CStatObj*)pInst->GetEntityStatObj(0, 0, &objMatrix);
 
         int nLodA = -1;
         {
             const Vec3 vCamPos = GetSystem()->GetViewCamera().GetPosition();
 
             const float fEntDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, pInst->GetBBox()));
-            int wantedLod = CObjManager::GetObjectLOD(pInst, fEntDistance);
+            int wantedLod = GetObjManager()->GetObjectLOD(pInst, fEntDistance);
 
             int minUsableLod = pStatObj->GetMinUsableLod();
             int maxUsableLod = (int)pStatObj->m_nMaxUsableLod;
             nLodA = CLAMP(wantedLod, minUsableLod, maxUsableLod);
             if (!(pStatObj->m_nFlags & STATIC_OBJECT_COMPOUND))
+            {
                 nLodA = pStatObj->FindNearesLoadedLOD(nLodA);
+            }
         }
 
         if (nLodA < 0)
+        {
             continue;
+        }
 
-        pStatObj = (CStatObj *)pStatObj->GetLodObject(nLodA);
+        pStatObj = (CStatObj*)pStatObj->GetLodObject(nLodA);
 
         if (!m_pStaticInstancingInfo)
-            m_pStaticInstancingInfo = new std::map<std::pair<IStatObj*, _smart_ptr<IMaterial>>, PodArray<SNodeInstancingInfo>*>;
+        {
+            m_pStaticInstancingInfo = new std::map<std::pair<IStatObj*, _smart_ptr<IMaterial> >, PodArray<SNodeInstancingInfo>*>;
+        }
 
-        std::pair<IStatObj*, _smart_ptr<IMaterial>> pairKey(pStatObj, pInst->GetMaterial());
+        std::pair<IStatObj*, _smart_ptr<IMaterial> > pairKey(pStatObj, pInst->GetMaterial());
 
-        PodArray<SNodeInstancingInfo>* & pInfo = (*m_pStaticInstancingInfo)[pairKey];
+        PodArray<SNodeInstancingInfo>*& pInfo = (*m_pStaticInstancingInfo)[pairKey];
 
         if (!pInfo)
+        {
             pInfo = new PodArray<SNodeInstancingInfo>;
+        }
 
         SNodeInstancingInfo ii;
         ii.pRNode = pInst;
@@ -506,23 +516,25 @@ void COctreeNode::UpdateStaticInstancing()
     {
         for (auto it = m_pStaticInstancingInfo->begin(); it != m_pStaticInstancingInfo->end(); ++it)
         {
-            PodArray<SNodeInstancingInfo> * & pInfo = it->second;
+            PodArray<SNodeInstancingInfo>*& pInfo = it->second;
 
             if (pInfo->Count() > GetCVars()->e_StaticInstancingMinInstNum)
             {
-                CVegetation * pFirstNode = pInfo->GetAt(0).pRNode;
+                CVegetation* pFirstNode = pInfo->GetAt(0).pRNode;
 
                 // put instancing into one of existing vegetations
-                PodArrayAABB<CRenderObject::SInstanceData> * pInsts = pFirstNode->m_pInstancingInfo = new PodArrayAABB<CRenderObject::SInstanceData>;
+                PodArrayAABB<CRenderObject::SInstanceData>* pInsts = pFirstNode->m_pInstancingInfo = new PodArrayAABB<CRenderObject::SInstanceData>;
                 pInsts->PreAllocate(pInfo->Count(), pInfo->Count());
                 pInsts->m_aabbBox.Reset();
 
                 if (pFirstNode->m_pRNTmpData)
+                {
                     Get3DEngine()->FreeRNTmpData(&pFirstNode->m_pRNTmpData);
+                }
 
                 for (int i = 0; i < pInfo->Count(); i++)
                 {
-                    SNodeInstancingInfo & ii = pInfo->GetAt(i);
+                    SNodeInstancingInfo& ii = pInfo->GetAt(i);
 
                     if (i)
                     {
@@ -561,11 +573,11 @@ void COctreeNode::ResetStaticInstancing()
 
     m_lstVegetationsForRendering.Clear();
 
-    for (IRenderNode * pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, *pNext; pObj; pObj = pNext)
+    for (IRenderNode* pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, * pNext; pObj; pObj = pNext)
     {
         pNext = pObj->m_pNext;
 
-        CVegetation * pInst = (CVegetation*)pObj;
+        CVegetation* pInst = (CVegetation*)pObj;
 
         pObj->m_dwRndFlags &= ~ERF_STATIC_INSTANCING;
 
@@ -573,14 +585,16 @@ void COctreeNode::ResetStaticInstancing()
         {
             SAFE_DELETE(pInst->m_pInstancingInfo)
 
-                if (pInst->m_pRNTmpData)
-                    Get3DEngine()->FreeRNTmpData(&pInst->m_pRNTmpData);
+            if (pInst->m_pRNTmpData)
+            {
+                Get3DEngine()->FreeRNTmpData(&pInst->m_pRNTmpData);
+            }
         }
     }
 
     if (m_pStaticInstancingInfo)
     {
-        for (auto it = m_pStaticInstancingInfo->begin(); it != m_pStaticInstancingInfo->end();)
+        for (auto it = m_pStaticInstancingInfo->begin(); it != m_pStaticInstancingInfo->end(); )
         {
             PodArray<SNodeInstancingInfo>*& pInfo = it->second;
 
@@ -600,7 +614,9 @@ void COctreeNode::CheckUpdateStaticInstancing()
     if (GetCVars()->e_StaticInstancing)
     {
         if (m_bStaticInstancingIsDirty)
+        {
             UpdateStaticInstancing();
+        }
     }
     else if (m_pStaticInstancingInfo)
     {
@@ -901,7 +917,7 @@ void COctreeNode::MoveObjectsIntoList(PodArray<SRNInfo>* plstResultEntities, con
             {
                 EERType eRType = pObj->GetRenderNodeType();
 
-                if (eRType == eERType_RenderComponent || eRType == eERType_StaticMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
+                if (eRType == eERType_RenderComponent || eRType == eERType_DynamicMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
                 {
                     if (pObj->IsMovableByGame())
                     {
@@ -910,7 +926,8 @@ void COctreeNode::MoveObjectsIntoList(PodArray<SRNInfo>* plstResultEntities, con
                 }
                 else if (
                     eRType != eERType_Brush &&
-                    eRType != eERType_Vegetation)
+                    eRType != eERType_Vegetation &&
+                    eRType != eERType_StaticMeshRenderComponent)
                 {
                     continue;
                 }
@@ -1198,7 +1215,7 @@ void COctreeNode::ActivateObjectsLayer(uint16 nLayerId, bool bActivate, bool bPh
                 }
                 else
                 {
-                    pDecal->DeleteDecals();
+                    pDecal->DeleteDecal();
                 }
             }
         }
@@ -1621,9 +1638,9 @@ bool COctreeNode::RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vCloses
 
 #endif
 
-void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, SHotUpdateInfo* pExportInfo)
+void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, SHotUpdateInfo* pExportInfo)
 {
-    COMPILE_TIME_ASSERT(eERType_TypesNum == 27);//if eERType number is changed, have to check this code.
+    COMPILE_TIME_ASSERT(eERType_TypesNum == 28);//if eERType number is changed, have to check this code.
     AABB* pBox = (pExportInfo && !pExportInfo->areaBox.IsReset()) ? &pExportInfo->areaBox : NULL;
 
     if (pBox && !Overlap::AABB_AABB(GetNodeBox(), *pBox))
@@ -1653,23 +1670,13 @@ void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTa
                 }
             }
 
-            //Add static meshes that have static transforms to the 
+            //Add static meshes that have static transforms to the
             //static object table.
             if (eType == eERType_StaticMeshRenderComponent)
             {
-                AZ::EntityId azEntityId = pObj->GetEntityId();
-                if (azEntityId.IsValid())
+                if (CObjManager::GetItemId<IStatObj>(pStatObjTable, pObj->GetEntityStatObj(), false) < 0)
                 {
-                    bool isStaticTransform = false;
-                    AZ::TransformBus::EventResult(isStaticTransform, azEntityId, &AZ::TransformBus::Events::IsStaticTransform);
-
-                    if (isStaticTransform)
-                    {
-                        if (CObjManager::GetItemId<IStatObj>(pStatObjTable, pObj->GetEntityStatObj(), false) < 0)
-                        {
-                            pStatObjTable->push_back(pObj->GetEntityStatObj());
-                        }
-                    }
+                    pStatObjTable->push_back(pObj->GetEntityStatObj());
                 }
             }
 
@@ -1678,7 +1685,8 @@ void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTa
                 eType == eERType_Decal ||
                 eType == eERType_WaterVolume ||
                 eType == eERType_DistanceCloud ||
-                eType == eERType_WaterWave)
+                eType == eERType_WaterWave ||
+                eType == eERType_StaticMeshRenderComponent)
             {
                 if ((eType != eERType_Brush || ((CBrush*)pObj)->m_pMaterial) && CObjManager::GetItemId(pMatTable, pObj->GetMaterial(), false) < 0)
                 {
@@ -2044,17 +2052,17 @@ bool COctreeNode::UpdateStreamingPriority(PodArray<COctreeNode*>& arrRecursion, 
     return true;
 }
 
-int COctreeNode::Load(AZ::IO::HandleType& fileHandle, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
+int COctreeNode::Load(AZ::IO::HandleType& fileHandle, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
 {
     return Load_T(fileHandle, nDataSize, pStatObjTable, pMatTable, eEndian, pBox, pLayerVisibilityMask);
 }
-int COctreeNode::Load(uint8*& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
+int COctreeNode::Load(uint8*& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
 {
     return Load_T(f, nDataSize, pStatObjTable, pMatTable, eEndian, pBox, pLayerVisibilityMask);
 }
 
 template <class T>
-int COctreeNode::Load_T(T& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
+int COctreeNode::Load_T(T& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, EEndian eEndian, AABB* pBox, const SLayerVisibility* pLayerVisibilityMask)
 {
     if (pBox && !Overlap::AABB_AABB(GetNodeBox(), *pBox))
     {
@@ -2127,7 +2135,7 @@ int COctreeNode::Load_T(T& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTa
 
 
 #if ENGINE_ENABLE_COMPILATION
-int COctreeNode::GetData(byte*& pData, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
+int COctreeNode::GetData(byte*& pData, int& nDataSize, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
 {
     AABB* pBox = (pExportInfo && !pExportInfo->areaBox.IsReset()) ? &pExportInfo->areaBox : NULL;
 

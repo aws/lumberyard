@@ -11,11 +11,12 @@
 */
 #pragma once
 
-#if defined(DARWIN)
+#if defined(DARWIN) || defined(ORBIS) || defined(ANDROID)
 // Notes in the Cry* code indicate that strdup may cause memory errors, and shouldn't be
 // used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
 #   undef strdup
-#endif
+#endif // defined(DARWN) || defined(ORBIS) || defined(ANDROID)
+
 
 #pragma warning( push )
 #pragma warning(disable: 4800)  // 'int' : forcing value to bool 'true' or 'false' (performance warning)
@@ -23,8 +24,17 @@
 #pragma warning( pop )
 #include <gmock/gmock.h>
 
-#if defined(DARWIN)
-#   define AZTEST_EXPORT extern "C" __attribute__ ((visibility("default")))
+#include <AzCore/Memory/OSAllocator.h>
+
+#if defined(DARWIN) || defined (ANDROID)
+#   define AZTEST_DLL_PUBLIC __attribute__ ((visibility ("default")))
+#else
+#   define AZTEST_DLL_PUBLIC
+#endif
+
+
+#if defined(DARWIN) || defined(ANDROID)
+#   define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
 #else
 #   define AZTEST_EXPORT extern "C" __declspec(dllexport)
 #endif
@@ -59,6 +69,30 @@ namespace AZ
         protected:
             virtual void SetupEnvironment() = 0;
             virtual void TeardownEnvironment() = 0;
+        };
+
+        /*!
+        * Monolithic builds will have all the environments available.  Keep a mapping to run the desired envs.
+        */
+        class TestEnvironmentRegistry
+        {
+        public:
+            TestEnvironmentRegistry(std::vector<ITestEnvironment*> a_envs, const std::string& a_module_name, bool a_unit)
+                : m_module_name(a_module_name)
+                , m_envs(a_envs)
+                , m_unit(a_unit)
+            {
+                s_envs.push_back(this);
+            }
+
+            const std::string m_module_name;
+            std::vector<ITestEnvironment*> m_envs;
+            bool m_unit;
+
+            static std::vector<TestEnvironmentRegistry*> s_envs;
+
+        private:
+            TestEnvironmentRegistry& operator=(const TestEnvironmentRegistry& tmp);
         };
 
         /*!
@@ -100,13 +134,14 @@ namespace AZ
             int ReturnCode() const { return m_returnCode; }
 
         private:
-            //! Run tests in a single library by loading it dynamically and executing the exported symbol, 
-            //! passing main-like parameters (argc, argv) from the (real or artificial) command line.
-            int RunTestsInLib(Platform& platform, const std::string& lib, const std::string& symbol, int& argc, char** argv);
-
             int m_returnCode;
             std::vector<ITestEnvironment*> m_envs;
         };
+
+        //! Run tests in a single library by loading it dynamically and executing the exported symbol,
+        //! passing main-like parameters (argc, argv) from the (real or artificial) command line.
+        int RunTestsInLib(Platform& platform, const std::string& lib, const std::string& symbol, int& argc, char** argv);
+
     } // Test
 } // AZ
 
@@ -114,7 +149,7 @@ namespace AZ
 #define AZ_INTEG_TEST_HOOK_NAME AzRunIntegTests
 
 #if !defined(AZ_MONOLITHIC_BUILD)
-// Environments should be declared dynamically, framework will handle deletion of resources    
+// Environments should be declared dynamically, framework will handle deletion of resources
 #define AZ_UNIT_TEST_HOOK(...)                                                      \
     AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)                 \
     {                                                                               \
@@ -137,13 +172,27 @@ namespace AZ
         int result = RUN_ALL_TESTS();                                               \
         return result;                                                              \
     }
-
 #else // monolithic build
 
-// Monolithic builds do not support individual test hooks
-#define AZ_UNIT_TEST_HOOK(...) ;
-#define AZ_INTEG_TEST_HOOK(...) ;
+#undef GTEST_MODULE_NAME_
+#define GTEST_MODULE_NAME_ AZ_MODULE_NAME
+#define AZTEST_CONCAT_(a, b) a ## _ ## b
+#define AZTEST_CONCAT(a, b) AZTEST_CONCAT_(a, b)
 
+#define AZ_UNIT_TEST_HOOK_REGISTRY_NAME AZTEST_CONCAT(AZ_UNIT_TEST_HOOK_NAME, Registry)
+#define AZ_INTEG_TEST_HOOK_REGISTRY_NAME AZTEST_CONCAT(AZ_INTEG_TEST_HOOK_NAME, Registry)
+
+#define AZ_UNIT_TEST_HOOK(...)                                                      \
+            static AZ::Test::TestEnvironmentRegistry* AZ_UNIT_TEST_HOOK_REGISTRY_NAME =\
+                new( AZ_OS_MALLOC(sizeof(AZ::Test::TestEnvironmentRegistry),           \
+                                  alignof(AZ::Test::TestEnvironmentRegistry)))         \
+              AZ::Test::TestEnvironmentRegistry({ __VA_ARGS__ }, AZ_MODULE_NAME, true);         
+
+#define AZ_INTEG_TEST_HOOK(...)                                                     \
+            static AZ::Test::TestEnvironmentRegistry* AZ_INTEG_TEST_HOOK_REGISTRY_NAME =\
+                new( AZ_OS_MALLOC(sizeof(AZ::Test::TestEnvironmentRegistry),           \
+                                  alignof(AZ::Test::TestEnvironmentRegistry)))         \
+              AZ::Test::TestEnvironmentRegistry({ __VA_ARGS__ }, AZ_MODULE_NAME, false); 
 #endif // AZ_MONOLITHIC_BUILD
 
 // Declares a visible external symbol which identifies an executable as containing tests
@@ -151,11 +200,20 @@ namespace AZ
 
 // Attempts to invoke the unit test main function if appropriate flags are present,
 // otherwise simply continues launch as normal.
-// Implementation depends on if command line is an array already or not.
 #define INVOKE_AZ_UNIT_TEST_MAIN(...)                                               \
     do {                                                                            \
         AZ::Test::AzUnitTestMain unitTestMain({__VA_ARGS__});                       \
         if (unitTestMain.Run(argc, argv))                                           \
+        {                                                                           \
+            return unitTestMain.ReturnCode();                                       \
+        }                                                                           \
+    } while (0); // safe multi-line macro - creates a single statement
+
+// Some implementations use a commandLine rather than argc/argv
+#define INVOKE_AZ_UNIT_TEST_MAIN_COMMAND_LINE(...)                                  \
+    do {                                                                            \
+        AZ::Test::AzUnitTestMain unitTestMain({__VA_ARGS__});                       \
+        if (unitTestMain.Run(commandLine))                                          \
         {                                                                           \
             return unitTestMain.ReturnCode();                                       \
         }                                                                           \

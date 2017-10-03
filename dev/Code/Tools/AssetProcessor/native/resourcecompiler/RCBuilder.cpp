@@ -21,6 +21,7 @@
 #include <AzCore/std/parallel/atomic.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/Application/Application.h>
 
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
@@ -40,7 +41,6 @@
 #else
 #error Unsupported Platform for RC
 #endif
-
 
 
 namespace AssetProcessor
@@ -210,11 +210,6 @@ namespace AssetProcessor
     {
     }
 
-    NativeLegacyRCCompiler::~NativeLegacyRCCompiler()
-    {
-        AssetRegistryNotificationBus::Handler::BusDisconnect();
-    }
-
     bool NativeLegacyRCCompiler::Initialize(const QString& systemRoot, const QString& rcExecutableFullPath)
     {
         // QFile::exists(normalizedPath)
@@ -223,8 +218,6 @@ namespace AssetProcessor
             AZ_TracePrintf(AssetProcessor::DebugChannel, QString("Cannot locate system root dir %1").arg(systemRoot).toUtf8().data());
             return false;
         }
-
-        AssetRegistryNotificationBus::Handler::BusConnect();
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
 
@@ -363,15 +356,15 @@ namespace AssetProcessor
         QString cmdLine;
         if (!dest.isEmpty())
         {
-            QDir engineRoot;
-            AssetUtilities::ComputeEngineRoot(engineRoot);
-            QString gameRoot = engineRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
             QString gameName = AssetUtilities::ComputeGameName();
 
             int portNumber = 0;
             ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
-            cmdLine = QString("\"%1\" /p=%2 /pi=%9 %3 /unattended /threads=1 /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\"");
+            QDir assetRoot;
+            AssetUtilities::ComputeAssetRoot(assetRoot);
+            QString gameRoot = assetRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
+            cmdLine = QString("\"%1\" /p=%2 /pi=%9 %3 /unattended=true /threads=1 /gameroot=\"%4\" /watchfolder=\"%6\" /targetroot=\"%5\" /logprefix=\"%5/\" /port=%7 /gamesubdirectory=\"%8\"");
             cmdLine = cmdLine.arg(inputFile, platform, params, gameRoot, dest, watchFolder).arg(portNumber).arg(gameName).arg(platformId);
         }
         else
@@ -534,11 +527,29 @@ namespace AssetProcessor
     {
         InitializeAssetRecognizers(recognizerConfig.GetAssetRecognizerContainer());
 
+        // Get the engine root since rc.exe will exist there and not in any external project folder
         QDir systemRoot;
         bool computeRootResult = AssetUtilities::ComputeEngineRoot(systemRoot);
         AZ_Assert(computeRootResult, "AssetUtilities::ComputeEngineRoot failed");
 
+#if defined(RUN_ENGINE_LOCAL_RC)
+        QString assetRoot;
+        QString appName;
+        QString binFolder;
+        AssetUtilities::ComputeAppRootAndBinFolderFromApplication(assetRoot, appName, binFolder);
+
+        QString rcExecutableFullPath;
+        if (systemRoot.cd(binFolder))
+        {
+            rcExecutableFullPath = systemRoot.absolutePath() + LEGACY_RC_RELATIVE_PATH;
+        }
+        else
+        {
+            rcExecutableFullPath = QCoreApplication::applicationDirPath() + LEGACY_RC_RELATIVE_PATH;
+        }
+#else
         QString rcExecutableFullPath = QCoreApplication::applicationDirPath() + LEGACY_RC_RELATIVE_PATH;
+#endif
 
         if (!m_rcCompiler->Initialize(systemRoot.canonicalPath(), rcExecutableFullPath))
         {
@@ -868,8 +879,49 @@ namespace AssetProcessor
             workDir.removeRecursively();
         }
     }
+    
+    bool InternalRecognizerBasedBuilder::SaveProcessJobRequestFile(const char* requestFileDir, const char* requestFileName, const AssetBuilderSDK::ProcessJobRequest& request)
+    {
+        AZStd::string finalFullPath;
+        AzFramework::StringFunc::Path::Join(requestFileDir, requestFileName, finalFullPath);
+        if (!AZ::Utils::SaveObjectToFile(finalFullPath.c_str(), AZ::DataStream::ST_XML, &request))
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Failed to write ProcessJobRequest to file %s", finalFullPath.c_str());
+            return false;
+        }
 
-    void InternalRecognizerBasedBuilder::ProcessLegacyRCJob(const AssetBuilderSDK::ProcessJobRequest& request, QString rcParam, AZ::Uuid productAssetType, const AssetBuilderSDK::JobCancelListener& jobCancelListener, AssetBuilderSDK::ProcessJobResponse& response)
+        return true;
+    }
+    
+    bool InternalRecognizerBasedBuilder::LoadProcessJobResponseFile(const char* responseFileDir, const char* responseFileName, AssetBuilderSDK::ProcessJobResponse& response, bool& responseLoaded)
+    {
+        responseLoaded = false;
+        AZStd::string finalFullPath;
+        AzFramework::StringFunc::Path::Join(responseFileDir, responseFileName, finalFullPath);
+        if (AZ::IO::FileIOBase::GetInstance()->Exists(finalFullPath.c_str()))
+        {
+            // make a new one in case of pollution.
+            response = AssetBuilderSDK::ProcessJobResponse();
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Loading the response from '%s' emitted by RC.EXE.\n", finalFullPath.c_str());
+            if (!AZ::Utils::LoadObjectFromFileInPlace(finalFullPath.c_str(), response))
+            {
+                // rc TRIED to make a response file and failed somehow!
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                AZ_Error(AssetProcessor::DebugChannel, false, "Failed to deserialize '%s' despite RC.EXE having written it.", finalFullPath.c_str());
+                return false;
+            }
+            else
+            {
+                // we loaded it.
+                responseLoaded = true;
+            }
+        }
+        // either way, its not a failure if the file doesn't exist or loaded successfully
+        return true;
+    }
+
+    void InternalRecognizerBasedBuilder::ProcessLegacyRCJob(const AssetBuilderSDK::ProcessJobRequest& request, QString rcParam, 
+        AZ::Uuid productAssetType, const AssetBuilderSDK::JobCancelListener& jobCancelListener, AssetBuilderSDK::ProcessJobResponse& response)
     {
         // Process this job
         QString inputFile = QString(request.m_fullPath.c_str());
@@ -888,15 +940,18 @@ namespace AssetProcessor
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1000));
             } while (copyJobActivityCounter != s_TempSolution_CopyJobActivityCounter);
 
-            // always wait for a registry save here
-            {
-                AssetUtilities::AssetRegistryListener listener;
-                listener.WaitForSync();
-            }
-
             s_TempSolution_CopyJobsFinished = true;
         }
 
+        QDir workDir(dest);
+     
+        if (!SaveProcessJobRequestFile(dest.toUtf8().constData(), AssetBuilderSDK::s_processJobRequestFileName, request))
+        {
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            return;
+        }
+
+       
         if ((!this->m_rcCompiler->Execute(inputFile, watchFolder, platformId, rcParam, dest, &jobCancelListener, rcResult)) || (rcResult.m_exitCode != 0))
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Job ID %lld Failed with exit code %d\n", AssetProcessor::GetThreadLocalJobId(), rcResult.m_exitCode);
@@ -911,6 +966,34 @@ namespace AssetProcessor
             return;
         }
 
+        // did the rc Compiler output a response file?
+        bool responseFromRCCompiler = false;
+        if (!LoadProcessJobResponseFile(dest.toUtf8().constData(), AssetBuilderSDK::s_processJobResponseFileName, response, responseFromRCCompiler))
+        {
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            return;
+        }
+        
+        if (!responseFromRCCompiler)
+        {
+            // if the response was NOT loaded from a response file, we assume success (since RC did not crash or anything)
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+        }
+
+        if (jobCancelListener.IsCancelled())
+        {
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
+            return;
+        }
+
+        if (response.m_requiresSubIdGeneration)
+        {
+            ProcessRCResultFolder(dest, productAssetType, responseFromRCCompiler, response);
+        }
+    }
+
+    void InternalRecognizerBasedBuilder::ProcessRCResultFolder(const QString &dest, const AZ::Uuid& productAssetType, bool responseFromRCCompiler, AssetBuilderSDK::ProcessJobResponse &response)
+    {
         // Get all of the files from the dest folder
         QFileInfoList   originalFiles = GetFilesInDirectory(dest);
         QFileInfoList   filteredFiles;
@@ -920,49 +1003,57 @@ namespace AssetProcessor
 
         bool hasSubIdCollision = false;
 
+        // for legacy compatibility, we generate the list of output Products ourselves so that we can
+        // assign legacy SubIDs to them:
+        AZStd::vector<AssetBuilderSDK::JobProduct> generatedOutputProducts;
+
         for (const auto& file : originalFiles)
         {
-            if (jobCancelListener.IsCancelled())
+            if (MatchTempFileToSkip(file.fileName()))
             {
-                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
-                return;
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "RC created temporary file: (%s), ignoring.\n", file.absoluteFilePath().toUtf8().data());
+                continue;
             }
 
-            QString outputFilename = file.fileName();
-            if (MatchTempFileToSkip(outputFilename))
+            AZStd::string productName = file.fileName().toUtf8().constData();
+
+            // convert to abs path:
+            if (AzFramework::StringFunc::Path::IsRelative(productName.c_str()))
             {
-                AZ_TracePrintf("RC Builder", "RC created temporary file: (%s), ignoring.\n", file.absoluteFilePath().toUtf8().data());
-                continue;
+                // convert to absolute path.
+                AZStd::string joinedPath;
+                AzFramework::StringFunc::Path::Join(dest.toUtf8().constData(), productName.c_str(), joinedPath);
+                productName.swap(joinedPath);
+            }
+            else
+            {
+                AzFramework::StringFunc::Path::Normalize(productName);
             }
 
             // this kind of job can output multiple products.
             // we are going to generate SUBIds for them if they collide, here!
             // ideally, the builder SDK builder written for this asset type would deal with it.
 
-            AZ_TracePrintf("RC Builder", "RC created product file: (%s).\n", file.absoluteFilePath().toUtf8().data());
-            response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(AZStd::string(file.absoluteFilePath().toUtf8().data()), productAssetType));
-            hasSubIdCollision |= (m_alreadyAssignedSubIDs.insert(response.m_outputProducts.back().m_productSubID).second == false); // insert returns pair<iter, bool> where the bool is false if it was already there.
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "RC created product file: (%s).\n", productName.c_str());
+            generatedOutputProducts.push_back(AssetBuilderSDK::JobProduct(productName, productAssetType));
+            hasSubIdCollision |= (m_alreadyAssignedSubIDs.insert(generatedOutputProducts.back().m_productSubID).second == false); // insert returns pair<iter, bool> where the bool is false if it was already there.
         }
 
         // now fix any subid collisions, but only if we have an actual collision.
+        // previously these would be the real subids, but now they are legacy subids if the response was given.
         if (hasSubIdCollision)
         {
             m_alreadyAssignedSubIDs.clear();
-            for (AssetBuilderSDK::JobProduct& product : response.m_outputProducts)
+            for (AssetBuilderSDK::JobProduct& product : generatedOutputProducts)
             {
-                if (jobCancelListener.IsCancelled())
-                {
-                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
-                    return;
-                }
-
                 AZ_TracePrintf("RC Builder", "SubId collision detected for product file: (%s).\n", product.m_productFileName.c_str());
                 AZ::u32 seedValue = 0;
                 while (m_alreadyAssignedSubIDs.find(product.m_productSubID) != m_alreadyAssignedSubIDs.end())
                 {
                     // its already in!  pick another one.  For now, lets pick something based on the name so that ordering doesn't mess it up
                     QFileInfo productFileInfo(product.m_productFileName.c_str());
-                    AZ::u32 fullCRC = AZ::Crc32(productFileInfo.fileName().toUtf8().data());
+                    QString filePart = productFileInfo.fileName(); // the file part only (blah.dds) - not the path.
+                    AZ::u32 fullCRC = AZ::Crc32(filePart.toUtf8().data());
                     AZ::u32 maskedCRC = (fullCRC + seedValue) & AssetBuilderSDK::SUBID_MASK_ID;
 
                     // preserve the LOD and the other flags, but replace the CRC:
@@ -974,8 +1065,87 @@ namespace AssetProcessor
             }
         }
 
-        // its fine for RC to decide there are no outputs.  The only factor is what its exit code is.
-        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+        // now that we have generated both the legacy product subIDs and have potentially gotten a response from RC.EXE, we reconcile them
+        if (!responseFromRCCompiler)
+        {
+            // If we get here, it means that RC.EXE did no generate a response file for us, so its 100% up to our heuristic to decide on subIds.
+            response.m_outputProducts = generatedOutputProducts;
+
+            // its fine for RC to decide there are no outputs.  The only factor is what its exit code is.
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+        }
+        else
+        {
+            // otherwise, if we get here it means that RC.EXE output a valid response file for us, including a list of canonical products
+            // all we need to do thus is match up the generated products with the ones it made to fill out the legacy SubID field.
+
+            // this is also our opportunity to clean and check for problems such as duplicate product files and duplicate subIDs.
+            AZStd::unordered_set<AZStd::string> productsToCheckForDuplicates;
+            AZStd::unordered_map<AZ::u32, AZStd::string> subIdsToCheckForDuplicates;
+
+            for (AssetBuilderSDK::JobProduct& product : response.m_outputProducts)
+            {
+                AZStd::string productName = product.m_productFileName;
+
+                if (productName.empty())
+                {
+                    AZ_Error(AssetProcessor::DebugChannel, false, "The RC Builder responded with a processJobResult.xml but that xml contained an empty product name.");
+                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    return; // its a failure to do this!
+                }
+
+                // now clean it, normalize it, and make it absolute so that its unambiguous.
+                // do not convert its case - this has to work on Operating Systems which have case sensitivy.
+                // we'll insert a lowercase copy into the set to check.
+                if (AzFramework::StringFunc::Path::IsRelative(productName.c_str()))
+                {
+                    // convert to absolute path.
+                    AZStd::string joinedPath;
+                    AzFramework::StringFunc::Path::Join(dest.toUtf8().constData(), productName.c_str(), joinedPath);
+                    productName.swap(joinedPath);
+                }
+          
+                // update it in the structure to be absolute normalized path.
+                product.m_productFileName = productName;
+
+                AZStd::string productNameLowerCase = productName;
+                AZStd::to_lower(productNameLowerCase.begin(), productNameLowerCase.end());
+
+                if (subIdsToCheckForDuplicates.find(product.m_productSubID) != subIdsToCheckForDuplicates.end())
+                {
+                    AZStd::string collidingFileName = subIdsToCheckForDuplicates[product.m_productSubID];
+                    AZ_Error(AssetProcessor::DebugChannel, false, "Duplicate subID emitted by builder: '%s' with subID 0x%08x was in the outputProducts array more than once.", collidingFileName.c_str(), product.m_productSubID);
+                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    return; // its a failure to do this!
+                }
+                subIdsToCheckForDuplicates.insert(product.m_productSubID);
+
+                if (productsToCheckForDuplicates.find(productNameLowerCase) != productsToCheckForDuplicates.end())
+                {
+                    AZ_Error(AssetProcessor::DebugChannel, false, "Duplicate product emitted by builder: '%s' was in the outputProducts array more than once.", productName.c_str());
+                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    return; // its a failure to do this!
+                }
+                productsToCheckForDuplicates.insert(productNameLowerCase);
+
+                // we are through the gauntlet.  Now reconcile this with the previously generated legacy subIDs.
+                for (AssetBuilderSDK::JobProduct& generatedProduct : generatedOutputProducts)
+                {
+                    AZStd::string generatedPath = generatedProduct.m_productFileName;
+                    // (this is already absolute path and already normalized)
+
+                    // this is icase compare and is being done in utf8 strings.
+                    if (AzFramework::StringFunc::Equal(generatedPath.c_str(), productName.c_str()))
+                    {
+                        // found it.
+                        if (AZStd::find(product.m_legacySubIDs.begin(), product.m_legacySubIDs.end(), generatedProduct.m_productSubID) == product.m_legacySubIDs.end())
+                        {
+                            product.m_legacySubIDs.push_back(generatedProduct.m_productSubID);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void InternalRecognizerBasedBuilder::ProcessCopyJob(const AssetBuilderSDK::ProcessJobRequest& request, AZ::Uuid productAssetType, const AssetBuilderSDK::JobCancelListener& jobCancelListener, AssetBuilderSDK::ProcessJobResponse& response)
@@ -1004,6 +1174,8 @@ namespace AssetProcessor
     {
         // List of specific files to skip
         static const char* s_fileNamesToSkip[] = {
+            AssetBuilderSDK::s_processJobRequestFileName,
+            AssetBuilderSDK::s_processJobResponseFileName,
             "rc_createdfiles.txt",
             "rc_log.log",
             "rc_log_warnings.log",

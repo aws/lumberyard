@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "LayerNode.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -31,8 +32,13 @@ namespace
 };
 
 //-----------------------------------------------------------------------------
+CLayerNode::CLayerNode()
+    : CLayerNode(0)
+{
+}
+
 CLayerNode::CLayerNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Layer)
     , m_bInit(false)
     , m_bPreVisibility(true)
 {
@@ -59,7 +65,7 @@ void CLayerNode::Animate(SAnimContext& ec)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
         if (pTrack->GetNumKeys() == 0)
         {
             continue;
@@ -133,6 +139,7 @@ void CLayerNode::Activate(bool bActivate)
 }
 
 //-----------------------------------------------------------------------------
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CLayerNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -169,4 +176,11 @@ bool CLayerNode::GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo&
         }
     }
     return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CLayerNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CLayerNode, CAnimNode>()
+        ->Version(1);
 }

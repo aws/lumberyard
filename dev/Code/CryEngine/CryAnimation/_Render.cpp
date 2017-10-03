@@ -380,16 +380,16 @@ SSkinningData* CCharInstance::GetSkinningData()
 {
     DEFINE_PROFILER_FUNCTION();
 
-    uint32 skinningQuatCount = GetSkinningTransformationCount();
-    uint32 skinningQuatCountMax = GetSkinningTransformationCount();
-    uint32 nNumBones = min(skinningQuatCount, skinningQuatCountMax);
+    uint32 nNumBones = GetSkinningTransformationCount();
 
     bool bNeedJobSyncVar = true;
 
     // get data to fill
     int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
-    int nList = nFrameID % 3;
-    int nPrevList = (nFrameID - 1) % 3;
+    int nPrevFrameID = nFrameID - 1;
+
+    int nList = nFrameID % tripleBufferSize;
+    int nPrevList = nPrevFrameID % tripleBufferSize;
 
     // before allocating new skinning date, check if we already have for this frame
     if (arrSkinningRendererData[nList].nFrameID == nFrameID && arrSkinningRendererData[nList].pSkinningData)
@@ -397,9 +397,17 @@ SSkinningData* CCharInstance::GetSkinningData()
         return arrSkinningRendererData[nList].pSkinningData;
     }
 
-    SSkinningData* pSkinningData = gEnv->pRenderer->EF_CreateSkinningData(nNumBones, bNeedJobSyncVar);
+    SSkinningData* pSkinningData = gEnv->pRenderer->EF_CreateSkinningData(nNumBones, bNeedJobSyncVar, m_bUseMatrixSkinning);
     arrSkinningRendererData[nList].pSkinningData = pSkinningData;
+    arrSkinningRendererData[nList].nNumBones = nNumBones;
     arrSkinningRendererData[nList].nFrameID = nFrameID;
+
+    //clear obsolete data
+    int nPrevPrevList = (nFrameID - 2) % tripleBufferSize;
+    if (nPrevPrevList >= 0 && arrSkinningRendererData[nPrevPrevList].pSkinningData)
+    {
+        arrSkinningRendererData[nPrevPrevList].pSkinningData->pPreviousSkinningRenderData = nullptr;
+    }
 
     if (!pSkinningData)
     {
@@ -407,7 +415,7 @@ SSkinningData* CCharInstance::GetSkinningData()
     }
 
     // set data for motion blur
-    if (arrSkinningRendererData[nPrevList].nFrameID == (nFrameID - 1) && arrSkinningRendererData[nPrevList].pSkinningData)
+    if (arrSkinningRendererData[nPrevList].nFrameID == nPrevFrameID && arrSkinningRendererData[nPrevList].pSkinningData)
     {
         pSkinningData->nHWSkinningFlags |= eHWS_MotionBlured;
         pSkinningData->pPreviousSkinningRenderData = arrSkinningRendererData[nPrevList].pSkinningData;

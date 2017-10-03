@@ -45,6 +45,7 @@ namespace NCryOpenGL
         eF_BufferStorage,
         eF_MultiBind,
         eF_DebugOutput,
+        eF_DualSourceBlending,
         eF_NUM // Must be last one
     };
 
@@ -135,11 +136,68 @@ namespace NCryOpenGL
 
     typedef SResourceUnitPartitionBound TPipelineResourceUnitPartitionBound[eST_NUM];
 
-#if defined(DXGL_USE_SDL) && defined(DXGL_SINGLEWINDOW)
+#if defined(DXGL_USE_SDL)
+    // Interface for the different type of window contexts.
+    // The window context is the platform target where openGL will draw.
+    struct IWindowContext
+    {
+    public:
+        virtual ~IWindowContext() = default;
+
+        // Make the provided context and the window's surface current for the calling thread. 
+        virtual bool MakeCurrent(const TRenderingContext context) const = 0;
+        
+        // Swap the window's surface buffers.
+        virtual bool SwapBuffers() const = 0;
+
+        // Creates a new OpenGL context that is shared with the provided context using the current window. 
+        virtual TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const = 0;
+    };
+
+    // Implementation of the window context using SDL.
+    // It basically forward all calls to the SDL library.
+    struct SDLWindowContext : public IWindowContext
+    {
+    public:
+        SDLWindowContext(SDL_Window* window);
+        ~SDLWindowContext() override;
+        
+        // Returns the SDL_Window
+        SDL_Window* GetWindow() const { return m_window; }
+
+        bool MakeCurrent(const TRenderingContext context) const override;
+        bool SwapBuffers() const override;
+        TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const override;
+
+    protected:
+        SDL_Window* m_window;
+    };
+
+#ifdef AZ_PLATFORM_ANDROID
+    // Implementation of the window context as a PBuffer surface using EGL.
+    struct EGLPBufferWindowContext : public IWindowContext
+    {
+    public:
+        // Initialize the surface and display using the provided dimensions and pixel format specification.
+        EGLPBufferWindowContext(EGLint width, EGLint height, const SPixelFormatSpec& pixelFormat);
+        ~EGLPBufferWindowContext() override;
+
+        bool MakeCurrent(const TRenderingContext context) const override;
+        bool SwapBuffers() const override;
+        TRenderingContext CreateGLContext(const TRenderingContext sharedContext) const override;
+
+    protected:
+        EGLSurface m_surface;
+        EGLDisplay m_display;
+        EGLConfig m_config;
+    };
+#endif //AZ_PLATFORM_ANDROID
+
+#if defined(DXGL_SINGLEWINDOW)
 
     struct SMainWindow
     {
-        SDL_Window* m_pSDLWindow;
+        TWindowContext m_pSDLWindow;
         uint32 m_uWidth;
         uint32 m_uHeight;
         string m_strTitle;
@@ -148,7 +206,8 @@ namespace NCryOpenGL
         static SMainWindow ms_kInstance;
     };
 
-#endif
+#endif // DXGL_SINGLEWINDOW
+#endif // DXGL_USE_SDL
 
 #if DXGL_USE_ES_EMULATOR
 
@@ -169,17 +228,6 @@ namespace NCryOpenGL
         SDisplayMode m_kDesktopMode;
     };
 
-    enum EDriverVendor
-    {
-        eDV_NVIDIA,
-        eDV_NOUVEAU,
-        eDV_AMD,
-        eDV_ATI,
-        eDV_INTEL,
-        eDV_INTEL_OS,
-        eDV_UNKNOWN
-    };
-
     DXGL_DECLARE_REF_COUNTED(struct, SAdapter)
     {
         string m_strRenderer;
@@ -192,7 +240,7 @@ namespace NCryOpenGL
 
         TFeatures m_kFeatures;
         size_t m_uVRAMBytes;
-        EDriverVendor m_eDriverVendor;
+        unsigned int m_eDriverVendor;
         AZStd::unordered_set<size_t> m_kExtensions;
 
         void AddExtension(const AZStd::string& kExtension)
@@ -239,7 +287,7 @@ namespace NCryOpenGL
 
         CContext* ReserveContext();
         void ReleaseContext();
-        CContext* AllocateContext();
+        CContext* AllocateContext(CContext::ContextType type = CContext::ResourceType);
         void FreeContext(CContext * pContext);
         void BindContext(CContext * pContext);
         void UnbindContext(CContext * pContext);
@@ -301,7 +349,7 @@ namespace NCryOpenGL
         SDummyWindow* m_pDummyWindow;
 #endif //DXGL_FULL_EMULATION
         TContexts m_kContexts;
-        SList m_kFreeContexts;
+        SList m_kFreeContexts[CContext::NumContextTypes];
         void* m_pCurrentContextTLS;
 
         SBitMask<MAX_NUM_CONTEXT_PER_DEVICE, SSpinlockBitMaskWord> m_kContextFenceIssued;
@@ -318,7 +366,7 @@ namespace NCryOpenGL
     bool SwapChainDescToFrameBufferSpec(SFrameBufferSpec& kFrameBufferSpec, const DXGI_SWAP_CHAIN_DESC& kSwapChainDesc);
     bool GetNativeDisplay(TNativeDisplay& kNativeDisplay, HWND kWindowHandle);
     bool CreateWindowContext(TWindowContext& kWindowContext, const SFeatureSpec& kFeatureSpec, const SPixelFormatSpec& kPixelFormatSpec, const TNativeDisplay& kNativeDisplay);
-    void ReleaseWindowContext(const TWindowContext& kWindowContext);
+    void ReleaseWindowContext(TWindowContext& kWindowContext);
 #if defined(DXGL_USE_SDL)
     const SGIFormatInfo* SDLFormatToGIFormatInfo(int format);
 #endif //defined(DXGL_USE_SDL)

@@ -94,7 +94,12 @@ public: // member functions
     virtual IDraw2d::VAlign GetVerticalTextAlignment() = 0;
     virtual void SetVerticalTextAlignment(IDraw2d::VAlign alignment) = 0;
 
-    //! Given a point, return the character index in the string
+    virtual float GetCharacterSpacing() = 0;
+    virtual void SetCharacterSpacing(float characterSpacing) = 0;
+    virtual float GetLineSpacing() = 0;
+    virtual void SetLineSpacing(float lineSpacing) = 0;
+
+    //! Given a point in viewport space, return the character index in the string
     //! \param point a point in viewport space
     //! \param mustBeInBoundingBox if true the given point be be contained in the bounding box of
     //!  actual text characters (not the element). If false it can be anywhere (even outside the element)
@@ -103,6 +108,16 @@ public: // member functions
     //!  0 if to left of first char, 1 if between first and second char,
     //!  length of string if to right of last char
     virtual int GetCharIndexFromPoint(AZ::Vector2 point, bool mustBeInBoundingBox) = 0;
+
+    //! Given a point in untransformed canvas space, return the character index in the string
+    //! \param point a point in untransformed canvas space
+    //! \param mustBeInBoundingBox if true the given point be be contained in the bounding box of
+    //!  actual text characters (not the element). If false it can be anywhere (even outside the element)
+    //!  and is projected onto a text position (for drag select for example).
+    //! \return -1 if second param is true and point is outside box
+    //!  0 if to left of first char, 1 if between first and second char,
+    //!  length of string if to right of last char
+    virtual int GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mustBeInBoundingBox) = 0;
 
     //! Returns the XY coord of the rendered character position at a given index.
     //! Imagining a rect encompassing the character width and line height, 

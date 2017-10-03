@@ -1452,6 +1452,11 @@ void AWSProjectModel::ProcessOutputResourceGroupList(const QVariant& value)
 void AWSProjectModel::ProcessOutputProjectDescription(const QVariant& value)
 {
     GetConfigurationNode()->ProcessOutputProjectDescription(value);
+
+    QVariantMap map = value.value<QVariantMap>();
+    QVariantMap details = map["ProjectDetails"].value<QVariantMap>();
+    m_gemsFilePath = details["GemsFilePath"].toString();
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1635,6 +1640,11 @@ QString AWSProjectModel::GetDeploymentTemplateFile() const
     return returnString;
 }
 
+QString AWSProjectModel::GetGemsFile() const
+{
+    return m_gemsFilePath;
+}
+
 QVector<QString> AWSProjectModel::GetWritableFilesforUploadResources() const
 {
     QVector<QString > fileList;
@@ -1769,6 +1779,7 @@ void AWSProjectModel::CreateFunctionFolder(const QString& functionName, const QS
     QVariantMap args;
     args["function"] = functionName;
     args["resource_group"] = resourceGroupName;
+    args["force"] = true;
 
     auto _callback = [this, callback](const QString& key, const QVariant value)
     {

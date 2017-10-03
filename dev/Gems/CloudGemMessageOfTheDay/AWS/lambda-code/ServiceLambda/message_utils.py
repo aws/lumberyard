@@ -22,7 +22,7 @@ def get_message_table():
         message_table_name = CloudCanvas.get_setting('MessageTable')
         get_message_table.message_table = boto3.resource('dynamodb').Table(message_table_name)
         if get_message_table.message_table is None:
-            raise errors.InternalRequestError('No Message Table')
+            raise RuntimeError('No Message Table')
     return get_message_table.message_table
 
 #time utility functions

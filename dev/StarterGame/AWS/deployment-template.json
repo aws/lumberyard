@@ -1,0 +1,55 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    },
+
+    "Parameters" : {
+    
+        "ProjectResourceHandler": {
+            "Type": "String",
+            "Description": "Service token of the custom resource handler."
+        },
+        
+        "ConfigurationBucket": {
+            "Type": "String",
+            "Description": "Bucket that contains configuration data."
+        },
+
+        "ConfigurationKey": {
+            "Type": "String",
+            "Description": "Location in the configuration bucket of configuration data."
+        },
+
+        "DeploymentName": {
+            "Type": "String",
+            "Description": "The name of the deployment associated with this stack."
+        },
+
+        "ProjectStackId": {
+            "Type": "String",
+            "Description": "The ARN of the project stack associated with this deployment."
+        }
+        
+    },
+
+    "Resources": {
+        "EmptyDeployment": {
+            "Type": "Custom::EmptyDeployment",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" }
+            }
+        }
+    },
+
+    "Outputs": {
+        "StackName": {
+            "Description": "The deployment stack name.",
+            "Value": {"Ref": "AWS::StackName"}
+        }
+    }
+    
+}

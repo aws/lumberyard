@@ -1,1 +1,1 @@
-﻿var cgpBootstrap = { "userPoolId": "us-east-1_zIR9BU0Hc", "firstTimeUse": false, "region": "us-east-1", "clientId": "k88795h9vqc7m5m8es5imnkgi", "identityPoolId": "us-east-1:d1308bde-a73c-47ca-a4ba-e98393b91b5e", "projectConfigBucketId": "alpha1-configuration-169k7acyxptpa" }
+﻿var bootstrap = { }

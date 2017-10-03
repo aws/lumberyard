@@ -142,6 +142,8 @@ struct STextDrawContext
     bool m_kerningEnabled;
     bool m_processSpecialChars;
 
+    float m_tracking;                       //!< units are 1/1000th of ems, 1 em is equal to font size
+
     STextDrawContext()
         : m_fxIdx(0)
         , m_size(16.0f, 16.0f)
@@ -161,6 +163,7 @@ struct STextDrawContext
         , m_overrideViewProjMatrices(true) // the old behavior that overrides the currently set view and projection matrices
         , m_kerningEnabled(true)
         , m_processSpecialChars(true)
+        , m_tracking(0.0f)
     {
     }
 

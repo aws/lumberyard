@@ -17,8 +17,6 @@
 #define _LAUNCHER
 
 #include "resource.h"
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Launcher
 
 // Insert your headers here
 #include <platform.h>
@@ -43,6 +41,8 @@
 
 #include <AzCore/IO/SystemFile.h> // used for MAX PATH
 #include <AzGameFramework/Application/GameApplication.h>
+
+#define ERROR_MESSAGE_BUF_SIZE      512
 
 #ifdef USE_COPYPROTECTION
 #define SECUROM_INCLUDE_EXE_FUNCTIONS
@@ -387,7 +387,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         const char* errorMessageFormat = "Cannot start game launcher.  The '%s' value (%s) in bootstrap.cfg does not match the value (%s) that this launcher is specified for.  You must update set the default game project to this game in the Project Configurator.";
         if (strcmp(engineCfg.m_gameFolder.c_str(), launcherGameFolder) != 0)
         {
-            char msg[256] = { 0 };
+            char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
             azsnprintf(msg, sizeof(msg), errorMessageFormat, "sys_game_folder", engineCfg.m_gameFolder.c_str(), launcherGameFolder);
             MessageBox(0, msg, "Invalid Bootstrap settings", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
@@ -395,7 +395,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         const char* launcherDllName = LY_GAMEDLL;
         if (strcmp(engineCfg.m_gameDLL.c_str(), launcherDllName) != 0)
         {
-            char msg[256] = { 0 };
+            char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
             azsnprintf(msg, sizeof(msg), errorMessageFormat, "sys_dll_game", engineCfg.m_gameDLL.c_str(), launcherDllName);
             MessageBox(0, msg, "Invalid Bootstrap settings", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;

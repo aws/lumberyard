@@ -29,6 +29,9 @@ class CAnimSceneNode
     : public CAnimNode
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimSceneNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimSceneNode, "{659BB221-38D3-43C0-BEE4-7EAB49C8CB33}", CAnimNode);
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // helper interface for a uniform interface to legacy and component entity cameras
     class ISceneCamera
@@ -60,10 +63,9 @@ public:
     };
 
     CAnimSceneNode(const int id);
+    CAnimSceneNode();
     ~CAnimSceneNode();
     static void Initialize();
-
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Director; }
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CAnimNode
@@ -88,15 +90,10 @@ public:
     virtual unsigned int GetParamCount() const;
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_SoundInfo);
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
-
     virtual void PrecacheStatic(float startTime) override;
     virtual void PrecacheDynamic(float time) override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
@@ -110,7 +107,6 @@ private:
     void ApplyConsoleKey(IConsoleKey& key, SAnimContext& ec);
     void ApplyAudioKey(char const* const sTriggerName, bool const bPlay = true) override;
     void ApplySequenceKey(IAnimTrack* pTrack, int nPrevKey, int nCurrKey, ISequenceKey& key, SAnimContext& ec);
-    void ApplyMusicKey(IMusicKey& key, SAnimContext& ec);
 
     void ApplyGotoKey(CGotoTrack*   poGotoTrack, SAnimContext& ec);
 
@@ -138,7 +134,6 @@ private:
     int m_lastCameraKey;
     int m_lastEventKey;
     int m_lastConsoleKey;
-    int m_lastMusicKey;
     int m_lastSequenceKey;
     int m_nLastGotoKey;
     int m_lastCaptureKey;

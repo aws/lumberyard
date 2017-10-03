@@ -113,6 +113,14 @@ private:
         VersionMarker = 5005
     };
 
+    enum SnappedSide
+    {
+        SnapLeft = 0x1,
+        SnapRight = 0x2,
+        SnapTop = 0x4,
+        SnapBottom = 0x8
+    };
+
     bool dockMousePressEvent(QDockWidget* dock, QMouseEvent* event);
     bool dockMouseMoveEvent(QDockWidget* dock, QMouseEvent* event);
     bool dockMouseReleaseEvent(QDockWidget* dock, QMouseEvent* event);
@@ -141,6 +149,12 @@ private:
     void RepaintFloatingIndicators();
     void SetFloatingPixmapClipping(QWidget* dropOnto, Qt::DockWidgetArea area);
 
+    void AdjustForSnapping(QRect& rect, int cursorScreenIndex);
+    bool AdjustForSnappingToScreenEdges(QRect& rect, int screenIndex);
+    bool AdjustForSnappingToFloatingWindow(QRect& rect, const QRect& floatingRect);
+
+    bool AnyDockWidgetsExist(QStringList names);
+
     QMainWindow* m_mainWindow;
     QDesktopWidget* m_desktopWidget;
     QList<QScreen*> m_desktopScreens;
@@ -164,7 +178,8 @@ private:
         QPointer<QDockWidget> draggedDockWidget;  // This could be different from m_state.dock if the dock widget being dragged is tabbed
         QPointer<QDockWidget> floatingDockContainer;
         int tabIndex = -1;
-        bool tabifyInProgress = false;
+        bool updateInProgress = false;
+        int snappedSide = 0;
 
         // A setter, so you don't forget to initialize one of them
         void setPlaceholder(const QRect& rect, QScreen* screen)

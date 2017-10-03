@@ -115,12 +115,9 @@ namespace LmbrCentral
     //=========================================================================
     // EditorTagComponent friend will call this
     //=========================================================================
-    void TagComponent::EditorSetTags(const EditorTags& editorTagList)
+    void TagComponent::EditorSetTags(Tags&& editorTagList)
     {
-        for (const auto& tag : editorTagList)
-        {
-            m_tags.insert(Tag(tag.c_str()));
-        }
+        m_tags = AZStd::move(editorTagList);
     }
 
     //=========================================================================

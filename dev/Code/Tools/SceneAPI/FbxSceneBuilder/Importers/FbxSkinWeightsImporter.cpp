@@ -16,12 +16,13 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxSkinWeightsImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
-#include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
-#include <SceneAPI/SceneCore/Utilities/Reporting.h>
+#include <SceneAPI/SceneCore/Events/ImportEventContext.h>
 #include <SceneAPI/SceneData/GraphData/MeshData.h>
 #include <SceneAPI/SceneData/GraphData/SkinMeshData.h>
 #include <SceneAPI/SceneData/GraphData/SkinWeightData.h>
+#include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 namespace AZ
 {
@@ -34,6 +35,7 @@ namespace AZ
             FbxSkinWeightsImporter::FbxSkinWeightsImporter()
             {
                 BindToCall(&FbxSkinWeightsImporter::ImportSkinWeights);
+                BindToCall(&FbxSkinWeightsImporter::SetupNamedBoneLinks);
             }
 
             void FbxSkinWeightsImporter::Reflect(ReflectContext* context)
@@ -67,6 +69,7 @@ namespace AZ
                     }
                     AZStd::string skinWeightName = s_skinWeightName;
                     skinWeightName += AZStd::to_string(deformerIndex);
+                    RenamedNodesMap::SanitizeNodeName(skinWeightName, context.m_scene.GetGraph(), context.m_currentGraphPosition);
 
                     AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> skinDeformer =
                         BuildSkinWeightData(context.m_sourceNode.GetMesh(), deformerIndex);
@@ -106,46 +109,66 @@ namespace AZ
             AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> FbxSkinWeightsImporter::BuildSkinWeightData(
                 const std::shared_ptr<const FbxSDKWrapper::FbxMeshWrapper>& fbxMesh, int skinIndex)
             {
-                const AZStd::shared_ptr<const FbxSDKWrapper::FbxSkinWrapper> fbxSkin = fbxMesh->GetSkin(skinIndex);
-                AZ_Assert(fbxSkin, "BuildSkinWeightData was called for index %i which doesn't contain a skin deformer.", 
+                AZStd::shared_ptr<const FbxSDKWrapper::FbxSkinWrapper> fbxSkin = fbxMesh->GetSkin(skinIndex);
+                AZ_Assert(fbxSkin, "BuildSkinWeightData was called for index %i which doesn't contain a skin deformer.",
                     skinIndex);
-
                 if (!fbxSkin)
                 {
                     return nullptr;
                 }
+
                 AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> skinWeightData =
                     AZStd::make_shared<SceneData::GraphData::SkinWeightData>();
 
-                int controlPointCount = fbxMesh->GetControlPointsCount();
-                skinWeightData->ResizeContainerSpace(controlPointCount);
-
-                int clusterCount = fbxSkin->GetClusterCount();
-
-                for (int clusterIndex = 0; clusterIndex < clusterCount; ++clusterIndex)
-                {
-                    int controlPointCount = fbxSkin->GetClusterControlPointIndicesCount(clusterIndex);
-                    AZStd::shared_ptr<const FbxSDKWrapper::FbxNodeWrapper> fbxLink = fbxSkin->GetClusterLink(clusterIndex);
-                    
-                    if (!fbxLink)
-                    {
-                        AZ_TracePrintf(Utilities::WarningWindow, "FBX data contains null skin cluster link at index %i", clusterIndex);
-                        continue;
-                    }
-
-                    AZStd::string boneName = fbxLink->GetName();
-                    int boneId = skinWeightData->GetBoneId(boneName);
-
-                    for (int pointIndex = 0; pointIndex < controlPointCount; ++pointIndex)
-                    {
-                        SceneAPI::DataTypes::ISkinWeightData::Link link;
-                        link.boneId = boneId;
-                        link.weight = aznumeric_caster(fbxSkin->GetClusterControlPointWeight(clusterIndex, pointIndex));
-                        skinWeightData->AppendLink(fbxSkin->GetClusterControlPointIndex(clusterIndex, pointIndex), link);
-                    }
-                }
+                // Cache the new object and the link info for now so it can be resolved at a later point when all
+                // names have been updated.
+                Pending pending;
+                pending.m_fbxMesh = fbxMesh;
+                pending.m_fbxSkin = fbxSkin;
+                pending.m_skinWeightData = skinWeightData;
+                m_pendingSkinWeights.push_back(pending);
 
                 return skinWeightData;
+            }
+
+            Events::ProcessingResult FbxSkinWeightsImporter::SetupNamedBoneLinks(FinalizeSceneContext& context)
+            {
+                AZ_TraceContext("Importer", "Skin Weights");
+
+                for (auto& it : m_pendingSkinWeights)
+                {
+                    int controlPointCount = it.m_fbxMesh->GetControlPointsCount();
+                    it.m_skinWeightData->ResizeContainerSpace(controlPointCount);
+
+                    int clusterCount = it.m_fbxSkin->GetClusterCount();
+
+                    for (int clusterIndex = 0; clusterIndex < clusterCount; ++clusterIndex)
+                    {
+                        int controlPointCount = it.m_fbxSkin->GetClusterControlPointIndicesCount(clusterIndex);
+                        AZStd::shared_ptr<const FbxSDKWrapper::FbxNodeWrapper> fbxLink = it.m_fbxSkin->GetClusterLink(clusterIndex);
+
+                        if (!fbxLink)
+                        {
+                            AZ_TracePrintf(Utilities::WarningWindow, "FBX data contains null skin cluster link at index %i", clusterIndex);
+                            continue;
+                        }
+
+                        // The name of the bones may be updated as they get processed. Processing of bones may not necessarily happen before
+                        // processing skin weights so to avoid storing names that will be updated later delay setting up the link until
+                        // all processing has completed.
+                        AZStd::string boneName = context.m_nodeNameMap.GetNodeName(fbxLink);
+                        int boneId = it.m_skinWeightData->GetBoneId(boneName);
+
+                        for (int pointIndex = 0; pointIndex < controlPointCount; ++pointIndex)
+                        {
+                            SceneAPI::DataTypes::ISkinWeightData::Link link;
+                            link.boneId = boneId;
+                            link.weight = aznumeric_caster(it.m_fbxSkin->GetClusterControlPointWeight(clusterIndex, pointIndex));
+                            it.m_skinWeightData->AppendLink(it.m_fbxSkin->GetClusterControlPointIndex(clusterIndex, pointIndex), link);
+                        }
+                    }
+                }
+                return m_pendingSkinWeights.empty() ? Events::ProcessingResult::Ignored : Events::ProcessingResult::Success;
             }
         } // namespace FbxSceneBuilder
     } // namespace SceneAPI

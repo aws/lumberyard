@@ -1,0 +1,52 @@
+{
+    "name": "libsamplerate",
+    "source": "@GEM@/External/libsamplerate/0.1.9",
+    "description": "Secret Rabbit Code - a.k.a. Sample Rate Converter",
+    "aliases": {
+        "lib_names": [
+            "libsamplerate"
+        ]
+    },
+    "includes": [
+        "include"
+    ],
+    "defines": ["USE_LIBSAMPLERATE"],
+    "lib_required": "True",
+    "shared_required": "False",
+    "platform": {
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "lib/x64_vc140/Debug"
+            ],
+            "libpath_profile": [
+                "lib/x64_vc140/Release"
+            ],
+            "libpath_performance": [
+                "lib/x64_vc140/Release"
+            ],
+            "libpath_release": [
+                "lib/x64_vc140/Release"
+            ],
+            "lib": [
+                "${lib_names}.lib"
+            ]
+        },
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "lib/x64_vc120/Debug"
+            ],
+            "libpath_profile": [
+                "lib/x64_vc120/Release"
+            ],
+            "libpath_performance": [
+                "lib/x64_vc120/Release"
+            ],
+            "libpath_release": [
+                "lib/x64_vc120/Release"
+            ],
+            "lib": [
+                "${lib_names}.lib"
+            ]
+        }
+    }
+}

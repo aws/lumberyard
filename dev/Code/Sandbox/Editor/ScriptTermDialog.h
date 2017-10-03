@@ -58,7 +58,7 @@ private:
 
     void ExecuteAndPrint(const char* cmd);
 
-    void AppendToConsole(const QString& string, const QColor& color = Qt::black);
+    void AppendToConsole(const QString& string, const QColor& color = Qt::white);
 
     virtual void OnStdOut(const char* pString) { AppendText(pString); }
     virtual void OnStdErr(const char* pString) { AppendError(pString); }

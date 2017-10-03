@@ -360,7 +360,7 @@ namespace AZ
         return retVal;
     }
     
-    ScriptProperty* ScriptPropertyTable::FindTableValue(const AZStd::const_string& keyValue) const
+    ScriptProperty* ScriptPropertyTable::FindTableValue(const AZStd::string_view& keyValue) const
     {
         AZ::ScriptProperty* retVal = nullptr;
         AZ::Crc32 crcIndex = AZ::Crc32(keyValue.data());
@@ -429,7 +429,7 @@ namespace AZ
         }
     }
 
-    void ScriptPropertyTable::UpdateTableValue(const AZStd::const_string& keyValue, AZ::ScriptDataContext& scriptDataContext, int index)
+    void ScriptPropertyTable::UpdateTableValue(const AZStd::string_view& keyValue, AZ::ScriptDataContext& scriptDataContext, int index)
     {
         AZ::Crc32 crcIndex = AZ::Crc32(keyValue.data());
         auto mapIter = m_keyMapping.find(crcIndex);
@@ -555,7 +555,7 @@ namespace AZ
         }
     }
     
-    void ScriptPropertyTable::SetTableValue(const AZStd::const_string& keyValue, const ScriptProperty* value)
+    void ScriptPropertyTable::SetTableValue(const AZStd::string_view& keyValue, const ScriptProperty* value)
     {
         AZ::Crc32 crcIndex = AZ::Crc32(keyValue.data());
         auto mapIter = m_keyMapping.find(crcIndex);

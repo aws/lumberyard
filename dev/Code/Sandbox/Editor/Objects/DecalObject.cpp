@@ -333,7 +333,7 @@ void CDecalObject::GetLocalBounds(AABB& box)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint& point, int flags, bool callerIsMouseCreateCallback)
+bool CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint& point, int flags, bool callerIsMouseCreateCallback)
 {
     static bool s_mousePosTracked(false);
 
@@ -442,6 +442,10 @@ void CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint&
         }
         default:
         {
+            if (event == eMouseLDown)
+            {
+                return false;
+            }
             break;
         }
         }
@@ -449,6 +453,7 @@ void CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint&
         s_prevMousePos = point;
         s_mousePosTracked = true;
     }
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////

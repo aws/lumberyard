@@ -26,6 +26,7 @@ def build(bld):
         platforms          = ['all'],
         configurations     = ['all'],
         pch                = 'StdAfx.cpp',
+        defines            = ['ENGINE_EXPORTS'],
         use                = ['AzFramework'],
 
         # Platform Specific
@@ -33,6 +34,17 @@ def build(bld):
                               'shell32',
                               'wininet',
                               'Ole32' ],
+
+        # Platform Specific
+       
+
+        darwin_cxxflags     = ['-Wno-shadow'],
+
+        ios_cxxflags        = ['-Wno-shadow'],
+
+        appletv_cxxflags    = ['-Wno-shadow'],
+
+        android_armv7_clang_cxxflags  = ['-Wno-shadow'],
 
         # In order for the extern of lua_getDummyNode to work correctly, lua has to be linked in before AzCore.  Unfortunately,
         # we can't guarantee link order with the use system. However, we can trick the lua library into getting the symbol from AzCore

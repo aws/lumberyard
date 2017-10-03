@@ -37,6 +37,10 @@ namespace AZ
             {
             }
 
+            void GraphMetaInfo::GetAllVirtualTypes(AZStd::set<Crc32>& /*types*/)
+            {
+            }
+
             void GraphMetaInfo::GetVirtualTypeName(AZStd::string& /*name*/, Crc32 /*type*/)
             {
             }

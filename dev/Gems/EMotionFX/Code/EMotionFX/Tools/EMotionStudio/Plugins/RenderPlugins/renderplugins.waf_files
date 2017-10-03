@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "EmotionFXTools/Plugins/OpenGLRender":
+        [
+            "Source/OpenGLRender/GLWidget.h",
+            "Source/OpenGLRender/GLWidget.cpp",
+            "Source/OpenGLRender/OpenGLRenderPlugin.h",
+            "Source/OpenGLRender/OpenGLRenderPlugin.cpp"
+        ]
+    }
+}

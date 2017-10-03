@@ -506,11 +506,11 @@ public: // ---------------------------------------------------------------------
     bool SetPackAccessible(bool bAccessible, const char* pName, unsigned nFlags = 0);
     void SetPacksAccessibleForLevel(const char* sLevelName);
 
-    // Remount the packs to another file system - used for PS3 install
+    // Remount the packs to another file system
     typedef bool (* CBShouldPackReOpen)(const char* filePath);
     int RemountPacks(DynArray<AZ::IO::HandleType>& outHandlesToClose, CBShouldPackReOpen shouldPackReOpen);
 
-    //ReOpen pak file - used for 360 install when pak is successfully cached to HDD
+    //ReOpen pak file - used for devices when pak is successfully cached to HDD
     bool ReOpenPack(const char* pPath);
 
     // returns the file modification time

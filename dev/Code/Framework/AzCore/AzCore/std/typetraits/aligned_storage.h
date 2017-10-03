@@ -26,21 +26,12 @@ namespace AZStd
     {};
 
     // In the future this should replaced with just: typedef AZ_ALIGN(_T,_Alignment) type,
-    // but this doesn't compiler properly on PS3 (gcc 4.1.1) it's not compiler problem it's the Sony support
-    // this then we will use this version (which also work on all other supported compilers). The reason
-    // to fix this in the future is that the union can break/limit some potential optimizations.
-#ifdef AZ_PLATFORM_WII // Wii compiler refuses to align "char" inside a struct, no matter that every other type works fine
-    #define AZSTD_ALIGN_TEMPLATE_TYPE(_T, _Alignment) \
-    AZ_ALIGN(struct AlignStruct{}, _Alignment);       \
-    union type {                                      \
-        AlignStruct m_align;                          \
-        _T  m_data; } m_data
-#else
+    // but this doesn't compiler properly on gcc 4.1.1.
+    // The reason to fix this in the future is that the union can break/limit some potential optimizations.
     #define AZSTD_ALIGN_TEMPLATE_TYPE(_T, _Alignment) \
     union type {                                      \
         AZ_ALIGN(char m_align, _Alignment);           \
         _T  m_data; } m_data
-#endif
 
     template<typename T>
     struct align_to<T, 1>

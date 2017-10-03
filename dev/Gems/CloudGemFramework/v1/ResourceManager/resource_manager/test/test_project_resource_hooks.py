@@ -24,12 +24,20 @@ class IntegrationTest_CloudGemFramework_ResourceManager_ProjectResourceHooks(lmb
     TEST_GEM_PROJECT_RESOURCE_TYPE = 'AWS::S3::Bucket'
 
     def setUp(self):        
-        
         self.prepare_test_envionment(temp_file_suffix = type(self).__name__)   
         
-        gem_dir = self.create_test_gem(self.TEST_GEM_NAME)
+    def test_project_resource_hooks_end_to_end(self):
+        self.run_all_tests()
 
-        gem_project_template_file_path = os.path.join(gem_dir, 'AWS', 'project-template.json')
+    def __000_create_test_gem(self):
+
+        self.lmbr_aws(
+            'cloud-gem', 'create',
+            '--gem', self.TEST_GEM_NAME,
+            '--initial-content', 'resource-manager-plugin',
+            '--enable')
+
+        gem_project_template_file_path = self.get_gem_aws_path(self.TEST_GEM_NAME, 'project-template.json')
 
         resource_manager.util.save_json(gem_project_template_file_path, 
             {
@@ -42,10 +50,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_ProjectResourceHooks(lmb
             }
         )
 
-    def test_project_resource_hooks_end_to_end(self):
-        self.run_all_tests()
-
-    def __000_create_project_stack(self):
+    def __005_create_project_stack(self):
         self.lmbr_aws('create-project-stack', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
 
     def __010_verify_initial_stack(self):
@@ -56,7 +61,9 @@ class IntegrationTest_CloudGemFramework_ResourceManager_ProjectResourceHooks(lmb
         self.verify_stack("project stack",  self.get_project_stack_arn(), spec)
 
     def __020_remove_gem(self):
-        self.remove_test_gem(self.TEST_GEM_NAME)
+        self.lmbr_aws(
+            'cloud-gem', 'disable',
+            '--gem', self.TEST_GEM_NAME)
 
     def __030_update_project_stack(self):        
         self.lmbr_aws('project', 'update', '--confirm-resource-deletion', '--confirm-aws-usage')

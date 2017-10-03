@@ -55,10 +55,6 @@ namespace LmbrAWS
             EOP_MatchesFound = EOP_StartIndex,
         };
 
-        LmbrAWS::DynamoDB::TableClientInputPort m_tableClientPort {
-            EIP_TableClient
-        };
-
         Aws::String m_comparisonTypeEnumString;
         Aws::String m_dataTypeEnumString;
 

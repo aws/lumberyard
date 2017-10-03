@@ -264,9 +264,7 @@ namespace UnitTest
         AZ_TEST_STATIC_ASSERT(is_signed<int>::value == true);
         AZ_TEST_STATIC_ASSERT(is_signed<MyStruct>::value == false);
         AZ_TEST_STATIC_ASSERT(is_signed<unsigned int>::value == false);
-#ifndef AZ_PLATFORM_X360  // Since Feb 2010, this tr1 function is broken on X360
         AZ_TEST_STATIC_ASSERT(is_signed<float>::value == false);
-#endif
         // is_unsigned
         AZ_TEST_STATIC_ASSERT(is_unsigned<int>::value == false);
         AZ_TEST_STATIC_ASSERT(is_unsigned<MyStruct>::value == false);
@@ -318,10 +316,9 @@ namespace UnitTest
         
         AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<decltype(&FunctionTestStruct::operator())>::class_fp_type, bool(FunctionTestStruct::*)(FunctionTestStruct&) const>::value));
 
-        auto lambdaFunction = [](FunctionTestStruct f, int num) -> bool
+        auto lambdaFunction = [](FunctionTestStruct, int) -> bool
         {
-            (void)f;
-            (void)num;
+            return false;
         };
 
         using LambdaType = decltype(lambdaFunction);

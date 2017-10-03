@@ -15,16 +15,13 @@
 #include "Shadow_Renderer.h"
 #include "RenderView.h"
 #include "CompiledRenderObject.h"
+#include <CryEngineAPI.h>
 
-int SRendItem::m_RecurseLevel[RT_COMMAND_BUF_COUNT];
-
+ENGINE_API int SRendItem::m_RecurseLevel[RT_COMMAND_BUF_COUNT];
 int SRendItem::m_StartFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
-;
 int SRendItem::m_EndFrust[RT_COMMAND_BUF_COUNT][MAX_REND_LIGHTS + MAX_DEFERRED_LIGHTS];
 int SRendItem::m_ShadowsStartRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
 int SRendItem::m_ShadowsEndRI[RT_COMMAND_BUF_COUNT][MAX_SHADOWMAP_FRUSTUMS];
-
-int SRendItem::m_nSortGroups;
 
 CRenderObjectsPools* CRenderObjectImpl::s_pPools;
 

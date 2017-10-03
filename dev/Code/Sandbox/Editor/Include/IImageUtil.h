@@ -31,11 +31,9 @@ struct IImageUtil
 
     virtual bool SaveJPEG(const QString& strFileName, CImageEx& image) = 0;
 
-    virtual bool SaveBitmap(const QString& szFileName, CImageEx& image, bool inverseY = true) = 0;
+    virtual bool SaveBitmap(const QString& szFileName, CImageEx& image) = 0;
 
     virtual bool LoadBmp(const QString& file, CImageEx& image) = 0;
-
-    virtual bool LoadBmp(const QString& fileName, CImageEx& image, const RECT& rc) = 0;
 
     virtual bool SavePGM(const QString& fileName, const CImageEx& image) = 0;
 

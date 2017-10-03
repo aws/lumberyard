@@ -19,20 +19,21 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
 
 #include "Components/IComponentEntityNode.h"
 
 //////////////////////////////////////////////////////////////////////////
 CAnimAzEntityNode::CAnimAzEntityNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_AzEntity)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
 }
 
-EAnimNodeType CAnimAzEntityNode::GetType() const
-{ 
-    return eAnimNodeType_AzEntity; 
+//////////////////////////////////////////////////////////////////////////
+CAnimAzEntityNode::CAnimAzEntityNode()
+    : CAnimAzEntityNode(0)
+{
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -41,6 +42,7 @@ CAnimAzEntityNode::~CAnimAzEntityNode()
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimAzEntityNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -83,6 +85,14 @@ void CAnimAzEntityNode::SetSkipInterpolatedCameraNode(const bool skipNodeCameraA
     {
         cameraComponentNode->SetSkipComponentAnimationUpdates(skipNodeCameraAnimation);
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimAzEntityNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimAzEntityNode, CAnimNode>()
+        ->Version(1)
+        ->Field("Entity", &CAnimAzEntityNode::m_entityId);
 }
 
 //////////////////////////////////////////////////////////////////////////

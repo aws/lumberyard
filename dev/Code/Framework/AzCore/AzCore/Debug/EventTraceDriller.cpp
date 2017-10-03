@@ -117,7 +117,7 @@ namespace AZ
         void EventTraceDriller::RecordSlice(
             const char* name,
             const char* category,
-            const AZStd::thread_id& threadId,
+            const AZStd::thread_id threadId,
             AZ::u64 timestamp,
             AZ::u32 duration)
         {
@@ -149,7 +149,7 @@ namespace AZ
         void EventTraceDriller::RecordInstantThread(
             const char* name,
             const char* category,
-            const AZStd::thread_id& threadId,
+            const AZStd::thread_id threadId,
             AZ::u64 timestamp)
         {
             m_output->BeginTag(Crc::EventTraceDriller);

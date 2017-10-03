@@ -342,6 +342,8 @@ public:
     void OnEntityEvent(IEntity* pEntity, SEntityEvent& event) override;
     // ~IEntityEventListener
 
+    CDLight* GetLightProperty() const;
+
 protected:
     template <typename T>
     void SetEntityProperty(const char* name, T value);
@@ -354,8 +356,6 @@ protected:
     virtual bool SetEntityScript(CEntityScript* pEntityScript, bool bForceReload = false, bool bGetScriptProperties = true,
         XmlNodeRef xmlProperties = XmlNodeRef(), XmlNodeRef xmlProperties2 = XmlNodeRef());
     virtual void GetScriptProperties(CEntityScript* pEntityScript, XmlNodeRef xmlProperties, XmlNodeRef xmlProperties2);
-
-    CDLight* GetLightProperty() const;
 
     virtual bool HitTestEntity(HitContext& hc, bool& bHavePhysics);
 

@@ -89,6 +89,7 @@ public:
     virtual void ProtectDeployment(const QString& deploymentName, bool set) = 0;
     virtual QString GetActiveDeploymentName() const = 0;
     virtual bool IsActiveDeploymentSet() const = 0;
+    virtual QString GetActiveDeploymentRegion() const = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -327,6 +328,7 @@ public:
     virtual bool ContainsChanges() = 0;
     virtual bool ContainsDeletionChanges() = 0;
     virtual bool ContainsSecurityChanges() = 0;
+    virtual QString GetStackResourceRegion() const = 0;
 
 signals:
 
@@ -614,6 +616,7 @@ public:
     // Helpers to grab file names for check out
     virtual QString GetProjectSettingsFile() const = 0;
     virtual QString GetDeploymentTemplateFile() const = 0;
+    virtual QString GetGemsFile() const = 0;
 
     enum class ResourceGroupSettingPriority
     {
@@ -656,6 +659,7 @@ public:
     virtual QSharedPointer<IAWSProjectModel> GetProjectModel() = 0;
     virtual QSharedPointer<IFileSourceControlModel> GetProjectSettingsSourceModel() = 0;
     virtual QSharedPointer<IFileSourceControlModel> GetDeploymentTemplateSourceModel() = 0;
+    virtual QSharedPointer<IFileSourceControlModel> GetGemsFileSourceModel() = 0;
 
     enum InitializationState
     {
@@ -678,9 +682,11 @@ public:
 
     virtual void RequestEditProjectSettings() = 0;
     virtual void RequestEditDeploymentTemplate() = 0;
+    virtual void RequestEditGemsFile() = 0;
 
     virtual bool ProjectSettingsNeedsCheckout() const = 0;
     virtual bool DeploymentTemplateNeedsCheckout() const = 0;
+    virtual bool GemsFileNeedsCheckout() const = 0;
 
     virtual void UpdateSourceControlStates() = 0;
 

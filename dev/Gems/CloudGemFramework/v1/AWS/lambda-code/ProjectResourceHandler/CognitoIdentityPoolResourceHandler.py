@@ -27,7 +27,8 @@ def handler(event, context):
             'ConfigurationKey': properties.String(), ##this is only here to force the resource handler to execute on each update to the deployment
             'IdentityPoolName': properties.String(),
             'UseAuthSettingsObject': properties.String(),
-            'AllowUnauthenticatedIdentities': properties.String(),            
+            'AllowUnauthenticatedIdentities': properties.String(),
+            'DeveloperProviderName': properties.String(default=''),
             'Roles': properties.Object( default={}, 
             schema={
                 '*': properties.String()
@@ -75,13 +76,21 @@ def handler(event, context):
         print 'Identity Providers: ', cognito_identity_providers
         allow_anonymous = props.AllowUnauthenticatedIdentities.lower() == 'true'
         #if the pool exists just update it, otherwise create a new one
+        
+        args = {
+            'IdentityPoolName': identity_pool_name, 
+            'AllowUnauthenticatedIdentities': allow_anonymous,
+            'SupportedLoginProviders': supported_login_providers, 
+            'CognitoIdentityProviders': cognito_identity_providers
+        }
+        
+        if props.DeveloperProviderName:
+            args['DeveloperProviderName'] = props.DeveloperProviderName
+        
         if found_pool != None:
-           identity_client.update_identity_pool(IdentityPoolId=identity_pool_id, IdentityPoolName=identity_pool_name, AllowUnauthenticatedIdentities=allow_anonymous,
-                                                SupportedLoginProviders=supported_login_providers, CognitoIdentityProviders=cognito_identity_providers)    
-
+           identity_client.update_identity_pool(IdentityPoolId=identity_pool_id, **args)    
         else:
-           response = identity_client.create_identity_pool(IdentityPoolName = identity_pool_name, AllowUnauthenticatedIdentities=allow_anonymous,
-                                                            SupportedLoginProviders=supported_login_providers, CognitoIdentityProviders=cognito_identity_providers) 
+           response = identity_client.create_identity_pool(**args) 
            identity_pool_id=response['IdentityPoolId'] 
 
         #update the roles for the pool

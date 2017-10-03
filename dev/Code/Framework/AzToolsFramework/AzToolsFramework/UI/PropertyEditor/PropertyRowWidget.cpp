@@ -308,7 +308,7 @@ namespace AzToolsFramework
                 m_elementRemoveButton->setEnabled(!m_readOnly);
                 m_rightHandSideLayout->insertWidget(m_rightHandSideLayout->count(), m_elementRemoveButton);
                 connect(m_elementRemoveButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedRemoveElementButton);
-                m_elementRemoveButton->setVisible(m_parentRow && m_parentRow->IsContainerEditable() && !m_isFixedSizeOrSmartPtrContainer);
+                m_elementRemoveButton->setVisible(!m_parentRow->m_isFixedSizeOrSmartPtrContainer);
             }
         }
         else
@@ -447,7 +447,7 @@ namespace AzToolsFramework
                             if (ptrValue)
                             {
                                 auto ptrClassElement = container->GetElement(container->GetDefaultElementNameCrc());
-                                pointeeType = ptrClassElement->m_azRtti->GetActualUuid(ptrValue);
+                                pointeeType = (ptrClassElement && ptrClassElement->m_azRtti) ? ptrClassElement->m_azRtti->GetActualUuid(ptrValue) : genericClassInfo->GetTemplatedTypeId(0);
                             }
                             else
                             {
@@ -531,10 +531,64 @@ namespace AzToolsFramework
         return false;
     }
 
+    bool PropertyRowWidget::IsHidden(InstanceDataNode* node) const
+    {
+        if (node)
+        {
+            if (auto editorData = node->GetElementEditMetadata())
+            {
+                if (auto visibilityAttribute = editorData->FindAttribute(AZ::Edit::Attributes::Visibility))
+                {
+                    AZ::Crc32 visibility;
+                    if (ReadVisibilityAttribute(node->FirstInstance(), visibilityAttribute, visibility))
+                    {
+                        return visibility == AZ::Edit::PropertyVisibility::ShowChildrenOnly;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     void PropertyRowWidget::RefreshAttributesFromNode(bool initial)
     {
         InstanceDataNode* parentNode = m_sourceNode->GetParent();
         bool isContainerElement = parentNode && parentNode->GetClassMetadata() && parentNode->GetClassMetadata()->m_container;
+
+        if (initial && parentNode)
+        {
+            // First time through, see if we have any change notify on hidden parents and make sure to handle it appropriately
+            InstanceDataNode* currentParent = parentNode;
+            while (currentParent)
+            {
+                if (IsHidden(currentParent))
+                {
+                    if (auto editorData = currentParent->GetElementEditMetadata())
+                    {
+                        if (auto notifyAttribute = editorData->FindAttribute(AZ::Edit::Attributes::ChangeNotify))
+                        {
+                            PropertyAttributeReader reader(currentParent->FirstInstance(), notifyAttribute);
+                            HandleChangeNotifyAttribute(reader, currentParent);
+                        }
+                    }
+                    currentParent = currentParent->GetParent();
+                }
+                else
+                {
+                    // Need to handle derived classes here in case the base class isn't the one that is hidden
+                    InstanceDataNode* nextParent = currentParent->GetParent();
+                    if (nextParent && nextParent->FirstInstance() && nextParent->FirstInstance() == currentParent->FirstInstance())
+                    {
+                        currentParent = nextParent;
+                    }
+                    else
+                    {
+                        // We aren't a base class, so just bail
+                        break;
+                    }
+                }
+            }
+        }
 
         if (isContainerElement)
         {
@@ -792,44 +846,53 @@ namespace AzToolsFramework
         }
         else if ((initial) && (attributeName == AZ::Edit::Attributes::ChangeNotify))
         {
-            // Verify type safety for member function handlers.
-            // ChangeNotify handlers are invoked on the instance associated with the node owning
-            // the field, but attributes are generically propagated to parents as well, which is not
-            // safe for ChangeNotify events bound to member functions.
-            // Here we'll avoid inheriting child ChangeNotify attributes unless it's actually
-            // type-safe to do so.
-            AZ::Edit::AttributeFunction<void()>* funcVoid = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(reader.GetAttribute());
-            AZ::Edit::AttributeFunction<AZ::u32()>* funcU32 = azdynamic_cast<AZ::Edit::AttributeFunction<AZ::u32()>*>(reader.GetAttribute());
-            AZ::Edit::AttributeFunction<AZ::Crc32()>* funcCrc32 = azdynamic_cast<AZ::Edit::AttributeFunction<AZ::Crc32()>*>(reader.GetAttribute());
+            HandleChangeNotifyAttribute(reader, m_sourceNode ? m_sourceNode->GetParent() : nullptr);
+        }
+    }
 
-            const AZ::Uuid handlerTypeId = funcVoid ? funcVoid->GetInstanceType() : (funcU32 ? funcU32->GetInstanceType() : (funcCrc32 ? funcCrc32->GetInstanceType() : AZ::Uuid::CreateNull()));
+    void PropertyRowWidget::HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node)
+    {
+        // Verify type safety for member function handlers.
+        // ChangeNotify handlers are invoked on the instance associated with the node owning
+        // the field, but attributes are generically propagated to parents as well, which is not
+        // safe for ChangeNotify events bound to member functions.
+        // Here we'll avoid inheriting child ChangeNotify attributes unless it's actually
+        // type-safe to do so.
+        AZ::Edit::AttributeFunction<void()>* funcVoid = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(reader.GetAttribute());
+        AZ::Edit::AttributeFunction<AZ::u32()>* funcU32 = azdynamic_cast<AZ::Edit::AttributeFunction<AZ::u32()>*>(reader.GetAttribute());
+        AZ::Edit::AttributeFunction<AZ::Crc32()>* funcCrc32 = azdynamic_cast<AZ::Edit::AttributeFunction<AZ::Crc32()>*>(reader.GetAttribute());
 
-            if (!handlerTypeId.IsNull())
+        const AZ::Uuid handlerTypeId = funcVoid ? funcVoid->GetInstanceType() : (funcU32 ? funcU32->GetInstanceType() : (funcCrc32 ? funcCrc32->GetInstanceType() : AZ::Uuid::CreateNull()));
+        InstanceDataNode* targetNode = node;
+
+        if (!handlerTypeId.IsNull())
+        {
+            // Walk up the chain looking for the first correct class type to handle the callback
+            while (targetNode)
             {
-                InstanceDataNode* invocationTarget = m_sourceNode->GetParent();
-
-                if (invocationTarget)
+                if (targetNode->GetClassMetadata()->m_azRtti)
                 {
-                    if (invocationTarget->GetClassMetadata()->m_azRtti)
+                    if (targetNode->GetClassMetadata()->m_azRtti->IsTypeOf(handlerTypeId))
                     {
-                        if (!invocationTarget->GetClassMetadata()->m_azRtti->IsTypeOf(handlerTypeId))
-                        {
-                            // Instance has RTTI, but does not derive from type expected by the handler.
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        if (handlerTypeId != invocationTarget->GetClassMetadata()->m_typeId)
-                        {
-                            // Instance does not have RTTI, and is not the type expected by the handler.
-                            return;
-                        }
+                        // Instance has RTTI, and derives from type expected by the handler.
+                        break;
                     }
                 }
+                else
+                {
+                    if (handlerTypeId == targetNode->GetClassMetadata()->m_typeId)
+                    {
+                        // Instance does not have RTTI, and is the type expected by the handler.
+                        break;
+                    }
+                }
+                targetNode = targetNode->GetParent();
             }
+        }
 
-            m_changeNotifiers.push_back(reader.GetAttribute());
+        if (targetNode)
+        {
+            m_changeNotifiers.emplace_back(targetNode, reader.GetAttribute());
         }
     }
 
@@ -920,21 +983,20 @@ namespace AzToolsFramework
         PropertyModificationRefreshLevel level = Refresh_None;
         if ((m_changeNotifiers.size() > 0) && (m_sourceNode))
         {
-            // execute the function or read the value.
-            InstanceDataNode* nodeToNotify = nullptr;
-            nodeToNotify = m_sourceNode->GetParent();
-            if ((nodeToNotify) && (nodeToNotify->GetClassMetadata()->m_container))
+            for (size_t changeIndex = 0; changeIndex < m_changeNotifiers.size(); changeIndex++)
             {
-                nodeToNotify = nodeToNotify->GetParent();
-            }
-
-            if (nodeToNotify)
-            {
-                for (size_t idx = 0; idx < nodeToNotify->GetNumInstances(); ++idx)
+                // execute the function or read the value.
+                InstanceDataNode* nodeToNotify = m_changeNotifiers[changeIndex].m_node;
+                if ((nodeToNotify) && (nodeToNotify->GetClassMetadata()->m_container))
                 {
-                    for (size_t changeIndex = 0; changeIndex < m_changeNotifiers.size(); changeIndex++)
+                    nodeToNotify = nodeToNotify->GetParent();
+                }
+
+                if (nodeToNotify)
+                {
+                    for (size_t idx = 0; idx < nodeToNotify->GetNumInstances(); ++idx)
                     {
-                        PropertyAttributeReader reader(nodeToNotify->GetInstance(idx), m_changeNotifiers[changeIndex]);
+                        PropertyAttributeReader reader(nodeToNotify->GetInstance(idx), m_changeNotifiers[changeIndex].m_attribute);
                         AZ::u32 refreshLevelCRC = 0;
                         if (!reader.Read<AZ::u32>(refreshLevelCRC))
                         {

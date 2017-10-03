@@ -384,16 +384,13 @@ namespace ATG
 
 	//--------------------------------------------------------------------------------------
 	// Name: GetFormat()
-	// Desc: Gets the wave file format.  Since Xbox only supports WAVE_FORMAT_PCM,
-	//       WAVE_FORMAT_XBOX_ADPCM, and WAVE_FORMAT_EXTENSIBLE, we know any
-	//       valid format will fit into a WAVEFORMATEXTENSIBLE struct
+	// Desc: Gets the wave file format.
 	//--------------------------------------------------------------------------------------
 	HRESULT WaveFileMemory::GetFormat( WAVEFORMATEXTENSIBLE* pwfxFormat ) const
 	{
 		assert( pwfxFormat );
 		DWORD dwValidSize = m_FormatChunk.GetDataSize();
 
-		// Anything larger than WAVEFORMATEXTENSIBLE is not a valid Xbox WAV file
 		assert( dwValidSize <= sizeof(WAVEFORMATEXTENSIBLE) );
 
 		char *buffer = new char[dwValidSize];

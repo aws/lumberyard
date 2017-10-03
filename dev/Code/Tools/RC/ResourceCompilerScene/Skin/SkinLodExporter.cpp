@@ -28,6 +28,7 @@
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkinGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/ILodRule.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
@@ -93,7 +94,14 @@ namespace AZ
 
                 if (m_assetWriter)
                 {
-                    if (!m_assetWriter->WriteSKIN(&cgfContent, m_convertContext, false))
+                    if (m_assetWriter->WriteSKIN(&cgfContent, m_convertContext, false))
+                    {
+                        static const AZ::Data::AssetType skinnedMeshLodsAssetType("{58E5824F-C27B-46FD-AD48-865BA41B7A51}");
+                        // Using the same guid as the parent group/cgf as this needs to be a lod of that cgf.
+                        // Setting the lod to index+1 as 0 means the base mesh and 1-6 are lod levels 0-5.
+                        context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshLodsAssetType, index + 1);
+                    }
+                    else
                     {
                         AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Writing Skin has failed.");
                         result += SceneEvents::ProcessingResult::Failure;

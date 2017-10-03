@@ -9,15 +9,19 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_ATOMIC_H
-#define AZSTD_ATOMIC_H 1
+#pragma once
 
 #include <AzCore/std/parallel/config.h>
+#include <AzCore/std/typetraits/conditional.h>
+#include <AzCore/std/typetraits/is_integral.h>
 
-#if defined(AZ_PLATFORM_PS4) /*|| defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)*/ || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+// Pre-VS2015.2 std::atomics have broken alignment and are not binary compatible
+// so we've kept our implementation until we can ensure that there are no libs or
+// users on pre VS2015.2. See <atomic> for more info.
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
 #define AZ_USE_STD_ATOMIC
 #include <atomic>
-#endif // AZ_PLATFORM_PS4
+#endif
 
 #if defined(AZ_USE_STD_ATOMIC)
 
@@ -32,9 +36,11 @@ namespace AZStd
     using std::memory_order_relaxed;
     using std::memory_order_consume;
     using std::memory_order_seq_cst;
+    using std::memory_order;
 
     typedef std::atomic<char>       atomic_char;
     typedef std::atomic<unsigned char>  atomic_uchar;
+    typedef std::atomic<wchar_t>        atomic_wchar_t;
     typedef std::atomic<short>      atomic_short;
     typedef std::atomic<unsigned short> atomic_ushort;
     typedef std::atomic<int>        atomic_int;
@@ -45,8 +51,31 @@ namespace AZStd
     typedef std::atomic<unsigned long long> atomic_ullong;
     typedef std::atomic<size_t>     atomic_size_t;
     typedef std::atomic<ptrdiff_t>      atomic_ptrdiff_t;
+
+    using std::atomic_thread_fence;
+    using std::atomic_signal_fence;
+    using std::kill_dependency;
 }
+
+///Specifies if integral types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_INTEGRAL_LOCK_FREE ATOMIC_INTEGRAL_LOCK_FREE
+///Specifies if address types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_ADDRESS_LOCK_FREE ATOMIC_ADDRESS_LOCK_FREE
+#define AZ_ATOMIC_BOOL_LOCK_FREE ATOMIC_BOOL_LOCK_FREE
+#define AZ_ATOMIC_CHAR_LOCK_FREE ATOMIC_CHAR_LOCK_FREE
+#define AZ_ATOMIC_CHAR16_T_LOCK_FREE ATOMIC_CHAR16_T_LOCK_FREE
+#define AZ_ATOMIC_CHAR32_T_LOCK_FREE ATOMIC_CHAR32_T_LOCK_FREE
+#define AZ_ATOMIC_WCHAR_T_LOCK_FREE ATOMIC_WCHAR_T_LOCK_FREE
+#define AZ_ATOMIC_SHORT_LOCK_FREE ATOMIC_SHORT_LOCK_FREE
+#define AZ_ATOMIC_INT_LOCK_FREE ATOMIC_INT_LOCK_FREE
+#define AZ_ATOMIC_LONG_LOCK_FREE ATOMIC_LONG_LOCK_FREE
+#define AZ_ATOMIC_LLONG_LOCK_FREE ATOMIC_LLONG_LOCK_FREE
+#define AZ_ATOMIC_POINTER_LOCK_FREE ATOMIC_POINTER_LOCK_FREE
+#define AZ_ATOMIC_FLAG_INIT ATOMIC_FLAG_INIT
+#define AZ_ATOMIC_VAR_INIT ATOMIC_VAR_INIT
+
 #else // !AZ_USE_STD_ATOMIC
+
 namespace AZStd
 {
     /**
@@ -84,142 +113,228 @@ namespace AZStd
         memory_order_seq_cst
     };
 
-    template<typename T>
-    T kill_dependency(T y);
-
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    ///Specifies if integral types are lock-free, 0=never, 1=sometimes, 2=always
-    #define ATOMIC_INTEGRAL_LOCK_FREE 2
-    ///Specifies if address types are lock-free, 0=never, 1=sometimes, 2=always
-    #define ATOMIC_ADDRESS_LOCK_FREE 2
-#else
-    ///Specifies if integral types are lock-free, 0=never, 1=sometimes, 2=always
-    #define ATOMIC_INTEGRAL_LOCK_FREE 0
-    ///Specifies if address types are lock-free, 0=never, 1=sometimes, 2=always
-    #define ATOMIC_ADDRESS_LOCK_FREE 0
-#endif
-
-    template<typename T>
+    template <typename T>
     struct atomic;
 
-    struct atomic_bool;
-    bool atomic_is_lock_free(const volatile atomic_bool*);
-    void atomic_store(volatile atomic_bool*, bool);
-    void atomic_store_explicit(volatile atomic_bool*, bool, memory_order);
-    bool atomic_load(const volatile atomic_bool*);
-    bool atomic_load_explicit(const volatile atomic_bool*, memory_order);
-    bool atomic_exchange(volatile atomic_bool*, bool);
-    bool atomic_exchange_explicit(volatile atomic_bool*, bool, memory_order);
-    bool atomic_compare_exchange_weak(volatile atomic_bool*, bool*, bool);
-    bool atomic_compare_exchange_strong(volatile atomic_bool*, bool*, bool);
-    bool atomic_compare_exchange_weak_explicit(volatile atomic_bool*, bool*, bool, memory_order, memory_order);
-    bool atomic_compare_exchange_strong_explicit(volatile atomic_bool*, bool*, bool, memory_order, memory_order);
-
-#define AZSTD_ATOMIC_INTEGRAL_DECLARE(_name, _type)                                       \
-    struct atomic_##_name;                                                                \
-    bool atomic_is_lock_free(const volatile atomic_##_name*);                             \
-    void atomic_store(volatile atomic_##_name*, _type);                                   \
-    void atomic_store_explicit(volatile atomic_##_name*, _type, memory_order);            \
-    _type atomic_load(const volatile atomic_##_name*);                                    \
-    _type atomic_load_explicit(const volatile atomic_##_name*, memory_order);             \
-    _type atomic_exchange(volatile atomic_##_name*, _type);                               \
-    _type atomic_exchange_explicit(volatile atomic_##_name*, _type, memory_order);        \
-    bool atomic_compare_exchange_weak(volatile atomic_##_name*, _type*, _type);           \
-    bool atomic_compare_exchange_strong(volatile atomic_##_name*, _type*, _type);         \
-    bool atomic_compare_exchange_weak_explicit(volatile atomic_##_name*, _type*, _type,   \
-        memory_order, memory_order);                                                      \
-    bool atomic_compare_exchange_strong_explicit(volatile atomic_##_name*, _type*, _type, \
-        memory_order, memory_order);                                                      \
-    _type atomic_fetch_add(volatile atomic_##_name*, _type);                              \
-    _type atomic_fetch_add_explicit(volatile atomic_##_name*, _type, memory_order);       \
-    _type atomic_fetch_sub(volatile atomic_##_name*, _type);                              \
-    _type atomic_fetch_sub_explicit(volatile atomic_##_name*, _type, memory_order);       \
-    _type atomic_fetch_and(volatile atomic_##_name*, _type);                              \
-    _type atomic_fetch_and_explicit(volatile atomic_##_name*, _type, memory_order);       \
-    _type atomic_fetch_or(volatile atomic_##_name*, _type);                               \
-    _type atomic_fetch_or_explicit(volatile atomic_##_name*, _type, memory_order);        \
-    _type atomic_fetch_xor(volatile atomic_##_name*, _type);                              \
-    _type atomic_fetch_xor_explicit(volatile atomic_##_name*, _type, memory_order);
-
-#define AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(_name, _type) \
-    AZSTD_ATOMIC_INTEGRAL_DECLARE(_name, _type)                  \
-    template<>                                                   \
-    struct atomic<_type>;
-
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(char, char);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(uchar, unsigned char);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(short, short);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(ushort, unsigned short);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(int, int);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(uint, unsigned int);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(long, long);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(ulong, unsigned long);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(llong, long long);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(ullong, unsigned long long);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(char16_t, char16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(char32_t, char32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE_WITH_GENERIC(wchar_t, wchar_t);
-
-    //the following are typedefs not types, so they do not get a generic specialization
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_least8_t, int_least8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_least8_t, uint_least8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_least16_t, int_least16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_least16_t, uint_least16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_least32_t, int_least32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_least32_t, uint_least32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_least64_t, int_least64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_least64_t, uint_least64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_fast8_t, int_fast8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_fast8_t, uint_fast8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_fast16_t, int_fast16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_fast16_t, uint_fast16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_fast32_t, int_fast32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_fast32_t, uint_fast32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(int_fast64_t, int_fast64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uint_fast64_t, uint_fast64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(intptr_t, intptr_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uintptr_t, uintptr_t);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE(size_t, size_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(ssize_t, ssize_t);
-    AZSTD_ATOMIC_INTEGRAL_DECLARE(ptrdiff_t, ptrdiff_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(intmax_t, intmax_t);
-    //AZSTD_ATOMIC_INTEGRAL_DECLARE(uintmax_t, uintmax_t);
-
-#undef AZSTD_ATOMIC_INTEGRAL_DECLARE
-
-    struct atomic_address;
-    bool atomic_is_lock_free(const volatile atomic_address*);
-    void atomic_store(volatile void**, void*);
-    void atomic_store_explicit(volatile atomic_address*, void*, memory_order);
-    void* atomic_load(const volatile atomic_address*);
-    void* atomic_load_explicit(const volatile atomic_address*, memory_order);
-    void* atomic_exchange(volatile atomic_address*, void*);
-    void* atomic_exchange_explicit(volatile atomic_address*, void*, memory_order);
-    bool atomic_compare_exchange_weak(volatile atomic_address*, void**, void*);
-    bool atomic_compare_exchange_strong(volatile atomic_address*, void**, void*);
-    bool atomic_compare_exchange_weak_explicit(volatile atomic_address*, void**, void*, memory_order, memory_order);
-    bool atomic_compare_exchange_strong_explicit(volatile atomic_address*, void**, void*, memory_order, memory_order);
-    void* atomic_fetch_add(volatile atomic_address*, ptrdiff_t);
-    void* atomic_fetch_add_explicit(volatile atomic_address*, ptrdiff_t, memory_order);
-    void* atomic_fetch_sub(volatile atomic_address*, ptrdiff_t);
-    void* atomic_fetch_sub_explicit(volatile atomic_address*, ptrdiff_t, memory_order);
-
-    template<typename T>
+    template <typename T>
     struct atomic<T*>;
 
+    struct atomic_bool;
     struct atomic_flag;
-    bool atomic_flag_test_and_set(volatile atomic_flag*);
-    bool atomic_flag_test_and_set_explicit(volatile atomic_flag*, memory_order);
-    void atomic_flag_clear(volatile atomic_flag*);
-    void atomic_flag_clear_explicit(volatile atomic_flag*, memory_order);
 
     void atomic_thread_fence(memory_order order);
     void atomic_signal_fence(memory_order order);
+
+    template <typename T>
+    T kill_dependency(T y);
 }
 
-#include <AzCore/std/parallel/internal/atomic_impl.inl>
+#if defined(AZ_PLATFORM_WINDOWS)
+///Specifies if integral types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_INTEGRAL_LOCK_FREE 2
+///Specifies if address types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_ADDRESS_LOCK_FREE 2
+#define AZ_ATOMIC_BOOL_LOCK_FREE 2
+#define AZ_ATOMIC_CHAR_LOCK_FREE 2
+#define AZ_ATOMIC_CHAR16_T_LOCK_FREE 2
+#define AZ_ATOMIC_CHAR32_T_LOCK_FREE 2
+#define AZ_ATOMIC_WCHAR_T_LOCK_FREE 2
+#define AZ_ATOMIC_SHORT_LOCK_FREE 2
+#define AZ_ATOMIC_INT_LOCK_FREE 2
+#define AZ_ATOMIC_LONG_LOCK_FREE 2
+#define AZ_ATOMIC_LLONG_LOCK_FREE 2
+#define AZ_ATOMIC_POINTER_LOCK_FREE 2
+
+#define AZ_ATOMICS_LOCK_FREE 2
+#else
+///Specifies if integral types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_INTEGRAL_LOCK_FREE 0
+///Specifies if address types are lock-free, 0=never, 1=sometimes, 2=always
+#define AZ_ATOMIC_ADDRESS_LOCK_FREE 0
+#define AZ_ATOMIC_BOOL_LOCK_FREE 0
+#define AZ_ATOMIC_CHAR_LOCK_FREE 0
+#define AZ_ATOMIC_CHAR16_T_LOCK_FREE 0
+#define AZ_ATOMIC_CHAR32_T_LOCK_FREE 0
+#define AZ_ATOMIC_WCHAR_T_LOCK_FREE 0
+#define AZ_ATOMIC_SHORT_LOCK_FREE 0
+#define AZ_ATOMIC_INT_LOCK_FREE 0
+#define AZ_ATOMIC_LONG_LOCK_FREE 0
+#define AZ_ATOMIC_LLONG_LOCK_FREE 0
+#define AZ_ATOMIC_POINTER_LOCK_FREE 0
+
+#define AZ_ATOMICS_LOCK_FREE 0
+#endif
+
+#define AZ_ATOMIC_VAR_INIT(val) { val }
+#define AZ_ATOMIC_FLAG_INIT { 0 }
 
 #endif // !AZ_USE_STD_ATOMIC
 
-#endif // AZSTD_ATOMIC_H
-#pragma once
+namespace AZStd
+{
+    void atomic_init(atomic_bool* atom, bool desired);
+    void atomic_init(volatile atomic_bool* atom, bool desired);
+
+    template <class T>
+    void atomic_init(atomic<T>* atom, T desired);
+
+    template <class T>
+    void atomic_init(volatile atomic<T>* atom, T desired);
+
+    template <class T>
+    bool atomic_is_lock_free(const atomic<T>* atom);
+
+    template <class T>
+    bool atomic_is_lock_free(const volatile atomic<T>* atom);
+
+    template <class T>
+    void atomic_store(atomic<T>* atom, T desired);
+
+    template <class T>
+    void atomic_store(volatile atomic<T>* atom, T desired);
+
+    template <class T>
+    void atomic_store_explicit(atomic<T>* atom, T desired, memory_order order);
+
+    template <class T>
+    void atomic_store_explicit(volatile atomic<T>* atom, T desired, memory_order order);
+
+    template <class T>
+    T atomic_load(atomic<T>* atom);
+
+    template <class T>
+    T atomic_load(volatile atomic<T>* atom);
+
+    template <class T>
+    T atomic_load_explicit(atomic<T>* atom, memory_order order);
+
+    template <class T>
+    T atomic_load_explicit(volatile atomic<T>* atom, memory_order order);
+
+    template <class T>
+    T atomic_exchange(atomic<T>* atom, T desired);
+
+    template <class T>
+    T atomic_exchange(volatile atomic<T>* atom, T desired);
+
+    template <class T>
+    T atomic_exchange_explicit(atomic<T>* atom, T desired, memory_order order);
+
+    template <class T>
+    T atomic_exchange_explicit(volatile atomic<T>* atom, T desired, memory_order order);
+
+    template <class T>
+    bool atomic_compare_exchange_weak(atomic<T>* atom, T* expected, T desired);
+
+    template <class T>
+    bool atomic_compare_exchange_weak(volatile atomic<T>* atom, T* expected, T desired);
+
+    template <class T>
+    bool atomic_compare_exchange_strong(atomic<T>* atom, T* expected, T desired);
+
+    template <class T>
+    bool atomic_compare_exchange_strong(volatile atomic<T>* atom, T* expected, T desired);
+
+    template <class T>
+    bool atomic_compare_exchange_weak_explicit(atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail);
+
+    template <class T>
+    bool atomic_compare_exchange_weak_explicit(volatile atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail);
+
+    template <class T>
+    bool atomic_compare_exchange_strong_explicit(atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail);
+
+    template <class T>
+    bool atomic_compare_exchange_strong_explicit(volatile atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_add(atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_add(volatile atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_add_explicit(atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_add_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class T>
+    T* atomic_fetch_add(atomic<T*>* atom, ptrdiff_t arg);
+
+    template <class T>
+    T* atomic_fetch_add(volatile atomic<T*>* atom, ptrdiff_t arg);
+
+    template <class T>
+    T* atomic_fetch_add_explicit(atomic<T*>* atom, ptrdiff_t arg, memory_order order);
+
+    template <class T>
+    T* atomic_fetch_add_explicit(volatile atomic<T*>* atom, ptrdiff_t arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_sub(atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_sub(volatile atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_sub_explicit(atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_sub_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class T>
+    T* atomic_fetch_sub(atomic<T*>* atom, ptrdiff_t arg);
+
+    template <class T>
+    T* atomic_fetch_sub(volatile atomic<T*>* atom, ptrdiff_t arg);
+
+    template <class T>
+    T* atomic_fetch_sub_explicit(atomic<T*>* atom, ptrdiff_t arg, memory_order order);
+
+    template <class T>
+    T* atomic_fetch_sub_explicit(volatile atomic<T*>* atom, ptrdiff_t arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_and(atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_and(volatile atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_and_explicit(atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_and_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_or(atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_or(volatile atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_or_explicit(atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_or_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_xor(atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_xor(volatile atomic<Integral>* atom, Integral arg);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_xor_explicit(atomic<Integral>* atom, Integral arg, memory_order order);
+
+    template <class Integral, class = AZStd::enable_if_t<AZStd::is_integral<Integral>::value>>
+    Integral atomic_fetch_xor_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order);
+
+    bool atomic_flag_test_and_set(volatile atomic_flag* atom);
+    bool atomic_flag_test_and_set_explicit(volatile atomic_flag* atom, memory_order order);
+    void atomic_flag_clear(volatile atomic_flag* atom);
+    void atomic_flag_clear_explicit(volatile atomic_flag* atom, memory_order order);
+}
+
+#include <AzCore/std/parallel/internal/atomic_impl.inl>

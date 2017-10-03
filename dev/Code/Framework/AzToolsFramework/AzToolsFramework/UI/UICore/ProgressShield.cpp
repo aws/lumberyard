@@ -55,7 +55,8 @@ namespace AzToolsFramework
             shield.setProgress(current, max, label);
 
             // re: 16 msec - pump QueuedEvents at a min of ~60 FPS
-            QCoreApplication::processEvents(QEventLoop::AllEvents|QEventLoop::WaitForMoreEvents, 16);
+
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents |QEventLoop::WaitForMoreEvents, 16);
             AZ::TickBus::ExecuteQueuedEvents();
         }
     }

@@ -11,34 +11,34 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Behavior
         {
-            class IGroup;
-        }
-        namespace SceneData
-        {
-            class EFXMeshRuleBehavior
-                : public Events::ManifestMetaInfoBus::Handler
+            class MeshRuleBehavior
+                : public AZ::SceneAPI::SceneCore::BehaviorComponent
+                , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler
             {
             public:
-                AZ_CLASS_ALLOCATOR_DECL
+                AZ_COMPONENT(MeshRuleBehavior, "{8C5599B9-C46D-40F5-BC29-880415973654}", AZ::SceneAPI::SceneCore::BehaviorComponent);
 
-                EFXMeshRuleBehavior();
-                ~EFXMeshRuleBehavior() override;
+                ~MeshRuleBehavior() override = default;
 
-                void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target) override;
+                // From BehaviorComponent
+                void Activate();
+                void Deactivate();
+                static void Reflect(AZ::ReflectContext* context);
+
+                void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;
             };
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Behavior
+    } // Pipeline
+} // EMotionFX

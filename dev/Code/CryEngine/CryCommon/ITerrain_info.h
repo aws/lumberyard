@@ -45,7 +45,7 @@ STRUCT_INFO_END(SCommonFileHeader)
 STRUCT_INFO_BEGIN(STerrainTextureFileHeader)
 STRUCT_VAR_INFO(LayerCount, TYPE_INFO(uint16))
 STRUCT_VAR_INFO(Flags, TYPE_INFO(uint16))
-STRUCT_VAR_INFO(ColorMultiplier, TYPE_INFO(float))
+STRUCT_VAR_INFO(ColorMultiplier_deprecated, TYPE_INFO(float))
 STRUCT_INFO_END(STerrainTextureFileHeader)
 
 STRUCT_INFO_BEGIN(STerrainTextureLayerFileHeader)

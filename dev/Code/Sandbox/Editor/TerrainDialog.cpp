@@ -116,12 +116,12 @@ const GUID& CTerrainDialog::GetClassID()
 
 void CTerrainDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(100, 100, 1000, 800);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTerrainDialog>(GetIEditor(), LyViewPane::TerrainEditor, LyViewPane::CategoryTools, options);
+    AzToolsFramework::RegisterViewPane<CTerrainDialog>(LyViewPane::TerrainEditor, LyViewPane::CategoryTools, options);
 }
 
 

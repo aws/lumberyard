@@ -498,19 +498,23 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         text = tr("Scanning...");
         break;
     case AssetProcessorStatus::Analyzing_Jobs:
-        if (entry.m_count)
+        m_createJobCount = entry.m_count;
+
+        if (m_processJobsCount + m_createJobCount > 0)
         {
-            text = tr("Analyzing jobs, remaining %1...").arg(entry.m_count);
+            text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
         }
         else
         {
-            text = tr("All jobs analyzed...");
+            text = tr("Idle...");
         }
         break;
     case AssetProcessorStatus::Processing_Jobs:
-        if (entry.m_count)
+        m_processJobsCount = entry.m_count;
+
+        if (m_processJobsCount + m_createJobCount > 0)
         {
-            text = tr("Processing jobs, remaining %1...").arg(entry.m_count);
+            text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
         }
         else
         {

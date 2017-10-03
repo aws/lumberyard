@@ -146,6 +146,7 @@ protected:
     //! Load the Modules (Such as Gems) and have them be reflected.
     bool ActivateModules();
     void PopulateApplicationDependencies();
+    bool InitiatedShutdown() const;
 
     bool m_duringStartup = true;
 

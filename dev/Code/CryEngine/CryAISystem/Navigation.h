@@ -102,15 +102,15 @@ typedef std::vector<int16> FreeSpecialAreaIDs;
 
 struct SExtraLinkCostShape
 {
-    SExtraLinkCostShape(const ListPositions& shape, const AABB& aabb, float costFactor)
-        : shape(shape)
-        , aabb(aabb)
-        , costFactor(costFactor)
-        , origCostFactor(costFactor) {}
-    SExtraLinkCostShape(const ListPositions& shape, float costFactor)
-        : shape(shape)
-        , costFactor(costFactor)
-        , origCostFactor(costFactor)
+    SExtraLinkCostShape(const ListPositions& _shape, const AABB& _aabb, float _costFactor)
+        : shape(_shape)
+        , aabb(_aabb)
+        , costFactor(_costFactor)
+        , origCostFactor(_costFactor) {}
+    SExtraLinkCostShape(const ListPositions& _shape, float _costFactor)
+        : shape(_shape)
+        , costFactor(_costFactor)
+        , origCostFactor(_costFactor)
     {
         aabb.Reset();
         for (ListPositions::const_iterator it = shape.begin(); it != shape.end(); ++it)
@@ -321,15 +321,15 @@ private:
 
     struct SValidationErrorMarker
     {
-        SValidationErrorMarker(const string& msg, const Vec3& pos, const OBB& obb, ColorB col)
-            : msg(msg)
-            , pos(pos)
-            , obb(obb)
-            , col(col) {}
-        SValidationErrorMarker(const string& msg, const Vec3& pos, ColorB col)
-            : msg(msg)
-            , pos(pos)
-            , col(col)
+        SValidationErrorMarker(const string& _msg, const Vec3& _pos, const OBB& _obb, ColorB _col)
+            : msg(_msg)
+            , pos(_pos)
+            , obb(_obb)
+            , col(_col) {}
+        SValidationErrorMarker(const string& _msg, const Vec3& _pos, ColorB _col)
+            : msg(_msg)
+            , pos(_pos)
+            , col(_col)
         {
             obb.SetOBBfromAABB(Matrix33(IDENTITY), AABB(Vec3 (-0.1f, -0.1f, -0.1f), Vec3 (0.1f, 0.1f, 0.1f)));
         }

@@ -23,6 +23,7 @@
 #include "Animation/UiAnimViewDialog.h"
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include "AssetTreeEntry.h"
+#include <LyShine/UiComponentTypes.h>
 
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_STATE_KEY     (QString("Edit Mode State") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_GEOM_KEY      (QString("Edit Mode Geometry") + " " + FileHelpers::GetAbsoluteGameDir())
@@ -224,6 +225,9 @@ EditorWindow::EditorWindow(EditorWrapper* parentWrapper,
     // Start listening for any queries on the UiEditorDLLBus
     UiEditorDLLBus::Handler::BusConnect();
 
+    // Start listening for any queries on the UiEditorChangeNotificationBus
+    UiEditorChangeNotificationBus::Handler::BusConnect();
+
     // Tell the UI animation system that the active canvas has changed
     EBUS_EVENT(UiEditorAnimationBus, CanvasLoaded);
 
@@ -246,6 +250,7 @@ EditorWindow::~EditorWindow()
     GetIEditor()->UnregisterNotifyListener(this);
 
     UiEditorDLLBus::Handler::BusDisconnect();
+    UiEditorChangeNotificationBus::Handler::BusDisconnect();
 
     DestroyCanvas();
 
@@ -275,6 +280,12 @@ AZ::EntityId EditorWindow::GetActiveCanvasId()
 UndoStack* EditorWindow::GetActiveUndoStack()
 {
     return GetActiveStack();
+}
+
+void EditorWindow::OnEditorTransformPropertiesNeedRefresh()
+{
+    AZ::Uuid transformComponentUuid = LyShine::UiTransform2dComponentUuid;
+    GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues, &transformComponentUuid);
 }
 
 void EditorWindow::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* /*entry*/)
@@ -339,9 +350,32 @@ bool EditorWindow::SaveCanvasToXml(bool forceAskingForFilename)
 
     if (filename.isEmpty() || forceAskingForFilename)
     {
+        QString dir;
+        QStringList recentFiles = ReadRecentFiles();
+
+        // If the canvas we are saving already has a name
+        if (!filename.isEmpty())
+        {
+            // Default to where it was loaded from or last saved to
+            // Also notice that we directly assign dir to the filename
+            // This allows us to have its existing name already entered in
+            // the File Name field.
+            dir = filename;
+        }
+        // Else if we had recently opened canvases, open the most recent one's directory
+        else if (recentFiles.size() > 0)
+        {
+            dir = Path::GetPath(recentFiles.front());
+        }
+        // Else go to the default canvas directory
+        else
+        {
+            dir = FileHelpers::GetAbsoluteDir(UICANVASEDITOR_CANVAS_DIRECTORY);
+        }
+
         filename = QFileDialog::getSaveFileName(nullptr,
                 QString(),
-                FileHelpers::GetAbsoluteDir(UICANVASEDITOR_CANVAS_DIRECTORY),
+                dir,
                 "*." UICANVASEDITOR_CANVAS_EXTENSION,
                 nullptr,
                 QFileDialog::DontConfirmOverwrite);
@@ -569,7 +603,7 @@ IFileUtil::FileArray& EditorWindow::GetPrefabFiles()
 void EditorWindow::AddPrefabFile(const QString& prefabFilename)
 {
     IFileUtil::FileDesc fd;
-    fd.filename = prefabFilename.toUtf8().constData();
+    fd.filename = prefabFilename;
     m_prefabFiles.push_back(fd);
     SortPrefabsList();
 }
@@ -712,6 +746,49 @@ void EditorWindow::SaveEditorWindowSettings()
 void EditorWindow::ReplaceEntityContext(UiEditorEntityContext* entityContext)
 {
     m_entityContext.reset(entityContext);
+}
+
+QMenu* EditorWindow::createPopupMenu()
+{
+    QMenu* menu = new QMenu(this);
+
+    // Add all QDockWidget panes for the current editor mode
+    {
+        QList<QDockWidget*> list = findChildren<QDockWidget*>();
+
+        for (auto p : list)
+        {
+            // findChildren is recursive, but we only want dock widgets that are immediate children
+            if (p->parent() == this)
+            {
+                bool isPreviewModeDockWidget = IsPreviewModeDockWidget(p);
+                if (m_editorMode == UiEditorMode::Edit && !isPreviewModeDockWidget ||
+                    m_editorMode == UiEditorMode::Preview && isPreviewModeDockWidget)
+                {
+                    menu->addAction(p->toggleViewAction());
+                }
+            }
+        }
+    }
+
+    // Add all QToolBar panes for the current editor mode
+    {
+        QList<QToolBar*> list = findChildren<QToolBar*>();
+        for (auto p : list)
+        {
+            if (p->parent() == this)
+            {
+                bool isPreviewModeToolbar = IsPreviewModeToolbar(p);
+                if (m_editorMode == UiEditorMode::Edit && !isPreviewModeToolbar ||
+                    m_editorMode == UiEditorMode::Preview && isPreviewModeToolbar)
+                {
+                    menu->addAction(p->toggleViewAction());
+                }
+            }
+        }
+    }
+
+    return menu;
 }
 
 void EditorWindow::SaveModeSettings(UiEditorMode mode, bool syncSettings)

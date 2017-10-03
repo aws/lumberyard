@@ -28,7 +28,7 @@ from botocore.client import Config
 import update
 
 SRC_PATTERN = '''["|'].*{}.*["|']'''
-BOOTSTRAP_VARIABLE_NAME = "var cgpBootstrap ="
+BOOTSTRAP_VARIABLE_NAME = "var bootstrap ="
 
 def add_cli_commands(cgf_subparsers, addCommonArgs):
 
@@ -38,7 +38,10 @@ def add_cli_commands(cgf_subparsers, addCommonArgs):
     subparser.add_argument('--show-current-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal active passphrase and iv without generating a new encrypted payload.', default=False)
     subparser.add_argument('--duration-seconds', required=False, help='The number of seconds before the URL and temporary credentials will expire.', type=int, default=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
     subparser.add_argument('--role', required=False, metavar='ROLE-NAME', help='Specifies an IAM role that will be assumed by the Cloud Gem Portal web site. Can be ProjectOwner, DeploymentOwner, or any other project or deployment access role. The credentials taken from the ~/.aws/credentials file must be able to asssume this role.')
-    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False, help='If ROLE-NAME is a deployment access role, this identifies the actual deployment. If not given, the default deployment for the project is used.')
+    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False, help='If ROLE-NAME is a deployment access role, this identifies the actual deployment. If not given, the default deployment for the project is used.')    
+    subparser.add_argument('--cognito-dev', metavar='COGNITO-DEV', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
+    subparser.add_argument('--cognito-prod', metavar='COGNITO-PROD', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
+    subparser.add_argument('--cognito-test', metavar='COGNITO-TEST', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
     subparser.add_argument('--silent-create-admin', action='store_true', required=False,
                            help='Create an administrator for the Cloud Gem Portal silently.',
                            default=False)
@@ -57,12 +60,12 @@ def add_cli_commands(cgf_subparsers, addCommonArgs):
     addCommonArgs(subparser)
     subparser.set_defaults(func=create_portal_administrator)
 
-def open_portal(context, args):
+def open_portal(context, args):    
     project_resources = context.config.project_resources
 
     if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
          raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Portal gem installed in your project.')
-
+    
     project_config_bucket_id = context.config.configuration_bucket_name
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stackid = cgp_s3_resource['StackId']
@@ -72,7 +75,11 @@ def open_portal(context, args):
     s3_client = context.aws.session.client('s3',region, config=Config(signature_version='s3v4'))
     user_pool_resource = project_resources[constant.PROJECT_RESOURCE_NAME_USER_POOL]
     identity_pool_resource = project_resources[constant.PROJECT_RESOURCE_NAME_IDENTITY_POOL]
-
+    
+    if 'CloudGemPortalApp' not in user_pool_resource['UserPoolClients']:  
+        credentials = context.aws.load_credentials()      
+        access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)
+        raise HandledError('The Cognito user pool \'{}\' is missing the \'CloudGemPortalApp\' app client.  Ensure the Lumberyard user \'{}\' with AWS access key identifier \'{}\' in the Lumberyard Credentials Manager has the policy \'AmazonCognitoReadOnly\' attached and a project stack has been created (Lumberyard -> AWS -> Resource Manager).'.format(constant.PROJECT_RESOURCE_NAME_USER_POOL, context.config.user_default_profile, access_key))
     client_id = user_pool_resource['UserPoolClients']['CloudGemPortalApp']['ClientId']
     user_pool_id = user_pool_resource['PhysicalResourceId']
     identity_pool_id = identity_pool_resource['PhysicalResourceId']
@@ -83,7 +90,7 @@ def open_portal(context, args):
 
     #Request the index file
     try:
-        s3_index_obj_request = s3_client.get_object(Bucket=bucket_id, Key= constant.PROJECT_CGP_ROOT_FILE)
+        s3_index_obj_request = s3_client.get_object(Bucket=bucket_id, Key= constant.PROJECT_CGP_ROOT_FILE)        
     except ClientError as e:
         raise HandledError("Could not read from the key '{}' in the S3 bucket '{}'.".format(constant.PROJECT_CGP_ROOT_FILE,bucket_id), e)
 
@@ -108,21 +115,29 @@ def open_portal(context, args):
         "identityPoolId": identity_pool_id,
         "projectConfigBucketId": project_config_bucket_id,
         "region": region,
-        "firstTimeUse": admin_account_created
+        "firstTimeUse": admin_account_created,
+        "cognitoDev" : args.cognito_dev if args.cognito_dev != "''" else None,
+        "cognitoProd" : args.cognito_prod if args.cognito_prod != "''" else None,
+        "cognitoTest" : args.cognito_test if args.cognito_test != "''" else None
     }
 
     content = set_presigned_urls(content, bucket_id, s3_client, expiration, region)
-
+    result = None
     try:
         # TODO: write to an unique name and configure bucket to auto delete these objects after 1 hour
         # the max allowed --duration-seconds value.
-        s3_client.put_object(Bucket=bucket_id, Key=constant.PROJECT_CGP_ROOT_SUPPORT_FILE, Body="var cgpBootstrap = {}".format(json.dumps(cgp_bootstrap_config)),ContentType='text/html')
+        s3_client.put_object(Bucket=bucket_id, Key=constant.PROJECT_CGP_ROOT_SUPPORT_FILE, Body="var bootstrap = {}".format(json.dumps(cgp_bootstrap_config)),ContentType='text/html')
         result = s3_client.put_object(Bucket=bucket_id, Key=constant.PROJECT_CGP_ROOT_FILE, Body=content,ContentType='text/html')
     except ClientError as e:
-        raise HandledError("Could write to the key '{}' in the S3 bucket '{}'.".format(constant.PROJECT_CGP_ROOT_FILE,bucket_id), e)
+        if e.response["Error"]["Code"] in ["AccessDenied"]:
+            credentials = context.aws.load_credentials()      
+            access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)
+            context.view._output_message("The Lumberyard user '{0}' associated with AWS IAM access key identifier '{1}' is missing PUT permissions on the S3 bucket '{2}'. Now attempting to use old Cloud Gem Portal pre-signed urls.\nHave the administrator grant the AWS user account with access key '{1}' S3 PUT permissions for bucket '{2}'".format(context.config.user_default_profile, access_key, bucket_id))
+        else:
+            raise HandledError("Could write to the key '{}' in the S3 bucket '{}'.".format(constant.PROJECT_CGP_ROOT_FILE,bucket_id), e)
 
-    if result['ResponseMetadata']['HTTPStatusCode'] == 200:
-        if not set_bucket_cors(context, project_config_bucket_id, region):
+    if result == None or result['ResponseMetadata']['HTTPStatusCode'] == 200:
+        if result != None and not set_bucket_cors(context, project_config_bucket_id, region):
             raise HandledError("Warning: the Cross Origin Resource Sharing (CORS) policy cloud not be set:  Access Denied.  This may prevent the Cloud Gem Portal from accessing the projects project-settings.json file.")
 
         #generate presigned url
@@ -142,6 +157,8 @@ def open_portal(context, args):
 def set_presigned_urls(html, bucket_id, s3, expiration, region):
     srcs = ['bundles/dependencies.bundle.js',
             'bundles/app.bundle.js',
+            'cgp_bootstrap.js',
+            'config.js',
             constant.PROJECT_CGP_BOOTSTRAP_FILENAME
             ]
 
@@ -153,13 +170,13 @@ def set_presigned_urls(html, bucket_id, s3, expiration, region):
             html = html.replace(match,"'"+secure_url+"'") 
 
     return html
-       
-def set_bucket_cors(context,bucket, region):
-    s3 = context.aws.session.resource('s3',region,config=Config(signature_version='s3v4'))
-    bucket = s3.Bucket(bucket)   
+
+def set_bucket_cors(context, bucket, region):
+    s3 = context.aws.session.resource('s3', region, config=Config(signature_version='s3v4'))
+    bucket = s3.Bucket(bucket)
     cors = bucket.Cors()
 
-    try:                
+    try:
         cors_rules = cors.cors_rules[0]
         allowed_headers = cors_rules['AllowedHeaders']
         if 'x-amz-date' not in allowed_headers:
@@ -174,7 +191,7 @@ def set_bucket_cors(context,bucket, region):
             allowed_headers.append('x-amz-content-sha256')
     except ClientError as e:
         #No CORS policy exists.  Let's create one.
-        cors_rules =  {
+        cors_rules = {
             'AllowedMethods': ['GET'],
             'AllowedOrigins': ['*'],
             'MaxAgeSeconds': 3000,
@@ -185,7 +202,7 @@ def set_bucket_cors(context,bucket, region):
         allowed_headers.append('x-amz-security-token')
         allowed_headers.append('authorization')
         allowed_headers.append('x-amz-content-sha256')
-   
+
     response = cors.put(CORSConfiguration={
         'CORSRules': [
             {
@@ -247,27 +264,30 @@ def create_portal_administrator(context, args):
 
     if not user_exists:
         # create the account if it does not
-        random_str = ''.join(
-            random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(8))
-
-        password = ''.join((random.choice(string.ascii_uppercase), random.choice(string.ascii_lowercase),
+        random_str = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(8))
+        password = ''.join((random.choice(string.ascii_uppercase),
+                            random.choice(string.ascii_lowercase),
                             random.choice(string.digits), '@', random_str))
-
         #shuffle password characters
         chars = list(password)
         random.shuffle(chars)
         password = ''.join(chars)
-
-        response = client.admin_create_user(
-            UserPoolId=user_pool_id,
-            Username=administrator_name,
-            TemporaryPassword=password
-        )
-        response = client.admin_add_user_to_group(
-            UserPoolId=user_pool_id,
-            Username=administrator_name,
-            GroupName='administrator'
-        )
+        try:
+            response = client.admin_create_user(
+                UserPoolId=user_pool_id,
+                Username=administrator_name,
+                TemporaryPassword=password
+            )
+            response = client.admin_add_user_to_group(
+                UserPoolId=user_pool_id,
+                Username=administrator_name,
+                GroupName='administrator'
+            )
+        except Exception as e:
+            credentials = context.aws.load_credentials()      
+            access_key = credentials.get(constant.DEFAULT_SECTION_NAME, constant.ACCESS_KEY_OPTION)            
+            raise HandledError("Failed to create the administrator account.  Have your administrator run this option or verify the user account '{}' with access key '{}' has the policies ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'].".format(context.config.user_default_profile,access_key), e)
+            
         if not args.silent_create_admin:
             context.view.create_admin(administrator_name, password, 'The Cloud Gem Portal administrator account has been created.')
 

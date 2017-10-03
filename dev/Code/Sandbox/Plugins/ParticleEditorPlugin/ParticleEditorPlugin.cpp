@@ -14,7 +14,9 @@
 #include "platform_impl.h"
 #include "Include/ICommandManager.h"
 #include "Include/IEditorClassFactory.h"
-#include <QtViewPaneManager.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ViewPaneOptions.h>
+#include <LyViewPaneNames.h>
 #include <QT/MainWindow.h>
 
 static bool const c_EnableParticleEditorMenuEntry = true;
@@ -31,7 +33,7 @@ CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
 {
 	if (c_EnableParticleEditorMenuEntry)
 	{
-		QtViewOptions options;
+		AzToolsFramework::ViewPaneOptions options;
 		options.canHaveMultipleInstances = true;
 		options.isPreview = true;
 		/*
@@ -44,7 +46,7 @@ CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
 		options.isDeletable = false;
 		options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-		RegisterQtViewPane<CMainWindow>(editor, m_RegisteredQtViewPaneName, LyViewPane::CategoryTools, options);
+		AzToolsFramework::RegisterViewPane<CMainWindow>(m_RegisteredQtViewPaneName, LyViewPane::CategoryTools, options);
 	}
 }
 
@@ -52,7 +54,7 @@ void CParticleEditorPlugin::Release()
 {
     if (c_EnableParticleEditorMenuEntry)
     {
-        UnregisterQtViewPane<CMainWindow>();
+        AzToolsFramework::UnregisterViewPane(m_RegisteredQtViewPaneName);
     }
     delete this;
 }

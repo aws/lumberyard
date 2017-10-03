@@ -223,7 +223,7 @@ const char* INT64_VALUE_STRING = "-3000000000";
 const uint64_t UINT64_VALUE{UINT64_C(5000000000)}; // > UINT_MAX and < INT64_MAX
 const char* UINT64_VALUE_STRING = "5000000000";
 
-const uint64_t UINT64_VALUE_MAX{18446744073709551615};
+const uint64_t UINT64_VALUE_MAX{18446744073709551615U};
 const char* UINT64_VALUE_MAX_STRING = "18446744073709551615";
 
 const double DOUBLE_VALUE{1.0};
@@ -830,7 +830,7 @@ INTEG_TEST(ServiceRequestJob, OnSuccessCalled)
     job->parameters.pathparam = TEST_PATH_PARAM;
     job->parameters.queryparam = TEST_QUERY_PARAM_SUCCESS;
     job->parameters.bodyparam.data = TEST_BODY_PARAM_DATA;
-    job->StartAndAssistUntilComplete();
+    job->GetHttpRequestJob().StartAndAssistUntilComplete();
     AZ::TickBus::ExecuteQueuedEvents();
 
     ASSERT_TRUE(onSuccessCalled);
@@ -862,7 +862,7 @@ INTEG_TEST(ServiceRequestJob, OnFailureCalled)
     job->parameters.pathparam = TEST_PATH_PARAM;
     job->parameters.queryparam = TEST_QUERY_PARAM_FAILURE;
     job->parameters.bodyparam.data = TEST_BODY_PARAM_DATA;
-    job->StartAndAssistUntilComplete();
+    job->GetHttpRequestJob().StartAndAssistUntilComplete();
     AZ::TickBus::ExecuteQueuedEvents();
 
     ASSERT_FALSE(onSuccessCalled);
@@ -874,19 +874,20 @@ INTEG_TEST(HttpRequestJobTest, OnSuccessCalled)
 {
     bool success = false;
     bool failure = false;
-    auto job = aznew CloudGemFramework::HttpRequestJob(false, CloudGemFramework::ServiceJob::GetDefaultConfig(),
-        [&success](int responseCode, AZStd::string content)
+    auto job = aznew CloudGemFramework::HttpRequestJob(false, CloudGemFramework::HttpRequestJob::GetDefaultConfig());
+    job->SetCallbacks(
+        [&success](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
         {
             success = true;
-            ASSERT_EQ(responseCode, 200);
+            ASSERT_EQ(response->GetResponseCode(), 200);
         },
-        [&failure](int responseCode)
+        [&failure](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>&)
         {
             failure = true;
         }
     );
     job->SetUrl("https://www.amazon.com/");
-    job->SetHttpMethod("GET");
+    job->SetMethod("GET");
     job->StartAndAssistUntilComplete();
     ASSERT_TRUE(success);
     ASSERT_FALSE(failure);
@@ -897,19 +898,20 @@ INTEG_TEST(HttpRequestJobTest, OnFailureCalled)
 {
     bool success = false;
     bool failure = false;
-    auto job = aznew CloudGemFramework::HttpRequestJob(false, CloudGemFramework::ServiceJob::GetDefaultConfig(),
-        [&success](int responseCode, AZStd::string content)
+    auto job = aznew CloudGemFramework::HttpRequestJob(false, CloudGemFramework::HttpRequestJob::GetDefaultConfig());
+    job->SetCallbacks(
+        [&success](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>&)
         {
             success = true;
         },
-        [&failure](int responseCode)
+        [&failure](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
         {
             failure = true;
-            ASSERT_EQ(responseCode, 404);
+            ASSERT_EQ(response->GetResponseCode(), 404);
         }
     );
     job->SetUrl("https://www.amazon.com/asdf");
-    job->SetHttpMethod("GET");
+    job->SetMethod("GET");
     job->StartAndAssistUntilComplete();
     ASSERT_TRUE(failure);
     ASSERT_FALSE(success);

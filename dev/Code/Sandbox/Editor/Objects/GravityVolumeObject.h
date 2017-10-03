@@ -49,7 +49,7 @@ typedef std::vector<CGravityVolumePoint> CGravityVolumePointVector;
  *  CGravityVolumeObject is an object that represent named 3d position in world.
  *
  */
-class CGravityVolumeObject
+class SANDBOX_API CGravityVolumeObject
     : public CEntityObject
 {
     Q_OBJECT

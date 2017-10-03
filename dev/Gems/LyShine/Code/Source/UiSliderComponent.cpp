@@ -27,6 +27,7 @@
 #include <LyShine/ISprite.h>
 #include <LyShine/UiSerializeHelpers.h>
 #include "UiSerialize.h"
+#include "UiNavigationHelpers.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! UiSliderNotificationBus Behavior context handler class 
@@ -313,7 +314,19 @@ bool UiSliderComponent::HandleEnterPressed(bool& shouldStayActive)
 }
 
 /////////////////////////////////////////////////////////////////
-bool UiSliderComponent::HandleKeyInput(EKeyId keyId, int modifiers)
+bool UiSliderComponent::HandleAutoActivation()
+{
+    if (!m_isHandlingEvents)
+    {
+        return false;
+    }
+
+    m_isActive = true;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////
+bool UiSliderComponent::HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys)
 {
     if (!m_isHandlingEvents)
     {
@@ -328,7 +341,11 @@ bool UiSliderComponent::HandleKeyInput(EKeyId keyId, int modifiers)
 
     bool result = false;
 
-    if (keyId == eKI_Left || keyId == eKI_Right || keyId == eKI_Up || keyId == eKI_Down)
+    const UiNavigationHelpers::Command command = UiNavigationHelpers::MapInputChannelIdToUiNavigationCommand(inputSnapshot.m_channelId, activeModifierKeys);
+    if (command == UiNavigationHelpers::Command::Up ||
+        command == UiNavigationHelpers::Command::Down ||
+        command == UiNavigationHelpers::Command::Left ||
+        command == UiNavigationHelpers::Command::Right)
     {
         const float keySteps = 10.0f;
         float delta = (m_stepValue != 0.0f) ? m_stepValue : (m_maxValue - m_minValue) / keySteps;
@@ -341,14 +358,14 @@ bool UiSliderComponent::HandleKeyInput(EKeyId keyId, int modifiers)
         bool isVertical = fabs(dir.GetX()) <= fabs(dir.GetY());
 
         float newValue = m_value;
-        if (isHorizontal && (keyId == eKI_Left || keyId == eKI_Right))
+        if (isHorizontal && (command == UiNavigationHelpers::Command::Left || command == UiNavigationHelpers::Command::Right))
         {
-            newValue += (keyId == eKI_Left ? -delta : delta);
+            newValue += (command == UiNavigationHelpers::Command::Left ? -delta : delta);
             result = true;
         }
-        else if (isVertical && (keyId == eKI_Up || keyId == eKI_Down))
+        else if (isVertical && (command == UiNavigationHelpers::Command::Up || command == UiNavigationHelpers::Command::Down))
         {
-            newValue += (keyId == eKI_Down ? -delta : delta);
+            newValue += (command == UiNavigationHelpers::Command::Down ? -delta : delta);
             result = true;
         }
 
@@ -485,6 +502,12 @@ void UiSliderComponent::Deactivate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiSliderComponent::IsAutoActivationSupported()
+{
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableStatesInterface::State UiSliderComponent::ComputeInteractableState()
 {
     UiInteractableStatesInterface::State state = UiInteractableStatesInterface::StateNormal;
@@ -584,6 +607,7 @@ void UiSliderComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiSliderBus>("UiSliderBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetValue", &UiSliderBus::Events::GetValue)
             ->Event("SetValue", &UiSliderBus::Events::SetValue)
             ->Event("GetMinValue", &UiSliderBus::Events::GetMinValue)
@@ -604,6 +628,7 @@ void UiSliderComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetValueChangedActionName", &UiSliderBus::Events::SetValueChangedActionName);
 
         behaviorContext->EBus<UiSliderNotificationBus>("UiSliderNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiSliderNotificationBusBehaviorHandler>();
     }
 }

@@ -86,13 +86,13 @@ namespace AZStd
         stamped_node_ptr nodeStamp;
         nodeStamp.m_node = NULL;
         nodeStamp.m_stamp = 0;
-        m_top.template store<memory_order_release>(nodeStamp);
+        m_top.store(nodeStamp, memory_order_release);
     }
 
     template<typename T, typename Allocator>
     inline lock_free_stamped_stack<T, Allocator>::~lock_free_stamped_stack()
     {
-        stamped_node_ptr nodeStamp = m_top.template load<memory_order_acquire>();
+        stamped_node_ptr nodeStamp = m_top.load(memory_order_acquire);
         node_type* node = nodeStamp.m_node;
         while (node)
         {

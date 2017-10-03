@@ -17,14 +17,14 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         includes      = [bld.Path('Code/CryEngine/CryAction'),
-                         bld.Path('Code/CryEngine/CryNetwork'),
-                         bld.Path('Code/CryEngine/LmbrAWS')],
+                         bld.Path('Code/CryEngine/CryNetwork')],
 
         use           = ['AzFramework',
                          'HttpRequestor'],
 
         uselib        = ['AWS_CPP_SDK_CORE',
                          'DYAD'],
+        shared_settings = ['awsgem.json'],
 
         file_list     = file_list,
 

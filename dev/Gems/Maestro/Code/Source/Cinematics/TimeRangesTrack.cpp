@@ -12,8 +12,10 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "TimeRangesTrack.h"
 
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 bool CTimeRangesTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     return TAnimTrack<ITimeRangeKey>::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -95,4 +97,25 @@ int CTimeRangesTrack::GetActiveKeyIndexForTime(const float time)
     }
 
     return lastFound;
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ITimeRangeKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ITimeRangeKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ITimeRangeKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ITimeRangeKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ITimeRangeKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ITimeRangeKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTimeRangesTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<IBoolKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CTimeRangesTrack, TAnimTrack<ITimeRangeKey> >()
+        ->Version(1);
 }

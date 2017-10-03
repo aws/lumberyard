@@ -68,6 +68,7 @@ def build(bld):
         darwin_cxxflags     = clang_flags,
 
         linux_file_list     = ['azcore_linux.waf_files', 'std/azstd_linux.waf_files'],
+        linux_includes      = ['/usr/include/libcxxabi'],
         linux_cxxflags      = clang_flags,
 
     )

@@ -1602,7 +1602,7 @@ QuatT CAnimatedCharacter::CalculateProceduralLeaning()
     float amountMaxNonCurving = (0.5f + 0.5f * clamp_tpl(alignmentOriginal * 2.0f, 0.0f, 1.0f));
     float amountMax = 0.35f;
     amountMax *= LERP(amountMaxNonCurving, 1.0f, curvingFraction);
-    if (amount > 0.00001f) // (AdamR) Changed comparison from 0.0f to handle occasional X360 denormals
+    if (amount > 0.00001f) // (AdamR) Changed comparison from 0.0f to handle occasional denormals
     {
         avgAxxScaled = (avgAxxScaled / amount) * min(amount, amountMax);
     }

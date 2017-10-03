@@ -10,7 +10,6 @@
 *
 */
 #include <Cry_Geo.h>
-#include <ConvertContext.h>
 #include <IIndexedMesh.h>
 #include <CGFContent.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
@@ -45,34 +44,26 @@ namespace AZ
         namespace SceneContainers = AZ::SceneAPI::Containers;
         namespace SceneViews = AZ::SceneAPI::Containers::Views;
 
-        MaterialExporter::MaterialExporter(IConvertContext* convertContext)
-            : CallProcessorBinder()
+        MaterialExporter::MaterialExporter()
+            : SceneAPI::SceneCore::ExportingComponent()
             , m_cachedGroup(nullptr)
-            , m_convertContext(convertContext)
             , m_exportMaterial(true)
         {
             m_physMaterialNames[PHYS_GEOM_TYPE_DEFAULT_PROXY] = GFxFramework::MaterialExport::g_stringPhysicsNoDraw;
 
-            BindToCall(&MaterialExporter::SetupMaterial);
             BindToCall(&MaterialExporter::ConfigureContainer);
             BindToCall(&MaterialExporter::ProcessNode);
             BindToCall(&MaterialExporter::PatchMesh);
-            ActivateBindings();
         }
 
-        SceneAPI::Events::ProcessingResult MaterialExporter::SetupMaterial(GroupExportContext& context)
+        void MaterialExporter::Reflect(ReflectContext* context)
         {
-            switch (context.m_phase)
+            SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+            if (serializeContext)
             {
-            case Phase::Construction:
-            {
-                return HandleMaterialFileLoadingAndCreation(context);
-            }
-            default:
-                return SceneEvents::ProcessingResult::Ignored;
+                serializeContext->Class<MaterialExporter, SceneAPI::SceneCore::ExportingComponent>()->Version(1);
             }
         }
-
 
         SceneEvents::ProcessingResult MaterialExporter::ConfigureContainer(ContainerExportContext& context)
         {
@@ -80,10 +71,18 @@ namespace AZ
             {
             case Phase::Construction:
             {
-                SceneEvents::ProcessingResult result = HandleMaterialFileLoadingAndCreation(context);
-                if (result != SceneEvents::ProcessingResult::Success)
+                if (!context.m_group.GetRuleContainerConst().FindFirstByType<SceneDataTypes::IMaterialRule>())
                 {
-                    return result;
+                    m_exportMaterial = false;
+                    AZ_TracePrintf(AZ::SceneAPI::Utilities::LogWindow, "Skipping material processing due to material rule not being present.");
+                    return SceneEvents::ProcessingResult::Ignored;
+                }
+
+                if (!LoadMaterialFile(context))
+                {
+                    m_exportMaterial = false;
+                    AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to read MTL file for processing meshes.");
+                    return SceneEvents::ProcessingResult::Failure;
                 }
                 m_cachedGroup = &(context.m_group);
                 SetupGlobalMaterial(context);
@@ -130,95 +129,41 @@ namespace AZ
             }
         }
 
-        SceneEvents::ProcessingResult MaterialExporter::HandleMaterialFileLoadingAndCreation(GroupExportContext& context)
+        bool MaterialExporter::LoadMaterialFile(ContainerExportContext& context)
         {
-            AZ_TraceContext("Material Group", context.m_group.GetName());
-
-            if (!context.m_group.GetRuleContainerConst().FindFirstByType<SceneDataTypes::IMaterialRule>())
-            {
-                m_exportMaterial = false;
-                AZ_TracePrintf(AZ::SceneAPI::Utilities::LogWindow, "Skipping material processing due to material rule not being present.");
-                return SceneEvents::ProcessingResult::Ignored;
-            }
-
-            if (!LoadMaterialFile(context))
-            {
-                m_exportMaterial = false;
-                AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to read MTL file for processing meshes.");
-                return SceneEvents::ProcessingResult::Failure;
-            }
-            return SceneEvents::ProcessingResult::Success;
-        }
-
-        bool MaterialExporter::LoadMaterialFile(GroupExportContext& context)
-        {
-            // Get path of material in source path
-            AZStd::string rootPath(static_cast<ConvertContext*>(m_convertContext)->GetSourcePath().c_str());
-            AzFramework::StringFunc::Path::StripFullName(rootPath);
-            AZStd::string filePath =
-                AZ::SceneAPI::Utilities::FileUtilities::CreateOutputFileName(context.m_group.GetName(),
-                rootPath, GFxFramework::MaterialExport::g_mtlExtension);
-            AZ_TraceContext("Material file path", filePath);
+            // Load the material from the source first. If there's no source material a temporary material should have been 
+            //      created in the cache by the MaterialExporterComponent in SceneCore.
 
             m_materialGroup = AZStd::make_shared<GFxFramework::MaterialGroup>();
-            bool fileRead = m_materialGroup->ReadMtlFile(filePath.c_str());
-            if (!fileRead)
+            bool fileRead = false;
+            
+            AZStd::string materialPath = context.m_scene.GetSourceFilename();
+            AzFramework::StringFunc::Path::ReplaceFullName(materialPath, context.m_group.GetName().c_str(), GFxFramework::MaterialExport::g_mtlExtension);
+            AZ_TraceContext("Material source file path", materialPath);
+
+            if (AZ::IO::SystemFile::Exists(materialPath.c_str()))
             {
-                AZ_TracePrintf(AZ::SceneAPI::Utilities::LogWindow, "Unable to load material file, creating default one.");
-                AZStd::string fileName = context.m_group.GetName() + GFxFramework::MaterialExport::g_mtlExtension;
-                const SceneDataTypes::ISceneNodeGroup* sceneNodeGroup = azrtti_cast<const SceneDataTypes::ISceneNodeGroup*>(&context.m_group);
-                if (sceneNodeGroup)
+                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Using source material file for linking to meshes.");
+                fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
+            }
+            else
+            {
+                materialPath = SceneAPI::Utilities::FileUtilities::CreateOutputFileName(
+                    context.m_group.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_mtlExtension);
+                AZ_TraceContext("Material cache file path", materialPath);
+                if (AZ::IO::SystemFile::Exists(materialPath.c_str()))
                 {
-                    const char* folderPath = nullptr;
-                    AZStd::string texturePath;
-                    EBUS_EVENT_RESULT(folderPath, AzToolsFramework::AssetSystemRequestBus, GetAbsoluteDevGameFolderPath);
-                    if (!folderPath)
-                    {
-                        AZ_TracePrintf(SceneAPI::Utilities::WarningWindow, "Unable to get determine game folder. Texture path may be invalid.");
-                    }
-                    else
-                    {
-                        texturePath = folderPath;
-                        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, texturePath);
-                    }
-                    AZ_TraceContext("Texture path", texturePath);
-
-                    SceneAPI::Export::MtlMaterialExporter exporter;
-                    SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult result =
-                        exporter.SaveMaterialGroup(*sceneNodeGroup, context.m_scene, texturePath);
-                    // Update material path to the target path.
-                    filePath = SceneAPI::Utilities::FileUtilities::CreateOutputFileName(
-                        context.m_group.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_mtlExtension);
-
-                    switch(result)
-                    {
-                    case SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult::Success:
-                        if (exporter.WriteToFile(filePath.c_str(), context.m_scene))
-                        {
-                            fileRead = m_materialGroup->ReadMtlFile(filePath.c_str());
-                        }
-                        break;
-                    case SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult::Failure:
-                        AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to created default material.");
-                        break;
-                    case SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult::Skipped:
-                        AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Skipping creation of default material.");
-                        break;
-                    default:
-                        AZ_TraceContext("Unknown result", static_cast<int>(result));
-                        AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unknown material exporter result.");
-                        break;
-                    }
+                    AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Using cached material file for linking to meshes.");
+                    fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
                 }
             }
 
             if (!fileRead)
             {
                 m_materialGroup.reset();
-                return false;
             }
-            
-            return true;
+
+            return fileRead;
         }
 
         void MaterialExporter::SetupGlobalMaterial(ContainerExportContext& context)

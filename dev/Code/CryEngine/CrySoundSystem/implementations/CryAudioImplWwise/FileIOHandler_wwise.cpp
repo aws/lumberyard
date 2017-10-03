@@ -47,7 +47,7 @@ namespace Audio
             return AZ::IO::InvalidHandle;
         }
 
-#if   defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_XBONE)
+#if   defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         // On 64 bit systems, strict compilers throw an error trying to reinterpret_cast
         // from AkFileHandle (a 64 bit pointer) to AZ::IO::HandleType (a uint32_t) because:
         //
@@ -58,7 +58,7 @@ namespace Audio
         return static_cast<AZ::IO::HandleType>(reinterpret_cast<uintptr_t>(akFileHandle));
 #else
         return reinterpret_cast<AZ::IO::HandleType>(akFileHandle);
-#endif // AZ_PLATFORM_PS4
+#endif
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

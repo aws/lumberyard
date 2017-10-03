@@ -20,6 +20,7 @@
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/Slice/SliceMetadataInfoComponent.h>
 
 using namespace AZ;
 
@@ -109,13 +110,14 @@ namespace UnitTest
 
         void run()
         {
-            SerializeContext serializeContext;
+            SerializeContext serializeContext(true, true);
             ComponentDescriptor* sliceDescriptor = SliceComponent::CreateDescriptor();
             sliceDescriptor->Reflect(&serializeContext);
             MyTestComponent1::Reflect(&serializeContext);
             MyTestComponent2::Reflect(&serializeContext);
+            SliceMetadataInfoComponent::Reflect(&serializeContext);
             Entity::Reflect(&serializeContext);
-            DataPatch::Reflect(serializeContext);
+            DataPatch::Reflect(&serializeContext);
             // Create database
             Data::AssetManager::Descriptor desc;
             Data::AssetManager::Create(desc);

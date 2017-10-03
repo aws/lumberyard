@@ -30,9 +30,11 @@ public:
 
 public Q_SLOTS:
     void RunFirstPartOfUnitTestsForAssetProcessorServer();
+    void AssetProcessorConnectionStressTest();
     void ConnectionErrorForNonProxyMode(unsigned int connId, QString error);
 
 private:
+    void RunAssetProcessorConnectionStressTest(bool failNegotiation);
     ApplicationServer m_applicationServer;
     ConnectionManager* m_connectionManager;
     IniConfiguration m_iniConfiguration;

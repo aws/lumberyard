@@ -522,17 +522,30 @@
         "ServiceApi": {
             "Metadata": {
                 "CloudCanvas": {
-                    "Permissions": {
-                        "AbstractRole": "Player",
-                        "Action": "execute-api:Invoke",
-                        "ResourceSuffix": [
-                            "/api/POST/score",
-                            "/api/GET/score/*",
-                            "/api/GET/scores/*",
-                            "/api/GET/leaderboard/*",
-                            "/api/POST/leaderboard/*"
-                        ]
-                    }
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/POST/score",
+                                "/api/GET/score/*",
+                                "/api/GET/scores/*",
+                                "/api/GET/leaderboard/*",
+                                "/api/POST/leaderboard/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "Server",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/POST/score",
+                                "/api/GET/score/*",
+                                "/api/GET/scores/*",
+                                "/api/GET/leaderboard/*",
+                                "/api/POST/leaderboard/*"
+                            ]
+                        }
+                    ]
                 }
             },
             "Properties": {

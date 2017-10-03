@@ -14,7 +14,9 @@
             "SceneConverter.h",
             "SceneConverter.cpp",
             "SceneCompiler.h",
-            "SceneCompiler.cpp"
+            "SceneCompiler.cpp",
+            "SceneSerializationHandler.h",
+            "SceneSerializationHandler.cpp"
         ],
         "Common":
         [
@@ -87,22 +89,6 @@
           "Caf/CafGroupExporter.cpp",
           "Caf/CafExporter.h",
           "Caf/CafExporter.cpp"
-        ],
-        "MotionCanvasPipeline": [
-          "MotionCanvasPipeline/ExportContexts.h",
-          "MotionCanvasPipeline/ExportContexts.cpp",
-          "MotionCanvasPipeline/MotionGroupExporter.h",
-          "MotionCanvasPipeline/MotionGroupExporter.cpp",
-          "MotionCanvasPipeline/MotionExporter.h",
-          "MotionCanvasPipeline/MotionExporter.cpp",
-          "MotionCanvasPipeline/MotionDataBuilder.h",
-          "MotionCanvasPipeline/MotionDataBuilder.cpp",
-          "MotionCanvasPipeline/ActorExporter.h",
-          "MotionCanvasPipeline/ActorExporter.cpp",
-          "MotionCanvasPipeline/ActorGroupExporter.h",
-          "MotionCanvasPipeline/ActorGroupExporter.cpp",
-          "MotionCanvasPipeline/ActorBuilder.h",
-          "MotionCanvasPipeline/ActorBuilder.cpp"
         ],
         "CryCommonTools":
         [

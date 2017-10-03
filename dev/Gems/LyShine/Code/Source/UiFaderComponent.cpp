@@ -78,7 +78,7 @@ void UiFaderComponent::Update()
     }
 
     // Update fade
-    float deltaTime = gEnv->pTimer->GetFrameTime();
+    float deltaTime = gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI);
     m_fade += m_fadeSpeedInSeconds * deltaTime;
 
     // Check for completion
@@ -167,12 +167,14 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiFaderBus>("UiFaderBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetFadeValue", &UiFaderBus::Events::GetFadeValue)
             ->Event("SetFadeValue", &UiFaderBus::Events::SetFadeValue)
             ->Event("Fade", &UiFaderBus::Events::Fade)
             ->Event("IsFading", &UiFaderBus::Events::IsFading);
 
         behaviorContext->EBus<UiFaderNotificationBus>("UiFaderNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiFaderNotificationBusHandler>();
     }
 }

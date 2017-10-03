@@ -17,6 +17,9 @@
 #include <memory>
 #include <DynamoDB/DynamoDBUtils.h>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 using namespace Aws::DynamoDB;
 
@@ -40,7 +43,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Scan", _HELP("Activate this to scan table data")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to scan")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to scan")),
             InputPortConfig<string>("Attribute", _HELP("The attribute to scan about")),
             InputPortConfig<string, string>("AttributeComparison", DynamoDBUtils::GetDefaultComparisonString(), _HELP("The type of comparison to make against the attribute"), "AttributeComparisonType",
                 _UICONFIG(m_comparisonTypeEnumString.c_str())),
@@ -64,33 +67,51 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_StartScan))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
 
-            auto& tableName = client.GetTableName();
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
+
             auto& attributeName = GetPortString(pActInfo, EIP_AttributeName);
             auto& attributeComparison = GetPortString(pActInfo, EIP_AttributeComparisonType);
             auto& attributeComparisonValue = GetPortString(pActInfo, EIP_AttributeComparisonValue);
 
-            Aws::DynamoDB::Model::ScanRequest scanRequest;
-            scanRequest.SetTableName(tableName);
+            auto context = std::make_shared<FlowGraphContext>(pActInfo->pGraph, pActInfo->myID);
+
+            using ScanRequestJob = AWS_API_REQUEST_JOB(DynamoDB, Scan);
+            ScanRequestJob::Config config(ScanRequestJob::GetDefaultConfig());
+
+            auto requestJob = ScanRequestJob::Create(
+                [this, context](ScanRequestJob* successJob) // OnSuccess handler
+            {
+                auto flowGraph = context->GetFlowGraph();
+                auto nodeId = context->GetFlowNodeId();
+                SuccessNotify(flowGraph, nodeId);
+
+                SFlowAddress addr(nodeId, EOP_MatchesFound, true);
+                flowGraph->ActivatePort(addr, static_cast<int>(successJob->result.GetCount()));
+            },
+                [this, context](ScanRequestJob* failureJob) // OnError handler
+            {
+                auto flowGraph = context->GetFlowGraph();
+                auto nodeId = context->GetFlowNodeId();
+                ErrorNotify(flowGraph, nodeId, failureJob->error.GetMessage().c_str());
+
+            },
+                &config
+                );
+            requestJob->request.SetTableName(tableName.c_str());
 
             if (attributeName.length())
             {
-                scanRequest.AddExpressionAttributeNames("#an", attributeName);
+                requestJob->request.AddExpressionAttributeNames("#an", attributeName);
 
                 AttributeValue attrVal = DynamoDBUtils::MakeAttributeValue(GetPortString(pActInfo, EIP_AttributeComparisonValueType), GetPortString(pActInfo, EIP_AttributeComparisonValue));
-                scanRequest.AddExpressionAttributeValues(":av", attrVal);
+                requestJob->request.AddExpressionAttributeValues(":av", attrVal);
                 Aws::String comparisonString = "#an " + DynamoDBUtils::GetDynamoDBStringByLabel(attributeComparison) + " :av";
-                scanRequest.SetFilterExpression(comparisonString);
+                requestJob->request.SetFilterExpression(comparisonString);
             }
 
-            auto context = std::make_shared<FlowGraphContext>(pActInfo->pGraph, pActInfo->myID);
-            MARSHALL_AWS_BACKGROUND_REQUEST(DynamoDB, client, Scan, FlowNode_DynamoDBScan::ApplyResult, scanRequest, context)
+            requestJob->Start();
         }
     }
 

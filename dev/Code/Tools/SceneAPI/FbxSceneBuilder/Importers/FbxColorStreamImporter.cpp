@@ -15,6 +15,7 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxColorStreamImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxVertexColorWrapper.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
@@ -67,13 +68,9 @@ namespace AZ
                         continue;
                     }
 
-                    AZ_TraceContext("Color Stream Name", fbxVertexColors.GetName());
-                    if (!Containers::SceneGraph::IsValidName(fbxVertexColors.GetName()))
-                    {
-                        AZ_TracePrintf(Utilities::WarningWindow,
-                            "Invalid name for vertex color stream, stream ignored.");
-                        continue;
-                    }
+                    AZStd::string nodeName = fbxVertexColors.GetName();
+                    RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition, "ColorStream");
+                    AZ_TraceContext("Color Stream Name", nodeName);
 
                     AZStd::shared_ptr<DataTypes::IGraphObject> parentData = 
                         context.m_scene.GetGraph().GetNodeContent(context.m_currentGraphPosition);
@@ -98,7 +95,7 @@ namespace AZ
                     }
 
                     Containers::SceneGraph::NodeIndex newIndex =
-                        context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, fbxVertexColors.GetName());
+                        context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, nodeName.c_str());
 
                     AZ_Assert(newIndex.IsValid(), "Failed to create SceneGraph node for attribute.");
                     if (!newIndex.IsValid())
@@ -108,8 +105,7 @@ namespace AZ
                     }
 
                     Events::ProcessingResult vertexColorResult;
-                    SceneAttributeDataPopulatedContext dataPopulated(context, vertexColors, newIndex,
-                        fbxVertexColors.GetName());
+                    SceneAttributeDataPopulatedContext dataPopulated(context, vertexColors, newIndex, nodeName);
                     vertexColorResult = AddAttributeDataNodeWithContexts(dataPopulated);
 
                     combinedVertexColorResults += vertexColorResult;

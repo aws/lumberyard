@@ -53,7 +53,7 @@ void CDirectorNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContex
             ISequenceKey sequenceKey;
             keyHandle.GetKey(&sequenceKey);
 
-            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection);
+            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
             if (pSequence)
             {
                 if (sequenceKey.time <= time)
@@ -151,7 +151,7 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
             keyHandle.GetKey(&sequenceKey);
 
             const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection);
+            CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
             if (pSequence)
             {
                 SAnimContext newAnimContext = ac;
@@ -184,7 +184,7 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
         keyHandle.GetKey(&sequenceKey);
 
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection);
+        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByName(sequenceKey.szSelection.c_str());
         if (pSequence)
         {
             SAnimContext newAnimContext = ac;

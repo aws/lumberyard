@@ -17,6 +17,7 @@
 #include "StringUtils.h"
 
 #include <QColor>
+#include <QPainter>
 #include <QMessageBox>
 
 CGdiCanvas::CGdiCanvas()
@@ -159,94 +160,6 @@ void CGdiCanvas::Free()
     m_width = 0;
     m_height = 0;
 }
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-CDC& CGdiCanvas::GetDC()
-{
-    return m_memDC;
-}
-
-bool CGdiCanvas::GradientFillRect(CRect& rRect, COLORREF aStartColor, COLORREF aEndColor, int aFillType)
-{
-    return ::GradientFillRect(m_memDC.GetSafeHdc(), rRect, aStartColor, aEndColor, aFillType);
-}
-
-bool CGdiCanvas::BitBltWithAlpha(CDC& rBmpDC, int aDestX, int aDestY, int aDestWidth, int aDestHeight, int aSrcX, int aSrcY, int aSrcWidth, int aSrcHeight, BLENDFUNCTION* pBlendFunc)
-{
-    BLENDFUNCTION bf;
-
-    if (!pBlendFunc)
-    {
-        bf.BlendOp = AC_SRC_OVER;
-        bf.BlendFlags = 0;
-        bf.SourceConstantAlpha = 0xFF;
-        bf.AlphaFormat = AC_SRC_ALPHA;
-    }
-    else
-    {
-        bf = *pBlendFunc;
-    }
-
-    CBitmap* pBmp = rBmpDC.GetCurrentBitmap();
-
-    assert(pBmp);
-
-    if (!pBmp)
-    {
-        return false;
-    }
-
-    BITMAP bmpInfo;
-
-    if (!pBmp->GetBitmap(&bmpInfo))
-    {
-        return false;
-    }
-
-    aDestWidth = aDestWidth == -1 ? bmpInfo.bmWidth : aDestWidth;
-    aDestHeight = aDestHeight == -1 ? bmpInfo.bmHeight : aDestHeight;
-    aSrcWidth = aSrcWidth == -1 ? bmpInfo.bmWidth : aSrcWidth;
-    aSrcHeight = aSrcHeight == -1 ? bmpInfo.bmHeight : aSrcHeight;
-
-    return TRUE == AlphaBlend(m_memDC.GetSafeHdc(), aDestX, aDestY, aDestWidth, aDestHeight, rBmpDC.GetSafeHdc(), aSrcX, aSrcY, aSrcWidth, aSrcHeight, bf);
-}
-
-void CGdiCanvas::BreakTextByChars(const char* pText, CString& rOutStr, const CRect& rRect)
-{
-    UINT        i = 0, nSize = strlen(pText);
-    CString chunk;
-    CSize       textSize;
-    int         rectWidth = rRect.Width();
-
-    rOutStr = "";
-
-    while (i < nSize)
-    {
-        chunk += pText[i];
-        textSize = m_memDC.GetTextExtent(chunk);
-
-        // if current chunk of text os bigger than the rect width, cut
-        if (textSize.cx > rectWidth)
-        {
-            // special case, rect width smaller than the first char in the text
-            if (!i)
-            {
-                rOutStr = pText;
-                return;
-            }
-
-            rOutStr += chunk.Mid(0, chunk.GetLength() - 1);
-            rOutStr += CString("\r");
-            chunk = "";
-            continue;
-        }
-
-        ++i;
-    }
-
-    rOutStr += chunk;
-}
-#endif
 
 bool CGdiCanvas::ComputeThumbsLayoutInfo(float aContainerWidth, float aThumbWidth, float aMargin, UINT aThumbCount, UINT& rThumbsPerRow, float& rNewMargin)
 {
@@ -632,24 +545,27 @@ UINT CAlphaBitmap::GetHeight()
     return m_height;
 }
 
-#ifdef KDAB_MAC_PORT
-void CheckerboardFillRect(Gdiplus::Graphics* pGraphics, Gdiplus::Rect& rRect, int checkDiameter, COLORREF aColor1, COLORREF aColor2)
+void CheckerboardFillRect(QPainter* pGraphics, const QRect& rRect, int checkDiameter, const QColor& aColor1, const QColor& aColor2)
 {
-    Gdiplus::GraphicsContainer container = pGraphics->BeginContainer();
-    pGraphics->SetClip(rRect);
+    pGraphics->save();
+    pGraphics->setClipRect(rRect);
     // Create a checkerboard background for easier readability
-    pGraphics->Clear(aColor1);
-    Gdiplus::SolidBrush lightBrush(aColor2);
-    for (int i = rRect.GetLeft(); i < rRect.GetRight(); i += checkDiameter)
+    pGraphics->fillRect(rRect, aColor1);
+    QBrush lightBrush(aColor2);
+
+    // QRect bottom/right methods are short one unit for legacy reasons. Compute bottomr/right of the rectange ourselves to get the full size.
+    const int rectRight = rRect.x() + rRect.width();
+    const int rectBottom = rRect.y() + rRect.height();
+
+    for (int i = rRect.left(); i < rectRight; i += checkDiameter)
     {
-        for (int j = rRect.GetTop(); j < rRect.GetBottom(); j += checkDiameter)
+        for (int j = rRect.top(); j < rectBottom; j += checkDiameter)
         {
             if ((i / checkDiameter) % 2 ^ (j / checkDiameter) % 2)
             {
-                pGraphics->FillRectangle(&lightBrush, Gdiplus::Rect(i, j, checkDiameter, checkDiameter));
+                pGraphics->fillRect(QRect(i, j, checkDiameter, checkDiameter), lightBrush);
             }
         }
     }
-    pGraphics->EndContainer(container);
+    pGraphics->restore();
 }
-#endif // KDAB_MAC_PORT

@@ -2259,12 +2259,28 @@ namespace NCryOpenGL
             glDeleteSync(m_pFence);
         }
         m_pFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        AZ_Assert(m_pFence, "Failed to create fence");
     }
 
     bool SFenceSync::GetData(void* pData, uint32 uDataSize, bool bFlush)
     {
         assert(m_pFence != NULL);
-        GLenum eResult(glClientWaitSync(m_pFence, bFlush ? GL_SYNC_FLUSH_COMMANDS_BIT : 0, 0));
+        GLbitfield flags = 0;
+        if (bFlush)
+        {
+            if (gRenDev->GetFeatures() & RFT_HW_QUALCOMM)
+            {
+                // There's a driver bug with some Qualcomm devices that don't apply the GL_SYNC_FLUSH_COMMANDS_BIT flag.
+                // We manually do a glFlush before calling glClientWaitSync.
+                glFlush();
+            }
+            else
+            {
+                flags |= GL_SYNC_FLUSH_COMMANDS_BIT;
+            }
+        }
+
+        GLenum eResult(glClientWaitSync(m_pFence, flags, 0));
         if (eResult != GL_TIMEOUT_EXPIRED)
         {
             *reinterpret_cast<BOOL*>(pData) = eResult == GL_WAIT_FAILED ? FALSE : TRUE;
@@ -2364,7 +2380,7 @@ namespace NCryOpenGL
         // from the currently bound framebuffer.
 #   if defined(DXGL_USE_SDL) && defined(DXGL_SINGLEWINDOW)
         m_kDefaultFBO.m_uName = 1;
-        SDL_GetWindowSize(SMainWindow::ms_kInstance.m_pSDLWindow, &m_iDefaultFBOWidth, &m_iDefaultFBOHeight);
+        SDL_GetWindowSize(AZStd::static_pointer_cast<SDLWindowContext>(SMainWindow::ms_kInstance.m_pSDLWindow)->m_window, &m_iDefaultFBOWidth, &m_iDefaultFBOHeight);
 #   else
 #   error "Implement a method to extract iOS's default framebuffer size";
 #   endif
@@ -2536,6 +2552,7 @@ namespace NCryOpenGL
 
     void SDefaultFrameBufferTexture::ReleaseTexture()
     {
+        m_kInputFBOColorTextureView = nullptr;
         if (m_kInputFBO.m_kName.IsValid())
         {
             GLuint uInputFBOName(m_kInputFBO.m_kName.GetName());
@@ -2593,17 +2610,43 @@ namespace NCryOpenGL
     {
         if (m_bOutputDirty)
         {
-            // Copy texture (input) to default buffer (output)
-            pContext->BlitFrameBuffer(
-                m_kInputFBO, m_kDefaultFBO,
-                m_eInputColorBuffer, m_eOutputColorBuffer,
+            GLint iSrcYMin = 0;
+            GLint iSrcYMax = m_iHeight;
 #if CRY_OPENGL_FLIP_Y
-                0, m_iHeight, m_iWidth, 0,
-#else
-                0, 0, m_iWidth, m_iHeight,
+            AZStd::swap(iSrcYMin, iSrcYMax);
 #endif
-                0, 0, m_iDefaultFBOWidth, m_iDefaultFBOHeight,
-                m_uBufferMask, (m_iDefaultFBOWidth == m_iWidth) ? GL_NEAREST : GL_LINEAR);
+
+            // Copy texture (input) to default buffer (output)
+            GLenum filter = (m_iDefaultFBOWidth == m_iWidth) ? GL_NEAREST : GL_LINEAR;
+            uint32 glVersion = pContext->GetDevice()->GetFeatureSpec().m_kVersion.ToUint();
+            if (DXGLES && glVersion == DXGLES_VERSION_30 && gRenDev->GetFeatures() & RFT_HW_QUALCOMM)
+            {
+                // OpenGLES 3.0 Qualcomm driver has a bug that rotates the image 90° when doing a
+                // glBlitFramebuffer into the default framebuffer when in landscape mode. Because of this we
+                // do the blitting using a shader instead.
+                if (!m_kInputFBOColorTextureView)
+                {
+                    SShaderTextureViewConfiguration conf(m_eFormat, m_eTarget, 0, m_uNumMipLevels, 0, m_uNumElements);
+                    m_kInputFBOColorTextureView = CreateShaderResourceView(conf, pContext);
+                }
+
+                pContext->BlitTextureToFrameBuffer(
+                    m_kInputFBOColorTextureView,
+                    m_kDefaultFBO,
+                    m_eOutputColorBuffer,
+                    0, iSrcYMin, m_iWidth, iSrcYMax,
+                    0, 0, m_iDefaultFBOWidth, m_iDefaultFBOHeight,
+                    filter, filter);
+            }
+            else
+            {
+                pContext->BlitFrameBuffer(
+                    m_kInputFBO, m_kDefaultFBO,
+                    m_eInputColorBuffer, m_eOutputColorBuffer,
+                    0, iSrcYMin, m_iWidth, iSrcYMax,
+                    0, 0, m_iDefaultFBOWidth, m_iDefaultFBOHeight,
+                    m_uBufferMask, filter);
+            }
         }
     }
 

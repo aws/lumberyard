@@ -49,9 +49,9 @@ namespace AzToolsFramework
             services.push_back(AZ_CRC("EditorPendingCompositionService", 0x6b5b794f));
         }
 
-        AZStd::vector<AZ::Component*> EditorPendingCompositionComponent::GetPendingComponents()
+        void EditorPendingCompositionComponent::GetPendingComponents(AZStd::vector<AZ::Component*>& components)
         {
-            return m_pendingComponents;
+            components.insert(components.end(), m_pendingComponents.begin(), m_pendingComponents.end());
         }
 
         void EditorPendingCompositionComponent::AddPendingComponent(AZ::Component* componentToAdd)

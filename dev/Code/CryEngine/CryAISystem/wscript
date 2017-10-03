@@ -26,6 +26,19 @@ def build(bld):
         platforms          = ['all'],
         configurations     = ['all'],
         use                = ['AzFramework'],
+        use_required_gems  = True,
+
+        # Platform Specific
+       
+
+        darwin_cxxflags     = ['-Wno-shadow'],
+
+        ios_cxxflags        = ['-Wno-shadow'],
+
+        appletv_cxxflags    = ['-Wno-shadow'],
+
+        android_armv7_clang_cxxflags  = ['-Wno-shadow'],
+        defines            = ['ENGINE_EXPORTS'],
 
         # Testing
         test_all_file_list = ['cryaisystem_test.waf_files'],

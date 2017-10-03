@@ -128,6 +128,57 @@
          <property name="verticalSpacing">
           <number>4</number>
          </property>
+         <item row="3" column="0">
+          <widget class="QLabel" name="m_startActiveLabel">
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>120</red>
+                 <green>120</green>
+                 <blue>120</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="text">
+            <string>Start Active</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="m_initiallyActiveCheckbox">
+           <property name="readOnly" stdset="0">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="1">
           <widget class="QLineEdit" name="m_entityIdEditor">
            <property name="readOnly">
@@ -267,7 +318,7 @@
     </layout>
    </item>
    <item>
-    <widget class="AzToolsFramework::EntityQScrollArea" name="m_componentList">
+    <widget class="QScrollArea" name="m_componentList">
      <property name="focusPolicy">
       <enum>Qt::ClickFocus</enum>
      </property>
@@ -303,7 +354,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <property name="spacing">
-        <number>5</number>
+        <number>12</number>
        </property>
        <property name="leftMargin">
         <number>0</number>
@@ -324,12 +375,6 @@
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>AzToolsFramework::EntityQScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>AzToolsFramework/UI/PropertyEditor/EntityQScrollArea.hxx</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>AzToolsFramework::IconButton</class>
    <extends>QPushButton</extends>

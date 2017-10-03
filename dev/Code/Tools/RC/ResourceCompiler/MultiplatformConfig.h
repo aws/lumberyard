@@ -89,6 +89,10 @@ public:
         }
     }
 
+    virtual void setActivePlatform(int platformIndex)
+    {
+        m_activePlatform = platformIndex;
+    }
 private:
     enum
     {

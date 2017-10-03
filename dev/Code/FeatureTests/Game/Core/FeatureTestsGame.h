@@ -39,8 +39,8 @@ namespace LYGame
     {
         ePlatform_Unknown,
         ePlatform_PC,
-        ePlatform_Xbox,
-        ePlatform_PS4,
+        ePlatform_Xbox, // ACCEPTED_USE
+        ePlatform_PS4, // ACCEPTED_USE
         ePlatform_Android,
         ePlatform_iOS,
         ePlatform_Count

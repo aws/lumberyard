@@ -88,7 +88,7 @@ public slots:
     void OnMenuConfigureClicked(int row);
     void OnMenuDeleteClicked(int row);
     void OnMenuCopyClicked(QModelIndex index);
-    void ViewConsoleResource(const QString& resourceType, const QString& resourceName);
+    void ViewConsoleResource(const QString& resourceType, const QString& resourceName, const QString& region);
 
     void OnItemsChanged(QStandardItem* item);
     void OnImporterOutput(const QVariant& output, const char* outputType);

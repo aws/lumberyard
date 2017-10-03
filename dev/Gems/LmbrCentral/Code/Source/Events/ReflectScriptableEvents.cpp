@@ -125,6 +125,9 @@ namespace LmbrCentral
         if (dc.GetNumArguments() == 0)
         {
             // Use defaults.
+            outData->m_channel.SetInvalid();
+            outData->m_actionNameCrc = 0;
+            outData->m_payloadTypeId = AZ::Uuid::CreateNull();
         }
         else if (dc.GetNumArguments() == 2 && dc.IsClass<AZ::EntityId>(0) && dc.IsString(1))
         {
@@ -134,10 +137,74 @@ namespace LmbrCentral
             const char* actionName = nullptr;
             dc.ReadArg(1, actionName);
             outData->m_actionNameCrc = AZ_CRC(actionName);
+            outData->m_payloadTypeId = AZ::Uuid::CreateNull();
+            AZ_WarningOnce(AZStd::string::format("GameplayNotificationId %s", outData->ToString().c_str()).c_str(), false, "This constructor has been deprecated.  Please add the name of the type you wish to send/receive, example 'float'");
+        }
+        else if (dc.GetNumArguments() == 3 && dc.IsClass<AZ::EntityId>(0) 
+            && (dc.IsString(1) || dc.IsClass<AZ::Crc32>(1))
+            && (dc.IsString(2) || dc.IsClass<AZ::Crc32>(2) || dc.IsClass<AZ::Uuid>(2)))
+        {
+            dc.ReadArg(0, outData->m_channel);
+            if (dc.IsString(1))
+            {
+                const char* actionName = nullptr;
+                dc.ReadArg(1, actionName);
+                outData->m_actionNameCrc = AZ_CRC(actionName);
+            }
+            else
+            {
+                dc.ReadArg(1, outData->m_actionNameCrc);
+            }
+
+            if (dc.IsClass<AZ::Uuid>(2))
+            {
+                dc.ReadArg(2, outData->m_payloadTypeId);
+            }
+            else
+            {
+                const char* payloadClassName = nullptr;
+                AZ::Crc32 payloadClassCrc;
+                if (dc.IsString(2))
+                {
+                    dc.ReadArg(2, payloadClassName);
+                    payloadClassCrc = AZ::Crc32(payloadClassName);
+                }
+                else
+                {
+                    dc.ReadArg(2, payloadClassCrc);
+                }
+
+                AZ::SerializeContext* serializeContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                AZStd::vector<AZ::Uuid> classIds = serializeContext->FindClassId(payloadClassCrc);
+                if (classIds.size() == 1)
+                {
+                    outData->m_payloadTypeId = classIds[0];
+                }
+                else
+                {
+                    AZStd::string errorClassName = payloadClassName ? payloadClassName : AZStd::to_string(payloadClassCrc);
+                    if (classIds.size() == 0)
+                    {
+                        outData->m_payloadTypeId = AZ::Uuid::CreateNull();
+                        AZ_Warning("GameplayNotificationId", false, "No class found with key %s", errorClassName.c_str());
+                    }
+                    else
+                    {
+                        outData->m_payloadTypeId = AZ::Uuid::CreateNull();
+                        AZStd::string errorOutput = AZStd::string::format("Too many classes with key %s.  You may need to create a Uiid via Uuid.CreateString() using one of the following uuids: ", errorClassName.c_str());
+                        for (AZ::Uuid classId : classIds)
+                        {
+                            errorOutput += AZStd::string::format("%s, ", classId.ToString<AZStd::string>().c_str());
+                        }
+                        AZ_Warning("GameplayNotificationId", false, errorOutput.c_str());
+                    }
+                }
+            }
         }
         else
         {
-            AZ_Error("GameplayNotificationId", false, "The GameplayNotificationId takes 2 arguments: an entityId representing the channel, and a string representing the action's name");
+            AZ_Error("GameplayNotificationId", false, "The GameplayNotificationId takes 3 arguments: an entityId representing the channel, a string or crc representing the action's name, and a string or crc or uuid for the type");
         }
     }
 
@@ -146,11 +213,13 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->Class<AZ::GameplayNotificationId>("GameplayNotificationId")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Constructor<AZ::EntityId, AZ::Crc32>()
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &GameplayEventIdNonIntrusiveConstructor)
                 ->Property("actionNameCrc", BehaviorValueProperty(&AZ::GameplayNotificationId::m_actionNameCrc))
                 ->Property("channel", BehaviorValueProperty(&AZ::GameplayNotificationId::m_channel))
+                ->Property("payloadTypeId", BehaviorValueProperty(&AZ::GameplayNotificationId::m_payloadTypeId))
                 ->Method("ToString", &AZ::GameplayNotificationId::ToString)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ->Method("Equal", &AZ::GameplayNotificationId::operator==)
@@ -158,6 +227,7 @@ namespace LmbrCentral
                 ->Method("Clone", &AZ::GameplayNotificationId::Clone);
 
             behaviorContext->Class<AZ::InputEventNotificationId>("InputEventNotificationId")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Constructor<const char*>()
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &InputEventNonIntrusiveConstructor)
@@ -168,10 +238,14 @@ namespace LmbrCentral
                 ->Method("Equal", &AZ::InputEventNotificationId::operator==)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
                 ->Method("Clone", &AZ::InputEventNotificationId::Clone)
+                ->Property("actionName", nullptr, [](AZ::InputEventNotificationId* thisPtr, AZStd::string_view value) { *thisPtr = AZ::InputEventNotificationId(value.data()); })
+                ->Method("CreateInputEventNotificationId", [](AZStd::string_view value) -> AZ::InputEventNotificationId { return AZ::InputEventNotificationId(value.data()); },
+                { { { "actionName", "The name of the Input event action used to create an InputEventNotificationId" } } })
                 ;
 
-            behaviorContext->EBus<AZ::GameplayNotificationBus>("GameplayNotificationBus")->
-                Handler<BehaviorGameplayNotificationBusHandler>()
+            behaviorContext->EBus<AZ::GameplayNotificationBus>("GameplayNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Handler<BehaviorGameplayNotificationBusHandler>()
                 ->Event("OnEventBegin", &AZ::GameplayNotificationBus::Events::OnEventBegin)
                 ->Event("OnEventUpdating", &AZ::GameplayNotificationBus::Events::OnEventUpdating)
                 ->Event("OnEventEnd", &AZ::GameplayNotificationBus::Events::OnEventEnd);
@@ -188,6 +262,7 @@ namespace LmbrCentral
                 ->Method("ConvertTransformToEulerDegrees", &AzFramework::ConvertTransformToEulerDegrees)
                 ->Method("ConvertTransformToEulerRadians", &AzFramework::ConvertTransformToEulerRadians)
                 ->Method("ConvertEulerDegreesToTransform", &AzFramework::ConvertEulerDegreesToTransform)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToTransformPrecise", &AzFramework::ConvertEulerDegreesToTransformPrecise)
                 ->Method("ConvertQuaternionToEulerDegrees", &AzFramework::ConvertQuaternionToEulerDegrees)
                 ->Method("ConvertQuaternionToEulerRadians", &AzFramework::ConvertQuaternionToEulerRadians)
@@ -199,9 +274,11 @@ namespace LmbrCentral
 
 
             behaviorContext->EBus<AZ::InputEventNotificationBus>("InputEventNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<BehaviorInputEventNotificationBusHandler>();
 
             behaviorContext->EBus<AZ::InputRequestBus>("InputRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("PushContext", &AZ::InputRequestBus::Events::PushContext)
                 ->Event("PopContext", &AZ::InputRequestBus::Events::PopContext)
                 ->Event("PopAllContexts", &AZ::InputRequestBus::Events::PopAllContexts)

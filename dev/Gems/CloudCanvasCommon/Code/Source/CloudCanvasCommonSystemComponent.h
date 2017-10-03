@@ -18,15 +18,16 @@
 #include <aws/core/Aws.h>
 #include <aws/core/utils/memory/MemorySystemInterface.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvas.h>
+#include <CrySystemBus.h>
 
 namespace CloudCanvasCommon
 {
     class CloudCanvasCommonSystemComponent
         : public AZ::Component
         , protected CloudCanvasCommonRequestBus::Handler
-        , protected LmbrAWS::AwsApiInitRequestBus::Handler
+        , protected CloudCanvas::AwsApiInitRequestBus::Handler,
+          public CrySystemEventBus::Handler
     {
     public:
 
@@ -49,11 +50,6 @@ namespace CloudCanvasCommon
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
     protected:
-        ////////////////////////////////////////////////////////////////////////
-        // CloudCanvasCommonRequestBus interface implementation
-        AZStd::string GetLogicalToPhysicalResourceMapping(const AZStd::string& logicalResourceName) override;
-        LmbrAWS::S3::BucketClient GetBucketClient(const AZStd::string& bucketName) override;
-        AZStd::vector<AZStd::string> GetLogicalResourceNames(const AZStd::string& resourceType) override;
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -70,14 +66,19 @@ namespace CloudCanvasCommon
         ////////////////////////////////////////////////////////////////////////
 
         // Some platforms (Android) need to point the http client at the certificate bundle to avoid SSL errors
-        virtual LmbrAWS::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) override;
+        virtual CloudCanvas::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) override;
 
-        virtual LmbrAWS::RequestRootCAFileResult LmbrRequestRootCAFile(AZStd::string& resultPath) override;
+        virtual CloudCanvas::RequestRootCAFileResult LmbrRequestRootCAFile(AZStd::string& resultPath) override;
+
+        ////////////////////////////////////////////////////////////////////////
+        // CrySystemEvents
+        void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
+        void OnCrySystemShutdown(ISystem&) override;
     private:
         CloudCanvasCommonSystemComponent(const CloudCanvasCommonSystemComponent&) = delete;
         // Return the resolved path of the RootCA file accessible to the ClientConfig, if it exists, otherwise empty string
         // Entry point for handling our EBUS requests
-        LmbrAWS::RequestRootCAFileResult GetRootCAFile(AZStd::string& resultPat);
+        CloudCanvas::RequestRootCAFileResult GetRootCAFile(AZStd::string& resultPat);
 
         // Early out for platforms which don't need RootCA File in the ClientConfig
         static bool DoesPlatformUseRootCAFile();

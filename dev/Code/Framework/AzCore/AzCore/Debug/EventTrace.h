@@ -42,7 +42,7 @@ namespace AZ
     }
 }
 
-#define AZ_TRACE_METHOD_NAME_CATEGORY(name, category) AZ::Debug::EventTrace::ScopedSlice ScopedSlice__(name, category);
+#define AZ_TRACE_METHOD_NAME_CATEGORY(name, category) AZ::Debug::EventTrace::ScopedSlice AZ_JOIN(ScopedSlice__, __LINE__)(name, category);
 
 #ifdef AZ_PROFILE_TELEMETRY
 #   define AZ_TRACE_METHOD_NAME(name) \

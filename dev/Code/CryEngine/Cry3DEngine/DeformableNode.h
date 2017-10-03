@@ -33,7 +33,7 @@ class CDeformableNode
     std::vector<CRenderChunk> m_renderChunks;
     _smart_ptr<IRenderMesh> m_renderMesh;
     size_t m_numVertices, m_numIndices;
-    CStatObj* m_pStatObj;
+    IStatObj* m_pStatObj;
     JobManager::SJobState m_cullState;
     JobManager::SJobState m_updateState;
     bool m_all_prepared : 1;
@@ -55,7 +55,7 @@ protected:
 
     void ClearSimulationData();
 
-    void CreateInstanceData(SDeformableData* pData, CStatObj* pStatObj);
+    void CreateInstanceData(SDeformableData* pData, IStatObj* pStatObj);
 
     void BakeInternal(SDeformableData* pData, const Matrix34& worldTM);
 
@@ -66,7 +66,7 @@ public:
 
     ~CDeformableNode();
 
-    void SetStatObj(CStatObj* pStatObj);
+    void SetStatObj(IStatObj* pStatObj);
 
     void CreateDeformableSubObject(bool create, const Matrix34& worldTM, IGeneralMemoryHeap* pHeap);
 

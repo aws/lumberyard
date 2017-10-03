@@ -14,7 +14,7 @@ import botocore
 import errors
 import service
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def post(request, cognitoUsername):
     try:
         account_utils.get_user_pool_client().admin_reset_user_password(UserPoolId=account_utils.get_user_pool_id(), Username=cognitoUsername)

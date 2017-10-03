@@ -146,9 +146,43 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    GCController* GetControllerWithPreferredLayout(GCController* a, GCController* b)
+    {
+        if (a == nil)
+        {
+            return b;
+        }
+        else if (b == nil)
+        {
+            return a;
+        }
+
+        if (a.extendedGamepad != nil)
+        {
+            return a;
+        }
+        else if (b.extendedGamepad != nil)
+        {
+            return b;
+        }
+
+        if (a.gamepad != nil)
+        {
+            return a;
+        }
+        else if (b.gamepad != nil)
+        {
+            return b;
+        }
+
+        // It doesn't matter
+        return a;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     GCController* FindUnassignedController(bool isPrimaryPlayer)
     {
-        GCController* unassignedController = nil;
+        GCController* preferredUnassignedController = nil;
         for (GCController* connectedController in GCController.controllers)
         {
             if (connectedController.playerIndex != GCControllerPlayerIndexUnset)
@@ -157,20 +191,27 @@ namespace AzFramework
                 continue;
             }
 
-            if (isPrimaryPlayer == connectedController.attachedToDevice)
+            if (connectedController.attachedToDevice)
             {
-                // A controller attached to the device should only be assigned to the primary player
-                return connectedController;
+                // A controller attached to the device...
+                if (isPrimaryPlayer)
+                {
+                    // ...should always be first preference for the primary player...
+                    return connectedController;
+                }
+                else
+                {
+                    // ...but should always be ignored for additional players.
+                    continue;
+                }
             }
-            else if (isPrimaryPlayer && unassignedController == nil)
-            {
-                // The primary player can be assigned any controller, but keep
-                // searching in case we find one that is attached to the device
-                unassignedController = connectedController;
-            }
+
+            preferredUnassignedController = GetControllerWithPreferredLayout(
+                                                preferredUnassignedController,
+                                                connectedController);
         }
 
-        return unassignedController;
+        return preferredUnassignedController;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

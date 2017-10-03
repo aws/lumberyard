@@ -21,7 +21,7 @@
 
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 
-#include "StaticMeshComponent.h"
+#include "MeshComponent.h"
 
 struct IPhysicalEntity;
 
@@ -32,23 +32,23 @@ namespace LmbrCentral
     * Conducts some additional listening and operations to ensure immediate
     * effects when changing fields in the editor.
     */
-    class EditorStaticMeshComponent
+    class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private MeshComponentRequestBus::Handler
-        , private MaterialRequestBus::Handler
+        , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private StaticMeshComponentRequestBus::Handler
+        , private LegacyMeshComponentRequestBus::Handler
     {
     public:
 
-        AZ_COMPONENT(EditorStaticMeshComponent, "{FC315B86-3280-4D03-B4F0-5553D7D08432}", AzToolsFramework::Components::EditorComponentBase);
+        AZ_COMPONENT(EditorMeshComponent, "{FC315B86-3280-4D03-B4F0-5553D7D08432}", AzToolsFramework::Components::EditorComponentBase);
 
-        ~EditorStaticMeshComponent() override = default;
+        ~EditorMeshComponent() override = default;
 
         const float s_renderNodeRequestBusOrder = 100.f;
 
@@ -69,7 +69,7 @@ namespace LmbrCentral
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MaterialRequestBus interface implementation
+        // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
         ///////////////////////////////////
@@ -92,6 +92,11 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
+        // TransformBus::Handler
+        void OnStaticChanged(bool isStatic) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
         // EditorVisibilityNotificationBus::Handler
         void OnEntityVisibilityChanged(bool visibility) override;
         //////////////////////////////////////////////////////////////////////////
@@ -105,7 +110,7 @@ namespace LmbrCentral
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
         //////////////////////////////////////////////////////////////////////////
-        // StaticMeshComponentRequestBus interface implementation
+        // MeshComponentRequestBus interface implementation
         IStatObj* GetStatObj() override;
         ///////////////////////////////////
 
@@ -117,7 +122,7 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("MeshService", 0x71d8a455));
-            provided.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+            provided.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -133,7 +138,7 @@ namespace LmbrCentral
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("MeshService", 0x71d8a455));
-            incompatible.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+            incompatible.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
         }
 
         static void Reflect(AZ::ReflectContext* context);
@@ -148,9 +153,13 @@ namespace LmbrCentral
         // Decides if this mesh affects the navmesh or not
         void AffectNavmesh();
 
-        StaticMeshComponentRenderNode m_mesh;     ///< IRender node implementation
+        AZStd::string GetMeshViewportIconPath();
+
+        MeshComponentRenderNode m_mesh;     ///< IRender node implementation
 
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
         AZ::Vector3 m_physScale;      ///< To track scale changes, which requires re-physicalizing.
+
+
     };
 } // namespace LmbrCentral

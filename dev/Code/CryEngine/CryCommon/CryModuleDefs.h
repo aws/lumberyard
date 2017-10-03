@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYCOMMON_CRYMODULEDEFS_H
 #pragma once
 
+#pragma message("CryModuleDefs.h is deprecated in Lumberyard 1.11, you do not need to define eCryModule")
+
 enum ECryModule
 {
     eCryM_Local = 0,

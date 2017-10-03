@@ -1998,11 +1998,11 @@ namespace TypeComparison
 
 struct SFlowAddress
 {
-    SFlowAddress(TFlowNodeId node, TFlowPortId port, bool isOutput)
+    SFlowAddress(TFlowNodeId _node, TFlowPortId _port, bool _isOutput)
     {
-        this->node = node;
-        this->port = port;
-        this->isOutput = isOutput;
+        this->node = _node;
+        this->port = _port;
+        this->isOutput = _isOutput;
     }
     SFlowAddress()
     {
@@ -2262,12 +2262,12 @@ struct IFlowNode
 {
     struct SActivationInfo
     {
-        SActivationInfo(IFlowGraph* pGraph = 0, TFlowNodeId myID = 0, void* pUserData = 0, TFlowInputData* pInputPorts = 0)
+        SActivationInfo(IFlowGraph* graph = 0, TFlowNodeId id = 0, void* userData = 0, TFlowInputData* inputPorts = 0)
         {
-            this->pGraph = pGraph;
-            this->myID = myID;
-            this->m_pUserData = pUserData;
-            this->pInputPorts = pInputPorts;
+            this->pGraph = graph;
+            this->myID = id;
+            this->m_pUserData = userData;
+            this->pInputPorts = inputPorts;
             this->pEntity = 0;
             this->connectPort = InvalidFlowPortId;
             this->entityId = FlowEntityId::s_invalidFlowEntityID;

@@ -44,18 +44,20 @@ typedef uint8 FONT_TEXTURE_TYPE;
 #define FONT_SMOOTH_AMOUNT_2X       1
 #define FONT_SMOOTH_AMOUNT_4X       2
 
-
+//! Stores glyph meta-data read from the font (FreeType).
+//!
+//! \sa CCacheSlot
 typedef struct CTextureSlot
 {
-    uint16              wSlotUsage;                 // for LRU strategy, 0xffff is never released
-    uint32              cCurrentChar;               // ~0 if not used for characters
+    uint16              wSlotUsage;                 //!< For LRU strategy, 0xffff is never released
+    uint32              cCurrentChar;               //!< ~0 if not used for characters
     int                 iTextureSlot;
-    int                 iHoriAdvance;
-    float               vTexCoord[2];               // character position in the texture (not yet half texel corrected)
-    uint8               iCharWidth;                 // size in pixel
-    uint8               iCharHeight;                // size in pixel
-    char                iCharOffsetX;
-    char                iCharOffsetY;
+    int                 iHoriAdvance;               //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
+    float               vTexCoord[2];               //!< Character position in the texture (not yet half texel corrected)
+    uint8               iCharWidth;                 //!< Glyph width (in pixel)
+    uint8               iCharHeight;                //!< Glyph height (in pixel)
+    AZ::s8              iCharOffsetX;               //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
+    AZ::s8              iCharOffsetY;               //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
 
     void Reset()
     {
@@ -89,21 +91,34 @@ typedef AZStd::unordered_map<uint32, CTextureSlot*>::const_iterator    CTextureS
 #undef GetCharHeight
 #endif
 
+//! Stores the glyphs of a font within a single texture.
+//!
+//! The texture resolution is configurable, as is the number of slots within
+//! the texture. 
+//!
+//! A texture slot contains a single glyph within the font and are uniform
+//! size throughout the font texture (each slot occupies the same size 
+//! regardless of the size of a glyph being stored, so a '.' occupies the 
+//! same amount of space as a 'W', for example).
+//!
+//! Font glyph buffers are read from FreeType and copied into the texture.
+//!
+//! \sa CTextureSlot, CFontRenderer
 class CFontTexture
 {
 public:
     CFontTexture();
     ~CFontTexture();
 
-    int CreateFromFile(const string& szFileName, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, float fSizeRatio = 0.8f, int iWidthCharCount = 16, int iHeightCharCount = 16);
+    int CreateFromFile(const string& szFileName, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount = 16, int iHeightCharCount = 16);
 
     //! Default texture slot width/height is 16x8 slots, allowing for 128 glyphs to be stored in the font texture. This was
     //! previously 16x16, allowing 256 glyphs to be stored. For reference, there are 95 printable ASCII characters, so by
     //! reducing the number of slots, the height of the font texture can be halved (for some nice memory savings). We may
     //! want to make this configurable in the font XML (especially for languages with a large number of printable chars).
-    int CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount, int iHeightCharCount, float fSizeRatio = 0.875f);
+    int CreateFromMemory(unsigned char* pFileData, int iDataSize, int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount, int iHeightCharCount);
 
-    int Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, float fSizeRatio = 0.8f, int iWidthCharCount = 16, int iHeightCharCount = 16);
+    int Create(int iWidth, int iHeight, int iSmoothMethod, int iSmoothAmount, int iWidthCharCount = 16, int iHeightCharCount = 16);
     int Release();
 
     int SetEncoding(FT_Encoding pEncoding) { return m_pGlyphCache.SetEncoding(pEncoding); }

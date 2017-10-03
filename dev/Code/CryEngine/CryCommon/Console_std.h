@@ -18,6 +18,43 @@
 
 namespace std
 {
+#if defined(MISSING_CONSOLE_STD_REQUIRED)
+    // implement any std functionality console don't yet have here
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    // make_unique not available on consoles yet, implement a non variadic template version
+    template<typename T>
+    unique_ptr<T> make_unique()
+    {
+        return unique_ptr<T>(new T);
+    }
+
+    template <typename T, typename U>
+    unique_ptr<T> make_unique(U&& arg)
+    {
+        return std::unique_ptr<T>(new T(std::forward<U>(arg)));
+    }
+
+    template <typename T, typename U, typename V>
+    unique_ptr<T> make_unique(U&& arg, V&& arg1)
+    {
+        return std::unique_ptr<T>(new T(std::forward<U>(arg), std::forward<V>(arg1)));
+    }
+
+    template <typename T, typename U, typename V, typename W>
+    unique_ptr<T> make_unique(U&& arg, V&& arg1, W&& arg2)
+    {
+        return std::unique_ptr<T>(new T(std::forward<U>(arg), std::forward<V>(arg1), std::forward<W>(arg2)));
+    }
+
+    template <typename T, typename U, typename V, typename W, typename X>
+    unique_ptr<T> make_unique(U&& arg, V&& arg1, W&& arg2, X&& arg3)
+    {
+        return std::unique_ptr<T>(new T(std::forward<U>(arg), std::forward<V>(arg1), std::forward<W>(arg2), std::forward<X>(arg3)));
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif // defined(DURANGO) || defined(ORBIS)
 }
 
 #endif//CRYINCLUDE_CRYCOMMON_CONSOLE_STD_H

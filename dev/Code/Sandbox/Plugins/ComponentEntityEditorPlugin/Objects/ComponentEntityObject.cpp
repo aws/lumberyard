@@ -36,6 +36,7 @@
 
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 
 #include <MathConversion.h>
 
@@ -68,6 +69,7 @@ CComponentEntityObject::CComponentEntityObject()
     , m_drawAccents(true)
     , m_accentType(AzToolsFramework::EntityAccentType::None)
     , m_isIsolated(false)
+    , m_iconTexture(nullptr)
 {
 }
 
@@ -264,6 +266,15 @@ void CComponentEntityObject::OnSelected()
     if (m_selectionReentryGuard)
     {
         EditorActionScope selectionChange(m_selectionReentryGuard);
+
+        // If we get here and we're not already selected in sandbox land it means
+        // the selection started in AZ land and we need to clear any edit tool
+        // the user may have selected from the rollup bar
+        if (GetIEditor()->GetEditTool() && !IsSelected())
+        {
+            GetIEditor()->SetEditTool(0);
+        }
+
 
         // Invoked when selected via tools application, so we notify sandbox.
         GetIEditor()->GetObjectManager()->SelectObject(this);
@@ -534,17 +545,22 @@ bool CComponentEntityObject::IsAncestorIconDrawingAtSameLocation() const
 {
     if (m_entityId.IsValid())
     {
-        AZ::Transform worldTransform;
-        AZ::TransformBus::EventResult(worldTransform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
-
         AZ::EntityId parentId;
         AZ::TransformBus::EventResult(parentId, m_entityId, &AZ::TransformBus::Events::GetParentId);
+        if (!parentId.IsValid())
+        {
+            return false;
+        }
+
+        AZ::Vector3 worldTranslation;
+        AZ::TransformBus::EventResult(worldTranslation, m_entityId, &AZ::TransformBus::Events::GetWorldTranslation);
+
         while (parentId.IsValid())
         {
-            AZ::Transform parentTransform;
-            AZ::TransformBus::EventResult(parentTransform, parentId, &AZ::TransformBus::Events::GetWorldTM);
+            AZ::Vector3 parentTranslation;
+            AZ::TransformBus::EventResult(parentTranslation, parentId, &AZ::TransformBus::Events::GetWorldTranslation);
 
-            if (parentTransform.GetTranslation().GetDistanceSq(worldTransform.GetTranslation()) < 0.01f)
+            if (parentTranslation.GetDistanceSq(worldTranslation) < 0.01f)
             {
                 CComponentEntityObject* parentObject = CComponentEntityObject::FindObjectForEntity(parentId);
                 if (parentObject && !parentObject->IsSelected() && parentObject->IsEntityIconVisible())
@@ -566,8 +582,13 @@ bool CComponentEntityObject::IsDescendantSelectedAtSameLocation() const
 {
     if (m_entityId.IsValid())
     {
-        AZ::Transform worldTransform;
-        AZ::TransformBus::EventResult(worldTransform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
+        if (GetObjectManager()->GetSelection() && GetObjectManager()->GetSelection()->GetCount() == 0)
+        {
+            return false;
+        }
+
+        AZ::Vector3 worldTranslation;
+        AZ::TransformBus::EventResult(worldTranslation, m_entityId, &AZ::TransformBus::Events::GetWorldTranslation);
 
         // For each descendant, check if it's selected and if so if it's located at the same location as we are
         AzToolsFramework::EntityIdList descendantIds;
@@ -578,9 +599,9 @@ bool CComponentEntityObject::IsDescendantSelectedAtSameLocation() const
             if (descendantObject && descendantObject->IsSelected())
             {
                 // Check if this entity is at the exact location of us
-                AZ::Transform entityTransform;
-                AZ::TransformBus::EventResult(entityTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
-                if (entityTransform.GetTranslation().GetDistanceSq(worldTransform.GetTranslation()) < 0.01f)
+                AZ::Vector3 entityTranslation;
+                AZ::TransformBus::EventResult(entityTranslation, entityId, &AZ::TransformBus::Events::GetWorldTranslation);
+                if (entityTranslation.GetDistanceSq(worldTranslation) < 0.01f)
                 {
                     return true;
                 }
@@ -708,7 +729,7 @@ bool CComponentEntityObject::HitTest(HitContext& hc)
             if (Intersect::Ray_AABB(Ray(hc.raySrc, hc.rayDir), bounds, hitPos))
             {
                 IStatObj* geometry = nullptr;
-                EBUS_EVENT_ID_RESULT(geometry, m_entityId, LmbrCentral::StaticMeshComponentRequestBus, GetStatObj);
+                EBUS_EVENT_ID_RESULT(geometry, m_entityId, LmbrCentral::LegacyMeshComponentRequestBus, GetStatObj);
 
                 // If we have a mesh, raycast against it.
                 if (geometry)
@@ -828,17 +849,20 @@ void CComponentEntityObject::Display(DisplayContext& dc)
 
     DrawDefault(dc);
 
-    bool showIcons = true;
-    SEditorSettings* editorSettings = GetIEditor()->GetEditorSettings();
-    if (!editorSettings->viewports.bShowIcons && !editorSettings->viewports.bShowSizeBasedIcons)
+    bool showIcons = m_hasIcon;
+    if (showIcons)
     {
-        showIcons = false;
+        SEditorSettings* editorSettings = GetIEditor()->GetEditorSettings();
+        if (!editorSettings->viewports.bShowIcons && !editorSettings->viewports.bShowSizeBasedIcons)
+        {
+            showIcons = false;
+        }
     }
 
     if (m_entityId.IsValid())
     {
         // Do geometry debug draw if geometry highlighting is enabled (editor feature).
-        if ((!IsSelected() && IsHighlighted() && GetIEditor()->GetEditorSettings()->viewports.bHighlightMouseOverGeometry) ||
+        if ((!IsSelected() && m_accentType == AzToolsFramework::EntityAccentType::Hover && GetIEditor()->GetEditorSettings()->viewports.bHighlightMouseOverGeometry) ||
             (IsSelected() && GetIEditor()->GetEditorSettings()->viewports.bHighlightSelectedGeometry))
         {
             SGeometryDebugDrawInfo dd;
@@ -847,7 +871,7 @@ void CComponentEntityObject::Display(DisplayContext& dc)
             dd.color = ColorB(250, 0, 250, 30);
             dd.lineColor = ColorB(255, 255, 0, 160);
             IStatObj* geometry = nullptr;
-            EBUS_EVENT_ID_RESULT(geometry, m_entityId, LmbrCentral::StaticMeshComponentRequestBus, GetStatObj);
+            EBUS_EVENT_ID_RESULT(geometry, m_entityId, LmbrCentral::LegacyMeshComponentRequestBus, GetStatObj);
             if (geometry)
             {
                 geometry->DebugDraw(dd);
@@ -855,19 +879,21 @@ void CComponentEntityObject::Display(DisplayContext& dc)
         }
 
         // Draw link to parent if this or the parent object are selected.
-        AZ::EntityId parentId;
-        EBUS_EVENT_ID_RESULT(parentId, m_entityId, AZ::TransformBus, GetParentId);
-        if (parentId.IsValid())
         {
-            CComponentEntityObject* parentObject = CComponentEntityObject::FindObjectForEntity(parentId);
-            if (IsSelected() || (parentObject && parentObject->IsSelected()))
+            AZ::EntityId parentId;
+            EBUS_EVENT_ID_RESULT(parentId, m_entityId, AZ::TransformBus, GetParentId);
+            if (parentId.IsValid())
             {
-                const QColor kLinkColorParent(0, 255, 255);
-                const QColor kLinkColorChild(0, 0, 255);
+                CComponentEntityObject* parentObject = CComponentEntityObject::FindObjectForEntity(parentId);
+                if (IsSelected() || (parentObject && parentObject->IsSelected()))
+                {
+                    const QColor kLinkColorParent(0, 255, 255);
+                    const QColor kLinkColorChild(0, 0, 255);
 
-                AZ::Transform parentTransform;
-                EBUS_EVENT_ID_RESULT(parentTransform, parentId, AZ::TransformBus, GetWorldTM);
-                dc.DrawLine(AZVec3ToLYVec3(parentTransform.GetTranslation()), GetWorldTM().GetTranslation(), kLinkColorParent, kLinkColorChild);
+                    AZ::Vector3 parentTranslation;
+                    EBUS_EVENT_ID_RESULT(parentTranslation, parentId, AZ::TransformBus, GetWorldTranslation);
+                    dc.DrawLine(AZVec3ToLYVec3(parentTranslation), GetWorldTM().GetTranslation(), kLinkColorParent, kLinkColorChild);
+                }
             }
         }
 
@@ -875,12 +901,15 @@ void CComponentEntityObject::Display(DisplayContext& dc)
         // ancestor icons draw on top and are able to be selected over children. Also check if a descendant
         // is selected at the same location. In cases of entity hierarchies where numerous ancestors have
         // no position offset, we need this so the ancestors don't draw over us when we're selected
-        if ((dc.flags & DISPLAY_2D) ||
-            IsSelected() || 
-            IsAncestorIconDrawingAtSameLocation() ||
-            IsDescendantSelectedAtSameLocation())
+        if (showIcons)
         {
-            showIcons = false;
+            if ((dc.flags & DISPLAY_2D) ||
+                IsSelected() || 
+                IsAncestorIconDrawingAtSameLocation() ||
+                IsDescendantSelectedAtSameLocation())
+            {
+                showIcons = false;
+            }
         }
 
         // Allow components to override in-editor visualization.
@@ -937,7 +966,7 @@ void CComponentEntityObject::DrawDefault(DisplayContext& dc, const QColor& label
 IStatObj* CComponentEntityObject::GetIStatObj()
 {
     IStatObj* statObj = nullptr;
-    LmbrCentral::StaticMeshComponentRequestBus::EventResult(statObj, m_entityId, &LmbrCentral::StaticMeshComponentRequests::GetStatObj);
+    LmbrCentral::LegacyMeshComponentRequestBus::EventResult(statObj, m_entityId, &LmbrCentral::LegacyMeshComponentRequests::GetStatObj);
     return statObj;
 }
 
@@ -979,7 +1008,7 @@ bool CComponentEntityObject::DisplayEntityIcon(DisplayContext& editorDisplay)
     const float worldDistToScreenScaleFraction = 0.045f;
     const float screenScale = editorDisplay.GetView()->GetScreenScaleFactor(GetWorldPos()) * worldDistToScreenScaleFraction;
 
-    displayInterface->DrawTextureLabel(m_icon.c_str(), LYVec3ToAZVec3(worldPos), s_kIconSize * iconScale, s_kIconSize * iconScale, GetTextureIconFlags());
+    displayInterface->DrawTextureLabel(m_iconTexture, LYVec3ToAZVec3(worldPos), s_kIconSize * iconScale, s_kIconSize * iconScale, GetTextureIconFlags());
 
     return true;
 }
@@ -987,15 +1016,21 @@ bool CComponentEntityObject::DisplayEntityIcon(DisplayContext& editorDisplay)
 void CComponentEntityObject::SetupEntityIcon()
 {
     bool hideIconInViewport = false;
+    m_hasIcon = false;
+
     AzToolsFramework::EditorEntityIconComponentRequestBus::EventResult(hideIconInViewport, m_entityId, &AzToolsFramework::EditorEntityIconComponentRequestBus::Events::IsEntityIconHiddenInViewport);
-    if (hideIconInViewport)
-    {
-        m_hasIcon = false;
-    }
-    else
+    
+    if (!hideIconInViewport)
     {
         AzToolsFramework::EditorEntityIconComponentRequestBus::EventResult(m_icon, m_entityId, &AzToolsFramework::EditorEntityIconComponentRequestBus::Events::GetEntityIconPath);
-        m_hasIcon = (m_icon.empty() ? false : true);
+        
+        if (!m_icon.empty())
+        {
+            m_hasIcon = true;
+            
+            int textureId = GetIEditor()->GetIconManager()->GetIconTexture(m_icon.c_str());
+            m_iconTexture = GetIEditor()->GetRenderer()->EF_GetTextureByID(textureId);
+        }
     }
 }
 
@@ -1005,9 +1040,6 @@ void CComponentEntityObject::DrawAccent(DisplayContext& dc)
     {
         return;
     }
-
-    AABB box;
-    GetLocalBounds(box);
 
     switch (m_accentType)
     {
@@ -1050,6 +1082,8 @@ void CComponentEntityObject::DrawAccent(DisplayContext& dc)
         }
     }
 
+    AABB box;
+    GetLocalBounds(box);
     dc.PushMatrix(GetWorldTM());
     dc.DrawWireBox(box.min, box.max);
     dc.PopMatrix();
@@ -1063,11 +1097,11 @@ void CComponentEntityObject::SetMaterial(CMaterial* material)
     {
         if (material)
         {
-            EBUS_EVENT_ID(m_entityId, LmbrCentral::MaterialRequestBus, SetMaterial, material->GetMatInfo());
+            EBUS_EVENT_ID(m_entityId, LmbrCentral::MaterialOwnerRequestBus, SetMaterial, material->GetMatInfo());
         }
         else
         {
-            EBUS_EVENT_ID(m_entityId, LmbrCentral::MaterialRequestBus, SetMaterial, nullptr);
+            EBUS_EVENT_ID(m_entityId, LmbrCentral::MaterialOwnerRequestBus, SetMaterial, nullptr);
         }
     }
 }
@@ -1075,7 +1109,7 @@ void CComponentEntityObject::SetMaterial(CMaterial* material)
 CMaterial* CComponentEntityObject::GetMaterial() const
 {
     _smart_ptr<IMaterial> material = nullptr;
-    EBUS_EVENT_ID_RESULT(material, m_entityId, LmbrCentral::MaterialRequestBus, GetMaterial);
+    EBUS_EVENT_ID_RESULT(material, m_entityId, LmbrCentral::MaterialOwnerRequestBus, GetMaterial);
     return GetIEditor()->GetMaterialManager()->FromIMaterial(material);
 }
 
@@ -1086,7 +1120,7 @@ CMaterial* CComponentEntityObject::GetRenderMaterial() const
     if (entity)
     {
         _smart_ptr<IMaterial> material = nullptr;
-        EBUS_EVENT_ID_RESULT(material, m_entityId, LmbrCentral::MaterialRequestBus, GetMaterial);
+        EBUS_EVENT_ID_RESULT(material, m_entityId, LmbrCentral::MaterialOwnerRequestBus, GetMaterial);
 
         if (material)
         {

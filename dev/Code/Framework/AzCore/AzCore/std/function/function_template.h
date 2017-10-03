@@ -698,6 +698,8 @@ namespace AZStd
         };
         typedef void (dummy::* safe_bool)();
 
+        using function_base::empty; // hide non-standard empty() function
+
     public:
         operator safe_bool () const
         {

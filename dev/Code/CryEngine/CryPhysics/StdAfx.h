@@ -28,9 +28,6 @@
 #include <algorithm>
 #include <float.h>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Physics
-
 //#define MEMSTREAM_DEBUG 1
 #define MEMSTREAM_DEBUG_TAG (0xcafebabe)
 

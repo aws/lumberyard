@@ -13,11 +13,10 @@
 #include <Configuration/FlowNode_ConfigureAuthenticatedCognito.h>
 #include <aws/identity-management/auth/CognitoCachingCredentialsProvider.h>
 #include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 using namespace Aws;
-using namespace Aws::Lambda;
 using namespace Aws::Client;
 
 namespace LmbrAWS
@@ -63,7 +62,6 @@ namespace LmbrAWS
 
             if (!awsAccountNumber.empty() && !identityPool.empty())
             {
-                auto clientManager = gEnv->pLmbrAWS->GetClientManager();
                 auto identityProvider = Aws::MakeShared<Aws::Auth::DefaultPersistentCognitoIdentityProvider>(CLASS_TAG, identityPool, awsAccountNumber);
                 Aws::Auth::LoginAccessTokens accessTokens;
                 accessTokens.accessToken = providerToken;
@@ -80,8 +78,8 @@ namespace LmbrAWS
                 }
                 else
                 {
-                    clientManager->GetDefaultClientSettings().credentialProvider = credProvider;
-                    clientManager->ApplyConfiguration();
+                    EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, SetPlayerCredentialsProvider, credProvider);
+                    EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
 
                     SFlowAddress addr(activationInfo->myID, EOP_IdentityID, true);
                     activationInfo->pGraph->ActivatePortCString(addr, identityProvider->GetIdentityId().c_str());

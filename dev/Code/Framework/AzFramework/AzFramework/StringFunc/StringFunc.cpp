@@ -12,6 +12,7 @@
 #include <ctype.h>
 
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -2394,7 +2395,7 @@ namespace AzFramework
                     {
                         elementStart = walk;
                     }
-    #if defined(AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_XBONE)
+    #if defined(AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
 
                     else if (*walk == AZ_FILESYSTEM_DRIVE_SEPARATOR) //is this the drive separator
                     {
@@ -2444,7 +2445,7 @@ namespace AzFramework
                             }
                             *errors += "] has hit the MAX_PATH_COMPONENT_LEN = ";
 
-    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX)
+    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX) // ACCEPTED_USE
                             char buf[64];
                             _itoa_s(MAX_PATH_COMPONENT_LEN, buf, 10);
                             *errors += buf;
@@ -2468,7 +2469,7 @@ namespace AzFramework
                         *errors += in;
                         *errors += "] is over the AZ_MAX_PATH_LEN = ";
 
-    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX)
+    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX) // ACCEPTED_USE
                         char buf[64];
                         _itoa_s(AZ_MAX_PATH_LEN, buf, 10);
                         *errors += buf;
@@ -3078,7 +3079,7 @@ namespace AzFramework
                     return false;
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE)
+    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))
@@ -3181,7 +3182,7 @@ namespace AzFramework
                 _splitpath_s(in, nullptr, 0, nullptr, 0, nullptr, 0, b1, 256);
 
                 size_t lenExt = strlen(b1);
-                if (lenExt == 0 || lenExt > AZ_MAX_EXTENTION_LEN)
+                if (lenExt == 0)
                 {
                     return false;
                 }
@@ -3207,10 +3208,6 @@ namespace AzFramework
                 }
 
                 size_t lenExt = strlen(pExt);
-                if (lenExt > AZ_MAX_EXTENTION_LEN)
-                {
-                    return false;
-                }
 
                 if (pExtension)
                 {
@@ -3220,7 +3217,7 @@ namespace AzFramework
                     }
 
                     size_t lenExtCmp = strlen(pExtension);
-                    if (lenExtCmp > AZ_MAX_EXTENTION_LEN || lenExt != lenExtCmp)
+                    if (lenExt != lenExtCmp)
                     {
                         return false;
                     }
@@ -3794,7 +3791,7 @@ namespace AzFramework
                     return false;
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE)
+    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 size_t pos = inout.find_first_of(AZ_FILESYSTEM_DRIVE_SEPARATOR);
@@ -3933,7 +3930,7 @@ namespace AzFramework
                     in = tempIn.c_str();
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE)
+    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))
@@ -4466,5 +4463,157 @@ namespace AzFramework
                 return inout;
             }
         } // namespace Json
+
+        namespace Base64
+        {
+            static const char base64pad = '=';
+
+            static const char c_base64Table[] =
+            {
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "abcdefghijklmnopqrstuvwxyz"
+                "0123456789+/"
+            };
+
+            static const AZ::u8 c_inverseBase64Table[] =
+            {
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3e, 0xff, 0xff, 0xff, 0x3f,
+                0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+                0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+                0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+            };
+
+            bool IsValidEncodedChar(const char encodedChar)
+            {
+                return c_inverseBase64Table[static_cast<size_t>(encodedChar)] != 0xff;
+            }
+
+            AZStd::string Encode(const AZ::u8* in, const size_t size)
+            {
+                /*
+                figure retrieved from the Base encoding rfc https://tools.ietf.org/html/rfc4648
+                +--first octet--+-second octet--+--third octet--+
+                |7 6 5 4 3 2 1 0|7 6 5 4 3 2 1 0|7 6 5 4 3 2 1 0|
+                +-----------+---+-------+-------+---+-----------+
+                |5 4 3 2 1 0|5 4 3 2 1 0|5 4 3 2 1 0|5 4 3 2 1 0|
+                +--1.index--+--2.index--+--3.index--+--4.index--+
+                */
+                AZStd::string result;
+
+                const size_t remainder = size % 3;
+                const size_t alignEndSize = size - remainder;
+                const AZ::u8* encodeBuf = in;
+                size_t encodeIndex = 0;
+                for (; encodeIndex < alignEndSize; encodeIndex += 3)
+                {
+                    encodeBuf = &in[encodeIndex];
+
+                    result.push_back(c_base64Table[(encodeBuf[0] & 0xfc) >> 2]);
+                    result.push_back(c_base64Table[((encodeBuf[0] & 0x03) << 4) | ((encodeBuf[1] & 0xf0) >> 4)]);
+                    result.push_back(c_base64Table[((encodeBuf[1] & 0x0f) << 2) | ((encodeBuf[2] & 0xc0) >> 6)]);
+                    result.push_back(c_base64Table[encodeBuf[2] & 0x3f]);
+                }
+
+                encodeBuf = &in[encodeIndex];
+                if (remainder == 2)
+                {
+                    result.push_back(c_base64Table[(encodeBuf[0] & 0xfc) >> 2]);
+                    result.push_back(c_base64Table[((encodeBuf[0] & 0x03) << 4) | ((encodeBuf[1] & 0xf0) >> 4)]);
+                    result.push_back(c_base64Table[((encodeBuf[1] & 0x0f) << 2)]);
+                    result.push_back(base64pad);
+                }
+                else if (remainder == 1)
+                {
+                    result.push_back(c_base64Table[(encodeBuf[0] & 0xfc) >> 2]);
+                    result.push_back(c_base64Table[(encodeBuf[0] & 0x03) << 4]);
+                    result.push_back(base64pad);
+                    result.push_back(base64pad);
+                }
+
+                return result;
+            }
+
+            bool Decode(AZStd::vector<AZ::u8>& out, const char* in, const size_t size)
+            {
+                if (size % 4 != 0)
+                {
+                    AZ_Warning("StringFunc", size % 4 == 0, "Base 64 encoded data length must be multiple of 4");
+                    return false;
+                }
+
+                AZStd::vector<AZ::u8> result;
+                result.reserve(size * 3 / 4);
+                const char* decodeBuf = in;
+                size_t decodeIndex = 0;
+                for (; decodeIndex < size; decodeIndex += 4)
+                {
+                    decodeBuf = &in[decodeIndex];
+                    //Check if each character is a valid Base64 encoded character 
+                    {
+                        // First Octet
+                        if (!IsValidEncodedChar(decodeBuf[0]))
+                        {
+                            AZ_Warning("StringFunc", false, "Invalid Base64 encoded text at offset %tu", AZStd::distance(in, &decodeBuf[0]));
+                            return false;
+                        }
+                        if (!IsValidEncodedChar(decodeBuf[1]))
+                        {
+                            AZ_Warning("StringFunc", false, "Invalid Base64 encoded text at offset %tu", AZStd::distance(in, &decodeBuf[1]));
+                            return false;
+                        }
+
+                        result.push_back((c_inverseBase64Table[static_cast<size_t>(decodeBuf[0])] << 2) | ((c_inverseBase64Table[static_cast<size_t>(decodeBuf[1])] & 0x30) >> 4));
+                    }
+
+                    {
+                        // Second Octet
+                        if (decodeBuf[2] == base64pad)
+                        {
+                            break;
+                        }
+
+                        if (!IsValidEncodedChar(decodeBuf[2]))
+                        {
+                            AZ_Warning("StringFunc", false, "Invalid Base64 encoded text at offset %tu", AZStd::distance(in, &decodeBuf[2]));
+                            return false;
+                        }
+
+                        result.push_back(((c_inverseBase64Table[static_cast<size_t>(decodeBuf[1])] & 0x0f) << 4) | ((c_inverseBase64Table[static_cast<size_t>(decodeBuf[2])] & 0x3c) >> 2));
+                    }
+
+                    {
+                        // Third Octet
+                        if (decodeBuf[3] == base64pad)
+                        {
+                            break;
+                        }
+
+                        if (!IsValidEncodedChar(decodeBuf[3]))
+                        {
+                            AZ_Warning("StringFunc", false, "Invalid Base64 encoded text at offset %tu", AZStd::distance(in, &decodeBuf[3]));
+                            return false;
+                        }
+
+                        result.push_back(((c_inverseBase64Table[static_cast<size_t>(decodeBuf[2])] & 0x03) << 6) | (c_inverseBase64Table[static_cast<size_t>(decodeBuf[3])] & 0x3f));
+                    }
+                }
+
+                out = AZStd::move(result);
+                return true;
+            }
+        }
+
     } // namespace StringFunc
 } // namespace AzFramework

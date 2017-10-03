@@ -12,14 +12,10 @@
 #pragma once
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/utils.h>
-#include <AzCore/Component/EntityId.h>
-#include <AzFramework/Input/System/InputSystemComponent.h>
 #include <InputTypes.h>
 
 namespace AZ
 {
-    class EntityId;
-
     /** 
      * This class is used both as the profile id for customizing a particular
      * input as well as the argument for what the new profile will be.
@@ -87,32 +83,9 @@ namespace AZ
     public:
         virtual ~InputRequests() = default;
 
-        // ToDo: When CryInput and the AZ_FRAMEWORK_INPUT_ENABLED #define are removed,
-        // the following functions should be deleted and the rest of the file moved to:
+        // ToDo: This file should be moved to:
         // Gems/InputManagementFramework/Code/Include/InputManagementFramework/InputRequestBus.h
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        /**
-         * Get a list of names of devices registered with the input system
-         * DEPRECATED: Use AzFramework::InputDeviceRequests::GetInputDeviceIds
-        */
-        virtual const AZStd::vector<AZStd::string> GetRegisteredDeviceList() = 0;
 
-        /**
-         * Get a list of names of inputs registered on a given device
-         * DEPRECATED: Use AzFramework::InputDeviceRequests::GetInputChannelIds
-        */
-        virtual const AZStd::vector<AZStd::string> GetInputListByDevice(const AZStd::string& deviceName) = 0;
-
-        /**
-        * This will request a device mapping to your profileId from the input system
-        */
-        virtual void RequestDeviceMapping(const Input::ProfileId& profileId, const AZ::EntityId& requester) = 0;
-
-        /**
-        * This will get the profile associated with a device index
-        */
-        virtual Input::ProfileId GetProfileIdByDeviceIndex(AZ::u8 deviceIndex) = 0;
-#else
         /**
         * This will request a mapping from a profileId to a device index. The mapped index is returned.
         */
@@ -122,7 +95,6 @@ namespace AZ
         * This will get the device index mapped to a profileId, or 0 if none is mapped
         */
         virtual AZ::u8 GetMappedDeviceIndex(const Input::ProfileId& profileId) = 0;
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
         /**
         * This will clear all profile<->device mappings

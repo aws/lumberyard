@@ -64,11 +64,11 @@ private:
 
     struct Edge
     {
-        inline Edge(unsigned short id, float minx, float maxx, bool fullCross)
-            : id(id)
-            , fullCross(fullCross)
-            , minx(minx)
-            , maxx(maxx) {}
+        inline Edge(unsigned short _id, float _minx, float _maxx, bool _fullCross)
+            : id(_id)
+            , fullCross(_fullCross)
+            , minx(_minx)
+            , maxx(_maxx) {}
         inline bool operator<(const Edge& rhs) const { return minx < rhs.minx; }
         float minx, maxx;
         unsigned short id;

@@ -18,6 +18,8 @@
 #include "GameEngine.h"
 #include "Serialization/Decorators/EditorActionButton.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include <QFileDialog>
 #include <QString>
 
@@ -39,7 +41,7 @@ void ExportTool::ExportToCgf()
     }
     else
     {
-        QMessageBox::warning(nullptr, QObject::tr("Warning"), QObject::tr("Only one object must be selected to save it to cgf file."));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Only one object must be selected to save it to cgf file."));
     }
 }
 

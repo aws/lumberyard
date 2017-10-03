@@ -24,22 +24,8 @@
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimSequence::CUiAnimSequence()
-    : m_refCount(0)
+    : CUiAnimSequence(nullptr, 0)
 {
-    m_lastGenId = 1;
-    m_pUiAnimationSystem = nullptr;
-    m_flags = 0;
-    m_pParentSequence = NULL;
-    m_timeRange.Set(0, 10);
-    m_bPaused = false;
-    m_bActive = false;
-    m_pOwner = NULL;
-    m_pActiveDirector = NULL;
-    m_fixedTimeStep = 0;
-    m_precached = false;
-    m_bResetting = false;
-    m_id = 0;
-    m_time = -FLT_MAX;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -55,7 +41,6 @@ CUiAnimSequence::CUiAnimSequence(IUiAnimationSystem* pUiAnimationSystem, uint32 
     m_bActive = false;
     m_pOwner = NULL;
     m_pActiveDirector = NULL;
-    m_fixedTimeStep = 0;
     m_precached = false;
     m_bResetting = false;
     m_id = id;

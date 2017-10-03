@@ -54,7 +54,6 @@ class ImporterRootDisplay;
 class QCloseEvent;
 class QMenu;
 class QAction;
-class TraceMessageAggregator;
 
 class AssetImporterWindow
     : public QMainWindow
@@ -86,7 +85,7 @@ public slots:
 
 private:
     void Init();
-    void OpenFileInternal(AZStd::shared_ptr<TraceMessageAggregator>&& logger, const AZStd::string& filePath);
+    void OpenFileInternal(const AZStd::string& filePath);
     bool IsAllowedToChangeSourceFile();
     
     enum class WindowState
@@ -98,7 +97,8 @@ private:
 
     void ResetMenuAccess(WindowState state);
     void SetTitle(const char* filePath);
-    void HandleAssetLoadingCompleted(AZStd::shared_ptr<TraceMessageAggregator> logger);
+    void HandleAssetLoadingCompleted();
+    void ClearProcessingOverlay();
 
 private slots:
     void UpdateClicked();

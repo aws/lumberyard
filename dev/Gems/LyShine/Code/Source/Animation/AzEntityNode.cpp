@@ -141,28 +141,8 @@ CUiAnimAzEntityNode::CUiAnimAzEntityNode(const int id)
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimAzEntityNode::CUiAnimAzEntityNode()
-    : CUiAnimNode(0)
+    : CUiAnimAzEntityNode(0)
 {
-    m_bWasTransRot = false;
-    m_bInitialPhysicsStatus = false;
-
-    m_pos(0, 0, 0);
-    m_scale(1, 1, 1);
-    m_rotate.SetIdentity();
-
-    m_visible = true;
-
-    m_time = 0.0f;
-
-    m_lastEntityKey = -1;
-
-    #ifdef CHECK_FOR_TOO_MANY_ONPROPERTY_SCRIPT_CALLS
-    m_OnPropertyCalls = 0;
-    #endif
-
-    UiAnimNodeBus::Handler::BusConnect(this);
-
-    CUiAnimAzEntityNode::Initialize();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -780,7 +760,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
 
                 if (pSubTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
                 {
-                    void* elementData = reinterpret_cast<char*>(component) + subTrackParamData.GetOffset();
+                    elementData = reinterpret_cast<char*>(component) + subTrackParamData.GetOffset();
 
                     if (subTrackParamData.GetTypeId() == AZ::SerializeTypeInfo<float>::GetUuid())
                     {
@@ -974,7 +954,7 @@ IUiAnimTrack* CUiAnimAzEntityNode::CreateTrackForAzField(const UiAnimParamData& 
     else if (param.GetTypeId() == AZ::SerializeTypeInfo<AZ::Color>::GetUuid())
     {
         // this is a compound type, create a compound track
-        IUiAnimTrack* pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Vector3);
+        pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Vector3);
 
         pTrack->SetParamData(param);
 

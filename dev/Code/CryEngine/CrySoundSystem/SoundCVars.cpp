@@ -15,6 +15,7 @@
 #include "SoundCVars.h"
 #include <ISystem.h>
 #include <IConsole.h>
+#include <MicrophoneBus.h>
 
 namespace Audio
 {
@@ -204,6 +205,14 @@ namespace Audio
             "Second argument is the name of the audio trigger to use."
             "Usage: s_PlayFile \"sounds\\wwise\\external_sources\\sfx\\my_file.wav\" Play_audio_input_2D\n"
             );
+
+        REGISTER_COMMAND("s_Microphone", CmdMicrophone, VF_CHEAT,
+            "Turn on/off microphone input.  Uses Audio Input Source (Wwise).\n"
+            "First argument is 0 or 1 to turn off or on the Microphone, respectively.\n"
+            "Second argument is the name of the ATL trigger to use (when turning microphone on) for Audio Input.\n"
+            "Usage: s_Microphone 1 Play_audio_input_2D\n"
+            "Usage: s_Microphone 0\n"
+        );
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         REGISTER_CVAR2("s_IgnoreWindowFocus", &m_nIgnoreWindowFocus, 0, VF_DEV_ONLY,
@@ -578,6 +587,123 @@ namespace Audio
         else
         {
             g_audioLogger.Log(eALT_ERROR, "Usage: s_PlayFile \"path\\to\\myfile.wav\" \"Play_audio_input_2D\"");
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CSoundCVars::CmdMicrophone(IConsoleCmdArgs* pCmdArgs)
+    {
+        static bool micState = false;   // mic is off initially
+        static TAudioSourceId micSourceId = INVALID_AUDIO_SOURCE_ID;
+        static TAudioControlID triggerId = INVALID_AUDIO_CONTROL_ID;
+
+        const int argCount = pCmdArgs->GetArgCount();
+
+        if (argCount == 3)
+        {
+            int state = std::strtol(pCmdArgs->GetArg(1), nullptr, 10);
+
+            const char* triggerName = pCmdArgs->GetArg(2);
+
+            if (state == 1 && !micState && micSourceId == INVALID_AUDIO_SOURCE_ID && triggerId == INVALID_AUDIO_CONTROL_ID)
+            {
+                g_audioLogger.Log(eALT_ALWAYS, "Turning on Microhpone with %s\n", triggerName);
+                bool success = true;
+
+                AudioSystemRequestBus::BroadcastResult(triggerId, &AudioSystemRequestBus::Events::GetAudioTriggerID, triggerName);
+                if (triggerId != INVALID_AUDIO_CONTROL_ID)
+                {
+                    // Start the mic session
+                    bool startedMic = false;
+                    MicrophoneRequestBus::BroadcastResult(startedMic, &MicrophoneRequestBus::Events::StartSession);
+                    if (startedMic)
+                    {
+                        SAudioInputConfig micConfig;
+                        MicrophoneRequestBus::BroadcastResult(micConfig, &MicrophoneRequestBus::Events::GetFormatConfig);
+
+                        // If you want to test resampling, set the values here before you create an Audio Source.
+                        // In this case, we would be specifying 16kHz, 16-bit integers.
+                        //micConfig.m_sampleRate = 16000;
+                        //micConfig.m_bitsPerSample = 16;
+                        //micConfig.m_sampleType = AudioInputSampleType::Int;
+
+                        AudioSystemRequestBus::BroadcastResult(micSourceId, &AudioSystemRequestBus::Events::CreateAudioSource, micConfig);
+
+                        if (micSourceId != INVALID_AUDIO_SOURCE_ID)
+                        {
+                            SAudioRequest request;
+                            SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER> requestData(triggerId, micSourceId);
+                            request.nFlags = eARF_PRIORITY_NORMAL;
+                            request.pData = &requestData;
+
+                            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+                        }
+                        else
+                        {
+                            success = false;
+                            g_audioLogger.Log(eALT_ERROR, "Failed to create a new audio source for the microphone");
+                        }
+                    }
+                    else
+                    {
+                        success = false;
+                        g_audioLogger.Log(eALT_ERROR, "Failed to start the microphone session");
+                    }
+                }
+                else
+                {
+                    success = false;
+                    g_audioLogger.Log(eALT_ERROR, "Failed to find the trigger named %s", triggerName);
+                }
+
+                if (success)
+                {
+                    micState = true;
+                }
+                else
+                {
+                    AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::DestroyAudioSource, micSourceId);
+                    MicrophoneRequestBus::Broadcast(&MicrophoneRequestBus::Events::EndSession);
+                    micSourceId = INVALID_AUDIO_SOURCE_ID;
+                    triggerId = INVALID_AUDIO_CONTROL_ID;
+                }
+            }
+            else
+            {
+                g_audioLogger.Log(eALT_ERROR, "Error encountered while turning on/off microphone");
+            }
+        }
+        else if (argCount == 2)
+        {
+            int state = std::strtol(pCmdArgs->GetArg(1), nullptr, 10);
+
+            if (state == 0 && micState && micSourceId != INVALID_AUDIO_SOURCE_ID && triggerId != INVALID_AUDIO_CONTROL_ID)
+            {
+                g_audioLogger.Log(eALT_ALWAYS, "Turning off Microphone\n");
+
+                // Stop the trigger (may not be necessary)
+                SAudioRequest request;
+                SAudioObjectRequestData<eAORT_STOP_TRIGGER> requestData(triggerId);
+                request.nFlags = eARF_PRIORITY_NORMAL;
+                request.pData = &requestData;
+                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+
+                // Destroy the audio source, end the mic session, and reset state...
+                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::DestroyAudioSource, micSourceId);
+                MicrophoneRequestBus::Broadcast(&MicrophoneRequestBus::Events::EndSession);
+                micSourceId = INVALID_AUDIO_SOURCE_ID;
+                triggerId = INVALID_AUDIO_CONTROL_ID;
+
+                micState = false;
+            }
+            else
+            {
+                g_audioLogger.Log(eALT_ERROR, "Error encountered while turning on/off microphone");
+            }
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "Usage: s_Microphone 1 Play_audio_input_2D  /  s_Microphone 0");
         }
     }
 

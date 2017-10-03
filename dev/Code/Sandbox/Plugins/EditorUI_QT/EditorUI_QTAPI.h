@@ -11,17 +11,21 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef EDITORUIQT_EDITORUIQTAPI_H
-#define EDITORUIQT_EDITORUIQTAPI_H
-
 #pragma once
 
 //Local
 #include "api.h"
 
-struct ISystem;
+namespace AZ
+{
+    namespace Internal
+    {
+        class EnvironmentInterface;
+    }
+    typedef Internal::EnvironmentInterface* EnvironmentInstance;
+}
 
-void EDITOR_QT_UI_API InitializeEditorUIQTISystem(ISystem* pSystem);
-void EDITOR_QT_UI_API UninitializeEditorUIQTISystem(ISystem* pSystem);
+void EDITOR_QT_UI_API InitializeEditorUIQTISystem(AZ::EnvironmentInstance azEnv);
+void EDITOR_QT_UI_API UninitializeEditorUIQTISystem();
 
-#endif // EDITORUIQT_EDITORUIQTAPI_H
+

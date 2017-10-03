@@ -180,6 +180,23 @@ def _output_folder_disclaimer(ctx):
     Logs.info("(Press ENTER to keep the current default value shown in [])")
     ctx.output_folder_disclaimer_shown = True
 
+def _auto_populate_windows_kit(ctx, option_name):
+    wsdk_version = ''
+    try:
+        wsdk_version = ctx.find_valid_wsdk_version()
+        if wsdk_version == '':
+            Logs.info('\nFailed to find a valid Windows Kit for Visual Studio 2015.')
+        setattr(ctx.options, option_name, wsdk_version)
+    except:
+        pass
+    return wsdk_version
+
+###############################################################################
+@register_attribute_callback
+def win_vs2015_winkit(ctx, section_name, option_name, value):
+    """ Configure vs2015 windows kit. """
+    return _auto_populate_windows_kit(ctx, option_name)
+
 
 ###############################################################################
 @register_attribute_callback
@@ -230,35 +247,9 @@ def out_folder_win64_vs2013(ctx, section_name, option_name, value):
 
 
 ###############################################################################
-@register_attribute_callback
-def out_folder_orbis(ctx, section_name, option_name, value):
-    """ Configure output folder for orbis """
-    if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
-        return value
-        
-    # GUI
-    if not ctx.is_option_true('console_mode'):
-        return ctx.gui_get_attribute(section_name, option_name, value)
-        
-    _output_folder_disclaimer(ctx)
-    return _get_string_value(ctx, 'ORBIS Output Folder', value) 
 
 
 ###############################################################################
-@register_attribute_callback
-def out_folder_durango(ctx, section_name, option_name, value):
-    """ Configure output folder for durango """
-    if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
-        return value
-        
-    # GUI
-    if not ctx.is_option_true('console_mode'):
-        return ctx.gui_get_attribute(section_name, option_name, value)
-        
-    _output_folder_disclaimer(ctx)  
-    return _get_string_value(ctx, 'Durango Output Folder', value)
 
 
 ###############################################################################
@@ -638,6 +629,8 @@ def load_user_settings(ctx):
         write_user_settings = True  # No file, hence we need to write it
     else:
         user_settings.read( [user_setting_file] )
+
+    Logs.debug('default_settings: sys.argv = {}'.format(sys.argv))
         
     # Load settings and check for newly set ones
     for section_name, settings_list in ctx.default_settings.items():
@@ -686,19 +679,17 @@ def load_user_settings(ctx):
             long_form           = settings['long_form']
             short_form      = settings.get('short_form', None)
             
-            # Settings on cmdline should have priority, do a sub string match to batch both --option=<SomeThing> and --option <Something>           
+            # Settings on cmdline should have priority
+            # explicitly search for either the long form or short form argument, make sure to handle both --option=<SomeThing> and --option <Something> cases
             bOptionSetOnCmdLine = False
             for arg in sys.argv:
-                if long_form in arg:    
+                arg_tokens = arg.split('=')
+                if (arg_tokens[0] == long_form) or (short_form and arg_tokens[0] == short_form):
+                    Logs.debug('default_settings: found either long_form, "{}", or short_form, "{}", argument in command line param {}'.format(long_form, short_form, arg))
                     bOptionSetOnCmdLine = True
                     value = getattr(ctx.options, option_name)
                     break
-            for arg in sys.argv:
-                if short_form and short_form in arg:
-                    bOptionSetOnCmdLine = True
-                    value = getattr(ctx.options, option_name)
-                    break
-                    
+
             # Remember option for internal processing
             if bOptionSetOnCmdLine:
                 LOADED_OPTIONS[ option_name ] = value           

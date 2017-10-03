@@ -100,9 +100,9 @@ void CStatObj::StreamOnComplete(IReadStream* pStream, unsigned nError)
         //////////////////////////////////////////////////////////////////////////
         // Forces vegetation sprites to be marked for regeneration from new mesh.
         //////////////////////////////////////////////////////////////////////////
-        for (int nSID = 0; nSID < m_pObjManager->m_lstStaticTypes.Count(); nSID++)
+        for (int nSID = 0; nSID < m_pObjManager->GetListStaticTypes().Count(); nSID++)
         {
-            PodArray<StatInstGroup>& rGroupTable = m_pObjManager->m_lstStaticTypes[nSID];
+            PodArray<StatInstGroup>& rGroupTable = m_pObjManager->GetListStaticTypes()[nSID];
             for (int nGroupId = 0, nGroups = rGroupTable.Count(); nGroupId < nGroups; nGroupId++)
             {
                 StatInstGroup& rGroup = rGroupTable[nGroupId];
@@ -202,7 +202,7 @@ void CStatObj::ReleaseStreamableContent()
     assert(!m_pClonedSourceObject);
     assert(!m_bSharesChildren);
 
-    bool bLodsAreLoadedFromSeparateFile = m_pLod0 ? m_pLod0->m_bLodsAreLoadedFromSeparateFile : m_bLodsAreLoadedFromSeparateFile;
+    bool bLodsAreLoadedFromSeparateFile = m_pLod0 ? m_pLod0->IsLodsAreLoadedFromSeparateFile() : m_bLodsAreLoadedFromSeparateFile;
 
     if (!bLodsAreLoadedFromSeparateFile)
     {
@@ -293,7 +293,7 @@ int CStatObj::GetStreamableContentMemoryUsage(bool bJustForDebug)
 {
     assert(!m_pParentObject || bJustForDebug); // only parents allowed to be registered for streaming
 
-    bool bLodsAreLoadedFromSeparateFile = m_pLod0 ? m_pLod0->m_bLodsAreLoadedFromSeparateFile : m_bLodsAreLoadedFromSeparateFile;
+    bool bLodsAreLoadedFromSeparateFile = m_pLod0 ? m_pLod0->IsLodsAreLoadedFromSeparateFile() : m_bLodsAreLoadedFromSeparateFile;
     bool bCountLods = !bLodsAreLoadedFromSeparateFile;
 
     if (m_arrRenderMeshesPotentialMemoryUsage[bCountLods] < 0)
@@ -371,7 +371,7 @@ int CStatObj::GetStreamableContentMemoryUsage(bool bJustForDebug)
 
 void CStatObj::UpdateStreamingPrioriryInternal(const Matrix34A& objMatrix, float fImportance, bool bFullUpdate)
 {
-    int nRoundId = GetObjManager()->m_nUpdateStreamingPrioriryRoundId;
+    int nRoundId = GetObjManager()->GetUpdateStreamingPrioriryRoundId();
 
     if (m_pParentObject && m_bSubObject)
     { // stream parent for sub-objects
@@ -390,7 +390,7 @@ void CStatObj::UpdateStreamingPrioriryInternal(const Matrix34A& objMatrix, float
     else if (m_pLod0)
     { // sub-object lod without parent
         m_pLod0->UpdateStreamingPrioriryInternal(objMatrix, fImportance, bFullUpdate);
-        assert(!m_pLod0->m_bLodsAreLoadedFromSeparateFile);
+        assert(!m_pLod0->IsLodsAreLoadedFromSeparateFile());
     }
     else if (m_bCanUnload)
     {
@@ -496,7 +496,7 @@ void CStatObj::DisableStreaming()
         if (CStatObj* pLodObj = (CStatObj*)GetLodObject(nLodLevel))
         {
             pLodObj->m_nLastDrawMainFrameId = GetRenderer()->GetFrameID(false) + 1000;
-            pLodObj->UpdateStreamingPrioriryLowLevel(1.f, GetObjManager()->m_nUpdateStreamingPrioriryRoundId, true);
+            pLodObj->UpdateStreamingPrioriryLowLevel(1.f, GetObjManager()->GetUpdateStreamingPrioriryRoundId(), true);
             pLodObj->m_bCanUnload = false;
 
             // only register the parent object for streaming, it will stream in all subobject + lods
@@ -515,7 +515,7 @@ void CStatObj::DisableStreaming()
 
 bool CStatObj::CheckForStreamingDependencyLoop(const char* szFilenameDependancy) const
 {
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
     while (szFilenameDependancy)
     {
         const CStatObj* pStatObjDependency = static_cast<const CStatObj*>(pObjManager->FindStaticObjectByFilename(szFilenameDependancy));

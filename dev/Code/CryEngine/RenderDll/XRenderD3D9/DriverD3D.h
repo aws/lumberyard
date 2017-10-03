@@ -294,6 +294,8 @@ public:
     CD3D9Renderer();
     ~CD3D9Renderer();
 
+    virtual SRenderPipeline* GetRenderPipeline() override { return &m_RP; }
+
     static void StaticCleanup();
 
     // Remove pointer indirection.
@@ -320,7 +322,8 @@ public:
     virtual void InitRenderer();
     virtual void Release();
 
-    const SRenderTileInfo& GetRenderTileInfo() const { return m_RenderTileInfo; }
+    virtual const SRenderTileInfo* GetRenderTileInfo() const override { return &m_RenderTileInfo; }
+
     // CRY DX12
     static unsigned int GetCurrentBackBufferIndex(IDXGISwapChain* pSwapChain);
 
@@ -392,10 +395,13 @@ protected:
 
     PerInstanceConstantBufferPool m_PerInstanceConstantBufferPool;
 
-
     volatile int m_lockCharCB;
-    util::list<SCharInstCB> m_CharCBFreeList;
-    util::list<SCharInstCB> m_CharCBActiveList[3];
+
+    // CharCB can have different sizes depending on bone type.
+    // Therefore we need to keep a list per bone type for re-usability
+    util::list<SCharInstCB> m_CharCBFreeList[eBoneType_Count];
+    util::list<SCharInstCB> m_CharCBActiveList[eBoneType_Count][3];
+
     volatile int m_CharCBFrameRequired[3];
     volatile int m_CharCBAllocated;
 
@@ -420,21 +426,21 @@ protected:
         float xpos, ypos, w, h, s0, t0, s1, t1, angle, z, stereoDepth;
         DWORD col;
 
-        C2dImage(float xpos, float ypos, float w, float h, CTexture* pTex, float s0, float t0, float s1, float t1, float angle, DWORD col, float z, float stereoDepth, CTexture* pTarget = NULL)
-            : pTex(pTex)
-            , xpos(xpos)
-            , ypos(ypos)
-            , w(w)
-            , h(h)
-            , s0(s0)
-            , t0(t0)
-            , s1(s1)
-            , t1(t1)
-            , angle(angle)
-            , z(z)
-            , col(col)
-            , stereoDepth(stereoDepth)
-            , pTarget(pTarget) {}
+        C2dImage(float _xpos, float _ypos, float _w, float _h, CTexture* _pTex, float _s0, float _t0, float _s1, float _t1, float _angle, DWORD _col, float _z, float _stereoDepth, CTexture* _pTarget = NULL)
+            : pTex(_pTex)
+            , xpos(_xpos)
+            , ypos(_ypos)
+            , w(_w)
+            , h(_h)
+            , s0(_s0)
+            , t0(_t0)
+            , s1(_s1)
+            , t1(_t1)
+            , angle(_angle)
+            , z(_z)
+            , col(_col)
+            , stereoDepth(_stereoDepth)
+            , pTarget(_pTarget) {}
     };
     TArray<C2dImage>   m_2dImages;
     // CRY DX12
@@ -467,25 +473,26 @@ public:
 
     enum EDefShadows_Passes
     {
-        DS_STENCIL_PASS,
-        DS_HISTENCIL_REFRESH,
-        DS_SHADOW_PASS,
-        DS_SHADOW_CULL_PASS,
-        DS_SHADOW_FRUSTUM_CULL_PASS,
-        DS_STENCIL_VOLUME_CLIP,
-        DS_CLOUDS_SEPARATE,
-        DS_VOLUME_SHADOW_PASS,
+        DS_STENCIL_PASS = 0,
+        DS_HISTENCIL_REFRESH = 1,
+        DS_SHADOW_PASS = 2,
+        DS_SHADOW_CULL_PASS = 3,
+        DS_SHADOW_FRUSTUM_CULL_PASS = 4,
+        DS_STENCIL_VOLUME_CLIP = 5,
+        DS_CLOUDS_SEPARATE = 6,
+        DS_VOLUME_SHADOW_PASS = 7,
 
         // DS_GMEM_STENCIL_CULL_NON_CONVEX used by CD3D9Renderer::FX_StencilCullNonConvex(...)
         // in D3DDeferredShading.cpp when using GMEM render path.
-        DS_GMEM_STENCIL_CULL_NON_CONVEX,
+        DS_GMEM_STENCIL_CULL_NON_CONVEX = 8,
 
-        // DS_GMEM_STENCIL_CULL_NON_CONVEX used by CD3D9Renderer::FX_StencilCullNonConvex(...)
-        // in D3DDeferredShading.cpp when using GL ES 3.0 render path to resolve stencil to colour buffer
-        DS_GLES3_0_STENCIL_CULL_NON_CONVEX_RESOLVE,
+        // DS_STENCIL_CULL_NON_CONVEX_RESOLVE used by CD3D9Renderer::FX_StencilCullNonConvex(...)
+        // in D3DDeferredShading.cpp when stencil texture is not supported.
+        DS_STENCIL_CULL_NON_CONVEX_RESOLVE = 9,
 
-        DS_SHADOW_CULL_PASS_BACKFACE,
-        DS_SHADOW_FRUSTUM_CULL_PASS_BACKFACE,
+        DS_SHADOW_CULL_PASS_FRONTFACING = 10,
+        DS_SHADOW_FRUSTUM_CULL_PASS_FRONTFACING = 11,
+        DS_STENCIL_VOLUME_CLIP_FRONTFACING = 12,
 
         DS_PASS_MAX
     };
@@ -748,7 +755,7 @@ public:
     D3DDeviceContext& GetDeviceContext();
 
     bool IsDeviceContextValid() { return m_DeviceContext != nullptr; }
-    
+
     /////////////////////////////////////////////////////////////////////////////
     // Debug Functions to check that the D3D DeviceContext is only accessed
     // by its owning thread
@@ -785,6 +792,8 @@ public:
     void RT_ResetGlass();
 
     //=============================================================
+    void SetCull(ECull eCull, bool bSkipMirrorCull = false) override { D3DSetCull(eCull, bSkipMirrorCull); }
+
     void D3DSetCull(ECull eCull, bool bSkipMirrorCull = false);
 
     struct gammaramp_t;
@@ -898,7 +907,7 @@ public:
     virtual void RT_DrawImageWithUV(float xpos, float ypos, float z, float w, float h, int texture_id, float* s, float* t, DWORD col, bool filtered = true);
     virtual void RT_PushRenderTarget(int nTarget, CTexture* pTex, SDepthTexture* pDepth, int nS);
     virtual void RT_PopRenderTarget(int nTarget);
-    virtual   void RT_SetViewport(int x, int y, int width, int height, int id = -1);
+    virtual void RT_SetViewport(int x, int y, int width, int height, int id = -1) override;
     virtual void RT_RenderDebug(bool bRenderStats = true);
     virtual void RT_SetRendererCVar(ICVar* pCVar, const char* pArgText, const bool bSilentMode = false);
 
@@ -999,7 +1008,7 @@ public:
     virtual void PostLevelLoading();
     virtual void PostLevelUnload();
 
-    void SetViewParameters(const CameraViewParameters& viewParameters);
+    virtual void ApplyViewParameters(const CameraViewParameters& viewParameters) override;
     virtual void SetCamera(const CCamera& cam);
     virtual void SetViewport(int x, int y, int width, int height, int id = 0);
     virtual void GetViewport(int* x, int* y, int* width, int* height) const;
@@ -1206,13 +1215,12 @@ public:
 
     void SetFrontFacingStencillState(int nStencilID);
     void SetBackFacingStencillState(int nStencilID);
-    void FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds);
-
+    
     //These two overridden functions allow for control over which pass to use during the stencil pass.
     void FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int frontFacePass);
-    void FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int frontFacePass, int backFacePass);   
-   
-    void FX_StencilFrustumCull(int nStencilID, const SRenderLight* pLight, ShadowMapFrustum* pFrustum, int nAxis);    
+    void FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInds, CShader*  pShader, int frontFacePass, int backFacePass);
+
+    void FX_StencilFrustumCull(int nStencilID, const SRenderLight* pLight, ShadowMapFrustum* pFrustum, int nAxis);
     void FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterTightMesh, const Matrix34& mWorldTM);
 
     void FX_ZTargetReadBack();
@@ -1297,10 +1305,12 @@ public:
     bool FX_PostProcessScene(bool bEnable);
     bool FX_DeferredRendering(bool bDebugPass = false, bool bUpdateRTOnly = false);
     bool FX_DeferredDecals();
+    bool FX_DeferredDecalsEmissive();
     bool FX_SkinRendering(bool bEnable);
     void FX_LinearizeDepth();
     void FX_DepthFixupPrepare();
     void FX_DepthFixupMerge();
+    void FX_SRGBConversion();
 
     // Performance queries
     //=======================================================================
@@ -1324,7 +1334,7 @@ public:
 
     void FX_Invalidate();
     void EF_Restore();
-    virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0);
+    virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0) override;
     void FX_StateRestore(int prevState);
 
     void ChangeLog();
@@ -1398,7 +1408,7 @@ public:
 
     //================================================================================
 
-    HRESULT FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat);
+    virtual long FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat) override;
     inline bool FX_SetStreamFlags(SShaderPass* pPass)
     {
         if (CV_r_usehwskinning && m_RP.m_pRE && (m_RP.m_pRE->m_Flags & FCEF_SKINNED))
@@ -1493,14 +1503,19 @@ public:
     int m_nWireFrameStack;
 
     bool FX_GetTargetSurfaces(CTexture* pTarget, D3DSurface*& pTargSurf, SRTStack* pCur, int nCMSide = -1, int nTarget = 0, uint32 nTileCount = 1);
-    bool FX_SetRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1);
-    bool FX_PushRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1);
-    bool FX_SetRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, bool bPush = false, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1);
-    bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1);
-    bool FX_RestoreRenderTarget(int nTarget);
-    bool FX_PopRenderTarget(int nTarget);
-    SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA);
-    SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA);
+
+    virtual bool FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) override;
+    virtual bool FX_PushRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) override;
+    virtual bool FX_SetRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, bool bPush = false, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
+    virtual bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
+    virtual bool FX_RestoreRenderTarget(int nTarget) override;
+    virtual bool FX_PopRenderTarget(int nTarget) override;
+    virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) override;
+    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) override;
+
+    virtual SDepthTexture* GetDepthBufferOrig() override { return &m_DepthBufferOrig; }
+    virtual uint32 GetBackBufferWidth() override { return m_backbufferWidth; }
+    virtual uint32 GetBackBufferHeight() override { return m_backbufferHeight; }
 
     CTexture* FX_GetCurrentRenderTarget(int target);
 
@@ -1526,7 +1541,7 @@ public:
     //========================================================================================
 
 
-    void FX_Commit(bool bAllowDIP = false);
+    virtual void FX_Commit(bool bAllowDIP = false) override;
     void FX_ZState(uint32& nState);
     void FX_HairState(uint32& nState, const SShaderPass* pPass);
     bool FX_SetFPMode();
@@ -1563,7 +1578,7 @@ public:
         }
     }
 
-    ILINE HRESULT FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1)
+    ILINE long FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1)
     {
         FUNCTION_PROFILER_RENDER_FLAT
         D3DBuffer* pVB = (D3DBuffer*)pB;
@@ -1582,7 +1597,7 @@ public:
     }
 
 
-    ILINE HRESULT FX_SetIStream(const void* pB, uint32 nOffs, RenderIndexType idxType)
+    virtual long FX_SetIStream(const void* pB, uint32 nOffs, RenderIndexType idxType) override
     {
 #if !defined(_RELEASE) && !defined(SUPPORT_FLEXIBLE_INDEXBUFFER)
         IF (idxType == Index32 || idxType == Index16 && (nOffs & 1), 0)
@@ -1624,7 +1639,7 @@ public:
 #endif
     }
 
-    ILINE HRESULT FX_ResetVertexDeclaration()
+    ILINE long FX_ResetVertexDeclaration()
     {
         GetDeviceContext().IASetInputLayout(NULL);
         m_pLastVDeclaration = NULL;
@@ -1637,7 +1652,7 @@ public:
         return (D3DPrimitiveType) eType;
     }
 
-    ILINE void FX_DrawIndexedPrimitive(const eRenderPrimitiveType eType, const int nVBOffset, const int nMinVertexIndex, const int nVerticesCount, const int nStartIndex, const int nNumIndices, bool bInstanced = false)
+    virtual void FX_DrawIndexedPrimitive(const eRenderPrimitiveType eType, const int nVBOffset, const int nMinVertexIndex, const int nVerticesCount, const int nStartIndex, const int nNumIndices, bool bInstanced = false) override
     {
         int nPrimitives = 0;
 

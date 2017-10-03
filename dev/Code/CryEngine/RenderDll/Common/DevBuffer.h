@@ -16,6 +16,7 @@
 
 #include <XRenderD3D9/DeviceManager/Base.h>
 #include <XRenderD3D9/DeviceManager/Enums.h>
+#include <CryEngineAPI.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Usage hints
@@ -177,7 +178,7 @@ struct SDeviceBufferPoolStats
 class CVertexBuffer;
 class CIndexBuffer;
 
-class CDeviceBufferManager
+class ENGINE_API CDeviceBufferManager
 {
     friend class CGuardedDeviceBufferManager;
     friend class CDeviceManager;
@@ -413,7 +414,7 @@ public:
     }
     ~SRecursiveSpinLocker() { lock->Unlock(); }
 };
-#define SREC_AUTO_LOCK(x) SRecursiveSpinLocker _lock(&(x))
+#define SREC_AUTO_LOCK(x) SRecursiveSpinLocker AZ_JOIN(_lock, __LINE__)(&(x))
 
 class CConditonalDevManLock
 {
@@ -457,7 +458,7 @@ struct WrappedDX11Buffer
         , m_pUAV{}
         , m_numElements{}
         , m_elementSize{}
-        , m_elementFormat{ DXGI_FORMAT_UNKNOWN }
+        , m_elementFormat{DXGI_FORMAT_UNKNOWN}
         , m_flags(0)
         , m_currentBuffer{}
     {

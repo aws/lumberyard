@@ -27,8 +27,8 @@ namespace LYGame
     {
         ePlatform_Unknown,
         ePlatform_PC,
-        ePlatform_Xbox,
-        ePlatform_PS4,
+        ePlatform_Xbox, // ACCEPTED_USE
+        ePlatform_PS4, // ACCEPTED_USE
         ePlatform_Android,
         ePlatform_iOS,
         ePlatform_Count
@@ -41,8 +41,8 @@ namespace LYGame
     {
         "Unknown",
         "PC",
-        "Xbox",
-        "PS4",
+        "Xbox", // ACCEPTED_USE
+        "PS4", // ACCEPTED_USE
         "Android",
         "iOS"
     };
@@ -119,7 +119,7 @@ namespace LYGame
 
             PlatformInfo(Platform platformId = ePlatform_Unknown)
                 : m_platformId(platformId)
-                , m_devices(eAID_KeyboardMouse | eAID_XboxPad | eAID_PS4Pad) { }
+                , m_devices(eAID_KeyboardMouse | eAID_XboxPad | eAID_PS4Pad) { } // ACCEPTED_USE
         };
 
     protected:

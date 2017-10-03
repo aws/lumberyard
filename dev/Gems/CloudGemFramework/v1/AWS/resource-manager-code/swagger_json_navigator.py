@@ -121,6 +121,10 @@ class SwaggerNavigator(object):
 
         return navigator
 
+    def get_object_value(self, selector, default=REQUIRED):
+        navigator = self.get_object(selector, default)
+        return navigator.value
+
     def get_or_add_object(self, selector, default=None):
         if not self.contains(selector):
             if self.is_object:
@@ -162,6 +166,10 @@ class SwaggerNavigator(object):
 
         return navigator
 
+    def get_array_value(self, selector, default=REQUIRED):
+        navigator = self.get_array(selector, default)
+        return navigator.value
+
     def remove_array(self, selector, default=REQUIRED):
         navigator = self.get_array(selector, default)
         self.remove(selector, default is REQUIRED)
@@ -178,6 +186,10 @@ class SwaggerNavigator(object):
             raise ValueError('{} value {} is not a string.'.format(navigator, navigator.value))
 
         return navigator
+
+    def get_string_value(self, selector, default=REQUIRED):
+        navigator = self.get_string(selector, default)
+        return navigator.value
 
     def remove_string(self, selector, default=REQUIRED):
         navigator = self.get_string(selector, default)
@@ -196,6 +208,10 @@ class SwaggerNavigator(object):
 
         return navigator
 
+    def get_boolean_value(self, selector, default=REQUIRED):
+        navigator = self.get_boolean(selector, default)
+        return navigator.value
+
     def remove_boolean(self, selector, default=REQUIRED):
         navigator = self.get_boolean(selector, default)
         self.remove(selector, default is REQUIRED)
@@ -212,6 +228,10 @@ class SwaggerNavigator(object):
             raise ValueError('{} value {} is not a string.'.format(navigator, navigator.value))
 
         return navigator
+
+    def get_int_value(self, selector, default=REQUIRED):
+        navigator = self.get_int(selector, default)
+        return navigator.int
 
     def remove_int(self, selector, default=REQUIRED):
         navigator = self.get_int(selector, default)

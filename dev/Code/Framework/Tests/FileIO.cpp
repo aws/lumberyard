@@ -187,6 +187,15 @@ namespace UnitTest
                 folderName = PathUtil::AddSlash(folderName);
                 AZStd::replace(folderName.begin(), folderName.end(), '\\', '/');
 
+                // Make sure the drive letter is capitalized
+                if (folderName.size() > 2)
+                {
+                    if (folderName[1] == ':')
+                    {
+                        folderName[0] = static_cast<char>(toupper(folderName[0]));
+                    }
+                }
+
                 deepFolder = folderName;
                 deepFolder.append("test");
 

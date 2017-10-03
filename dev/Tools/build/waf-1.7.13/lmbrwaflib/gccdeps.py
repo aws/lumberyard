@@ -57,7 +57,7 @@ def remove_makefile_rule_lhs(line):
     else:
         return line
 
-def path_to_node(base_node, path, cached_nodes, b_orbis_hack):
+def path_to_node(base_node, path, cached_nodes, b_drive_hack):
     # Take the base node and the path and return a node
     # Results are cached because searching the node tree is expensive
     # The following code is executed by threads, it is not safe, so a lock is needed...
@@ -72,7 +72,7 @@ def path_to_node(base_node, path, cached_nodes, b_orbis_hack):
         node = cached_nodes[node_lookup_key]
     except KeyError:
         node = base_node.find_resource(path)
-        if not node and b_orbis_hack: # To handle absolute path on C when building on another drive
+        if not node and b_drive_hack: # To handle absolute path on C when building on another drive
             node = base_node.make_node(path)
         cached_nodes[node_lookup_key] = node
     finally:
@@ -141,6 +141,7 @@ def post_run(self):
         if x[len(x)-1] == '"':
             x = x[:len(x)-1]
 
+        drive_hack = False
         if os.path.isabs(x):
             # HACK: for reasons unknown, some of the android library includes have a ':' appended to the path
             # causing the following to fail
@@ -148,7 +149,7 @@ def post_run(self):
                 if x[-1] == ':':
                     x = x[:-1]
 
-            node = path_to_node(bld.root, x, cached_nodes, self.env['PLATFORM'] == 'orbis')
+            node = path_to_node(bld.root, x, cached_nodes, drive_hack)
         else:
             path = bld.bldnode
             # when calling find_resource, make sure the path does not begin by '..'
@@ -156,7 +157,7 @@ def post_run(self):
             while lst and x[0] == '..':
                 x = x[1:]
                 path = path.parent
-            node = path_to_node(path, x, cached_nodes, self.env['PLATFORM'] == 'orbis')
+            node = path_to_node(path, x, cached_nodes, drive_hack)
 
         if not node:
             raise ValueError('could not find %r for %r' % (x, self))

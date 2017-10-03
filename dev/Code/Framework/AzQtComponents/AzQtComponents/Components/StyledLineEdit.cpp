@@ -11,7 +11,6 @@
 */
 
 #include <AzQtComponents/Components/StyledLineEdit.h>
-
 #include <QAction>
 #include <QValidator>
 
@@ -21,6 +20,7 @@ namespace AzQtComponents
         : QLineEdit(parent)
         , m_flavor(Plain)
     {
+        setFlavor(Plain);
         connect(this, &StyledLineEdit::textChanged, this, &StyledLineEdit::validateEntry);
     }
 
@@ -45,14 +45,14 @@ namespace AzQtComponents
 
     void StyledLineEdit::focusInEvent(QFocusEvent* event)
     {
-        Q_UNUSED(event);
-        adaptColorText(true);
+        adaptColorText();
+        QLineEdit::focusInEvent(event);
     }
 
     void StyledLineEdit::focusOutEvent(QFocusEvent* event)
     {
-        Q_UNUSED(event);
         adaptColorText();
+        QLineEdit::focusOutEvent(event);
     }
 
     void StyledLineEdit::validateEntry()
@@ -60,14 +60,19 @@ namespace AzQtComponents
         QString textToValidate = text();
         int length = textToValidate.length();
 
-        if (!validator() || (m_flavor != Valid && m_flavor != Invalid))
+        if (!validator())
         {
             return;
         }
 
-        if (validator()->validate(textToValidate, length) == QValidator::Acceptable)
+        if (validator()->validate(textToValidate, length) == QValidator::Acceptable && length > 0)
         {
             setFlavor(StyledLineEdit::Valid);
+        }
+
+        else if (validator()->validate(textToValidate, length) == QValidator::Acceptable && length <= 0)
+        {
+            setFlavor(StyledLineEdit::Plain);
         }
         else
         {

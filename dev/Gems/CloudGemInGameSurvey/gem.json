@@ -1,0 +1,25 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "ec06978b23ce4c5294c43c1732f3f31d",
+    "Name": "CloudGemInGameSurvey",
+    "DisplayName": "Cloud Gem In-Game Survey",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Your players opinions matter. This Cloud Gem lets you create, publish and visualize the results of surveys that can be answered by your players in-game.",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda", "S3"],
+    "IconPath": "preview.png",
+    "Dependencies": [
+        {
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ]
+}

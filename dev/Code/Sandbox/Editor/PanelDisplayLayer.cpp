@@ -62,10 +62,11 @@ enum
 //////////////////////////////////////////////////////////////////////////
 void CPanelDisplayLayer::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CPanelDisplayLayer>(GetIEditor(), LyViewPane::LegacyLayerEditor, LyViewPane::CategoryTools, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CPanelDisplayLayer>(LyViewPane::LegacyLayerEditor, LyViewPane::CategoryTools, options);
     GetIEditor()->GetSettingsManager()->AddToolVersion(LyViewPane::LegacyLayerEditor, LAYER_EDITOR_VER);
 }
 

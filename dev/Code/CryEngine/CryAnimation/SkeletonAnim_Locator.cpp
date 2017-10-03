@@ -217,23 +217,27 @@ QuatT CSkeletonAnim::CalculateRelativeMovement(const f32 fDeltaTimeOrig, const b
         Vec3 vBodyDirection = parrDefJoints[0].q.GetColumn1();
         DrawHelper::Arrow(BodyLocation, vBodyDirection, 1.0f, RGBA8(0x00, 0xff, 0x00, 0x00));
 
+        static f32 fMoveSpeed = 0.0f;
+        static f32 fTurnSpeed = 0.0f;
+        static f32 fTravelDir = 0.0f;
+        static f32 fSlope = 0.0f;
         //In character tool/editor we use the per-instance playback scale to mimic global time changes.
         //In the game this would change the speed of the locator. However, in these tools we want the apparent locator speed to stay the same,
         //so we divide out the scale by using the modified deltatime, not the original."
         f32 fDT = m_pInstance->GetCharEditMode() ? m_pInstance->m_fDeltaTime : m_pInstance->m_fOriginalDeltaTime;
         if (fDT)
         {
-            f32 fMoveSpeed      = DeltaMotion.m_moveSpeed / fDT;
-            f32 fTurnSpeed      = DeltaMotion.m_turnSpeed / fDT;
-            f32 fTravelDir      = fRelTravelDir;
-            f32 fSlope              = DeltaMotion.m_slope;
-            DrawHelper::CurvedArrow(BodyLocation, fMoveSpeed, fTravelDir, fTurnSpeed, fSlope, RGBA8(0xff, 0xff, 0x00, 0x00));
-            if (Console::GetInst().ca_DrawLocator == 2 || m_pInstance->GetCharEditMode())
-            {
-                float fColor1[4] = {1, 1, 1, 1};
-                g_pIRenderer->Draw2dLabel(1, g_YLine, 2.3f, fColor1, false, "fMoveSpeed: %f  fTurnSpeed: %f  fTravelDir: %f  fSlope: %f (%f)", fMoveSpeed, fTurnSpeed, fTravelDir, fSlope, RAD2DEG(fSlope));
-                g_YLine += 26.0f;
-            }
+            fMoveSpeed = DeltaMotion.m_moveSpeed / fDT;
+            fTurnSpeed = DeltaMotion.m_turnSpeed / fDT;
+            fTravelDir = fRelTravelDir;
+            fSlope = DeltaMotion.m_slope;
+        }
+        DrawHelper::CurvedArrow(BodyLocation, fMoveSpeed, fTravelDir, fTurnSpeed, fSlope, RGBA8(0xff, 0xff, 0x00, 0x00));
+        if (Console::GetInst().ca_DrawLocator == 2 || m_pInstance->GetCharEditMode())
+        {
+            float fColor1[4] = {1, 1, 1, 1};
+            g_pIRenderer->Draw2dLabel(1, g_YLine, 2.3f, fColor1, false, "fMoveSpeed: %f  fTurnSpeed: %f  fTravelDir: %f  fSlope: %f (%f)", fMoveSpeed, fTurnSpeed, fTravelDir, fSlope, RAD2DEG(fSlope));
+            g_YLine += 26.0f;
         }
     }
 

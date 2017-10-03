@@ -75,15 +75,15 @@ namespace CharacterTool
 
     enum ProjectionSelection3
     {
-        PS3_NoProjection,
-        PS3_ShortvecTranslation,
+        PS3_NoProjection, // ACCEPTED_USE
+        PS3_ShortvecTranslation, // ACCEPTED_USE
     };
 
     enum ProjectionSelection4
     {
-        PS4_NoProjection,
-        PS4_ShortvecTranslation,
-        PS4_DirectedTranslation
+        PS4_NoProjection, // ACCEPTED_USE
+        PS4_ShortvecTranslation, // ACCEPTED_USE
+        PS4_DirectedTranslation // ACCEPTED_USE
     };
 
     SERIALIZATION_ENUM_BEGIN(ProjectionSelection1, "projectionType")
@@ -98,14 +98,14 @@ namespace CharacterTool
     SERIALIZATION_ENUM_END()
 
     SERIALIZATION_ENUM_BEGIN(ProjectionSelection3, "projectionType")
-    SERIALIZATION_ENUM(PS3_NoProjection,        "no_projection",        "No Projection")
-    SERIALIZATION_ENUM(PS3_ShortvecTranslation, "shortvec_translation", "Shortvec Translation")
+    SERIALIZATION_ENUM(PS3_NoProjection,        "no_projection",        "No Projection") // ACCEPTED_USE
+    SERIALIZATION_ENUM(PS3_ShortvecTranslation, "shortvec_translation", "Shortvec Translation") // ACCEPTED_USE
     SERIALIZATION_ENUM_END()
 
     SERIALIZATION_ENUM_BEGIN(ProjectionSelection4, "projectionType")
-    SERIALIZATION_ENUM(PS4_NoProjection,        "no_projection",        "No Projection")
-    SERIALIZATION_ENUM(PS4_ShortvecTranslation, "shortvec_translation", "Shortvec Translation")
-    SERIALIZATION_ENUM(PS4_DirectedTranslation, "directed_translation", "Directed Translation")
+    SERIALIZATION_ENUM(PS4_NoProjection,        "no_projection",        "No Projection") // ACCEPTED_USE
+    SERIALIZATION_ENUM(PS4_ShortvecTranslation, "shortvec_translation", "Shortvec Translation") // ACCEPTED_USE
+    SERIALIZATION_ENUM(PS4_DirectedTranslation, "directed_translation", "Directed Translation") // ACCEPTED_USE
     SERIALIZATION_ENUM_END()
 
     SERIALIZATION_ENUM_BEGIN_NESTED(CharacterAttachment, TransformSpace, "Position Space")
@@ -118,6 +118,8 @@ namespace CharacterTool
     SERIALIZATION_ENUM(FLAGS_ATTACH_PHYSICALIZED_RAYS,       "physicalized_rays",       "Physicalized Rays                                                          ")
     SERIALIZATION_ENUM(FLAGS_ATTACH_PHYSICALIZED_COLLISIONS, "physicalized_collisions", "Physicalized Collisions                                                    ")
     SERIALIZATION_ENUM(FLAGS_ATTACH_SW_SKINNING,             "software_skinning",       "Software Skinning                                                          ")
+    SERIALIZATION_ENUM(FLAGS_ATTACH_LINEAR_SKINNING,         "Linear_skinning",         "Linear Skinning GPU                                                        ")
+    SERIALIZATION_ENUM(FLAGS_ATTACH_MATRIX_SKINNING,         "Matrix_skinning",         "Linear Skinning CPU                                                        ")
     SERIALIZATION_ENUM_END()
 
     // ---------------------------------------------------------------------------
@@ -323,7 +325,7 @@ namespace CharacterTool
                     ar((ProjectionSelection3&)p.m_nProjectionType, "projectionType", "Projection Type");
                     if (p.m_nProjectionType)
                     {
-                        if (p.m_nProjectionType == ProjectionSelection3::PS3_ShortvecTranslation)
+                        if (p.m_nProjectionType == ProjectionSelection3::PS3_ShortvecTranslation) // ACCEPTED_USE
                         {
                             ar(p.m_vCapsule.y,         "radius",         "Radius");
                             p.m_vCapsule.x = 0;
@@ -351,7 +353,7 @@ namespace CharacterTool
                 ar((ProjectionSelection4&)p.m_nProjectionType, "projectionType", "Projection Type");
                 if (p.m_nProjectionType)
                 {
-                    if (p.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation)
+                    if (p.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation) // ACCEPTED_USE
                     {
                         ar(p.m_vCapsule.y,         "radius",         "Radius");
                         p.m_vCapsule.x = clamp_tpl(p.m_vCapsule.x, 0.0f, 2.0f);
@@ -509,7 +511,11 @@ namespace CharacterTool
 
             ar(m_simulationParams, "simulation", "+Simulation");
 
-            BitFlags<AttachmentFlags>(m_nFlags, 7).Serialize(ar);
+            const uint32 availableAttachmentFlags = FLAGS_ATTACH_HIDE_ATTACHMENT |
+                                                    FLAGS_ATTACH_PHYSICALIZED_RAYS |
+                                                    FLAGS_ATTACH_PHYSICALIZED_COLLISIONS;
+
+            BitFlags<AttachmentFlags>(m_nFlags, availableAttachmentFlags).Serialize(ar);
             if ((m_nFlags & FLAGS_ATTACH_HIDE_ATTACHMENT) != 0)
             {
                 ar.Warning(*this, "Hidden by default.");
@@ -545,7 +551,12 @@ namespace CharacterTool
             {
                 m_simulationParams.m_nClampType = SimulationParams::DISABLED; //you can't choose this mode on face attachments
             }
-            BitFlags<AttachmentFlags>(m_nFlags, 7).Serialize(ar);
+
+            const uint32 availableAttachmentFlags = FLAGS_ATTACH_HIDE_ATTACHMENT |
+                                                    FLAGS_ATTACH_PHYSICALIZED_RAYS |
+                                                    FLAGS_ATTACH_PHYSICALIZED_COLLISIONS;
+
+            BitFlags<AttachmentFlags>(m_nFlags, availableAttachmentFlags).Serialize(ar);
             if ((m_nFlags & FLAGS_ATTACH_HIDE_ATTACHMENT) != 0)
             {
                 ar.Warning(*this, "Hidden by default.");
@@ -559,7 +570,12 @@ namespace CharacterTool
             ar(ResourceFilePath(m_strMaterial, "Material"), "material", "<Material");
             ar(m_viewDistanceMultiplier, "viewDistanceMultiplier", "View Distance Multiplier");
 
-            BitFlags<AttachmentFlags>(m_nFlags, 9).Serialize(ar);
+            const uint32 availableAttachmentFlags = FLAGS_ATTACH_HIDE_ATTACHMENT |
+                                                    FLAGS_ATTACH_SW_SKINNING |
+                                                    FLAGS_ATTACH_LINEAR_SKINNING |
+                                                    FLAGS_ATTACH_MATRIX_SKINNING;
+
+            BitFlags<AttachmentFlags>(m_nFlags, availableAttachmentFlags).Serialize(ar);
             if ((m_nFlags & FLAGS_ATTACH_HIDE_ATTACHMENT) != 0)
             {
                 ar.Warning(*this, "Hidden by default.");
@@ -635,7 +651,7 @@ namespace CharacterTool
                 ar((ProjectionSelection4&)m_rowSimulationParams.m_nProjectionType, "projectionType", "Projection Type");
                 if (m_rowSimulationParams.m_nProjectionType)
                 {
-                    if (m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation)
+                    if (m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation) // ACCEPTED_USE
                     {
                         ar(m_rowSimulationParams.m_vCapsule.y,         "radius",         "Radius");
                         m_rowSimulationParams.m_vCapsule.x = 0;
@@ -1588,7 +1604,7 @@ namespace CharacterTool
             {
                 nodeAttach->setAttr("ROW_ProjectionType", attach.m_rowSimulationParams.m_nProjectionType);
             }
-            if (attach.m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation)
+            if (attach.m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation) // ACCEPTED_USE
             {
                 uint32 IsIdentical = stricmp(attach.m_rowSimulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                 if (attach.m_rowSimulationParams.m_strDirTransJoint.length() && IsIdentical == 0)
@@ -1609,7 +1625,7 @@ namespace CharacterTool
                     nodeAttach->setAttr("ROW_CapsuleY", attach.m_rowSimulationParams.m_vCapsule.y);
                 }
             }
-            if (attach.m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation)
+            if (attach.m_rowSimulationParams.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation) // ACCEPTED_USE
             {
                 if (attach.m_rowSimulationParams.m_vCapsule.y)
                 {
@@ -1938,7 +1954,7 @@ namespace CharacterTool
                 {
                     nodeAttach->setAttr("P_ProjectionType", attach.m_simulationParams.m_nProjectionType);
                 }
-                if (attach.m_simulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation)
+                if (attach.m_simulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation) // ACCEPTED_USE
                 {
                     uint32 IsIdentical = stricmp(attach.m_simulationParams.m_strDirTransJoint.c_str(), attach.m_strJointName.c_str()) == 0;
                     if (attach.m_simulationParams.m_strDirTransJoint.length() && IsIdentical == 0)
@@ -1950,7 +1966,7 @@ namespace CharacterTool
                         nodeAttach->setAttr("P_TranslationAxis", attach.m_simulationParams.m_vSimulationAxis);
                     }
                 }
-                if (attach.m_simulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation)
+                if (attach.m_simulationParams.m_nProjectionType == ProjectionSelection4::PS4_DirectedTranslation) // ACCEPTED_USE
                 {
                     if (attach.m_simulationParams.m_vCapsule.x)
                     {
@@ -2406,7 +2422,7 @@ namespace CharacterTool
                 ap.m_vSimulationAxis  = desc.m_simulationParams.m_vSimulationAxis;
 
                 ap.m_vCapsule         = desc.m_simulationParams.m_vCapsule;
-                if (ap.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation)
+                if (ap.m_nProjectionType == ProjectionSelection4::PS4_ShortvecTranslation) // ACCEPTED_USE
                 {
                     ap.m_vCapsule.x = 0;
                 }

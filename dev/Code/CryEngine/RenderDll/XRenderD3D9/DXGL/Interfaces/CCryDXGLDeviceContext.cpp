@@ -96,7 +96,7 @@ bool CCryDXGLDeviceContext::Initialize(CCryDXGLDevice* pDevice)
     m_spDefaultSamplerState = CreateDefaultSamplerState(pDevice);
 
     NCryOpenGL::CDevice* pGLDevice(pDevice->GetGLDevice());
-    m_pContext = pGLDevice->AllocateContext();
+    m_pContext = pGLDevice->AllocateContext(NCryOpenGL::CContext::RenderingType);
     pGLDevice->BindContext(m_pContext);
 
     bool bResult =

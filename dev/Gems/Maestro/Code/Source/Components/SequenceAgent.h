@@ -14,10 +14,10 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
-#include <LmbrCentral/Cinematics/SequenceAgentComponentBus.h>
+#include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     class SequenceAgent
     {
@@ -32,12 +32,12 @@ namespace LmbrCentral
         // with all virtual properties on EBuses it finds. Calling it clears out any previously mapped virtualProperties
         void CacheAllVirtualPropertiesFromBehaviorContext(AZ::Entity* entity);
 
-        AZ::Uuid GetVirtualPropertyTypeId(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatedAddress) const;
+        AZ::Uuid GetVirtualPropertyTypeId(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatedAddress) const;
 
-        void GetAnimatedPropertyValue(LmbrCentral::SequenceComponentRequests::AnimatedValue& returnValue, AZ::EntityId entityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress);
-        bool SetAnimatedPropertyValue(AZ::EntityId entityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const LmbrCentral::SequenceComponentRequests::AnimatedValue& value);
+        void GetAnimatedPropertyValue(Maestro::SequenceComponentRequests::AnimatedValue& returnValue, AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress);
+        bool SetAnimatedPropertyValue(AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const Maestro::SequenceComponentRequests::AnimatedValue& value);
 
-        AZStd::unordered_map<LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress, AZ::BehaviorEBus::VirtualProperty*> m_addressToBehaviorVirtualPropertiesMap;
+        AZStd::unordered_map<Maestro::SequenceComponentRequests::AnimatablePropertyAddress, AZ::BehaviorEBus::VirtualProperty*> m_addressToBehaviorVirtualPropertiesMap;
     };
-} // namespace LmbrCentral
+} // namespace Maestro
 

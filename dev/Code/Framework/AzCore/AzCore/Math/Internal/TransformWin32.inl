@@ -246,7 +246,7 @@ namespace AZ
     {
         //Transpose is needed here, for the multiply-add simd implementation. We could store the Transform as column-major, which
         // would remove the transpose but increase the size of the Transform from 48 bytes to 64 bytes.
-        //We could also use row vectors instead of column vectors, but that would break X360 which has a dot product instruction
+        //We could also use row vectors instead of column vectors, but that would break X360 which has a dot product instruction // ACCEPTED_USE
         // and prefers the current order.
         SimdVectorType col0 = m_rows[0];
         SimdVectorType col1 = m_rows[1];

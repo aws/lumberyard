@@ -160,11 +160,8 @@
             "../DriverD3D.cpp",
             "../GPUTimer.cpp",
             "../PipelineProfiler.cpp",
-            "../SmartGlassContext.cpp",
-            "../SmartGlassManager.cpp",
             "../StatoscopeRenderStats.cpp",
             "../D3DREBreakableGlassBuffer.h",
-            "../SmartGlassManager.h",
             "../MultiLayerAlphaBlendPass.cpp"
         ],
         "Source Files/D3DPostProcess":
@@ -189,7 +186,6 @@
             "../../Common/CryNameR.h",
             "../../Common/FencedIB.h",
             "../../Common/FencedVB.h",
-            "../../Common/ISmartGlassContext.h",
             "../D3DColorGradingController.h",
             "../D3DDebug.h",
             "../D3DDeferredShading.h",
@@ -226,7 +222,6 @@
             "../../Common/ShadowUtils.cpp",
             "../../Common/TextMessages.cpp",
             "../../Common/WaterUtils.cpp",
-            "../../Common/SmartGlassContext.h",
             "../../../CryCommon/EngineSettingsManager.h",
             "../../Common/ResFileLookupDataMan.h",
             "../../Common/TextMessages.h",

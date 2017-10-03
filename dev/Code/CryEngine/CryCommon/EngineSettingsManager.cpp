@@ -13,7 +13,6 @@
 
 #include "StdAfx.h"
 
-// #include <CryModuleDefs.h>
 #include "EngineSettingsManager.h"
 
 #if defined(CRY_ENABLE_RC_HELPER)

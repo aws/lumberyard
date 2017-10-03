@@ -9,6 +9,10 @@
     },
     "auto":
     {
+        "Include/Rendering": 
+        [
+            "include/LmbrCentral/Rendering/EditorLightComponentBus.h"
+        ],
         "Source/Animation": 
         [
             "Source/Animation/EditorAttachmentComponent.h",
@@ -43,13 +47,6 @@
             "Source/Metrics/LyEditorMetricsSystemComponent.h",
             "Source/Metrics/LyEditorMetricsSystemComponent.cpp"
         ],
-        "Source/Cinematics":
-        [
-            "Source/Cinematics/EditorSequenceAgentComponent.h",
-            "Source/Cinematics/EditorSequenceAgentComponent.cpp",
-            "Source/Cinematics/EditorSequenceComponent.h",
-            "Source/Cinematics/EditorSequenceComponent.cpp"
-        ],
         "Source/Physics": 
         [
             "Source/Physics/EditorConstraintComponent.h",
@@ -59,7 +56,11 @@
             "Source/Physics/EditorRigidPhysicsComponent.h",
             "Source/Physics/EditorRigidPhysicsComponent.cpp",
             "Source/Physics/EditorStaticPhysicsComponent.h",
-            "Source/Physics/EditorStaticPhysicsComponent.cpp"
+            "Source/Physics/EditorStaticPhysicsComponent.cpp",
+            "Source/Physics/EditorWindVolumeComponent.h",
+            "Source/Physics/EditorWindVolumeComponent.cpp",
+            "Source/Physics/EditorForceVolumeComponent.h",
+            "Source/Physics/EditorForceVolumeComponent.cpp"
         ],
         "Source/Rendering":
         [
@@ -77,12 +78,16 @@
             "Source/Rendering/EditorProjectorLightComponent.cpp",
             "Source/Rendering/EditorEnvProbeComponent.h",
             "Source/Rendering/EditorEnvProbeComponent.cpp",
-            "Source/Rendering/EditorStaticMeshComponent.h",
-            "Source/Rendering/EditorStaticMeshComponent.cpp",
+            "Source/Rendering/EditorMeshComponent.h",
+            "Source/Rendering/EditorMeshComponent.cpp",
             "Source/Rendering/EditorSkinnedMeshComponent.h",
             "Source/Rendering/EditorSkinnedMeshComponent.cpp",
             "Source/Rendering/EditorParticleComponent.h",
-            "Source/Rendering/EditorParticleComponent.cpp"
+            "Source/Rendering/EditorParticleComponent.cpp",
+            "Source/Rendering/EditorHighQualityShadowComponent.h",
+            "Source/Rendering/EditorHighQualityShadowComponent.cpp",
+            "Source/Rendering/EditorFogVolumeComponent.h",
+            "Source/Rendering/EditorFogVolumeComponent.cpp"
         ],
         "Source/Scripting":
         [
@@ -107,7 +112,17 @@
             "Source/Shape/EditorCapsuleShapeComponent.h",
             "Source/Shape/EditorCapsuleShapeComponent.cpp",
             "Source/Shape/EditorCompoundShapeComponent.h",
-            "Source/Shape/EditorCompoundShapeComponent.cpp"
+            "Source/Shape/EditorCompoundShapeComponent.cpp",
+            "Source/Shape/EditorSplineComponent.h",
+            "Source/Shape/EditorSplineComponent.cpp",
+            "Source/Shape/EditorPolygonPrismShapeComponent.h",
+            "Source/Shape/EditorPolygonPrismShapeComponent.cpp"
+        ],
+        "source/Ai": [
+            "Source/Ai/EditorNavigationSeedComponent.h",
+            "Source/Ai/EditorNavigationSeedComponent.cpp",
+            "Source/Ai/EditorNavigationAreaComponent.h",
+            "Source/Ai/EditorNavigationAreaComponent.cpp"
         ],
         "Source/Editor": [
             "Source/Editor/EditorCommentComponent.h",

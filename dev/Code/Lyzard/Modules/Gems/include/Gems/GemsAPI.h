@@ -19,6 +19,8 @@
 
 #include <GemRegistry/IGemRegistry.h>
 
+#define DEFAULT_GEM_PATH "Gems"
+
 namespace Gems
 {
     class GemsProjectRequests
@@ -176,7 +178,7 @@ namespace Gems
         * \returns                 IGemDescriptionConstPtr if a gem.json file could be parsed out of the gemFolderPath,
         *                          AZ::Failure with error message if any errors occurred.
         */
-        virtual AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath) = 0;
+        virtual AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath) = 0;
 
         /**
         * Destroys the existing ProjectSettings object on the GemsProject and recreates a new one
@@ -229,6 +231,8 @@ namespace Gems
             AZ::Uuid m_id = AZ::Uuid::CreateRandom();
             /// The Version of the new Gem. Defaults to 0.1.0
             Gems::GemVersion m_version = { 0, 1, 0 };
+            /// The path to create the Gem at. Required, use DEFAULT_GEM_PATH as a default for non-project Gems.
+            AZStd::string m_rootPath;
             /// The name of the folder to create the Gem in. Defaults to name, falls back to name-version.
             AZStd::string m_outFolder;
         };
@@ -246,16 +250,6 @@ namespace Gems
          * Gets a list of all loaded Gem descriptions.
          */
         virtual AZStd::vector<IGemDescriptionConstPtr> GetAllGemDescriptions() const = 0;
-
-        /**
-        * Creates a new Game Project Gem that is intended to serve a specific game.
-        *
-        * \param[in] desc           The descriptor of the new game project Gem to create.
-        * \param[in] projectPath    The folder name of the game project
-        *
-        * \returns             Void on success, error message on failure.
-        */
-        virtual Lyzard::StringOutcome CreateGameProjectGem(const NewGemDescriptor& desc, const AZStd::string& projectPath) = 0;
 
         /**
         * Gets a list of all required Gem descriptions.

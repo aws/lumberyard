@@ -1,0 +1,265 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    }, 
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi", 
+                    "Url"
+                ]
+            }
+        }
+    }, 
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup", 
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.", 
+            "Type": "String"
+        }, 
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.", 
+            "Type": "String"
+        }, 
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.", 
+            "Type": "String"
+        }, 
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.", 
+            "Type": "String"
+        }, 
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.", 
+            "Type": "String"
+        }, 
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.", 
+            "Type": "String"
+        }, 
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        }
+    }, 
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "Lex",
+                "ServiceApi", 
+                "ServiceLambda", 
+                "ServiceApi", 
+                "ServiceLambda"
+            ], 
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            }, 
+            "Type": "Custom::AccessControl"
+        },
+        "Lex": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PostText"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PostContent"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:GetBots"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:GetBot"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:CreateBotVersion"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PutBotAlias"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PutSlotType"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PutIntent"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:PutBot"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:GetIntent"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:GetSlotType"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:DeleteBot"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:CreateIntentVersion"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lex:CreateSlotTypeVersion"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::Lex"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/service/status",
+                                "/api/POST/service/postaudio",
+                                "/api/POST/service/posttext"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "Server",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/service/status",
+                                "/api/POST/service/postaudio",
+                                "/api/POST/service/posttext"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                }, 
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "MethodSettings": {}, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda", 
+                            "Arn"
+                        ]
+                    }
+                }
+            }, 
+            "Type": "Custom::ServiceApi"
+        }, 
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi", 
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            }, 
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Handler": "service.dispatch", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Role"
+                    ]
+                }, 
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Runtime"
+                    ]
+                }
+            }, 
+            "Type": "AWS::Lambda::Function"
+        }, 
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "FunctionName": "ServiceLambda", 
+                "Runtime": "python2.7", 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "Settings": {}
+            }, 
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

@@ -12,7 +12,18 @@
 
 def build(bld):
 
+    msvc_cxx_flags = [
+        '/WX', # warnings as errors
+        '/W4', # warning level
+    ]
+
+    clang_flags = [
+        '-Werror',  # warnings as errors
+        '-Wall'     # warning level
+    ]
+
     defines = []
+
     debug_defines = []
 
     bld.CryEngineStaticLibrary(
@@ -60,26 +71,15 @@ def build(bld):
 
        
 
-        win_cxxflags=[
-            '/WX', # warnings as errors
-            '/W4', # warning level
-            ],
+        win_cxxflags=msvc_cxx_flags,
+
        
        
-        android_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
-        ios_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
-        appletv_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
-        darwin_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
+        android_cxxflags=clang_flags,
+
+        ios_cxxflags=clang_flags,
+
+        appletv_cxxflags=clang_flags,
+
+        darwin_cxxflags=clang_flags,
     )

@@ -143,6 +143,60 @@ namespace AzToolsFramework
         }
 
         //---------------------------------------------------------------------
+        SourceFileInfoRequest::SourceFileInfoRequest(const AZ::OSString& searchTerm)
+            : m_searchTerm(searchTerm)
+        {
+            AZ_Assert(!searchTerm.empty(), "SourceAssetInfoRequest: Search Term is empty");
+        }
+
+        unsigned int SourceFileInfoRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::SourceFileInfoRequest", 0xb39c22c2);
+            return messageType;
+        }
+
+        unsigned int SourceFileInfoRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void SourceFileInfoRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceFileInfoRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("SearchTerm", &SourceFileInfoRequest::m_searchTerm);
+            }
+        }
+
+        bool SourceFileInfoRequest::RequireFencing()
+        {
+            return true;
+        }
+
+        //---------------------------------------------------------------------
+        unsigned int SourceFileInfoResponse::GetMessageType() const
+        {
+            return SourceFileInfoRequest::MessageType();
+        }
+
+        void SourceFileInfoResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceFileInfoResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("WatchFolder", &SourceFileInfoResponse::m_watchFolder)
+                    ->Field("RelativePath", &SourceFileInfoResponse::m_relativePath)
+                    ->Field("SourceGuid", &SourceFileInfoResponse::m_sourceGuid)
+                    ->Field("InfoFound", &SourceFileInfoResponse::m_infoFound);
+            }
+        }
+
+        //---------------------------------------------------------------------
         SourceFileNotificationMessage::SourceFileNotificationMessage(const AZ::OSString& relativeSourcePath, const AZ::OSString& scanFolder, NotificationType type, AZ::Uuid sourceUUID)
             : m_relativeSourcePath(relativeSourcePath)
             , m_scanFolder(scanFolder)

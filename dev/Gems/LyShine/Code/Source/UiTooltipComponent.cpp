@@ -137,6 +137,7 @@ void UiTooltipComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTooltipBus>("UiTooltipBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetText", &UiTooltipBus::Events::GetText)
             ->Event("SetText", &UiTooltipBus::Events::SetText);
     }

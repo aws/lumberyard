@@ -16,10 +16,48 @@
 
 #include <AzCore/std/containers/map.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+
+UISliceLibraryFilter::UISliceLibraryFilter(const AZ::Data::AssetType& assetType, const char* pathToSearch)
+    : m_assetType(assetType)
+    , m_pathToSearch(pathToSearch)
+{
+    // propagation = Down means the filter will examine all children recursively until it satisfies or no more children are left
+    // in our case we start from root entry and examine everything underneath it
+    SetFilterPropagation(AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::Down);
+}
+
+QString UISliceLibraryFilter::GetNameInternal() const
+{
+    return "UISliceLibraryFilter";
+}
+
+bool UISliceLibraryFilter::MatchInternal(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const
+{
+    // entry must be a product
+    auto product = azrtti_cast<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(entry);
+    if (!product)
+    {
+        return false;
+    }
+    // entry must be of slice asset type
+    if (product->GetAssetType() != m_assetType)
+    {
+        return false;
+    }
+    // entry must be located within m_pathToSearch
+    if (AzFramework::StringFunc::Find(product->GetRelativePath().c_str(), m_pathToSearch.c_str()) == AZStd::string::npos)
+    {
+        return false;
+    }
+    return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AssetTreeEntry::~AssetTreeEntry()
@@ -50,9 +88,9 @@ void AssetTreeEntry::Insert(const AZStd::string& path, const AZStd::string& menu
         else
         {
             folderName = path.substr(0, separator);
-            if (path.length() > separator+1)
+            if (path.length() > separator + 1)
             {
-                remainderPath = path.substr(separator+1);
+                remainderPath = path.substr(separator + 1);
             }
         }
 
@@ -79,86 +117,33 @@ void AssetTreeEntry::Insert(const AZStd::string& path, const AZStd::string& menu
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AssetTreeEntry* AssetTreeEntry::BuildAssetTree(const AZ::Data::AssetType& assetType, const AZStd::string& pathToSearch)
 {
-    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-
-    AZ_Assert(fileIO, "Falied to get FileIOBase instance");
-
     using namespace AzToolsFramework::AssetBrowser;
 
+    // asset browser model is a collection of all assets. We search it from root entry down for all ui slice files.
     AssetBrowserModel* assetBrowserModel;
-    EBUS_EVENT_RESULT(assetBrowserModel, AssetBrowserComponentRequestsBus, GetAssetBrowserModel);
+    AssetBrowserComponentRequestsBus::BroadcastResult(assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(assetBrowserModel, "Failed to get asset browser model");
 
     const auto rootEntry = assetBrowserModel->GetRootEntry();
-    AZStd::vector<const ProductAssetBrowserEntry*> products;
-    rootEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+
+    // UISliceLibraryFilter::Filter function returns all assets (recursively) that match the specified filter
+    // in this case we are only looking for ui slices.
+    AZStd::vector<const AssetBrowserEntry*> entries;
+    UISliceLibraryFilter filter(assetType, pathToSearch.c_str());
+    filter.Filter(entries, rootEntry.get());
 
     AssetTreeEntry* assetTree = new AssetTreeEntry;
-    for (auto product : products)
+    for (const auto entry : entries)
     {
-        // We are only interested in assets of the given asset type
-        if (product->GetAssetType() == assetType)
-        {
-            AssetBrowserEntry::AssetEntryType entryType = product->GetEntryType();
-            AZ_Assert(entryType == AssetBrowserEntry::AssetEntryType::Product, "Error");
-
-            AssetBrowserEntry* sourceEntry = product->GetParent();
-            AZ_Assert(sourceEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source, "Error");
-
-            AssetBrowserEntry* folderEntry = sourceEntry->GetParent();
-            AZ_Assert(folderEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Folder, "Error");
-
-            // build the relative path to this asset from the nearest scan folder
-            // a scan folder for be the game project or a gem's asset root
-            FolderAssetBrowserEntry* folder = static_cast<FolderAssetBrowserEntry*>(folderEntry);
-            AZStd::string relPath;
-            while (!folder->GetIsScanFolder())
-            {
-                relPath = AZStd::string(folder->GetName().c_str()) + AZStd::string("/") + relPath;
-
-                folderEntry = folderEntry->GetParent();
-                AZ_Assert(folderEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Folder, "Error");
-                folder = static_cast<FolderAssetBrowserEntry*>(folderEntry);
-            }
-                
-            // transform relPath to lowercase
-            AZStd::string lowercaseRelPath = relPath;
-#if defined(AZ_PLATFORM_WINDOWS)
-            // Need to change the iterator for the second argument to avoid an
-            // warning/error in Micorsoft Debug builds. The warning specifies
-            // that transform does not check the iterators passed in to see if
-            // they are valid (i.e, not the same iterator and they don't
-            // overlap). By using make_unchecked_array_iterator we are tell MS
-            // compiler that the iterator is good and satsify the warning/error 
-            std::transform( lowercaseRelPath.begin(), lowercaseRelPath.end(), stdext::make_unchecked_array_iterator(lowercaseRelPath.begin()), ::tolower );
-#else
-            std::transform( lowercaseRelPath.begin(), lowercaseRelPath.end(), lowercaseRelPath.begin(), ::tolower );
-#endif
-    
-            // if the start of the relPath matchs the path to search then this asset should be added to the tree
-            if (lowercaseRelPath.substr(0, pathToSearch.length()) == pathToSearch)
-            {
-                // build the full path name from the asset root, including filename and extension
-                // this can be used to open the asset
-                AZStd::string fullRelativePath = relPath + sourceEntry->GetName().c_str();
-
-                // build the path from the pathToSearch down to the file name, this can be used to build
-                // a hierarchical menu
-                AZStd::string menuPath = relPath.substr(pathToSearch.length());
-
-                // Get the name without extension. This would be used for a menu entry for example
-                AZStd::string name = sourceEntry->GetName().c_str();
-                size_t dotPos = name.rfind('.');
-                if (dotPos != AZStd::string::npos)
-                {
-                    name = name.substr(0, dotPos);
-                }
-
-                // add this entry into the asset tree
-                assetTree->Insert(menuPath, name, product->GetAssetId());
-            }
-        }
+        auto product = azrtti_cast<const ProductAssetBrowserEntry*>(entry);
+        AZStd::string name;
+        AZStd::string path;
+        // split the product relative path into name and path. Note that product's parent (source entry) is used because
+        // product name stored in db is in all lower case, but we want to preserve case here
+        AzFramework::StringFunc::Path::Split(product->GetParent()->GetRelativePath().c_str(), nullptr, &path, &name);
+        // find next character position after default slice path in order to generate hierarchical sub-menus matching the subfolders
+        int pos = AzFramework::StringFunc::Find(path.c_str(), pathToSearch.c_str()) + pathToSearch.length();
+        assetTree->Insert(path.substr(pos), name, product->GetAssetId());
     }
-
     return assetTree;
 }

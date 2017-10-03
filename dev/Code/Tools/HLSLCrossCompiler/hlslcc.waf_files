@@ -29,7 +29,8 @@
             "src/toGLSL.c",
             "src/toGLSLDeclaration.c",
             "src/toGLSLInstruction.c",
-            "src/toGLSLOperand.c"
+            "src/toGLSLOperand.c",
+            "src/hlslccToolkit.c"
         ],
         "Internal lib source":
         [
@@ -45,7 +46,8 @@
             "src/internal_includes/toGLSLInstruction.h",
             "src/internal_includes/toGLSLOperand.h",
             "src/internal_includes/tokens.h",
-            "src/internal_includes/tokensDX9.h"
+            "src/internal_includes/tokensDX9.h",
+            "src/internal_includes/hlslccToolkit.h"
         ],
         "cbstring":
         [

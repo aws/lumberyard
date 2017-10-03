@@ -25,6 +25,10 @@ namespace AZ
         {
             class ISkeletonGroup;
         }
+        namespace Events
+        {
+            class ExportProductList;
+        }
     }
 
     namespace RC
@@ -37,14 +41,15 @@ namespace AZ
 
             ChrGroupExportContext(SceneAPI::Events::ExportEventContext& parent,
                 const SceneAPI::DataTypes::ISkeletonGroup& group, Phase phase);
-            ChrGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-                const SceneAPI::DataTypes::ISkeletonGroup& group, Phase phase);
+            ChrGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, 
+                const AZStd::string& outputDirectory, const SceneAPI::DataTypes::ISkeletonGroup& group, Phase phase);
             ChrGroupExportContext(const ChrGroupExportContext& copyContent, Phase phase);
             ChrGroupExportContext(const ChrGroupExportContext& copyContent) = delete;
             ~ChrGroupExportContext() override = default;
 
             ChrGroupExportContext& operator=(const ChrGroupExportContext& other) = delete;
 
+            SceneAPI::Events::ExportProductList& m_products;
             const SceneAPI::Containers::Scene& m_scene;
             const AZStd::string& m_outputDirectory;
             const SceneAPI::DataTypes::ISkeletonGroup& m_group;

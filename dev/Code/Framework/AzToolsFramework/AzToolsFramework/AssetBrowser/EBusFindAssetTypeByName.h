@@ -10,13 +10,14 @@
 *
 */
 
-
 #pragma once
+
 #include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <QString>
 
 struct EBusFindAssetTypeByName
 {
-    EBusFindAssetTypeByName(const char* name)
+    explicit EBusFindAssetTypeByName(const char* name)
         : m_name(name)
         , m_found(false)
         , m_assetType(AZ::Data::AssetType::CreateNull())
@@ -36,7 +37,7 @@ struct EBusFindAssetTypeByName
         }
     }
 
-    AZ::Data::AssetType GetAssetType()
+    AZ::Data::AssetType GetAssetType() const
     {
         return m_assetType;
     }
@@ -51,7 +52,7 @@ private:
     bool m_found;
     AZ::Data::AssetType m_assetType;
 
-    bool MatchesName(const AZ::Data::AssetType& assetType)
+    bool MatchesName(const AZ::Data::AssetType& assetType) const
     {
         QString name;
         AZ::AssetTypeInfoBus::EventResult(name, assetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);

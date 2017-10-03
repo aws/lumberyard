@@ -62,6 +62,28 @@ namespace AzToolsFramework
         {
         }
 
+        SourceControlFileInfo(const SourceControlFileInfo& rhs)
+        {
+            *this = rhs;
+        }
+
+        SourceControlFileInfo(SourceControlFileInfo&& rhs)
+            : m_status(rhs.m_status)
+            , m_flags(rhs.m_flags)
+            , m_filePath(AZStd::move(rhs.m_filePath))
+            , m_StatusUser(AZStd::move(rhs.m_StatusUser))
+        {
+        }
+
+        SourceControlFileInfo& operator=(const SourceControlFileInfo& rhs)
+        {
+            m_status = rhs.m_status;
+            m_flags = rhs.m_flags;
+            m_filePath = rhs.m_filePath;
+            m_StatusUser = rhs.m_StatusUser;
+            return *this;
+        }
+
         bool CompareStatus(SourceControlStatus status) const { return m_status == status; }
         bool IsReadOnly() const { return !HasFlag(SCF_Writeable); }
         bool IsLockedByOther() const { return HasFlag(SCF_OtherOpen) && !HasFlag(SCF_MultiCheckOut); }
@@ -70,7 +92,7 @@ namespace AzToolsFramework
     };
 
     // use bind if you need additional context.
-    typedef AZStd::function<void(bool success, const SourceControlFileInfo& info)> SourceControlResponseCallback;
+    typedef AZStd::function<void(bool success, SourceControlFileInfo info)> SourceControlResponseCallback;
 
     enum class SourceControlSettingStatus : int
     {

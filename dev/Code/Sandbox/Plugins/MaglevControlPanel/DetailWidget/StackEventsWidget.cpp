@@ -31,9 +31,6 @@
 #include <QApplication>
 #include <QClipboard>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
-
 #include <DetailWidget/StackEventsWidget.moc>
 
 StackEventsWidget::StackEventsWidget(QSharedPointer<IStackEventsModel> stackEventsModel, QWidget* parent)

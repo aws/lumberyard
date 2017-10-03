@@ -279,8 +279,6 @@ public:
 
     PodArray<Array2d<CTerrainNode*> > m_NodePyramid;
 
-    float GetTerrainTextureMultiplier() const;
-
     void ActivateNodeTexture(CTerrainNode* pNode, const SRenderingPassInfo& passInfo);
     void ActivateNodeProcObj(CTerrainNode* pNode);
 
@@ -509,15 +507,6 @@ inline SSurfaceType* CTerrain::GetSurfaceTypes()
 inline int CTerrain::GetTerrainTextureNodeSizeMeters()
 {
     return GetSectorSize();
-}
-
-inline float CTerrain::GetTerrainTextureMultiplier() const
-{
-    if (!m_MacroTexture)
-    {
-        return 1.0f;
-    }
-    return m_MacroTexture->GetColorMultiplier();
 }
 
 template <class T>

@@ -28,6 +28,7 @@
 
 #define vec4f_swizzle(v, p, q, r, s) (_mm_shuffle_ps((v), (v), ((s) << 6 | (r) << 4 | (q) << 2 | (p))))
 
+// Even on Consoles we don't use _mm_dp_ps because it's slower than the _mm_hadd_ps way (_mm_dp_ps is a microcoded instruction).
 ILINE __m128 _mm_dp_ps_emu(const __m128& a, const __m128& b)
 {
     __m128 tmp = _mm_mul_ps(a, b);

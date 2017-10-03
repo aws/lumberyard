@@ -58,10 +58,6 @@ namespace LmbrAWS
             EOP_NoMatches
         };
 
-        LmbrAWS::DynamoDB::TableClientInputPort m_tableClientInputPort {
-            EIP_TableClient
-        };
-
         void ApplyResult(const Aws::DynamoDB::Model::GetItemRequest& request,
             const Aws::DynamoDB::Model::GetItemOutcome& outcome,
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& baseContext);

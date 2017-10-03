@@ -1,0 +1,30 @@
+{
+    "none": {
+        "Source": [
+            "Source/Precompiled.cpp",
+            "Source/Precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/GraphicsReflectContext/GraphicsReflectContextBus.h"
+        ],
+        "Source": [
+            "Source/Environment.cpp",
+            "Source/Environment.h",
+            "Source/GraphicsReflectContextModule.cpp",
+            "Source/GraphicsReflectContextSystemComponent.cpp",
+            "Source/GraphicsReflectContextSystemComponent.h",
+            "Source/GraphicsNodeLibrary.cpp",
+            "Source/GraphicsNodeLibrary.h",
+            "Source/ScreenFaderNode.cpp",
+            "Source/ScreenFaderNode.h",
+            "Source/SetColorChartNode.cpp",
+            "Source/SetColorChartNode.h",
+            "Source/Shadows.cpp",
+            "Source/Shadows.h",
+            "Source/PostEffects.cpp",
+            "Source/PostEffects.h"
+        ]
+    }
+}

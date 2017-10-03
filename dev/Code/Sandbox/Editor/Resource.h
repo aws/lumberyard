@@ -630,7 +630,6 @@
 #define IDD_MANN_ADVANCED_PASTE                     625
 #define IDR_SUBSTANCE_TOOLBAR                       626
 
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_USE_SPECIFIC_TARGET_MACHINE_RADIO 999
 #define IDC_CRYDEV_PROJECT_INFO                    1000
 #define IDC_CRYDEV_PROJECT_LABEL                   1001
 #define IDC_CRYDEV_PROJECT                         1002
@@ -655,7 +654,6 @@
 #define IDC_PRIMARY                                1021
 #define IDC_VIDEO_SCALE_Y                          1022
 #define IDC_WEAPON_FP_GEOM                         1023
-#define IDC_CONSOLE_OPTIONS_XBOX360_EXPORT_PLATAFORM_ROOT_DIRECTORY_EDIT 1024
 #define IDC_RES_HEIGHT                             1025
 #define IDC_BATCH_RENDER_END_FRAME                 1026
 #define IDC_SCRIPT_OUTPUT                          1027
@@ -668,12 +666,9 @@
 #define IDC_SNAP_MARKER_SIZE                       1034
 #define IDC_TEXTURE_TILEY                          1035
 #define IDC_WEAPON_TP_GEOM                         1036
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_EXPORT_PLATAFORM_ROOT_DIRECTORY_EDIT 1037
 #define IDC_VIEWPORT_RATIO                         1038
 #define IDC_POINTER                                1039
 #define IDC_WEAPON_AUX_GEOM                        1040
-#define IDC_CONSOLE_OPTIONS_XBOX360_EXPORT_PLATAFORM_EXECUTABLE_NAME_EDIT 1041
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_EXPORT_PLATAFORM_EXECUTABLE_NAME_EDIT 1042
 #define IDC_NODROP                                 1043
 #define IDC_SEQUENCES                              1044
 #define IDC_VEED_PARTS_TREE                        1045
@@ -863,7 +858,6 @@
 #define IDC_VOXEL_OBJECT                           1229
 #define IDC_RADIO                                  1230
 #define IDC_SOUNDBROWSER_SORT1                     1231
-#define IDC_CONSOLE_OPTIONS_XBOX360_AUTODETECT_TARGET_MACHINE_RADIO 1232
 #define IDC_LINES                                  1233
 #define IDC_SHOW_RGB                               1234
 #define IDC_STEREO_FLIPEYES_RADIO                  1235
@@ -885,7 +879,6 @@
 #define IDC_CLIP_2POINTS                           1251
 #define IDC_VOXEL_TERRAIN                          1252
 #define IDC_OBJECTTERRAINOCCL                      1253
-#define IDC_CONSOLE_OPTIONS_XBOX360_USE_SPECIFIC_TARGET_MACHINE_RADIO 1254
 #define IDC_BOXES                                  1255
 #define IDC_STEREO_FLIPEYES_RADIO2                 1256
 #define IDC_SCRIPT_CMD                             1257
@@ -911,7 +904,6 @@
 #define IDC_BRUSH_RADIUS_SLIDER                    1278
 #define IDC_RADIUS                                 1279
 #define IDC_EXITPOINT                              1280
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_AUTODETECT_TARGET_MACHINE_RADIO 1281
 #define IDC_EXPORT_LAYERPAK                        1282
 #define IDC_PLAYBACK_SCALE_SLIDER                  1283
 #define IDC_VIEWMODE_SPLIT                         1284
@@ -1235,7 +1227,6 @@
 #define IDC_GRID_GETANGLES                         1605
 #define IDC_REPOSITION_VEGETATION                  1606
 #define IDC_GENERAL_PROGRESS_CANCEL_BUTTON         1607
-#define IDC_CONSOLE_OPTIONS_XBOX360_EXPORT_PLATAFORM_ROOT_BROWSE_BUTTON 1608
 #define IDC_LIGHT_COLOR                            1609
 #define IDC_SWITCH_TO_NORMAL                       1610
 #define IDC_VEHICLE_PAINTS_NEW                     1611
@@ -1279,7 +1270,6 @@
 #define IDC_STOP_ANIMATION_LAYER                   1650
 #define IDC_SELECT_SOUND                           1651
 #define IDC_ALIGN                                  1652
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_EXPORT_PLATAFORM_ROOT_BROWSE_BUTTON 1653
 #define IDC_VEHICLE_PAINTS_REMOVE                  1654
 #define IDC_ASSIGN_COMMAND                         1655
 #define IDC_BUTTON_RENAMEEVENT                     1656
@@ -1350,7 +1340,6 @@
 #define IDC_PAN                                    1721
 #define IDC_DETACHALL                              1722
 #define IDC_VOXEL_INTEGRATE                        1723
-#define IDC_CONSOLE_OPTIONS_XBOX360_EXPORT_PLATAFORM_ROOT_BROWSE_BUTTON2 1724
 #define IDC_BUTTON_NORMALMODE                      1725
 #define IDC_BUTTON_EXTRACT_FILES_FROM_PAK          1726
 #define IDC_BUTTON_RESET_ALL                       1727
@@ -1562,7 +1551,6 @@
 #define IDC_STATIC3                                1933
 #define IDC_CHECK3                                 1934
 #define IDC_CHECK5                                 1935
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_EXPORT_PLATAFORM_ROOT_BROWSE_BUTTON2 1936
 #define IDC_CHECK4                                 1937
 #define IDC_CHECK6                                 1938
 #define IDC_CHECK7                                 1939
@@ -1895,9 +1883,6 @@
 #define IDC_GENERAL_PROGRESS_PROGRESS_BAR          2266
 #define IDC_GENERAL_PROGRESS_TEXT                  2267
 #define IDC_STATIC_TEXT                            2268
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_ENABLED_CHECK 2269
-#define IDC_CONSOLE_OPTIONS_XBOX360_USE_SPECIFIC_TARGET_MACHINE_EDIT 2270
-#define IDC_CONSOLE_OPTIONS_PLAYSTATION3_USE_SPECIFIC_TARGET_MACHINE_EDIT 2271
 #define IDC_LAYERBLENDWEIGHT_TEXT                  2272
 #define IDC_COLOR_MULT                             2273
 #define IDC_AIMIK_LAYER_TEXT                       2274
@@ -1999,7 +1984,6 @@
 #define IDC_SYNC_HEIGHT                            2371
 #define IDC_TIMEWARP_IN_FIXEDTIMESTEP              2372
 #define IDC_EARLYMOVIEUPDATE                       2373
-#define IDC_CONSOLE_OPTIONS_XBOX360_ENABLED_CHECK   2374
 #define IDC_RICHEDIT_LOG                           2375
 #define IDC_PROGRESS_TOTAL                         2376
 #define IDC_STATIC_FILE_INFO                       2377
@@ -2375,8 +2359,8 @@
 #define IDC_PROXPARA_X                             2754
 #define IDC_PROXPARA_Y                             2755
 #define IDC_PROXPARA_Z                             2756
-#define IDC_PLATFORM_XBOXONE                       2757
-#define IDC_PLATFORM_PS4                           2758
+#define IDC_PLATFORM_XBOXONE                       2757 // ACCEPTED_USE
+#define IDC_PLATFORM_PS4                           2758 // ACCEPTED_USE
 #define IDC_UPDATE_IL                              2759
 #define IDC_SMOOTHINGGROUP_NUM_0                   2760
 #define IDC_SMOOTHINGGROUP_NUM_1                   2761
@@ -3049,6 +3033,9 @@
 #define ID_OPEN_MATERIAL_EDITOR                    33822
 #define ID_OPEN_MANNEQUIN_EDITOR                   33823
 #define ID_OPEN_CHARACTER_TOOL                     33824
+#if defined(EMOTIONFX_GEM_ENABLED)
+#define ID_OPEN_EMOTIONFX_EDITOR                   39742
+#endif // EMOTIONFX_GEM_ENABLED
 #define ID_OPEN_DATABASE                           33825
 #define ID_MODIFY_SETMAXHEIGHT                     33826
 #define ID_MODIFY_SETUNITSIZE                      33827
@@ -3180,10 +3167,10 @@
 #define ID_ANIMATION_GRAPH_ICONS                   33957
 #define ID_ANIMATION_GRAPH_ICON_SIZE               33958
 #define ID_ANIMATION_GRAPH_PREVIEW                 33959
-#define ID_GAME_ENABLELOWSPEC                      33960
-#define ID_GAME_ENABLEMEDIUMSPEC                   33961
-#define ID_GAME_ENABLEHIGHSPEC                     33962
-#define ID_GAME_ENABLEVERYHIGHSPEC                 33963
+#define ID_GAME_PC_ENABLELOWSPEC                   33960
+#define ID_GAME_PC_ENABLEMEDIUMSPEC                33961
+#define ID_GAME_PC_ENABLEHIGHSPEC                  33962
+#define ID_GAME_PC_ENABLEVERYHIGHSPEC              33963
 #define ID_VIEW_MULTIPLAYER                        33964
 #define ID_PANEL_VEG_MERGE                         33965
 #define ID_FILE_SAVE33868                          33966
@@ -3428,8 +3415,8 @@
 #define ID_INDICATOR_SOURCE_CONTROL                34446
 #define ID_EXCLUSIVE_EDITMODE                      34447
 #define ID_SELECT_ALL_ELEMENT                      34448
-#define ID_GAME_ENABLEDURANGOSPEC                  34449
-#define ID_GAME_ENABLEORBISSPEC                    34450
+#define ID_GAME_OSXGL_ENABLESPEC                   34449
+#define ID_GAME_OSXMETAL_ENABLESPEC                34450
 #define ID_TV_SEQUENCE_EXPORT                      34451
 #define ID_TV_NODE_KEYS_GLOBAL_TIME_EXPORT         34452
 #define ID_VIEW_PROXIES                            34453
@@ -3452,7 +3439,7 @@
 #define ID_ADDCAF_A                                34472
 #define ID_INSERT_INCLUDE                          34473
 #define ID_INSERT_JOINTLIST                        34474
-#define ID_GAME_ENABLEANDROIDSPEC                   34475
+#define ID_GAME_APPLETV_ENABLESPEC                 34475
 #define ID_SOUND_STOPALLSOUNDS                     34476
 #define ID_AUDIO_REFRESH_AUDIO_SYSTEM              34477
 #define IDC_NEW_ENTITY                             34478
@@ -3464,7 +3451,14 @@
 #define ID_CONTACT_FEATURE_SUBJECT                 34487
 #define ID_CONTACT_FEATURE_BODY                    34488
 #define ID_EDIT_SHOW_LAST_HIDDEN                   34489
-#define ID_GAME_ENABLEIOSSPEC                      34494
+#define ID_GAME_ANDROID_ENABLELOWSPEC              34490
+#define ID_GAME_ANDROID_ENABLEMEDIUMSPEC           34491
+#define ID_GAME_ANDROID_ENABLEHIGHSPEC             34492
+#define ID_GAME_ANDROID_ENABLEVERYHIGHSPEC         34493
+#define ID_GAME_IOS_ENABLELOWSPEC                  34494
+#define ID_GAME_IOS_ENABLEMEDIUMSPEC               34495
+#define ID_GAME_IOS_ENABLEHIGHSPEC                 34496
+#define ID_GAME_IOS_ENABLEVERYHIGHSPEC             34497
 #define IDS_AI_MAIN_TOOLTIP                                 34500
 #define IDS_ARCHETYPE_MAIN_TOOLTIP                          34501
 #define IDS_AREA_MAIN_TOOLTIP                               34502
@@ -3553,6 +3547,12 @@
 #define ID_FILE_REEXPORTALLFILES                    34588
 #define ID_MANNEQUIN_TOOLS_LISTUSEDANIMATIONSCURRENTPREVIEW 34595
 #define ID_MANNEQUIN_TOOLS_LISTUSEDANIMATIONS       34596
+#define ID_GAME_XBONE_ENABLELOWSPEC                 34600 // ACCEPTED_USE
+#define ID_GAME_XBONE_ENABLEMEDIUMSPEC              34601 // ACCEPTED_USE
+#define ID_GAME_XBONE_ENABLEHIGHSPEC                34602 // ACCEPTED_USE
+#define ID_GAME_PS4_ENABLELOWSPEC                   34603 // ACCEPTED_USE
+#define ID_GAME_PS4_ENABLEMEDIUMSPEC                34604 // ACCEPTED_USE
+#define ID_GAME_PS4_ENABLEHIGHSPEC                  34605 // ACCEPTED_USE
 #define IDS_OPTIONS_CAPTION                                 34700
 #define IDS_PROPERTIES_CAPTION                              34701
 #define IDS_NEWELLIPSES_CAPTION                             34702
@@ -3967,8 +3967,9 @@
 #define ID_AWS_GAMELIFT_TRIALWIZARD_LINK             36067
 #define ID_CONVERTSELECTION_TOCOMPONENTENTITY        36068
 #define ID_IMPORT_ASSET                              36069
-#define ID_CGP_CONSOLE								36200
+#define ID_CGP_CONSOLE                               36200
 #define ID_CGP_S3_CONSOLE_LINK                       36201
+#define ID_CONVERT_LEGACY_ENTITIES                   36202
 
 // Actions ported to Qt
 #define FIRST_QT_ACTION                 50000
@@ -3992,7 +3993,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS 1
 #define _APS_NEXT_RESOURCE_VALUE 627
-#define _APS_NEXT_COMMAND_VALUE                                     36068
+#define _APS_NEXT_COMMAND_VALUE                                     36203
 #define _APS_NEXT_CONTROL_VALUE  3929
 #define _APS_NEXT_SYMED_VALUE           3929
 #endif

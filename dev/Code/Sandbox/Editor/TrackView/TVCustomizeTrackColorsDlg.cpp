@@ -56,7 +56,6 @@ namespace
         { eAnimParamType_Animation, "Animation", QColor(220, 220, 220) },
         { eAnimParamType_Sequence, "Sequence", QColor(220, 220, 220) },
         { eAnimParamType_Console, "Console", QColor(220, 220, 220) },
-        { eAnimParamType_Music, "Music", QColor(220, 220, 220) },
         { eAnimParamType_LookAt, "LookAt", QColor(220, 220, 220) },
         { eAnimParamType_TrackEvent, "TrackEvent", QColor(220, 220, 220) },
         { eAnimParamType_ShakeMultiplier, "ShakeMult", QColor(90, 150, 90) },

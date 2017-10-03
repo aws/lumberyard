@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
 #include "CommentTrack.h"
 
 //-----------------------------------------------------------------------------
@@ -46,8 +48,12 @@ void CCommentTrack::SerializeKey(ICommentKey& key, XmlNodeRef& keyNode, bool bLo
             key.m_strComment = xmlComment;
             keyNode->getAttr("duration", key.m_duration);
             const char* strFont = keyNode->getAttr("font");
-            cry_strcpy(key.m_strFont, strFont);
-            keyNode->getAttr("color", key.m_color);
+            key.m_strFont = strFont;
+
+            Vec4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
+            keyNode->getAttr("color", color);
+            key.m_color.Set(color.x, color.y, color.z, color.w);
+            
             keyNode->getAttr("size", key.m_size);
             int alignment = 0;
             keyNode->getAttr("align", alignment);
@@ -59,14 +65,35 @@ void CCommentTrack::SerializeKey(ICommentKey& key, XmlNodeRef& keyNode, bool bLo
         XmlString xmlComment(key.m_strComment.c_str());
         keyNode->setAttr("comment", xmlComment);
         keyNode->setAttr("duration", key.m_duration);
-        keyNode->setAttr("font", key.m_strFont);
-        keyNode->setAttr("color", key.m_color);
+        if (!key.m_strFont.empty())
+        {
+            keyNode->setAttr("font", key.m_strFont.c_str());
+        }
+        Vec4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
+        keyNode->setAttr("color", color);
         keyNode->setAttr("size", key.m_size);
         keyNode->setAttr("align", (int)key.m_align);
     }
 }
 
-void CCommentTrack::GetMemoryUsage(ICrySizer* pSizer) const
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ICommentKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
-    pSizer->AddObject(this, sizeof(*this));
+    serializeContext->Class<TAnimTrack<ICommentKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ICommentKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ICommentKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ICommentKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ICommentKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCommentTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ICommentKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CCommentTrack, TAnimTrack<ICommentKey> >()
+        ->Version(1);
 }

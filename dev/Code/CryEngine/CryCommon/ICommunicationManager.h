@@ -29,8 +29,8 @@ enum ECommTags
 template <ECommTags T>
 struct CommHandle
 {
-    explicit CommHandle(uint32 id = 0)
-        : id(id) {}
+    explicit CommHandle(uint32 _id = 0)
+        : id(_id) {}
 
     CommHandle& operator=(const CommHandle& other) { id = other.id; return *this; }
 

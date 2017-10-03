@@ -14,22 +14,27 @@ package com.amazon.lumberyard;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 
 import java.io.File;
-import java.util.List;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.io.IOException;
 import java.lang.Exception;
 import java.lang.InterruptedException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.libsdl.app.SDLActivity;
 
@@ -37,6 +42,7 @@ import com.amazon.lumberyard.input.KeyboardHandler;
 import com.amazon.lumberyard.input.MotionSensorManager;
 
 import com.amazon.lumberyard.io.APKHandler;
+import com.amazon.lumberyard.AndroidDeviceManager;
 import com.amazon.lumberyard.io.obb.ObbDownloaderActivity;
 
 
@@ -70,29 +76,11 @@ public class LumberyardActivity extends SDLActivity
     }
 
     ////////////////////////////////////////////////////////////////
-    // called from the native during startup to get the game project dll and asset directory
-    public String GetGameProjectName()
-    {
-        Resources resources = this.getResources();
-        int stringId = resources.getIdentifier("project_name", "string", this.getPackageName());
-        return resources.getString(stringId);
-    }
-
-    ////////////////////////////////////////////////////////////////
     // called from the native to get the application package name
     // e.g. com.lumberyard.samples for SamplesProject
     public String GetPackageName()
     {
         return getApplicationContext().getPackageName();
-    }
-
-    ////////////////////////////////////////////////////////////////
-    // called from the native to get the root of the external storage directory
-    // e.g. /storage/emulated/0, /storage/self/primary, etc.
-    public String GetExternalStorageRoot()
-    {
-        File extStorageRootDir = Environment.getExternalStorageDirectory();
-        return extStorageRootDir.getAbsolutePath();
     }
 
     ////////////////////////////////////////////////////////////////
@@ -206,6 +194,45 @@ public class LumberyardActivity extends SDLActivity
         }
 
         APKHandler.SetAssetManager(getAssets());
+
+        AndroidDeviceManager.context = this;
+
+        boolean useMainObb = GetBooleanResource("use_main_obb");
+        boolean usePatchObb = GetBooleanResource("use_patch_obb");
+
+        if (IsBootstrapInAPK() && (useMainObb || usePatchObb))
+        {
+            Log.d("LumberyardActivity", "Using OBB expansion files for game assets");
+
+            File obbRootPath = getApplicationContext().getObbDir();
+
+            String packageName = GetPackageName();
+            int appVersionCode = GetAppVersionCode();
+
+            String mainObbFilePath = String.format("%s/main.%d.%s.obb", obbRootPath, appVersionCode, packageName);
+            String patchObbFilePath = String.format("%s/patch.%d.%s.obb", obbRootPath, appVersionCode, packageName);
+
+            File mainObbFile = new File(mainObbFilePath);
+            File patchObbFile = new File(patchObbFilePath);
+
+            boolean needToDownload = (  (useMainObb && !mainObbFile.canRead())
+                                     || (usePatchObb && !patchObbFile.canRead()));
+
+            if (needToDownload)
+            {
+                Log.d("LumberyardActivity", "Attempting to download the OBB expansion files");
+                boolean downloadResult = DownloadObb();
+                if (!downloadResult)
+                {
+                    Log.e("LumberyardActivity", "Failed to download the OBB expansion file.  Exiting...");
+                    finish();
+                }
+            }
+        }
+        else
+        {
+            Log.d("LumberyardActivity", "Assets already on the device, not using the OBB expansion files.");
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -296,6 +323,22 @@ public class LumberyardActivity extends SDLActivity
         }
     }
 
+    ////////////////////////////////////////////////////////////////
+    private boolean IsBootstrapInAPK()
+    {
+        try
+        {
+            InputStream bootstrap = getAssets().open("bootstrap.cfg", AssetManager.ACCESS_UNKNOWN);
+            bootstrap.close();
+            return true;
+        }
+        catch (IOException exception)
+        {
+            return false;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
     private class ActivityResult
     {
         public int m_result;

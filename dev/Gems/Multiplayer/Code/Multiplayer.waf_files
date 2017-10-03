@@ -15,15 +15,11 @@
         ],
         "Include/MultiplayerLobbyServiceWrapper": [            
             "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.h",
-            "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyPSNServiceWrapper.h",
-            "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyServiceWrapper.h",
-            "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyXboneServiceWrapper.h"
+            "Include/Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyServiceWrapper.h"
         ],
         "Include/GridMateServiceWrapper": [            
             "Include/Multiplayer/GridMateServiceWrapper/GridMateLANServiceWrapper.h",
-            "Include/Multiplayer/GridMateServiceWrapper/GridMatePSNServiceWrapper.h",
-            "Include/Multiplayer/GridMateServiceWrapper/GridMateServiceWrapper.h",
-            "Include/Multiplayer/GridMateServiceWrapper/GridMateXboneServiceWrapper.h"
+            "Include/Multiplayer/GridMateServiceWrapper/GridMateServiceWrapper.h"
         ],
         "Include/BehaviorContext": [            
             "Include/Multiplayer/BehaviorContext/GridSearchContext.h",
@@ -47,15 +43,11 @@
         ],
         "Source/MultiplayerLobbyServiceWrapper": [
             "Source/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.cpp",
-            "Source/MultiplayerLobbyServiceWrapper/MultiplayerLobbyPSNServiceWrapper.cpp",
-            "Source/MultiplayerLobbyServiceWrapper/MultiplayerLobbyServiceWrapper.cpp",
-            "Source/MultiplayerLobbyServiceWrapper/MultiplayerLobbyXboneServiceWrapper.cpp"
+            "Source/MultiplayerLobbyServiceWrapper/MultiplayerLobbyServiceWrapper.cpp"
         ],
         "Source/GridMateServiceWrapper": [
             "Source/GridMateServiceWrapper/GridMateLANServiceWrapper.cpp",
-            "Source/GridMateServiceWrapper/GridMatePSNServiceWrapper.cpp",
-            "Source/GridMateServiceWrapper/GridMateServiceWrapper.cpp",
-            "Source/GridMateServiceWrapper/GridMateXboneServiceWrapper.cpp"
+            "Source/GridMateServiceWrapper/GridMateServiceWrapper.cpp"
         ],
         "Source/BehaviorContext": [            
             "Source/BehaviorContext/GridSearchContext.cpp",

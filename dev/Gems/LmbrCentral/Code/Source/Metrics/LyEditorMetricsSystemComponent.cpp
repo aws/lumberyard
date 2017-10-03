@@ -30,6 +30,7 @@ namespace MetricsEventData
 {
     // Event Names
     static const char* Navigation = "ComponentEntityNavigationEvent";
+    static const char* InstantiateSlice = "InstantiateSliceEvent";
     static const char* CreateEntity = "CreateEntityEvent";
     static const char* DeleteEntity = "DeleteEntityEvent";
     static const char* AddComponent = "AddComponentEvent";
@@ -42,6 +43,7 @@ namespace MetricsEventData
     
 
     // Attribute Keys
+    static const char* SliceIdentifier = "SliceId";
     static const char* EntityId = "EntityId";
     static const char* NewParentId = "NewParentId";
     static const char* OldParentId = "OldParentId";
@@ -164,6 +166,13 @@ namespace LyEditorMetrics
         SendEntitiesMetricsEvent(MetricsEventData::DeleteEntity, entityId);
     }
 
+    void LyEditorMetricsSystemComponent::SliceInstantiated(const AZ::Crc32& sliceIdentifier)
+    {
+        SendNavigationEventIfNeeded();
+
+        SendSliceInstantiatedMetricsEvent(MetricsEventData::InstantiateSlice, sliceIdentifier);
+    }
+
     void LyEditorMetricsSystemComponent::ComponentAdded(const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId)
     {
         SendNavigationEventIfNeeded();
@@ -178,7 +187,7 @@ namespace LyEditorMetrics
         SendComponentsMetricsEvent(MetricsEventData::RemoveComponent, entityId, componentTypeId);
     }
 
-    void LyEditorMetricsSystemComponent::EntityParentChanged(const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId)
+    void LyEditorMetricsSystemComponent::UpdateTransformParentEntity(const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId)
     {
         SendNavigationEventIfNeeded();
 
@@ -572,6 +581,23 @@ namespace LyEditorMetrics
         {
             m_legacyScriptEntityNameWhiteList.insert(name);
         }
+    }
+
+    void LyEditorMetricsSystemComponent::SendSliceInstantiatedMetricsEvent(const char* eventName, const AZ::Crc32& sliceIdentifier)
+    {
+        AZStd::string identifier = AZStd::string::format("%u", sliceIdentifier);
+        LyMetrics::LyScopedMetricsEvent entityMetricsEvent(eventName,
+        {
+            // Slice identifier
+            {
+                MetricsEventData::SliceIdentifier, identifier.c_str()
+            },
+
+            // Navigation unique action group id
+            {
+                MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+            }
+        });
     }
 
     void LyEditorMetricsSystemComponent::SendEntitiesMetricsEvent(const char* eventName, const AZ::EntityId& entityId)

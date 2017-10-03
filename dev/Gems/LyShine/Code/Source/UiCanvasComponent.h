@@ -11,8 +11,6 @@
 */
 #pragma once
 
-#include <IInput.h>
-#include <IHardwareMouse.h>
 #include <IGameFramework.h>
 
 #include <AzCore/Component/Component.h>
@@ -29,6 +27,7 @@
 #include "UiSerialize.h"
 #include "Animation/UiAnimationSystem.h"
 #include "UiLayoutManager.h"
+#include "UiNavigationHelpers.h"
 
 namespace AZ
 {
@@ -133,9 +132,11 @@ public: // member functions
     bool GetIsNavigationSupported() override;
     void SetIsNavigationSupported(bool isSupported) override;
 
-    bool HandleInputEvent(const SInputEvent& event);
-    bool HandleKeyboardEvent(const SUnicodeEvent& event);
-    bool HandleInputPositionalEvent(const SInputEvent& event, AZ::Vector2 viewportPos);
+    bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
+                          const AZ::Vector2* viewportPos = nullptr,
+                          AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) override;
+    bool HandleTextEvent(const AZStd::string& textUTF8) override;
+    bool HandleInputPositionalEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, AZ::Vector2 viewportPos) override;
 
     AZ::Vector2 GetMousePosition() override;
 
@@ -150,7 +151,8 @@ public: // member functions
     void SetSnapRotationDegrees(float degrees) override;
 
     void ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point) override;
-    void SetHoverInteractable(AZ::EntityId interactableId) override;
+    AZ::EntityId GetHoverInteractable() override;
+    void ForceHoverInteractable(AZ::EntityId interactableId) override;
 
     // ~UiCanvasInterface
 
@@ -240,33 +242,42 @@ private: // member functions
 
     // handle events for this canvas
     bool HandleHoverInputEvent(AZ::Vector2 point);
-    bool HandleKeyInputEvent(const SInputEvent& event);
-    bool HandleNavigationInputEvent(const SInputEvent& event);
-    bool HandleEnterInputEvent(const SInputEvent& event);
+    bool HandleKeyInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None);
+    bool HandleNavigationInputEvent(UiNavigationHelpers::Command command, const AzFramework::InputChannel::Snapshot& inputSnapshot);
+    bool HandleEnterInputEvent(UiNavigationHelpers::Command command, const AzFramework::InputChannel::Snapshot& inputSnapshot);
+    bool HandleBackInputEvent(UiNavigationHelpers::Command command, const AzFramework::InputChannel::Snapshot& inputSnapshot);
+
+    // A key was pressed to deactivate the active interactable
+    bool DeactivateInteractableByKeyInput(const AzFramework::InputChannel::Snapshot& inputSnapshot);
+
+    // A key was pressed to transfer hover to the ancestor interactable
+    bool PassHoverToAncestorByKeyInput(const AzFramework::InputChannel::Snapshot& inputSnapshot);
 
     // Code shared by HandleInputEvent and HandleTouchEvent
     bool HandlePrimaryPress(AZ::Vector2 point);
-    bool HandlePrimaryRelease(AZ::Vector2 point, EKeyId keyId);
-
-    //! Map gamepad keys to keyboard keys of the same purpose
-    EKeyId MapGamepadKeysToKeyboardKeys(const SInputEvent& event);
+    bool HandlePrimaryRelease(AZ::Vector2 point);
 
     // Functions to change the hover and active interactables
+    void SetHoverInteractable(AZ::EntityId interactableId);
     void ClearHoverInteractable();
     void SetActiveInteractable(AZ::EntityId newActiveInteractable, bool shouldStayActive);
     void ClearActiveInteractable();
+
+    //! Check if the hover interactable is set to auto-activate, and if so activate it
+    void CheckHoverInteractableAndAutoActivate(AZ::EntityId prevHoverInteractable = AZ::EntityId(), UiNavigationHelpers::Command command = UiNavigationHelpers::Command::Unknown);
+
+    //! Check if the active interactable has a descendant interactable. If it does,
+    //! make the descendant the hover interactable and clear the active interactable
+    void CheckActiveInteractableAndPassHoverToDescendant(AZ::EntityId prevHoverInteractable = AZ::EntityId(), UiNavigationHelpers::Command command = UiNavigationHelpers::Command::Unknown);
+
+    //! Find the first interactable ancestor of the specified element
+    AZ::EntityId FindAncestorInteractable(AZ::EntityId entityId);
 
     //! Get the first hover interactable, defaulting to the one set by the canvas
     AZ::EntityId GetFirstHoverInteractable();
 
     //! Find the first interactable to receive focus
-    AZ::EntityId FindFirstHoverInteractable();
-
-    //! Find the next interactable to receive focus
-    AZ::EntityId FindNextHoverInteractable(AZ::EntityId curHoverInteractable, EKeyId keyId);
-
-    //! Make a list of all navigable & interactable elements that don't have navigable & interactable parents
-    void FindTopLevelNavigableInteractables(AZ::EntityId ignoreElement, LyShine::EntityArray& result);
+    AZ::EntityId FindFirstHoverInteractable(AZ::EntityId parentElement = AZ::EntityId());
 
     //! Set the hover interactable on canvas load
     void SetFirstHoverInteractable();
@@ -372,6 +383,9 @@ private: // data
     //! Set to false when a key event occurs and back to true when handling hover
     //! input events and the input position hovers over an interactable.
     bool m_allowInvalidatingHoverInteractableOnHoverInput;
+
+    //! True if the mouse is pressed or the enter key is down and there is an active interactable
+    bool m_isActiveInteractablePressed;
 
     //! The last mouse position. Used to detect mouse movement
     AZ::Vector2 m_lastMousePosition;

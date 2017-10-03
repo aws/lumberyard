@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #3 $
 
 import os
 import json
@@ -19,6 +19,7 @@ import re
 import constant 
 import copy
 import file_util
+import collections
 
 from StringIO import StringIO
 from errors import HandledError
@@ -44,6 +45,8 @@ class ConfigContext(object):
         self.__project_settings = None
         self.__configuration_bucket_name = None
         self.__project_resources = None
+        self.__framework_version = None
+
 
     @property
     def context(self):
@@ -84,10 +87,7 @@ class ConfigContext(object):
         self.base_resource_group_directory_path = os.path.join(self.aws_directory_path, 'resource-group')
         self.gem_directory_path = os.path.join(self.root_directory_path, constant.PROJECT_GEMS_DIRECTORY_NAME)
 
-        self.local_project_settings_path = self.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME)
-        local_settings = self.load_json(self.local_project_settings_path)
-
-        self.local_project_settings = LocalProjectSettings(self.context, self.local_project_settings_path, local_settings)
+        self.local_project_settings = LocalProjectSettings(self.context, self.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME))
 
 
 
@@ -115,7 +115,7 @@ class ConfigContext(object):
         self.__load_user_settings()
 
     def __load_resource_name_validation_config(self):
-        self.resource_name_validation_config_path = os.path.join(self.tools_directory_path, "lmbr_aws", "config", constant.RESOURCE_NAME_VALIDATION_CONFIG_FILENAME)
+        self.resource_name_validation_config_path = os.path.join(self.resource_manager_path, "config", constant.RESOURCE_NAME_VALIDATION_CONFIG_FILENAME)
         self.resource_name_validation_config = self.load_json(self.resource_name_validation_config_path)
 
     # returns a dict consisting of a boolean indicating if it's valid and the help string
@@ -202,6 +202,10 @@ class ConfigContext(object):
         # Assumes RESOURCE_MANAGER_PATH is  ...\Gems\CloudGemFramework\v?\ResourceManager\resource_manager.
         # We want ...\Gems\CloudGemFramework\v?\AWS.
         return os.path.abspath(os.path.join(RESOURCE_MANAGER_PATH, '..', '..', 'AWS'))
+
+    @property
+    def resource_manager_path(self):
+        return RESOURCE_MANAGER_PATH
 
     @property
     def project_lambda_code_path(self):
@@ -300,7 +304,7 @@ class ConfigContext(object):
             # If the project hasn't been initilized, then there are no settings in s3 yet so we just pretend we have an empty set(because we do)
             # Because the project hasn't been init'd, we don't have a config bucket to save to yet. The logic dealing with pending project Id
             # will update this to the actual cloud-based settings file
-            self.__project_settings = UnitializedCloudProjectSettings()
+            self.__project_settings = UnitializedCloudProjectSettings(self.__context)
             self.__project_resources = {}
 
     def assume_role(self):
@@ -462,8 +466,8 @@ class ConfigContext(object):
             self.context.view.creating_directory(self.aws_directory_path)
             os.makedirs(self.aws_directory_path)
 
-        if not os.path.isfile(self.local_project_settings_path):
-            self.save_json(self.local_project_settings_path, { constant.ENABLED_RESOURCE_GROUPS_KEY: [] })
+        if not os.path.isfile(self.local_project_settings.path):
+            self.local_project_settings.save()
 
         self.__load_aws_directory() # reload
 
@@ -653,7 +657,7 @@ class ConfigContext(object):
         resources = self.context.stack.describe_resources(self.get_pending_project_stack_id(), recursive=False)
         self.__configuration_bucket_name = resources.get('Configuration', {}).get('PhysicalResourceId', None)
         if not self.__configuration_bucket_name:
-            raise HandledError('The project stack was created but it contains no Configuration resoruce. Has the project-template.json been modified to remove this required resource?')
+            raise HandledError('The project stack was created but it contains no Configuration resource. Has the project-template.json been modified to remove this required resource?')
 
         settings_default_content = { "deployment": { "*": { "resource-group": {}} } }
 
@@ -679,21 +683,64 @@ class ConfigContext(object):
         return self.__configuration_bucket_name
 
 
+    def verify_framework_version(self):
+        if self.__context.gem.framework_gem.version != self.local_project_settings.framework_version:
+            raise HandledError('The project\'s AWS resources are from CloudGemFramework version {} but version {} of the CloudGemFramework gem is now enabled for the project. You must use the command "lmbr_aws project update-framework-version" to update to the framework version used by the project\'s AWS resources.'.format(
+                self.local_project_settings.framework_version, self.__context.gem.framework_gem.version))
+
+        
+    @property
+    def framework_version(self):
+        if self.__framework_version is None:
+            self.__framework_version = self.local_project_settings.framework_version
+        return self.__framework_version
+
+
+    def set_pending_framework_version(self, new_version):
+        self.__framework_version = new_version
+
+
+    def save_pending_framework_version(self):
+        self.local_project_settings.framework_version = self.__framework_version
+        self.local_project_settings.save()
+
+
 '''A dict-like class that persists a python dictionary to disk.'''
 class LocalProjectSettings(dict):
-    def __init__(self, context, settings_path, settings):
-        self.path = settings_path
-        self.context = context
-        self.loadError = False
-        if settings == None:
-            self.loadError = True
-            settings = {}
+
+    FRAMEWORK_VERSION_KEY = 'FrameworkVersion'
+
+    def __init__(self, context, settings_path):
+        
+        self.__path = settings_path
+        self.__context = context
+        
+        self.__context.view.loading_file(settings_path)
+        settings = util.load_json(settings_path, optional=True, default=None)
+
+        if settings is None:
+
+            settings = {
+                self.FRAMEWORK_VERSION_KEY: str(self.__context.gem.framework_gem.version),
+                constant.ENABLED_RESOURCE_GROUPS_KEY: []
+            }
+
+        else:
+
+            # 1.0.0 is only supported version without this property
+            settings.setdefault(self.FRAMEWORK_VERSION_KEY, '1.0.0') 
+
+        self.__framework_version = util.Version(settings[self.FRAMEWORK_VERSION_KEY])
+
         super(LocalProjectSettings, self).__init__(settings)
 
+    @property
+    def path(self):
+        return self.__path
+
     def save(self):
-        self.check()
         try:
-            self.context.view.saving_file(self.path)
+            self.__context.view.saving_file(self.path)
             dir = os.path.dirname(self.path)
             if not os.path.exists(dir):
                 os.makedirs(dir)
@@ -702,28 +749,39 @@ class LocalProjectSettings(dict):
         except Exception as e:
             raise HandledError('Could not save {}.'.format(self.path), e)
 
-    def check(self):
-        if self.loadError:
-            raise HandledError('{} was not loaded correctly, make sure that it is a valid JSON document'.format(self.path))
+    @property
+    def framework_version(self):
+        return self.__framework_version
+
+    @framework_version.setter
+    def framework_version(self, value):
+        if not isinstance(value, util.Version):
+            value = util.Version(value)
+        self.__framework_version = value
+        self[self.FRAMEWORK_VERSION_KEY] = str(value)
+
 
 '''Client abstraction for project settings '''
 class CloudProjectSettings(dict):
 
     def __init__(self, context, bucket, initial_settings = None, verbose = False):
-        self.bucket = bucket
-        self.key = constant.PROJECT_SETTINGS_FILENAME
-        self.context = context
+
+        self.__bucket = bucket
+        self.__key = constant.PROJECT_SETTINGS_FILENAME
+        self.__context = context
 
         if not initial_settings:
-            s3 = self.context.aws.client('s3')
             try:
-                res = s3.get_object(Bucket=self.bucket, Key=self.key)
+                s3 = self.__context.aws.client('s3')
+                res = s3.get_object(Bucket=self.__bucket, Key=self.__key)
                 settings = res['Body'].read()
                 initial_settings = json.loads(settings)
-                self.context.view.loaded_project_settings(initial_settings)
+                self.__context.view.loaded_project_settings(initial_settings)
             except Exception as e:
-                context.view.missing_project_settings(self.bucket, self.key, e.message)
-                initial_settings = {}
+                raise HandledError('Cloud not read project settings from bucket {} object {}: {}'.format(
+                    self.__bucket,
+                    self.__key,
+                    e.message))
 
         super(CloudProjectSettings, self).__init__(initial_settings)
 
@@ -761,17 +819,22 @@ class CloudProjectSettings(dict):
         return self.get_resource_group_settings("*")
 
     def save(self):
-        s3 = self.context.aws.client('s3')
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=json.dumps(self, indent=4, sort_keys=True))
-        self.context.view.saved_project_settings(self)
+        s3 = self.__context.aws.client('s3')
+        s3.put_object(Bucket=self.__bucket, Key=self.__key, Body=json.dumps(self, indent=4, sort_keys=True))
+        self.__context.view.saved_project_settings(self)
+
 
 '''This class is used when no project has yet been defined.
 We just want our cloud-based interface that will return nothing but None.
 Once the project is setup, init_project_settings will create the inital settings in the cloud'''
 class UnitializedCloudProjectSettings(CloudProjectSettings):
-    def __init__(self):
-        self.loaded = True
-        pass
+
+    def __init__(self, context):
+        self.__context = context
+
+    @property
+    def framework_version(self):
+        return self.__context.gem.framework_gem.version
 
     def save(self):
         pass
@@ -796,7 +859,7 @@ class TemplateAggregator(object):
 
            context: A Context object.
 
-           base_file_name: The name of the file in the resoruce manager templates directory.
+           base_file_name: The name of the file in the resource manager templates directory.
 
            extension_file_name: The name of the file in the project's AWS directory.
 
@@ -868,6 +931,7 @@ class TemplateAggregator(object):
             self.__effective_template = copy.deepcopy(self.base_template)
             self._add_effective_content(self.__effective_template, self._get_attribution(self.extension_file_path))
             self.__update_access_control_dependencies(self.__effective_template)
+            self.__add_framework_version_parameter(self.__effective_template)
         return self.__effective_template
 
 
@@ -880,34 +944,235 @@ class TemplateAggregator(object):
     def _copy_parameters(self, target, source, source_path):
         parameters = target.setdefault('Parameters', {})
         for name, definition in source.get('Parameters', {}).iteritems():
-            if 'Default' not in definition:
-                raise HandledError('Parameter {} has no default value in extension template {}.'.format(name, source_path))
             if name in parameters:
-                raise HandledError('Parameter {} cannot be overridden by extension template {}.'.format(name, source_path))
-            parameters[name] = definition
+                if self.__apply_merge_function(definition, parameters[name], source_path):
+                    raise HandledError('Parameter {} cannot be overridden by extension template {}.'.format(name, source_path))
+            else:
+                if 'Default' not in definition:
+                    raise HandledError('Parameter {} has no default value in extension template {}.'.format(name, source_path))
+                parameters[name] = definition
 
 
     def _copy_resources(self, target, source, source_path, attribution):
         resources = target.setdefault('Resources', {})
         for name, definition in source.get('Resources', {}).iteritems():
             if name in resources:
-                raise HandledError('Resource {} cannot be overridden by extension template {}.'.format(name, source_path))
-            definition = copy.deepcopy(definition)
-            definition.setdefault('Metadata', {}).setdefault('CloudGemFramework', {})['Source'] = attribution
-            resources[name] = definition
+                if not self.__apply_merge_function(definition, resources[name], source_path):
+                    raise HandledError('Resource {} cannot be overridden by extension template {}.'.format(name, source_path))
+            else:
+                definition = copy.deepcopy(definition)
+                definition.setdefault('Metadata', {}).setdefault('CloudGemFramework', {})['Source'] = attribution
+                resources[name] = definition
 
 
     def _copy_outputs(self, target, source, source_path):
         outputs = target.setdefault('Outputs', {})
         for name, definition in source.get('Outputs', {}).iteritems():
             if name in outputs:
-                raise HandledError('Output {} cannot be overridden by extension template {}.'.format(name, source_path))
-            outputs[name] = definition
+                if not self.__apply_merge_function(definition, outputs[name], source_path):
+                    raise HandledError('Output {} cannot be overridden by extension template {}.'.format(name, source_path))
+            else:
+                outputs[name] = definition
+
+
+    def __apply_merge_function(self, fn, target, source_path):
+        '''Determines if a value is a merge function definition and, if so, applies 
+        it to a target value.
+
+        Arguments:
+
+            fn - A dict with a single keyt that starts with "MergeFn::".
+
+            target - a value to which the function will be applied.
+
+            source_path - path to the file that defines the function.
+
+        Returns:
+
+            True if a function was provided and target successfully updated.
+
+            False if value is not a merge function definition.
+
+        Raises:
+       
+            HandledError if the merge function definition is invalid or 
+            could not be applied to target.
+        '''
+
+        if not isinstance(fn, dict) or not fn:
+            return False
+
+        for fn_name, fn_args in fn.iteritems():
+
+            if not fn_name.startswith('MergeFn'):
+                return False
+
+            handler = self.MERGE_FUNCTIONS.get(fn_name, None)
+            if handler is None:
+                raise HandledError('Found unknown MergeFn {} in {}.'.format(fn_name, source_path))
+
+            handler(self, fn_args, target, source_path)
+
+        return True
+
+
+    def __merge_fn_append_to_array(self, args, target, source_path):
+        '''Appends elements to a list.
+
+        Arguments:
+
+          args - a dict where keys identify a list typed property to which the corresponding
+          value will be appended. The keys should be strings consisting of dot seperated 
+          property names.
+
+          target - a dict which will be recursively navigated using the property names from 
+          args.
+
+        '''
+
+        for path, value in args.iteritems():
+            path_target = self.__get_merge_fn_path_list(path, target, source_path)
+            path_target.append(value)
+
+
+    def __merge_fn_set_property(self, args, target, source_path):
+        '''Sets property values on a target.
+
+        Arguments:
+
+          args - a dict where keys identify a property that will be set to the corresponding value.
+          The keys should be strings consisting of dot seperated property names.
+
+          target - a dict which will be recursively navigated using the property names from args.
+
+          source_path - The path to the file that defines the function.
+        '''
+
+        for path, new_value in args.iteritems():
+            lvalue = self.__get_merge_fn_path_lvalue(path, target, source_path)
+            if not isinstance(lvalue.container, dict):
+                raise HandledError('MergeFn::SetProperty path {} did not identify an object property when applied to {} as requsted by {}.'.format(path, target, source_path))
+            lvalue.container[lvalue.key] = new_value
+
+
+    MERGE_FUNCTIONS = {
+        'MergeFn::AppendToArray': __merge_fn_append_to_array,
+        'MergeFn::SetProperty': __merge_fn_set_property
+    }
+
+
+    # Represents an assignable value (a "Left Value"), such as property in a dict or a 
+    # element in a list. The container field identifies the container that holds the 
+    # value and the key field identifies the key that can be provided to that container 
+    # when setting a value. The value field will be the actual value.
+    __LValue = collections.namedtuple('LValue', [ 'container', 'key', 'value' ])
+
+
+    def __get_merge_fn_path_list(self, path, target, source_path):
+        '''Returns the list object identified by a path when applied to a target.
+
+        Arguments:
+
+            path - a string consisting of dot seperated property names.
+
+            target - A dict to which the path is applied.
+
+            source_path - the path to the file that contains the path being applied.
+
+        Returns:
+
+            The list object identified by the path.
+
+        Raises:
+
+            HandledError if the path did not identify a list object.
+
+        '''
+        path_target = self.__get_merge_fn_path_value(path, target, source_path)
+        if not isinstance(path_target, list):
+            raise HandledError('MergeFn::AppendToArray path {} did not identify an array when applied to {} as requsted by {}.'.format(path, target, source_path))
+        return path_target
+
+
+    def __get_merge_fn_path_value(self, path, target, source_path):
+        '''Returns the value identified by a path when applied to a target.
+
+        Arguments:
+
+            path - a string consisting of dot seperated property names.
+
+            target - A dict to which the path is applied.
+
+            source_path - the path to the file that contains the path being applied.
+
+        Returns:
+
+            The value identified by the path.
+
+        Raises:
+
+            HandledError if the path did not identify a value.
+
+        '''
+        lvalue = self.__get_merge_fn_path_lvalue(path, target, source_path)
+        if lvalue.value is None:
+            raise HandledError('The property identified by the MergeFn path {} was not found in {} as specified by {}.'.format(path, target, source_path))
+        return lvalue.value
+
+
+    def __get_merge_fn_path_lvalue(self, path, target, source_path):
+        '''Returns the lvalue identified by a path when applied to a target.
+
+        Arguments:
+
+            path - a string consisting of dot seperated property names.
+
+            target - A dict to which the path is applied.
+
+            source_path - the path to the file that contains the path being applied.
+
+        Returns:
+
+            An __LValue instance intialized as follows:
+
+                container - the dict that contains the property at the end of the path
+
+                key - the name of the property at the end of the path
+
+                value - the key's value in the container, None if the contained doesn't contain the key
+
+        Raises:
+
+            HandledError if the path did not identify a lvalue.
+
+        '''
+
+        # TODO: this could be replaced with a json path libary to enable 
+        # a lot more functionality without breaking exising uses.
+
+        previous_target = None
+        current_target = target
+
+        property_names = path.split('.')
+        for property_name in property_names[:-1]:
+            if isinstance(current_target, dict):
+                previous_target = current_target
+                current_target = current_target.get(property_name, None)
+                if current_target is not None:
+                    continue
+            raise HandledError('MergeFn path {} could not be applied to {} as requested by {}. The property {} does not exist in {}.'.format(
+                path, target, source_path, property_name, previous_target))
+
+        last_property_name = property_names[-1]
+        result = self.__LValue(current_target, last_property_name, current_target.get(last_property_name, None))
+
+        return result
+
 
 
     def __update_access_control_dependencies(self, target):
 
-        # The AccessControl resource, if there is one, depends on all resoruces that 
+        # The AccessControl resource, if there is one, depends on all resources that 
         # don't directly depend on it.
 
         access_control_definition = target.get('Resources', {}).get('AccessControl')
@@ -936,6 +1201,15 @@ class TemplateAggregator(object):
                     access_control_depends_on.append(name)
 
             access_control_definition['DependsOn'] = access_control_depends_on
+
+
+    def __add_framework_version_parameter(self, target):
+        parameters = target.setdefault('Parameters', {})
+        parameters['FrameworkVersion'] = {
+            "Type": "String",
+            "Description": "Identifies the version of the Cloud Gem Framework used to manage this stack.",
+            "Default": str(self.__context.config.framework_version)
+        }
 
 
 class ProjectTemplateAggregator(TemplateAggregator):
@@ -968,8 +1242,11 @@ class DeploymentTemplateAggregator(TemplateAggregator):
         super(DeploymentTemplateAggregator, self)._add_effective_content(effective_template, attribution)
 
         resources = effective_template.setdefault('Resources', {})
-
+        last_rg_name = ""
         for resource_group in self.context.resource_groups.values():
+
+            if not resource_group.is_enabled:
+                continue
 
             configuration_name = resource_group.name + 'Configuration'
 
@@ -997,6 +1274,10 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                     }
                 }
             }
+
+            if last_rg_name:
+                resources[resource_group.name]["DependsOn"] = last_rg_name
+            last_rg_name = resource_group.name
 
         # CloudFormation doesn't like an empty Resources list.
         if len(resources) == 0:

@@ -24,8 +24,8 @@
 #include <QMessageBox>
 #include <QMainWindow>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 #include "CloudCanvasLogger.h"
 
@@ -41,6 +41,11 @@
 #include "DeploymentListStatusModel.h"
 #include "ResourceGroupListStatusModel.h"
 #include "PlaceholderDeploymentStatusModel.h"
+#include <aws/core/utils/memory/stl/AWSMap.h>
+#include <aws/core/utils/memory/stl/AWSString.h>
+
+#include <LyIdentity/LyIdentity.h>
+#include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>
 
 #include "FileSourceControlModel.h"
 
@@ -94,6 +99,7 @@ AWSResourceManager::AWSResourceManager(IEditor* editor)
     , m_startupComplete { false }
     , m_projectSettingsSourceControlModel { new SourceControlStatusModel }
     , m_deploymentTemplateSourceControlModel { new SourceControlStatusModel }
+    , m_gemsFileSourceControlModel { new SourceControlStatusModel }
 {
     assert(m_editor);
 
@@ -223,24 +229,22 @@ void AWSResourceManager::RefreshGameConfigurations()
     
     if (GetDeploymentModel()->IsActiveDeploymentSet())
     {
-        LmbrAWS::IClientManager* clientManager = m_editor->GetEnv()->pLmbrAWS->GetClientManager();
-        if (clientManager)
+
+        bool shouldApplyMapping = true;
+        bool mappingIsProtected{ false };
+        EBUS_EVENT_RESULT(mappingIsProtected, CloudGemFramework::CloudCanvasMappingsBus, IsProtectedMapping);
+        static const char* PROTECTED_MAPPING_MSG_TITLE = "AWS Mapping Is Protected";
+        static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";
+        if (mappingIsProtected)
         {
-            bool shouldApplyMapping = true;
+            shouldApplyMapping = CryMessageBox(PROTECTED_MAPPING_MSG_TEXT, PROTECTED_MAPPING_MSG_TITLE, MB_ICONEXCLAMATION | MB_YESNO) == IDYES ? true : false;
+            // if this flag isn't set properly it's possible for a flow graph or other code to still apply the configuration
+            EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetIgnoreProtection, shouldApplyMapping);
+        }
 
-            static const char* PROTECTED_MAPPING_MSG_TITLE = "AWS Mapping Is Protected";
-            static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";
-            if (clientManager->IsProtectedMapping())
-            {
-                shouldApplyMapping = CryMessageBox(PROTECTED_MAPPING_MSG_TEXT, PROTECTED_MAPPING_MSG_TITLE, MB_ICONEXCLAMATION | MB_YESNO) == IDYES ? true : false;
-                // if this flag isn't set properly it's possible for a flow graph or other code to still apply the configuration
-                clientManager->SetIgnoreProtection(shouldApplyMapping);
-            }
-
-            if (shouldApplyMapping)
-            {
-                clientManager->ApplyConfiguration();
-            }
+        if (shouldApplyMapping)
+        {
+            EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
         }
     }
     else
@@ -328,7 +332,33 @@ void AWSResourceManager::ProcessPythonOutput(PythonWorkerRequestId requestId, co
     else
     {
         qDebug() << "AWSResourceManager::ProcessPythonOutput- callback called" << "- requestId:" << requestId << "- key:" << key << "- value:" << value;
-        i.value()(key, value);
+
+        if (key == "error") {
+            QString message;
+            if (value.type() == QVariant::Type::List)
+            {
+                auto list = value.value<QVariantList>();
+                for (auto it = list.constBegin(); it != list.constEnd(); ++it)
+                {
+                    auto entry = *it;
+                    if (!message.isEmpty())
+                    {
+                        message += "\n";
+                    }
+                    message += entry.toString();
+                }
+            }
+            else
+            {
+                message = value.toString();
+            }
+            i.value()(key, QVariant{ message });
+        }
+        else
+        {
+            i.value()(key, value);
+        }
+
         if (key == "error" || key == "success")
         {
             qDebug() << "AWSResourceManager::ProcessPythonOutput- callback erased" << "- requestId:" << requestId << "- key:" << key << "- value:" << value;
@@ -484,6 +514,9 @@ void AWSResourceManager::ProcessOutputCreateAdmin(const QVariant& value)
     loginInfo.setLayout(loginInfoLayout);
 
     loginInfo.exec();
+    m_logger->LogWarning("The Cloud Gem Portal temporary administrator account credentials are:");
+    m_logger->LogWarning("Username:  " + message["administrator_name"].toString());
+    m_logger->LogWarning("Temporary password:  " + message["password"].toString());
 }
 
 void AWSResourceManager::ProcessOutputSupportedRegionList(RequestId requestId, const QVariant& value)
@@ -516,6 +549,7 @@ void AWSResourceManager::ProcessOutputProjectDescription(AWSResourceManager::Req
         m_fileMonitor->BeginMonitoring(FileChangeMonitor::MonitoredFileType::DeploymentAccessTemplate, details["DeploymentAccessTemplateFilePath"].value<QString>());
         m_fileMonitor->BeginMonitoring(FileChangeMonitor::MonitoredFileType::AWSCredentials, details["AWSCredentialsFilePath"].value<QString>());
         m_fileMonitor->BeginMonitoring(FileChangeMonitor::MonitoredFileType::GUIRefresh, details["GuiRefreshFilePath"].value<QString>());
+        m_fileMonitor->BeginMonitoring(FileChangeMonitor::MonitoredFileType::GemsFile, details["GemsFilePath"].value<QString>());
 
         // If any of the views were opened before startup was
         // complete the requests for the data they need will
@@ -595,9 +629,10 @@ void AWSResourceManager::UpdateSourceControlStates()
 {
     if (m_projectModel)
     {
-        QSharedPointer<IFileSourceControlModel> projectSettingsSource = m_projectSettingsSourceControlModel;
-
+        
         using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+
+        QSharedPointer<IFileSourceControlModel> projectSettingsSource = m_projectSettingsSourceControlModel;
         SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_projectModel->GetProjectSettingsFile().toStdString().c_str(), [projectSettingsSource](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
             {
                 projectSettingsSource->SetFlags(fileInfo.m_flags);
@@ -606,13 +641,21 @@ void AWSResourceManager::UpdateSourceControlStates()
             );
 
         QSharedPointer<IFileSourceControlModel> deploymentTemplateSource = m_deploymentTemplateSourceControlModel;
-
         SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_projectModel->GetDeploymentTemplateFile().toStdString().c_str(), [deploymentTemplateSource](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
             {
                 deploymentTemplateSource->SetFlags(fileInfo.m_flags);
                 deploymentTemplateSource->SetStatus(fileInfo.m_status);
             }
             );
+
+        QSharedPointer<IFileSourceControlModel> gemsFileSource = m_gemsFileSourceControlModel;
+        SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_projectModel->GetGemsFile().toStdString().c_str(), [gemsFileSource](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+            {
+                gemsFileSource->SetFlags(fileInfo.m_flags);
+                gemsFileSource->SetStatus(fileInfo.m_status);
+            }
+            );
+
     }
 }
 
@@ -626,12 +669,15 @@ bool AWSResourceManager::DeploymentTemplateNeedsCheckout() const
     return m_deploymentTemplateSourceControlModel->FileNeedsCheckout();
 }
 
+bool AWSResourceManager::GemsFileNeedsCheckout() const
+{
+    return m_gemsFileSourceControlModel->FileNeedsCheckout();
+}
+
 void AWSResourceManager::ProcessOutputMappingList(AWSResourceManager::RequestId requestId, const QVariant& value)
 {
-    LmbrAWS::IClientManager* clientManager = m_editor->GetEnv()->pLmbrAWS->GetClientManager();
-
     QVariantMap map = value.value<QVariantMap>();
-    clientManager->SetProtectedMapping(map["Protected"].value<bool>());
+    EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetProtectedMapping, map["Protected"].value<bool>());
     QVariantList mappings = map["Mappings"].value<QVariantList>();
     for (auto it = mappings.constBegin(); it != mappings.constEnd(); ++it)
     {
@@ -639,10 +685,7 @@ void AWSResourceManager::ProcessOutputMappingList(AWSResourceManager::RequestId 
         QString type = mapping["ResourceType"].value<QString>();
         QString logicalName = mapping["Name"].value<QString>();
         QString physicalName = mapping["PhysicalResourceId"].value<QString>();
-        clientManager->SetLogicalMapping(
-            string {type.toStdString().c_str()},
-            string {logicalName.toStdString().c_str()},
-            string {physicalName.toStdString().c_str()});
+        EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetLogicalMapping, type.toStdString().c_str() , logicalName.toStdString().c_str() ,physicalName.toStdString().c_str());
 
         if (type == "Custom::CognitoUserPool")
         {
@@ -653,11 +696,7 @@ void AWSResourceManager::ProcessOutputMappingList(AWSResourceManager::RequestId 
                 QVariantMap appMapping = appIter.value().value<QVariantMap>();
                 QString clientId = appMapping["ClientId"].value<QString>();
                 QString clientSecret = appMapping["ClientSecret"].value<QString>();
-                clientManager->SetLogicalUserPoolClientMapping(
-                    string {logicalName.toStdString().c_str()}, 
-                    string {clientName.toStdString().c_str()}, 
-                    string {clientId.toStdString().c_str()}, 
-                    string {clientSecret.toStdString().c_str()});
+                EBUS_EVENT(CloudGemFramework::CloudCanvasUserPoolMappingsBus, SetLogicalUserPoolClientMapping, logicalName.toStdString().c_str(), clientName.toStdString().c_str(), clientId.toStdString().c_str(), clientSecret.toStdString().c_str());
             }
         }
     }
@@ -860,7 +899,7 @@ void AWSResourceManager::OnFileChanged(FileChangeMonitor::MonitoredFileType file
         RefreshProjectDescription(); // project may have been initialized
         RefreshMappingsList(); // project may have been initialized
         RefreshDeploymentList(); // default deployment may have changed; deployments may be added or removed
-        RefreshResourceGroupList(); // resource groups may have been added/removed or enbabled/disabled
+        RefreshResourceGroupList(); // resource groups may have been enbabled/disabled
         break;
 
     case FileChangeMonitor::MonitoredFileType::UserSettings:
@@ -898,6 +937,10 @@ void AWSResourceManager::OnFileChanged(FileChangeMonitor::MonitoredFileType file
     case FileChangeMonitor::MonitoredFileType::GUIRefresh:
         RefreshMappingsList(); // mappings may have changed
         RefreshDeploymentList(); // default deployment may have changed; deployments may be added or removed
+        RefreshResourceGroupList(); // groups may have been added/removed
+        break;
+
+    case FileChangeMonitor::MonitoredFileType::GemsFile:
         RefreshResourceGroupList(); // groups may have been added/removed
         break;
 
@@ -1091,6 +1134,21 @@ void AWSResourceManager::RequestEditDeploymentTemplate()
         );
 }
 
+
+void AWSResourceManager::RequestEditGemsFile()
+{
+    QSharedPointer<IFileSourceControlModel> sourceControlModel = m_gemsFileSourceControlModel;
+
+    using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, GetProjectModel()->GetGemsFile().toStdString().c_str(), true, [sourceControlModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+    {
+        sourceControlModel->SetFlags(fileInfo.m_flags);
+        sourceControlModel->SetStatus(fileInfo.m_status);
+    }
+    );
+}
+
+
 void AWSResourceManager::RequestUpdateSourceModel(QSharedPointer<IFileSourceControlModel> sourceModel, QSharedPointer<IFileContentModel> contentModel)
 {
     using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
@@ -1203,7 +1261,14 @@ void AWSResourceManager::OpenCGP()
     };
 
     bool failOnLoadError = true;
-    ExecuteAsync(callback, "cloud-gem-portal", QVariantMap{}, failOnLoadError);
+    QVariantMap args;
+   
+    auto identity = Ly::Identity::GetDeveloperCognitoSettings();
+    /// helper class that gets Cognito credentials when needed
+    Aws::Auth::PersistentCognitoIdentityProvider_JsonFileImpl persistentIdentityProvider(identity.GetIdentityPoolId(), identity.GetAccountId());
+        
+    args["cognito_prod"] = persistentIdentityProvider.GetIdentityId().c_str();    
+    ExecuteAsync(callback, "cloud-gem-portal", args, failOnLoadError);
 
 }
 

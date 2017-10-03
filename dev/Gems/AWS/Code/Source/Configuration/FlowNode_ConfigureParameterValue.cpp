@@ -11,8 +11,9 @@
 */
 #include <StdAfx.h>
 #include <Configuration/FlowNode_ConfigureParameterValue.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 namespace LmbrAWS
 {
@@ -47,11 +48,10 @@ namespace LmbrAWS
         {
             auto name = GetPortString(pActInfo, EIP_Name);
             auto value = GetPortString(pActInfo, EIP_Value);
+            
+            EBUS_EVENT(CloudGemFramework::CloudCanvasMappingsBus, SetLogicalMapping, "", name.c_str(), value.c_str());
 
-            auto clientManager = gEnv->pLmbrAWS->GetClientManager();
-            clientManager->GetConfigurationParameters().SetParameter(name, value);
-
-            clientManager->ApplyConfiguration();
+            EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
 
             ActivateOutput(pActInfo, EOP_Success, true);
         }

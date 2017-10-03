@@ -64,9 +64,9 @@ unsigned int g_EnableMultipleAssert = 0;//set to something else than 0 if to ena
 
 #include "StringUtils.h"
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if defined(LINUX) || defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
 typedef int FS_ERRNO_TYPE;
-#if defined(APPLE) || defined(ORBIS)
+#if defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
 typedef struct stat FS_STAT_TYPE;
 #else
 typedef struct stat64 FS_STAT_TYPE;
@@ -80,7 +80,7 @@ static const FS_ERRNO_TYPE FS_EISDIR = EISDIR;
 
 #endif
 
-#if (defined(LINUX) || defined(APPLE) || defined(ORBIS)) && (!defined(_RELEASE) || defined(_DEBUG))
+#if (defined(LINUX) || defined(APPLE) || defined(ORBIS)) && (!defined(_RELEASE) || defined(_DEBUG)) // ACCEPTED_USE
 struct SAssertData
 {
     int line;
@@ -245,7 +245,7 @@ char* ltoa (long i, char* a, int radix)
 }
 
 
-#if defined(ANDROID) || defined (ORBIS)
+#if defined(ANDROID) || defined (ORBIS) // ACCEPTED_USE
 // For Linux it's redefined to wcscasecmp and wcsncasecmp'
 int wcsicmp (const wchar_t* s1, const wchar_t* s2)
 {
@@ -1076,7 +1076,7 @@ BOOL GetComputerName(LPSTR lpBuffer, LPDWORD lpnSize)
 }
 #endif
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if defined(LINUX) || defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
 DWORD GetCurrentProcessId(void)
 {
     return (DWORD)getpid();

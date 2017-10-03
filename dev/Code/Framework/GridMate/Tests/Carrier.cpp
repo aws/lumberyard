@@ -46,7 +46,7 @@ public:
 * SecureDriverTest
 * Applies SecureSocketDriver to tests
 */
-template<class Test> 
+template<class Test>
 class SecureDriverTest : public Test
 {
 public:
@@ -188,7 +188,7 @@ namespace UnitTest
 #endif // AZ_SOCKET_IPV6_SUPPORT
 
             CarrierCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier test!");
 
@@ -326,7 +326,7 @@ namespace UnitTest
         }
     };
 
-    class CarrierAsyncHandshakeTest
+    class Integ_CarrierAsyncHandshakeTest
         : public GridMateMPTestFixture
         , protected SocketDriverProvider
     {
@@ -368,7 +368,7 @@ namespace UnitTest
         void run()
         {
             CarrierCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier test!");
             clientCarrierDesc.m_driver = CreateDriverForJoin();
@@ -459,7 +459,7 @@ namespace UnitTest
         void run()
         {
             CarrierCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier stress test!");
 
@@ -587,7 +587,7 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
 
             CarrierCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_driver = CreateDriverForJoin();
@@ -751,7 +751,7 @@ namespace UnitTest
         }
     };
 
-    class CarrierDisconnectDetectionTest
+    class Integ_CarrierDisconnectDetectionTest
         : public GridMateMPTestFixture
         , protected SocketDriverProvider
     {
@@ -762,14 +762,14 @@ namespace UnitTest
             DefaultSimulator clientSimulator;
             clientSimulator.SetOutgoingPacketLoss(2, 2); // drop 50% packets
 
-            CarrierDesc serverCarrierDesc;
+            TestCarrierDesc serverCarrierDesc;
             serverCarrierDesc.m_port = 4428;
             serverCarrierDesc.m_enableDisconnectDetection = true;
             serverCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.4f; // disconnect once hit 40% loss
             serverCarrierDesc.m_disconnectDetectionRttThreshold = 50; // disconnect once hit 50 msec rtt
             serverCarrierDesc.m_driver = CreateDriverForHost();
 
-            CarrierDesc clientCarrierDesc = serverCarrierDesc;
+            TestCarrierDesc clientCarrierDesc = serverCarrierDesc;
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_simulator = &clientSimulator;
             clientCarrierDesc.m_driver = CreateDriverForJoin();
@@ -835,7 +835,7 @@ namespace UnitTest
     /*
      * Sends reliable messages across different channels to each other
      */
-    class CarrierMultiChannelTest
+    class Integ_CarrierMultiChannelTest
         : public GridMateMPTestFixture
         , protected SocketDriverProvider
     {
@@ -861,7 +861,7 @@ namespace UnitTest
             for (int i = 0; i < nCarriers; ++i)
             {
                 // Create carriers
-                CarrierDesc desc;
+                TestCarrierDesc desc;
                 desc.m_port = basePort + i;
                 desc.m_driver = i == c1 ? CreateDriverForHost() : CreateDriverForJoin();
                 desc.m_enableDisconnectDetection = true;
@@ -936,7 +936,7 @@ namespace UnitTest
     };
 
     /*** Congestion control back pressure test */
-    class CarrierBackpressureTest
+    class Integ_CarrierBackpressureTest
         : public GridMateMPTestFixture
         , protected SocketDriverProvider, public CarrierEventBus::Handler
     {
@@ -961,14 +961,14 @@ namespace UnitTest
             clientSimulator.SetIncomingLatency(owttMS, owttMS);
             clientSimulator.SetOutgoingLatency(owttMS, owttMS);
 
-            CarrierDesc serverCarrierDesc;
+            TestCarrierDesc serverCarrierDesc;
             //serverCarrierDesc.m_threadInstantResponse = true;
             serverCarrierDesc.m_port = 4428;
             serverCarrierDesc.m_enableDisconnectDetection = true;
             serverCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.9f; // disconnect once hit 90% loss
             serverCarrierDesc.m_driver = CreateDriverForHost();
 
-            CarrierDesc clientCarrierDesc = serverCarrierDesc;
+            TestCarrierDesc clientCarrierDesc = serverCarrierDesc;
             //clientCarrierDesc.m_threadInstantResponse = true;
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_simulator = &clientSimulator;
@@ -980,7 +980,7 @@ namespace UnitTest
             carriers[1].carrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
 
             Carrier* clientCarrier = carriers[0].carrier;
-            Carrier* serverCarrier = carriers[1].carrier;   
+            Carrier* serverCarrier = carriers[1].carrier;
 
             //for (int testCaseNum = 0; testCaseNum < 1; ++testCaseNum)
             {
@@ -988,7 +988,7 @@ namespace UnitTest
                 int nMsgReceived = 0, nMsgSent = 0;
 
                 clientCarrier->Connect("127.0.0.1", serverCarrierDesc.m_port); // loopback connect client -> server
-                
+
                 for (int attempts = 0; serverCarrier->GetNumConnections() == 0 && attempts <= 1000; attempts++) // wait until connected
                 {
                     clientCarrier->Update();
@@ -997,7 +997,7 @@ namespace UnitTest
                     AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
                 }
                 AZ_TEST_ASSERT(serverCarrier->GetNumConnections() == 1); // Must have connected
-                
+
                 ConnectionID clientId = clientCarrier->GetConnectionId(0);
                 ConnectionID serverId = serverCarrier->GetConnectionId(0);
 
@@ -1007,7 +1007,7 @@ namespace UnitTest
                 {
                     AZ_TEST_ASSERT(serverCarrier->GetNumConnections() == 1); // Still connected
                     AZ_TEST_ASSERT(clientCarrier->GetNumConnections() == 1); // Still connected
-                    
+
                     if ( numUpdates == 1*updatesPerSecond)
                     {
                         clientSimulator.Enable(); // After stabilizing enable bad traffic conditions
@@ -1062,7 +1062,7 @@ namespace UnitTest
                     {
                         //AZ_TEST_ASSERT(passedAllTests());
                         clientSimulator.SetOutgoingPacketLoss(0, 0);    // After stabilizing disable bad traffic conditions
-                                                                        //WARN: disabling the simulator causes very high jitter 
+                                                                        //WARN: disabling the simulator causes very high jitter
                                                                         //and ruins the test data
                         carriers[0].eventualIncrease = true;
                         carriers[0].passed = false;
@@ -1150,7 +1150,7 @@ namespace UnitTest
                 TrafficControl::Statistics stats, sessionStats;
                 Carrier::FlowInformation flowInfo;
                 carrier->QueryStatistics(id, &stats, &sessionStats, nullptr, nullptr, &flowInfo);
-                
+
 
                 if (test->bytesPerSecond && test->eventualDecrease && (sendLimitBytesPerSec < test->bytesPerSecond))
                 {
@@ -1170,15 +1170,15 @@ namespace UnitTest
                 AZ_Assert(sendLimitBytesPerSec > 1000, "Should not allow decreasing below 1000Bps! Attempted %u", sendLimitBytesPerSec);
 
                 test->bytesPerSecond = sendLimitBytesPerSec;
-                
-                
+
+
             };
             //End CarrierEventBus
             //////////////////////////////////////////////////////////////////////////
         private:
             CarrierTest carriers[2];               ///< 0 = client, 1 = server
 
-            CarrierTest* isOurCarrier(Carrier* carrier)             
+            CarrierTest* isOurCarrier(Carrier* carrier)
             {
                 for (CarrierTest& cr : carriers)
                 {
@@ -1210,31 +1210,31 @@ namespace UnitTest
 GM_TEST_SUITE(CarrierSuite)
 GM_TEST(CarrierBasicTest)
 GM_TEST(CarrierTest)
-GM_TEST(CarrierDisconnectDetectionTest)
-GM_TEST(CarrierAsyncHandshakeTest)
+GM_TEST(Integ_CarrierDisconnectDetectionTest)
+GM_TEST(Integ_CarrierAsyncHandshakeTest)
 #if !defined(AZ_DEBUG_BUILD) // this test is a little slow for debug
 //GM_TEST(CarrierStressTest)
 #endif
-GM_TEST(CarrierMultiChannelTest)
-GM_TEST(CarrierBackpressureTest)
+GM_TEST(Integ_CarrierMultiChannelTest)
+GM_TEST(Integ_CarrierBackpressureTest)
 
 
 #if defined(AZ_TESTS_ENABLED)
 
 #if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
-template <class T> 
+template <class T>
 T* CreateSecureDriverTest();
 
 template <class T>
-class SecureDriverTester : public testing::Test
+class Integ_SecureDriverTester : public testing::Test
 {
 protected:
-    SecureDriverTester() : m_runner()
+    Integ_SecureDriverTester() : m_runner()
     {
         m_runner = new SecureDriverTest<T>();
     }
 
-    virtual ~SecureDriverTester() { delete m_runner; }
+    virtual ~Integ_SecureDriverTester() { delete m_runner; }
     void Test()
     {
         reinterpret_cast<T*>(m_runner)->run();
@@ -1246,27 +1246,27 @@ protected:
 
     GM_TEST_FACTORY_SECUREDRIVER(CarrierBasicTest)
     GM_TEST_FACTORY_SECUREDRIVER(CarrierTest)
-    GM_TEST_FACTORY_SECUREDRIVER(CarrierDisconnectDetectionTest)
-    GM_TEST_FACTORY_SECUREDRIVER(CarrierAsyncHandshakeTest)
-    GM_TEST_FACTORY_SECUREDRIVER(CarrierMultiChannelTest)
+    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierDisconnectDetectionTest)
+    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierAsyncHandshakeTest)
+    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierMultiChannelTest)
     #if !defined(AZ_DEBUG_BUILD)
         GM_TEST_FACTORY_SECUREDRIVER(CarrierStressTest)
         typedef testing::Types<
-            ::UnitTest::CarrierBasicTest, 
-            ::UnitTest::CarrierTest, 
-            ::UnitTest::CarrierDisconnectDetectionTest, 
-            ::UnitTest::CarrierAsyncHandshakeTest, 
-            ::UnitTest::CarrierMultiChannelTest> CarrierTests;
+            ::UnitTest::CarrierBasicTest,
+            ::UnitTest::CarrierTest,
+            ::UnitTest::Integ_CarrierDisconnectDetectionTest,
+            ::UnitTest::Integ_CarrierAsyncHandshakeTest,
+            ::UnitTest::Integ_CarrierMultiChannelTest> Integ_CarrierTests;
     #else
         typedef testing::Types<
-            ::UnitTest::CarrierBasicTest, 
-            ::UnitTest::CarrierTest, 
-            ::UnitTest::CarrierDisconnectDetectionTest, 
-            ::UnitTest::CarrierAsyncHandshakeTest, 
-            ::UnitTest::CarrierMultiChannelTest> CarrierTests;
+            ::UnitTest::CarrierBasicTest,
+            ::UnitTest::CarrierTest,
+            ::UnitTest::Integ_CarrierDisconnectDetectionTest,
+            ::UnitTest::Integ_CarrierAsyncHandshakeTest,
+            ::UnitTest::Integ_CarrierMultiChannelTest> Integ_CarrierTests;
     #endif
-    TYPED_TEST_CASE(SecureDriverTester, CarrierTests);
-    TYPED_TEST(SecureDriverTester, CarrierTests) { Test(); }
+    TYPED_TEST_CASE(Integ_SecureDriverTester, Integ_CarrierTests);
+    TYPED_TEST(Integ_SecureDriverTester, Integ_CarrierTests) { Test(); }
 #endif // TEST_WITH_SECURE_SOCKET_DRIVER
 
 #endif // defined(AZ_TESTS_ENABLED)

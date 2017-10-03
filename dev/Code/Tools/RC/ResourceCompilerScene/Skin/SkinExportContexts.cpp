@@ -18,16 +18,18 @@ namespace AZ
     {
         SkinGroupExportContext::SkinGroupExportContext(SceneAPI::Events::ExportEventContext& parent,
             const SceneAPI::DataTypes::ISkinGroup& group, Phase phase)
-            : m_scene(parent.GetScene())
+            : m_products(parent.GetProductList())
+            , m_scene(parent.GetScene())
             , m_outputDirectory(parent.GetOutputDirectory())
             , m_group(group)
             , m_phase(phase)
         {
         }
 
-        SkinGroupExportContext::SkinGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-            const SceneAPI::DataTypes::ISkinGroup& group, Phase phase)
-            : m_scene(scene)
+        SkinGroupExportContext::SkinGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, 
+            const AZStd::string& outputDirectory, const SceneAPI::DataTypes::ISkinGroup& group, Phase phase)
+            : m_products(products)
+            , m_scene(scene)
             , m_outputDirectory(outputDirectory)
             , m_group(group)
             , m_phase(phase)
@@ -35,7 +37,8 @@ namespace AZ
         }
 
         SkinGroupExportContext::SkinGroupExportContext(const SkinGroupExportContext& copyContext, Phase phase)
-            : m_scene(copyContext.m_scene)
+            : m_products(copyContext.m_products)
+            , m_scene(copyContext.m_scene)
             , m_outputDirectory(copyContext.m_outputDirectory)
             , m_group(copyContext.m_group)
             , m_phase(phase)

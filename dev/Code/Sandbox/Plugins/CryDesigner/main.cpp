@@ -64,13 +64,13 @@ public:
         ClipVolumeTool::RegisterTool(rc);
 
 #ifndef DISABLE_UVMAPPING_WINDOW
-        QtViewOptions options;
+        AzToolsFramework::ViewPaneOptions options;
         options.canHaveMultipleInstances = true;
         options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-        m_bPanelRegistered = RegisterQtViewPane<CD::UVMappingMainWnd>(
-                GetIEditor(),
-                Serialization::getEnumDescription<CD::EDesignerTool>().name(CD::eDesigner_UVMapping),
-                "CryDesigner", options);
+        AzToolsFramework::RegisterViewPane<CD::UVMappingMainWnd>(
+            Serialization::getEnumDescription<CD::EDesignerTool>().name(CD::eDesigner_UVMapping),
+            "CryDesigner", options);
+        m_bPanelRegistered = true;
 #endif
     }
     void Release() override

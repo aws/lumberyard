@@ -177,9 +177,9 @@ namespace BMPHelper
                     }
                 }
             }
-            void SetFile(AZ::IO::HandleType fileHandle, bool bClose, bool bRestoreCur)
+            void SetFile(AZ::IO::HandleType handle, bool bClose, bool bRestoreCur)
             {
-                m_fileHandle = fileHandle;
+                m_fileHandle = handle;
                 m_bCloseFile = bClose;
                 m_bRestoreCur = bRestoreCur;
                 if (m_fileHandle != AZ::IO::InvalidHandle && m_bRestoreCur)

@@ -94,7 +94,8 @@ namespace AZ
 
         bool IsFinite() const;
 
-        bool operator==(const Obb& rhs);
+        bool operator==(const Obb& rhs) const;
+        bool operator!=(const Obb& rhs) const;
 
     private:
         Vector3 m_position;

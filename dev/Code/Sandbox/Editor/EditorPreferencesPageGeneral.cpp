@@ -33,7 +33,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("StylusMode", &GeneralSettings::m_stylusMode)
         ->Field("LayerDoubleClicking", &GeneralSettings::m_bLayerDoubleClicking)
         ->Field("ShowNews", &GeneralSettings::m_bShowNews)
-        ->Field("UseNewMenuLayout", &GeneralSettings::m_useNewMenuLayout)
         ->Field("EnableQtDocking", &GeneralSettings::m_enableQtDocking)
         ->Field("ShowFlowgraphNotification", &GeneralSettings::m_showFlowGraphNotification)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector);
@@ -68,9 +67,17 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
     AZ::EditContext* editContext = serialize.GetEditContext();
     if (editContext)
     {
+        // Check if we should show legacy properties
+        AZ::Crc32 shouldShowLegacyItems = AZ::Edit::PropertyVisibility::Hide;
+        if (GetIEditor()->IsLegacyUIEnabled())
+        {
+            shouldShowLegacyItems = AZ::Edit::PropertyVisibility::Show;
+        }
+
         editContext->Class<GeneralSettings>("General Settings", "General Editor Preferences")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_previewPanel, "Show Geometry Preview Panel", "Show Geometry Preview Panel")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_treeBrowserPanel, "Show Geometry Tree Browser Panel", "Show Geometry Tree Browser Panel")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_applyConfigSpec, "Hide objects by config spec", "Hide objects by config spec")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSourceControl, "Enable Source Control", "Enable Source Control")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_saveOnlyModified, "External Layers: Save only Modified", "External Layers: Save only Modified")
@@ -88,9 +95,10 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
                 ->EnumAttribute(ToolBarIconSize::ToolBarIconSize_32, "32")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_stylusMode, "Stylus Mode", "Stylus Mode for tablets and other pointing devices")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bLayerDoubleClicking, "Enable Double Clicking in Layer Editor", "Enable Double Clicking in Layer Editor")
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_useNewMenuLayout, "Use New Main Menu (RESTART REQUIRED)", "Display the new menu layout. Uncheck to switch to the old menu layout")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableQtDocking, "Enable Legacy Docking (RESTART REQUIRED)", "Enables the older, legacy (Qt) docking system. Use at your own risk")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_showFlowGraphNotification, "Show FlowGraph Notification", "Display the FlowGraph notification regarding scripting.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.");
 
         editContext->Class<Undo>("Undo", "")
@@ -144,8 +152,6 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.bShowDashboardAtStartup = m_generalSettings.m_showDashboard;
     gSettings.bAutoloadLastLevelAtStartup = m_generalSettings.m_autoLoadLastLevel;
     gSettings.stylusMode = m_generalSettings.m_stylusMode;
-    gSettings.useNewMenuLayout = m_generalSettings.m_useNewMenuLayout;
-
     gSettings.enableQtDocking = m_generalSettings.m_enableQtDocking;
     gSettings.showFlowgraphNotification = m_generalSettings.m_showFlowGraphNotification;
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
@@ -190,8 +196,6 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_showDashboard = gSettings.bShowDashboardAtStartup;
     m_generalSettings.m_autoLoadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
-    m_generalSettings.m_useNewMenuLayout = gSettings.useNewMenuLayout;
-
     m_generalSettings.m_enableQtDocking = gSettings.enableQtDocking;
     m_generalSettings.m_showFlowGraphNotification = gSettings.showFlowgraphNotification;
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;

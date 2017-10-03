@@ -26,6 +26,9 @@ class CCharacterTrack
     : public TAnimTrack<ICharacterKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CCharacterTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CCharacterTrack, "{3F701860-78BC-451A-B1DD-90F75DB9A7A2}", IAnimTrack);
+
     CCharacterTrack()
         : m_iAnimationLayer(-1) {}
 
@@ -41,17 +44,14 @@ public:
     //! a special consideration is required to compute the actual duration.
     float GetKeyDuration(int key) const;
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
-
     int GetAnimationLayerIndex() const { return m_iAnimationLayer; }
     void SetAnimationLayerIndex(int index) { m_iAnimationLayer = index; }
 
     virtual EAnimValue GetValueType() { return eAnimValue_CharacterAnim; }
 
     float GetEndTime() const { return m_timeRange.end; }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
     int m_iAnimationLayer;

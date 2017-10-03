@@ -62,13 +62,15 @@ class CAnimEntityNode
     struct SAnimState;
 
 public:
-    CAnimEntityNode(const int id);
+    AZ_CLASS_ALLOCATOR(CAnimEntityNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimEntityNode, "{B84FED66-38AD-497E-AB39-BCA51F1A99E4}", CAnimNode);
+
+    CAnimEntityNode();
+    CAnimEntityNode(const int id, EAnimNodeType nodeType);
     ~CAnimEntityNode();
     static void Initialize();
 
     void EnableEntityPhysics(bool bEnable);
-
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Entity; }
 
     virtual void AddTrack(IAnimTrack* pTrack);
 
@@ -97,11 +99,16 @@ public:
     void SetRotate(float time, const Quat& quat) override;
     void SetScale(float time, const Vec3& scale) override;
 
+    IAnimTrack* CreateTrack(const CAnimParamType& paramType) override;
+    bool RemoveTrack(IAnimTrack* pTrack) override;
+
     Vec3 GetPos() override { return m_pos; };
     Quat GetRotate() override { return m_rotate; };
     Vec3 GetScale() override { return m_scale; };
 
     virtual void Activate(bool bActivate);
+
+    ICharacterInstance* GetCharacterInstance() override;
 
     //////////////////////////////////////////////////////////////////////////
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
@@ -120,15 +127,6 @@ public:
     static int GetParamCountStatic();
     static bool GetParamInfoStatic(int nIndex, SParamInfo& info);
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_characterTrackAnimator);
-        pSizer->AddObject(m_SoundInfo);
-        pSizer->AddObject(m_lookAtTarget);
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
-
     ILINE void SetSkipInterpolatedCameraNode(const bool bSkipNodeAnimation) override { m_bSkipInterpolatedCameraNodeAnimation = bSkipNodeAnimation; }
     ILINE bool IsSkipInterpolatedCameraNodeEnabled() const { return m_bSkipInterpolatedCameraNodeAnimation; }
 
@@ -137,6 +135,8 @@ public:
 
     ILINE const Quat& GetCameraInterpolationRotation() const { return m_interpRot; }
     ILINE void SetCameraInterpolationRotation(const Quat& rotation){ m_interpRot = rotation; }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
@@ -196,7 +196,7 @@ private:
     CAnimationCacher m_animationCacher;
 
     //! Pointer to target animation node.
-    _smart_ptr<IAnimNode> m_target;
+    AZStd::intrusive_ptr<IAnimNode> m_target;
 
     // Cached parameters of node at given time.
     float m_time;
@@ -264,7 +264,7 @@ private:
     #endif
 
     // helper class responsible for animating Character Tracks (aka 'Animation' tracks in the TrackView UI)
-    CCharacterTrackAnimator   m_characterTrackAnimator;
+    CCharacterTrackAnimator* m_characterTrackAnimator = nullptr;
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_ENTITYNODE_H

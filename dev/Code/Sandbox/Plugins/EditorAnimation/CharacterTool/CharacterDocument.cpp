@@ -20,7 +20,6 @@
 #include <IGameFramework.h>
 #include <ICryAnimation.h>
 #include <IEditor.h>
-#include <IInput.h>
 #include <IShaderParamCallback.h>
 #include <IVertexAnimation.h>
 #include <IPhysicsDebugRenderer.h>
@@ -1230,7 +1229,7 @@ namespace CharacterTool {
         }
         if (recursiveAttachmentDeleted)
         {
-            QWidget* geppettoWindow = QtViewPaneManager::instance()->GetPane(LyViewPane::Geppetto)->m_dockWidget;
+            QWidget* geppettoWindow = QtViewPaneManager::instance()->GetPane(LyViewPane::LegacyGeppetto)->m_dockWidget;
             QMessageBox::critical(geppettoWindow, "Error", "Character can't be attached to its own joint.");
             // In the absence(?) of any cheaper way to refresh the property trees, using the following for this case
             // of rare user error.
@@ -1426,8 +1425,8 @@ namespace CharacterTool {
                 if (std::find(ev.dependentEntries.begin(), ev.dependentEntries.end(), GetActiveCharacterEntry()) != ev.dependentEntries.end())
                 {
                     AnimationSetFilter filter;
-                    skeleton->content.ComposeCompleteAnimationSetFilter(&filter, m_system->skeletonList.get());
-                    if (*m_loadedAnimationSetFilter != filter)
+                    bool setFilterSuccess = skeleton->content.ComposeCompleteAnimationSetFilter(&filter, m_system->skeletonList.get());
+                    if (setFilterSuccess && *m_loadedAnimationSetFilter != filter)
                     {
                         *m_loadedAnimationSetFilter = filter;
                         ReloadCHRPARAMS();
@@ -2034,7 +2033,8 @@ namespace CharacterTool {
             }
 
             // get relative movement
-            QuatT relMove = skeletonAnim.GetRelMovement();
+            QuatT relMove;
+            bool relMoveSet = false;
 
             const int layerId = m_system->scene->layers.activeLayer;
             const uint32 animationCount = skeletonAnim.GetNumAnimsInFIFO(layerId);
@@ -2049,6 +2049,7 @@ namespace CharacterTool {
                     {
                         //At this point the animation pose was already fully updated by StartAnimationProcessing(params)
                         relMove = m_lastCalculateRelativeMovement; //if we set a new time with 'scrubbing' then we have to work with one frame delay (or we will see foot-sliding at low framerate)
+                        relMoveSet = true;
                         //Set a new animation-time. We will see the effect one frame later.
                         skeletonAnim.SetAnimationNormalizedTime(pAnimation, m_NormalizedTimeSmooth, 1);
                         //Read back the new 'locator movement' immediately and use it next frame.
@@ -2064,6 +2065,10 @@ namespace CharacterTool {
                         m_NormalizedTime = skeletonAnim.GetAnimationNormalizedTime(pAnimation);
                     }
                 }
+            }
+            if (!relMoveSet)
+            {
+                relMove = skeletonAnim.GetRelMovement();
             }
 
             m_PhysicalLocation.s = 1.0f; //uniform scaling is missing

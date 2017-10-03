@@ -14,9 +14,6 @@
 #include <platform_impl.h>
 #include <IGem.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
-#include "GestureManager.h"
-
-#include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 
 namespace Gestures
 {
@@ -29,39 +26,9 @@ namespace Gestures
         GesturesModule()
             : CryHooksModule()
         {
-            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-            m_descriptors.insert(m_descriptors.end(), {
-                Manager::CreateDescriptor(),
-            });
-
-
-
-
-
-
-
-            // This is an internal Amazon gem, so register it's components for metrics tracking, otherwise the name of the component won't get sent back.
-            // IF YOU ARE A THIRDPARTY WRITING A GEM, DO NOT REGISTER YOUR COMPONENTS WITH EditorMetricsComponentRegistrationBus
-            AZStd::vector<AZ::Uuid> typeIds;
-            typeIds.reserve(m_descriptors.size());
-            for (AZ::ComponentDescriptor* descriptor : m_descriptors)
-            {
-                typeIds.emplace_back(descriptor->GetUuid());
-            }
-            EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, typeIds);
         }
 
         ~GesturesModule() override = default;
-
-        /**
-        * Add required SystemComponents to the SystemEntity.
-        */
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            return AZ::ComponentTypeList{
-                azrtti_typeid<Manager>(),
-            };
-        }
 
         void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
         {

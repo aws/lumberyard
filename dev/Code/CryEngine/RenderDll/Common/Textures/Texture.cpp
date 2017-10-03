@@ -29,6 +29,7 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <CryEngineAPI.h>
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
 #include "../../XRenderD3D9/DriverD3D.h" // for gcpRendD3D
 #endif
@@ -839,7 +840,16 @@ CTexture* CTexture::ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst)
 #endif
     bool bPrecachePhase = CTexture::s_bPrecachePhase && !(nFlags & FT_IGNORE_PRECACHE);
 
-    if (bPrecachePhase)
+    ESystemGlobalState currentGlobalState = GetISystem()->GetSystemGlobalState();
+    const bool levelLoading = currentGlobalState == ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START;
+
+    // Load textures immediately during level load since texture load 
+    // requests during this phase are probably coming from a loading screen.
+    if (levelLoading || !bPrecachePhase)
+    {
+        pTex->Load(eTFDst);
+    }
+    else
     {
         // NOTE: attached alpha isn't detectable by flags before the header is loaded, so we do it by file-suffix
         if (/*(nFlags & FT_TEX_NORMAL_MAP) &&*/ TextureHelpers::VerifyTexSuffix(EFTT_NORMALS, name) && TextureHelpers::VerifyTexSuffix(EFTT_SMOOTHNESS, name))
@@ -851,11 +861,6 @@ CTexture* CTexture::ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst)
         pTex->m_nFlags = nFlags;
         pTex->m_bPostponed = true;
         pTex->m_bWasUnloaded = true;
-    }
-
-    if (!bPrecachePhase)
-    {
-        pTex->Load(eTFDst);
     }
 
     return pTex;
@@ -1213,7 +1218,7 @@ bool CTexture::Load(CImageFile* pImage)
     {
         m_nFlags |= FT_SPLITTED;
     }
-    if (pImage->mfGet_Flags() & FIM_X360_NOT_PRETILED)
+    if (pImage->mfGet_Flags() & FIM_X360_NOT_PRETILED) // ACCEPTED_USE
     {
         m_nFlags |= FT_TEX_WAS_NOT_PRE_TILED;
     }
@@ -1840,32 +1845,32 @@ byte* CTexture::GetData32(int nSide, int nLevel, byte* pDst, ETEX_Format eDstFor
 #if (defined(WIN32) || defined(WIN64)) && !defined(NULL_RENDERER)
     CDeviceTexture* pDevTexture = GetDevTexture();
     pDevTexture->DownloadToStagingResource(D3D11CalcSubresource(nLevel, nSide, m_nMips), [&](void* pData, uint32 rowPitch, uint32 slicePitch)
-    {
-        if (m_eTFDst != eTF_R8G8B8A8)
         {
-            int nOutSize = 0;
-
-            if (m_eTFSrc == eDstFormat && pDst)
+            if (m_eTFDst != eTF_R8G8B8A8)
             {
-                memcpy(pDst, pData, GetDeviceDataSize());
+                int nOutSize = 0;
+
+                if (m_eTFSrc == eDstFormat && pDst)
+                {
+                    memcpy(pDst, pData, GetDeviceDataSize());
+                }
+                else
+                {
+                    pDst = Convert((byte*)pData, m_nWidth, m_nHeight, 1, m_eTFSrc, eDstFormat, nOutSize, true);
+                }
             }
             else
             {
-                pDst = Convert((byte*)pData, m_nWidth, m_nHeight, 1, m_eTFSrc, eDstFormat, nOutSize, true);
-            }
-        }
-        else
-        {
-            if (!pDst)
-            {
-                pDst = new byte[m_nWidth * m_nHeight * 4];
+                if (!pDst)
+                {
+                    pDst = new byte[m_nWidth * m_nHeight * 4];
+                }
+
+                memcpy(pDst, pData, m_nWidth * m_nHeight * 4);
             }
 
-            memcpy(pDst, pData, m_nWidth * m_nHeight * 4);
-        }
-
-        return true;
-    });
+            return true;
+        });
 
     return pDst;
 #else
@@ -1918,7 +1923,7 @@ void CTexture::PostInit()
     }
 }
 
-int __cdecl TexCallback(const VOID* arg1, const VOID* arg2)
+int __cdecl TexCallback(const VOID * arg1, const VOID * arg2)
 {
     CTexture** pi1 = (CTexture**)arg1;
     CTexture** pi2 = (CTexture**)arg2;
@@ -1936,7 +1941,7 @@ int __cdecl TexCallback(const VOID* arg1, const VOID* arg2)
     return _stricmp(ti1->GetSourceName(), ti2->GetSourceName());
 }
 
-int __cdecl TexCallbackMips(const VOID* arg1, const VOID* arg2)
+int __cdecl TexCallbackMips(const VOID * arg1, const VOID * arg2)
 {
     CTexture** pi1 = (CTexture**)arg1;
     CTexture** pi2 = (CTexture**)arg2;
@@ -2642,7 +2647,7 @@ bool CTexture::ReloadFile(const char* szFileName)
             }
         }
 
-        // Since we do not have the information whether the modified file was also reloaded with the FT_ALPHA flag we will try to reload that as well  
+        // Since we do not have the information whether the modified file was also reloaded with the FT_ALPHA flag we will try to reload that as well
         Name = GenName(normalizedFile.c_str(), FT_ALPHA);
 
         itor = pRL->m_RMap.find(Name);
@@ -2817,7 +2822,12 @@ void CTexture::LoadDefaultSystemTextures()
 
         m_bLoadedSystem = true;
 
-        struct { CTexture*& pTexture; const char* szFileName; uint32 flags; }
+        struct
+        {
+            CTexture*& pTexture;
+            const char* szFileName;
+            uint32 flags;
+        }
         texturesFromFile[] =
         {
             { s_ptexNoTextureCM,                 "EngineAssets/TextureMsg/ReplaceMeCM.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
@@ -2988,13 +2998,16 @@ void CTexture::LoadDefaultSystemTextures()
             }
 
             // fixme: get texture resolution from CREWaterOcean
-            s_ptexWaterOcean = CTexture::CreateTextureObject("$WaterOceanMap", 64, 64, 1, eTT_2D, FT_DONT_RELEASE | FT_NOMIPS | FT_USAGE_DYNAMIC | FT_DONT_STREAM, eTF_Unknown, TO_WATEROCEANMAP);
+            uint32 waterOceanMapFlags = FT_DONT_RELEASE | FT_NOMIPS | FT_USAGE_DYNAMIC | FT_DONT_STREAM;
+            uint32 waterVolumeTempFlags = FT_NOMIPS | FT_USAGE_DYNAMIC | FT_DONT_STREAM;
 #if CRY_USE_METAL
             //We are now using the GPU to copy data into this texture. As a result we need to tag this texture as MtlTextureUsageRenderTarget so that on Metal can set the appropriate Usage flag.
-            s_ptexWaterVolumeTemp = CTexture::CreateTextureObject("$WaterVolumeTemp", 64, 64, 1, eTT_2D, /*FT_DONT_RELEASE |*/ FT_NOMIPS | FT_USAGE_DYNAMIC | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown);
-#else
-            s_ptexWaterVolumeTemp = CTexture::CreateTextureObject("$WaterVolumeTemp", 64, 64, 1, eTT_2D, /*FT_DONT_RELEASE |*/ FT_NOMIPS | FT_USAGE_DYNAMIC | FT_DONT_STREAM, eTF_Unknown);
+            waterOceanMapFlags |= FT_USAGE_RENDERTARGET;
+            waterVolumeTempFlags |= FT_USAGE_RENDERTARGET;
 #endif
+            s_ptexWaterOcean = CTexture::CreateTextureObject("$WaterOceanMap", 64, 64, 1, eTT_2D, waterOceanMapFlags, eTF_Unknown, TO_WATEROCEANMAP);
+            s_ptexWaterVolumeTemp = CTexture::CreateTextureObject("$WaterVolumeTemp", 64, 64, 1, eTT_2D, waterVolumeTempFlags, eTF_Unknown);
+            
             s_ptexWaterVolumeDDN = CTexture::CreateTextureObject("$WaterVolumeDDN", 64, 64, 1, eTT_2D, /*FT_DONT_RELEASE |*/ FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown,  TO_WATERVOLUMEMAP);
             s_ptexWaterVolumeRefl[0] = CTexture::CreateTextureObject("$WaterVolumeRefl", 64, 64, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown, TO_WATERVOLUMEREFLMAP);
             s_ptexWaterVolumeRefl[1] = CTexture::CreateTextureObject("$WaterVolumeReflPrev", 64, 64, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_FORCE_MIPS, eTF_Unknown, TO_WATERVOLUMEREFLMAPPREV);

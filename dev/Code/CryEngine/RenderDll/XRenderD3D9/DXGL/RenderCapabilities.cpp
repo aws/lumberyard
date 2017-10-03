@@ -40,6 +40,11 @@ namespace RenderCapabilities
         return GetGLDevice()->IsFeatureSupported(NCryOpenGL::eF_DepthClipping);
     }
 
+    bool SupportsDualSourceBlending()
+    {
+        return GetGLDevice()->IsFeatureSupported(NCryOpenGL::eF_DualSourceBlending);
+    }
+
 #if defined(OPENGL_ES)
     int GetAvailableMRTbpp()
     {

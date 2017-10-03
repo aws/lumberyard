@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Root": [
+        ],
+        
+        "TranslationBuilder": [
+            "Source/TranslationBuilderComponent.h",
+            "Source/TranslationBuilderComponent.cpp",
+            "Source/TranslationBuilderApplication.cpp"
+        ]
+    }
+}

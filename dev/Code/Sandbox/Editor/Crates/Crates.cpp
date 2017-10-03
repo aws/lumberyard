@@ -112,12 +112,11 @@ namespace AZ
             AZStd::string gemName;
             AzFramework::StringFunc::Path::GetFileName(cratePath.c_str(), gemName);
 
-            AZStd::string gemFolderRelPath = extractPath.substr(engineRoot.length());
-            AzFramework::StringFunc::RelativePath::Normalize(gemFolderRelPath);
-
-            AzFramework::StringFunc::Path::Join(gemFolderRelPath.c_str(), gemName.c_str(), gemFolderRelPath);
+            AZStd::string gemAbsPath;
+            AzFramework::StringFunc::Path::Join(extractPath.c_str(), gemName.c_str(), gemAbsPath);
+            AzFramework::StringFunc::Path::Join(gemAbsPath.c_str(), "gem.json", gemAbsPath);
             AZ::Outcome<Gems::IGemDescriptionConstPtr, AZStd::string> gemDescOutcome = AZ::Failure<AZStd::string>("");
-            Gems::GemsRequestBus::BroadcastResult(gemDescOutcome, &Gems::GemsRequests::ParseToGemDescriptionPtr, gemFolderRelPath);
+            Gems::GemsRequestBus::BroadcastResult(gemDescOutcome, &Gems::GemsRequests::ParseToGemDescriptionPtr, "", gemAbsPath.c_str());
 
             if (!gemDescOutcome.IsSuccess())
             {
@@ -130,7 +129,7 @@ namespace AZ
             auto gemDescriptionPtr = gemDescOutcome.GetValue();
             Uuid newGemID = gemDescriptionPtr->GetID();
             auto newGemVersion = gemDescriptionPtr->GetVersion();
-            bool newGemHasCode = gemDescriptionPtr->HasDll();
+            bool newGemHasCode = !gemDescriptionPtr->GetModules().empty();
 
             // This load is to identify old gems before moving the new gem over
             AZStd::vector<Gems::IGemDescriptionConstPtr> oldGemDescriptions;
@@ -145,11 +144,19 @@ namespace AZ
             if (!outcome.IsSuccess())
             {
                 QMessageBox::critical(mainWindow, tr("No active project name"), tr("Internal error. We couldn't read the active project's name, which is required to import Gems.<br/><br/>%1").arg(outcome.GetError().c_str()));
+                QApplication::restoreOverrideCursor();
                 return;
             }
             AZStd::string projectName = outcome.GetValue();
             Projects::ProjectId projectId;
             Projects::ProjectManagerRequestBus::BroadcastResult(projectId, &Projects::ProjectManagerRequests::GetProjectByName, projectName);
+
+            if (projectId.IsNull())
+            {
+                QMessageBox::critical(mainWindow, tr("No active project name"), tr("Internal error. We couldn't read the active project's name, which is required to import Gems."));
+                QApplication::restoreOverrideCursor();
+                return;
+            }
 
             NewGemState newGemState = UNKNOWN;
             if (existingGems.count(newGemID) != 0) // GUID exists
@@ -169,7 +176,7 @@ namespace AZ
                         }
                         else
                         {
-                            if (existingGemDesc->HasDll()) 
+                            if (!existingGemDesc->GetModules().empty()) 
                             {
                                 newGemState = NEW_CODE_GEM_EXISTS_AND_IS_NOT_ENABLED;
                             }
@@ -413,7 +420,9 @@ namespace AZ
                 return;
             }
 
-            Gems::ProjectGemSpecifier gemSpecifier(importedGemDescription->GetID(), importedGemDescription->GetVersion(), importedGemDescription->GetPath());
+            AZStd::string gemPath;
+            AzFramework::StringFunc::Path::Join("Gems", importedGemDescription->GetPath().c_str(), gemPath);
+            Gems::ProjectGemSpecifier gemSpecifier(importedGemDescription->GetID(), importedGemDescription->GetVersion(), gemPath);
             bool result = false;
             Gems::GemsProjectRequestBus::EventResult(result, projectId, &Gems::GemsProjectRequests::EnableGem, gemSpecifier);
             if (!result)
@@ -422,7 +431,7 @@ namespace AZ
                 return;
             }
 
-            Gems::GemsProjectRequestBus::Broadcast(&Gems::GemsProjectRequests::Save, [mainWindow, projectName, enableGemErrorString](Lyzard::StringOutcome result) {
+            Gems::GemsProjectRequestBus::Event(projectId, &Gems::GemsProjectRequests::Save, [mainWindow, projectName, enableGemErrorString](Lyzard::StringOutcome result) {
                 if (!result.IsSuccess())
                 {
                     QMessageBox::critical(mainWindow, tr("Failed to save changes to project"), enableGemErrorString);

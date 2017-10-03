@@ -59,9 +59,6 @@ namespace AzFramework
     }};
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMotion::Implementation::CustomCreateFunctionType InputDeviceMotion::Implementation::CustomCreateFunctionPointer = nullptr;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMotion::InputDeviceMotion()
         : InputDevice(Id)
         , m_allChannelsById()
@@ -70,7 +67,8 @@ namespace AzFramework
         , m_magneticFieldChannelsById()
         , m_orientationChannelsById()
         , m_enabledMotionChannelIds()
-        , m_pimpl(nullptr)
+        , m_pimpl()
+        , m_implementationRequestHandler(*this)
     {
         // Create all acceleration input channels
         for (AZ::u32 i = 0; i < Acceleration::All.size(); ++i)
@@ -109,9 +107,7 @@ namespace AzFramework
         }
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
 
         // Connect to the motion sensor request bus
         InputMotionSensorRequestBus::Handler::BusConnect(GetInputDeviceId());
@@ -124,7 +120,7 @@ namespace AzFramework
         InputMotionSensorRequestBus::Handler::BusDisconnect(GetInputDeviceId());
 
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy all orientation input channels
         for (const auto& channelById : m_orientationChannelsById)

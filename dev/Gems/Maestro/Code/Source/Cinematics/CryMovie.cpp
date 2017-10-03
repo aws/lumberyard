@@ -86,7 +86,7 @@ class CEngineModule_CryMovie
 
         pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_movie);
 
-        env.pMovieSystem = new CMovieSystem(pSystem);
+        env.pMovieSystem = aznew CMovieSystem(pSystem);
         return true;
     }
 };

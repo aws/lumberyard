@@ -45,8 +45,8 @@ struct COutputPrintSink
 void ClearPlatformCVars(ISystem* pISystem)
 {
     pISystem->GetIConsole()->ExecuteString("r_ShadersDX11 = 0");
-    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0");
-    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0");
+    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0"); // ACCEPTED_USE
+    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0"); // ACCEPTED_USE
     pISystem->GetIConsole()->ExecuteString("r_ShadersMETAL = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGL4 = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
@@ -141,13 +141,13 @@ int main(int argc, char* argv[])
         {
             pISystem->GetIConsole()->ExecuteString("r_ShadersDX11 = 1");   // DX9 is dead, long live DX11
         }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Durango") != 0)
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Durango") != 0) // ACCEPTED_USE
         {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 1");
+            pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 1"); // ACCEPTED_USE
         }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Orbis") != 0)
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Orbis") != 0) // ACCEPTED_USE
         {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 1");
+            pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 1"); // ACCEPTED_USE
         }
         else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=GL4") != 0)
         {
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
 
     if (CryStringUtils::stristr(commandLine, "BuildGlobalCache") != 0)
     {
-        // for PC and Durango, call PrecacheShaderList (to only compile shader explicitly listed in global list)
+        // to only compile shader explicitly listed in global list, call PrecacheShaderList
         if (CryStringUtils::stristr(commandLine, "NoCompile") != 0)
         {
             pISystem->GetIConsole()->ExecuteString("r_StatsShaderList");

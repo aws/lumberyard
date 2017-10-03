@@ -10,6 +10,7 @@
 *
 */
 #include "FileWatcher.h"
+#include <AzCore/Debug/Trace.h>
 
 //////////////////////////////////////////////////////////////////////////////
 /// FolderWatchRoot
@@ -87,7 +88,10 @@ int FileWatcher::AddFolderWatch(FolderWatchBase* pFolderWatch)
 
     if (bCreatedNewRoot)
     {
-        pFolderRootWatch->Start();
+        if (m_startedWatching)
+        {
+            pFolderRootWatch->Start();
+        }
 
         //since we created a new root, see if the new root is a super folder
         //of other roots, if it is then then fold those roots into the new super root
@@ -154,6 +158,38 @@ void FileWatcher::RemoveFolderWatch(int handle)
             ++rootsIter;
         }
     }
+}
+
+void FileWatcher::StartWatching()
+{
+    if (m_startedWatching)
+    {
+        AZ_Warning("FileWatcher", false, "StartWatching() called when already watching for file changes.");
+        return;
+    }
+  
+    for (FolderRootWatch* root : m_folderWatchRoots)
+    {
+        root->Start();
+    }
+    
+    m_startedWatching = true;
+}
+
+void FileWatcher::StopWatching()
+{
+    if (!m_startedWatching)
+    {
+        AZ_Warning("FileWatcher", false, "StartWatching() called when is not watching for file changes.");
+        return;
+    }
+    
+    for (FolderRootWatch* root : m_folderWatchRoots)
+    {
+        root->Stop();
+    }
+    
+    m_startedWatching = false;
 }
 
 #include <native/FileWatcher/FileWatcher.moc>

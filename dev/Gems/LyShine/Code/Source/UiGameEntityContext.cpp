@@ -106,7 +106,7 @@ bool UiGameEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& sou
 
     AZ::SliceComponent::EntityIdToEntityIdMap idMap;
     AZ::SliceComponent::InstantiatedContainer* clonedObjects =
-        AZ::EntityUtils::CloneObjectAndFixEntities(&sourceObjects, idMap);
+        AZ::IdUtils::Remapper<AZ::EntityId>::CloneObjectAndGenerateNewIdsAndFixRefs(&sourceObjects, idMap);
     if (!clonedObjects)
     {
         AZ_Error("UiEntityContext", false, "Failed to clone source entities.");
@@ -233,7 +233,7 @@ bool UiGameEntityContext::ValidateEntitiesAreValidForContext(const EntityList& e
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzFramework::SliceInstantiationTicket UiGameEntityContext::InstantiateDynamicSlice(
     const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Vector2& position, bool isViewportPosition,
-    AZ::Entity* parent, const AZ::EntityUtils::EntityIdMapper& customIdMapper)
+    AZ::Entity* parent, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper)
 {
     if (sliceAsset.GetId().IsValid())
     {
@@ -266,8 +266,8 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
             {
                 AZ::SliceComponent::InstantiatedContainer instanceEntities;
                 instanceEntities.m_entities = entities;
-                AZ::EntityUtils::ReplaceEntityRefs(&instanceEntities,
-                    [this](const AZ::EntityId& originalId, bool isEntityId) -> AZ::EntityId
+                AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&instanceEntities,
+                    [this](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                     {
                         if (!isEntityId)
                         {
@@ -279,7 +279,7 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
                         }
                         return originalId;
 
-                    }, m_serializeContext);
+                    }, m_serializeContext, false);
 
                 instanceEntities.m_entities.clear();
             }

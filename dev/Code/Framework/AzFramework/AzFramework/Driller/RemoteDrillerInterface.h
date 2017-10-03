@@ -18,8 +18,9 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/IO/SystemFile.h>
-#include <AzFramework/TargetManagement/TargetManagementAPI.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Driller/DrillerConsoleAPI.h>
+#include <AzFramework/TargetManagement/TargetManagementAPI.h>
 
 //#define ENABLE_COMPRESSION_FOR_REMOTE_DRILLER
 
@@ -30,21 +31,6 @@ namespace AZ
 
 namespace AzFramework
 {
-    /*
-     * Descriptors for drillers available on the target machine.
-     */
-    struct DrillerInfo final
-    {
-        AZ_RTTI(DrillerInfo, "{197AC318-B65C-4B36-A109-BD25422BF7D0}");
-        AZ::u32     m_id;
-        AZStd::string m_groupName;
-        AZStd::string m_name;
-        AZStd::string m_description;
-    };
-
-    typedef AZStd::vector<DrillerInfo> DrillerInfoListType;
-    typedef AZStd::vector<AZ::u32> DrillerListType;
-
     /**
      * Represents a remote driller session on the tool machine.
      * It is responsible for receiving and processing remote driller data.

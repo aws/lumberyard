@@ -21,7 +21,7 @@ def load_linux_common_settings(v):
     Setup all compiler and linker settings shared over all linux configurations
     """
     
-    # Add common durango defines
+    # Add common linux defines
     v['DEFINES'] += [ 'LINUX', '__linux__' ]
     
     # Setup default libraries to always link against

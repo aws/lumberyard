@@ -50,8 +50,8 @@ public:
     virtual _smart_ptr<IMaterial> CreateMaterial(const char* sMtlName, int nMtlFlags = 0);
     virtual _smart_ptr<IMaterial> FindMaterial(const char* sMtlName) const;
     virtual _smart_ptr<IMaterial> LoadMaterial(const char* sMtlName, bool bMakeIfNotFound = true, bool bNonremovable = false, unsigned long nLoadingFlags = 0);
-    
     virtual _smart_ptr<IMaterial> LoadMaterialFromXml(const char* sMtlName, XmlNodeRef mtlNode);
+    virtual void ReloadMaterial(_smart_ptr<IMaterial> pMtl);
     virtual void SetListener(IMaterialManagerListener* pListener) { m_pListener = pListener; };
     virtual _smart_ptr<IMaterial> GetDefaultMaterial();
     virtual _smart_ptr<IMaterial> GetDefaultTerrainLayerMaterial()
@@ -107,7 +107,9 @@ public:
 
 private: // -----------------------------------------------------------------------------
     friend class CMatInfo;
-    bool Unregister(CMatInfo* pMat, bool deleteEditorMaterial = true);
+    bool Unregister(_smart_ptr<IMaterial> pMat, bool deleteEditorMaterial = true);
+
+    _smart_ptr<IMaterial> CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName);
 
     bool LoadMaterialShader(_smart_ptr<IMaterial> pMtl, _smart_ptr<IMaterial> pParentMtl, const char* sShader, uint64 nShaderGenMask, SInputShaderResources& sr, XmlNodeRef& publicsNode);
     bool LoadMaterialLayerSlot(uint32 nSlot, _smart_ptr<IMaterial> pMtl, const char* szShaderName, SInputShaderResources& pBaseResources, XmlNodeRef& pPublicsNode, uint8 nLayerFlags);
@@ -134,16 +136,16 @@ private:
 
     MtlNameMap                                                  m_mtlNameMap;                                   //
 
-    IMaterialManagerListener*                  m_pListener;                                     //
-    _smart_ptr<CMatInfo>                                m_pDefaultMtl;                              //
-    _smart_ptr<IMaterial>                               m_pDefaultLayersMtl;                    //
-    _smart_ptr<CMatInfo>                                m_pDefaultTerrainLayersMtl;     //
-    _smart_ptr<CMatInfo>                                m_pNoDrawMtl;                                   //
-    _smart_ptr<CMatInfo>                m_pDefaultHelperMtl;
+    IMaterialManagerListener*           m_pListener;                                     //
+    _smart_ptr<IMaterial>               m_pDefaultMtl;                              //
+    _smart_ptr<IMaterial>               m_pDefaultLayersMtl;                    //
+    _smart_ptr<IMaterial>               m_pDefaultTerrainLayersMtl;     //
+    _smart_ptr<IMaterial>               m_pNoDrawMtl;                                   //
+    _smart_ptr<IMaterial>               m_pDefaultHelperMtl;
 
     std::vector<_smart_ptr<CMatInfo> >  m_nonRemovables;                            //
 
-    CSurfaceTypeManager*                               m_pSurfaceTypeManager;               //
+    CSurfaceTypeManager*                m_pSurfaceTypeManager;               //
 
     //////////////////////////////////////////////////////////////////////////
     // Cached XML parser.

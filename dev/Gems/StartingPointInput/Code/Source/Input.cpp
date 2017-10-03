@@ -18,6 +18,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/sort.h>
 
 #include <AzFramework/Input/Buses/Requests/InputDeviceRequestBus.h>
 
@@ -27,11 +28,7 @@
 
 namespace Input
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     static const int s_inputVersion = 2;
-#else
-    static const int s_inputVersion = 1;
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     bool ConvertInputVersion1To2(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
@@ -167,7 +164,6 @@ namespace Input
         }
     }
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     bool Input::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
     {
         const bool isPressed = fabs(inputChannel.GetValue()) > m_deadZone;
@@ -189,53 +185,12 @@ namespace Input
         // Return false so we don't consume the event. This should perhaps be a configurable option?
         return false;
     }
-#else
-    void Input::OnNotifyInputEvent(const SInputEvent& completeInputEvent)
-    {
-        EInputState inputState = completeInputEvent.state;
-        if (completeInputEvent.state == eIS_Changed)
-        {
-            bool isAnalogBeingHeld = fabs(completeInputEvent.value) > m_deadZone;
-            bool wasAnalogBeingHeld = fabs(m_lastKnownEventValue) > m_deadZone;
-            if (!wasAnalogBeingHeld && isAnalogBeingHeld)
-            {
-                inputState = eIS_Pressed;
-            }
-            else if (!isAnalogBeingHeld && wasAnalogBeingHeld)
-            {
-                inputState = eIS_Released;
-            }
-            else
-            {
-                inputState = eIS_Down;
-            }
-        }
-        m_lastKnownEventValue = completeInputEvent.value;
-
-        if (inputState == eIS_Pressed)
-        {
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnPressed, m_lastKnownEventValue * m_eventValueMultiplier);
-            AZ::TickBus::Handler::BusConnect();
-        }
-        else if (inputState == eIS_Released)
-        {
-            AZ::TickBus::Handler::BusDisconnect();
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnReleased, m_lastKnownEventValue * m_eventValueMultiplier);
-        }
-    }
-
-    void Input::OnTick(float deltaTime, AZ::ScriptTimePoint time)
-    {
-        AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnHeld, m_lastKnownEventValue * m_eventValueMultiplier);
-    }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     void Input::Activate(const AZ::InputEventNotificationId& eventNotificationId)
     {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         const AZ::Crc32 channelNameFilter(m_inputName.c_str());
         const AZ::Crc32 deviceNameFilter(m_inputDeviceType.c_str());
-        AZ::u32 deviceIndexFilter = Filter::AnyDeviceIndex;
+        AZ::u32 deviceIndexFilter = InputChannelEventFilter::AnyDeviceIndex;
         if (eventNotificationId.m_profileIdCrc != BroadcastProfile)
         {
             AZ::u8 mappedDeviceIndex = 0;
@@ -244,15 +199,10 @@ namespace Input
                                                  eventNotificationId.m_profileIdCrc);
             deviceIndexFilter = mappedDeviceIndex;
         }
-        const Filter filter(channelNameFilter, deviceNameFilter, deviceIndexFilter);
+        AZStd::shared_ptr<InputChannelEventFilterWhitelist> filter = AZStd::make_shared<InputChannelEventFilterWhitelist>(channelNameFilter, deviceNameFilter, deviceIndexFilter);
         InputChannelEventListener::SetFilter(filter);
         InputChannelEventListener::Connect();
         m_wasPressed = false;
-#else
-        m_lastKnownEventValue = 0;
-        const AZ::InputNotificationId incomingBusId(eventNotificationId.m_profileIdCrc, m_inputName.c_str());
-        AZ::InputNotificationBus::Handler::BusConnect(incomingBusId);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
         m_outgoingBusId = eventNotificationId;
         AZ::GlobalInputRecordRequestBus::Handler::BusConnect();
@@ -266,22 +216,11 @@ namespace Input
 
     void Input::Deactivate(const AZ::InputEventNotificationId& eventNotificationId)
     {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         if (m_wasPressed)
         {
             AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnReleased, 0.0f);
         }
         InputChannelEventListener::Disconnect();
-#else
-        if (AZ::TickBus::Handler::BusIsConnected())
-        {
-            AZ::TickBus::Handler::BusDisconnect();
-            m_lastKnownEventValue = 0;
-            AZ::InputEventNotificationBus::Event(m_outgoingBusId, &AZ::InputEventNotifications::OnHeld, m_lastKnownEventValue * m_eventValueMultiplier);
-        }
-        const AZ::InputNotificationId incomingBusId(eventNotificationId.m_profileIdCrc, m_inputName.c_str());
-        AZ::InputNotificationBus::Handler::BusDisconnect(incomingBusId);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZ::GlobalInputRecordRequestBus::Handler::BusDisconnect();
         AZ::InputRecordRequestBus::Handler::BusDisconnect();
     }
@@ -294,7 +233,6 @@ namespace Input
     const AZStd::vector<AZStd::string> Input::GetInputDeviceTypes() const
     {
         AZStd::vector<AZStd::string> retval;
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AzFramework::InputDeviceRequests::InputDeviceIdSet availableInputDeviceIds;
         AzFramework::InputDeviceRequestBus::Broadcast(&AzFramework::InputDeviceRequests::GetInputDeviceIds,
                                                       availableInputDeviceIds);
@@ -302,16 +240,12 @@ namespace Input
         {
             retval.push_back(inputDeviceId.GetName());
         }
-#else
-        AZ::InputRequestBus::BroadcastResult(retval, &AZ::InputRequests::GetRegisteredDeviceList);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
         return retval;
     }
 
     const AZStd::vector<AZStd::string> Input::GetInputNamesBySelectedDevice() const
     {
         AZStd::vector<AZStd::string> retval;
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AzFramework::InputDeviceId selectedDeviceId(m_inputDeviceType.c_str());
         AzFramework::InputDeviceRequests::InputChannelIdSet availableInputChannelIds;
         AzFramework::InputDeviceRequestBus::Event(selectedDeviceId,
@@ -321,9 +255,7 @@ namespace Input
         {
             retval.push_back(inputChannelId.GetName());
         }
-#else
-        AZ::InputRequestBus::BroadcastResult(retval, &AZ::InputRequests::GetInputListByDevice, m_inputDeviceType);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
+        AZStd::sort(retval.begin(), retval.end());
         return retval;
     }
 

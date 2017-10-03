@@ -87,6 +87,7 @@ public:
     bool AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorVisible);
 
     bool DeferredDecalPass(const SDeferredDecal& rDecal, uint32 indDecal);
+    void DeferredDecalEmissivePass(const SDeferredDecal& rDecal, uint32 indDecal);
     bool ShadowLightPasses(const SRenderLight& light, const int nLightID);
     void DrawDecalVolume(const SDeferredDecal& rDecal, Matrix44A& mDecalLightProj, ECull volumeCull);
     void DrawLightVolume(EShapeMeshType meshType, const Matrix44& mVolumeToWorld, const Vec4& vSphereAdjust = Vec4(ZERO));
@@ -193,6 +194,24 @@ public:
     const Matrix44A& GetCameraProjMatrix() const { return m_mViewProj; }
 
 private:
+    void SetSSDOParameters(const int texSlot);
+    ITexture* SetTexture(const SShaderItem& sItem, EEfResTextures tex, int slot, const RectF texRect, float surfaceSize, float& mipLevelFactor, int flags);
+
+    // Flags used for the above SetTexture function
+    enum ESetTextureFlags : uint32
+    {
+        ESetTexture_Transform           = 1 << 0,   // Will calculate 2 Vec3s used for transforming tex coords in the shader
+        ESetTexture_HWSR                = 1 << 1,   // Will set the HWSR_SAMPLE flag for the specified slot
+        ESetTexture_bSRGBLookup         = 1 << 2,   // Value to set on the STexState
+        ESetTexture_AllowDefault        = 1 << 3,   // Whether a default texture should be used as backup
+        ESetTexture_MipFactorProvided   = 1 << 4,   // Whether to use the mipLevelFactor provide or calculate our own and output it to the same parameter
+    };
+
+    enum
+    {
+        // Number of textures available in PostEffectsLib.cfi (_tex0 to _texF)
+        EMaxTextureSlots = 16,
+    };
 
     CDeferredShading()
     {
@@ -221,6 +240,8 @@ private:
         m_pParamDecalDiffuse = "g_DecalDiffuse";
         m_pParamDecalSpecular = "g_DecalSpecular";
         m_pParamDecalMipLevels = "g_DecalMipLevels";
+        m_pParamDecalEmissive = "g_DecalEmissive";
+        m_pParamTexTransforms = "g_texTransforms";
         m_pClipVolumeParams = "g_vVisAreasParams";
 
         m_pLBufferDiffuseRT = CTexture::s_ptexCurrentSceneDiffuseAccMap;
@@ -310,6 +331,10 @@ private:
     // Vis areas for current view
     std::vector<SClipVolumeData> m_pClipVolumes[RT_COMMAND_BUF_COUNT][MAX_REND_RECURSION_LEVELS];
 
+    // The 2 is for X and Y axis. In PostEffectsLib.cfi:
+    // float2x4 g_texTransforms[16];
+    Vec4 m_vTextureTransforms[EMaxTextureSlots][2];
+
     uint32 m_nClipVolumesCount[RT_COMMAND_BUF_COUNT][MAX_REND_RECURSION_LEVELS];
     uint32 m_nVisAreasGIRef[RT_COMMAND_BUF_COUNT][MAX_REND_RECURSION_LEVELS];
 
@@ -361,6 +386,8 @@ private:
     CCryNameR m_pParamDecalDiffuse;
     CCryNameR m_pParamDecalSpecular;
     CCryNameR m_pParamDecalMipLevels;
+    CCryNameR m_pParamDecalEmissive;
+    CCryNameR m_pParamTexTransforms;
     CCryNameR m_pClipVolumeParams;
 
     Matrix44A m_mViewProj;

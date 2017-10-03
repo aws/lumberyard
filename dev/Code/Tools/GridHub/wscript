@@ -1,0 +1,46 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+import os
+
+def build(bld):
+
+    bld.CryQtApplication(
+        # Settings
+        target                      = 'GridHub',
+        vs_filter                   = 'Tools',
+        file_list                   = ['gridhub.waf_files'],
+        platforms                   = ['win'],
+        configurations              = ['all'],
+        disable_pch                 = True,
+        copy_dependent_files        = ['Bin64/d3dcompiler_47.dll',
+                                       'Bin64/libEGL.dll',
+                                       'Bin64/libGLESv2.dll',
+                                       'Bin64/libEGLd.dll',
+                                       'Bin64/libGLESv2d.dll'],
+        features                    = ['qt5'],
+        use                         = ['AzCore',
+                                       'GridMateForTools'],
+        uselib                      = ['QTANGLE',
+                                       'QTMAIN',
+                                       'QT5CORE',
+                                       'QT5GUI',
+                                       'QT5OPENGL',
+                                       'QT5NETWORK',
+                                       'QT5SVG',
+                                       'QT5WIDGETS'],
+        defines                     = ['GRIDMATE_FOR_TOOLS'],
+
+        # Platform Specific
+        darwin_rpath        = ['@executable_path/../BinMac64/qtlibs_mac/Frameworks' ],
+        win_lib             = [ 'shell32','ole32','uuid','shlwapi' ]
+    )

@@ -110,7 +110,7 @@ namespace AZ
     void JobManagerComponent::GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent)
     {
         dependent.push_back(AZ_CRC("MemoryService", 0x5c4d473c));
-        dependent.push_back(AZ_CRC("ProfilerService"));
+        dependent.push_back(AZ_CRC("ProfilerService", 0x505033c9));
     }
 
     //=========================================================================

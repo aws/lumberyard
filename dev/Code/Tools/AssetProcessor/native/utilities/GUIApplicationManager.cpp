@@ -29,6 +29,7 @@
 #include <QStringList>
 #include <QStyleFactory>
 
+
 #include <QAction>
 #include <QMenu>
 #include <QMessageBox>
@@ -129,27 +130,35 @@ ApplicationManager::BeforeRunStatus GUIApplicationManager::BeforeRun()
     RemoveTemporaries();
 
     QDir devRoot;
-    AssetUtilities::ComputeEngineRoot(devRoot);
-
+    AssetUtilities::ComputeAssetRoot(devRoot);
 #if defined(EXTERNAL_CRASH_REPORTING)
     InitCrashHandler("AssetProcessor", devRoot.absolutePath().toStdString());
 #endif
-
     AssetProcessor::MessageInfoBus::Handler::BusConnect();
-    AssetProcessor::AssetRegistryNotificationBus::Handler::BusConnect();
     AssetUtilities::UpdateBranchToken();
 
     QString bootstrapPath = devRoot.filePath("bootstrap.cfg");
     m_fileWatcher.addPath(bootstrapPath);
 
+    // we have to monitor both the cache folder and the database file and restart AP if either of them gets deleted
+    // It is important to note that we are monitoring the parent folder and not the actual cache folder itself since
+    // we want to handle the use case on Mac OS if the user moves the cache folder to the trash.
+    m_fileWatcher.addPath(devRoot.absolutePath());
+
+    QDir projectCacheRoot;
+    AssetUtilities::ComputeProjectCacheRoot(projectCacheRoot);
+    QString assetDbPath = projectCacheRoot.filePath("assetdb.sqlite");
+
+    m_fileWatcher.addPath(assetDbPath);
+
     QObject::connect(&m_fileWatcher, &QFileSystemWatcher::fileChanged, this, &GUIApplicationManager::FileChanged);
+    QObject::connect(&m_fileWatcher, &QFileSystemWatcher::directoryChanged, this, &GUIApplicationManager::DirectoryChanged);
 
     return ApplicationManager::BeforeRunStatus::Status_Success;
 }
 
 void GUIApplicationManager::Destroy()
 {
-    AssetProcessor::AssetRegistryNotificationBus::Handler::BusDisconnect();
     AssetProcessor::MessageInfoBus::Handler::BusDisconnect();
     BatchApplicationManager::Destroy();
 
@@ -165,7 +174,8 @@ bool GUIApplicationManager::Run()
     qRegisterMetaType<AZ::u32>("AZ::u32");
     qRegisterMetaType<AZ::Uuid>("AZ::Uuid");
 
-    QDir systemRoot = GetSystemRoot();
+    QDir systemRoot;
+    AssetUtilities::ComputeEngineRoot(systemRoot);
 
     QDir::addSearchPath("STYLESHEETIMAGES", systemRoot.filePath("Editor/Styles/StyleSheetImages"));
 
@@ -290,7 +300,7 @@ bool GUIApplicationManager::Run()
     {
         if (!PostActivate())
         {
-            emit QuitRequested();
+            QuitRequested();
             m_startedSuccessfully = false;
         }
     });
@@ -298,6 +308,14 @@ bool GUIApplicationManager::Run()
     m_duringStartup = false;
 
     int resultCode =  qApp->exec(); // this blocks until the last window is closed.
+    
+    if(!InitiatedShutdown())
+    {
+        // if we are here it implies that AP did not stop the Qt event loop and is shutting down prematurely
+        // we need to call QuitRequested and start the event loop once again so that AP shuts down correctly
+        QuitRequested();
+        resultCode = qApp->exec();
+    }
 
     if (m_trayIcon)
     {
@@ -381,7 +399,23 @@ bool GUIApplicationManager::OnError(const char* window, const char* message)
     {
         connection = Qt::QueuedConnection;
     }
-    QMetaObject::invokeMethod(this, "ShowMessageBox", connection, Q_ARG(QString, QString("Error")), Q_ARG(QString, QString(message)), Q_ARG(bool, true));
+
+    if (m_isCurrentlyLoadingGems)
+    {
+        // if something goes wrong during gem initialization, this is a special case and we need to be extra helpful.
+        QString friendlyErrorMessage = QString("An error occurred while loading gems.\n"
+            "This can happen when new gems are added to a project, but those gems need to be built in order to function.\n"
+            "This can also happen when switching to a different project, one which uses gems which are not yet built.\n"
+            "To continue, please build the current project before attempting to run Asset Processor again.\n\n"
+            "Full error text:\n"
+            "%1").arg(message);
+        QMetaObject::invokeMethod(this, "ShowMessageBox", connection, Q_ARG(QString, QString("Error")), Q_ARG(QString, friendlyErrorMessage), Q_ARG(bool, true));
+    }
+    else
+    {
+        QMetaObject::invokeMethod(this, "ShowMessageBox", connection, Q_ARG(QString, QString("Error")), Q_ARG(QString, QString(message)), Q_ARG(bool, true));
+    }
+    
 
     return true;
 }
@@ -427,13 +461,47 @@ bool GUIApplicationManager::PostActivate()
 void GUIApplicationManager::CreateQtApplication()
 {
     // Qt actually modifies the argc and argv, you must pass the real ones in as ref so it can.
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     m_qApp = new QApplication(m_argc, m_argv);
+}
+
+void GUIApplicationManager::DirectoryChanged(QString path)
+{
+    AZ_UNUSED(path);
+    QDir devRoot = ApplicationManager::GetSystemRoot();
+    QString cacheRoot = devRoot.filePath("Cache");
+    if (!QDir(cacheRoot).exists())
+    {
+        //Cache directory is removed we need to restart
+        QTimer::singleShot(200, this, [this]()
+        {
+            QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
+        });
+    }
+    else
+    {
+        QDir projectCacheRoot;
+        AssetUtilities::ComputeProjectCacheRoot(projectCacheRoot);
+        QString assetDbPath = projectCacheRoot.filePath("assetdb.sqlite");
+
+        if (!QFile::exists(assetDbPath))
+        {
+            // even if cache directory exists but the the database file is missing we need to restart
+            QTimer::singleShot(200, this, [this]()
+            {
+                QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
+            });
+        }
+    }
 }
 
 void GUIApplicationManager::FileChanged(QString path)
 {
     QDir devRoot = ApplicationManager::GetSystemRoot();
     QString bootstrapPath = devRoot.filePath("bootstrap.cfg");
+    QDir projectCacheRoot;
+    AssetUtilities::ComputeProjectCacheRoot(projectCacheRoot);
+    QString assetDbPath = projectCacheRoot.filePath("assetdb.sqlite");
     if (QString::compare(AssetUtilities::NormalizeFilePath(path), bootstrapPath, Qt::CaseInsensitive) == 0)
     {
         //Check and update the game token if the bootstrap file get modified
@@ -456,6 +524,17 @@ void GUIApplicationManager::FileChanged(QString path)
             {
                 m_connectionManager->UpdateWhiteListFromBootStrap();
             }
+        }
+    }
+    else if (QString::compare(AssetUtilities::NormalizeFilePath(path), assetDbPath, Qt::CaseInsensitive) == 0)
+    {
+        if (!QFile::exists(assetDbPath))
+        {
+            // if the database file is deleted we need to restart
+            QTimer::singleShot(200, this, [this]()
+            {
+                QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
+            });
         }
     }
 }

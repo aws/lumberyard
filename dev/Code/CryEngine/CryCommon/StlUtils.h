@@ -13,8 +13,6 @@
 
 // Description : Various convenience utility functions for STL and alike
 //               Used in Animation subsystem, and in some tools
-
-
 #ifndef CRYINCLUDE_CRYCOMMON_STLUTILS_H
 #define CRYINCLUDE_CRYCOMMON_STLUTILS_H
 #pragma once
@@ -43,7 +41,6 @@
 #define std__hash_multimap AZStd::unordered_multimap
 #define std__hash AZStd::hash
 #define std__unordered_map AZStd::unordered_map
-
 
 // auto-cleaner: upon destruction, calls the clear() method
 template <class T>
@@ -165,7 +162,7 @@ namespace stl
     template <typename Map>
     inline typename Map::mapped_type& map_insert_or_get(Map& mapKeyToValue, const typename Map::key_type& key, const typename Map::mapped_type& defValue = typename Map::mapped_type())
     {
-        auto && iresult = mapKeyToValue.insert(typename Map::value_type(key, defValue));
+        auto&& iresult = mapKeyToValue.insert(typename Map::value_type(key, defValue));
         return iresult.first->second;
     }
 
@@ -921,4 +918,104 @@ struct SSerialCompare
         return ((lhs < rhs) && (rhs - lhs < limit)) || ((lhs > rhs) && (lhs - rhs > limit));
     }
 };
+
+template <class Container>
+unsigned sizeOfVP(Container& arr)
+{
+    int i;
+    unsigned size = 0;
+    for (i = 0; i < (int)arr.size(); i++)
+    {
+        typename Container::value_type& T = arr[i];
+        size += T->Size();
+    }
+    size += (arr.capacity() - arr.size()) * sizeof(typename Container::value_type);
+    return size;
+}
+
+template <class Container>
+unsigned sizeOfV(Container& arr)
+{
+    int i;
+    unsigned size = 0;
+    for (i = 0; i < (int)arr.size(); i++)
+    {
+        typename Container::value_type& T = arr[i];
+        size += T.Size();
+    }
+    size += (arr.capacity() - arr.size()) * sizeof(typename Container::value_type);
+    return size;
+}
+template <class Container>
+unsigned sizeOfA(Container& arr)
+{
+    int i;
+    unsigned size = 0;
+    for (i = 0; i < arr.size(); i++)
+    {
+        typename Container::value_type& T = arr[i];
+        size += T.Size();
+    }
+    return size;
+}
+// define the maplikestruct, used to approximate the memory requirements for a map node
+namespace stl
+{
+    struct MapLikeStruct
+    {
+        bool color;
+        void* parent;
+        void* left;
+        void* right;
+    };
+}
+template <class Map>
+unsigned sizeOfMap(Map& map)
+{
+    unsigned size = 0;
+    for (typename Map::iterator it = map.begin(); it != map.end(); it++)
+    {
+        typename Map::mapped_type& T = it->second;
+        size += T.Size();
+    }
+    size += map.size() * sizeof(stl::MapLikeStruct);
+    return size;
+}
+template <class Map>
+unsigned sizeOfMapStr(Map& map)
+{
+    unsigned size = 0;
+    for (typename Map::iterator it = map.begin(); it != map.end(); it++)
+    {
+        typename Map::mapped_type& T = it->second;
+        size += T.capacity();
+    }
+    size += map.size() * sizeof(stl::MapLikeStruct);
+    return size;
+}
+template <class Map>
+unsigned sizeOfMapP(Map& map)
+{
+    unsigned size = 0;
+    for (typename Map::iterator it = map.begin(); it != map.end(); it++)
+    {
+        typename Map::mapped_type& T = it->second;
+        size += T->Size();
+    }
+    size += map.size() * sizeof(stl::MapLikeStruct);
+    return size;
+}
+template <class Map>
+unsigned sizeOfMapS(Map& map)
+{
+    unsigned size = 0;
+    for (typename Map::iterator it = map.begin(); it != map.end(); it++)
+    {
+        typename Map::mapped_type& T = it->second;
+        size += sizeof(T);
+    }
+    size += map.size() * sizeof(stl::MapLikeStruct);
+    return size;
+}
+
 #endif // CRYINCLUDE_CRYCOMMON_STLUTILS_H

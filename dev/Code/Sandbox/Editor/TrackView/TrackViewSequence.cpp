@@ -13,7 +13,7 @@
 
 #include "StdAfx.h"
 
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
@@ -36,22 +36,18 @@
 CTrackViewSequence::CTrackViewSequence(IAnimSequence* pSequence)
     : CTrackViewAnimNode(pSequence, nullptr, nullptr)
     , m_pAnimSequence(pSequence)
-    , m_bBoundToEditorObjects(false)
-    , m_selectionRecursionLevel(0)
-    , m_bQueueNotifications(false)
-    , m_bKeySelectionChanged(false)
-    , m_bKeysChanged(false)
-    , m_bForceAnimation(false)
-    , m_bNodeSelectionChanged(false)
-    , m_time(0.0f)
-    , m_bNoNotifications(false)
 {
     assert(m_pAnimSequence);
-
-    GetIEditor()->GetSequenceManager()->AddListener(this);
-
     SetExpanded(true);
 }
+
+//////////////////////////////////////////////////////////////////////////
+CTrackViewSequence::CTrackViewSequence(AZStd::intrusive_ptr<IAnimSequence>& sequence)
+    : CTrackViewAnimNode(sequence.get(), nullptr, nullptr)
+    , m_pAnimSequence(sequence)
+{
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 CTrackViewSequence::~CTrackViewSequence()
@@ -88,7 +84,7 @@ void CTrackViewSequence::Load()
         if (!pNode->GetParent())
         {
             CTrackViewAnimNodeFactory animNodeFactory;
-            CTrackViewAnimNode* pNewTVAnimNode = animNodeFactory.BuildAnimNode(m_pAnimSequence, pNode, this);
+            CTrackViewAnimNode* pNewTVAnimNode = animNodeFactory.BuildAnimNode(m_pAnimSequence.get(), pNode, this);
             m_childNodes.push_back(std::unique_ptr<CTrackViewNode>(pNewTVAnimNode));
         }
     }
@@ -161,17 +157,6 @@ CObjectLayer* CTrackViewSequence::GetSequenceObjectLayer() const
     }
 
     return retLayer;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewSequence::PrepareForSave()
-{
-    // Notify the connected SequenceComponent that we're about to save. This allows the SequenceComponent to stash the AnimSequence serialization
-    // in a string in it's component for saving outside of the legacy Cry Level.
-    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == eSequenceType_SequenceComponent)
-    {
-        LmbrCentral::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetOwnerId(), &LmbrCentral::EditorSequenceComponentRequestBus::Events::OnBeforeSave);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -249,7 +234,7 @@ void CTrackViewSequence::SetRecording(bool enableRecording)
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewSequence::IsAncestorOf(CTrackViewSequence* pSequence) const
 {
-    return m_pAnimSequence->IsAncestorOf(pSequence->m_pAnimSequence);
+    return m_pAnimSequence->IsAncestorOf(pSequence->m_pAnimSequence.get());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -266,7 +251,7 @@ void CTrackViewSequence::BeginCutScene(const bool bResetFx) const
 
     if (pMovieUser)
     {
-        pMovieUser->BeginCutScene(m_pAnimSequence, m_pAnimSequence->GetCutSceneFlags(false), bResetFx);
+        pMovieUser->BeginCutScene(m_pAnimSequence.get(), m_pAnimSequence->GetCutSceneFlags(false), bResetFx);
     }
 }
 
@@ -277,7 +262,7 @@ void CTrackViewSequence::EndCutScene() const
 
     if (pMovieUser)
     {
-        pMovieUser->EndCutScene(m_pAnimSequence, m_pAnimSequence->GetCutSceneFlags(true));
+        pMovieUser->EndCutScene(m_pAnimSequence.get(), m_pAnimSequence->GetCutSceneFlags(true));
     }
 }
 
@@ -563,7 +548,7 @@ void CTrackViewSequence::MarkAsModified()
         {
             case eSequenceType_SequenceComponent:
             {
-                LmbrCentral::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetOwnerId(), &LmbrCentral::EditorSequenceComponentRequestBus::Events::MarkEntityLayerAsDirty);            
+                Maestro::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetOwnerId(), &Maestro::EditorSequenceComponentRequestBus::Events::MarkEntityLayerAsDirty);            
                 break;
             }
             case eSequenceType_Legacy:
@@ -698,6 +683,27 @@ void CTrackViewSequence::DeleteSelectedNodes()
         }
     }
 
+    // Deactivate the sequence entity while we are potentially removing things from it. 
+    // We need to allow the full removal operation (node and children) to complete before 
+    // OnActivate happens on the Sequence again. If we don't deactivate the sequence entity
+    // OnActivate will get called by the entity system as components are removed.
+    // In some cases this will erroneously cause some components to be added 
+    // back to the sequence that were just deleted.
+    bool sequenceEntityWasActive = false;
+    AZ::Entity* sequenceEntity = nullptr;
+    if (GetSequenceComponentEntityId().IsValid())
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(sequenceEntity, &AZ::ComponentApplicationBus::Events::FindEntity, GetSequenceComponentEntityId());
+        if (sequenceEntity != nullptr)
+        {
+            if (sequenceEntity->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                sequenceEntityWasActive = true;
+                sequenceEntity->Deactivate();
+            }
+        }
+    }
+
     CTrackViewTrackBundle selectedTracks = GetSelectedTracks();
     const unsigned int numSelectedTracks = selectedTracks.GetCount();
 
@@ -717,6 +723,11 @@ void CTrackViewSequence::DeleteSelectedNodes()
         CTrackViewAnimNode* pNode = selectedNodes.GetNode(i);
         CTrackViewAnimNode* pParentNode = static_cast<CTrackViewAnimNode*>(pNode->GetParentNode());
         pParentNode->RemoveSubNode(pNode);
+    }
+
+    if (sequenceEntityWasActive && sequenceEntity != nullptr)
+    {
+        sequenceEntity->Activate();
     }
 }
 
@@ -787,7 +798,7 @@ void CTrackViewSequence::SyncSelectedTracksToBase()
     const unsigned int numSelectedNodes = selectedNodes.GetCount();
     if (numSelectedNodes > 0)
     {
-        CUndo undo("Sync selected tracks to base");
+        CUndo undo("Sync selected entity nodes to base");
 
         for (unsigned int i = 0; i < numSelectedNodes; ++i)
         {
@@ -800,17 +811,15 @@ void CTrackViewSequence::SyncSelectedTracksToBase()
 
                 if (pAnimNode)
                 {
+                    const Vec3 position = pAnimNode->GetPos();
+                    const Quat rotation = pAnimNode->GetRotation();
+                    const Vec3 scale = pAnimNode->GetScale();
+
                     ITransformDelegate* pDelegate = pEntityObject->GetTransformDelegate();
                     pEntityObject->SetTransformDelegate(nullptr);
 
-
-                    const Vec3 position = pAnimNode->GetPos();
                     pEntityObject->SetPos(position);
-
-                    const Quat rotation = pAnimNode->GetRotation();
                     pEntityObject->SetRotation(rotation);
-
-                    const Vec3 scale = pAnimNode->GetScale();
                     pEntityObject->SetScale(scale);
 
                     pEntityObject->SetTransformDelegate(pDelegate);
@@ -836,7 +845,7 @@ void CTrackViewSequence::SyncSelectedTracksFromBase()
     const unsigned int numSelectedNodes = selectedNodes.GetCount();
     if (numSelectedNodes > 0)
     {
-        CUndo undo("Sync selected tracks to base");
+        CUndo undo("Sync selected entity nodes from base");
 
         for (unsigned int i = 0; i < numSelectedNodes; ++i)
         {
@@ -1122,7 +1131,7 @@ std::deque<CTrackViewTrack*> CTrackViewSequence::GetMatchingTracks(CTrackViewAni
     const string trackName = trackNode->getAttr("name");
 
     CAnimParamType animParamType;
-    animParamType.Serialize(trackNode, true);
+    animParamType.LoadFromXml(trackNode);
 
     int valueType;
     if (!trackNode->getAttr("valueType", valueType))

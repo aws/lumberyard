@@ -126,7 +126,6 @@ bool CD3D9Renderer::FX_DeferredCaustics()
         static CCryNameTSCRC TechName0 = "DeferredShadowPass";
         pSH->FXSetTechnique(TechName0);
         pSH->FXBegin(&nPasses, FEF_DONTSETSTATES);
-        pSH->FXBeginPass(DS_SHADOW_CULL_PASS);
 
         //allocate vertices
         TempDynVB<SVF_P3F_C4B_T2F>::CreateFillAndBind(&arrDeferredVerts[0], arrDeferredVerts.size(), 0);
@@ -136,10 +135,8 @@ bool CD3D9Renderer::FX_DeferredCaustics()
 
         if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
         {
-            FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size());
+            FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS);
         }
-
-        pSH->FXEndPass();
         pSH->FXEnd();
 
         m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = origMatView;

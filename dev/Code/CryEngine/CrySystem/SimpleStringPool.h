@@ -44,7 +44,8 @@ struct SStringData
 private:
 };
 
-//copy/paste/hack from StlUtils.h (specializing the template was causing linker problems on ps3
+//copy/paste/hack from StlUtils.h (specializing the template was causing linker problems on old ps3 // ACCEPTED_USE
+// Can we just fix this now?)
 struct hash_stringdata
 {
     enum    // parameters for hash table

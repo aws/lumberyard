@@ -12,8 +12,12 @@
 #pragma once
 
 #include <AzFramework/Input/Buses/Notifications/InputChannelEventNotificationBus.h>
+#include <AzFramework/Input/Events/InputChannelEventFilter.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/InputDevice.h>
+
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 // Start: fix for windows defining max/min macros
 #pragma push_macro("max")
@@ -34,57 +38,11 @@ namespace AzFramework
         ///@{
         //! Predefined input event listener priority, used to sort handlers from highest to lowest
         inline static AZ::s32 GetPriorityFirst()    { return std::numeric_limits<AZ::s32>::max(); }
+        inline static AZ::s32 GetPriorityDebug()    { return (GetPriorityFirst() / 4) * 3;        }
+        inline static AZ::s32 GetPriorityUI()       { return GetPriorityFirst() / 2;              }
         inline static AZ::s32 GetPriorityDefault()  { return 0;                                   }
         inline static AZ::s32 GetPriorityLast()     { return std::numeric_limits<AZ::s32>::min(); }
         ///@}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Events can be filtered by any combination of channel name, device name, and local player
-        class Filter
-        {
-        public:
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Wildcard representing any input channel name
-            static const AZ::Crc32 AnyChannelNameCrc32;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Wildcard representing any input device name
-            static const AZ::Crc32 AnyDeviceNameCrc32;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Wildcard representing any input device index
-            static const AZ::u32 AnyDeviceIndex;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Constructor
-            //! \param[in] channelName Crc32 of the input channel name to filter by
-            //! \param[in] deviceName Crc32 of the input device name to filter by
-            //! \param[in] localPlayer Crc32 of the local player to filter by
-            explicit Filter(const AZ::Crc32& channelNameCrc32 = AnyChannelNameCrc32,
-                            const AZ::Crc32& deviceNameCrc32 = AnyDeviceNameCrc32,
-                            const AZ::u32& deviceIndex = AnyDeviceIndex);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Default copying
-            AZ_DEFAULT_COPY(Filter);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Default destructor
-            virtual ~Filter() = default;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Check whether an input channel should pass through the filter
-            //! \param[in] inputChannel The input channel to be filtered
-            //! \return True if the input channel passes the filter, false otherwise
-            virtual bool DoesPassFilter(const InputChannel& inputChannel) const;
-
-        private:
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Variables
-            AZ::Crc32 m_channelNameCrc32; //!< Crc32 of the input channel name to filter by
-            AZ::Crc32 m_deviceNameCrc32;  //!< Crc32 of the input device name to filter by
-            AZ::u32   m_deviceIndex;      //!< Index of the input device to filter by
-        };
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
@@ -109,20 +67,23 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] filter The filter used to determine whether an inut event should be handled
-        explicit InputChannelEventListener(const Filter& filter);
+        explicit InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] filter The filter used to determine whether an inut event should be handled
         //! \param[in] priority The priority used to sort relative to other input event listeners
-        explicit InputChannelEventListener(const Filter& filter, AZ::s32 priority);
+        explicit InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter,
+                                           AZ::s32 priority);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] filter The filter used to determine whether an inut event should be handled
         //! \param[in] priority The priority used to sort relative to other input event listeners
         //! \param[in] autoConnect Whether to connect to the input notification bus on construction
-        explicit InputChannelEventListener(const Filter& filter, AZ::s32 priority, bool autoConnect);
+        explicit InputChannelEventListener(AZStd::shared_ptr<InputChannelEventFilter> filter,
+                                           AZ::s32 priority,
+                                           bool autoConnect);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Default copying
@@ -139,7 +100,7 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Allow the filter to be set as necessary even if already connected to the input event bus
         //! \param[in] filter The filter used to determine whether an inut event should be handled
-        void SetFilter(const Filter& filter);
+        void SetFilter(AZStd::shared_ptr<InputChannelEventFilter> filter);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Connect to the input notification bus to start receiving input notifications
@@ -159,14 +120,13 @@ namespace AzFramework
         //! unless the event was consumed by a higher priority listener, or did not pass the filter.
         //! \param[in] inputChannel The input channel that is active or whose state or value updated
         //! \return True if the input event has been consumed, false otherwise
-        ////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool OnInputChannelEventFiltered(const InputChannel& inputChannel) = 0;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        Filter  m_filter;   //!< Filter used to determine whether an inut event should be handled
-        AZ::s32 m_priority; //!< The priority used to sort relative to other input event listeners
+        AZStd::shared_ptr<InputChannelEventFilter> m_filter;   //!< The shared input event filter
+        AZ::s32                                    m_priority; //!< The priority used for sorting
     };
 } // namespace AzFramework
 

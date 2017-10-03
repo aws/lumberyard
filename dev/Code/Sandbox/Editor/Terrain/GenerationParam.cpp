@@ -90,7 +90,8 @@ CGenerationParam::CGenerationParam(QWidget* pParent /*=NULL*/)
             UpdatePreview();
         });
 
-    connect(ui->m_chkPreview, &QCheckBox::stateChanged, this, &CGenerationParam::UpdatePreview);
+    connect(ui->m_chkPreview, &QCheckBox::stateChanged, this, &CGenerationParam::OnShowPreviewChanged);
+    OnShowPreviewChanged();
 
     connect(ui->m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui->m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -174,6 +175,8 @@ bool CGenerationParam::eventFilter(QObject* object, QEvent* event)
 
 void CGenerationParam::UpdatePreview()
 {
+    // We only need to update the preview if it is checked, since it will be
+    // hidden otherwise
     if (m_previewDelegate && ui->m_chkPreview->isChecked())
     {
         SNoiseParams noise;
@@ -181,11 +184,18 @@ void CGenerationParam::UpdatePreview()
         m_previewDelegate->SetNoise(noise);
 
         m_previewImage = m_previewDelegate->GetImage();
-    }
 
-    // Always invalidate, in case the previews need to be cleared
-    ui->m_previewTexture->update();
-    ui->m_previewLODs->update();
+        ui->m_previewTexture->update();
+        ui->m_previewLODs->update();
+    }
+}
+
+void CGenerationParam::OnShowPreviewChanged()
+{
+    bool checked = ui->m_chkPreview->isChecked();
+    ui->m_previewTexture->setVisible(checked);
+    ui->m_previewLODs->setVisible(checked);
+    UpdatePreview();
 }
 
 void CGenerationParam::FillParam(SNoiseParams& pParam) const

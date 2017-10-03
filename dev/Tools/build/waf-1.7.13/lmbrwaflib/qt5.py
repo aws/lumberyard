@@ -157,13 +157,24 @@ INCLUDE_SRC_RE = re.compile(r'\s*\#include\s+[\"<](.*.(cpp|cxx|cc))[\">]',flags=
 RESTRICT_BINTEMP_QT_PATH=True
 
 # Derive a specific moc_files.<idx> folder name based on the base bldnode and idx
-def get_target_qt5_root(bld_node, target_name, idx):
-    base_qt_node = bld_node.make_node('qt5/{}.{}'.format(target_name,idx))
+def get_target_qt5_root(ctx, project_path, target_name, idx):
+
+    # Test if the project path is local to the current build path
+    is_project_local = project_path.is_child_of(ctx.path)
+    if is_project_local:
+        base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
+    else:
+        # If the project is not local to the current build path, manually create it
+        base_qt_node = project_path.get_bld()
+
     return base_qt_node
 
 # Change a target node from a changed extension to one marked as QT code generated
-def change_target_qt5_node(bld_node, project_path, target_name, target_node,idx):
+def change_target_qt5_node(ctx, project_path, target_name, target_node,idx):
 
+
+
+    bld_node = ctx.bldnode
     if RESTRICT_BINTEMP_QT_PATH:
         relpath_target = target_node.relpath()
         relpath_project = project_path.relpath()
@@ -173,7 +184,7 @@ def change_target_qt5_node(bld_node, project_path, target_name, target_node,idx)
         target_node_subdir = target_node.bld_dir()
 
     # Change the output target to the specific moc file folder
-    output_qt_dir = get_target_qt5_root(bld_node, target_name, idx).make_node(target_node_subdir)
+    output_qt_dir = get_target_qt5_root(ctx, project_path, target_name, idx).make_node(target_node_subdir)
     output_qt_dir.mkdir()
 
     output_qt_node = output_qt_dir.make_node(target_node.name)
@@ -208,39 +219,20 @@ class qxx(Task.classes['cxx']):
         moc tasks by using :py:meth:`waflib.Tools.qt5.qxx.add_moc_tasks` (if necessary),
         then postpone the task execution (there is no need to recompute the task signature).
         """
-        if self.moc_done:
-            # If there were moc tasks that were spawned by this task, then make sure that the generated moc files
-            # actually exist.  There appears to be an issue with incredibuild and highly parallelized builds where
-            # even though the moc tasks reported that it was complete, the actual moc files have not been transfered
-            # to the target location
-            if len(self.dep_moc_files)>0:
-                for dep_moc_file_path in iter(self.dep_moc_files):
-                    # Make sure that the path exists
-                    if not os.path.exists(dep_moc_file_path.abspath()):
-                        return Task.ASK_LATER
-                    # Even if the path exists, check to see if we can load it
-                    if not self.dep_moc_files[dep_moc_file_path]:
-                        try:
-                            file_content = dep_moc_file_path.read()
-                            file_content_len = len(file_content)
-                            del file_content
-                            self.dep_moc_files[dep_moc_file_path] = True
-                            if file_content_len == 0:
-                                return Task.ASK_LATER
-                        except:
-                            return Task.ASK_LATER
+        status = Task.Task.runnable_status(self)
+        if not self.moc_done:
+            # ask the task if it needs to rebuild.  This will include checking all dependencies (.moc files included)
+            # that may have changed.  If the task doesn't need to rebuild, no point in scanning for all the individual
+            # moc tasks that need to be added
+            if status != Task.RUN_ME:
+                return status
 
-            return Task.Task.runnable_status(self)
-        else:
-            for t in self.run_after:
-                if not t.hasrun:
-                    return Task.ASK_LATER
-            # Do not create tasks for project_generation builds
             self.add_moc_tasks()
             # At this point, the moc task should be done, recycle and try the status check again
             self.moc_done = 1
+            return Task.ASK_LATER
 
-            return self.runnable_status()
+        return status
 
     def create_moc_task(self, h_node, m_node):
         """
@@ -263,7 +255,7 @@ class qxx(Task.classes['cxx']):
             return moc_cache[cache_key]
         except KeyError:
 
-            target_node = change_target_qt5_node(self.generator.bld.bldnode,
+            target_node = change_target_qt5_node(self.generator.bld,
                                                  self.generator.path,
                                                  self.generator.name,
                                                  m_node,
@@ -284,10 +276,6 @@ class qxx(Task.classes['cxx']):
             gen.total += 1
 
             return tsk
-
-        else:
-            # remove the signature, it must be recomputed with the moc task
-            delattr(self, 'cache_sig')
 
     def moc_h_ext(self):
         try:
@@ -330,7 +318,9 @@ class qxx(Task.classes['cxx']):
                 if header_node:
                     break
             if header_node:
-                moc_node = header_node.change_ext('.moc')
+                moc_filename = '{}.moc'.format(os.path.splitext(header_node.name)[0])
+                moc_node = header_node.parent.make_node(moc_filename)
+
 
             if not header_node:
                 raise Errors.WafError('No source found for {} which is a moc file'.format(base_name))
@@ -347,8 +337,8 @@ class qxx(Task.classes['cxx']):
         '''
         moctasks = []
         include_source_rel_paths = INCLUDE_SRC_RE.findall(node_contents)
-        for include_source_rel_path,include_source_extension in include_source_rel_paths:
-            source_node = node.parent.find_node(include_source_rel_path)
+        for include_source_rel_path, include_source_extension in include_source_rel_paths:
+            source_node = self.generator.path.find_node(include_source_rel_path)
             if source_node is not None:
                 source_node_contents = source_node.read()
                 moctasks += self.scan_node_contents_for_moc_tasks(source_node_contents)
@@ -357,7 +347,6 @@ class qxx(Task.classes['cxx']):
 
         # simple scheduler dependency: run the moc task before others
         self.run_after.update(set(moctasks))
-        self.moc_done = 1
 
 
     def add_moc_tasks_for_node(self, node, node_contents):
@@ -369,7 +358,6 @@ class qxx(Task.classes['cxx']):
 
         # simple scheduler dependency: run the moc task before others
         self.run_after.update(set(moctasks))
-        self.moc_done = 1
 
 class trans_update(Task.Task):
     """Update a .ts files from a list of C++ files"""
@@ -415,25 +403,35 @@ def create_rcc_task(self, node):
         self.rcc_tasks = []
 
     if is_static_lib:
-        rcnode = change_target_qt5_node(self.bld.bldnode,
+
+        rcc_filename = 'rcc_%s.h' % node.name[:-4]
+        rcc_node = node.parent.make_node(rcc_filename)
+
+        rcnode = change_target_qt5_node(self.bld,
                                         self.path,
                                         self.name,
-                                        node.parent.find_or_declare('rcc_%s.h' % node.name[:-4]),
+                                        rcc_node,
                                         self.idx)
 
         qrc_task = self.create_task('rcc', node, rcnode)
         self.rcc_tasks.append(qrc_task)
         return qrc_task
     else:
-        rcnode = change_target_qt5_node(self.bld.bldnode,
+
+        rcc_filename = '%s_rc.cpp' % node.name[:-4]
+        rcc_node = node.parent.make_node(rcc_filename)
+
+        rcnode = change_target_qt5_node(self.bld,
                                         self.path,
                                         self.name,
-                                        node.change_ext('_rc.cpp'), self.idx)
+                                        rcc_node,
+                                        self.idx)
 
         qrc_task = self.create_task('rcc', node, rcnode)
         self.rcc_tasks.append(qrc_task)
         cpptask = self.create_task('cxx', rcnode, rcnode.change_ext('.o'))
         cpptask.dep_nodes.append(node)
+        cpptask.set_run_after(qrc_task)
         try:
             self.compiled_tasks.append(cpptask)
         except AttributeError:
@@ -468,10 +466,13 @@ def create_uic_task(self, node):
 
     uictask = self.create_task('ui5', node)
 
-    target_node = change_target_qt5_node(self.bld.bldnode,
+    ui_filename = self.env['ui_PATTERN'] % node.name[:-3]
+    ui_node = node.parent.make_node(ui_filename)
+
+    target_node = change_target_qt5_node(self.bld,
                                          self.path,
                                          self.name,
-                                         node.parent.find_or_declare(self.env['ui_PATTERN'] % node.name[:-3]),
+                                         ui_node,
                                          self.idx)
     uictask.outputs = [target_node]
     self.uic_tasks.append(uictask)
@@ -501,7 +502,8 @@ def apply_qt5_includes(self):
     if not self.env.QMAKE:
         return
 
-    base_moc_node = get_target_qt5_root(self.bld.bldnode,
+    base_moc_node = get_target_qt5_root(self.bld,
+                                        self.path,
                                         self.name,
                                         self.idx)
     if not hasattr(self, 'includes'):
@@ -513,7 +515,7 @@ def apply_qt5_includes(self):
 
 
 @feature('qt5')
-@after_method('apply_link')
+@after_method('set_link_outputs')
 def apply_qt5(self):
     """
     Add MOC_FLAGS which may be necessary for moc::
@@ -534,12 +536,22 @@ def apply_qt5(self):
     if not self.env.QMAKE:
         return
 
+    # If no type is defined, this is just a stub task that shouldn't handle any additional build/link tasks
+    if not hasattr(self,'_type'):
+        return
+
     if getattr(self, 'lang', None):
         qmtasks = []
         for x in self.to_list(self.lang):
             if isinstance(x, str):
                 x = self.path.find_resource(x + '.ts')
-            qmtasks.append(self.create_task('ts2qm', x, x.change_ext('.qm')))
+            new_qm_node = change_target_qt5_node(self.bld,
+                                                 self.path,
+                                                 self.name,
+                                                 x.change_ext('.qm'),
+                                                 self.idx)
+            qmtask = self.create_task('ts2qm', x, new_qm_node)
+            qmtasks.append(qmtask)
 
         if getattr(self, 'update', None) and Options.options.trans_qt5:
             cxxnodes = [a.inputs[0] for a in self.compiled_tasks] + [
@@ -552,11 +564,21 @@ def apply_qt5(self):
             rcnode = self.langname
             if isinstance(rcnode, str):
                 rcnode = self.path.find_or_declare(rcnode + '.qrc')
-            t = self.create_task('qm2rcc', qmnodes, rcnode)
+            new_rc_node = change_target_qt5_node(self.bld,
+                                                 self.path,
+                                                 self.name,
+                                                 rcnode,
+                                                 self.idx)
+            t = self.create_task('qm2rcc', qmnodes, new_rc_node)
+
+            for x in qmtasks:
+                t.set_run_after(x)
+
             k = create_rcc_task(self, t.outputs[0])
 
             if k:
                 self.link_task.inputs.append(k.outputs[0])
+                k.set_run_after(t)
 
     lst = []
     for flag in self.to_list(self.env['CXXFLAGS']):
@@ -595,7 +617,10 @@ def cxx_hook(self, node):
     """
     Re-map C++ file extensions to the :py:class:`waflib.Tools.qt5.qxx` task.
     """
-    return self.create_compiled_task('qxx', node)
+    if 'qt5' in self.features:
+        return self.create_compiled_task('qxx', node)
+    else:
+        return self.create_compiled_task('cxx', node)
 
 
 # QT tasks involve code generation, so we need to also check if the generated code is still there
@@ -819,7 +844,7 @@ def find_qt5_binaries(self, platform):
         'win_x64_vs2013': 'msvc2013_64',
         'win_x64_vs2015': 'msvc2015_64',
         'darwin_x64': 'clang_64',
-        'linux_x64_gcc': 'gcc_64'
+        'linux_x64': 'gcc_64'
     }
 
     if not platformDirectoryMapping.has_key(platform):
@@ -901,6 +926,37 @@ def find_qt5_binaries(self, platform):
 
     paths.insert(0, qtbin)
 
+    def _get_qtlib_subfolder(name):
+        qt_subdir = os.path.join(qtdir, name)
+        if not os.path.exists(qt_subdir):
+            self.fatal('Unable to find QT lib folder {}'.format(name))
+        return qt_subdir
+
+    def _prepare_lib_folder_for_linux(qt_lib_path):
+        # this functions sets up the qt linux shared library, for example
+        # libQt5Xml.so -> libQt5Xml.so.5.6.2
+        # libQt5Xml.so.5 -> libQt5Xml.so.5.6.2
+        # libQt5Xml.so.5.6 -> libQt5Xml.so.5.6.2
+        import glob
+        library_files = glob.glob(os.path.join(qt_lib_path, "lib*.so*"))
+        for lib_path in library_files:
+
+            if os.path.islink(lib_path):
+                continue
+
+            lib_path_basename = os.path.basename(lib_path)
+
+            new_lib_path, ext = os.path.splitext(lib_path)
+            while ext != ".so":
+                if os.path.lexists(new_lib_path) is False:
+                    os.symlink(lib_path_basename, new_lib_path)
+                    Logs.debug("Made link: {} -> {}".format(lib_path, new_lib_path))
+                new_lib_path, ext = os.path.splitext(new_lib_path)
+
+    # generate symlinks for the library files within the lib folder
+    if platform == "linux_x64":
+        _prepare_lib_folder_for_linux(_get_qtlib_subfolder("lib"))
+
     def find_bin(lst, var):
 
         if var in env:
@@ -945,12 +1001,6 @@ def find_qt5_binaries(self, platform):
     env['QT_LRELEASE_FLAGS'] = ['-silent']
     env.MOCCPPPATH_ST = '-I%s'
     env.MOCDEFINES_ST = '-D%s'
-
-    def _get_qtlib_subfolder(name):
-        qt_subdir = os.path.join(qtdir, name)
-        if not os.path.exists(qt_subdir):
-            self.fatal('Unable to find QT lib folder {}'.format(name))
-        return qt_subdir
 
     env.QT_BIN_DIR = _get_qtlib_subfolder('bin')
     env.QT_LIB_DIR = _get_qtlib_subfolder('lib')
@@ -1184,7 +1234,8 @@ def options(opt):
 PLATFORM_TO_QTGA_SUBFOLDER = {
     "win_x64_vs2013": ["win32/vc120/qtga.dll", "win32/vc120/qtgad.dll", "win32/vc120/qtgad.pdb"],
     "win_x64_vs2015": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],
-    "darwin_x64": ["macx/libqtga.dylib", "macx/libqtga_debug.dylib"]
+    "darwin_x64": ["macx/libqtga.dylib", "macx/libqtga_debug.dylib"],
+    "linux_x64": []
 }
 
 IGNORE_QTLIB_PATTERNS = [
@@ -1214,6 +1265,18 @@ WINDOWS_RC_QT_DLLS = [
     "Qt5Quick",
     "Qt5Svg",
     "Qt5Widgets",
+]
+
+WINDOWS_LMBRSETUP_QT_DLLS = [
+    "Qt5Core",
+    "Qt5Gui",
+    "Qt5Network",
+    "Qt5Qml",
+    "Qt5Quick",
+    "Qt5Svg",
+    "Qt5Widgets",
+    "Qt5Concurrent",
+    "Qt5WinExtras",
 ]
 
 WINDOWS_MAIN_QT_DLLS = [
@@ -1261,11 +1324,11 @@ def qtlib_bootstrap(self, platform, configuration):
     if platform in QT_SDK_MISSING:
         return
 
-    def _process_qtlib_copy_folder(src, type, ignore):
-        dst = os.path.normcase(os.path.join(dst_qtlib, type))
-        return copy_tasks.copy_tree2(src, dst, False, ignore, False)
+    def _copy_folder(src, dst, qt_type, ignore):
+        dst_type = os.path.normcase(os.path.join(dst, qt_type))
+        return copy_tasks.copy_tree2(src, dst_type, False, ignore, False)
 
-    def _copy_qtlib_file(src_path, dest_path):
+    def _copy_file(src_path, dest_path):
         src = os.path.normcase(src_path)
         dst = os.path.normcase(dest_path)
         copy_file = copy_tasks.should_overwrite_file(src, dst)
@@ -1287,124 +1350,156 @@ def qtlib_bootstrap(self, platform, configuration):
         else:
             return 0
 
-    def _copy_qt_dlls(qt_dlls_source, target_folder):
+    def _copy_dlls(qt_dlls_source, target_folder):
 
         if not os.path.exists(target_folder):
-            os.mkdir(target_folder)
+            os.makedirs(target_folder)
         copied = 0
         for qtdll in qt_dlls_source:
             src_dll = os.path.join(self.env.QT_BIN_DIR, qtdll)
             dst_dll = os.path.join(target_folder, qtdll)
-            copied += _copy_qtlib_file(src_dll, dst_dll)
+            copied += _copy_file(src_dll, dst_dll)
         return copied
 
-    copy_pdbs = self.is_option_true('copy_3rd_party_pdbs')
+    def _copy_qtlib_folder(ctx, dst, current_platform, ignore_patterns, is_require_lib, is_require_qml, is_require_plugins):
 
-    output_paths = self.get_output_folders(platform,configuration)
-    if len(output_paths)!=1:
+        # Used to track number of files copied by this function
+        num_files_copied = 0
+
+        # Create the qtlibs subfolder
+        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
+        if not os.path.exists(dst_qtlib):
+            os.makedirs(dst_qtlib)
+
+        # If qt fails to configure, the folder copies below will give meaningless errors.
+        # Test for this condition and error out here
+        if not ctx.env.QT_LIB_DIR:
+            Logs.warn('unable to find QT')
+            return num_files_copied
+
+        # Copy the libs for qtlibs
+        if is_require_lib:
+            num_files_copied += _copy_folder(ctx.env.QT_LIB_DIR, dst_qtlib, 'lib', ignore_patterns)
+
+        # Copy the qml for qtlibs
+        if is_require_qml:
+            num_files_copied += _copy_folder(ctx.env.QT_QML_DIR, dst_qtlib, 'qml', None)
+
+        # Copy the plugins for qtlibs
+        if is_require_plugins:
+            num_files_copied += _copy_folder(ctx.env.QT_PLUGINS_DIR, dst_qtlib, 'plugins', ignore_patterns)
+
+        # Copy the extra txt files
+        qt_base = os.path.normcase(ctx.Path('Code/Sandbox/SDKs/Qt'))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'QT-NOTICE.TXT'),
+                                   os.path.join(dst_qtlib, 'QT-NOTICE.TXT'))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'ThirdPartySoftware_Listing.txt'),
+                                   os.path.join(dst_qtlib, 'ThirdPartySoftware_Listing.txt'))
+
+        qt_tga_files = PLATFORM_TO_QTGA_SUBFOLDER.get(current_platform, [])
+        qt_tga_src_root = os.path.normcase(ctx.Path('Tools/Redistributables/QtTgaImageFormatPlugin'))
+        for qt_tga_file in qt_tga_files:
+
+            if not is_copy_pdbs and qt_tga_file.endswith('.pdb'):
+                continue
+
+            source_qt_tga = os.path.normcase(os.path.join(qt_tga_src_root, qt_tga_file))
+            dest_qt_tga = os.path.normcase(
+                os.path.join(dst_qtlib, 'plugins/imageformats', os.path.basename(qt_tga_file)))
+            num_files_copied += _copy_file(source_qt_tga, dest_qt_tga)
+
+        return num_files_copied
+
+    def _copy_qt_dlls(ctx, dst, copy_dll_list):
+        debug_dll_fn = lambda qt: qt + ('d.dll' if is_debug else '.dll')
+        ext_dll_fn = lambda dll: dll + '.dll'
+        ext_pdb_fn = lambda pdb: pdb + '.pdb'
+
+        qt_main_dlls = [debug_dll_fn(qt) for qt in copy_dll_list]
+        qt_main_dlls += [ext_dll_fn(icu) for icu in ICU_DLLS]
+
+        if is_debug and is_copy_pdbs:
+            qt_main_dlls += [ext_pdb_fn(qt) for qt in copy_dll_list]
+
+        num_files_copied = 0
+        try:
+            if not os.path.exists(ctx.env.QT_BIN_DIR):
+                Logs.debug('Unable to locate QT Bin folder: {}.'.format(ctx.env.QT_BIN_DIR))
+                QT_SDK_MISSING.add(platform)
+                return num_files_copied
+        except TypeError:
+            Logs.debug('Unable to locate QT Bin folder.')
+            QT_SDK_MISSING.add(platform)
+            return num_files_copied
+
+        # Copy the QT.dlls to the main configuration output folder
+        num_files_copied += _copy_dlls(qt_main_dlls, dst)
+
+        return num_files_copied
+
+    is_copy_pdbs = self.is_option_true('copy_3rd_party_pdbs')
+
+    output_paths = self.get_output_folders(platform, configuration)
+    if len(output_paths) != 1:
         self.fatal('Assertion error: Multiple output paths returned')
     output_path = output_paths[0].abspath()
     if not os.path.exists(output_path):
-        os.mkdir(output_path)
+        os.makedirs(output_path)
 
-    # For windows, we will bootstrap copy the Qt Dlls to the main and rc subfolder (for non-test and non-dedicated configurations)
-    if platform in ['win_x64_vs2015', 'win_x64_vs2013'] and configuration in ['debug', 'profile', 'debug_test', 'profile_test', 'debug_dedicated', 'profile_dedicated']:
-
-        is_debug = configuration.startswith('debug')
-
-        debug_dll = lambda qt: qt+('d.dll' if is_debug else '.dll')
-        ext_dll = lambda dll: dll+'.dll'
-        ext_pdb = lambda pdb: pdb+'.pdb'
-
-        qt_main_dlls = [debug_dll(qt) for qt in WINDOWS_MAIN_QT_DLLS]
-        qt_rc_dlls = [debug_dll(qt) for qt in WINDOWS_RC_QT_DLLS]
-
-        qt_main_dlls += [ext_dll(icu) for icu in ICU_DLLS]
-        qt_rc_dlls += [ext_dll(icu) for icu in ICU_DLLS]
-
-        if is_debug and copy_pdbs:
-            qt_main_dlls += [ext_pdb(qt) for qt in WINDOWS_MAIN_QT_DLLS]
-            qt_rc_dlls += [ext_pdb(qt) for qt in WINDOWS_RC_QT_DLLS]
-
-        files_copied = 0
-        try:
-            if not os.path.exists(self.env.QT_BIN_DIR):
-                Logs.debug('Unable to locate QT Bin folder {}'.format(self.env.QT_BIN_DIR))
-                QT_SDK_MISSING.add(platform)
-                return
-        except TypeError:
-            Logs.debug('Unable to locate QT Bin folder')
-            QT_SDK_MISSING.add(platform)
-            return
+    # For windows, we will bootstrap copy the Qt Dlls to the main and rc subfolder
+    # (for non-test and non-dedicated configurations)
+    if platform in ['win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
+            ['debug', 'profile', 'debug_test', 'profile_test', 'debug_dedicated', 'profile_dedicated']:
 
         copy_timer = Utils.Timer()
 
-        # Copy the QT.dlls to the main configuration output folder
-        files_copied += _copy_qt_dlls(qt_main_dlls, output_path)
+        # Check if current configuration is a debug build
+        is_debug = configuration.startswith('debug')
 
-        # Copy the QT.dlls for the rc to the configurations's rc folder
-        output_rc_path = os.path.join(output_path, 'rc')
-        files_copied += _copy_qt_dlls(qt_rc_dlls, output_rc_path)
+        # Copy all the dlls required by Qt
+        # Copy to the current configuration's BinXXX folder
+        files_copied = _copy_qt_dlls(self, output_path, WINDOWS_MAIN_QT_DLLS)
+        # Copy to the current configuration's BinXXX/rc folder
+        files_copied += _copy_qt_dlls(self, os.path.join(output_path, 'rc'), WINDOWS_RC_QT_DLLS)
+        # Copy to the LmbrSetup folder
+        import lmbr_setup_tools
+        files_copied += _copy_qt_dlls(self,
+            self.Path(self.get_lmbr_setup_tools_output_folder()),
+            WINDOWS_LMBRSETUP_QT_DLLS)
 
         # Report the sync job, but only report the number of files if any were actually copied
         if files_copied > 0:
-            Logs.info('[INFO] copied {} qt dlls to target folder ({})'.format(files_copied, str(copy_timer)))
+            Logs.info('[INFO] Copied Qt DLLs to target folder: {} files copied. ({})'
+                      .format(files_copied, str(copy_timer)))
         else:
             if Logs.verbose > 1:
-                Logs.info('[INFO] skipped qt dll copy to target folder ({})'.format(str(copy_timer)))
+                Logs.info('[INFO] Skipped qt dll copy to target folder. ({})'.format(str(copy_timer)))
 
     # Check if this is a platform that supports the qtlib folder synchronization
     if platform in PLATFORM_TO_QTGA_SUBFOLDER:
 
-        ignore_lib_patterns = IGNORE_QTLIB_PATTERNS if copy_pdbs else IGNORE_QTLIB_PATTERNS+['.pdb']
-
-        files_copied = 0
-
         copy_timer = Utils.Timer()
 
-        # Create the qtlibs subfolder
-        dst_qtlib = os.path.normcase(os.path.join(output_path, 'qtlibs'))
-        if not os.path.exists(dst_qtlib):
-            os.mkdir(dst_qtlib)
+        # Used as a pattern-set to ignore certain qt library files
+        ignore_lib_patterns = IGNORE_QTLIB_PATTERNS if is_copy_pdbs else IGNORE_QTLIB_PATTERNS + ['.pdb']
 
-        # if qt fails to configure, the folder copies below will give meaningless errors.  Test for this condition
-        # and error out here
-        if not self.env.QT_LIB_DIR:
-            Logs.error('unable to find QT')
+        # Copy the entire qtlib folder to current output path
+        # Contains lib, plugins and qml folders, and license information
+        files_copied = _copy_qtlib_folder(self, output_path, platform, ignore_lib_patterns, True, True, True)
 
-        # Copy the libs for qtlibs
-        files_copied += _process_qtlib_copy_folder(self.env.QT_LIB_DIR, 'lib', ignore_lib_patterns)
-
-        # Copy the qml for qtlibs
-        files_copied += _process_qtlib_copy_folder(self.env.QT_QML_DIR, 'qml', None)
-
-        # Copy the plugins for qtlibs
-        files_copied += _process_qtlib_copy_folder(self.env.QT_PLUGINS_DIR, 'plugins', ignore_lib_patterns)
-
-        # Copy the extra txt files
-        qt_base = os.path.normcase(self.Path('Code/Sandbox/SDKs/Qt'))
-        files_copied += _copy_qtlib_file(os.path.join(qt_base, 'QT-NOTICE.TXT'),
-                                         os.path.join(dst_qtlib,'QT-NOTICE.TXT'))
-        files_copied += _copy_qtlib_file(os.path.join(qt_base, 'ThirdPartySoftware_Listing.txt'),
-                                         os.path.join(dst_qtlib,'ThirdPartySoftware_Listing.txt'))
-
-        qt_tga_files = PLATFORM_TO_QTGA_SUBFOLDER.get(platform, [])
-        qt_tga_src_root = os.path.normcase(self.Path('Tools/Redistributables/QtTgaImageFormatPlugin'))
-        for qt_tga_file in qt_tga_files:
-
-            if not copy_pdbs and qt_tga_file.endswith('.pdb'):
-                continue
-
-            source_qt_tga = os.path.normcase(os.path.join(qt_tga_src_root, qt_tga_file))
-            dest_qt_tga = os.path.normcase(os.path.join(dst_qtlib, 'plugins/imageformats', os.path.basename(qt_tga_file)))
-            files_copied += _copy_qtlib_file(source_qt_tga, dest_qt_tga)
+        import lmbr_setup_tools
+        files_copied += _copy_qtlib_folder(self,
+            self.Path(self.get_lmbr_setup_tools_output_folder()),
+            platform, ignore_lib_patterns, True, True, True)
 
         # Report the sync job, but only report the number of files if any were actually copied
         if files_copied > 0:
-            Logs.info('[INFO] Copy qtlibs folder to {}: {} files copied) ({})'.format(dst_qtlib, files_copied, str(copy_timer)))
+            Logs.info('[INFO] Copied qtlibs folder to target folder: {} files copied. ({})'
+                      .format(files_copied, str(copy_timer)))
         else:
             if Logs.verbose > 1:
-                Logs.info('[INFO] Copy qtlibs folder to {}: No files copied ({})'.format(dst_qtlib, str(copy_timer)))
+                Logs.info('[INFO] Copied qtlibs folder to target folder: No files copied. ({})'
+                          .format(str(copy_timer)))
 
 
 

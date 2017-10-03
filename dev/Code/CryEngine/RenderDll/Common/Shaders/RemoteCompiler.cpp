@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include <AzCore/Socket/AzSocket.h>
-
+#include <NativeUIRequests.h>
 #include <AzFramework/Network/SocketConnection.h>
 
 namespace NRemoteCompiler
@@ -192,6 +192,8 @@ namespace NRemoteCompiler
                 iLog->LogError("ERROR: CShaderSrv::Compile: no response received!\n");
                 CryAutoLock<CryMutex> protector(m_mapProtector);
                 m_responsesAwaitingCallback.erase(chosenToken);
+
+                EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Remote Shader Compiler", "Unable to connect to Remote Shader Compiler", false);
                 return false;
             }
 
@@ -365,14 +367,14 @@ namespace NRemoteCompiler
     const char* CShaderSrv::GetPlatform() const
     {
         const char* szTarget = "unknown";
-        if (CParserBin::m_nPlatform == SF_ORBIS)
+        if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
         {
-            szTarget = "ORBIS";
+            szTarget = "ORBIS"; // ACCEPTED_USE
         }
         else
-        if (CParserBin::m_nPlatform == SF_DURANGO)
+        if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
         {
-            szTarget = "DURANGO";
+            szTarget = "DURANGO"; // ACCEPTED_USE
         }
         else
         if (CParserBin::m_nPlatform == SF_D3D11)
@@ -852,7 +854,6 @@ namespace NRemoteCompiler
             Err = AZ::AzSock::Connect(Socket, socketAddress);
             if (!AZ::AzSock::SocketErrorOccured(Err))
             {
-                AZ::AzSock::AzSocketAddress socketAddress;
                 int result = AZ::AzSock::GetSockName(Socket, socketAddress);
                 if (AZ::AzSock::SocketErrorOccured(result))
                 {
@@ -864,7 +865,6 @@ namespace NRemoteCompiler
             }
             else
             {
-                //iLog->LogError("ERROR: CShaderSrv::Compile: could not connect to %s\n", Server.c_str());
                 iLog->LogError("ERROR: CShaderSrv::Compile: could not connect to %s (sys_net_errno=%s, retrying %d)\n", Server.c_str(), AZ::AzSock::GetStringForError(Err), nRetries);
 
                 // if buffer is full try sleeping a bit before retrying
@@ -875,10 +875,12 @@ namespace NRemoteCompiler
                     Sleep(5000);
                 }
 
-                //socketclose(s);
-                //return (size_t)-1;
                 AZ::AzSock::CloseSocket(Socket);
                 Socket = AZ_SOCKET_INVALID;
+
+                const AZStd::string title = "Remote Shader Compiler";
+                const AZStd::string message = AZStd::string::format("Unable to connect to Remote Shader Compiler at %s", Server.c_str());
+                EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
 
                 return ESNetworkError;
             }

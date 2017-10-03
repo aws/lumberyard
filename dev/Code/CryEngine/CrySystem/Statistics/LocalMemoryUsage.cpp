@@ -1090,6 +1090,7 @@ void CLocalMemoryUsage::CollectGeometryP1()
     dwCount += p3DEngine->GetObjectsByType(eERType_RenderComponent);
     dwCount += p3DEngine->GetObjectsByType(eERType_SkinnedMeshRenderComponent);
     dwCount += p3DEngine->GetObjectsByType(eERType_StaticMeshRenderComponent);
+    dwCount += p3DEngine->GetObjectsByType(eERType_DynamicMeshRenderComponent);
     dwCount += p3DEngine->GetObjectsByType(eERType_Brush);
     dwCount += p3DEngine->GetObjectsByType(eERType_Vegetation);
     dwCount += p3DEngine->GetObjectsByType(eERType_Decal);
@@ -1103,6 +1104,7 @@ void CLocalMemoryUsage::CollectGeometryP1()
         dwCount += p3DEngine->GetObjectsByType(eERType_Light, &renderNodes[dwCount]);
         dwCount += p3DEngine->GetObjectsByType(eERType_RenderComponent, &renderNodes[dwCount]); 
         dwCount += p3DEngine->GetObjectsByType(eERType_StaticMeshRenderComponent, &renderNodes[dwCount]);
+        dwCount += p3DEngine->GetObjectsByType(eERType_DynamicMeshRenderComponent, &renderNodes[dwCount]);
         dwCount += p3DEngine->GetObjectsByType(eERType_SkinnedMeshRenderComponent, &renderNodes[dwCount]);
         dwCount += p3DEngine->GetObjectsByType(eERType_Brush, &renderNodes[dwCount]);
         dwCount += p3DEngine->GetObjectsByType(eERType_Vegetation, &renderNodes[dwCount]);

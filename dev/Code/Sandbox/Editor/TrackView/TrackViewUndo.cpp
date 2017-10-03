@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 
 #include "TrackViewUndo.h"
 #include "TrackViewSequenceManager.h"
@@ -164,8 +164,6 @@ CUndoTrackObject::CUndoTrackObject(CTrackViewTrack* pTrack, bool bStoreKeySelect
 
     CObjectLayer* objectLayer = m_pSequence->GetSequenceObjectLayer();
 
-    assert(objectLayer);
-
     if (objectLayer)
     {
         objectLayer->SetModified();
@@ -253,37 +251,23 @@ CAbstractUndoSequenceTransaction::CAbstractUndoSequenceTransaction(CTrackViewSeq
 //////////////////////////////////////////////////////////////////////////
 void CAbstractUndoSequenceTransaction::AddSequence()
 {
-    CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+    m_pStoredTrackViewSequence.release();
 
-    if (m_pSequence->GetSequenceType() == eSequenceType_SequenceComponent)
+    // We only need to add the sequence for legacy sequences because restored adds for Component Entity Sequences will restore
+    // the Sequence Components, which are added back to TrackView and the movie system by the Sequence Component's Init() method
+    if (m_pSequence->GetSequenceType() == eSequenceType_Legacy)
     {
-        // Search for the sequence in the manager by entity Id first - it may have been restored there already during
-        // the SequenceComponent::Init() - if we find it, we don't need to add it again, just swap in the sequence data.
-        // TODO (captured in LY-48966): this can be removed when CryMovie is converted to AZ::Serialization and the sequences 
-        // are restored fully during undo/redo
-        for (auto iter = pSequenceManager->m_sequences.begin(); iter != pSequenceManager->m_sequences.end(); ++iter)
-        {
-            std::unique_ptr<CTrackViewSequence>& currentSequence = *iter;
+        CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
 
-            if (currentSequence.get()->GetSequenceComponentEntityId() == m_pSequence->GetSequenceComponentEntityId())
-            {
-                m_pStoredTrackViewSequence.swap(currentSequence);
-                m_pStoredTrackViewSequence.release();
-                return;
-            }
-        }
+        // For Legacy sequences
+        // add sequence to the CryMovie system
+        IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
+        pMovieSystem->AddSequence(m_pSequence->m_pAnimSequence.get());
+
+        // Release ownership and add node back to CTrackViewSequenceManager
+        pSequenceManager->m_sequences.push_back(std::unique_ptr<CTrackViewSequence>(m_pSequence));
+        pSequenceManager->OnSequenceAdded(m_pSequence);
     }
-
-    // For Legacy sequences, or if the SequenceComponent entity was not found,
-    // add sequence to the CryMovie system
-    IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
-    pMovieSystem->AddSequence(m_pSequence->m_pAnimSequence);
-
-    // Release ownership and add node back to CTrackViewSequenceManager
-    CTrackViewSequence* pSequence = m_pStoredTrackViewSequence.release();
-    pSequenceManager->m_sequences.push_back(std::unique_ptr<CTrackViewSequence>(m_pSequence));
-
-    pSequenceManager->OnSequenceAdded(m_pSequence);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -307,7 +291,7 @@ void CAbstractUndoSequenceTransaction::RemoveSequence(bool bAquireOwnership)
             // Remove from CryMovie and TrackView
             pSequenceManager->m_sequences.erase(iter);
             IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
-            pMovieSystem->RemoveSequence(m_pSequence->m_pAnimSequence);
+            pMovieSystem->RemoveSequence(m_pSequence->m_pAnimSequence.get());
 
             break;
         }
@@ -358,7 +342,7 @@ CAbstractUndoAnimNodeTransaction::CAbstractUndoAnimNodeTransaction(CTrackViewAni
 void CAbstractUndoAnimNodeTransaction::AddNode()
 {
     // Add node back to sequence
-    m_pParentNode->m_pAnimSequence->AddNode(m_pNode->m_pAnimNode);
+    m_pParentNode->m_pAnimSequence->AddNode(m_pNode->m_pAnimNode.get());
 
     // Release ownership and add node back to parent node
     CTrackViewNode* pNode = m_pStoredTrackViewNode.release();
@@ -396,7 +380,7 @@ void CAbstractUndoAnimNodeTransaction::RemoveNode(bool bAquireOwnership)
                 static_cast<AZ::EntityBus::Handler*>(m_pNode)->BusDisconnect(m_pNode->GetAzEntityId());
             }
             
-            m_pParentNode->m_pAnimSequence->RemoveNode(m_pNode->m_pAnimNode, /*removeChildRelationships=*/ false);
+            m_pParentNode->m_pAnimSequence->RemoveNode(m_pNode->m_pAnimNode.get(), /*removeChildRelationships=*/ false);
 
             break;
         }
@@ -448,7 +432,7 @@ CAbstractUndoTrackTransaction::CAbstractUndoTrackTransaction(CTrackViewTrack* pT
 void CAbstractUndoTrackTransaction::AddTrack()
 {
     // Add node back to sequence
-    m_pParentNode->m_pAnimNode->AddTrack(m_pTrack->m_pAnimTrack);
+    m_pParentNode->m_pAnimNode->AddTrack(m_pTrack->m_pAnimTrack.get());
 
     // Add track back to parent node and release ownership
     CTrackViewNode* pTrack = m_pStoredTrackViewTrack.release();
@@ -472,8 +456,7 @@ void CAbstractUndoTrackTransaction::RemoveTrack(bool bAquireOwnership)
 
             // Remove from parent node and sequence
             m_pParentNode->m_childNodes.erase(iter);
-            m_pParentNode->m_pAnimNode->RemoveTrack(m_pTrack->m_pAnimTrack);
-
+            m_pParentNode->m_pAnimNode->RemoveTrack(m_pTrack->m_pAnimTrack.get());
             break;
         }
     }
@@ -541,7 +524,7 @@ void CUndoAnimNodeReparent::Reparent(CTrackViewAnimNode* pNewParent)
 {
     RemoveNode(true);
     m_pParentNode = pNewParent;
-    m_pNode->m_pAnimNode->SetParent(pNewParent->m_pAnimNode);
+    m_pNode->m_pAnimNode->SetParent(pNewParent->m_pAnimNode.get());
     AddParentsInChildren(m_pNode);
     AddNode();
 
@@ -559,7 +542,7 @@ void CUndoAnimNodeReparent::AddParentsInChildren(CTrackViewAnimNode* pCurrentNod
 
         if (pChildAnimNode->GetNodeType() != eTVNT_Track)
         {
-            pChildAnimNode->m_pAnimNode->SetParent(pCurrentNode->m_pAnimNode);
+            pChildAnimNode->m_pAnimNode->SetParent(pCurrentNode->m_pAnimNode.get());
 
             if (pChildAnimNode->GetChildCount() > 0 && pChildAnimNode->GetNodeType() != eTVNT_AnimNode)
             {
@@ -595,16 +578,6 @@ CUndoAnimNodeObjectRename::CUndoAnimNodeObjectRename(CBaseObject* entityObj, con
     , m_newName(newName)
     , m_oldName(entityObj->GetName().toUtf8().data())
 {
-    // For Component Entity Sequences, renaming the sequence is handled during the renaming of the Sequence Component itself, but we need to notify
-    // the Sequence Component that it needs to prepare for serialization for the undo system. If the renamed obj is not a sequence component entity,
-    // this will be do nothing as the id will not be connected
-    AZ::EntityId id;
-    AzToolsFramework::ComponentEntityObjectRequestBus::EventResult(id, m_baseObject, &AzToolsFramework::ComponentEntityObjectRequestBus::Events::GetAssociatedEntityId);
-    if (id.IsValid())
-    {
-        LmbrCentral::EditorSequenceComponentRequestBus::Event(id, &LmbrCentral::EditorSequenceComponentRequestBus::Events::OnBeforeSave);
-    }
-
     Rename(m_newName);
 }
 

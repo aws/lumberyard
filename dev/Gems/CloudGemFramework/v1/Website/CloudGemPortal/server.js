@@ -10,13 +10,15 @@ if (process.env.NODE_ENV === 'production') {
 const server = httpServer.createServer({
   root: './',
   cache: cache,
-  robots: true,
+  robots: false,  
   headers: {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Credentials': 'true'
-  }
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+    }  
 })
 
 require('chokidar-socket-emitter')({app: server.server})
 
+console.log("Server has been started on localhost:3000");
 server.listen(3000)

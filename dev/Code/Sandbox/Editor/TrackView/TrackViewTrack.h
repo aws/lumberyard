@@ -121,20 +121,20 @@ public:
     template <class Type>
     void GetValue(const float time, Type& value, bool applyMultiplier) const
     {
-        assert (m_pAnimTrack);
+        assert (m_pAnimTrack.get());
         return m_pAnimTrack->GetValue(time, value, applyMultiplier);
     }
     template <class Type>
     void GetValue(const float time, Type& value) const
     {
-        assert(m_pAnimTrack);
+        assert(m_pAnimTrack.get());
         return m_pAnimTrack->GetValue(time, value);
     }
 
     void GetKeyValueRange(float& min, float& max) const;
 
     // Type getters
-    CAnimParamType GetParameterType() const { return m_pAnimTrack->GetParameterType(); }
+    const CAnimParamType& GetParameterType() const { return m_pAnimTrack->GetParameterType(); }
     EAnimValue GetValueType() const { return m_pAnimTrack->GetValueType(); }
     EAnimCurveType GetCurveType() const { return m_pAnimTrack->GetCurveType(); }
 
@@ -166,7 +166,7 @@ public:
     bool IsMuted() const;
 
     // Returns if the contained AnimTrack responds to muting
-    bool UsesMute() const { return m_pAnimTrack ? m_pAnimTrack->UsesMute() : false; }
+    bool UsesMute() const { return m_pAnimTrack.get() ? m_pAnimTrack->UsesMute() : false; }
 
     // Key selection
     virtual void SelectKeys(const bool bSelected) override;
@@ -213,7 +213,7 @@ private:
     bool m_bIsCompoundTrack;
     bool m_bIsSubTrack;
     unsigned int m_subTrackIndex;
-    _smart_ptr<IAnimTrack> m_pAnimTrack;
+    AZStd::intrusive_ptr<IAnimTrack> m_pAnimTrack;
     CTrackViewAnimNode* m_pTrackAnimNode;
 
     // used to stash AZ Entity ID's stored in track keys when entering/exiting AI/Physic or Ctrl-G game modes

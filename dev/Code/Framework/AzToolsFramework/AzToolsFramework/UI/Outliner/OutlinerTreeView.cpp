@@ -14,19 +14,69 @@
 #include "OutlinerTreeView.hxx"
 #include "OutlinerListModel.hxx"
 
+#include <AzCore/Component/EntityId.h>
+#include <AzCore/std/sort.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+
 #include <QDrag>
 #include <QPainter>
 #include <QHeaderView>
-
-#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <QProxyStyle>
 
 namespace AzToolsFramework
 {
+    class OutlinerTreeViewProxyStyle : public QProxyStyle
+    {
+    public:
+        OutlinerTreeViewProxyStyle()
+            : QProxyStyle(qApp->style())
+            , m_linePen(QColor("#FFFFFF"), 1)
+            , m_rectPen(QColor("#B48BFF"), 1)
+        {
+        }
+
+        void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
+        {
+            //draw custom drop target art
+            if (element == QStyle::PE_IndicatorItemViewItemDrop)
+            {
+                painter->save();
+                painter->setRenderHint(QPainter::Antialiasing, true);
+
+                if (option->rect.height() == 0)
+                {
+                    //draw circle followed by line for drops between items
+                    painter->setPen(m_linePen);
+                    painter->drawEllipse(option->rect.topLeft(), 3, 3);
+                    painter->drawLine(QPoint(option->rect.topLeft().x() + 3, option->rect.topLeft().y()), option->rect.topRight());
+                }
+                else
+                {
+                    //draw a rounded box for drops on items
+                    painter->setPen(m_rectPen);
+                    painter->drawRoundedRect(option->rect, 3, 3);
+                }
+                painter->restore();
+                return;
+            }
+
+            QProxyStyle::drawPrimitive(element, option, painter, widget);
+        }
+
+    private:
+        QPen m_linePen;
+        QPen m_rectPen;
+    };
+
+
     OutlinerTreeView::OutlinerTreeView(QWidget* pParent)
         : QTreeView(pParent)
         , m_mousePressedQueued(false)
         , m_mousePressedPos()
     {
+        setStyle(new OutlinerTreeViewProxyStyle());
+
         setUniformRowHeights(true);
         setHeaderHidden(true);
     }
@@ -102,13 +152,21 @@ namespace AzToolsFramework
         //if we are attempting to drag an unselected item then we must special case drag and drop logic
         //QAbstractItemView::startDrag only supports selected items
         QModelIndex index = indexAt(m_mousePressedPos);
-        if(index.isValid() && index.column() == 0 && !selectionModel()->isSelected(index))
+        if (!index.isValid() || index.column() != 0)
         {
-            startDragForUnselectedItem(index, supportedActions);
+            return;
         }
-        else
+
+        if (!selectionModel()->isSelected(index))
         {
-            QTreeView::startDrag(supportedActions);
+            startCustomDrag({ index }, supportedActions);
+            return;
+        }
+
+        if (!selectionModel()->selectedIndexes().empty())
+        {
+            startCustomDrag(selectionModel()->selectedIndexes(), supportedActions);
+            return;
         }
     }
 
@@ -116,164 +174,100 @@ namespace AzToolsFramework
     {
         QTreeView::drawBranches(painter, rect, index);
 
+        if (!index.parent().isValid())
+        {
+            return;
+        }
+
+        // determine the color of the pen based on entity type:
+        // if the current entity is not part of a slice, it's line is always white.
+        // if the current entity is part of a slice, the line color is determined by it's parent type.
+        auto type = OutlinerListModel::EntryType(index.data(OutlinerListModel::EntityTypeRole).value<int>());
+        if (type == OutlinerListModel::EntityType)
+        {
+            bool isDescendantOfSlice = false;
+            for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
+            {
+                auto type = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+                if (type != OutlinerListModel::EntityType)
+                {
+                    isDescendantOfSlice = true;
+                    break;
+                }
+            }
+
+            if (!isDescendantOfSlice)
+            {
+                // Don't draw the lines for entities, only for slices or entities that are children of slices
+                return;
+
+            }
+        }
+
         painter->save();
 
         painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
 
-        // Model index used to walk up the tree to get information about ancestors
-        // for determining where to draw branch lines and when to draw connecting lines
-        // between parents and uncles.
-        QModelIndex ancestorIndex = index.parent();
+        // The pen we're going to use the draw the branch line
+        // Pen color and style are dependent on the type of the entity and its parent.
+        QPen pen;
+        pen.setWidthF(2.5f);
 
-        // Compute the depth of the current entity in the hierarchy to determine where to draw the branch lines
-        int depth = 1;
-        while (ancestorIndex.isValid())
+        auto foregroundIndex = type != OutlinerListModel::EntryType::EntityType ? index.parent() : index;
+        QVariant data = foregroundIndex.data(Qt::ForegroundRole);
+        if (data.canConvert<QBrush>())
         {
-            ancestorIndex = ancestorIndex.parent();
-            ++depth;
+            pen.setColor(data.value<QBrush>().color());
+            painter->setPen(pen);
         }
 
-        // These two flags are used to determine how the hierarchy lines are drawn for each entry.
-        // When an object has children, the horizontal line needs to be shorter to accomodate the drop-down icon.
+        // draw a horizontal line from the parent branch to the item
+        // if the item has children offset the drawn line to compensate for drawn expander buttons
         bool hasChildren = index.child(0, 0).isValid();
-        // When an object is the first of it's siblings to be displayed, the vertical line associated with it needs to be drawn shorter
-        // as to not eclipse its parent.
-        bool isFirst = index.row() == 0;
+        int rectHalfHeight = rect.height() / 2;
+        int horizontalLineY = rect.top() + rectHalfHeight;
+        int horizontalLineLeft = rect.right() - indentation() * 1.5f;
+        int horizontalLineRight = hasChildren ? (rect.right() - indentation()) : (rect.right() - indentation() * 0.5f);
+        painter->drawLine(horizontalLineLeft, horizontalLineY, horizontalLineRight, horizontalLineY);
 
-        if (depth > 1)
+        // draw a vertical line segment connecting parent to child and child to child
+        // if this is the last item, only draw half the line to terminate the segment
+        bool hasNext = index.sibling(index.row() + 1, index.column()).isValid();
+        int verticalLineX = rect.right() - indentation() * 1.5f;
+        int verticalLineTop = rect.top();
+        int verticalLineBottom = hasNext ? rect.bottom() : rect.bottom() - rectHalfHeight;
+        painter->drawLine(verticalLineX, verticalLineTop, verticalLineX, verticalLineBottom);
+
+        // for all ancestors with immediate/next siblings, draw vertical line segments offset from the current item
+        // each individual segment will align to form connections between non-immediate parents and siblings
+
+        // offset the line horizontally to account for parent depth
+        float depthMultiplier = 2.5f;
+        for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
         {
-            // The pen we're going to use the draw the branch line
-            // Pen color and style are dependent on the type of the entity and its parent.
-            QPen pen;
-
-            // Determine the color of the pen:
-            // If the current entity is not part of a slice, it's line is always white.
-            // If the current entity is part of a slice, the line color is determined by
-            // it's parent type.
-            OutlinerListModel::EntryType type = OutlinerListModel::EntityType;
-            auto typeVariant = index.data(OutlinerListModel::EntityTypeRole);
-            type = OutlinerListModel::EntryType(typeVariant.value<int>());
-
-            if (type == OutlinerListModel::EntryType::EntityType)
+            auto uncleIndex = ancestorIndex.sibling(ancestorIndex.row() + 1, ancestorIndex.column());
+            // If that parent has a sibling, draw a line to them!
+            if (uncleIndex.isValid())
             {
-                QVariant data = index.data(Qt::ForegroundRole);
+                // determine the color of the pen based on ancestor entity type
+                auto type = OutlinerListModel::EntryType(uncleIndex.data(OutlinerListModel::EntityTypeRole).value<int>());;
+                auto foregroundIndex = type != OutlinerListModel::EntryType::EntityType ? uncleIndex.parent() : uncleIndex;
+                QVariant data = foregroundIndex.data(Qt::ForegroundRole);
                 if (data.canConvert<QBrush>())
                 {
-                    QBrush brush = data.value<QBrush>();
-                    pen.setColor(brush.color());
-                    pen.setWidthF(2.5f);
+                    pen.setColor(data.value<QBrush>().color());
                     painter->setPen(pen);
                 }
-            }
-            else
-            {
-                // Determine the color of the pen to use to draw the item
-                // If no determination can be made, use the existing, style-defined pen
-                auto parentNode = index.parent();
 
-
-                QVariant data = parentNode.data(Qt::ForegroundRole);
-                if (data.canConvert<QBrush>())
-                {
-                    QBrush brush = data.value<QBrush>();
-                    pen.setColor(brush.color());
-                    pen.setWidthF(2.5f);
-                    painter->setPen(pen);
-                }
+                // draw vertical line segment
+                verticalLineX = rect.right() - indentation() * depthMultiplier;
+                painter->drawLine(verticalLineX, rect.top(), verticalLineX, rect.bottom());
             }
 
-            style()->standardPalette().background();
-
-            QRect rect = visualRect(index);
-
-            int totalIndent = indentation() * (depth - 1) - (indentation() / 2) - 2;
-
-            // If an entity has children, then there will be a drop-arrow drawn to the left of the entity name.
-            // So we only draw the left half the horizontal portion of the branch line to accomodate it.
-            if (hasChildren)
-            {
-                painter->drawLine(totalIndent + 1, rect.y() + (rect.height() / 2), totalIndent + (indentation() / 2), rect.y() + (rect.height() / 2));
-            }
-            else
-            {
-                painter->drawLine(totalIndent + 1, rect.y() + (rect.height() / 2), totalIndent + (indentation()), rect.y() + (rect.height() / 2));
-            }
-
-            // When an entity is the very first sibling at it's level, we only draw the bottom half of the vertical portion of it's branch line.
-            if (isFirst)
-            {
-                painter->drawLine(totalIndent, rect.y(), totalIndent, rect.y() + (rect.height() / 2));
-            }
-            else
-            {
-                painter->drawLine(totalIndent, rect.y() - (rect.height() / 2), totalIndent, rect.y() + (rect.height() / 2));
-            }
-
-            // Now we draw vertical lines connecting all our our ancestors and their siblings.
-            // We can improve performance by pre-computing and caching the depth information
-            // required here.
-            ancestorIndex = index.parent();
-            while (ancestorIndex.parent().isValid())
-            {
-                // Depth determines where to draw the vertical lines.
-                --depth;
-
-                auto uncleIndex = ancestorIndex.sibling(ancestorIndex.row() + 1, ancestorIndex.column());
-                // If that parent has a sibling, draw a line to them!
-                if (uncleIndex.isValid())
-                {
-                    // Get the color used to draw this branch.
-                    // If the sibling isn't a slice entity, we need to draw it using the
-                    // parent's brush.
-                    QPen pen;
-                    pen.setWidthF(2.5);
-
-                    // We can use the color of the foreground brush associated with the appropriate object to draw our lines.
-                    auto uncleType = OutlinerListModel::EntryType(uncleIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
-                    if (uncleType == OutlinerListModel::EntityType)
-                    {
-                        QVariant brush = uncleIndex.data(Qt::ForegroundRole);
-                        if (brush.canConvert<QBrush>())
-                        {
-                            pen.setColor(brush.value<QBrush>().color());
-                        }
-                    }
-                    else
-                    {
-                        QVariant brush = ancestorIndex.parent().data(Qt::ForegroundRole);
-                        if (brush.canConvert<QBrush>())
-                        {
-                            pen.setColor(brush.value<QBrush>().color());
-                        }
-                    }
-
-                    painter->setPen(pen);
-
-                    totalIndent = indentation() * (depth - 1) - (indentation() / 2) - 2;
-                    // Vertical Line
-                    painter->drawLine(totalIndent, rect.y() - (rect.height() / 2), totalIndent, rect.y() + (rect.height() / 2));
-                }
-
-                // Move onto the next ancestor
-                ancestorIndex = ancestorIndex.parent();
-            }
+            depthMultiplier += 1.0f;
         }
 
         painter->restore();
-    }
-
-    bool OutlinerTreeView::edit(const QModelIndex& index, EditTrigger trigger, QEvent* event)
-    {
-        if (index.isValid() && index.column() == OutlinerListModel::ColumnName)
-        {
-            QModelIndex nameColumnIndex = index.sibling(index.row(), OutlinerListModel::ColumnName);
-            if (nameColumnIndex.isValid())
-            {
-                return QAbstractItemView::edit(nameColumnIndex, trigger, event);
-            }
-        }
-
-        return QTreeView::edit(index, trigger, event);
     }
 
     void OutlinerTreeView::processQueuedMousePressedEvent(QMouseEvent* event)
@@ -293,19 +287,30 @@ namespace AzToolsFramework
         QTreeView::mousePressEvent(&mousePressedEvent);
     }
 
-    void OutlinerTreeView::startDragForUnselectedItem(const QModelIndex& index, Qt::DropActions supportedActions)
+    void OutlinerTreeView::startCustomDrag(const QModelIndexList& indexList, Qt::DropActions supportedActions)
     {
+        //sort by container entity depth and order in hierarchy for proper drag image and drop order
+        QModelIndexList indexListSorted = indexList;
+        AZStd::unordered_map<AZ::EntityId, std::list<AZ::u64>> locations;
+        for (auto index : indexListSorted)
+        {
+            AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
+            AzToolsFramework::GetEntityLocationInHierarchy(entityId, locations[entityId]);
+        }
+        AZStd::sort(indexListSorted.begin(), indexListSorted.end(), [&locations](const QModelIndex& index1, const QModelIndex& index2) {
+            AZ::EntityId e1(index1.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
+            AZ::EntityId e2(index2.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
+            return locations[e1] < locations[e2];
+        });
+
         //get the data for the unselected item(s)
-        QMimeData* data = model()->mimeData({ index });
+        QMimeData* data = model()->mimeData(indexListSorted);
         if (data)
         {
-            QRect rect = visualRect(index);
-
             //initiate drag/drop for the item
             QDrag* drag = new QDrag(this);
-            drag->setPixmap(QPixmap::fromImage(createDragImageForUnselectedItem(index)));
+            drag->setPixmap(QPixmap::fromImage(createDragImage(indexListSorted)));
             drag->setMimeData(data);
-            drag->setHotSpot(m_mousePressedPos - rect.topLeft());
             Qt::DropAction defDropAction = Qt::IgnoreAction;
             if (defaultDropAction() != Qt::IgnoreAction && (supportedActions & defaultDropAction()))
             {
@@ -319,27 +324,41 @@ namespace AzToolsFramework
         }
     }
 
-    QImage OutlinerTreeView::createDragImageForUnselectedItem(const QModelIndex& index)
+    QImage OutlinerTreeView::createDragImage(const QModelIndexList& indexList)
     {
         //generate a drag image of the item icon and text, normally done internally, and inaccessible 
-        QRect rect = visualRect(index);
+        QRect rect(0, 0, 0, 0);
+        for (auto index : indexList)
+        {
+            QRect itemRect = visualRect(index);
+            rect.setHeight(rect.height() + itemRect.height());
+            rect.setWidth(AZStd::max(rect.width(), itemRect.width()));
+        }
+
         QImage dragImage(rect.size(), QImage::Format_ARGB32_Premultiplied);
 
         QPainter dragPainter(&dragImage);
-
         dragPainter.setCompositionMode(QPainter::CompositionMode_Source);
         dragPainter.fillRect(dragImage.rect(), Qt::transparent);
-
         dragPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        dragPainter.setOpacity(0.35f);
+        dragPainter.fillRect(rect, QColor("#222222"));
+        dragPainter.setOpacity(1.0f);
 
-        dragPainter.drawPixmap(QPoint(0, 0),
-            model()->data(index, Qt::DecorationRole).value<QIcon>().pixmap(QSize(16, 16)));
-        dragPainter.setPen(
-            model()->data(index, Qt::ForegroundRole).value<QBrush>().color());
-        dragPainter.setFont(
-            font());
-        dragPainter.drawText(QRect(20, 0, rect.width() - 20, rect.height()),
-            model()->data(index, Qt::DisplayRole).value<QString>());
+        int imageY = 0;
+        for (auto index : indexList)
+        {
+            QRect itemRect = visualRect(index);
+            dragPainter.drawPixmap(QPoint(0, imageY),
+                model()->data(index, Qt::DecorationRole).value<QIcon>().pixmap(QSize(16, 16)));
+            dragPainter.setPen(
+                model()->data(index, Qt::ForegroundRole).value<QBrush>().color());
+            dragPainter.setFont(
+                font());
+            dragPainter.drawText(QRect(20, imageY, rect.width() - 20, rect.height()),
+                model()->data(index, Qt::DisplayRole).value<QString>());
+            imageY += itemRect.height();
+        }
 
         dragPainter.end();
         return dragImage;

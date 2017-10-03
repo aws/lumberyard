@@ -45,7 +45,6 @@ namespace AZ
 
     /**
      * Class for all of our crc32 types, better than just using ints everywhere.
-     * Reverse lookup is also available through this class. (\todo implement ReverseCrcManager)
      */
     class Crc32
     {
@@ -73,11 +72,6 @@ namespace AZ
 
         void Add(const char* str);
         void Add(const void* data, size_t size, bool forceLowerCase = false);
-
-        /**
-         * This function does a reverse lookup using the ReverseCrc32Mgr.
-         */
-        const char* GetString() const;
 
         AZ_MATH_FORCE_INLINE operator u32() const               { return m_value; }
 

@@ -41,6 +41,7 @@ namespace AZ
                         ->Attribute(Edit::Attributes::Icon, "Editor/Icons/Components/VRPreview.png")
                         ->Attribute(Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/VRPreview.png")
                         ->Attribute(Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-vrpreview-component.html")
                         ->Attribute(Edit::Attributes::AutoExpand, true);
                 }
             }

@@ -20,8 +20,8 @@ template <typename T>
 class CValueHistory
 {
 public:
-    CValueHistory(unsigned s, float sampleIterval)
-        : sampleIterval(sampleIterval)
+    CValueHistory(unsigned s, float interval)
+        : sampleInterval(interval)
         , head(0)
         , size(0)
         , t(0)
@@ -51,7 +51,7 @@ public:
         v = max(v, nv);
 
         int iter = 0;
-        while (t > sampleIterval && iter < 5)
+        while (t > sampleInterval && iter < 5)
         {
             data[head] = v;
             head = (head + 1) % data.size();
@@ -60,7 +60,7 @@ public:
                 size++;
             }
             ++iter;
-            t -= sampleIterval;
+            t -= sampleInterval;
         }
         if (iter == 5)
         {
@@ -81,7 +81,7 @@ public:
 
     inline T GetSampleInterval() const
     {
-        return sampleIterval;
+        return sampleInterval;
     }
 
     inline T GetSample(unsigned i) const
@@ -106,7 +106,7 @@ private:
     unsigned head, size;
     T v;
     float t;
-    const float sampleIterval;
+    const float sampleInterval;
 };
 
 #endif // CRYINCLUDE_CRYAISYSTEM_VALUEHISTORY_H

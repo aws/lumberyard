@@ -23,13 +23,6 @@ def get_parser():
                         help="set the verbosity of logging")
     subparsers = parser.add_subparsers()
 
-    try:
-        import aztest.platform.durango
-        aztest.platform.durango.add_subparser(subparsers)
-    except ImportError:
-        # Console tools not available
-        pass
-
     p_scan = subparsers.add_parser("scan", help="scans a directory for modules to test and executes them",
                                    epilog="Extra parameters are assumed to be for the test framework and will be "
                                           "passed along to the modules/executables under test. Returns 1 if any "

@@ -27,6 +27,8 @@ def build(bld):
         use             = ['AzFramework',
                            'LyzardSDK'],
         win_lib         = ['shlwapi'],
+
+        output_sub_folder_copy = "../" + bld.get_lmbr_setup_tools_output_folder(),
         
         #==============================
         # Testing

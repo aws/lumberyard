@@ -21,8 +21,7 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="project-template.json" />
-    <Content Include="project_service_swagger.json" />
+    <Content Include="swagger.json" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="test\test_integration.py" />

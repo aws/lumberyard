@@ -11,12 +11,14 @@
 */
 
 #include "StdAfx.h"
+#include <cmath>
 #include "fancydocking.h"
 #include <AzQtComponents/Components/DockBar.h>
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/Titlebar.h>
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 
 #include <QAbstractButton>
@@ -44,6 +46,8 @@ static AzQtComponents::FancyDockingDropZoneConstants g_FancyDockingConstants;
 // Constants for our floating window and tab container object name prefixes
 static const char* g_floatingWindowPrefix = "_fancydocking_";
 static const char* g_tabContainerPrefix = "_fancydockingtabcontainer_";
+// Constant for the threshold in pixels for snapping to edges while dragging for docking
+static const int g_snapThresholdInPixels = 15;
 
 static Qt::DockWidgetArea opposite(Qt::DockWidgetArea area)
 {
@@ -73,6 +77,11 @@ static Qt::Orientation orientation(Qt::DockWidgetArea area)
     case Qt::RightDockWidgetArea:
         return Qt::Horizontal;
     }
+}
+
+static bool isWin10()
+{
+    return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
 }
 
 #ifdef KDAB_MAC_PORT
@@ -314,7 +323,7 @@ void FancyDocking::destroyIfUseless(QMainWindow* mainWindow)
     // Ignore if this was triggered on our main window, or if this is triggered
     // during a tabify action, during which the dock widgets may be hidden
     // so it ends up deleting the floating main window
-    if (!mainWindow || mainWindow == m_mainWindow || m_state.tabifyInProgress)
+    if (!mainWindow || mainWindow == m_mainWindow || m_state.updateInProgress)
     {
         return;
     }
@@ -1224,7 +1233,10 @@ bool FancyDocking::dockMouseMoveEvent(QDockWidget* dock, QMouseEvent* event)
             placeholder.translate(pressPosX - relativeX, 0);
         }
 
+        // Handle snapping to the screen edges/other floating windows while dragging
         int screenIndex = m_desktopWidget->screenNumber(globalPos);
+        AdjustForSnapping(placeholder, screenIndex);
+
         m_state.setPlaceholder(placeholder, screenIndex);
 
         m_ghostWidget->Enable();
@@ -1232,6 +1244,197 @@ bool FancyDocking::dockMouseMoveEvent(QDockWidget* dock, QMouseEvent* event)
     }
 
     return m_dropZoneState.dragging;
+}
+
+void FancyDocking::AdjustForSnapping(QRect& rect, int cursorScreenIndex)
+{
+    m_state.snappedSide = 0;
+
+    // Prevent snapping if any drop zones are present, or if the modifier key
+    // is pressed, since that also disables docking
+    bool modifiedKeyPressed = AzQtComponents::FancyDockingDropZoneWidget::CheckModifierKey();
+    if (!m_dropZoneState.dropZones.isEmpty() || m_dropZoneState.absoluteDropZoneRect.isValid() || modifiedKeyPressed)
+    {
+        return;
+    }
+
+    // First, check if we can snap to any of the floating panes
+    for (QDockWidget* dockWidget : m_mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
+    {
+        // Only look at floating windows that aren't hidden
+        QWindow* dockWidgetWindow = dockWidget->windowHandle();
+        if (dockWidget->isHidden() || !dockWidget->isFloating() || !dockWidgetWindow)
+        {
+            continue;
+        }
+
+        QRect floatingRect = isWin10() ? dockWidgetWindow->geometry() : dockWidgetWindow->frameGeometry();
+        AdjustForSnappingToFloatingWindow(rect, floatingRect);
+    }
+
+    // Don't continue on if we snapped to a floating pane
+    if (m_state.snappedSide != 0)
+    {
+        return;
+    }
+
+    // Next, check if we can snap to the screen edges that the cursor is currently on
+    if (AdjustForSnappingToScreenEdges(rect, cursorScreenIndex))
+    {
+        return;
+    }
+
+    // Then, check the rest of the screens
+    int numScreens = m_desktopWidget->screenCount();
+    for (int i = 0; i < numScreens; ++i)
+    {
+        // We already checked this one explicitly first, so move on
+        if (i == cursorScreenIndex)
+        {
+            continue;
+        }
+
+        if (AdjustForSnappingToScreenEdges(rect, i))
+        {
+            return;
+        }
+    }
+
+    // Lastly, check if we can snap to the main editor window
+    QWindow* mainWindow = m_mainWindow->window()->windowHandle();
+    if (mainWindow)
+    {
+        QRect mainWindowRect = isWin10() ? mainWindow->geometry() : mainWindow->frameGeometry();
+        AdjustForSnappingToFloatingWindow(rect, mainWindowRect);
+    }
+}
+
+bool FancyDocking::AdjustForSnappingToScreenEdges(QRect& rect, int screenIndex)
+{
+    QRect screenRect = m_desktopWidget->screenGeometry(screenIndex);
+    if (screenRect.isNull())
+    {
+        return false;
+    }
+
+    // Qt returns right/bottom with a -1 offset because of historical reasons,
+    // so we need to use x + width instead (but not on Win10)
+    int screenRectRight = screenRect.x() + screenRect.width();
+    int screenRectBottom = screenRect.y() + screenRect.height();
+    if (isWin10())
+    {
+        screenRectRight -= 1;
+        screenRectBottom -= 1;
+    }
+
+    // First, check snapping to left/right edges of the screen
+    if (std::abs(rect.left() - screenRect.left()) <= g_snapThresholdInPixels)
+    {
+        rect.moveLeft(screenRect.left());
+        m_state.snappedSide |= SnapLeft;
+    }
+    else if (std::abs(rect.right() - screenRectRight) <= g_snapThresholdInPixels)
+    {
+        rect.moveRight(screenRectRight);
+        m_state.snappedSide |= SnapRight;
+    }
+
+    // Then, check shapping to the top/bottom edges of the screen
+    if (std::abs(rect.top() - screenRect.top()) <= g_snapThresholdInPixels)
+    {
+        rect.moveTop(screenRect.top());
+        m_state.snappedSide |= SnapTop;
+    }
+    else if (std::abs(rect.bottom() - screenRectBottom) <= g_snapThresholdInPixels)
+    {
+        rect.moveBottom(screenRectBottom);
+        m_state.snappedSide |= SnapBottom;
+    }
+
+    // Return true if we snapped to a screen edge
+    return m_state.snappedSide != 0;
+}
+
+bool FancyDocking::AdjustForSnappingToFloatingWindow(QRect& rect, const QRect& floatingRect)
+{
+    QRect currentPlaceholderRect = m_state.placeholder();
+    int rectLeft = rect.left();
+    int rectRight = rect.x() + rect.width();
+    int rectTop = rect.top();
+    int rectBottom = rect.y() + rect.height();
+    int floatingRectLeft = floatingRect.left();
+    int floatingRectRight = floatingRect.x() + floatingRect.width();
+    int floatingRectTop = floatingRect.top();
+    int floatingRectBottom = floatingRect.y() + floatingRect.height();
+
+    // Qt returns right/bottom with a -1 offset because of historical reasons,
+    // so we need to use x + width instead (but not on Win10)
+    if (isWin10())
+    {
+        rectRight -= 1;
+        rectBottom -= 1;
+        floatingRectRight -= 1;
+        floatingRectBottom -= 1;
+    }
+
+    // First, check snapping to the left/right edges of the floating window
+    // Ensure that we only snap if the placeholder has been dragged within the top/bottom
+    // range of the floating window, or if we've already snapped to the top/bottom in the
+    // case of snapping left -> left or right -> right
+    QRect topBottomRect(floatingRectLeft, rectTop, floatingRect.width(), rect.height());
+    bool topOrBottomIntersected = topBottomRect.intersects(floatingRect);
+    bool snappedToTopOrBottom = currentPlaceholderRect.top() == floatingRectBottom || currentPlaceholderRect.bottom() == floatingRectTop;
+    if ((std::abs(rectLeft - floatingRectLeft) <= g_snapThresholdInPixels) && snappedToTopOrBottom)
+    {
+        rect.moveLeft(floatingRectLeft);
+        m_state.snappedSide |= SnapLeft;
+    }
+    else if ((std::abs(rectLeft - floatingRectRight) <= g_snapThresholdInPixels) && topOrBottomIntersected)
+    {
+        rect.moveLeft(floatingRectRight);
+        m_state.snappedSide |= SnapLeft;
+    }
+    else if ((std::abs(rectRight - floatingRectLeft) <= g_snapThresholdInPixels) && topOrBottomIntersected)
+    {
+        rect.moveRight(floatingRectLeft);
+        m_state.snappedSide |= SnapRight;
+    }
+    else if ((std::abs(rectRight - floatingRectRight) <= g_snapThresholdInPixels) && snappedToTopOrBottom)
+    {
+        rect.moveRight(floatingRectRight);
+        m_state.snappedSide |= SnapRight;
+    }
+
+    // Then, check snapping to the top/bottom edges of the floating window
+    // Ensure that we only snap if the placeholder has been dragged within the left/right
+    // range of the floating window, or if we've already snapped to the left/right in the
+    // case of snapping top -> top or bottom -> bottom
+    QRect leftRightRect(rectLeft, floatingRectTop, rect.width(), floatingRect.height());
+    bool leftOrRightIntersected = leftRightRect.intersects(floatingRect);
+    bool snappedToLeftOrRight = currentPlaceholderRect.left() == floatingRectRight || currentPlaceholderRect.right() == floatingRectLeft;
+    if ((std::abs(rectTop - floatingRectTop) <= g_snapThresholdInPixels) && snappedToLeftOrRight)
+    {
+        rect.moveTop(floatingRectTop);
+        m_state.snappedSide |= SnapTop;
+    }
+    else if ((std::abs(rectTop - floatingRectBottom) <= g_snapThresholdInPixels) && leftOrRightIntersected)
+    {
+        rect.moveTop(floatingRectBottom);
+        m_state.snappedSide |= SnapTop;
+    }
+    else if ((std::abs(rectBottom - floatingRectTop) <= g_snapThresholdInPixels) && leftOrRightIntersected)
+    {
+        rect.moveBottom(floatingRectTop);
+        m_state.snappedSide |= SnapBottom;
+    }
+    else if ((std::abs(rectBottom - floatingRectBottom) <= g_snapThresholdInPixels) && snappedToLeftOrRight)
+    {
+        rect.moveBottom(floatingRectBottom);
+        m_state.snappedSide |= SnapBottom;
+    }
+
+    // Return true if we snapped to a floating window
+    return m_state.snappedSide != 0;
 }
 
 void FancyDocking::RepaintFloatingIndicators()
@@ -1659,6 +1862,7 @@ void FancyDocking::makeDockWidgetFloating(QDockWidget* dock, const QRect& geomet
     }
 
     // Create a floating window container for this dock widget
+    QScopedValueRollback<bool> guard(m_state.updateInProgress, true); // Don't let mainWindow get deleted while we do this
     QMainWindow* mainWindow = createFloatingMainWindow(getUniqueDockWidgetName(g_floatingWindowPrefix), geometry);
     dock->setParent(mainWindow);
     mainWindow->addDockWidget(Qt::LeftDockWidgetArea, dock);
@@ -1728,9 +1932,62 @@ void FancyDocking::dropDockWidget(QDockWidget* dock, QWidget* onto, Qt::DockWidg
     if (area == Qt::NoDockWidgetArea)
     {
         // Make this dock widget floating, since it has been dropped on no dock area
-        // We need to adjust the geometry based on the title bar height offset
-        QRect titleBarAdjustedGeometry = m_state.placeholder().adjusted(0, -dock->titleBarWidget()->height(), 0, 0);
-        makeDockWidgetFloating(dock, titleBarAdjustedGeometry);
+        // We need to adjust the geometry if it has been snapped to an edge to account
+        // for the frame margins, and handle the title bar height offset if it hasn't
+        // been snapped to the top edge
+        QRect placeholderRect = m_state.placeholder();
+        QMargins margins;
+        QWindow* mainWindowHandle = m_mainWindow->window()->windowHandle();
+        if (mainWindowHandle && !isWin10())
+        {
+            margins = mainWindowHandle->frameMargins();
+        }
+
+        // We also need to account for the window decoration wrapper margins
+        // that get added on to floating dock widgets. There is no extra
+        // top margin because of the title bar.
+        AzQtComponents::WindowDecorationWrapper* windowWrapper = qobject_cast<AzQtComponents::WindowDecorationWrapper*>(m_mainWindow->parentWidget()->parentWidget());
+        if (windowWrapper)
+        {
+            QMargins wrapperMargins = windowWrapper->margins();
+            margins.setLeft(margins.left() + wrapperMargins.left());
+            margins.setRight(margins.right() + wrapperMargins.right());
+            margins.setBottom(margins.bottom() + wrapperMargins.bottom());
+        }
+
+        // Qt returns right/bottom with a -1 offset because of historical reasons,
+        // but even though we ignore this on Win10 when snapping the placeholder,
+        // we have to actually put the offset back in before we place it because
+        // it ends up being adjusted afterwards
+        if (isWin10())
+        {
+            margins.setRight(margins.right() + 1);
+            margins.setBottom(margins.bottom() + 1);
+        }
+
+        if (m_state.snappedSide & SnapLeft)
+        {
+            placeholderRect.translate(margins.left(), 0);
+        }
+        if (m_state.snappedSide & SnapRight)
+        {
+            placeholderRect.translate(-margins.right(), 0);
+        }
+        if (m_state.snappedSide & SnapTop)
+        {
+            placeholderRect.translate(0, margins.top());
+        }
+        else
+        {
+            placeholderRect.adjust(0, -AzQtComponents::DockBar::Height, 0, 0);
+        }
+        if (m_state.snappedSide & SnapBottom)
+        {
+            placeholderRect.translate(0, -margins.bottom());
+        }
+
+        // Place the floating dock widget
+        makeDockWidgetFloating(dock, placeholderRect);
         clearDraggingState();
 
         // We can remove any cached floating screen grab for this dock widget
@@ -1841,7 +2098,7 @@ AzQtComponents::DockTabWidget* FancyDocking::tabifyDockWidget(QDockWidget* dropT
     // Flag that we have a tabify action in progress so that we can ignore our
     // destroyIfUseless cleanup method that gets inadvertantly triggered
     // while we are tabifying
-    QScopedValueRollback<bool> rollback(m_state.tabifyInProgress, true);
+    QScopedValueRollback<bool> rollback(m_state.updateInProgress, true);
 
     // Check if the drop target is already one of our custom tab widgets
     AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(dropTarget->widget());
@@ -2057,9 +2314,12 @@ bool FancyDocking::eventFilter(QObject* watched, QEvent* event)
                     // destroyed. But delay the call to destroyIfUseless to the next iteration of the
                     // event loop, as the it might only be temporarily hidden (e.g. reparenting).
                     QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dockWidget->parent());
-                    QTimer::singleShot(0, mainWindow, [this, mainWindow] {
-                        destroyIfUseless(mainWindow);
-                    });
+                    if (!m_state.updateInProgress)
+                    {
+                        QTimer::singleShot(0, mainWindow, [this, mainWindow] {
+                            destroyIfUseless(mainWindow);
+                        });
+                    }
                     break;
                 }
             case QEvent::Close:
@@ -2444,7 +2704,7 @@ bool FancyDocking::restoreState(const QByteArray& state)
     }
 
     // Restore the floating windows
-    QMap<QMainWindow*, QByteArray> floatingMainWindows;
+    QHash<QMainWindow*, QByteArray> floatingMainWindows;
     for (auto it = map.begin(); it != map.end(); ++it)
     {
         QString floatingDockName = it.key();
@@ -2453,6 +2713,14 @@ bool FancyDocking::restoreState(const QByteArray& state)
 
         // Don't restore any floating windows that have no cached dock widgets
         if (childDockNames.size() == 0)
+        {
+            continue;
+        }
+
+        // Since the names of panes could change, we need to make sure at least
+        // one of the panes in the floating window still exist, otherwise we would
+        // be left with an empty floating window
+        if (!AnyDockWidgetsExist(childDockNames))
         {
             continue;
         }
@@ -2474,10 +2742,10 @@ bool FancyDocking::restoreState(const QByteArray& state)
         floatingMainWindows[mainWindow] = floatingState;
     }
 
-    // Restore our tab containers (need to set our tabifyInProgress flag here
+    // Restore our tab containers (need to set our updateInProgress flag here
     // as well or floating windows that contain tab containers will get
     // deleted inadvertently)
-    QScopedValueRollback<bool> rollback(m_state.tabifyInProgress, true);
+    QScopedValueRollback<bool> rollback(m_state.updateInProgress, true);
     for (auto it = tabContainers.begin(); it != tabContainers.end(); ++it)
     {
         QString tabContainerName = it.key();
@@ -2485,6 +2753,14 @@ bool FancyDocking::restoreState(const QByteArray& state)
         QString floatingDockName = tabState.floatingDockName;
         QStringList tabNames = tabState.tabNames;
         int currentIndex = tabState.currentIndex;
+
+        // Since the names of panes could change, we need to make sure at least
+        // one of the panes in the tab container still exist, otherwise we would
+        // be left with an empty tab container
+        if (!AnyDockWidgetsExist(tabNames))
+        {
+            continue;
+        }
 
         // If the floatingDockName is empty, then this tab container is meant
         // for our main window
@@ -2678,11 +2954,37 @@ void FancyDocking::clearDraggingState()
     m_state.tabIndex = -1;
     m_state.setPlaceholder(QRect(), nullptr);
     m_state.floatingDockContainer = nullptr;
+    m_state.snappedSide = 0;
 
     StopDropZone();
     setupDropZones(nullptr);
 
     m_ghostWidget->Disable();
+}
+
+/**
+ * Check if at least one of the the specified dock widgets exist on our
+ * main window
+ */
+bool FancyDocking::AnyDockWidgetsExist(QStringList names)
+{
+    for (QString name : names)
+    {
+        // Consider a tab container dock widget as a success case because
+        // these will be created by us when restoring state
+        if (name.startsWith(g_tabContainerPrefix))
+        {
+            return true;
+        }
+
+        QDockWidget* dockWidget = m_mainWindow->findChild<QDockWidget*>(name, Qt::FindDirectChildrenOnly);
+        if (dockWidget)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 #include <fancydocking.moc>

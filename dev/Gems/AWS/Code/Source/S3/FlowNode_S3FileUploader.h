@@ -49,10 +49,6 @@ namespace LmbrAWS
             EIP_FileName
         };
 
-        LmbrAWS::S3::BucketClientInputPort m_bucketClientPort {
-            EIP_BucketClient
-        };
-
         void ApplyResult(const Aws::S3::Model::PutObjectRequest&, const Aws::S3::Model::PutObjectOutcome&, const std::shared_ptr<const Aws::Client::AsyncCallerContext>&);
 
         static size_t DetermineStreamSize(const std::shared_ptr<Aws::IOStream>& fileToUpload);

@@ -15,7 +15,9 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Math/Uuid.h>
 
-#include <QVariant>
+#include <AzToolsFramework/Thumbnails/Thumbnail.h>
+
+#include <QObject>
 #include <QModelIndex>
 
 class QMimeData;
@@ -27,6 +29,8 @@ namespace AZ
 
 namespace AzToolsFramework
 {
+    using namespace Thumbnailer;
+
     namespace AssetDatabase
     {
         class CombinedDatabaseEntry;
@@ -42,6 +46,7 @@ namespace AzToolsFramework
 
         //! AssetBrowserEntry is a base class for asset tree view entry
         class AssetBrowserEntry
+            : public QObject
         {
             friend class AssetBrowserModel;
             friend class AssetBrowserEntry;
@@ -50,6 +55,7 @@ namespace AzToolsFramework
             friend class SourceAssetBrowserEntry;
             friend class ProductAssetBrowserEntry;
 
+            Q_OBJECT
         public:
             enum class AssetEntryType
             {
@@ -111,40 +117,62 @@ namespace AzToolsFramework
             void RemoveChild(AssetBrowserEntry* child);
             void RemoveChildren();
             virtual QVariant data(int column) const;
-            int row() const; 
+            int row() const;
             static bool FromMimeData(const QMimeData* mimeData, AZStd::vector<AssetBrowserEntry*>& entries);
             void AddToMimeData(QMimeData* mimeData) const;
             static QString GetMimeType();
             static void Reflect(AZ::ReflectContext* context);
             virtual AssetEntryType GetEntryType() const = 0;
-            
-            const AZStd::string& GetName() const;
-            const AZStd::string& GetDisplayName() const;
-            const AZStd::string& GetRelativePath() const;
-            const AZStd::string& GetFullPath() const;
-            const AZStd::string& GetPathPrefix() const;
 
+            //! Actual name of the asset or folder
+            const AZStd::string& GetName() const;
+            //! Display name represents how entry is shown in asset browser
+            const AZStd::string& GetDisplayName() const;
+            //! Return path relative to scan folder
+            const AZStd::string& GetRelativePath() const;
+            //! Return absolute path. If called on product, return source absolute path
+            const AZStd::string& GetFullPath() const;
+
+            //! Get immediate children of specific type
             template<typename EntryType>
             void GetChildren(AZStd::vector<const EntryType*>& entries) const;
 
+            //! Recurse through the tree down to get all entries of specific type
             template<typename EntryType>
             void GetChildrenRecursively(AZStd::vector<const EntryType*>& entries) const;
 
+            //! Get child by index
             const AssetBrowserEntry* GetChild(int index) const;
+            //! Get number of children
             int GetChildCount() const;
+            //! Get immediate parent
             AssetBrowserEntry* GetParent() const;
+
+            virtual SharedThumbnailKey GetThumbnailKey() const;
+            void SetThumbnailKey(SharedThumbnailKey thumbnailKey);
+            virtual SharedThumbnailKey CreateThumbnailKey() = 0;
 
         protected:
             AZStd::string m_name;
             AZStd::string m_displayName;
             AZStd::string m_relativePath;
             AZStd::string m_fullPath;
-            AZStd::string m_pathPrefix;
             AZStd::vector<AssetBrowserEntry*> m_children;
             AssetBrowserEntry* m_parentAssetEntry = nullptr;
 
+            //! When child is added, its paths are updated relative to this entry
             virtual void UpdateChildPaths(AssetBrowserEntry* /*child*/) const {}
-            virtual void BindActions() {}
+
+        protected Q_SLOTS:
+            virtual void ThumbnailUpdated();
+
+        private:
+            SharedThumbnailKey m_thumbnailKey;
+            bool m_thumbnailDirty;
+
+            void GetDirty(AZStd::vector<AssetBrowserEntry*>& entries);
+
+            AZ_DISABLE_COPY_MOVE(AssetBrowserEntry);
         };
 
         //! RootAssetBrowserEntry is a root node for Asset Browser tree view, it's not related to any asset path.
@@ -156,24 +184,35 @@ namespace AzToolsFramework
             AZ_CLASS_ALLOCATOR(RootAssetBrowserEntry, AZ::SystemAllocator, 0);
 
             RootAssetBrowserEntry();
-            
+
             static void Reflect(AZ::ReflectContext* context);
 
             AssetEntryType GetEntryType() const override;
 
+            //! Update root node to new dev location
             void Update(const char* devPath);
+            //! Add asset from database
             void AddAsset(const AssetDatabase::CombinedDatabaseEntry& combinedDatabaseEntry);
+            //! Remove product by assetId
             static void RemoveProduct(const AZ::Data::AssetId& assetId);
+            //! Remove source by sourceUuid
             static void RemoveSource(const AZ::Uuid& sourceUuid);
+
+            SharedThumbnailKey CreateThumbnailKey() override;
 
         protected:
             void UpdateChildPaths(AssetBrowserEntry* child) const override;
 
         private:
+            AZ_DISABLE_COPY_MOVE(RootAssetBrowserEntry);
+
             AZStd::string m_devPath;
 
-            AssetBrowserEntry* CreateFolder(const char* folderName, AssetBrowserEntry* parent);
-            AssetBrowserEntry* CreateFolders(const char* relativePath, AssetBrowserEntry* parent);
+            //! Create folder entry child
+            AssetBrowserEntry* CreateFolder(const char* folderName, AssetBrowserEntry* parent, bool isScanFolder = false, bool isGemsFolder = false);
+            //! Recursively create folder structure leading to relative path from parent
+            AssetBrowserEntry* CreateFolders(const char* relativePath, AssetBrowserEntry* parent, bool isScanFolder = false, bool isGemsFolder = false);
+            //! Remove entry and recursively trim its parent(s) if it has no children left
             static void RemoveEntry(AssetBrowserEntry* entry);
         };
 
@@ -186,7 +225,7 @@ namespace AzToolsFramework
             AZ_CLASS_ALLOCATOR(FolderAssetBrowserEntry, AZ::SystemAllocator, 0);
 
             FolderAssetBrowserEntry();
-            explicit FolderAssetBrowserEntry(const char* name, bool isScanFolder = false);
+            FolderAssetBrowserEntry(const char* name, bool isScanFolder, bool isGemsFolder);
 
             static void Reflect(AZ::ReflectContext* context);
 
@@ -195,11 +234,16 @@ namespace AzToolsFramework
             void SetIsScanFolder(bool value);
             bool IsGemsFolder() const;
 
+            SharedThumbnailKey CreateThumbnailKey() override;
+
         protected:
             void UpdateChildPaths(AssetBrowserEntry* child) const override;
 
         private:
             bool m_isScanFolder;
+            bool m_isGemsFolder;
+
+            AZ_DISABLE_COPY_MOVE(FolderAssetBrowserEntry);
         };
 
         //! SourceAssetBrowserEntry represents source entry.
@@ -222,19 +266,24 @@ namespace AzToolsFramework
             AZ::s64 GetSourceID() const;
             AZ::s64 GetScanFolderID() const;
             AZ::Data::AssetType GetPrimaryAssetType() const;
-            //! if there's only 1 product with identical name, then source entry should not be displayed
-            bool IsVisible() const;
+            SharedThumbnailKey GetThumbnailKey() const override;
+            SharedThumbnailKey CreateThumbnailKey() override;
 
             static SourceAssetBrowserEntry* GetSourceByAssetId(const AZ::Uuid& sourceUuid);
+
+        protected:
+            void UpdateChildPaths(AssetBrowserEntry* child) const override;
 
         private:
             AZStd::string m_extension;
             AZ::s64 m_sourceID;
             AZ::s64 m_scanFolderID;
             AZ::Uuid m_sourceUuid;
+
+            AZ_DISABLE_COPY_MOVE(SourceAssetBrowserEntry);
         };
 
-        //! ProductAssetBrowserEntry represents product entry.
+        //! ProductAssetBrowserEntry represents product entrypp.
         class ProductAssetBrowserEntry
             : public AssetBrowserEntry
         {
@@ -266,11 +315,12 @@ namespace AzToolsFramework
             const AZ::Data::AssetType& GetAssetType() const;
             const AZStd::string& GetPlatform() const;
             const AZStd::string& GetAssetTypeString() const;
+            SharedThumbnailKey GetThumbnailKey() const override;
+            SharedThumbnailKey CreateThumbnailKey() override;
 
             static ProductAssetBrowserEntry* GetProductByAssetId(const AZ::Data::AssetId& assetId);
 
-        protected:
-            void UpdateChildPaths(AssetBrowserEntry* child) const override;
+            void ThumbnailUpdated() override;
 
         private:
             AZ::u32 m_fingerprint;
@@ -281,6 +331,8 @@ namespace AzToolsFramework
             AZ::Data::AssetType m_assetType;
             AZStd::string m_platform;
             AZStd::string m_assetTypeString;
+            
+            AZ_DISABLE_COPY_MOVE(ProductAssetBrowserEntry);
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

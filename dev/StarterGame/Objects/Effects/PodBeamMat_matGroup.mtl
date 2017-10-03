@@ -1,0 +1,21 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PodBeamMat" MtlFlags="557222" Shader="Startergame_geometrybeamscaling" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="0.5,0.5,0.5,1" Specular="0.5,0.5,0.5,1" Opacity="0.99000001" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_podbeam_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="15" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.0099999998" TexMod_UOscillatorAmplitude="-1"/>
+    </Texture>
+   </Textures>
+   <PublicParams StartColor="0.99110222,0.043735035,0.0033465358" EndColor="0,0,0" FinalMultiplier="3" SoftIntersectionFactor="1" viewDependencyFactor="4" AmbStrength="0" baseUVScaleV="1" age="1" baseUVScaleU="1" fadingFeaturing="0.55000001"/>
+  </Material>
+  <Material Name="PodBeamCoreMat" MtlFlags="557222" Shader="Startergame_geometrybeamscaling" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="0.5,0.5,0.5,1" Specular="0.5,0.5,0.5,1" Opacity="0.99000001" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_podbeamcore_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="3" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.15000001" TexMod_UOscillatorAmplitude="-1"/>
+    </Texture>
+   </Textures>
+   <PublicParams StartColor="0.99110222,0.11443538,0.0040247175" EndColor="0,0,0" FinalMultiplier="10.86" SoftIntersectionFactor="1" viewDependencyFactor="4" AmbStrength="0" baseUVScaleV="1" age="1" baseUVScaleU="1" fadingFeaturing="0.55000001"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -4,26 +4,6 @@
     "executable_name": "CloudGemSamplesLauncher",
     "modules" : [],
     "project_id": "{DA252341-B8FE-5CDD-80BB-04BCFDCBFADE}",
-	
-    "durango_settings" : {
-        "app_id"            : "CloudGemSamples.app",
-        "entry_point"       : "CloudGemSamples.app",
-        "package_name"      : "CloudGemSamples",
-        "display_name"      : "Lumberyard CloudGemSamples",
-        "publisher"         : "Amazon, Inc",
-        "description"       : "LUMBERYARD",
-        "foreground_text"   : "light",
-        "background_color"  : "#6495ED",
-        "version"           : "1.0.0.0",
-        "titleid"           : "00E7F92C",
-        "scid"              : "65b20100-55fe-49dc-82b9-020000e7f92c",
-        "appxmanifest"      : "../Resources/AppxManifest.xml",
-        "logo"              : "../Resources/DurangoLogo.png",
-        "small_logo"        : "../Resources/DurangoSmallLogo.png",
-        "splash_screen"     : "../Resources/DurangoSplashScreen.png",
-        "store_logo"        : "../Resources/DurangoStoreLogo.png",
-        "wide_logo"         : "../Resources/DurangoWideLogo.png"
-    },
 
     "android_settings" : {
         "package_name" : "com.lumberyard.empty",
@@ -32,10 +12,9 @@
         "orientation" : "landscape"
     },
 
+    "durango_settings" : {
+    },
+
     "orbis_settings": {
-        "data_folder": "CloudGemSamples",
-        "nptitle_dat": "",
-        "param_sfo": "../Resources/param.sfo",
-        "trophy_trp": "../Resources/trophies.trp"
     }
 }

@@ -7,5 +7,12 @@
     "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
     "Version": "0.1.0",
     "IconPath": "preview.png",
-    "Tags": ["Cloud Canvas", "AWS", "Amazon Web Services", "Flow Graph"]
+    "Tags": [ "Cloud Canvas", "AWS", "Amazon Web Services", "Flow Graph" ],
+    "Dependencies": [
+        {
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        }
+    ]
 }

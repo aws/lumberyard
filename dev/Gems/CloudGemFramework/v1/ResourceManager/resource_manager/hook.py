@@ -70,6 +70,7 @@ class HookContext(object):
             If deprecated is True, a warning is displayed if the hook method exists. It is still invoked.
 
         '''
+
         if not self.__hook_modules.get(module_name, None):
             self.load_modules(module_name)
 
@@ -97,6 +98,7 @@ class HookContext(object):
             If depcreated is True, a warning is displayed if the hook method exists. It is still invoked.
 
         '''
+
         if not self.__hook_modules.get(module_name, None):
             self.load_modules(module_name)
 
@@ -151,6 +153,7 @@ class HookModule(object):
                 else:
                     if args:
                         raise ValueError('The args parameter is only supported for deprecated hooks. Using only kwargs (key word args), and requiring all hooks should have an **kwargs parameter, allows new args to be added in the future.')
+                    self.context.view.calling_hook(self.__module, handler_name)
                 return thisHandler(self, *args, **kwargs)
         except:
             raise HandledError('{} in {} failed. {}'.format(handler_name, self.__module_path, traceback.format_exc()))

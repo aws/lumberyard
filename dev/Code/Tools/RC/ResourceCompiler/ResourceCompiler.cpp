@@ -1559,7 +1559,7 @@ static bool RegisterConvertors(ResourceCompiler* pRc)
     AZ::IO::LocalFileIO localFile;
     bool foundOK = localFile.FindFiles(strDir.c_str(), CryLibraryDefName("ResourceCompiler*"), [&](const char* pluginFilename) -> bool
     {
-#if defined(AZ_PLATFORM_WINDOWS)                                      
+#if defined(AZ_PLATFORM_WINDOWS)
         HMODULE hPlugin = CryLoadLibrary(pluginFilename);
 #elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
         HMODULE hPlugin = CryLoadLibrary(pluginFilename, false, false);
@@ -1568,7 +1568,7 @@ static bool RegisterConvertors(ResourceCompiler* pRc)
         {
             const DWORD errCode = GetLastError();
             char messageBuffer[1024] = { '?', 0  };
-#if defined(AZ_PLATFORM_WINDOW)
+#if defined(AZ_PLATFORM_WINDOWS)
             FormatMessageA(
                            FORMAT_MESSAGE_FROM_SYSTEM,
                            NULL,
@@ -1579,7 +1579,7 @@ static bool RegisterConvertors(ResourceCompiler* pRc)
                            NULL);
 #endif
             RCLogError("Couldn't load plug-in module \"%s\"", pluginFilename);
-            RCLogError("Error code: 0x%x (%s)", errCode, messageBuffer);
+            RCLogError("Error code: 0x%x = %s", errCode, messageBuffer);
             // this return controls whether to keep going on other converters or stop the entire process here.
             // it is NOT AN ERROR if one resource compiler dll fails to load
             // it might not be the DLL that is required for this particular compile.
@@ -1665,6 +1665,9 @@ static string GetResourceCompilerGenericInfo(const ResourceCompiler& rc, const s
     s += "Platform support: PC";
 #if defined(TOOLS_SUPPORT_POWERVR)
     s += ", PowerVR";
+#endif
+#if defined(TOOLS_SUPPORT_ETC2COMP)
+    s += ", etc2Comp";
 #endif
     s += newline;
 
@@ -2332,10 +2335,13 @@ int __cdecl main(int argc, char** argv, char** envp)
             }
 
             // Error if the platform specified is not supported by RC
+	    // TODO: this should probably go away, but we need to be sure
+	    // That the platform is not somehow listed as supported
+	    // above, rather than unknown.
             const char* const unsupportedPlatforms[] =
             {
-                "XOne", "XboxOne", "Durango",
-                "PS4", "Orbis",
+                "XOne", "XboxOne", "Durango",  // ACCEPTED_USE
+                "PS4", "Orbis", // ACCEPTED_USE
                 ""
             };
             for (int i = 0; i < sizeof(unsupportedPlatforms) / sizeof(unsupportedPlatforms[0]); ++i)

@@ -58,8 +58,8 @@ SET ThirdPartyFolders=^
 alembic ^
 AMD ^
 AWS\GameLift ^
-AWS\AWSNativeSDK\1.0.74-pkg\include ^
-AWS\AWSNativeSDK\1.0.74-pkg\lib ^
+AWS\AWSNativeSDK\1.1.13\include ^
+AWS\AWSNativeSDK\1.1.13\lib\linux ^
 boost ^
 civetweb ^
 Clang\3.7\linux_x64 ^
@@ -88,6 +88,7 @@ p4api ^
 pdcurses ^
 rapidjson ^
 rapidxml ^
+Qt\5.6.2.2-az\gcc_64 ^
 SDL2 ^
 SQLite ^
 squish-ccr ^
@@ -121,6 +122,8 @@ IF ERRORLEVEL 1 (
 	)
 ))
 
+REM Exception: Copy QT relevant version files which sits outside of the platform specific directory
+robocopy "%ThirdPartyLocation%\Qt\5.6.2.2-az" "%destination%\3rdParty\Qt\5.6.2.2-az" *.txt /copyall
 
 
 REM Copy Dev folder files over
@@ -145,6 +148,7 @@ REM Copy Dev folder folders over
 		SET /A errorCount+=1
 	)
 ))
+
 
 REM Check for errors
 IF %errorCount% GTR 0 GOTO Fail

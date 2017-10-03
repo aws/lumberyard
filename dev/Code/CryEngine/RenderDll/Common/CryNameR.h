@@ -218,7 +218,7 @@ public:
 private:
     typedef CNameTableR::SNameEntryR SNameEntry;
 
-    static CNameTableR* GetNameTable()
+    ENGINE_API static CNameTableR* GetNameTable()
     {
         static CNameTableR* ms_table;
         ScopedSwitchToGlobalHeap globalHeapScope;

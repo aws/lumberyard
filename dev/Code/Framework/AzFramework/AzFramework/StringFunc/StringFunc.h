@@ -24,7 +24,7 @@
 // FILENAME CONSTRAINTS
 //---------------------------------------------------------------------
 
-#if   defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if   defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #define AZ_CORRECT_FILESYSTEM_SEPARATOR '\\'
 #define AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "\\"
 #define AZ_DOUBLE_CORRECT_FILESYSTEM_SEPARATOR "\\\\"
@@ -61,15 +61,7 @@
 // <drive letter + AZ_FILESYSTEM_DRIVE_SEPARATOR | NETWORK+PATH_START networkname> + N*(<AZ_CORRECT_FILESYSTEM_SEPARATOR + MAX_PATH_COMPONENT_LEN>) < AZ_MAX_PATH_LEN
 
 // a directory name or filename + extension:
-#if defined(AZ_PLATFORM_X360)
-#define MAX_PATH_COMPONENT_LEN 42
-#else
-#define MAX_PATH_COMPONENT_LEN 64   // arbitrary, just want it to be larger than 42 for titles that don't need to support XBOX 360
-#endif
-
-// this is kind of arbitrary, just has to be < MAX_PATH_COMPONENT_LEN - 1
-// this includes the EXT_SEPERATOR
-#define AZ_MAX_EXTENTION_LEN     10
+#define MAX_PATH_COMPONENT_LEN 64   // arbitrary, just want it to be larger than the most limited platform if that isn't supported
 
 #define AZ_FILENAME_ALLOW_SPACES
 #define AZ_SPACE_CHARACTERS " \t"
@@ -975,6 +967,24 @@ namespace AzFramework
             */
             AZStd::string& ToEscapedString(AZStd::string& inout);
         } // namespace Json
+
+        namespace Base64
+        {
+            //! Base64Encode
+            /* Encodes Binary data to base-64 format which allows it to be stored safely in json or xml data
+            *! EX: StringFunc::Base64::Base64Encode(reinterpret_cast<AZ::u8*>("NUL\0InString"), AZ_ARRAY_SIZE("NUL\0InString") - 1);
+            *! output = "TlVMAEluU3RyaW5n"
+            */
+            AZStd::string Encode(const AZ::u8* in, const size_t size);
+            //! Base64Decode
+            /* Decodes Base64 Text data to binary data and appends result int out array
+            *! If the the supplied text is not valid Base64 then false will be result @out array will be unmodified
+            *! EX: StringFunc::Base64::Base64Decode("TlVMAEluU3RyaW5n", strlen("TlVMAEluU3RyaW5n"));
+            *! output = {'N','U', 'L', '\0', 'I', 'n', 'S', 't', 'r', 'i', 'n', 'g'}
+            */
+            bool Decode(AZStd::vector<AZ::u8>& out, const char* in, const size_t size);
+
+        };
     } // namespace StringFunc
 } // namespace AzFramework
   //////////////////////////////////////////////////////////////////////////

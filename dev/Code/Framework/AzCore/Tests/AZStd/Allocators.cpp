@@ -151,7 +151,7 @@ namespace UnitTest
         //////////////////////////////////////////////////////////////////////////
         // static pool allocator
         // Generally we can't use more then 16 byte alignment on the stack.
-        // For instance X360 will fail. Which is ok, higher alignment should be handled by US. Or not on the stack.
+        // For instance X360 will fail. Which is ok, higher alignment should be handled by US. Or not on the stack. // ACCEPTED_USE
         const int dataAlingment = 16;
 
         typedef aligned_storage<sizeof(int), dataAlingment>::type aligned_int_type;

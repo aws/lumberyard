@@ -34,6 +34,7 @@ public:
     void OnEditorNotify(EEditorNotifyEvent aEventId) override;
 
     static const char* GetHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/developerguide/cloud-canvas"; }
+    static const char* GetDeploymentHelpLink() { return "https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-ui-rm-deployments.html"; }
 private:
     static const DWORD s_pluginVersion = 1;
     QSettings m_pluginSettings;

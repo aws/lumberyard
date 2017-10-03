@@ -81,7 +81,7 @@ namespace CharacterTool
         return true;
     }
 
-    bool JSONLoader::Save(EntryBase* entry, const char* filename, LoaderContext* context)
+    bool JSONLoader::Save(EntryBase* entry, const char* filename, LoaderContext* context, string&)
     {
         Serialization::JSONOArchive oa;
         oa(*entry, "");
@@ -585,7 +585,13 @@ namespace CharacterTool
             saveEntryController->AddSaveOperation(filename.c_str(),
                 [entry, &format, this](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
                 {
-                    return format.loader->Save(entry, fullPath.c_str(), m_loaderContext);
+                    string errorString;
+                    if (!format.loader->Save(entry, fullPath.c_str(), m_loaderContext, errorString))
+                    {
+                        actionOutput->AddError("Save Errors", errorString.c_str());
+                        return false;
+                    }
+                    return true;
                 }
             );
 

@@ -11,8 +11,8 @@
 */
 #include <AzCore/Debug/Trace.h>
 
-#include "JNI/Object.h"
-#include "AndroidEnv.h"
+#include <AzCore/Android/AndroidEnv.h>
+#include <AzCore/Android/JNI/Object.h>
 
 
 namespace AZ
@@ -103,6 +103,12 @@ namespace AZ
         }
 
         ////////////////////////////////////////////////////////////////
+        const char* AndroidEnv::GetObbFileName(bool mainFile) const
+        {
+            return (mainFile ? m_mainObbFileName.c_str() : m_patchObbFileName.c_str());
+        }
+
+        ////////////////////////////////////////////////////////////////
         jclass AndroidEnv::LoadClass(const char *classPath)
         {
             JNIEnv* jniEnv = GetJniEnv();
@@ -126,41 +132,20 @@ namespace AZ
         }
 
         ////////////////////////////////////////////////////////////////
+        // [deprecated] Use AZ::Android::JNI::GetClassName instead
         AZStd::string AndroidEnv::GetClassName(jclass classRef) const
         {
-            return GetClassNameInternal(classRef, m_getClassNameMethod);
+            return JNI::GetClassName(classRef);
         }
 
         ////////////////////////////////////////////////////////////////
+        // [deprecated] Use AZ::Android::JNI::GetSimpleClassName instead
         AZStd::string AndroidEnv::GetSimpleClassName(jclass classRef) const
         {
-            return GetClassNameInternal(classRef, m_getSimpleClassNameMethod);
+            return JNI::GetSimpleClassName(classRef);
         }
 
-        ////////////////////////////////////////////////////////////////
-        bool AndroidEnv::GetBooleanResource(const char* resourceName) const
-        {
-            JNIEnv* jniEnv = GetJniEnv();
-            if (!jniEnv)
-            {
-                return false;
-            }
 
-            jstring resName = jniEnv->NewStringUTF(resourceName);
-            if (!resName || jniEnv->ExceptionCheck())
-            {
-                AZ_Error("AndroidEnv", false, "Failed to convert cstring %s to jstring", resourceName);
-                jniEnv->ExceptionDescribe();
-                return false;
-            }
-
-            JNI::Object activityObject(m_activityClass, m_activityRef);
-            activityObject.RegisterMethod("GetBooleanResource", "(Ljava/lang/String;)Z");
-
-            bool result = activityObject.InvokeBooleanMethod("GetBooleanResource", resName);
-            jniEnv->DeleteLocalRef(resName);
-            return result;
-        }
 
         // ----
         // AndroidEnv (private)
@@ -197,14 +182,14 @@ namespace AZ
 
             , m_assetManager(nullptr)
 
-            , m_internalStoragePath()
-
-            , m_externalStorageRoot()
-            , m_externalStoragePath()
+            , m_appPrivateStoragePath()
+            , m_appPublicStoragePath()
             , m_obbStoragePath()
 
+            , m_mainObbFileName()
+            , m_patchObbFileName()
+
             , m_packageName()
-            , m_gameProjectName()
             , m_appVersionCode(0)
 
             , m_ownsActivityRef(false)
@@ -227,8 +212,9 @@ namespace AZ
         {
             m_jvm = descriptor.m_jvm;
             m_assetManager = descriptor.m_assetManager;
-            m_internalStoragePath = descriptor.m_internalStoragePath;
-            m_externalStoragePath = descriptor.m_externalStoragePath;
+            m_appPrivateStoragePath = descriptor.m_appPrivateStoragePath;
+            m_appPublicStoragePath = descriptor.m_appPublicStoragePath;
+            m_obbStoragePath = descriptor.m_obbStoragePath;
 
             int result = pthread_key_create(&s_jniEnvKey, DestroyJniEnv);
             if (result)
@@ -290,7 +276,25 @@ namespace AZ
                 return false;
             }
 
-            m_obbStoragePath = AZStd::string::format("%s/Android/obb/%s", m_externalStorageRoot.c_str(), m_packageName.c_str());
+            if (m_obbStoragePath.empty())
+            {
+                AZ::OSString relPath = AZ::OSString::format("/data/%s/files", m_packageName.c_str());
+                AZ_Assert(m_appPublicStoragePath.find(relPath) != AZ::OSString::npos,
+                          "Public application storage path appears to be invalid.  The OBB path may be incorrect and lead to unexpected results.");
+
+                AZ::OSString publicAndroidRoot = m_appPublicStoragePath.substr(0, m_appPublicStoragePath.length() - relPath.length());
+                m_obbStoragePath = AZ::OSString::format("%s/obb/%s", publicAndroidRoot.c_str(), m_packageName.c_str());
+            }
+
+            m_mainObbFileName = AZ::OSString::format("main.%d.%s.obb", m_appVersionCode, m_packageName.c_str());
+            m_patchObbFileName = AZ::OSString::format("patch.%d.%s.obb", m_appVersionCode, m_packageName.c_str());
+
+            AZ_TracePrintf("AndroidEnv", "Application private storage path   = %s", m_appPrivateStoragePath.c_str());
+            AZ_TracePrintf("AndroidEnv", "Application public storage path    = %s", m_appPublicStoragePath.c_str());
+            AZ_TracePrintf("AndroidEnv", "Application OBB path               = %s", m_obbStoragePath.c_str());
+
+            AZ_TracePrintf("AndroidEnv", "Main OBB file name                 = %s", m_mainObbFileName.c_str());
+            AZ_TracePrintf("AndroidEnv", "Patch OBB file name                = %s", m_patchObbFileName.c_str());
 
             m_isReady = true;
             return true;
@@ -349,24 +353,20 @@ namespace AZ
         ////////////////////////////////////////////////////////////////
         bool AndroidEnv::CacheActivityData(JNIEnv* jniEnv)
         {
-            JNI::Object activityObject(m_activityClass, m_activityRef);
+            JniObject activityObject(m_activityClass, m_activityRef);
 
-            activityObject.RegisterMethod("GetExternalStorageRoot", "()Ljava/lang/String;");
             activityObject.RegisterMethod("GetPackageName", "()Ljava/lang/String;");
-            activityObject.RegisterMethod("GetGameProjectName", "()Ljava/lang/String;");
             activityObject.RegisterMethod("GetAppVersionCode", "()I");
             activityObject.RegisterMethod("getClassLoader", "()Ljava/lang/ClassLoader;");
 
-            m_externalStorageRoot = activityObject.InvokeStringMethod("GetExternalStorageRoot");
             m_packageName = activityObject.InvokeStringMethod("GetPackageName");
-            m_gameProjectName = activityObject.InvokeStringMethod("GetGameProjectName");
             m_appVersionCode = activityObject.InvokeIntMethod("GetAppVersionCode");
 
             // construct the global class loader object
             jobject classLoaderRef = activityObject.InvokeObjectMethod<jobject>("getClassLoader");
             if (!classLoaderRef)
             {
-                AZ_Error("AndroidEnv", false, "Failed retrive the class loader from the activity");
+                AZ_Error("AndroidEnv", false, "Failed to retrieve the class loader from the activity");
                 HANDLE_JNI_EXCEPTION(jniEnv);
                 return false;
             }
@@ -390,48 +390,12 @@ namespace AZ
 
             jniEnv->DeleteLocalRef(localClassLoaderClass);
 
-            m_classLoader.reset(aznew JNI::Object(classLoaderClass, classLoaderRef, true));
+            m_classLoader.reset(aznew JniObject(classLoaderClass, classLoaderRef, true));
 
             m_classLoader->RegisterMethod(s_loadClassMethodName, "(Ljava/lang/String;)Ljava/lang/Class;");
             return true;
         }
 
-        ////////////////////////////////////////////////////////////////
-        AZStd::string AndroidEnv::GetClassNameInternal(jclass classRef, jmethodID methodId) const
-        {
-            JNIEnv* jniEnv = GetJniEnv();
-            if (!jniEnv)
-            {
-                AZ_Error("AndroidEnv", false, "Failed to get JNIEnv* on thread on call to GetClassNameInternal");
-                return AZStd::string();
-            }
 
-            jstring rawStringValue = static_cast<jstring>(jniEnv->CallObjectMethod(classRef, methodId));
-            if (!rawStringValue || jniEnv->ExceptionCheck())
-            {
-                AZ_Error("AndroidEnv", false, "Failed to invoke a GetName variant method on class Unknown");
-                HANDLE_JNI_EXCEPTION(jniEnv);
-                return AZStd::string();
-            }
-
-            const char* convertedStringValue = jniEnv->GetStringUTFChars(rawStringValue, nullptr);
-            if (!convertedStringValue || jniEnv->ExceptionCheck())
-            {
-                AZ_Error("AndroidEnv", false, "Failed to convert jstring to c-string after invoking a GetName variant method on class Unknown");
-                HANDLE_JNI_EXCEPTION(jniEnv);
-                return AZStd::string();
-            }
-
-            AZStd::string className = convertedStringValue;
-            jniEnv->ReleaseStringUTFChars(rawStringValue, convertedStringValue);
-
-            return className;
-        }
-
-        ////////////////////////////////////////////////////////////////
-        AZStd::string AndroidEnv::GetObbFileName(bool mainFile) const
-        {
-            return AZStd::string::format("%s.%d.%s.obb", mainFile ? "main" : "patch", m_appVersionCode, m_packageName.c_str());
-        }
     }
 }

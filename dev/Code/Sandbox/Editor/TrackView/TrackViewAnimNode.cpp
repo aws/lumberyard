@@ -14,8 +14,8 @@
 #include "StdAfx.h"
 #include <MathConversion.h>
 
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -29,7 +29,6 @@
 #include "TrackViewSequence.h"
 #include "TrackViewUndo.h"
 #include "TrackViewNodeFactories.h"
-#include "CryMovie/AnimComponentNode.h"
 #include "AnimationContext.h"
 #include "CommentNodeAnimator.h"
 #include "LayerNodeAnimator.h"
@@ -265,7 +264,7 @@ CTrackViewAnimNode::CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* pAni
 
     SortNodes();
 
-    m_bExpanded = IsGroupNode();
+    m_bExpanded = IsGroupNode() || (pParentNode == nullptr);
 
     switch (GetType())
     {
@@ -481,7 +480,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
 
     pNewAnimNode->SetName(nameStr.constData());
     pNewAnimNode->CreateDefaultTracks();
-    pNewAnimNode->SetParent(m_pAnimNode);
+    pNewAnimNode->SetParent(m_pAnimNode.get());
     pNewAnimNode->SetComponent(componentId, componentTypeId);
 
     CTrackViewAnimNodeFactory animNodeFactory;
@@ -497,9 +496,41 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
     pNewNode->BindToEditorObjects();
 
     AddNode(pNewNode);
-    CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
+
+    // Legacy sequence use Track View Undo, New Component based Sequence
+    // use the AZ Undo system and allow sequence entity to be the source of truth.
+    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    {
+        CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
+    }
+    else
+    {
+        // Add node to sequence, let AZ Undo take care of undo/redo
+        m_pAnimSequence->AddNode(pNewNode->m_pAnimNode.get());
+    }
 
     return pNewNode;
+}
+
+// Helper function to remove a child node
+void CTrackViewAnimNode::RemoveChildNode(CTrackViewAnimNode* child)
+{
+    assert(child);
+    auto parent = static_cast<CTrackViewAnimNode*>(child->m_pParentNode);
+    assert(parent);
+
+    child->UnBindFromEditorObjects();
+
+    for (auto iter = parent->m_childNodes.begin(); iter != parent->m_childNodes.end(); ++iter)
+    {
+        std::unique_ptr<CTrackViewNode>& currentNode = *iter;
+
+        if (currentNode.get() == child)
+        {
+            parent->m_childNodes.erase(iter);
+            break;
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -524,13 +555,37 @@ void CTrackViewAnimNode::RemoveSubNode(CTrackViewAnimNode* pSubNode)
                 CTrackViewAnimNode* childAnimNode = static_cast<CTrackViewAnimNode*>(pSubNode->GetChild(i));
                 if (childAnimNode->GetType() == eAnimNodeType_Component)
                 {
-                    CUndo::Record(new CUndoAnimNodeRemove(childAnimNode));
+                    // Legacy sequence use Track View Undo, New Component based Sequence
+                    // use the AZ Undo system and allow sequence entity to be the source of truth.
+                    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+                    {
+                        CUndo::Record(new CUndoAnimNodeRemove(childAnimNode));
+                    }
+                    else
+                    {
+                        // Remove node from sequence entity, let AZ Undo take care of undo/redo
+                        m_pAnimSequence->RemoveNode(childAnimNode->m_pAnimNode.get(), /*removeChildRelationships=*/ false);
+                        childAnimNode->GetSequence()->OnNodeChanged(childAnimNode, ITrackViewSequenceListener::eNodeChangeType_Removed);
+                        RemoveChildNode(childAnimNode);
+                    }
                 }
             }
         }
     }
 
-    CUndo::Record(new CUndoAnimNodeRemove(pSubNode));
+    // Legacy sequence use Track View Undo, New Component based Sequence
+    // use the AZ Undo system and allow sequence entity to be the source of truth.
+    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    {
+        CUndo::Record(new CUndoAnimNodeRemove(pSubNode));
+    }
+    else
+    {
+        // Remove node from sequence entity, let AZ Undo take care of undo/redo
+        m_pAnimSequence->RemoveNode(pSubNode->m_pAnimNode.get(), /*removeChildRelationships=*/ false);
+        pSubNode->GetSequence()->OnNodeChanged(pSubNode, ITrackViewSequenceListener::eNodeChangeType_Removed);
+        RemoveChildNode(pSubNode);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -555,7 +610,13 @@ CTrackViewTrack* CTrackViewAnimNode::CreateTrack(const CAnimParamType& paramType
     CTrackViewTrack* pNewTrack = trackFactory.BuildTrack(pNewAnimTrack, this, this);
 
     AddNode(pNewTrack);
-    CUndo::Record(new CUndoTrackAdd(pNewTrack));
+    // Legacy sequence use Track View Undo, New Component based Sequence
+    // use the AZ Undo system and allow sequence entity to be the source of truth.
+    if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+    {
+        CUndo::Record(new CUndoTrackAdd(pNewTrack));
+    }
+
     MarkAsModified();
 
     SetPosRotScaleTracksDefaultValues();
@@ -751,7 +812,7 @@ void CTrackViewAnimNode::SetAsActiveDirector()
 {
     if (GetType() == eAnimNodeType_Director)
     {
-        m_pAnimSequence->SetActiveDirector(m_pAnimNode);
+        m_pAnimSequence->SetActiveDirector(m_pAnimNode.get());
 
         GetSequence()->UnBindFromEditorObjects();
         GetSequence()->BindToEditorObjects();
@@ -944,7 +1005,7 @@ void CTrackViewAnimNode::SetNodeEntity(CEntityObject* pEntity)
             }
 
             // Notify the SequenceComponent that we're binding an entity to the sequence
-            LmbrCentral::EditorSequenceComponentRequestBus::Event(sequenceComponentEntityId, &LmbrCentral::EditorSequenceComponentRequestBus::Events::AddEntityToAnimate, id);
+            Maestro::EditorSequenceComponentRequestBus::Event(sequenceComponentEntityId, &Maestro::EditorSequenceComponentRequestBus::Events::AddEntityToAnimate, id);
 
             if (id != m_pAnimNode->GetAzEntityId())
             {
@@ -1438,7 +1499,12 @@ void CTrackViewAnimNode::PasteTracksFrom(XmlNodeRef& xmlNodeWithTracks)
         CTrackViewTrack* newTrackNode = trackFactory.BuildTrack(pTrack, this, this);
 
         AddNode(newTrackNode);
-        CUndo::Record(new CUndoTrackAdd(newTrackNode));
+        // Legacy sequence use Track View Undo, New Component based Sequence
+        // use the AZ Undo system and allow sequence entity to be the source of truth.
+        if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+        {
+            CUndo::Record(new CUndoTrackAdd(newTrackNode));
+        }
         MarkAsModified();
     }
 }
@@ -1561,7 +1627,7 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
         copiedIdToNodeMap[id] = pNewAnimNode;
 
         // search for the parent Node among the pasted nodes - if not found, parent to the group node doing the pasting
-        IAnimNode* parentAnimNode = m_pAnimNode;
+        IAnimNode* parentAnimNode = m_pAnimNode.get();
         int parentId = 0;
         if (xmlNode->getAttr("ParentNode", parentId))
         {
@@ -1584,7 +1650,18 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
         pNewNode->m_bExpanded = true;
 
         parentNode->AddNode(pNewNode);
-        CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
+
+        // Legacy sequence use Track View Undo, New Component based Sequence
+        // use the AZ Undo system and allow sequence entity to be the source of truth.
+        if (m_pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+        {
+            CUndo::Record(new CUndoAnimNodeAdd(pNewNode));
+        }
+        else
+        {
+            // Add node to sequence, let AZ Undo take care of undo/redo
+            m_pAnimSequence->AddNode(pNewNode->m_pAnimNode.get());
+        }
     }
 }
 
@@ -1944,8 +2021,9 @@ bool CTrackViewAnimNode::ContainsComponentWithId(AZ::ComponentId componentId) co
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewAnimNode::OnStartPlayInEditor()
-{ 
-    if (m_pAnimSequence && m_pAnimSequence->GetOwnerId().IsValid())
+{
+    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == eSequenceType_SequenceComponent &&
+        m_pAnimSequence->GetOwnerId().IsValid())
     {
         AZ::EntityId remappedId;
         AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, m_pAnimSequence->GetOwnerId(), remappedId);
@@ -2054,7 +2132,7 @@ void CTrackViewAnimNode::OnEntityActivated(const AZ::EntityId& activatedEntityId
     AZStd::vector<AZ::ComponentId> animatableComponentIds;
 
     // Get all components animated through the behavior context
-    LmbrCentral::EditorSequenceComponentRequestBus::Event(GetSequence()->GetSequenceComponentEntityId(), &LmbrCentral::EditorSequenceComponentRequestBus::Events::GetAnimatableComponents,
+    Maestro::EditorSequenceComponentRequestBus::Event(GetSequence()->GetSequenceComponentEntityId(), &Maestro::EditorSequenceComponentRequestBus::Events::GetAnimatableComponents,
                                                           animatableComponentIds, activatedEntityId);
 
     // Append all components animated outside the behavior context

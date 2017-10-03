@@ -38,12 +38,17 @@ CStdPreferencesClassDesc::CStdPreferencesClassDesc()
         [](){ return new CEditorPreferencesPage_ViewportGeneral(); },
         [](){ return new CEditorPreferencesPage_ViewportMovement(); },
         [](){ return new CEditorPreferencesPage_ViewportGizmo(); },
-        [](){ return new CEditorPreferencesPage_ViewportDebug(); },
-        [](){ return new CEditorPreferencesPage_FlowGraphGeneral(); },
-        [](){ return new CEditorPreferencesPage_FlowGraphColors(); },
-        [](){ return new CEditorPreferencesPage_MannequinGeneral(); },
-        [](){ return new CEditorPreferencesPage_ExperimentalLighting(); }
+        [](){ return new CEditorPreferencesPage_ViewportDebug(); }
     };
+
+    if (GetIEditor()->IsLegacyUIEnabled())
+    {
+        m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FlowGraphGeneral(); });
+        m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FlowGraphColors(); });
+    }
+
+    m_pageCreators.push_back([]() { return new CEditorPreferencesPage_MannequinGeneral(); });
+    m_pageCreators.push_back([]() { return new CEditorPreferencesPage_ExperimentalLighting(); });
 }
 
 HRESULT CStdPreferencesClassDesc::QueryInterface(const IID& riid, void** ppvObj)

@@ -51,10 +51,10 @@ CScriptTermDialog::~CScriptTermDialog()
 
 void CScriptTermDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CScriptTermDialog>(GetIEditor(), SCRIPT_TERM_WINDOW_NAME, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CScriptTermDialog>(SCRIPT_TERM_WINDOW_NAME, LyViewPane::CategoryOther, options);
 }
 
 void CScriptTermDialog::InitCompleter()
@@ -137,7 +137,7 @@ void CScriptTermDialog::ExecuteAndPrint(const char* cmd)
 
 void CScriptTermDialog::AppendText(const char* pText)
 {
-    AppendToConsole(QtUtil::ToQString(pText), Qt::black);
+    AppendToConsole(QtUtil::ToQString(pText));
 }
 
 void CScriptTermDialog::AppendError(const char* pText)

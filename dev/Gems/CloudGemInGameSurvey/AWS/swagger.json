@@ -1,0 +1,1344 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/survey_metadata": {
+            "get": {
+                "description": "Get a list of active survey meatadata",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "limit the max number of survey metadata returned, defaults to max allowed value: 1000"
+                    },
+                    {
+                        "name": "pagination_token",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Pagination token returned by previous query to get next batch of survey metadata list"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Sort order for creation time, ASC or DESC. Defaults to DESC"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list of active survey meatadata",
+                        "schema": {
+                            "$ref": "#/definitions/SurveyMetadataList"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/surveys/{survey_id}": {
+            "get": {
+                "description": "Get an active survey with survey id",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question_index",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "starting question index to query"
+                    },
+                    {
+                        "name": "question_count",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "number of questions to query starting from question_index"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The active survey with survey id",
+                        "schema": {
+                            "$ref": "#/definitions/Survey"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/surveys/{survey_id}/player_submissions": {
+            "get": {
+                "description": "get player's answer submission ids to the survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "list of submission ids for the player",
+                        "schema": {
+                            "$ref": "#/definitions/GetPlayerSubmissionIdsResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/surveys/{survey_id}/player_submission/{submission_id}": {
+            "get": {
+                "description": "get player's answer submission to the survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "submission_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "submission id returned when posting new answers to a survey"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "submission from the player",
+                        "schema": {
+                            "$ref": "#/definitions/AnswerSubmission"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/surveys/{survey_id}/answers": {
+            "post": {
+                "description": "submit answers to a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "answer_list",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AnswerList"
+                        },
+                        "description": "answers to the survey"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "unique submission id that can be used to sumbit more answers or overwrite previous answers",
+                        "schema": {
+                            "$ref": "#/definitions/SubmitAnswersResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/active/surveys/{survey_id}/answers/{submission_id}": {
+            "put": {
+                "description": "submit more answers or overwrite answers from previous submission to a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "submission_id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true,
+                        "description": "submission id returned when posting new answers to a survey"
+                    },
+                    {
+                        "name": "answer_list",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AnswerList"
+                        },
+                        "description": "answers to the survey"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "unique submission id, same as submission_id in query string",
+                        "schema": {
+                            "$ref": "#/definitions/SubmitAnswersResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys": {
+            "post": {
+                "description": "Create or clone a survey",
+                "parameters": [
+                    {
+                        "name": "create_survey_input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateSurveyInput"
+                        },
+                        "description": "Create survey input object, survey_name field for new survey name, optional survey_id_to_clone filed if you want the new survey cloned from a existing survey"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unique survey ID",
+                        "schema": {
+                            "$ref": "#/definitions/CreateSurveyResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}": {
+            "get": {
+                "description": "Get a survey with survey id",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question_index",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "starting question index to query"
+                    },
+                    {
+                        "name": "question_count",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "number of questions to query starting from question_index"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The survey with survey id",
+                        "schema": {
+                            "$ref": "#/definitions/AdminSurvey"
+                        }
+                    }
+                }
+            },
+
+            "delete": {
+                "description": "Delete a survey with survey id",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the deletion",
+                        "schema": {
+                            "$ref": "#/definitions/DeleteSurveyResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/questions": {
+            "post": {
+                "description": "Add a question to a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Question"
+                        },
+                        "description": "question object"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unique question id",
+                        "schema": {
+                            "$ref": "#/definitions/CreateQuestionResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/questions/{question_id}": {
+            "put": {
+                "description": "Modify a existing question in a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The question UUID returned from querying the survey object. Example: 42718602-8979-47d2-8718-70d0f2d5261c"
+                    },
+                    {
+                        "name": "question",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Question"
+                        },
+                        "description": "question object"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the modification",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a question in a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The question UUID returned from querying the survey object. Example: 42718602-8979-47d2-8718-70d0f2d5261c"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the deletion",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/questions/{question_id}/status": {
+            "put": {
+                "description": "Modify question status in a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+
+                    },
+                    {
+                        "name": "question_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The question UUID returned from querying the survey object. Example: 42718602-8979-47d2-8718-70d0f2d5261c"
+                    },
+                    {
+                        "name": "question_status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/QuestionStatus"
+                        },
+                        "description": "question status object with enabled field"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the modification",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/published": {
+            "put": {
+                "description": "Publish/unpublish a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "survey_published_status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SurveyPublishedStatus"
+                        },
+                        "description": "published status object with published field"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the change",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/question_order": {
+            "put": {
+                "description": "Modify question order for the survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "question_order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/QuestionOrder"
+                        },
+                        "description": "new question order"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the modification",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/name": {
+            "put": {
+                "description": "Rename the survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "rename_survey_input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RenameSurveyInput"
+                        },
+                        "description": "rename survey object with survey_name field"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the renaming",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/activation_period": {
+            "put": {
+                "description": "Update activation period for the survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "update_activation_period_input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateActivationPeriodInput"
+                        },
+                        "description": "update survey activation period input with activation_start_time and activation_end_time fields"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the update",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/answers": {
+            "get": {
+                "description": "Get answer submissions to a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "limit the max number of answer submissions returned, defaults to max allowed value: 1000"
+                    },
+                    {
+                        "name": "pagination_token",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Pagination token returned by previous query to get next batch of answer submissions list"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Sort order for creation time, ASC or DESC. Defaults to DESC"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Answer submissions to the survey",
+                        "schema": {
+                            "$ref": "#/definitions/AnswerSubmissions"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/answers/{submission_id}": {
+            "delete": {
+                "description": "Delete an answer submission for a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "submission_id",
+                        "in": "path",
+                        "type": "string",
+                        "required": true,
+                        "description": "submission id returned when posting new answers to the survey"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status of the deletion",
+                        "schema": {
+                            "$ref": "#/definitions/DeleteAnswerSubmissionResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/answers/export_csv": {
+            "post": {
+                "description": "Export answer submissions asynchronously to a CSV file on S3",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Request ID used to query the status of this task",
+                        "schema": {
+                            "$ref": "#/definitions/ExportAnswerSubmissionsCSVResponse"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/answers/export_csv/{request_id}": {
+            "get": {
+                "description": "Get status of the export answer submissions to CSV task",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    },
+                    {
+                        "name": "request_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "request id returned when posting a new export answers csv request"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the task, if task is finished response will contain a s3 presign url",
+                        "schema": {
+                            "$ref": "#/definitions/ExportAnswerSubmissionsCSVTaskStatus"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/surveys/{survey_id}/answer_aggregations": {
+            "get": {
+                "description": "Get answer aggregations to a survey",
+                "parameters": [
+                    {
+                        "name": "survey_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "The survey UUID returned from creating a survey or querying survey metadata. Example: c97f2237-556d-4493-911c-38f79236d762"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Answer aggregations to the survey",
+                        "schema": {
+                            "$ref": "#/definitions/SurveyAnswerAggregations"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/survey_metadata": {
+            "get": {
+                "description": "Search survey metadata by survey name. If survey_name is not passed or is empty, list all survey metadata sorted by creation time",
+                "parameters": [
+                    {
+                        "name": "survey_name",
+                        "in": "query",
+                        "type": "string",
+                        "description": "optional, supply this if you want to search for surveys containg survey_name substring"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "type": "integer",
+                        "description": "Limit the max number of survey metadata returned, defaults to max allowed value: 1000"
+                    },
+                    {
+                        "name": "pagination_token",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Pagination token returned by previous query to get next batch of survey metadata list"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "type": "string",
+                        "description": "Sort order for creation time, ASC or DESC. Defaults to DESC"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list of survey metadata, and optionally pagination_token when there's more survey metadata to query",
+                        "schema": {
+                            "$ref": "#/definitions/AdminSurveyMetadataList"
+                        }
+                    }
+                }
+            }
+        }
+    },
+
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+
+        "ExportAnswerSubmissionsCSVResponse": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "requestId"
+            ]
+        },
+
+        "ExportAnswerSubmissionsCSVTaskStatus": {
+            "type": "object",
+            "properties": {
+                "num_submissions_exported": {
+                    "type": "integer"
+                },
+                "s3_presigned_url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "num_submissions_exported"
+            ]
+        },
+
+        "SurveyMetadata": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+                "survey_name": {
+                    "type": "string"
+                },
+                "num_questions": {
+                    "type": "integer"
+                },
+                "creation_time": {
+                    "type": "integer"
+                },
+                "activation_start_time": {
+                    "type": "integer"
+                },
+                "activation_end_time": {
+                    "type": "integer"
+                }
+            }
+        },
+
+        "AdminSurveyMetadata": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+                "survey_name": {
+                    "type": "string"
+                },
+                "num_questions": {
+                    "type": "integer"
+                },
+                "creation_time": {
+                    "type": "integer"
+                },
+                "activation_start_time": {
+                    "type": "integer"
+                },
+                "activation_end_time": {
+                    "type": "integer"
+                },
+                "published": {
+                    "type": "boolean"
+                }
+            }
+        },
+
+        "QuestionOrder": {
+            "type": "object",
+            "properties": {
+                "question_id_list": {
+                    "$ref": "#/definitions/StringList",
+                    "description": "List of question id"
+                }
+            },
+
+            "required": [
+                "question_id_list"
+            ]
+        },
+
+        "SurveyMetadataList": {
+            "type": "object",
+            "properties": {
+                "pagination_token": {
+                    "type": "string"
+                },
+                "metadata_list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SurveyMetadata"
+                    }
+                }
+            }
+        },
+
+        "AdminSurveyMetadataList": {
+            "type": "object",
+            "properties": {
+                "pagination_token": {
+                    "type": "string"
+                },
+                "metadata_list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AdminSurveyMetadata"
+                    }
+                }
+            }
+        },
+
+        "Survey": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+
+                "survey_name": {
+                    "type": "string"
+                },
+
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Question"
+                    }
+                }
+            },
+
+            "required": [
+                "survey_id",
+                "survey_name",
+                "questions"
+            ]
+        },
+
+        "AdminSurvey": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+
+                "survey_name": {
+                    "type": "string"
+                },
+
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AdminQuestion"
+                    }
+                }
+            },
+
+            "required": [
+                "survey_id",
+                "survey_name",
+                "questions"
+            ]
+        },
+
+        "Question": {
+            "type": "object",
+            "properties": {
+                "question_id": {
+                    "type": "string",
+                    "description": "Unique question id"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Question title"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Question type, can be predefined, scale or text"
+                },
+                "min": {
+                    "type": "integer",
+                    "description": "Minimum value for scale type question"
+                },
+                "max": {
+                    "type": "integer",
+                    "description": "Maximum value for scale type question"
+                },
+                "min_label": {
+                    "type": "string",
+                    "description": "Minimum value label for scale type question, optional"
+                },
+                "max_label": {
+                    "type": "string",
+                    "description": "Maximum value label for scale type question, optional"
+                },
+                "max_chars": {
+                    "type": "integer",
+                    "description": "Maximum allowed characters for text type question"
+                },
+                "predefines": {
+                    "$ref": "#/definitions/StringList",
+                    "description": "Predefined options for predefined type question"
+                },
+                "multiple_select": {
+                    "type": "boolean",
+                    "description": "Determines if predefined type question is single choice or multiple choices"
+                }
+            },
+
+            "required": [
+                "title",
+                "type"
+            ]
+        },
+
+        "AdminQuestion": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "min": {
+                    "type": "integer"
+                },
+                "max": {
+                    "type": "integer"
+                },
+                "min_label": {
+                    "type": "string"
+                },
+                "max_label": {
+                    "type": "string"
+                },
+                "max_chars": {
+                    "type": "integer"
+                },
+                "predefines": {
+                    "$ref": "#/definitions/StringList"
+                },
+                "multiple_select": {
+                    "type": "boolean"
+                }
+            },
+
+            "required": [
+                "title",
+                "type"
+            ]
+        },
+
+        "QuestionStatus": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Determines if the question is enabled"
+                }
+            },
+            "required": [
+                "enabled"
+            ]
+        },
+
+        "SurveyPublishedStatus": {
+            "type": "object",
+            "properties": {
+                "published": {
+                    "type": "boolean",
+                    "description": "Determines if the survey is published"
+                }
+            },
+            "required": [
+                "published"
+            ]
+        },
+
+        "StringList": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+
+        "AnswerList": {
+            "type": "object",
+            "properties": {
+                "answers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Answer"
+                    }
+                }
+            },
+            "required": [
+                "answers"
+            ]
+        },
+
+        "AnswerSubmissions": {
+            "type": "object",
+            "properties": {
+                "pagination_token": {
+                    "type": "string"
+                },
+                "submissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AnswerSubmission"
+                    }
+                }
+            },
+            "required": [
+                "submissions"
+            ]
+        },
+
+        "AnswerSubmission": {
+            "type": "object",
+            "properties": {
+                "submission_id": {
+                    "type": "string"
+                },
+                "creation_time": {
+                    "type": "number"
+                },
+                "answers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AnswerList"
+                    }
+                }
+            },
+            "required": [
+                "submission_id",
+                "creation_time",
+                "answers"
+            ]
+        },
+
+        "SurveyAnswerAggregations": {
+            "type": "object",
+            "properties": {
+                "question_answer_aggregations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/QuestionAnswerAggregations"
+                    }
+                }
+            },
+            "required": [
+                "question_answer_aggregations"
+            ]
+        },
+
+        "QuestionAnswerAggregations": {
+            "type": "object",
+            "properties": {
+                "question_id": {
+                    "type": "string"
+                },
+
+                "answer_aggregations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AnswerAggregation"
+                    }
+                }
+            },
+            "required": [
+                "question_id",
+                "answer_aggregations"
+            ]
+        },
+
+        "AnswerAggregation": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+
+                "count": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "answer",
+                "count"
+            ]
+        },
+
+        "Answer": {
+            "type": "object",
+            "properties": {
+              "question_id": {
+                  "type": "string",
+                  "description": "The question UUID returned from querying the survey object. Example: 42718602-8979-47d2-8718-70d0f2d5261c"
+              },
+
+              "answer": {
+                  "$ref": "#/definitions/StringList"
+              }
+            },
+            "required": [
+                "question_id",
+                "answer"
+            ]
+        },
+
+        "CreateSurveyInput": {
+            "type": "object",
+            "properties": {
+                "survey_name": {
+                    "type": "string",
+                    "description": "Survey name"
+                },
+                "survey_id_to_clone": {
+                    "type": "string",
+                    "description": "Optional, if given the new survey will clone from this survey id"
+                }
+            },
+            "required": [
+                "survey_name"
+            ]
+        },
+
+        "RenameSurveyInput": {
+            "type": "object",
+            "properties": {
+                "survey_name": {
+                    "type": "string",
+                    "description": "New survey name"
+                }
+            },
+            "required": [
+                "survey_name"
+            ]
+        },
+
+        "UpdateActivationPeriodInput": {
+            "type": "object",
+            "properties": {
+                "activation_start_time": {
+                    "type": "integer",
+                    "description": "Survey active window start epoch time. Optional, starts from now if not supplied"
+                },
+                "activation_end_time": {
+                    "type": "integer",
+                    "description": "Survey active window end epoch time. Optional, never ends if not supplied"
+                }
+            }
+        },
+
+        "CreateSurveyResponse": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+                "creation_time": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "survey_id",
+                "creation_time"
+            ]
+        },
+
+        "CloneSurveyResponse": {
+            "type": "object",
+            "properties": {
+                "survey_id": {
+                    "type": "string"
+                },
+                "creation_time": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "survey_id",
+                "creation_time"
+            ]
+        },
+
+        "CreateQuestionResponse": {
+            "type": "object",
+            "properties": {
+                "question_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "question_id"
+            ]
+        },
+
+        "SubmitAnswersResponse": {
+            "type": "object",
+            "properties": {
+                "submission_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "submission_id"
+            ]
+        },
+
+        "DeleteAnswerSubmissionResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+
+        "DeleteSurveyResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+
+        "GetPlayerSubmissionIdsResponse": {
+            "type": "object",
+            "properties": {
+                "submission_id_list": {
+                    "$ref": "#/definitions/StringList"
+                }
+            },
+            "required": [
+                "submission_id_list"
+            ]
+        }
+    }
+}

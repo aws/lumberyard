@@ -30,7 +30,11 @@ class TAnimSplineTrack
     : public IAnimTrack
 {
 public:
+    AZ_CLASS_ALLOCATOR(TAnimSplineTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI((TAnimSplineTrack, "{6D72D5F6-61A7-43D4-9104-8F7DCCC19E10}", Vec2), IAnimTrack)
+
     TAnimSplineTrack()
+        : m_refCount(0)
     {
         AllocSpline();
         m_flags = 0;
@@ -44,13 +48,13 @@ public:
     {
         delete m_spline;
     }
-    virtual void Release()
-    {
-        if (--m_nRefCounter <= 0)
-        {
-            delete this;
-        }
-    }
+    
+    //////////////////////////////////////////////////////////////////////////
+    // for intrusive_ptr support 
+    void add_ref() override;
+    void release() override;
+    //////////////////////////////////////////////////////////////////////////
+
 
     virtual int GetSubTrackCount() const { return 0; };
     virtual IAnimTrack* GetSubTrack(int nIndex) const { return 0; };
@@ -61,7 +65,7 @@ public:
     // Return Animation Node that owns this Track.
     IAnimNode* GetNode() override { return m_node; }
 
-    virtual CAnimParamType  GetParameterType() const { return m_nParamType; };
+    virtual const CAnimParamType& GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CAnimParamType type) { m_nParamType = type; };
 
     virtual void GetKeyValueRange(float& fMin, float& fMax) const { fMin = m_fMinKeyValue; fMax = m_fMaxKeyValue; };
@@ -321,12 +325,6 @@ public:
         }
     }
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_spline);
-    }
-
     virtual void SetDefaultValue(const ValueType& value)
     {
         m_defaultValue = value;
@@ -349,6 +347,8 @@ public:
         m_trackMultiplier = trackMultiplier;
     }
 
+    static void Reflect(AZ::SerializeContext* serializeContext) {}
+
 protected:
 
     void UpdateTrackValueRange(float newValue)
@@ -366,9 +366,10 @@ private:
     //! Spawns new instance of Tcb spline.
     void AllocSpline()
     {
-        m_spline = new spline::TrackSplineInterpolator<ValueType>;
+        m_spline = aznew spline::TrackSplineInterpolator<ValueType>;
     }
 
+    int m_refCount;
     typedef spline::TrackSplineInterpolator<ValueType> Spline;
     Spline* m_spline;
     ValueType m_defaultValue;
@@ -388,6 +389,24 @@ private:
     float m_trackMultiplier;
 };
 
+//////////////////////////////////////////////////////////////////////////
+template <class T>
+inline void TAnimSplineTrack<T>::add_ref()
+{
+    ++m_refCount;
+}
+
+//////////////////////////////////////////////////////////////////////////
+template <class T>
+inline void TAnimSplineTrack<T>::release()
+{
+    if (--m_refCount <= 0)
+    {
+        delete this;
+    }
+}
+
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 template <class T>
 inline bool TAnimSplineTrack<T>::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
@@ -611,13 +630,5 @@ inline bool TAnimSplineTrack<T>::SerializeSelection(XmlNodeRef& xmlNode, bool bL
 // This is the current main.
 #include "AnimSplineTrack_Vec2Specialization.h"
 typedef TAnimSplineTrack<Vec2>      C2DSplineTrack;
-
-// Followings are deprecated and supported only for the backward compatibility.
-#include "AnimSplineTrack_FloatSpecialization.h"
-#include "AnimSplineTrack_Vec3Specialization.h"
-#include "AnimSplineTrack_QuatSpecialization.h"
-typedef TAnimSplineTrack<float> CTcbFloatTrack;
-typedef TAnimSplineTrack<Vec3>      CTcbVectorTrack;
-typedef TAnimSplineTrack<Quat>      CTcbQuatTrack;
 
 #endif // CRYINCLUDE_CRYMOVIE_ANIMSPLINETRACK_H

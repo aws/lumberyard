@@ -1,0 +1,889 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #7 $"
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi",
+                    "Url"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "AnswersReadCapacityUnits": {
+            "Default": "3",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "AnswersWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "AnswerAggregationsReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "AnswerAggregationsWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup",
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.",
+            "Type": "String"
+        },
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.",
+            "Type": "String"
+        },
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.",
+            "Type": "String"
+        },
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.",
+            "Type": "String"
+        },
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.",
+            "Type": "String"
+        },
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.",
+            "Type": "String"
+        },
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5",
+            "Description": "Indicates whether cache clustering is enabled for the service API.",
+            "Type": "String"
+        },
+        "SurveysReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "SurveysWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        },
+        "QuestionsReadCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of reads per second.",
+            "Type": "Number"
+        },
+        "QuestionsWriteCapacityUnits": {
+            "Default": "1",
+            "Description": "Number of writes per second.",
+            "Type": "Number"
+        }
+    },
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "ServiceLambda",
+                "ServiceApi",
+                "Answers",
+                "Surveys",
+                "Questions",
+                "AnswerAggregations",
+                "AnswersDynamoDbStreamLambda",
+                "AnswerSubmissionsExportS3Bucket",
+                "ExportAnswerSubmissionsCSVLambda",
+                "DeleteAnswerSubmissionsLambda"
+            ],
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::AccessControl"
+        },
+        "Answers": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:ListStreams"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "AnswersDynamoDbStreamLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:ListStreams"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "ExportAnswerSubmissionsCSVLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:ListStreams"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "DeleteAnswerSubmissionsLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:DescribeStream",
+                                "dynamodb:ListStreams"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "survey_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "submission_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "user_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "creation_time",
+                        "AttributeType": "N"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "survey_id",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "submission_id",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "GlobalSecondaryIndexes": [
+                    {
+                        "IndexName": "SubmissionTimeIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "survey_id",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "creation_time",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "ProjectionType": "ALL"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "AnswersReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "AnswersWriteCapacityUnits" }
+                        }
+                    },
+                    {
+                        "IndexName": "UserAnswersIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "user_id",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "survey_id",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "ProjectionType": "ALL"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "SurveysReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "SurveysWriteCapacityUnits" }
+                        }
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "AnswersReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "AnswersWriteCapacityUnits"
+                    }
+                },
+                "StreamSpecification": {
+                    "StreamViewType": "NEW_AND_OLD_IMAGES"
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "AnswerAggregations": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "AnswersDynamoDbStreamLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "survey_id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "survey_id",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "AnswerAggregationsReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "AnswerAggregationsWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "ServiceApi": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/active/survey_metadata",
+                            "/api/GET/active/surveys/*",
+                            "/api/GET/service/status",
+                            "/api/POST/active/surveys/*",
+                            "/api/PUT/active/surveys/*"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                },
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                },
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "MethodSettings": {
+                },
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            },
+            "Type": "Custom::ServiceApi"
+        },
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "ServiceApi",
+                        "Action": "lambda:InvokeFunction"
+                    }
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "service.dispatch",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ServiceLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "Answers": {
+                        "Ref": "Answers"
+                    },
+                    "Surveys": {
+                        "Ref": "Surveys"
+                    },
+                    "AnswerAggregations": {
+                        "Ref": "AnswerAggregations"
+                    },
+                    "Questions": {
+                        "Ref": "Questions"
+                    },
+                    "AnswerSubmissionsExportS3Bucket": {
+                        "Ref": "AnswerSubmissionsExportS3Bucket"
+                    },
+                    "ExportAnswerSubmissionsCSVLambda": {
+                        "Ref": "ExportAnswerSubmissionsCSVLambda"
+                    },
+                    "DeleteAnswerSubmissionsLambda": {
+                        "Ref": "DeleteAnswerSubmissionsLambda"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "Surveys": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "survey_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "creation_time_dummy_hash",
+                        "AttributeType": "N"
+                    },
+                    {
+                        "AttributeName": "creation_time",
+                        "AttributeType": "N"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "survey_id",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "GlobalSecondaryIndexes": [
+                    {
+                        "IndexName": "CreationTimeIndex",
+                        "KeySchema": [
+                            {
+                                "AttributeName": "creation_time_dummy_hash",
+                                "KeyType": "HASH"
+                            },
+                            {
+                                "AttributeName": "creation_time",
+                                "KeyType": "RANGE"
+                            }
+                        ],
+                        "Projection": {
+                            "NonKeyAttributes": ["survey_name", "num_active_questions", "activation_start_time", "activation_end_time", "published", "num_responses"],
+                            "ProjectionType": "INCLUDE"
+                        },
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": { "Ref": "SurveysReadCapacityUnits" },
+                            "WriteCapacityUnits": { "Ref": "SurveysWriteCapacityUnits" }
+                        }
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "SurveysReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "SurveysWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "Questions": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "AnswersDynamoDbStreamLambda",
+                            "Action": [
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PutItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "ResourceSuffix": [
+                                "",
+                                "/*"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "survey_id",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "question_id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "survey_id",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "question_id",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": {
+                        "Ref": "QuestionsReadCapacityUnits"
+                    },
+                    "WriteCapacityUnits": {
+                        "Ref": "QuestionsWriteCapacityUnits"
+                    }
+                }
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "AnswersDynamoDbStreamLambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "AnswersDynamoDbStreamLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "AnswersDynamoDbStreamLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "answers_dynamo_db_stream.handle",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AnswersDynamoDbStreamLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "AnswersDynamoDbStreamLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "AnswersDynamoDbStreamLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "AnswersDynamoDbStreamLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "Answers": {
+                        "Ref": "Answers"
+                    },
+                    "Surveys": {
+                        "Ref": "Surveys"
+                    },
+                    "AnswerAggregations": {
+                        "Ref": "AnswerAggregations"
+                    },
+                    "Questions": {
+                        "Ref": "Questions"
+                    },
+                    "AnswerSubmissionsExportS3Bucket": {
+                        "Ref": "AnswerSubmissionsExportS3Bucket"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "AnswerStreamEventSource": {
+            "DependsOn": [
+                "AccessControl"
+            ],
+            "Type": "AWS::Lambda::EventSourceMapping",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "AnswersDynamoDbStreamLambda"
+                },
+                "Enabled": true,
+                "EventSourceArn": {
+                    "Fn::GetAtt": [
+                        "Answers",
+                        "StreamArn"
+                    ]
+                },
+                "StartingPosition": "TRIM_HORIZON"
+            }
+        },
+        "ExportAnswerSubmissionsCSVLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        },
+                        {
+                            "AbstractRole": "ExportAnswerSubmissionsCSVLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ExportAnswerSubmissionsCSVLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ExportAnswerSubmissionsCSVLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "export_csv.handle",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ExportAnswerSubmissionsCSVLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ExportAnswerSubmissionsCSVLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ExportAnswerSubmissionsCSVLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "ExportAnswerSubmissionsCSVLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "AnswerSubmissionsExportS3Bucket": {
+                        "Ref": "AnswerSubmissionsExportS3Bucket"
+                    },
+                    "Answers": {
+                        "Ref": "Answers"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "DeleteAnswerSubmissionsLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "lambda:InvokeFunction"
+                        },
+                        {
+                            "AbstractRole": "DeleteAnswerSubmissionsLambda",
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "DeleteAnswerSubmissionsLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "DeleteAnswerSubmissionsLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "delete_submissions.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "DeleteAnswerSubmissionsLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "DeleteAnswerSubmissionsLambdaConfiguration",
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "DeleteAnswerSubmissionsLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "DeleteAnswerSubmissionsLambda",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Settings": {
+                    "Answers": {
+                        "Ref": "Answers"
+                    }
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "AnswerSubmissionsExportS3Bucket": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": "s3:ListBucket"
+                        },
+                        {
+                            "AbstractRole": "ExportAnswerSubmissionsCSVLambda",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": "ExportAnswerSubmissionsCSVLambda",
+                            "Action": "s3:ListBucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+            },
+            "Type": "AWS::S3::Bucket"
+        }
+    }
+}

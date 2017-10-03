@@ -13,18 +13,14 @@
 
 #include "StdAfx.h"
 
-#if defined(USE_SYNERGY_INPUT) || defined(AZ_FRAMEWORK_INPUT_ENABLED)
-
 #include "IRenderer.h"
 #include "SynergyContext.h"
 
 #include <AzCore/Socket/AzSocket.h>
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
 #include "RawInputNotificationBus_synergy.h"
 #define CSynergyContext SynergyClient // Temp until the implementation can be re-written
 using namespace SynergyInput;
-#endif
 
 enum ArgType
 {
@@ -180,7 +176,6 @@ static bool synergyEnterScreen(CSynergyContext* pContext, int* pArgs, Stream* pS
         gEnv->pRenderer->GetIHWMouseCursor()->Show();
     }
 #endif
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     if (gEnv->pRenderer)
     {
         const float normalizedMouseX = static_cast<float>(pArgs[0]) / static_cast<float>(gEnv->pRenderer->GetWidth());
@@ -189,12 +184,6 @@ static bool synergyEnterScreen(CSynergyContext* pContext, int* pArgs, Stream* pS
                                                   normalizedMouseX,
                                                   normalizedMouseY);
     }
-#else
-    AUTO_LOCK(pContext->m_mouseLock);
-    pContext->m_mouseState.x = pArgs[0];
-    pContext->m_mouseState.y = pArgs[1];
-    pContext->m_mouseQueue.push_back(pContext->m_mouseState);
-#endif
     return true;
 }
 
@@ -217,7 +206,6 @@ static bool synergyMouseMove(CSynergyContext* pContext, int* pArgs, Stream* pStr
         gEnv->pRenderer->GetIHWMouseCursor()->SetPosition(pArgs[0], pArgs[1]);
     }
 #endif
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     if (gEnv->pRenderer)
     {
         const float normalizedMouseX = static_cast<float>(pArgs[0]) / static_cast<float>(gEnv->pRenderer->GetWidth());
@@ -226,85 +214,44 @@ static bool synergyMouseMove(CSynergyContext* pContext, int* pArgs, Stream* pStr
                                                   normalizedMouseX,
                                                   normalizedMouseY);
     }
-#else
-    AUTO_LOCK(pContext->m_mouseLock);
-    pContext->m_mouseState.x = pArgs[0];
-    pContext->m_mouseState.y = pArgs[1];
-    pContext->m_mouseQueue.push_back(pContext->m_mouseState);
-#endif
     return true;
 }
 
 static bool synergyMouseButtonDown(CSynergyContext* pContext, int* pArgs, Stream* pStream, int streamLeft)
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     const uint32_t buttonIndex = pArgs[0];
     RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawMouseButtonDownEvent, buttonIndex);
-#else
-    int buttonNum = pArgs[0] - 1;
-    if (buttonNum < 3)
-    {
-        AUTO_LOCK(pContext->m_mouseLock);
-        pContext->m_mouseState.button[buttonNum] = true;
-        pContext->m_mouseQueue.push_back(pContext->m_mouseState);
-    }
-#endif
     return true;
 }
 
 static bool synergyMouseButtonUp(CSynergyContext* pContext, int* pArgs, Stream* pStream, int streamLeft)
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     const uint32_t buttonIndex = pArgs[0];
     RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawMouseButtonUpEvent, buttonIndex);
-#else
-    int buttonNum = pArgs[0] - 1;
-    if (buttonNum < 3)
-    {
-        AUTO_LOCK(pContext->m_mouseLock);
-        pContext->m_mouseState.button[buttonNum] = false;
-        pContext->m_mouseQueue.push_back(pContext->m_mouseState);
-    }
-#endif
     return true;
 }
 
 static bool synergyKeyboardDown(CSynergyContext* pContext, int* pArgs, Stream* pStream, int streamLeft)
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     const uint32_t scanCode = pArgs[2];
     const ModifierMask activeModifiers = static_cast<ModifierMask>(pArgs[1]);
     RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawKeyboardKeyDownEvent, scanCode, activeModifiers);
-#else
-    AUTO_LOCK(pContext->m_keyboardLock);
-    pContext->m_keyboardQueue.push_back(CSynergyContext::KeyPress(pArgs[2], true, false, pArgs[1]));
-#endif
     return true;
 }
 
 static bool synergyKeyboardUp(CSynergyContext* pContext, int* pArgs, Stream* pStream, int streamLeft)
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     const uint32_t scanCode = pArgs[2];
     const ModifierMask activeModifiers = static_cast<ModifierMask>(pArgs[1]);
     RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawKeyboardKeyUpEvent, scanCode, activeModifiers);
-#else
-    AUTO_LOCK(pContext->m_keyboardLock);
-    pContext->m_keyboardQueue.push_back(CSynergyContext::KeyPress(pArgs[2], false, false, pArgs[1]));
-#endif
     return true;
 }
 
 static bool synergyKeyboardRepeat(CSynergyContext* pContext, int* pArgs, Stream* pStream, int streamLeft)
 {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     const uint32_t scanCode = pArgs[2];
     const ModifierMask activeModifiers = static_cast<ModifierMask>(pArgs[1]);
     RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawKeyboardKeyRepeatEvent, scanCode, activeModifiers);
-#else
-    AUTO_LOCK(pContext->m_keyboardLock);
-    pContext->m_keyboardQueue.push_back(CSynergyContext::KeyPress(pArgs[3], true, true, pArgs[1]));
-#endif
     return true;
 }
 
@@ -316,18 +263,11 @@ static bool synergyClipboard(CSynergyContext* pContext, int* pArgs, Stream* pStr
         int size = pStream->ReadU32();
         if (format == 0) // Is text
         {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
             char* clipboardContents = new char[size];
             memcpy(clipboardContents, pStream->GetData(), size);
             clipboardContents[size] = '\0';
             RawInputNotificationBusSynergy::Broadcast(&RawInputNotificationsSynergy::OnRawClipboardEvent, clipboardContents);
             delete[] clipboardContents;
-#else
-            AUTO_LOCK(pContext->m_clipboardLock);
-            size = MIN(size, MAX_CLIPBOARD_SIZE - 1);
-            memcpy(pContext->m_clipboardThread, pStream->GetData(), size);
-            pContext->m_clipboardThread[size] = '\0';
-#endif
         }
         pStream->Eat(size);
     }
@@ -417,7 +357,6 @@ static bool ProcessPackets(CSynergyContext* pContext, Stream* s)
     return true;
 }
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
 CSynergyContext::CSynergyContext(const char* clientScreenName, const char* serverHostName)
     : m_clientScreenName(clientScreenName)
     , m_serverHostName(serverHostName)
@@ -440,20 +379,6 @@ CSynergyContext::~CSynergyContext()
     m_threadQuit = true;
     m_threadHandle.join();
 }
-#else
-CSynergyContext::CSynergyContext(const char* pIdentifier, const char* pHost)
-{
-    m_threadQuit = false;
-    m_clipboardThread[0] = '\0';
-    m_socket = AZ_SOCKET_INVALID;
-    m_name = pIdentifier;
-    m_host = pHost;
-    m_packetOverrun = 0;
-    memset(&m_mouseState, 0, sizeof(m_mouseState));
-    SetName("Synergy");
-    Start();
-}
-#endif
 
 void CSynergyContext::Run()
 {
@@ -511,59 +436,3 @@ void CSynergyContext::Run()
         }
     }
 }
-
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-bool CSynergyContext::GetKey(uint32& key, bool& bPressed, bool& bRepeat, uint32& modifier)
-{
-    AUTO_LOCK(m_keyboardLock);
-    if (m_keyboardQueue.empty())
-    {
-        return false;
-    }
-    KeyPress& kp = m_keyboardQueue.front();
-    key = kp.key;
-    bPressed = kp.bPressed;
-    bRepeat = kp.bRepeat;
-    modifier = kp.modifier;
-    m_keyboardQueue.pop_front();
-    return true;
-}
-
-bool CSynergyContext::GetMouse(uint16& x, uint16& y, uint16& wheelX, uint16& wheelY, bool& buttonL, bool& buttonM, bool& buttonR)
-{
-    AUTO_LOCK(m_mouseLock);
-    if (m_mouseQueue.empty())
-    {
-        return false;
-    }
-    MouseEvent& me = m_mouseQueue.front();
-    x = me.x;
-    y = me.y;
-    wheelX = me.wheelX;
-    wheelY = me.wheelY;
-    buttonL = me.button[0];
-    buttonM = me.button[1];
-    buttonR = me.button[2];
-    m_mouseQueue.pop_front();
-    return true;
-}
-
-const char* CSynergyContext::GetClipboard()
-{
-    AUTO_LOCK(m_clipboardLock);
-    strcpy(m_clipboard, m_clipboardThread);
-    return m_clipboard;
-}
-
-CSynergyContext::~CSynergyContext()
-{
-    m_threadQuit = true;
-    if (AZ::AzSock::IsAzSocketValid(m_socket))
-    {
-        AZ::AzSock::CloseSocket(m_socket);
-    }
-    WaitForThread();
-}
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-
-#endif // defined(USE_SYNERGY_INPUT) || defined(AZ_FRAMEWORK_INPUT_ENABLED)

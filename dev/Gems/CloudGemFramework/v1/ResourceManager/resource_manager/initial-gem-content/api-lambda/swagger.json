@@ -1,0 +1,112 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/example": {
+            "get": {
+                "description": "Example API that can be called by the game client to get data.",
+                "responses": {
+                    "200": {
+                        "description": "A successful example response.",
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Example API that can be called by the game client to process data.",
+                "parameters": [
+                    {
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful example response.",
+                        "schema": {
+                            "$ref": "#/definitions/ExampleData"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+		"ExampleData": {
+			"type": "object",
+			"properties": {
+				"ExamplePropertyA": {
+					"type": "string"
+				},
+				"ExamplePropertyB": {
+					"type": "integer"
+				}
+			},
+			"required": [
+				"ExamplePropertyA",
+				"ExamplePropertyB"
+			]
+		}
+    }
+}

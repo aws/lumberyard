@@ -17,7 +17,6 @@
 #include "StdAfx.h"
 #include "FrameProfileSystem.h"
 #include <IRenderer.h>
-#include <IInput.h>
 #include <ILog.h>
 #include <IRenderAuxGeom.h>
 #include <IScriptSystem.h>
@@ -1899,16 +1898,9 @@ void CFrameProfileSystem::RenderMemoryInfo()
 #endif // WIN32 && !AZ_MONOLITHIC_BUILD
 #endif // !defined(LINUX)
 
+            fpCryModuleGetAllocatedMemory(&memInfo);
 #ifndef AZ_MONOLITHIC_BUILD
-            fpCryModuleGetAllocatedMemory(&memInfo);
         }
-#else // AZ_MONOLITHIC_BUILD
-
-#if defined(LINUX) || defined(APPLE) || defined(DURANGO)
-            fpCryModuleGetAllocatedMemory(&memInfo);
-#else
-            fpCryModuleGetAllocatedMemory(&memInfo, (ECryModule)i);
-#endif
 #endif // AZ_MONOLITHIC_BUILD
 
         int usedInModule = (int)(memInfo.allocated - memInfo.freed);

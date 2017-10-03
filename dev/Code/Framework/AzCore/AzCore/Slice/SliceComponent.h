@@ -17,6 +17,7 @@
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
+#include <AzCore/Serialization/IdUtils.h>
 
 namespace AZ
 {
@@ -42,6 +43,7 @@ namespace AZ
         using EntityIdToEntityIdMap = AZStd::unordered_map<EntityId, EntityId>;
         using SliceInstanceAddress = AZStd::pair<SliceReference*, SliceInstance*>;
         using SliceInstanceToSliceInstanceMap = AZStd::unordered_map<SliceInstanceAddress, SliceInstanceAddress>;
+        using EntityIdSet = AZStd::unordered_set<AZ::EntityId>;
         using SliceInstanceId = AZ::Uuid;
 
         /// @deprecated Use SliceReference.
@@ -162,7 +164,14 @@ namespace AZ
 
             void DeleteEntities();
 
-            EntityList  m_entities;
+            /**
+            * Non-Destructively clears all data.
+            * @note Only call this when using this type as a temporary object to store pointers to data owned elsewhere.
+            */
+            void ClearAndReleaseOwnership();
+
+            EntityList m_entities;
+            EntityList m_metadataEntities;
         };
 
         /**
@@ -238,12 +247,14 @@ namespace AZ
             }
 
             /// Returns the EntityID of the from the base entity ID, to the new Entity ID that we will instantiate with this instance.
+            /// @Note: This map may contain mappings to inactive entities.
             const EntityIdToEntityIdMap& GetEntityIdMap() const
             {
                 return m_baseToNewEntityIdMap;
             }
 
             /// Returns the reverse of \ref GetEntityIdMap. The reverse table is build on demand.
+            /// @Note: This map may contain mappings to inactive entities.
             const EntityIdToEntityIdMap& GetEntityIdToBaseMap() const
             {
                 if (m_entityIdToBaseCache.empty())
@@ -264,6 +275,9 @@ namespace AZ
             {
                 return m_instanceId.GetHash();
             }
+
+            // Returns the metadata entity for this instance.
+            Entity* GetMetadataEntity() const;
 
         protected:
 
@@ -288,6 +302,10 @@ namespace AZ
             DataFlagsPerEntity m_dataFlags; ///< For each entity, flags which may affect slice data inheritance. Addresses are relative to the entity, not the InstantiatedContainer.
 
             SliceInstanceId m_instanceId; ///< Unique Id of the instance.
+
+            /// Pointer to the clone metadata entity associated with the asset used to instantiate this class.
+            /// Data is owned the m_instantiated member of this class.
+            Entity* m_metadataEntity;
         };
 
         /**
@@ -311,7 +329,7 @@ namespace AZ
              * Create a new instance of the slice (with new IDs for every entity).
              * \param customMapper Used to generate runtime entity ids for the new instance. By default runtime ids are randomly generated.
              */
-            SliceInstance* CreateInstance(const AZ::EntityUtils::EntityIdMapper& customMapper = nullptr);
+            SliceInstance* CreateInstance(const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr);
 
             /** 
              * Clones an existing slice instance
@@ -425,6 +443,19 @@ namespace AZ
          */
         bool GetEntities(EntityList& entities);
 
+        /**
+        * Adds the IDs of all non-metadata entities, including the ones based on instances, to the provided set.
+        * @param entities An entity ID set to add the IDs to
+        */
+        bool GetEntityIds(EntityIdSet& entities);
+
+        /**
+        * Adds ID of every metadata entity that's part of this slice, including those based on instances, to the
+        * given set.
+        * @param entities An entity ID set to add the IDs to
+        */
+        bool GetMetadataEntityIds(EntityIdSet& entities);
+
         /// Returns list of all slices and their instantiated entities (for this slice node)
         const SliceList& GetSlices() const;
 
@@ -437,7 +468,7 @@ namespace AZ
          * \param customMapper optional entity runtime id mapper.
          * \returns null if adding slice failed.
          */
-        SliceInstanceAddress AddSlice(const Data::Asset<SliceAsset>& sliceAsset, const AZ::EntityUtils::EntityIdMapper& customMapper = nullptr);
+        SliceInstanceAddress AddSlice(const Data::Asset<SliceAsset>& sliceAsset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr);
         /// Adds a slice reference (moves it) along with its instance information.
         SliceReference* AddSlice(SliceReference& sliceReference);
         /// Adds a slice (moves it) from another already generated reference/instance pair.
@@ -509,10 +540,33 @@ namespace AZ
         /**
         * Gets the asset that owns this component.
         */
-        const SliceAsset* GetMyAsset(void) const
+        const SliceAsset* GetMyAsset() const
         {
             return m_myAsset;
         }
+
+        /** 
+        * Appends the metadata entities belonging only directly to each instance in the slice to the given list. Metadata entities belonging
+        * to any instances within each instance are omitted.
+        */
+        bool GetInstanceMetadataEntities(EntityList& outMetadataEntities);
+
+        /**
+        * Appends all metadata entities belonging to instances owned by this slice, including those in nested instances to the end of the given list.
+        */
+        bool GetAllInstanceMetadataEntities(EntityList& outMetadataEntities);
+
+        /**
+        * Gets all metadata entities belonging to this slice. This includes instance metadata components and the slice's own metadata component.
+        * Because the contents of the result could come from multiple objects, the calling function must provide its own container.
+        * Returns true if the operation succeeded (Even if the resulting container is empty)
+        */
+        bool GetAllMetadataEntities(EntityList& outMetadataEntities);
+
+        /**
+        * Gets the metadata entity belonging to this slice
+        */
+        AZ::Entity* GetMetadataEntity();
 
         typedef AZStd::unordered_set<Data::AssetId> AssetIdSet;
 
@@ -570,7 +624,6 @@ namespace AZ
         */
         bool Instantiate();
         bool IsInstantiated() const;
-
     protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
         // Workaround for VS2013 - Delete the copy constructor and make it private
@@ -601,6 +654,19 @@ namespace AZ
 
         /// Populate the entity info map. This will re-populate it even if already populated.
         void BuildEntityInfoMap();
+
+        /**
+        * Newly created slices and legacy slices won't have required metadata components. This will check to see if
+        * necessary components to the function of the metadata entities are present and
+        * \param instance Source slice instance
+        */
+        void InitMetadata();
+
+        /**
+        * During instance instantiation, entities from root slices may be removed by data patches. We need to remove these
+        * from the metadata associations in our newly cloned instance metadata entities.
+        */
+        void CleanMetadataAssociations();
         
         /// Returns the entity info map (and builds it if necessary).
         EntityInfoMap& GetEntityInfoMap();
@@ -611,7 +677,7 @@ namespace AZ
         /// Utility function to apply a EntityIdToEntityIdMap to a EntityIdToEntityIdMap (the mapping will override values in the destination)
         static void ApplyEntityMapId(EntityIdToEntityIdMap& destination, const EntityIdToEntityIdMap& mapping);
 
-        SliceAsset* m_myAsset;   ///< Pointer to the asset we belong to, not this is just a reference stored by the handler, we don't need Asset<SliceAsset> as it's not a reference to another asset.
+        SliceAsset* m_myAsset;   ///< Pointer to the asset we belong to, note this is just a reference stored by the handler, we don't need Asset<SliceAsset> as it's not a reference to another asset.
 
         SerializeContext* m_serializeContext;
 
@@ -620,6 +686,8 @@ namespace AZ
         EntityList m_entities;  ///< Entities that are new (not based on a slice).
 
         SliceList m_slices; ///< List of base slices and their instances in the world
+
+        AZ::Entity m_metadataEntity; ///< Entity for attaching slice metadata components
 
         AZStd::atomic<bool> m_slicesAreInstantiated; ///< Instantiate state of the base slices (they should be instantiated or not)
 
@@ -630,7 +698,7 @@ namespace AZ
         AZ::Data::AssetFilterCB m_assetLoadFilterCB; ///< Asset load filter callback to apply for internal loads during data patching.
         AZ::u32 m_filterFlags; ///< Asset load filter flags to apply for internal loads during data patching
 
-        AZStd::mutex m_instantiateMutex; ///< Used to prevent multiple threads from trying to instantiate the slices at once
+        AZStd::recursive_mutex m_instantiateMutex; ///< Used to prevent multiple threads from trying to instantiate the slices at once
     };
 
     /// @deprecated Use SliceComponent.

@@ -32,7 +32,7 @@ namespace AzToolsFramework
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             ////////////////////////////////////////////////////////////////////
             // EditorDisabledCompositionRequestBus
-            AZStd::vector<AZ::Component*> GetDisabledComponents() override;
+            void GetDisabledComponents(AZStd::vector<AZ::Component*>& components) override;
             void AddDisabledComponent(AZ::Component* componentToAdd) override;
             void RemoveDisabledComponent(AZ::Component* componentToRemove) override;
             ////////////////////////////////////////////////////////////////////

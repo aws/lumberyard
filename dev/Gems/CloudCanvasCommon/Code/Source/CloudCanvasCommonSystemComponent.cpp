@@ -21,9 +21,6 @@
 #include <ISystem.h>
 #include <ICryPak.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
-
 #include "CloudCanvasCommonSystemComponent.h"
 
 #include <aws/core/Aws.h>
@@ -69,12 +66,6 @@ namespace CloudCanvasCommon
             }
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
-        {
-            behaviorContext->EBus<LmbrAWS::ClientManagerNotificationBus>("ClientManagerNotificationBus")
-                ->Handler<LmbrAWS::ClientManagerNotificationBusHandler>();
-        }
     }
 
     void CloudCanvasCommonSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -104,27 +95,49 @@ namespace CloudCanvasCommon
 
     void CloudCanvasCommonSystemComponent::Init()
     {
+
     }
 
     void CloudCanvasCommonSystemComponent::Activate()
     {
-        
         InitAwsApi();
 
         CloudCanvasCommonRequestBus::Handler::BusConnect();
-        LmbrAWS::AwsApiInitRequestBus::Handler::BusConnect();
+        CloudCanvas::AwsApiInitRequestBus::Handler::BusConnect();
+        CrySystemEventBus::Handler::BusConnect();
 
+        EBUS_EVENT(CloudCanvasCommonNotificationsBus, ApiInitialized);
     }
 
     void CloudCanvasCommonSystemComponent::Deactivate()
     {
-        
-        LmbrAWS::AwsApiInitRequestBus::Handler::BusDisconnect();
+        EBUS_EVENT(CloudCanvasCommonNotificationsBus, BeforeShutdown);
+
+        CrySystemEventBus::Handler::BusDisconnect();
+        CloudCanvas::AwsApiInitRequestBus::Handler::BusDisconnect();
         CloudCanvasCommonRequestBus::Handler::BusDisconnect();
 
         // We require that anything that owns memory allocated by the AWS 
         // API be destructed before this component is deactivated.
         ShutdownAwsApi();
+
+        EBUS_EVENT(CloudCanvasCommonNotificationsBus, ShutdownComplete);
+    }
+
+    void CloudCanvasCommonSystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
+    {
+        CloudCanvas::RequestRootCAFileResult requestResult = GetRootCAFile(m_resolvedCertPath);
+
+        if (requestResult == CloudCanvas::ROOTCA_FOUND_FILE_SUCCESS)
+        {
+            EBUS_EVENT(CloudCanvasCommonNotificationsBus, RootCAFileSet, m_resolvedCertPath);
+        }
+        AZ_TracePrintf("CloudCanvas", "Initialized CloudCanvasCommon with cert path %s result %d", m_resolvedCertPath.c_str(), requestResult);
+        EBUS_EVENT(CloudCanvasCommonNotificationsBus, OnPostInitialization);
+    }
+
+    void CloudCanvasCommonSystemComponent::OnCrySystemShutdown(ISystem&)
+    {
 
     }
 
@@ -274,11 +287,8 @@ namespace CloudCanvasCommon
         {
             return Aws::MakeShared<LumberyardLogSystemInterface>("AWS", logLevel);
         };
+
         m_awsSDKOptions.memoryManagementOptions.memoryManager = &m_memoryManager;
-
-        LmbrAWS::RequestRootCAFileResult requestResult = GetRootCAFile(m_resolvedCertPath);
-
-        AZ_TracePrintf("CloudCanvas", "Initialized CloudCanvasCommon with cert path %s result %d", m_resolvedCertPath.c_str(), requestResult);
 
 
         Aws::InitAPI(m_awsSDKOptions);
@@ -296,51 +306,16 @@ namespace CloudCanvasCommon
 #endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
     }
 
-    AZStd::string CloudCanvasCommonSystemComponent::GetLogicalToPhysicalResourceMapping(const AZStd::string& logicalResourceName)
-    {
-        AZStd::string physicalResourceName = gEnv->pLmbrAWS->GetClientManager()->GetConfigurationParameters().GetParameter(logicalResourceName.c_str()).c_str();
-        AZ_Error(COMPONENT_DISPLAY_NAME, !physicalResourceName.empty(), "No mapping provided for the %s resource.", logicalResourceName.c_str());
-        return physicalResourceName;
-    }
-
-    LmbrAWS::S3::BucketClient CloudCanvasCommonSystemComponent::GetBucketClient(const AZStd::string& bucketName)
-    {
-        LmbrAWS::S3::BucketClient bucketClient = gEnv->pLmbrAWS->GetClientManager()->GetS3Manager().CreateBucketClient(bucketName.c_str());
-        return bucketClient;
-    }
-
-    AZStd::vector<AZStd::string> CloudCanvasCommonSystemComponent::GetLogicalResourceNames(const AZStd::string& resourceType)
-    {
-        if (resourceType == "AWS::Lambda::Function")
-        {
-            // settings use old CryStrings so no easy conversion
-            if (gEnv)
-            {
-                std::vector<string> names = gEnv->pLmbrAWS->GetClientManager()->GetLambdaManager().GetFunctionClientSettingsCollection().GetNames();
-                AZStd::vector<AZStd::string> retContainter;
-                retContainter.reserve(names.size());
-                for (const string& cryString : names)
-                {
-                    retContainter.push_back(AZStd::string(cryString.c_str(), cryString.length()));
-                }
-                return retContainter;
-            }
-        }
-        else
-        {
-            AZ_Error(COMPONENT_DISPLAY_NAME, false, "GetLogicalResourceNames currently only supports Lambda");
-        }
-        return AZStd::vector<AZStd::string>();
-    }
 
 
 
-    LmbrAWS::RequestRootCAFileResult CloudCanvasCommonSystemComponent::LmbrRequestRootCAFile(AZStd::string& resultPath)
+
+    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::LmbrRequestRootCAFile(AZStd::string& resultPath)
     {
         return GetRootCAFile(resultPath);
     }
 
-    LmbrAWS::RequestRootCAFileResult CloudCanvasCommonSystemComponent::RequestRootCAFile(AZStd::string& resultPath)
+    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::RequestRootCAFile(AZStd::string& resultPath)
     {
         return GetRootCAFile(resultPath);
     }
@@ -361,18 +336,18 @@ namespace CloudCanvasCommon
 #endif
     }
 
-    LmbrAWS::RequestRootCAFileResult CloudCanvasCommonSystemComponent::GetRootCAFile(AZStd::string& resultPath)
+    CloudCanvas::RequestRootCAFileResult CloudCanvasCommonSystemComponent::GetRootCAFile(AZStd::string& resultPath)
     {
         if (!DoesPlatformUseRootCAFile() )
         {
-            return LmbrAWS::ROOTCA_PLATFORM_NOT_SUPPORTED;
+            return CloudCanvas::ROOTCA_PLATFORM_NOT_SUPPORTED;
         }
 
         if (m_resolvedCert)
         {
             AZStd::lock_guard<AZStd::mutex> pathLock(m_certPathMutex);
             resultPath = m_resolvedCertPath;
-            return resultPath.length() ? LmbrAWS::ROOTCA_FOUND_FILE_SUCCESS : LmbrAWS::ROOTCA_USER_FILE_NOT_FOUND;
+            return resultPath.length() ? CloudCanvas::ROOTCA_FOUND_FILE_SUCCESS : CloudCanvas::ROOTCA_USER_FILE_NOT_FOUND;
         }
 
         CheckCopyRootCAFile();
@@ -381,7 +356,7 @@ namespace CloudCanvasCommon
         if (!GetResolvedUserPath(resolvedPath))
         {
             AZ_TracePrintf("CloudCanvas","Failed to resolve RootCA User path, returning");
-            return LmbrAWS::ROOTCA_USER_FILE_RESOLVE_FAILED;
+            return CloudCanvas::ROOTCA_USER_FILE_RESOLVE_FAILED;
         }
 
         AZStd::lock_guard<AZStd::mutex> pathLock(m_certPathMutex);
@@ -391,7 +366,7 @@ namespace CloudCanvasCommon
         }
         m_resolvedCert = true;
         resultPath = m_resolvedCertPath;
-        return resultPath.length() ? LmbrAWS::ROOTCA_FOUND_FILE_SUCCESS : LmbrAWS::ROOTCA_USER_FILE_NOT_FOUND;
+        return resultPath.length() ? CloudCanvas::ROOTCA_FOUND_FILE_SUCCESS : CloudCanvas::ROOTCA_USER_FILE_NOT_FOUND;
     }
 
     bool CloudCanvasCommonSystemComponent::GetResolvedUserPath(AZStd::string& resolvedPath) const
@@ -437,7 +412,6 @@ namespace CloudCanvasCommon
         AZ_TracePrintf("CloudCanvas","Ensuring RootCA in path %s", userPath.c_str());
 
         AZStd::string inputPath{ pakCertPath };
-
         AZ::IO::HandleType inputFile;
         AZ::IO::FileIOBase::GetInstance()->Open(inputPath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
         if (!inputFile)

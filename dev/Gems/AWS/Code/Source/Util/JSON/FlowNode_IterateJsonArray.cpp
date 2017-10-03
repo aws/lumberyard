@@ -94,13 +94,13 @@ namespace LmbrAWS
 
                 if (m_jsonArray.empty())
                 {
-                    SFlowAddress addr(pActInfo->myID, EOP_IsEmpty, true);
-                    pActInfo->pGraph->ActivatePort(addr, true);
+                    SFlowAddress emptyAddr(pActInfo->myID, EOP_IsEmpty, true);
+                    pActInfo->pGraph->ActivatePort(emptyAddr, true);
                 }
                 else
                 {
-                    SFlowAddress addr(pActInfo->myID, EOP_IsNotEmpty, true);
-                    pActInfo->pGraph->ActivatePort(addr, true);
+                    SFlowAddress notEmptyAddr(pActInfo->myID, EOP_IsNotEmpty, true);
+                    pActInfo->pGraph->ActivatePort(notEmptyAddr, true);
                 }
             }
         }

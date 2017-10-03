@@ -18,6 +18,12 @@ namespace LmbrCentral
     const AZ::Vector4 EditorBaseShapeComponent::s_shapeColor(1.00f, 1.00f, 0.78f, 0.4f);
     const AZ::Vector4 EditorBaseShapeComponent::s_shapeWireColor(1.00f, 1.00f, 0.78f, 0.5f);
 
+    EditorBaseShapeComponent::EditorBaseShapeComponent()
+        : m_shapeColor(s_shapeColor)
+        , m_shapeWireColor(s_shapeWireColor)
+    {
+    }
+
     void EditorBaseShapeComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
@@ -27,6 +33,7 @@ namespace LmbrCentral
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        EditorShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorBaseShapeComponent::Deactivate()
@@ -34,6 +41,7 @@ namespace LmbrCentral
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        EditorShapeComponentRequestsBus::Handler::BusDisconnect();
     }
 
     void EditorBaseShapeComponent::DisplayEntity(bool& handled)
@@ -63,5 +71,15 @@ namespace LmbrCentral
     void EditorBaseShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_currentEntityTransform = world;
+    }
+
+    void EditorBaseShapeComponent::SetShapeColor(const AZ::Vector4& shapeColor)
+    {
+        m_shapeColor = shapeColor;
+    }
+
+    void EditorBaseShapeComponent::SetShapeWireframeColor(const AZ::Vector4& wireColor)
+    {
+        m_shapeWireColor = wireColor;
     }
 } // namespace LmbrCentral

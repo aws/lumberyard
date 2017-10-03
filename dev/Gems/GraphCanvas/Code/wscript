@@ -1,0 +1,42 @@
+########################################################################################
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+# a third party where indicated.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.DefineGem(
+        file_list       = ['GraphCanvas_game.waf_files'],
+        pch             = '',
+        test_all_file_list = ['GraphCanvas_test.waf_files'],
+
+        ########################################
+        # Editor Gem configuration
+        editor = dict(
+            #==============================
+            # Settings
+            #==============================
+            file_list       = 'GraphCanvas.waf_files',
+            pch             = 'precompiled.cpp',
+            win_features    = ['crcfix'],
+            defines         = ['NOT_USE_CRY_MEMORY_MANAGER'],
+
+            includes        = ['.', '..', 'Include', 'Include/GraphCanvas', 'Source'],
+
+            autod_uselib    = ['QT5CORE',
+                               'QT5GUI',
+                               'QT5WIDGETS'],
+
+            test_all_file_list = ['GraphCanvas_test.waf_files']
+        )
+        ########################################
+    )
+   

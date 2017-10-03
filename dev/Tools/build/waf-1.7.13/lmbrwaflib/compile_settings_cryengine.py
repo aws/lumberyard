@@ -38,7 +38,7 @@ def load_cryengine_common_settings(conf):
     v = conf.env
 
     # Generate CODE_BASE_FOLDER define to allow to create absolute paths in source to use for pragma comment lib 
-    code_node = conf.srcnode.make_node('Code')
+    code_node = conf.engine_node.make_node('Code')
     code_path = code_node.abspath()
     code_path = code_path.replace('\\', '/')
     v['DEFINES'] += [ 'CODE_BASE_FOLDER="' + code_path + '/"' ]
@@ -164,25 +164,10 @@ def set_pipeline_flags(self, kw, ctx):
 
 ###############################################################################
 @conf
-def CreateRootRelativePath(self, path): 
-    """
-    Generate a path relative from the root
-    """
-    result_path = self.srcnode.make_node(path)
-    return result_path.abspath()
-    
-###############################################################################
-@conf
 def Settings(self, *k, **kw):
-    
     if not kw.get('files', None) and not kw.get('file_list', None) and not kw.get('regex', None):
         self.fatal("A Settings container must provide a list of verbatim file names, a waf_files file list or an regex")
-        
+
     return kw
 
-###############################################################################
-@conf
-def Path(self, path):
-    # Alias to 'CreateRootRelativePath'
-    return CreateRootRelativePath(self, path)
 

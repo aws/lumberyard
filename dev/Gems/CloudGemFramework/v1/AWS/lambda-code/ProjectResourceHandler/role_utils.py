@@ -137,25 +137,28 @@ def delete_access_control_role(id_data, logical_role_name):
     # delete the role.
 
     policy_names = []
-    try:
-        res = iam.list_role_policies(RoleName=role_name)
-        policy_names = res['PolicyNames']
-    except ClientError as e:
-        if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
-            raise e
-
-    for policy_name in policy_names:
+    if role_name is None:
+        print "WARNING: could not retrieve role name from mapping, possibly orphaning logical role {}".format(logical_role_name)
+    else:
         try:
-            res = iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+            res = iam.list_role_policies(RoleName=role_name)
+            policy_names = res['PolicyNames']
         except ClientError as e:
             if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
                 raise e
 
-    try:
-        res = iam.delete_role(RoleName=role_name)
-    except ClientError as e:
-        if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
-            raise e
+        for policy_name in policy_names:
+            try:
+                res = iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+            except ClientError as e:
+                if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
+                    raise e
+
+        try:
+            res = iam.delete_role(RoleName=role_name)
+        except ClientError as e:
+            if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
+                raise e
 
     remove_id_data_abstract_role_mapping(id_data, logical_role_name)
 

@@ -27,8 +27,8 @@
 // CMatEditPreviewDlg dialog
 
 
-CMatEditPreviewDlg::CMatEditPreviewDlg()
-    : QDialog()
+CMatEditPreviewDlg::CMatEditPreviewDlg(QWidget* parent)
+    : QDialog(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
@@ -64,6 +64,12 @@ CMatEditPreviewDlg::~CMatEditPreviewDlg()
 QSize CMatEditPreviewDlg::sizeHint() const
 {
     return QSize(450, 400);
+}
+
+void CMatEditPreviewDlg::showEvent(QShowEvent* e)
+{
+    QDialog::showEvent(e);
+    resize(sizeHint()); // Because WindowDecorationWrapper resizes it to the minimum for some reason.
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -132,7 +138,6 @@ void CMatEditPreviewDlg::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseItem
     case EDB_ITEM_EVENT_ADD:
     case EDB_ITEM_EVENT_CHANGED:
         m_previewCtrl->SetMaterial(GetIEditor()->GetMaterialManager()->GetCurrentMaterial() ? GetIEditor()->GetMaterialManager()->GetCurrentMaterial()->GetMatInfo() : nullptr);
-        m_previewCtrl->Update();
         break;
     case EDB_ITEM_EVENT_DELETE:
         m_previewCtrl->SetMaterial(nullptr);

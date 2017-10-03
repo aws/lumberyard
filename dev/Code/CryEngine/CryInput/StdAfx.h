@@ -30,9 +30,6 @@
 #include <vector>
 #include <list>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Input
-
 #define CRYINPUT_EXPORTS
 
 #include <platform.h>

@@ -13,7 +13,7 @@
 #
 # If the resource group defines one or more AWS Lambda Function resources, you can put 
 # the code that implements the functions below. The Handler property of the Lambda 
-# Function resoruce definition in the groups's resource-template.json file identifies 
+# Function resource definition in the groups's resource-template.json file identifies 
 # the Python function that is called when the Lambda Function is execution. To call 
 # a function here in main.py, set the Handler property to "main.FUNCTION_NAME".
 #

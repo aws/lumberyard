@@ -21,6 +21,9 @@
 #include <memory>
 #include <fstream>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::S3::Model;
 
 namespace LmbrAWS
@@ -36,7 +39,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("DownloadFile", _HELP("Activate this to read data from the an s3 bucket.")),
-            m_bucketClientPort.GetConfiguration("BucketName", _HELP("The name of the bucket to use")),
+            InputPortConfig<string>("BucketName", _HELP("The name of the bucket to use")),
             InputPortConfig<string>("KeyName", _HELP("The name of the file on S3 to be downloaded.")),
             InputPortConfig<string>("FileName", _HELP("The filename to use for the downloaded object"))
         };
@@ -55,14 +58,8 @@ namespace LmbrAWS
         //Download File
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_DownloadFile))
         {
-            auto client = m_bucketClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& bucketName = client.GetBucketName();
+            AZStd::string bucketName = GetPortString(pActInfo, EIP_BucketClient).c_str();
+            EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, bucketName);
             auto& fileName = GetPortString(pActInfo, EIP_FileName);
             auto& keyName = GetPortString(pActInfo, EIP_KeyName);
 
@@ -95,7 +92,7 @@ namespace LmbrAWS
 
             GetObjectRequest getObjectRequest;
             getObjectRequest.SetKey(keyName);
-            getObjectRequest.SetBucket(bucketName);
+            getObjectRequest.SetBucket(bucketName.c_str());
             Aws::String file(fileName);
             getObjectRequest.SetResponseStreamFactory([file]() { return Aws::New<Aws::FStream>(CLASS_TAG, file.c_str(), std::ios_base::out | std::ios_base::in | std::ios_base::binary | std::ios_base::trunc); });
 

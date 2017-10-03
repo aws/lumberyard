@@ -109,6 +109,9 @@ namespace AzToolsFramework
     protected:
         int CalculateLabelWidth() const;
 
+        bool IsHidden(InstanceDataNode* node) const;
+        void HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node);
+
         QHBoxLayout* m_mainLayout;
         QHBoxLayout* m_leftHandSideLayout;
         QHBoxLayout* m_middleLayout;
@@ -124,7 +127,19 @@ namespace AzToolsFramework
         QLabel* m_nameLabel;
         QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
         InstanceDataNode* m_sourceNode;
-        AZStd::vector<AZ::Edit::Attribute*> m_changeNotifiers;
+
+        struct ChangeNotification
+        {
+            ChangeNotification(InstanceDataNode* node, AZ::Edit::Attribute* attribute)
+                : m_attribute(attribute)
+                , m_node(node)
+            { }
+
+            InstanceDataNode* m_node = nullptr;
+            AZ::Edit::Attribute* m_attribute = nullptr;
+        };
+
+        AZStd::vector<ChangeNotification> m_changeNotifiers;
         QSpacerItem* m_indent;
         PropertyHandlerBase* m_handler; // the CURRENT handler.
         PropertyRowWidget* m_parentRow; // not the parent widget.

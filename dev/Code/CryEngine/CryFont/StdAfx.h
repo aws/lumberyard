@@ -20,9 +20,6 @@
 
 #include <vector>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Font
-
 #define CRYFONT_EXPORTS
 
 #include <platform.h>

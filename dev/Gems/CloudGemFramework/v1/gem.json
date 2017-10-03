@@ -1,13 +1,13 @@
 {
-    "GemFormatVersion": 3,
+    "GemFormatVersion": 4,
     "Uuid": "6fc787a982184217a5a553ca24676cfa",
     "Name": "CloudGemFramework",
     "DisplayName": "Cloud Gem Framework",
-    "Version": "1.0.0",
+    "Version": "1.1.1",
     "LinkType": "Dynamic",
-    "Summary": "Tools and APIs for building AWS connected Gems.",
-    "Tags": ["AWS", "API", "Cloud", "Canvas", "CloudCanvas", "Connected", "Tool"],
-    "IconPath": "CloudGemFramework.png",
+    "Summary": "This Gem is the foundation and is automatically enabled when selecting any of the Cloud Gems. It provides the Framework, the Tools and APIs to build AWS connected Gems.",
+    "Tags": ["AWS", "API", "Cloud", "CloudCanvas", "Connected", "Tool", "API Gateway", "Cloud Formation", "Cognito", "IAM", "Lambda", "S3" ],
+    "IconPath": "CloudGemFramework.png",    
     "Dependencies": [
         {
             "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
@@ -15,6 +15,20 @@
                 "~>0.1"
             ],
             "_comment": "CloudCanvasCommon"
+        }
+    ],
+    "Modules": [
+        {
+            "Type": "GameModule"
+        },
+        {
+            "Type": "EditorModule",
+            "Extends": "GameModule",
+			"Name": "Editor"
+        },
+        {
+            "Type": "StaticLib",
+            "Name": "StaticLibrary"
         }
     ]
 }

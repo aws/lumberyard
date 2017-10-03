@@ -13,10 +13,14 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Debug/TraceContext.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <SceneAPI/SceneCore/Components/LoadingComponent.h>
+#include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 #include <SceneAPI/SceneCore/Components/Utilities/EntityConstructor.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
+#include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 namespace AZ
@@ -83,7 +87,8 @@ namespace AZ
                 return ProcessingResult::Ignored;
             }
 
-            LoadingResult AssetImportRequest::LoadAsset(Containers::Scene& /*scene*/, const AZStd::string& /*path*/, RequestingApplication /*requester*/)
+            LoadingResult AssetImportRequest::LoadAsset(Containers::Scene& /*scene*/, const AZStd::string& /*path*/, const Uuid& /*guid*/, 
+                RequestingApplication /*requester*/)
             {
                 return LoadingResult::Ignored;
             }
@@ -99,48 +104,19 @@ namespace AZ
 
             AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadScene(const AZStd::string& assetFilePath, RequestingApplication requester)
             {
-                AZStd::string manifestExtension;
-                EBUS_EVENT(AssetImportRequestBus, GetManifestExtension, manifestExtension);
-                AZ_Assert(!manifestExtension.empty(), "Manifest extension was not declared.");
-
-                AZStd::string path = assetFilePath;
-                if (AzFramework::StringFunc::Path::IsExtension(assetFilePath.c_str(), manifestExtension.c_str()))
-                {
-                    AzFramework::StringFunc::Path::ReplaceExtension(path, "");
-                }
-
-                AZStd::unordered_set<AZStd::string> extensions;
-                EBUS_EVENT(AssetImportRequestBus, GetSupportedFileExtensions, extensions);
-                AZ_Assert(!extensions.empty(), "No extensions found.");
-
-                // Check if the extension is valid.
-                bool isValidType = false;
-                for (AZStd::string& it : extensions)
-                {
-                    if (AzFramework::StringFunc::Path::IsExtension(path.c_str(), it.c_str()))
-                    {
-                        isValidType = true;
-                        break;
-                    }
-                }
-
-                if (!isValidType)
-                {
-                    AZ_TracePrintf(Utilities::ErrorWindow, "Path '%s' doesn't point to a supported type.\n", path.c_str());
-                    return nullptr;
-                }
-
-                // Check if the file exists.
-                if (!IO::SystemFile::Exists(path.c_str()))
-                {
-                    AZ_TracePrintf(Utilities::ErrorWindow, "Failed to get valid asset path.\n");
-                    return nullptr;
-                }
-
-                return LoadSceneFromVerifiedPath(path, requester);
+                AZStd::shared_ptr<Containers::Scene> result;
+                SceneSerializationBus::BroadcastResult(result, &SceneSerializationBus::Events::LoadScene, assetFilePath, Uuid::CreateNull());
+                return result;
             }
 
-            AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath, 
+            AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadScene(const AZStd::string& assetFilePath, const Uuid& sourceGuid, RequestingApplication /*requester*/)
+            {
+                AZStd::shared_ptr<Containers::Scene> result;
+                SceneSerializationBus::BroadcastResult(result, &SceneSerializationBus::Events::LoadScene, assetFilePath, sourceGuid);
+                return result;
+            }
+
+            AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath, const Uuid& sourceGuid,
                 RequestingApplication requester)
             {
                 AZStd::string sceneName;
@@ -161,12 +137,12 @@ namespace AZ
                 }
 
                 LoadingResultCombiner filesLoaded;
-                AssetImportRequestBus::BroadcastResult(filesLoaded, &AssetImportRequestBus::Events::LoadAsset, *scene, assetFilePath, requester);
+                AssetImportRequestBus::BroadcastResult(filesLoaded, &AssetImportRequestBus::Events::LoadAsset, *scene, assetFilePath, sourceGuid, requester);
                 AssetImportRequestBus::Broadcast(&AssetImportRequestBus::Events::FinalizeAssetLoading, *scene, requester);
                 
                 if (filesLoaded.GetAssetResult() != ProcessingResult::Success)
                 {
-                    AZ_TracePrintf(Utilities::ErrorWindow, "Failed to load requested asset.\n");
+                    AZ_TracePrintf(Utilities::ErrorWindow, "Failed to load requested scene file.\n");
                     return nullptr;
                 }
 
@@ -186,6 +162,31 @@ namespace AZ
                 }
 
                 return scene;
+            }
+
+            bool AssetImportRequest::IsManifestExtension(const char* filePath)
+            {
+                AZStd::string manifestExtension;
+                AssetImportRequestBus::Broadcast(&AssetImportRequestBus::Events::GetManifestExtension, manifestExtension);
+                AZ_Assert(!manifestExtension.empty(), "Manifest extension was not declared.");
+                return AzFramework::StringFunc::Path::IsExtension(filePath, manifestExtension.c_str());
+            }
+
+            bool AssetImportRequest::IsSceneFileExtension(const char* filePath)
+            {
+                AZStd::unordered_set<AZStd::string> extensions;
+                AssetImportRequestBus::Broadcast(&AssetImportRequestBus::Events::GetSupportedFileExtensions, extensions);
+                AZ_Assert(!extensions.empty(), "No extensions found for source files.");
+                
+                for (const AZStd::string& extension : extensions)
+                {
+                    if (AzFramework::StringFunc::Path::IsExtension(filePath, extension.c_str()))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
         } // namespace Events
     } // namespace SceneAPI

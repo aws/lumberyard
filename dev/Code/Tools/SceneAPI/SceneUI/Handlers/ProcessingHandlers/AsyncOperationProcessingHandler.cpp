@@ -10,9 +10,10 @@
 *
 */
 
-#include <SceneAPI/SceneUI/Handlers/ProcessingHandlers/AsyncOperationProcessingHandler.h>
-#include <AzCore/std/parallel/thread.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/std/parallel/thread.h>
+#include <AzToolsFramework/Debug/TraceContext.h>
+#include <SceneAPI/SceneUI/Handlers/ProcessingHandlers/AsyncOperationProcessingHandler.h>
 
 namespace AZ
 {
@@ -20,8 +21,8 @@ namespace AZ
     {
         namespace SceneUI
         {
-            AsyncOperationProcessingHandler::AsyncOperationProcessingHandler(AZStd::function<void()> targetFunction, AZStd::function<void()> onComplete, QObject* parent)
-                : ProcessingHandler(parent)
+            AsyncOperationProcessingHandler::AsyncOperationProcessingHandler(Uuid traceTag, AZStd::function<void()> targetFunction, AZStd::function<void()> onComplete, QObject* parent)
+                : ProcessingHandler(traceTag, parent)
                 , m_operationToRun(targetFunction)
                 , m_onComplete(onComplete)
             {
@@ -29,11 +30,12 @@ namespace AZ
 
             void AsyncOperationProcessingHandler::BeginProcessing()
             {
-                emit UserMessageUpdated("Waiting for background processes to complete...");
+                emit StatusMessageUpdated("Waiting for background processes to complete...");
                 m_thread.reset(
                     new AZStd::thread(
                         [this]()
                         {
+                            AZ_TraceContext("Tag", m_traceTag);
                             m_operationToRun();
                             EBUS_QUEUE_FUNCTION(AZ::TickBus, AZStd::bind(&AsyncOperationProcessingHandler::OnBackgroundOperationComplete, this));
                         }
@@ -46,9 +48,11 @@ namespace AZ
                 m_thread->detach();
                 m_thread.reset(nullptr);
 
-                emit UserMessageUpdated("Processing complete");
-                emit AddInfo("Background processing complete");
-                m_onComplete();
+                emit StatusMessageUpdated("Processing complete");
+                if (m_onComplete)
+                {
+                    m_onComplete();
+                }
                 emit ProcessingComplete();
             }
         }

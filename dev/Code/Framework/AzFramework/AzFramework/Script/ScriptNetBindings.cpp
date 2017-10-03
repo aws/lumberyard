@@ -25,7 +25,7 @@ namespace AzFramework
 {
     namespace Internal
     {
-        static int NetBinding__IsMaster(lua_State* lua)
+        static int NetBinding__IsAuthoritative(lua_State* lua)
         {
             ScriptNetBindingTable* netBindingTable = reinterpret_cast<ScriptNetBindingTable*>(lua_touserdata(lua,lua_upvalueindex(1)));
             
@@ -42,6 +42,12 @@ namespace AzFramework
             }
 
             return 1;
+        }
+
+        static int NetBinding__IsMaster(lua_State* lua)
+        {
+            AZ_Warning("ScriptNetBindings", false, "IsMaster deprecated for the more lexical consistent IsAuthoritative");
+            return NetBinding__IsAuthoritative(lua);
         }
 
         static int NetBinding__CallRPC(lua_State* lua)
@@ -709,6 +715,11 @@ namespace AzFramework
         lua_pushliteral(nativeContext,"IsMaster");
         lua_pushlightuserdata(nativeContext,this);
         lua_pushcclosure(nativeContext, &Internal::NetBinding__IsMaster,1);
+        lua_rawset(nativeContext,entityTableIndex);
+
+        lua_pushliteral(nativeContext,"IsAuthoritative");
+        lua_pushlightuserdata(nativeContext,this);
+        lua_pushcclosure(nativeContext, &Internal::NetBinding__IsAuthoritative,1);
         lua_rawset(nativeContext,entityTableIndex);
 
         lua_pushstring(nativeContext,ScriptComponent::NetRPCFieldName);

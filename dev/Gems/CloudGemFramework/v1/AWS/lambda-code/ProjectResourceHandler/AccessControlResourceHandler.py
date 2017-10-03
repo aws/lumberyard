@@ -37,6 +37,22 @@ PERMISSION_RESTRICTIONS_BY_RESOURCE_TYPE = {
     "Custom::Polly": [	
         "polly:SynthesizeSpeech",
         "polly:DescribeVoices"
+    ],
+    "Custom::Lex": [
+        'lex:PostText',
+        'lex:PostContent',
+        'lex:GetBots',
+        'lex:GetBot',
+        'lex:CreateBotVersion',
+        'lex:PutBotAlias',
+        'lex:PutSlotType',
+        'lex:PutIntent',
+        'lex:PutBot',
+        'lex:GetIntent',
+        'lex:GetSlotType',
+        'lex:DeleteBot',
+        'lex:CreateIntentVersion',
+        'lex:CreateSlotTypeVersion'
     ]
 }
 

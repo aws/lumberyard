@@ -1,0 +1,30 @@
+{
+    "none": {
+        "Root":
+        [            
+            "stdafx.cpp",
+            "stdafx.h",
+            "targetver.h"
+        ],        
+        "Woodpecker":
+        [
+            "Woodpecker/WoodpeckerApplication.cpp",
+            "Woodpecker/WoodpeckerApplication.h"
+        ],
+        
+        "Woodpecker/Editor":
+        [
+            "Woodpecker/Editor/Resource.h",
+            "Woodpecker/Editor/targetver.h"
+        ],        
+        
+        "Woodpecker/Telemetry":
+        [            
+            "Woodpecker/Telemetry/TelemetryBus.h",
+            "Woodpecker/Telemetry/TelemetryComponent.cpp",
+            "Woodpecker/Telemetry/TelemetryComponent.h",
+            "Woodpecker/Telemetry/TelemetryEvent.cpp",
+            "Woodpecker/Telemetry/TelemetryEvent.h"
+        ]
+    }
+}

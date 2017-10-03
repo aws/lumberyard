@@ -33,9 +33,9 @@ namespace {
         }
         else
         {
-            IPhysicalEntity* entity = nullptr;
-            EBUS_EVENT_ID_RESULT(entity, id, LmbrCentral::CryPhysicsComponentRequestBus, GetPhysicalEntity);
-            return entity;
+            IPhysicalEntity* physEntity = nullptr;
+            EBUS_EVENT_ID_RESULT(physEntity, id, LmbrCentral::CryPhysicsComponentRequestBus, GetPhysicalEntity);
+            return physEntity;
         }
     }
 

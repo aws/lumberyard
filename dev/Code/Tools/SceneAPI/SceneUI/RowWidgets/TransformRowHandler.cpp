@@ -48,10 +48,21 @@ namespace AZ
             void TranformRowHandler::ConsumeAttribute(TransformRowWidget* widget, u32 attrib,
                 AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
             {
-                AzToolsFramework::Vector3PropertyHandler handler;
-                handler.ConsumeAttribute(widget->GetTranslationWidget(), attrib, attrValue, debugName);
-                handler.ConsumeAttribute(widget->GetRotationWidget(), attrib, attrValue, debugName);
-                handler.ConsumeAttribute(widget->GetScaleWidget(), attrib, attrValue, debugName);
+                if (attrib == AZ::Edit::Attributes::ReadOnly)
+                {
+                    bool value;
+                    if (attrValue->Read<bool>(value))
+                    {
+                        widget->SetEnableEdit(!value);
+                    }
+                }
+                else
+                {
+                    AzToolsFramework::Vector3PropertyHandler handler;
+                    handler.ConsumeAttribute(widget->GetTranslationWidget(), attrib, attrValue, debugName);
+                    handler.ConsumeAttribute(widget->GetRotationWidget(), attrib, attrValue, debugName);
+                    handler.ConsumeAttribute(widget->GetScaleWidget(), attrib, attrValue, debugName);
+                }
             }
 
             void TranformRowHandler::WriteGUIValuesIntoProperty(size_t /*index*/, TransformRowWidget* GUI,

@@ -27,12 +27,14 @@ using namespace AzFramework::AssetSystem;
 class MockRCJob
     : public RCJob
 {
-    void DoWork(AssetBuilderSDK::ProcessJobResponse& /*result*/, BuilderParams& /*builderParams*/, AssetUtilities::QuitListener& /*listener*/) override
+    void DoWork(AssetBuilderSDK::ProcessJobResponse& /*result*/, BuilderParams& builderParams, AssetUtilities::QuitListener& /*listener*/) override
     {
         m_DoWorkCalled = true;
+        m_capturedParams = builderParams;
     }
 public:
     bool m_DoWorkCalled = false;
+    BuilderParams m_capturedParams;
 };
 
 RCcontrollerUnitTests::RCcontrollerUnitTests()
@@ -192,6 +194,8 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     QList<RCJob*> createdJobs;
     AssetBuilderSDK::AssetBuilderDesc builderDesc;
 
+    AZ::Uuid uuidOfSource = AZ::Uuid("{D013122E-CF2C-4534-A87D-F82570FBC2CD}");
+
     for (QString name : tempJobNames)
     {
         RCJob* job = new RCJob(rcJobListModel);
@@ -199,6 +203,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
         jobDetails.m_jobEntry.m_relativePathToFile = name;
         jobDetails.m_jobEntry.m_platform = "pc";
         jobDetails.m_jobEntry.m_jobKey = "Compile Stuff";
+        jobDetails.m_jobEntry.m_sourceFileUUID = uuidOfSource;
         job->Init(jobDetails);
         rcJobListModel->addNewJob(job);
         createdJobs.push_back(job);
@@ -212,6 +217,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
         jobDetails.m_jobEntry.m_relativePathToFile = name;
         jobDetails.m_jobEntry.m_platform = "es3";
         jobDetails.m_jobEntry.m_jobKey = "Compile Other Stuff";
+        jobDetails.m_jobEntry.m_sourceFileUUID = uuidOfSource;
         job0->Init(jobDetails);
         rcJobListModel->addNewJob(job0);
     }
@@ -390,8 +396,9 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 
     /// --- TEST ------------- RC controller should not accept duplicate jobs.
 
+    AZ::Uuid sourceId = AZ::Uuid("{2206A6E0-FDBC-45DE-B6FE-C2FC63020BD5}");
     JobDetails details;
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 1);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 1, sourceId);
     gotJobsInQueueCall = false;
     int priorJobs = jobsInQueueCount;
     m_rcController.JobSubmitted(details);
@@ -403,13 +410,13 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     gotJobsInQueueCall = false;
 
     // submit same job, different run key
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 2);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "pc", "Test Job", 1234, 2, sourceId);
     m_rcController.JobSubmitted(details);
     QCoreApplication::processEvents(QEventLoop::AllEvents);
     UNIT_TEST_EXPECT_FALSE(gotJobsInQueueCall);
 
     // submit same job but different platform:
-    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "es3", "Test Job", 1234, 3);
+    details.m_jobEntry = JobEntry("d:/test/test1.txt", "test1.txt", AZ::Uuid("{7954065D-CFD1-4666-9E4C-3F36F417C7AC}"), "es3", "Test Job", 1234, 3, sourceId);
     m_rcController.JobSubmitted(details);
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
@@ -435,6 +442,14 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 #endif
 
     MockRCJob rcJob;
+    
+    AssetProcessor::JobDetails jobDetailsToInitWith;
+    jobDetailsToInitWith.m_jobEntry.m_relativePathToFile = "someFile0.txt";
+    jobDetailsToInitWith.m_jobEntry.m_platform = "pc";
+    jobDetailsToInitWith.m_jobEntry.m_jobKey = "Text files";
+    jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID = uuidOfSource;
+    rcJob.Init(jobDetailsToInitWith);
+
     bool beginWork = false;
     QObject::connect(&rcJob, &RCJob::BeginWork, this, [this, &beginWork]()
         {
@@ -464,6 +479,9 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     UNIT_TEST_EXPECT_TRUE(UnitTestUtils::BlockUntil(jobFinished, 5000));
     UNIT_TEST_EXPECT_TRUE(beginWork);
     UNIT_TEST_EXPECT_TRUE(rcJob.m_DoWorkCalled);
+    
+    // make sure the source UUID made its way all the way from create jobs to process jobs.
+    UNIT_TEST_EXPECT_TRUE(rcJob.m_capturedParams.m_processJobRequest.m_sourceFileUUID == uuidOfSource);
 
     Q_EMIT UnitTestPassed();
 }

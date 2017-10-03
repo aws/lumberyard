@@ -9,51 +9,58 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IActorGroup.h>
-#include <SceneAPI/SceneCore/DataTypes/GraphData/IMaterialData.h>
-#include <SceneAPI/SceneData/Rules/EFXMeshRule.h>
-#include <SceneAPI/SceneData/Behaviors/EFXMeshRuleBehavior.h>
 
-namespace AZ
+#include <SceneAPIExt/Groups/IActorGroup.h>
+#include <SceneAPIExt/Rules/MeshRule.h>
+#include <SceneAPIExt/Behaviors/MeshRuleBehavior.h>
+
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Behavior
         {
-            AZ_CLASS_ALLOCATOR_IMPL(EFXMeshRuleBehavior, SystemAllocator, 0)
-
-            EFXMeshRuleBehavior::EFXMeshRuleBehavior()
+            void MeshRuleBehavior::Reflect(AZ::ReflectContext* context)
             {
-                BusConnect();
-            }
+                Rule::MeshRule::Reflect(context);
 
-            EFXMeshRuleBehavior::~EFXMeshRuleBehavior()
-            {
-                BusDisconnect();
-            }
-
-            void EFXMeshRuleBehavior::InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target)
-            {
-                if (target.RTTI_IsTypeOf(DataTypes::IActorGroup::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (serializeContext)
                 {
-                    DataTypes::IActorGroup* actorGroup = azrtti_cast<DataTypes::IActorGroup*>(&target);
+                    serializeContext->Class<MeshRuleBehavior, AZ::SceneAPI::SceneCore::BehaviorComponent>()->Version(1);
+                }
+            }
 
-                    // EFX-TODO: Check if the sceneGraph contain mesh data.
-                    Containers::RuleContainer& rules = actorGroup->GetRuleContainer();
-                    if (!rules.ContainsRuleOfType<DataTypes::IEFXMeshRule>())
+            void MeshRuleBehavior::Activate()
+            {
+                AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusConnect();
+            }
+
+            void MeshRuleBehavior::Deactivate()
+            {
+                AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusDisconnect();
+            }
+
+            void MeshRuleBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
+            {
+                if (target.RTTI_IsTypeOf(Group::IActorGroup::TYPEINFO_Uuid()))
+                {
+                    Group::IActorGroup* actorGroup = azrtti_cast<Group::IActorGroup*>(&target);
+
+                    // TODO: Check if the sceneGraph contain mesh data.
+                    AZ::SceneAPI::Containers::RuleContainer& rules = actorGroup->GetRuleContainer();
+                    if (!rules.ContainsRuleOfType<Rule::IMeshRule>())
                     {
-                        rules.AddRule(AZStd::make_shared<SceneData::EFXMeshRule>());
+                        rules.AddRule(AZStd::make_shared<Rule::MeshRule>());
                     }
                 }
             }
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Behavior
+    } // Pipeline
+} // EMotionFX

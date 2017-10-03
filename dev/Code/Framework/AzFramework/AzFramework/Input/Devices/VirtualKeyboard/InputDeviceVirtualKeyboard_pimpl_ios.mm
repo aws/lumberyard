@@ -11,22 +11,70 @@
 */
 
 #include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_ios.h>
+#include <AzFramework/Input/Events/InputChannelEventSink.h>
+
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <UIKit/UIKit.h>
 
+#if defined(AZ_PLATFORM_APPLE_TV)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 @interface VirtualKeyboardTextFieldDelegate : NSObject <UITextFieldDelegate>
 {
-    UITextField* m_textField;
     AzFramework::InputDeviceVirtualKeyboard::Implementation* m_inputDevice;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (id)initWithInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (void)textFieldDidEndEditing: (UITextField*)textField
+                        reason: (UITextFieldDidEndEditingReason)reason;
+@end // VirtualKeyboardTextFieldDelegate interface
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+@implementation VirtualKeyboardTextFieldDelegate
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (id)initWithInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice
+{
+    if ((self = [super init]))
+    {
+        self->m_inputDevice = inputDevice;
+    }
+
+    return self;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (void)textFieldDidEndEditing: (UITextField*)textField
+                        reason: (UITextFieldDidEndEditingReason)reason
+{
+    if (reason == UITextFieldDidEndEditingReasonCommitted)
+    {
+        // Queue the text that was entered by the user.
+        const AZStd::string textUTF8 = textField.text.UTF8String;
+        m_inputDevice->QueueRawTextEvent(textUTF8);
+    }
+
+    // Queue an 'enter' command event, then ensure it is not consumed by the event sink.
+    m_inputDevice->QueueRawCommandEvent(AzFramework::InputDeviceVirtualKeyboard::Command::EditEnter);
+    m_inputDevice->TextEntryStop();
+}
+@end // VirtualKeyboardTextFieldDelegate implementation
+#else
+////////////////////////////////////////////////////////////////////////////////////////////////////
+@interface VirtualKeyboardTextFieldDelegate : NSObject <UITextFieldDelegate>
+{
+    AzFramework::InputDeviceVirtualKeyboard::Implementation* m_inputDevice;
+    UITextField* m_textField;
 @public
     float m_activeTextFieldNormalizedBottomY;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-- (id)initWithTextField: (UITextField*)textField
-        withInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice;
+- (id)initWithInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice
+            withTextField: (UITextField*)textField;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)keyboardWillChangeFrame: (NSNotification*)notification;
@@ -47,13 +95,13 @@
 @implementation VirtualKeyboardTextFieldDelegate
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-- (id)initWithTextField: (UITextField*)textField
-        withInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice
+- (id)initWithInputDevice: (AzFramework::InputDeviceVirtualKeyboard::Implementation*)inputDevice
+            withTextField: (UITextField*)textField
 {
     if ((self = [super init]))
     {
-        self->m_textField = textField;
         self->m_inputDevice = inputDevice;
+        self->m_textField = textField;
 
         // Resgister to be notified when the keyboard frame size changes so we can then adjust the
         // position of the view accordingly to ensure we don't obscure the text field being edited.
@@ -129,6 +177,7 @@
     return FALSE;
 }
 @end // VirtualKeyboardTextFieldDelegate implementation
+#endif // defined(AZ_PLATFORM_APPLE_TV)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
@@ -157,12 +206,16 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStopped
-        void TextEntryStopped() override;
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStart
+        void TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStop
+        void TextEntryStop() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TickInputDevice
@@ -172,6 +225,7 @@ namespace AzFramework
         // Variables
         UITextField* m_textField = nullptr;
         VirtualKeyboardTextFieldDelegate* m_textFieldDelegate = nullptr;
+        AZStd::unique_ptr<InputChannelEventSink> m_inputChannelEventSink;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +246,11 @@ namespace AzFramework
         m_textField = [[UITextField alloc] initWithFrame: CGRectZero];
 
         // Create and set the text field's delegate so we can respond to keyboard input.
-        m_textFieldDelegate = [[VirtualKeyboardTextFieldDelegate alloc] initWithTextField: m_textField withInputDevice: this];
+#if defined(AZ_PLATFORM_APPLE_TV)
+        m_textFieldDelegate = [[VirtualKeyboardTextFieldDelegate alloc] initWithInputDevice: this];
+#else
+        m_textFieldDelegate = [[VirtualKeyboardTextFieldDelegate alloc] initWithInputDevice: this withTextField: m_textField];
+#endif // defined(AZ_PLATFORM_APPLE_TV)
         m_textField.delegate = m_textFieldDelegate;
 
         // Disable autocapitalization and autocorrection, which both behave strangely.
@@ -224,11 +282,18 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     bool InputDeviceVirtualKeyboardIos::IsConnected() const
     {
+        // Virtual keyboard input is always available
+        return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceVirtualKeyboardIos::HasTextEntryStarted() const
+    {
         return m_textField ? m_textField.isFirstResponder : false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardIos::TextEntryStarted(float activeTextFieldNormalizedBottomY)
+    void InputDeviceVirtualKeyboardIos::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options)
     {
         // Get the application's root view.
         UIWindow* window = [[UIApplication sharedApplication] keyWindow];
@@ -241,18 +306,34 @@ namespace AzFramework
         // Add the text field to the root view.
         [rootView addSubview: m_textField];
 
-        // We must set m_activeTextFieldNormalizedBottomY before calling becomeFirstResponder,
-        // which causes a UIKeyboardWillChangeFrameNotification to be sent.
-        m_textFieldDelegate->m_activeTextFieldNormalizedBottomY = activeTextFieldNormalizedBottomY;
+#if defined(AZ_PLATFORM_APPLE_TV)
+        // On AppleTV we must set any initial text that has been provided before showing the virtual
+        // keyboard by calling becomeFirstResponder, and also create an input channel event sink so
+        // that we don't process any input events while the virtual keyboard is being displayed.
+        m_textField.text = [NSString stringWithUTF8String: options.m_initialText.c_str()];
+        m_inputChannelEventSink.reset(new InputChannelEventSink());
+#else
+        // On iOS we must set m_activeTextFieldNormalizedBottomY before showing the virtual keyboard
+        // by calling becomeFirstResponder, which then sends a UIKeyboardWillChangeFrameNotification.
+        m_textFieldDelegate->m_activeTextFieldNormalizedBottomY = options.m_normalizedMinY;
+#endif // defined(AZ_PLATFORM_APPLE_TV)
+
         [m_textField becomeFirstResponder];
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardIos::TextEntryStopped()
+    void InputDeviceVirtualKeyboardIos::TextEntryStop()
     {
-        // We must set m_activeTextFieldNormalizedBottomY before calling resignFirstResponder,
-        // which causes a UIKeyboardWillChangeFrameNotification to be sent.
+#if defined(AZ_PLATFORM_APPLE_TV)
+        // On AppleTV we can now destroy the event sink and clear any text that has been entered.
+        m_inputChannelEventSink.reset();
+        m_textField.text = @"";
+#else
+        // On iOS we must set m_activeTextFieldNormalizedBottomY before hiding the virtual keyboard
+        // by calling resignFirstResponder, which then sends a UIKeyboardWillChangeFrameNotification.
         m_textFieldDelegate->m_activeTextFieldNormalizedBottomY = 0.0f;
+#endif // defined(AZ_PLATFORM_APPLE_TV)
+
         [m_textField resignFirstResponder];
         [m_textField removeFromSuperview];
     }
@@ -260,15 +341,8 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceVirtualKeyboardIos::TickInputDevice()
     {
-        // This may not actually be strictly necessary for the virtual keyboard, but it can't hurt.
-        //
-        // Pump the ios event loop to ensure that it has dispatched all input events. Other systems
-        // (or other input devices) may also do this so some (or all) input events may have already
-        // been dispatched, but they are queued until ProcessRawEventQueues is called below so that
-        // all raw input events are processed at the same time every frame.
-        RawInputRequestBusIos::Broadcast(&RawInputRequestsIos::PumpRawEventLoop);
-
-        // Process the raw event queues once each frame
+        // The ios event loop has just been pumped in InputSystemComponentIos::PreTickInputDevices,
+        // so we now just need to process any raw events that have been queued since the last frame
         ProcessRawEventQueues();
     }
 } // namespace AzFramework

@@ -37,7 +37,7 @@ namespace LuaBuilder
             return stream.Write(sizeof(T), t) == sizeof(T);
         }
 
-        static const AZ::u32 s_BuildTypeKey  = AZ_CRC("BuildType");
+        static const AZ::u32 s_BuildTypeKey  = AZ_CRC("BuildType", 0xd01cbdd7);
         static const char* s_BuildTypeCompiled = "Compiled";
         static const char* s_BuildTypeText     = "Text";
     }

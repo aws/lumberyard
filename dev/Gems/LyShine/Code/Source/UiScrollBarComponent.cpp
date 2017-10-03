@@ -12,6 +12,8 @@
 #include "StdAfx.h"
 #include "UiScrollBarComponent.h"
 
+#include "UiNavigationHelpers.h"
+
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -379,7 +381,19 @@ bool UiScrollBarComponent::HandleEnterPressed(bool& shouldStayActive)
 }
 
 /////////////////////////////////////////////////////////////////
-bool UiScrollBarComponent::HandleKeyInput(EKeyId keyId, int modifiers)
+bool UiScrollBarComponent::HandleAutoActivation()
+{
+    if (!m_isHandlingEvents)
+    {
+        return false;
+    }
+
+    m_isActive = true;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////
+bool UiScrollBarComponent::HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys)
 {
     if (!m_isHandlingEvents)
     {
@@ -395,16 +409,20 @@ bool UiScrollBarComponent::HandleKeyInput(EKeyId keyId, int modifiers)
     bool result = false;
     bool moved = false;
 
-    if (keyId == eKI_Left || keyId == eKI_Right || keyId == eKI_Up || keyId == eKI_Down)
+    const UiNavigationHelpers::Command command = UiNavigationHelpers::MapInputChannelIdToUiNavigationCommand(inputSnapshot.m_channelId, activeModifierKeys);
+    if (command == UiNavigationHelpers::Command::Up ||
+        command == UiNavigationHelpers::Command::Down ||
+        command == UiNavigationHelpers::Command::Left ||
+        command == UiNavigationHelpers::Command::Right)
     {
-        if ((m_orientation == Orientation::Horizontal) && (keyId == eKI_Left || keyId == eKI_Right))
+        if ((m_orientation == Orientation::Horizontal) && (command == UiNavigationHelpers::Command::Left || command == UiNavigationHelpers::Command::Right))
         {
-            moved = MoveHandle(keyId == eKI_Left ? LocRelativeToHandle::BeforeHandle : LocRelativeToHandle::AfterHandle);
+            moved = MoveHandle(command == UiNavigationHelpers::Command::Left ? LocRelativeToHandle::BeforeHandle : LocRelativeToHandle::AfterHandle);
             result = true;
         }
-        else if ((m_orientation == Orientation::Vertical) && (keyId == eKI_Up || keyId == eKI_Down))
+        else if ((m_orientation == Orientation::Vertical) && (command == UiNavigationHelpers::Command::Up || command == UiNavigationHelpers::Command::Down))
         {
-            moved = MoveHandle(keyId == eKI_Up ? LocRelativeToHandle::BeforeHandle : LocRelativeToHandle::AfterHandle);
+            moved = MoveHandle(command == UiNavigationHelpers::Command::Up ? LocRelativeToHandle::BeforeHandle : LocRelativeToHandle::AfterHandle);
             result = true;
         }
     }
@@ -602,6 +620,12 @@ void UiScrollBarComponent::Deactivate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiScrollBarComponent::IsAutoActivationSupported()
+{
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableStatesInterface::State UiScrollBarComponent::ComputeInteractableState()
 {
     UiInteractableStatesInterface::State state = UiInteractableStatesInterface::StateNormal;
@@ -705,6 +729,7 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiScrollBarBus>("UiScrollBarBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetHandleSize", &UiScrollBarBus::Events::GetHandleSize)
             ->Event("SetHandleSize", &UiScrollBarBus::Events::SetHandleSize)
             ->Event("GetMinHandlePixelSize", &UiScrollBarBus::Events::GetMinHandlePixelSize)
@@ -716,6 +741,7 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiScrollerInterface::Orientation::Vertical>("eUiScrollerOrientation_Vertical");
 
         behaviorContext->EBus<UiScrollerBus>("UiScrollerBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetValue", &UiScrollerBus::Events::GetValue)
             ->Event("SetValue", &UiScrollerBus::Events::SetValue)
             ->Event("GetOrientation", &UiScrollerBus::Events::GetOrientation)
@@ -726,6 +752,7 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetValueChangedActionName", &UiScrollerBus::Events::SetValueChangedActionName);
 
         behaviorContext->EBus<UiScrollerNotificationBus>("UiScrollerNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollerNotificationBusHandler>();
     }
 }

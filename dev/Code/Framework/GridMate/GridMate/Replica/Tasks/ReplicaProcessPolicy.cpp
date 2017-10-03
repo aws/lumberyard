@@ -24,6 +24,7 @@ namespace GridMate
         ReplicaManager* rm = ctx.m_replicaManager;
         AZStd::chrono::system_clock::time_point now(AZStd::chrono::system_clock::now());
         float dt = AZStd::chrono::milliseconds(now - m_lastCheckTime).count() / k_secToMilli;
+        AZ_Assert(dt >= 0.0f, "Frame duration < 0 seconds.");
 
         if (m_lastCheckTime.time_since_epoch() == AZStd::chrono::milliseconds::zero()) // clamping first frame
         {

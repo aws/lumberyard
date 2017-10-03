@@ -1,6 +1,31 @@
 ﻿<div class="cgp-container cgp-login-container">
-    <h1> Welcome to your project <b>{{this.aws.context.project.name}}</b> Cloud Gem Portal </h1>
+    <h1> Welcome to your project {{this.aws.context.name}} Cloud Gem Portal </h1>
     <h2> Adding cloud-connected features to your game using the AWS cloud </h2>
+
+    <modal *ngIf="isMissingBootstrap"
+           [autoOpen]="true"
+           closeButtonText="Got it!"
+           [onClose]="dismissMissingBootstrap"
+           [onDismiss]="dismissMissingBootstrap"
+           title="Missing Cloud Gem Portal bootstrap file.">
+        <div class="modal-body">
+            <p>It seems that either the ./cgp_boostrap.js is missing or the 'boostrap' variable in the file is empty.</p>
+            
+            <h2>Development for the Cloud Gem Portal</h2>
+            <p>If you are developing for the Cloud Gem Portal then this is expected.  You will need to copy the project bootstrap information to the ./cgp_bootstrap.js file.</p>            
+            <pre>&lt;LumberyardInstallPath&gt; lmbr_aws cloud-gem-framework cloud-gem-portal --show-configuration --show-url-only</pre>            
+            <p>Copy the line of the output that looks like this</p> 
+            <pre>{{'{'}}"userPoolId": XX, "firstTimeUse": XX, "region": XX, "clientId": XX, "identityPoolId": XX, "projectConfigBucketId": XX{{'}'}}</pre>
+            <p>to the</p>
+            <pre>&lt;LumberyardInstallPath&gt;/Gems/CloudGemFramework/v1/Website/CloudGemPortal/cgp_boostrap.js file</pre>            
+            <p>For more information on the topic refer to the link <a herf="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cgf-cgp-dev-gs.html" target="_blank">Cloud Gem Portal Development</a></p>
+            
+            <h2>Regular Use</h2>
+            <p>Unfortunately this an unexpected behaviour.</p>
+            <p>Please head over to our <a href="https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html">forums</a> and post a question regarding the issue.</p>
+        </div>
+    </modal>
+
 
     <modal *ngIf="isFirstTimeModal"
            [autoOpen]="true"
@@ -20,11 +45,11 @@
             <div class="row justify-content-center margin-top-space-sm">
                 <div class="col-6 text-center">
                     <p>Option 1, the <b>Lumberyard Editor</b></p>
-                    <a target="_blank" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-editor.png"><img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-editor.png" /></a>
+                    <a id="welcome-option1-img" target="_blank" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-editor.png"><img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-editor.png" /></a>
                 </div>
                 <div class="col-6 text-center">
                     <p>Option 2, the <b>Lumberyard CLI</b></p>
-                    <a target="_blank" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-cli.png"><img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-cli.png" /></a>
+                    <a id="welcome-option2-img" target="_blank" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-cli.png"><img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/first-time-login-cli.png" /></a>
                 </div>
             </div>
             <div class="margin-top-space-lg">
@@ -33,9 +58,9 @@
             </div>
         </div>
     </modal>
-    <loading-spinner size="lg" *ngIf="state == authstates.LOGGED_IN || state  == authstates.USER_CREDENTIAL_UPDATED"></loading-spinner>
+    <loading-spinner size="lg" *ngIf="loading || state == authstates.LOGGED_IN || state  == authstates.USER_CREDENTIAL_UPDATED"></loading-spinner>
 
-    <login-container *ngIf="!isFirstTimeLogin && (state === undefined
+    <login-container *ngIf="!isFirstTimeLogin && !loading && (state === undefined
                 || state == loginstates.LOGIN
                 || state == authstates.LOGIN_FAILURE
                 || state == authstates.FORGOT_PASSWORD_SUCCESS
@@ -48,19 +73,19 @@
                      secondaryLinkText="Forgot password?"
                      tertiaryLinkText="Enter Code?"
                      [isButtonDisabled]="userLoginForm.controls['username'].pristine || userLoginForm.controls['password'].pristine"
-                     (secondaryLinkClick)="error = null; state = loginstates.FORGOT_PASSWORD"
-                     (tertiaryLinkClick)="error = null; state = loginstates.ENTER_CODE"
+                     (secondaryLinkClick)="error = null; change(loginstates.FORGOT_PASSWORD)"
+                     (tertiaryLinkClick)="error = null; change(loginstates.ENTER_CODE)"
                      (formSubmitted)="login(userLoginForm.value)">
         <form [formGroup]="userLoginForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userLoginForm, 'username')}">
                 <label for="username"> Username </label>
-                <input class="form-control" id="name" type="text" [formControl]="userLoginForm.controls['username']"
+                <input class="form-control" id="username" type="text" [formControl]="userLoginForm.controls['username']"
                        [ngClass]="{'form-control-danger': isNotValid(userLoginForm, 'username')}" />
                 <div *ngIf="isRequiredEmpty(userLoginForm, 'username')" class="form-control-feedback">You must include a username.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger':isNotValid(userLoginForm, 'password')}">
                 <label for="password"> Password </label>
-                <input class="form-control" id="name" type="password" [formControl]="userLoginForm.controls['password']"
+                <input class="form-control" id="password" type="password" [formControl]="userLoginForm.controls['password']"
                        [ngClass]="{'form-control-danger': isNotValid(userLoginForm, 'password')}" />
                 <div *ngIf="isRequiredEmpty(userLoginForm, 'password')" class="form-control-feedback">You must include a password.</div>
             </div>
@@ -83,13 +108,13 @@
         <form [formGroup]="userLoginForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userLoginForm, 'username')}">
                 <label for="username"> Username </label>
-                <input class="form-control" id="name" type="text" [formControl]="userLoginForm.controls['username']"
+                <input class="form-control" id="username" type="text" [formControl]="userLoginForm.controls['username']"
                        [ngClass]="{'form-control-danger': isNotValid(userLoginForm, 'username')}" />
                 <div *ngIf="isRequiredEmpty(userLoginForm, 'username')" class="form-control-feedback">You must include a username.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger':isNotValid(userLoginForm, 'password')}">
                 <label for="password"> Password </label>
-                <input class="form-control" id="name" type="password" [formControl]="userLoginForm.controls['password']"
+                <input class="form-control" id="password" type="password" [formControl]="userLoginForm.controls['password']"
                        [ngClass]="{'form-control-danger': isNotValid(userLoginForm, 'password')}" />
                 <div *ngIf="isRequiredEmpty(userLoginForm, 'password')" class="form-control-feedback">You must include a password.</div>
             </div>
@@ -102,14 +127,14 @@
                      submitButtonText="Confirm Code"
                      secondaryLinkText="Resend Code?"
                      [isButtonDisabled]="userCodeForm.controls['code'].pristine"
-                     (secondaryLinkClick)="user ? resendConfirmationCode(user.username) : state = loginstates.RESEND_CODE"
+                     (secondaryLinkClick)="user ? resendConfirmationCode(user.username) : change(loginstates.RESEND_CODE)"
                      tertiaryLinkText="Login?"
-                     (tertiaryLinkClick)="error = null; state = loginstates.LOGIN"
+                     (tertiaryLinkClick)="error = null; change(loginstates.LOGIN)"
                      (formSubmitted)="confirmCode(userCodeForm.value.code)">
         <form [formGroup]="userCodeForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userCodeForm, 'code')}">
                 <label for="code"> Code </label>
-                <input class="form-control" id="name" type="text" [formControl]="userCodeForm.controls['code']"
+                <input class="form-control" id="code" type="text" [formControl]="userCodeForm.controls['code']"
                        [ngClass]="{'form-control-danger': isNotValid(userCodeForm, 'code')}" />
                 <div *ngIf="isRequiredEmpty(userCodeForm, 'code')" class="form-control-feedback">You must include the code provided by email.</div>
             </div>
@@ -122,7 +147,7 @@
                      submitButtonText="Reset Password"
                      [isButtonDisabled]="passwordResetForm.controls['code'].pristine || passwordResetForm.controls['password1'].pristine || passwordResetForm.controls['password2'].pristine || isNotValid(passwordResetForm, 'password1') || isNotValid(passwordResetForm, 'password2')"
                      secondaryLinkText="Login?"
-                     (secondaryLinkClick)="error = null; state = loginstates.LOGIN"
+                     (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
                      (formSubmitted)="confirmNewPassword(usernameForm.value.username, passwordResetForm.value.code, passwordResetForm.value.password1)">
         <form [formGroup]="passwordResetForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(passwordResetForm, 'code')}">
@@ -130,7 +155,7 @@
                     Code <i class="fa fa-question-circle-o" placement="right"
                             ngbTooltip="A code has been sent to your email {{output && output[0] && output[0].CodeDeliveryDetails ? output[0].CodeDeliveryDetails.Destination : ''}}."></i>
                 </label>
-                <input class="form-control" id="name" type="text" [formControl]="passwordResetForm.controls['code']"
+                <input class="form-control" id="code" type="text" [formControl]="passwordResetForm.controls['code']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'code')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'code')" class="form-control-feedback">You must include the code provided by email.</div>
             </div>
@@ -139,13 +164,13 @@
                     Password <i class="fa fa-question-circle-o" placement="right"
                                 ngbTooltip="Requires a minimum of 8 characters.  Must include at least 1 number, 1 special character, 1 uppercase letter, and 1 lowercase."></i>
                 </label>
-                <input class="form-control" id="name" type="password" [formControl]="passwordResetForm.controls['password1']"
+                <input class="form-control" id="password" type="password" [formControl]="passwordResetForm.controls['password1']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'password1')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'password1')" class="form-control-feedback">You must include a password.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(passwordResetForm, 'password2')}">
                 <label for="code"> Re-type password </label>
-                <input class="form-control" id="name" type="password" [formControl]="passwordResetForm.controls['password2']"
+                <input class="form-control" id="password-verify" type="password" [formControl]="passwordResetForm.controls['password2']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'password2')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'password2')" class="form-control-feedback">You must re-type the password.</div>
                 <div *ngIf="isNotValid(passwordResetForm, 'password2')" class="form-control-feedback">The passwords entered do not match.</div>
@@ -159,7 +184,7 @@
                      submitButtonText="Reset Password"
                      [isButtonDisabled]="passwordResetForm.controls['code'].pristine || passwordResetForm.controls['password1'].pristine || passwordResetForm.controls['password2'].pristine || isNotValid(passwordResetForm, 'password1') || isNotValid(passwordResetForm, 'password2')"
                      secondaryLinkText="Login?"
-                     (secondaryLinkClick)="error = null; state = loginstates.LOGIN"
+                     (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
                      (formSubmitted)="confirmNewPassword(userLoginForm.value.username, passwordResetForm.value.code, passwordResetForm.value.password1)">
         <form [formGroup]="passwordResetForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(passwordResetForm, 'code')}">
@@ -167,7 +192,7 @@
                     Code <i class="fa fa-question-circle-o" placement="right"
                             ngbTooltip="The administrator sent you a code to your email when they reset your password."></i>
                 </label>
-                <input class="form-control" id="name" type="text" [formControl]="passwordResetForm.controls['code']"
+                <input class="form-control" id="code" type="text" [formControl]="passwordResetForm.controls['code']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'code')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'code')" class="form-control-feedback">You must include the code provided by email.</div>
             </div>
@@ -176,13 +201,13 @@
                     Password <i class="fa fa-question-circle-o" placement="right"
                                 ngbTooltip="Requires a minimum of 8 characters.  Must include at least 1 number, 1 special character, 1 uppercase letter, and 1 lowercase."></i>
                 </label>
-                <input class="form-control" id="name" type="password" [formControl]="passwordResetForm.controls['password1']"
+                <input class="form-control" id="password" type="password" [formControl]="passwordResetForm.controls['password1']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'password1')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'password1')" class="form-control-feedback">You must include a password.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(passwordResetForm, 'password2')}">
                 <label for="code"> Re-type password </label>
-                <input class="form-control" id="name" type="password" [formControl]="passwordResetForm.controls['password2']"
+                <input class="form-control" id="password-verify" type="password" [formControl]="passwordResetForm.controls['password2']"
                        [ngClass]="{'form-control-danger': isNotValid(passwordResetForm, 'password2')}" />
                 <div *ngIf="isRequiredEmpty(passwordResetForm, 'password2')" class="form-control-feedback">You must re-type the password.</div>
                 <div *ngIf="isNotValid(passwordResetForm, 'password2')" class="form-control-feedback">The passwords entered do not match.</div>
@@ -194,20 +219,25 @@
     <login-container *ngIf="state == loginstates.ENTER_CODE"
                      heading="User password reset"
                      submitButtonText="Change Password"
-                     [isButtonDisabled]="(setUsername(userInitiatedWithOutLoginPasswordResetForm) ? false : userInitiatedWithOutLoginPasswordResetForm.controls['username'].pristine) || userInitiatedWithOutLoginPasswordResetForm.controls['code'].pristine || userInitiatedWithOutLoginPasswordResetForm.controls['password1'].pristine || userInitiatedWithOutLoginPasswordResetForm.controls['password2'].pristine || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password1') || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')"
+                     [isButtonDisabled]="userInitiatedWithOutLoginPasswordResetForm.controls['username'].pristine 
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['code'].pristine 
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['password1'].pristine 
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['password2'].pristine 
+                     || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password1') 
+                     || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')"
                      secondaryLinkText="Login?"
-                     (secondaryLinkClick)="error = null; state = loginstates.LOGIN"
+                     (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
                      (formSubmitted)="confirmNewPassword(userInitiatedWithOutLoginPasswordResetForm.value.username, userInitiatedWithOutLoginPasswordResetForm.value.code, userInitiatedWithOutLoginPasswordResetForm.value.password1)">
         <form [formGroup]="userInitiatedWithOutLoginPasswordResetForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'username')}">
                 <label for="code"> Username </label>
-                <input class="form-control" id="name" type="text" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['username']"
+                <input class="form-control" id="name" type="username" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['username']"
                        [ngClass]="{'form-control-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'username')}" />
                 <div *ngIf="isRequiredEmpty(userInitiatedWithOutLoginPasswordResetForm, 'username')" class="form-control-feedback">You must include a username.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'code')}">
                 <label for="code"> Code </label>
-                <input class="form-control" id="name" type="text" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['code']"
+                <input class="form-control" id="code" type="text" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['code']"
                        [ngClass]="{'form-control-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'code')}" />
                 <div *ngIf="isRequiredEmpty(userInitiatedWithOutLoginPasswordResetForm, 'code')" class="form-control-feedback">You must include the code provided by email.</div>
             </div>
@@ -216,13 +246,13 @@
                     Password <i class="fa fa-question-circle-o" placement="right"
                                 ngbTooltip="Requires a minimum of 8 characters.  Must include at least 1 number, 1 special character, 1 uppercase letter, and 1 lowercase."></i>
                 </label>
-                <input class="form-control" id="name" type="password" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['password1']"
+                <input class="form-control" id="password" type="password" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['password1']"
                        [ngClass]="{'form-control-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password1')}" />
                 <div *ngIf="isRequiredEmpty(userInitiatedWithOutLoginPasswordResetForm, 'password1')" class="form-control-feedback">You must include a password.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')}">
                 <label for="code"> Re-type password </label>
-                <input class="form-control" id="name" type="password" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['password2']"
+                <input class="form-control" id="password-verify" type="password" [formControl]="userInitiatedWithOutLoginPasswordResetForm.controls['password2']"
                        [ngClass]="{'form-control-danger': isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')}" />
                 <div *ngIf="isRequiredEmpty(userInitiatedWithOutLoginPasswordResetForm, 'password2')" class="form-control-feedback">You must re-type the password.</div>
                 <div *ngIf="isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')" class="form-control-feedback">The passwords entered do not match.</div>
@@ -234,16 +264,16 @@
     <login-container *ngIf="state == loginstates.RESEND_CODE"
                      heading="Resend user confirmation code"
                      submitButtonText="Resend Code"
-                     [isButtonDisabled]="setUsername(usernameForm) ? false : usernameForm.controls['username'].pristine"
+                     [isButtonDisabled]="usernameForm.controls['username'].pristine"
                      secondaryLinkText="Enter Code?"
-                     (secondaryLinkClick)="error = null; state = loginstates.ENTER_CODE"
+                     (secondaryLinkClick)="error = null; change(loginstates.ENTER_CODE)"
                      tertiaryLinkText="Login?"
-                     (tertiaryLinkClick)="error = null; state = loginstates.LOGIN"
-                     (formSubmitted)="resendConfirmationCode(usernameForm.value.username); state = loginstates.ENTER_CODE">
+                     (tertiaryLinkClick)="error = null; change(loginstates.LOGIN)"
+                     (formSubmitted)="resendConfirmationCode(usernameForm.value.username); change(loginstates.ENTER_CODE)">
         <form [formGroup]="usernameForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(usernameForm, 'username')}">
                 <label for="code"> Username </label>
-                <input class="form-control" id="name" type="text" [formControl]="usernameForm.controls['username']"
+                <input class="form-control" id="username" type="text" [formControl]="usernameForm.controls['username']"
                        [ngClass]="{'form-control-danger': isNotValid(usernameForm, 'username')}" />
                 <div *ngIf="isRequiredEmpty(usernameForm, 'username')" class="form-control-feedback">You must include a username.</div>
             </div>
@@ -254,14 +284,14 @@
     <login-container *ngIf="state == loginstates.FORGOT_PASSWORD || state == authstates.FORGOT_PASSWORD_FAILURE"
                      heading="Forgotten password"
                      submitButtonText="Send Reset Code"
-                     [isButtonDisabled]="setUsername(usernameForm) ? false : usernameForm.controls['username'].pristine"
+                     [isButtonDisabled]="usernameForm.controls['username'].pristine"
                      secondaryLinkText="Login?"
-                     (secondaryLinkClick)="error = null; state = loginstates.LOGIN"
-                     (formSubmitted)="state = authstates.FORGOT_PASSWORD_CONFIRM_CODE; forgotPasswordSendCode(usernameForm.value.username)">
+                     (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
+                     (formSubmitted)="change(authstates.FORGOT_PASSWORD_CONFIRM_CODE); forgotPasswordSendCode(usernameForm.value.username)">
         <form [formGroup]="usernameForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(usernameForm, 'username')}">
                 <label for="code"> Username </label>
-                <input class="form-control" id="name" type="text" [formControl]="usernameForm.controls['username']"
+                <input class="form-control" id="username" type="text" [formControl]="usernameForm.controls['username']"
                        [ngClass]="{'form-control-danger': isNotValid(usernameForm, 'username')}" />
                 <div *ngIf="isRequiredEmpty(usernameForm, 'username')" class="form-control-feedback">You must include a username.</div>
             </div>
@@ -272,23 +302,26 @@
     <login-container *ngIf="state == authstates.PASSWORD_CHANGE || state == authstates.PASSWORD_CHANGE_FAILED"
                      heading="Change password"
                      submitButtonText="Save Password"
-                     [isButtonDisabled]="(setUsername(userChangePasswordForm) ? false : userChangePasswordForm.controls['password1'].pristine) || userChangePasswordForm.controls['password2'].pristine || isNotValid(userChangePasswordForm, 'password1') || isNotValid(userChangePasswordForm, 'password2')"
+                     [isButtonDisabled]="userChangePasswordForm.controls['password1'].pristine 
+                     || userChangePasswordForm.controls['password2'].pristine 
+                     || isNotValid(userChangePasswordForm, 'password1') 
+                     || isNotValid(userChangePasswordForm, 'password2')"
                      secondaryLinkText="Login?"
-                     (secondaryLinkClick)="error = null; state = loginstates.LOGIN"
-                     (formSubmitted)="state = loginstates.LOGIN; updatePassword(userChangePasswordForm.value.password1)">
+                     (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
+                     (formSubmitted)="change(loginstates.LOGIN); updatePassword(userChangePasswordForm.value.password1)">
         <form [formGroup]="userChangePasswordForm">
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userChangePasswordForm, 'password1')}">
                 <label for="code">
                     Password <i class="fa fa-question-circle-o" placement="right"
                                 ngbTooltip="Requires a minimum of 8 characters.  Must include at least 1 number, 1 special character, 1 uppercase letter, and 1 lowercase."></i>
                 </label>
-                <input class="form-control" id="name" type="password" [formControl]="userChangePasswordForm.controls['password1']"
+                <input class="form-control" id="password" type="password" [formControl]="userChangePasswordForm.controls['password1']"
                        [ngClass]="{'form-control-danger': isNotValid(userChangePasswordForm, 'password1')}" />
                 <div *ngIf="isRequiredEmpty(userChangePasswordForm, 'password1')" class="form-control-feedback">You must include a password.</div>
             </div>
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userChangePasswordForm, 'password2')}">
                 <label for="code"> Re-type password </label>
-                <input class="form-control" id="name" type="password" [formControl]="userChangePasswordForm.controls['password2']"
+                <input class="form-control" id="password-verify" type="password" [formControl]="userChangePasswordForm.controls['password2']"
                        [ngClass]="{'form-control-danger': isNotValid(userChangePasswordForm, 'password2')}" />
                 <div *ngIf="isRequiredEmpty(userChangePasswordForm, 'password2')" class="form-control-feedback">You must re-type the password.</div>
                 <div *ngIf="isNotValid(userChangePasswordForm, 'password2')" class="form-control-feedback">The passwords entered do not match.</div>
@@ -297,10 +330,9 @@
         <div class='has-danger'><p class="form-control-feedback">{{error}}</p></div>
     </login-container>
 
-    <!--<pre>{{authstates[state] | devonly}}{{loginstates[state] | devonly}}</pre>
-    <pre>{{output | json | devonly}}</pre>
+    <pre>{{authstates[state] | devonly}}{{loginstates[state] | devonly}}</pre>    
     <pre>{{'FirstTimeModal: '+isFirstTimeModal | json | devonly}}</pre>
-    <pre>{{'FirstTimeLogin: '+isFirstTimeLogin | json | devonly}}</pre>-->
+    <pre>{{'FirstTimeLogin: '+isFirstTimeLogin | json | devonly}}</pre>
 </div>
 <cgp-footer></cgp-footer>
 <router-outlet></router-outlet>    

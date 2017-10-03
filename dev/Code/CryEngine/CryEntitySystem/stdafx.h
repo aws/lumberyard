@@ -37,8 +37,6 @@
 #include <algorithm>
 #include <map>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_EntitySystem
 #define RWI_NAME_TAG "RayWorldIntersection(EntitySys)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(EntitySys)"
 

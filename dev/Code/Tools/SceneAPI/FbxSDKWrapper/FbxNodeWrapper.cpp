@@ -74,6 +74,11 @@ namespace AZ
             return m_fbxNode->GetName();
         }
 
+        AZ::u64 FbxNodeWrapper::GetUniqueId() const
+        {
+            return m_fbxNode->GetUniqueID();
+        }
+
         Transform FbxNodeWrapper::EvaluateGlobalTransform()
         {
             return FbxTypeConverter::ToTransform(m_fbxNode->EvaluateGlobalTransform());

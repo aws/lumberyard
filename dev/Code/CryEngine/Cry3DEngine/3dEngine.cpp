@@ -15,6 +15,7 @@
 
 
 #include "StdAfx.h"
+#include <CryEngineAPI.h>
 #include <ICryAnimation.h>
 #include <IFaceGen.h>
 #include <IGameFramework.h>
@@ -67,6 +68,8 @@
 #include <IRemoteCommand.h>
 #include "PostEffectGroup.h"
 #include "MainThreadRenderRequestBus.h"
+#include "ObjMan.h"
+#include "Terrain/Texture/MacroTextureImporter.h"
 
 #if defined(FEATURE_SVO_GI)
 #include "SVO/SceneTreeManager.h"
@@ -93,7 +96,7 @@ ITimer* Cry3DEngineBase::m_pTimer = 0;
 ILog* Cry3DEngineBase::m_pLog = 0;
 IPhysicalWorld* Cry3DEngineBase::m_pPhysicalWorld = 0;
 CTerrain* Cry3DEngineBase::m_pTerrain = 0;
-CObjManager* Cry3DEngineBase::m_pObjManager = 0;
+IObjManager* Cry3DEngineBase::m_pObjManager = 0;
 IConsole* Cry3DEngineBase::m_pConsole = 0;
 C3DEngine* Cry3DEngineBase::m_p3DEngine = 0;
 CVars* Cry3DEngineBase::m_pCVars = 0;
@@ -1245,7 +1248,7 @@ void C3DEngine::UpdateRenderingCamera(const char* szCallerName, const SRendering
         }
         else
         {
-            assert(IsEquivalent(passInfo.GetCamera().GetViewdir(), GetObjManager()->m_CullThread.GetViewDir())); // early set camera differs from current main camera - will cause occlusion errors
+            assert(IsEquivalent(passInfo.GetCamera().GetViewdir(), GetObjManager()->GetCullThread().GetViewDir())); // early set camera differs from current main camera - will cause occlusion errors
         }
     }
 
@@ -1325,10 +1328,11 @@ TReturn C3DEngine::LoadStatObjInternal(const char* szFileName, const char* szGeo
         m_pObjManager = CryAlignedNew<CObjManager>();
     }
 
-    return (m_pObjManager->*loadStatObjFunc)(szFileName, szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, nullptr, 0, nullptr);
+    CObjManager* pObjManager = (CObjManager*)m_pObjManager;
+    return (pObjManager->*loadStatObjFunc)(szFileName, szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, nullptr, 0, nullptr);
 }
 
-void C3DEngine::LoadStatObjAsync(I3DEngine::LoadStaticObjectAsyncResult resultCallback, const char *szFileName, const char *szGeomName, bool bUseStreaming, unsigned long nLoadingFlags)
+void C3DEngine::LoadStatObjAsync(I3DEngine::LoadStaticObjectAsyncResult resultCallback, const char* szFileName, const char* szGeomName, bool bUseStreaming, unsigned long nLoadingFlags)
 {
     CRY_ASSERT_MESSAGE(szFileName && szFileName[0], "LoadStatObjAsync: Invalid filename");
     CRY_ASSERT_MESSAGE(m_pObjManager, "Object manager is not ready.");
@@ -1350,7 +1354,10 @@ void C3DEngine::ProcessAsyncStaticObjectLoadRequests()
 {
     // Same scheme as skinned meshes: CharacterManager::ProcessAsyncLoadRequests.
 
-    enum { kMaxLoadsPerFrame = 20 };
+    enum
+    {
+        kMaxLoadsPerFrame = 20
+    };
     size_t loadsThisFrame = 0;
 
     while (loadsThisFrame < kMaxLoadsPerFrame)
@@ -1463,7 +1470,9 @@ void C3DEngine::CreateDecal(const struct CryEngineDecalInfo& decal)
 
     if ((GetCVars()->e_DecalsDefferedStatic == 1 && decal.pExplicitRightUpFront) ||
         (GetCVars()->e_DecalsDefferedDynamic == 1 && !decal.pExplicitRightUpFront &&
-         (!decal.ownerInfo.pRenderNode || decal.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_Brush || decal.fGrowTimeAlpha || decal.fSize > GetFloatCVar(e_DecalsDefferedDynamicMinSize)))
+         (!decal.ownerInfo.pRenderNode || decal.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_Brush || 
+             decal.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_StaticMeshRenderComponent ||
+             decal.fGrowTimeAlpha || decal.fSize > GetFloatCVar(e_DecalsDefferedDynamicMinSize)))
         && !decal.bForceSingleOwner)
     {
         CryEngineDecalInfo decal_adjusted = decal;
@@ -1522,7 +1531,7 @@ void C3DEngine::SetSunColor(Vec3 vColor)
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_vSunColor = vColor;
+        m_pObjManager->SetSunColor(vColor);
     }
 }
 
@@ -1530,7 +1539,7 @@ void C3DEngine::SetSSAOAmount(float fMul)
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_fSSAOAmount = fMul;
+        m_pObjManager->SetSSAOAmount(fMul);
     }
 }
 
@@ -1538,8 +1547,13 @@ void C3DEngine::SetSSAOContrast(float fMul)
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_fSSAOContrast = fMul;
+        m_pObjManager->SetSSAOContrast(fMul);
     }
+}
+
+bool C3DEngine::ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const
+{
+    return MacroTextureImporter::ReadMacroTextureFile(filepath, configuration);
 }
 
 float C3DEngine::GetTerrainElevation(float x, float y, int nSID)
@@ -1793,45 +1807,45 @@ float C3DEngine::GetDistanceToSectorWithWater()
 
 Vec3 C3DEngine::GetSunColor() const
 {
-    return m_pObjManager ? m_pObjManager->m_vSunColor : Vec3(0, 0, 0);
+    return m_pObjManager ? m_pObjManager->GetSunColor() : Vec3(0, 0, 0);
 }
 
 float C3DEngine::GetSSAOAmount() const
 {
-    return m_pObjManager ? m_pObjManager->m_fSSAOAmount : 1.0f;
+    return m_pObjManager ? m_pObjManager->GetSSAOAmount() : 1.0f;
 }
 
 float C3DEngine::GetSSAOContrast() const
 {
-    return m_pObjManager ? m_pObjManager->m_fSSAOContrast : 1.0f;
+    return m_pObjManager ? m_pObjManager->GetSSAOContrast() : 1.0f;
 }
 
 void C3DEngine::SetRainParams(const SRainParams& rainParams)
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_rainParams.bIgnoreVisareas = rainParams.bIgnoreVisareas;
-        m_pObjManager->m_rainParams.bDisableOcclusion = rainParams.bDisableOcclusion;
-        m_pObjManager->m_rainParams.qRainRotation = rainParams.qRainRotation;
-        m_pObjManager->m_rainParams.vWorldPos = rainParams.vWorldPos;
-        m_pObjManager->m_rainParams.vColor = rainParams.vColor;
-        m_pObjManager->m_rainParams.fAmount = rainParams.fAmount;
-        m_pObjManager->m_rainParams.fCurrentAmount = rainParams.fCurrentAmount;
-        m_pObjManager->m_rainParams.fRadius = rainParams.fRadius;
-        m_pObjManager->m_rainParams.fFakeGlossiness = rainParams.fFakeGlossiness;
-        m_pObjManager->m_rainParams.fFakeReflectionAmount = rainParams.fFakeReflectionAmount;
-        m_pObjManager->m_rainParams.fDiffuseDarkening = rainParams.fDiffuseDarkening;
-        m_pObjManager->m_rainParams.fRainDropsAmount = rainParams.fRainDropsAmount;
-        m_pObjManager->m_rainParams.fRainDropsSpeed = rainParams.fRainDropsSpeed;
-        m_pObjManager->m_rainParams.fRainDropsLighting = rainParams.fRainDropsLighting;
-        m_pObjManager->m_rainParams.fMistAmount = rainParams.fMistAmount;
-        m_pObjManager->m_rainParams.fMistHeight = rainParams.fMistHeight;
-        m_pObjManager->m_rainParams.fPuddlesAmount = rainParams.fPuddlesAmount;
-        m_pObjManager->m_rainParams.fPuddlesMaskAmount = rainParams.fPuddlesMaskAmount;
-        m_pObjManager->m_rainParams.fPuddlesRippleAmount = rainParams.fPuddlesRippleAmount;
-        m_pObjManager->m_rainParams.fSplashesAmount = rainParams.fSplashesAmount;
+        m_pObjManager->GetRainParams().bIgnoreVisareas = rainParams.bIgnoreVisareas;
+        m_pObjManager->GetRainParams().bDisableOcclusion = rainParams.bDisableOcclusion;
+        m_pObjManager->GetRainParams().qRainRotation = rainParams.qRainRotation;
+        m_pObjManager->GetRainParams().vWorldPos = rainParams.vWorldPos;
+        m_pObjManager->GetRainParams().vColor = rainParams.vColor;
+        m_pObjManager->GetRainParams().fAmount = rainParams.fAmount;
+        m_pObjManager->GetRainParams().fCurrentAmount = rainParams.fCurrentAmount;
+        m_pObjManager->GetRainParams().fRadius = rainParams.fRadius;
+        m_pObjManager->GetRainParams().fFakeGlossiness = rainParams.fFakeGlossiness;
+        m_pObjManager->GetRainParams().fFakeReflectionAmount = rainParams.fFakeReflectionAmount;
+        m_pObjManager->GetRainParams().fDiffuseDarkening = rainParams.fDiffuseDarkening;
+        m_pObjManager->GetRainParams().fRainDropsAmount = rainParams.fRainDropsAmount;
+        m_pObjManager->GetRainParams().fRainDropsSpeed = rainParams.fRainDropsSpeed;
+        m_pObjManager->GetRainParams().fRainDropsLighting = rainParams.fRainDropsLighting;
+        m_pObjManager->GetRainParams().fMistAmount = rainParams.fMistAmount;
+        m_pObjManager->GetRainParams().fMistHeight = rainParams.fMistHeight;
+        m_pObjManager->GetRainParams().fPuddlesAmount = rainParams.fPuddlesAmount;
+        m_pObjManager->GetRainParams().fPuddlesMaskAmount = rainParams.fPuddlesMaskAmount;
+        m_pObjManager->GetRainParams().fPuddlesRippleAmount = rainParams.fPuddlesRippleAmount;
+        m_pObjManager->GetRainParams().fSplashesAmount = rainParams.fSplashesAmount;
 
-        m_pObjManager->m_rainParams.nUpdateFrameID = GetRenderer()->GetFrameID();
+        m_pObjManager->GetRainParams().nUpdateFrameID = GetRenderer()->GetFrameID();
     }
 }
 
@@ -1842,33 +1856,33 @@ bool C3DEngine::GetRainParams(SRainParams& rainParams)
     if (m_pObjManager)
     {
         // Copy shared rain data only
-        rainParams.bIgnoreVisareas = m_pObjManager->m_rainParams.bIgnoreVisareas;
-        rainParams.bDisableOcclusion = m_pObjManager->m_rainParams.bDisableOcclusion;
-        rainParams.qRainRotation = m_pObjManager->m_rainParams.qRainRotation;
-        rainParams.vWorldPos = m_pObjManager->m_rainParams.vWorldPos;
-        rainParams.vColor = m_pObjManager->m_rainParams.vColor;
-        rainParams.fAmount = m_pObjManager->m_rainParams.fAmount;
-        rainParams.fCurrentAmount = m_pObjManager->m_rainParams.fCurrentAmount;
-        rainParams.fRadius = m_pObjManager->m_rainParams.fRadius;
-        rainParams.fFakeGlossiness = m_pObjManager->m_rainParams.fFakeGlossiness;
-        rainParams.fFakeReflectionAmount = m_pObjManager->m_rainParams.fFakeReflectionAmount;
-        rainParams.fDiffuseDarkening = m_pObjManager->m_rainParams.fDiffuseDarkening;
-        rainParams.fRainDropsAmount = m_pObjManager->m_rainParams.fRainDropsAmount;
-        rainParams.fRainDropsSpeed = m_pObjManager->m_rainParams.fRainDropsSpeed;
-        rainParams.fRainDropsLighting = m_pObjManager->m_rainParams.fRainDropsLighting;
-        rainParams.fMistAmount = m_pObjManager->m_rainParams.fMistAmount;
-        rainParams.fMistHeight = m_pObjManager->m_rainParams.fMistHeight;
-        rainParams.fPuddlesAmount = m_pObjManager->m_rainParams.fPuddlesAmount;
-        rainParams.fPuddlesMaskAmount = m_pObjManager->m_rainParams.fPuddlesMaskAmount;
-        rainParams.fPuddlesRippleAmount = m_pObjManager->m_rainParams.fPuddlesRippleAmount;
-        rainParams.fSplashesAmount = m_pObjManager->m_rainParams.fSplashesAmount;
+        rainParams.bIgnoreVisareas = m_pObjManager->GetRainParams().bIgnoreVisareas;
+        rainParams.bDisableOcclusion = m_pObjManager->GetRainParams().bDisableOcclusion;
+        rainParams.qRainRotation = m_pObjManager->GetRainParams().qRainRotation;
+        rainParams.vWorldPos = m_pObjManager->GetRainParams().vWorldPos;
+        rainParams.vColor = m_pObjManager->GetRainParams().vColor;
+        rainParams.fAmount = m_pObjManager->GetRainParams().fAmount;
+        rainParams.fCurrentAmount = m_pObjManager->GetRainParams().fCurrentAmount;
+        rainParams.fRadius = m_pObjManager->GetRainParams().fRadius;
+        rainParams.fFakeGlossiness = m_pObjManager->GetRainParams().fFakeGlossiness;
+        rainParams.fFakeReflectionAmount = m_pObjManager->GetRainParams().fFakeReflectionAmount;
+        rainParams.fDiffuseDarkening = m_pObjManager->GetRainParams().fDiffuseDarkening;
+        rainParams.fRainDropsAmount = m_pObjManager->GetRainParams().fRainDropsAmount;
+        rainParams.fRainDropsSpeed = m_pObjManager->GetRainParams().fRainDropsSpeed;
+        rainParams.fRainDropsLighting = m_pObjManager->GetRainParams().fRainDropsLighting;
+        rainParams.fMistAmount = m_pObjManager->GetRainParams().fMistAmount;
+        rainParams.fMistHeight = m_pObjManager->GetRainParams().fMistHeight;
+        rainParams.fPuddlesAmount = m_pObjManager->GetRainParams().fPuddlesAmount;
+        rainParams.fPuddlesMaskAmount = m_pObjManager->GetRainParams().fPuddlesMaskAmount;
+        rainParams.fPuddlesRippleAmount = m_pObjManager->GetRainParams().fPuddlesRippleAmount;
+        rainParams.fSplashesAmount = m_pObjManager->GetRainParams().fSplashesAmount;
 
         if (!IsOutdoorVisible() && !rainParams.bIgnoreVisareas)
         {
             rainParams.fAmount = 0.f;
         }
 
-        bRet = m_pObjManager->m_rainParams.nUpdateFrameID == nFrmID;
+        bRet = m_pObjManager->GetRainParams().nUpdateFrameID == nFrmID;
     }
     return bRet;
 }
@@ -1877,11 +1891,11 @@ void C3DEngine::SetSnowSurfaceParams(const Vec3& vCenter, float fRadius, float f
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_snowParams.m_vWorldPos = vCenter;
-        m_pObjManager->m_snowParams.m_fRadius = fRadius;
-        m_pObjManager->m_snowParams.m_fSnowAmount = fSnowAmount;
-        m_pObjManager->m_snowParams.m_fFrostAmount = fFrostAmount;
-        m_pObjManager->m_snowParams.m_fSurfaceFreezing = fSurfaceFreezing;
+        m_pObjManager->GetSnowParams().m_vWorldPos = vCenter;
+        m_pObjManager->GetSnowParams().m_fRadius = fRadius;
+        m_pObjManager->GetSnowParams().m_fSnowAmount = fSnowAmount;
+        m_pObjManager->GetSnowParams().m_fFrostAmount = fFrostAmount;
+        m_pObjManager->GetSnowParams().m_fSurfaceFreezing = fSurfaceFreezing;
     }
 }
 
@@ -1890,16 +1904,16 @@ bool C3DEngine::GetSnowSurfaceParams(Vec3& vCenter, float& fRadius, float& fSnow
     bool bRet = false;
     if (m_pObjManager)
     {
-        vCenter = m_pObjManager->m_snowParams.m_vWorldPos;
-        fRadius = m_pObjManager->m_snowParams.m_fRadius;
+        vCenter = m_pObjManager->GetSnowParams().m_vWorldPos;
+        fRadius = m_pObjManager->GetSnowParams().m_fRadius;
         fSnowAmount = 0.f;
         fFrostAmount = 0.f;
         fSurfaceFreezing = 0.f;
         if (IsOutdoorVisible())
         {
-            fSnowAmount = m_pObjManager->m_snowParams.m_fSnowAmount;
-            fFrostAmount = m_pObjManager->m_snowParams.m_fFrostAmount;
-            fSurfaceFreezing = m_pObjManager->m_snowParams.m_fSurfaceFreezing;
+            fSnowAmount = m_pObjManager->GetSnowParams().m_fSnowAmount;
+            fFrostAmount = m_pObjManager->GetSnowParams().m_fFrostAmount;
+            fSurfaceFreezing = m_pObjManager->GetSnowParams().m_fSurfaceFreezing;
         }
         bRet = true;
     }
@@ -1910,13 +1924,13 @@ void C3DEngine::SetSnowFallParams(int nSnowFlakeCount, float fSnowFlakeSize, flo
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_snowParams.m_nSnowFlakeCount = nSnowFlakeCount;
-        m_pObjManager->m_snowParams.m_fSnowFlakeSize = fSnowFlakeSize;
-        m_pObjManager->m_snowParams.m_fSnowFallBrightness = fSnowFallBrightness;
-        m_pObjManager->m_snowParams.m_fSnowFallGravityScale = fSnowFallGravityScale;
-        m_pObjManager->m_snowParams.m_fSnowFallWindScale = fSnowFallWindScale;
-        m_pObjManager->m_snowParams.m_fSnowFallTurbulence = fSnowFallTurbulence;
-        m_pObjManager->m_snowParams.m_fSnowFallTurbulenceFreq = fSnowFallTurbulenceFreq;
+        m_pObjManager->GetSnowParams().m_nSnowFlakeCount = nSnowFlakeCount;
+        m_pObjManager->GetSnowParams().m_fSnowFlakeSize = fSnowFlakeSize;
+        m_pObjManager->GetSnowParams().m_fSnowFallBrightness = fSnowFallBrightness;
+        m_pObjManager->GetSnowParams().m_fSnowFallGravityScale = fSnowFallGravityScale;
+        m_pObjManager->GetSnowParams().m_fSnowFallWindScale = fSnowFallWindScale;
+        m_pObjManager->GetSnowParams().m_fSnowFallTurbulence = fSnowFallTurbulence;
+        m_pObjManager->GetSnowParams().m_fSnowFallTurbulenceFreq = fSnowFallTurbulenceFreq;
     }
 }
 
@@ -1934,28 +1948,17 @@ bool C3DEngine::GetSnowFallParams(int& nSnowFlakeCount, float& fSnowFlakeSize, f
         fSnowFallTurbulenceFreq = 0.f;
         if (IsOutdoorVisible())
         {
-            nSnowFlakeCount = m_pObjManager->m_snowParams.m_nSnowFlakeCount;
-            fSnowFlakeSize = m_pObjManager->m_snowParams.m_fSnowFlakeSize;
-            fSnowFallBrightness = m_pObjManager->m_snowParams.m_fSnowFallBrightness;
-            fSnowFallGravityScale = m_pObjManager->m_snowParams.m_fSnowFallGravityScale;
-            fSnowFallWindScale = m_pObjManager->m_snowParams.m_fSnowFallWindScale;
-            fSnowFallTurbulence = m_pObjManager->m_snowParams.m_fSnowFallTurbulence;
-            fSnowFallTurbulenceFreq = m_pObjManager->m_snowParams.m_fSnowFallTurbulenceFreq;
+            nSnowFlakeCount = m_pObjManager->GetSnowParams().m_nSnowFlakeCount;
+            fSnowFlakeSize = m_pObjManager->GetSnowParams().m_fSnowFlakeSize;
+            fSnowFallBrightness = m_pObjManager->GetSnowParams().m_fSnowFallBrightness;
+            fSnowFallGravityScale = m_pObjManager->GetSnowParams().m_fSnowFallGravityScale;
+            fSnowFallWindScale = m_pObjManager->GetSnowParams().m_fSnowFallWindScale;
+            fSnowFallTurbulence = m_pObjManager->GetSnowParams().m_fSnowFallTurbulence;
+            fSnowFallTurbulenceFreq = m_pObjManager->GetSnowParams().m_fSnowFallTurbulenceFreq;
         }
         bRet = true;
     }
     return bRet;
-}
-
-
-float C3DEngine::GetTerrainTextureMultiplier(int nSID) const
-{
-    if (!m_pTerrain)
-    {
-        return 1;
-    }
-
-    return m_pTerrain->GetTerrainTextureMultiplier();
 }
 
 void C3DEngine::SetSunDir(const Vec3& newSunDir)
@@ -2076,18 +2079,18 @@ void C3DEngine::ActivatePortal(const Vec3& vPos, bool bActivate, const char* szE
 
 bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID)
 {
-    assert(nSID >= 0 && nSID < m_pObjManager->m_lstStaticTypes.Count());
+    assert(nSID >= 0 && nSID < m_pObjManager->GetListStaticTypes().Count());
 
     m_fRefreshSceneDataCVarsSumm = -100;
 
-    m_pObjManager->m_lstStaticTypes[nSID].resize(max(nGroupId + 1, m_pObjManager->m_lstStaticTypes[nSID].Count()));
+    m_pObjManager->GetListStaticTypes()[nSID].resize(max(nGroupId + 1, m_pObjManager->GetListStaticTypes()[nSID].Count()));
 
-    if (nGroupId < 0 || nGroupId >= m_pObjManager->m_lstStaticTypes[nSID].Count())
+    if (nGroupId < 0 || nGroupId >= m_pObjManager->GetListStaticTypes()[nSID].Count())
     {
         return false;
     }
 
-    StatInstGroup& rGroup = m_pObjManager->m_lstStaticTypes[nSID][nGroupId];
+    StatInstGroup& rGroup = m_pObjManager->GetListStaticTypes()[nSID][nGroupId];
 
     // If the object was changed in the editor, ResetActiveNodes will need to be called later
     // Keep track of the previous object so we can check for this later
@@ -2166,14 +2169,14 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
 
 bool C3DEngine::GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID)
 {
-    assert(nSID >= 0 && nSID < m_pObjManager->m_lstStaticTypes.Count());
+    assert(nSID >= 0 && nSID < m_pObjManager->GetListStaticTypes().Count());
 
-    if (nGroupId < 0 || nGroupId >= m_pObjManager->m_lstStaticTypes[nSID].Count())
+    if (nGroupId < 0 || nGroupId >= m_pObjManager->GetListStaticTypes()[nSID].Count())
     {
         return false;
     }
 
-    StatInstGroup& rGroup = m_pObjManager->m_lstStaticTypes[nSID][nGroupId];
+    StatInstGroup& rGroup = m_pObjManager->GetListStaticTypes()[nSID][nGroupId];
 
     siGroup.pStatObj            = rGroup.pStatObj;
     if (siGroup.pStatObj)
@@ -2224,9 +2227,9 @@ void C3DEngine::UpdateStatInstGroups()
         return;
     }
 
-    for (uint32 nSID = 0; nSID < m_pObjManager->m_lstStaticTypes.size(); nSID++)
+    for (uint32 nSID = 0; nSID < m_pObjManager->GetListStaticTypes().size(); nSID++)
     {
-        PodArray<StatInstGroup>& rGroupTable = m_pObjManager->m_lstStaticTypes[nSID];
+        PodArray<StatInstGroup>& rGroupTable = m_pObjManager->GetListStaticTypes()[nSID];
         for (uint32 nGroupId = 0; nGroupId < rGroupTable.size(); nGroupId++)
         {
             StatInstGroup& rGroup = rGroupTable[nGroupId];
@@ -3368,6 +3371,11 @@ void C3DEngine::EnableOceanRendering(bool bOcean)
     m_bOcean = bOcean;
 }
 
+IObjManager* C3DEngine::GetObjManager()
+{
+    return Cry3DEngineBase::GetObjManager();
+}
+
 //////////////////////////////////////////////////////////////////////////
 IMaterialHelpers& C3DEngine::GetMaterialHelpers()
 {
@@ -3511,7 +3519,7 @@ void C3DEngine::LockCGFResources()
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_bLockCGFResources = 1;
+        m_pObjManager->SetLockCGFResources(true);
     }
 }
 
@@ -3519,8 +3527,8 @@ void C3DEngine::UnlockCGFResources()
 {
     if (m_pObjManager)
     {
-        bool bNeedToFreeCGFs = m_pObjManager->m_bLockCGFResources != 0;
-        m_pObjManager->m_bLockCGFResources = 0;
+        bool bNeedToFreeCGFs = m_pObjManager->IsLockCGFResources();
+        m_pObjManager->SetLockCGFResources(false);
         if (bNeedToFreeCGFs)
         {
             m_pObjManager->FreeNotUsedCGFs();
@@ -4803,6 +4811,7 @@ void C3DEngine::UpdateRenderTypeEnableLookup()
 {
     SetRenderNodeTypeEnabled(eERType_RenderComponent, (GetCVars()->e_Entities != 0));
     SetRenderNodeTypeEnabled(eERType_StaticMeshRenderComponent, (GetCVars()->e_Entities != 0));
+    SetRenderNodeTypeEnabled(eERType_DynamicMeshRenderComponent, (GetCVars()->e_Entities != 0));
     SetRenderNodeTypeEnabled(eERType_SkinnedMeshRenderComponent, (GetCVars()->e_Entities != 0));
     SetRenderNodeTypeEnabled(eERType_Brush, (GetCVars()->e_Brushes != 0));
     SetRenderNodeTypeEnabled(eERType_Vegetation, (GetCVars()->e_Vegetation != 0));
@@ -4836,8 +4845,8 @@ void C3DEngine::OverrideCameraPrecachePoint(const Vec3& vPos)
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_vStreamPreCacheCameras[0].vPosition = vPos;
-        m_pObjManager->m_bCameraPrecacheOverridden = true;
+        m_pObjManager->GetStreamPreCacheCameras()[0].vPosition = vPos;
+        m_pObjManager->SetCameraPrecacheOverridden(true);
     }
 }
 
@@ -4845,41 +4854,40 @@ int C3DEngine::AddPrecachePoint(const Vec3& vPos, const Vec3& vDir, float fTimeO
 {
     if (m_pObjManager)
     {
-        if (m_pObjManager->m_vStreamPreCachePointDefs.size() >= CObjManager::MaxPrecachePoints)
+        if (m_pObjManager->GetStreamPreCachePointDefs().size() >= CObjManager::MaxPrecachePoints)
         {
             size_t nOldestIdx = 0;
             int nOldestId = INT_MAX;
-            for (size_t i = 1, c = m_pObjManager->m_vStreamPreCachePointDefs.size(); i < c; ++i)
+            for (size_t i = 1, c = m_pObjManager->GetStreamPreCachePointDefs().size(); i < c; ++i)
             {
-                if (m_pObjManager->m_vStreamPreCachePointDefs[i].nId < nOldestId)
+                if (m_pObjManager->GetStreamPreCachePointDefs()[i].nId < nOldestId)
                 {
                     nOldestIdx = i;
-                    nOldestId = m_pObjManager->m_vStreamPreCachePointDefs[i].nId;
+                    nOldestId = m_pObjManager->GetStreamPreCachePointDefs()[i].nId;
                 }
             }
 
             assert (nOldestIdx > 0);
 
             CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_WARNING, "Precache points full - evicting oldest (%f, %f, %f)",
-                m_pObjManager->m_vStreamPreCacheCameras[nOldestIdx].vPosition.x,
-                m_pObjManager->m_vStreamPreCacheCameras[nOldestIdx].vPosition.y,
-                m_pObjManager->m_vStreamPreCacheCameras[nOldestIdx].vPosition.z);
+                m_pObjManager->GetStreamPreCacheCameras()[nOldestIdx].vPosition.x,
+                m_pObjManager->GetStreamPreCacheCameras()[nOldestIdx].vPosition.y,
+                m_pObjManager->GetStreamPreCacheCameras()[nOldestIdx].vPosition.z);
 
-            m_pObjManager->m_vStreamPreCachePointDefs.DeleteFastUnsorted((int)nOldestIdx);
-            m_pObjManager->m_vStreamPreCacheCameras.DeleteFastUnsorted((int)nOldestIdx);
+            m_pObjManager->GetStreamPreCachePointDefs().DeleteFastUnsorted((int)nOldestIdx);
+            m_pObjManager->GetStreamPreCacheCameras().DeleteFastUnsorted((int)nOldestIdx);
         }
 
         SObjManPrecachePoint pp;
-        pp.nId = m_pObjManager->m_nNextPrecachePointId++;
+        pp.nId = m_pObjManager->IncrementNextPrecachePointId();
         pp.expireTime = gEnv->pTimer->GetAsyncTime() + CTimeValue(fTimeOut);
         SObjManPrecacheCamera pc;
         pc.vPosition = vPos;
         pc.bbox = AABB(vPos, GetCVars()->e_StreamPredictionBoxRadius);
         pc.vDirection = vDir;
         pc.fImportanceFactor = fImportanceFactor;
-        m_pObjManager->m_vStreamPreCachePointDefs.Add(pp);
-        m_pObjManager->m_vStreamPreCacheCameras.Add(pc);
-        //m_pObjManager->m_bCameraPrecacheOverridden = true;
+        m_pObjManager->GetStreamPreCachePointDefs().Add(pp);
+        m_pObjManager->GetStreamPreCacheCameras().Add(pc);
 
         return pp.nId;
     }
@@ -4891,12 +4899,12 @@ void C3DEngine::ClearPrecachePoint(int id)
 {
     if (m_pObjManager)
     {
-        for (size_t i = 1, c = m_pObjManager->m_vStreamPreCachePointDefs.size(); i < c; ++i)
+        for (size_t i = 1, c = m_pObjManager->GetStreamPreCachePointDefs().size(); i < c; ++i)
         {
-            if (m_pObjManager->m_vStreamPreCachePointDefs[i].nId == id)
+            if (m_pObjManager->GetStreamPreCachePointDefs()[i].nId == id)
             {
-                m_pObjManager->m_vStreamPreCachePointDefs.DeleteFastUnsorted((int)i);
-                m_pObjManager->m_vStreamPreCacheCameras.DeleteFastUnsorted((int)i);
+                m_pObjManager->GetStreamPreCachePointDefs().DeleteFastUnsorted((int)i);
+                m_pObjManager->GetStreamPreCacheCameras().DeleteFastUnsorted((int)i);
                 break;
             }
         }
@@ -4907,8 +4915,8 @@ void C3DEngine::ClearAllPrecachePoints()
 {
     if (m_pObjManager)
     {
-        m_pObjManager->m_vStreamPreCachePointDefs.resize(1);
-        m_pObjManager->m_vStreamPreCacheCameras.resize(1);
+        m_pObjManager->GetStreamPreCachePointDefs().resize(1);
+        m_pObjManager->GetStreamPreCacheCameras().resize(1);
     }
 }
 
@@ -4916,8 +4924,8 @@ void C3DEngine::GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES])
 {
     if (m_pObjManager)
     {
-        pRoundIds[0] = m_pObjManager->m_nUpdateStreamingPrioriryRoundIdFast;
-        pRoundIds[1] = m_pObjManager->m_nUpdateStreamingPrioriryRoundId;
+        pRoundIds[0] = m_pObjManager->GetUpdateStreamingPrioriryRoundIdFast();
+        pRoundIds[1] = m_pObjManager->GetUpdateStreamingPrioriryRoundId();
     }
 }
 
@@ -5014,7 +5022,7 @@ void static DrawMeter(float scale, float& x, float& y, int nWidth, int nHeight, 
         }
 
         ColorB colSegStart(0, 255, 0, 255);
-        ColorB colSegEnd((uint8) (color[ 0 ] * 255), (uint8) (color[ 1 ] * 255), (uint8) (color[ 2 ] * 255), (uint8) (color[ 3 ] * 255));
+        ColorB colSegEnd((uint8)(color[ 0 ] * 255), (uint8)(color[ 1 ] * 255), (uint8)(color[ 2 ] * 255), (uint8)(color[ 3 ] * 255));
 
         ColorB col[ 4 ] =
         {
@@ -5073,7 +5081,7 @@ void static DrawMeter(float scale, float& x, float& y, int nWidth, int nHeight, 
         }
 
         ColorB colSegStart(255, 255, 0, 255);
-        ColorB colSegEnd((uint8) (color[ 0 ] * 255), (uint8) (color[ 1 ] * 255), (uint8) (color[ 2 ] * 255), (uint8) (color[ 3 ] * 255));
+        ColorB colSegEnd((uint8)(color[ 0 ] * 255), (uint8)(color[ 1 ] * 255), (uint8)(color[ 2 ] * 255), (uint8)(color[ 3 ] * 255));
 
         ColorB col[ 4 ] =
         {
@@ -5275,6 +5283,16 @@ void C3DEngine::OnCameraTeleport()
     MarkRNTmpDataPoolForReset();
 }
 
+IObjManager* C3DEngine::GetObjectManager()
+{
+    return m_pObjManager;
+}
+
+const IObjManager* C3DEngine::GetObjectManager() const
+{
+    return m_pObjManager;
+}
+
 #ifndef _RELEASE
 
 //////////////////////////////////////////////////////////////////////////
@@ -5285,6 +5303,7 @@ void C3DEngine::AddObjToDebugDrawList(SObjectInfoToAddToDebugDrawList& objInfo)
 {
     m_DebugDrawListMgr.AddObject(objInfo);
 }
+
 
 bool    CDebugDrawListMgr::m_dumpLogRequested = false;
 bool    CDebugDrawListMgr::m_freezeRequested = false;

@@ -17,7 +17,7 @@
 #include <AzCore/Memory/Memory.h>
 
 // The work stealing imlementation is the fastest. It requires thread local storage and atomics, needs platform to support xchg 128 bit
-#if defined(AZ_THREAD_LOCAL) && (defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX))
+#if defined(AZ_THREAD_LOCAL) && (defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)) // ACCEPTED_USE
 #   define AZCORE_JOBS_IMPL_WORK_STEALING
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 // Thread local storage was only added to iOS in Xcode 8, and ARM processors do not support xchg128 bit instructions, so we can't use the work stealing implementation.

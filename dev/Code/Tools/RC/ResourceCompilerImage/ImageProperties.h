@@ -1016,10 +1016,10 @@ public:
             // "value" or "value,value" or "value,value,value" or "value,value,value,value" string format
             //
             // The last three formats above are obsolete. Those formats were used to store nameless
-            // values for up to four *hardcoded* platforms pc, x360, ps3, wiiu (in this order).
+            // values for up to four *hardcoded* platforms pc, x360, ps3, wiiu (in this order). // ACCEPTED_USE
             // We don't write those formats anymore, but we still need to parse them because we
             // have a lot of old files that have strings stored in those formats. The good news are
-            // that the platforms x360, ps3, wiiu are not supported by the CryEngine anymore -
+            // that the platforms x360, ps3, wiiu are not supported by the CryEngine anymore - // ACCEPTED_USE
             // because of that we use the first value only.
 
             const int value = ComputeClampedReduce(::atoi(parts[0].c_str()));
@@ -1093,12 +1093,17 @@ public:
 
     int GetMinTextureSize() const
     {
-        return m_pCC->config->GetAsInt("mintexturesize", 0, 0);
+        return m_pCC->multiConfig->getConfig(m_pCC->platform).GetAsInt("mintexturesize", 0, 0);
     }
 
     int GetMaxTextureSize() const
     {
-        return m_pCC->config->GetAsInt("maxtexturesize", 0, 0);
+        return m_pCC->multiConfig->getConfig(m_pCC->platform).GetAsInt("maxtexturesize", 0, 0);
+    }
+
+    const char* GetSourceFileName() const
+    {
+        return m_pCC->sourceFileNameOnly.c_str();
     }
 
     // ----------------------------------------

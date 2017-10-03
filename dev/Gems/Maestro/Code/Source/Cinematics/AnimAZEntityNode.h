@@ -39,10 +39,12 @@ class CAnimAzEntityNode
     struct SAnimState;
 
 public:
-    CAnimAzEntityNode(const int id);
-    ~CAnimAzEntityNode();
+    AZ_CLASS_ALLOCATOR(CAnimAzEntityNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimAzEntityNode, "{28C02702-3498-488C-BF93-B5FC3FECC9F1}", CAnimNode);
 
-    EAnimNodeType GetType() const override;
+    CAnimAzEntityNode(const int id);
+    CAnimAzEntityNode();
+    ~CAnimAzEntityNode();
 
     void SetEntityId(const int id) override {};
     void         SetAzEntityId(const AZ::EntityId& id) override { m_entityId = id; }
@@ -68,16 +70,12 @@ public:
 
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
-
     // this is an unfortunate hold-over from legacy entities - used when a SceneNode overrides the camera animation so
     // we must disable the transform and camera components from updating animation on this entity because the SceneNode
     // will be animating these components during interpolation.
     void SetSkipInterpolatedCameraNode(const bool skipNodeCameraAnimation) override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
 
@@ -90,5 +88,4 @@ private:
     //! Reference to game entity.
     AZ::EntityId                                m_entityId;
 };
-
 #endif // CRYINCLUDE_CRYMOVIE_ANIMAZENTITYNODE_H

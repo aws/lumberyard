@@ -407,11 +407,11 @@ void CStatObj::RenderRenderMesh(CRenderObject* pRenderObject, SInstancingInfo* p
     if (GetCVars()->e_DebugDraw &&  (!GetCVars()->e_DebugDrawShowOnlyCompound || (m_bSubObject || m_pParentObject)))
     {
         int nLod = 0;
-        if (m_pLod0 && m_pLod0->m_pLODs)
+        if (m_pLod0 && m_pLod0->GetLods())
         {
             for (; nLod < MAX_STATOBJ_LODS_NUM; nLod++)
             {
-                if (m_pLod0->m_pLODs[nLod] == this)
+                if (m_pLod0->GetLods()[nLod] == this)
                 {
                     m_pRenderMesh->SetMeshLod(nLod);
                     break;
@@ -478,16 +478,16 @@ void CStatObj::RenderRenderMesh(CRenderObject* pRenderObject, SInstancingInfo* p
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int CStatObj::GetMaxUsableLod()
+int CStatObj::GetMaxUsableLod() const
 {
-    int maxUsable = m_pLod0 ? max((int)m_nMaxUsableLod, (int)m_pLod0->m_nMaxUsableLod) : (int)m_nMaxUsableLod;
+    int maxUsable = m_pLod0 ? max((int)m_nMaxUsableLod, (int)m_pLod0->GetMaxUsableLod()) : (int)m_nMaxUsableLod;
     return min(maxUsable, GetCVars()->e_LodMax);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int CStatObj::GetMinUsableLod()
+int CStatObj::GetMinUsableLod() const
 {
-    int minUsable = m_pLod0 ? max((int)m_nMinUsableLod0, (int)m_pLod0->m_nMinUsableLod0) : (int)m_nMinUsableLod0;
+    int minUsable = m_pLod0 ? max((int)m_nMinUsableLod0, (int)m_pLod0->GetMinUsableLod()) : (int)m_nMinUsableLod0;
     return max(minUsable, GetCVars()->e_LodMin);
 }
 

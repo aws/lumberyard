@@ -41,6 +41,9 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserv
 #endif
 #endif // WIN32
 
+#if !defined(_RELEASE) && !defined(WIN32) && !defined(DEDICATED_SERVER)
+#   define SYNERGY_INPUT_ENABLED
+#endif // !defined(_RELEASE) && !defined(WIN32) && !defined(DEDICATED_SERVER)
 
 //////////////////////////////////////////////////////////////////////////
 class CEngineModule_CryInput
@@ -61,26 +64,13 @@ class CEngineModule_CryInput
         ISystem* pSystem = env.pSystem;
 
         IInput* pInput = 0;
+#if !defined(DEDICATED_SERVER)
         if (!gEnv->IsDedicated())
         {
-#if defined(USE_AZ_TO_LY_INPUT)
             pInput = new AzToLyInput();
-#elif defined(USE_DXINPUT)
-            void* hWnd = initParams.hWndForInputSystem ? initParams.hWndForInputSystem : initParams.hWnd;
-            pInput = new CDXInput(pSystem, (HWND) hWnd);
-#elif defined(USE_LINUXINPUT)
-            pInput = new CLinuxInput(pSystem);
-#elif defined(USE_ANDROIDINPUT)
-            pInput = new CAndroidInput(pSystem);
-#elif defined(USE_IOSINPUT)
-            pInput = new CIosInput(pSystem);
-#elif defined(USE_APPLETVINPUT)
-            pInput = new CAppleTVInput(pSystem);
-#else
-            pInput = new CBaseInput();
-#endif
         }
         else
+#endif // !defined(DEDICATED_SERVER)
         {
             pInput = new CBaseInput();
         }
@@ -91,33 +81,34 @@ class CEngineModule_CryInput
             return false;
         }
 
-#ifdef USE_SYNERGY_INPUT
+#if defined(SYNERGY_INPUT_ENABLED)
         const char* pServer = g_pInputCVars->i_synergyServer->GetString();
         if (pServer && pServer[0] != '\0')
         {
-    #if defined(AZ_FRAMEWORK_INPUT_ENABLED)
             // Create an instance of SynergyClient that will broadcast RawInputNotificationBusSynergy events.
-            // Not ideal that this is static, but we can better control its lifecycle once it moves to a Gem.
-            static AZStd::unique_ptr<SynergyInput::SynergyClient> pContext = AZStd::make_unique<SynergyInput::SynergyClient>(g_pInputCVars->i_synergyScreenName->GetString(), pServer);
+            m_synergyContext = AZStd::make_unique<SynergyInput::SynergyClient>(g_pInputCVars->i_synergyScreenName->GetString(), pServer);
 
-            // Set custom create functions for our synergy mouse/keyboard implementations.
-            AzFramework::InputDeviceKeyboard::Implementation::CustomCreateFunctionPointer = SynergyInput::InputDeviceKeyboardSynergy::Create;
-            AzFramework::InputDeviceMouse::Implementation::CustomCreateFunctionPointer = SynergyInput::InputDeviceMouseSynergy::Create;
+            // Create the custom synergy keyboard implementation.
+            AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceKeyboard>::Bus::Broadcast(
+                &AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceKeyboard>::CreateCustomImplementation,
+                SynergyInput::InputDeviceKeyboardSynergy::Create);
 
-            // Recreate all enabled input devices so the synergy implementations are created instead of the default ones.
-            AzFramework::InputSystemRequestBus::Broadcast(&AzFramework::InputSystemRequests::RecreateEnabledInputDevices);
-    #else
-            _smart_ptr<CSynergyContext> pContext = new CSynergyContext(g_pInputCVars->i_synergyScreenName->GetString(), pServer);
-            pInput->AddInputDevice(new CSynergyKeyboard(*pInput, pContext));
-            pInput->AddInputDevice(new CSynergyMouse(*pInput, pContext));
-    #endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
+            // Create the custom synergy mouse implementation.
+            AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceMouse>::Bus::Broadcast(
+                &AzFramework::InputDeviceImplementationRequest<AzFramework::InputDeviceMouse>::CreateCustomImplementation,
+                SynergyInput::InputDeviceMouseSynergy::Create);
         }
-#endif
+#endif // defined(SYNERGY_INPUT_ENABLED)
 
         env.pInput = pInput;
 
         return true;
     }
+
+private:
+#if defined(SYNERGY_INPUT_ENABLED)
+    AZStd::unique_ptr<SynergyInput::SynergyClient> m_synergyContext;
+#endif // defined(SYNERGY_INPUT_ENABLED)
 };
 
 CRYREGISTER_SINGLETON_CLASS(CEngineModule_CryInput)

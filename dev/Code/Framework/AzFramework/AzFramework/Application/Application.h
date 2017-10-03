@@ -130,7 +130,8 @@ namespace AzFramework
         //! AZ::ComponentApplication
         const char* GetAppRoot() override { return m_appRoot; }
         void RegisterCoreComponents() override;
-        void ReflectSerialize() override;
+        void Reflect(AZ::ReflectContext* context) override;
+        void ResolveModulePath(AZ::OSString& modulePath) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -142,7 +143,6 @@ namespace AzFramework
             return AZStd::string(GetAppRoot()) + "/UserSettings.xml";
         }
         //////////////////////////////////////////////////////////////////////////
-        void ResolveModulePath(AZ::OSString& modulePath) override;
 
         AZ::Component* EnsureComponentAdded(AZ::Entity* systemEntity, const AZ::Uuid& typeId);
 

@@ -9,15 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef QT_VIEWPANE_MANAGER_H
-#define QT_VIEWPANE_MANAGER_H
+
+#pragma once
 
 #include "DockWidgetUtils.h"
 #include "Include/EditorCoreAPI.h"
 #include <QtViewPane.h>
 #include "Resource.h"
+#include <AzToolsFramework/API/ViewPaneOptions.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzQtComponents/Components/DockTabWidget.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 #include <QObject>
 #include <QVector>
@@ -26,75 +29,20 @@
 #include <QAction>
 #include <QByteArray>
 
-#include <functional>
+#include <LyViewPaneNames.h>
+
+#include <AzCore/std/functional.h>
 
 class QMainWindow;
 struct ViewLayoutState;
 class FancyDocking;
 
-namespace LyViewPane
-{
-    static const char* const CategoryTools = "Tools";
-    static const char* const CategoryOther = "Other";
-    static const char* const CategoryPlugIns = "Plug-Ins";
-    //---- 
-    static const char* const CategoryEditor = "Editor";
-    static const char* const CategoryViewport = "Viewport";
-    static const char* const CategoryCloudCanvas = "Cloud Canvas";
-
-
-    // Putting these names here so that when view panes are opened
-    // from other areas of Editor code, they still work when the name changes.
-    static const char* const SceneSettings = "Scene Settings (PREVIEW)";
-    static const char* const AssetBrowser = "Asset Browser";
-    static const char* const EntityOutliner = "Entity Outliner (PREVIEW)";
-    static const char* const EntityInspector = "Entity Inspector (PREVIEW)";
-    static const char* const Mannequin = "Mannequin Editor (LEGACY)";
-    static const char* const Console = "Console";
-    static const char* const ConsoleMenuName = "&Console";
-    static const char* const TrackView = "Track View";
-
-    static const char* const AIDebugger = "AI Debugger";
-    static const char* const TerrainEditor = "Terrain Editor";
-    static const char* const MaterialEditor = "Material Editor";
-    static const char* const Geppetto = "Geppetto";
-    static const char* const DatabaseView = "Database View";
-    static const char* const AudioControlsEditor = "Audio Controls Editor";
-    static const char* const SubstanceEditor = "Substance Editor";
-
-    static const char* const LegacyAssetBrowser = "Asset Browser (LEGACY)";
-    static const char* const LegacyFlowGraph = "Flow Graph (LEGACY)";
-    static const char* const LegacyLayerEditor = "Layer Editor (LEGACY)";
-    static const char* const LegacyObjectSelector = "Object Selector (LEGACY)";
-    static const char* const LegacyRollupBar = "RollupBar (LEGACY)";
-    static const char* const LegacyRollupBarMenuName = "&RollupBar (LEGACY)";
-
-    const int NO_BUILTIN_ACTION = -1;
-}
-
 // Widget Names/Contexts supporting DragAndDrop with the DragAndDropEvents Bus
 namespace DragAndDropContexts {
     static const AZ::Crc32 MainWindow = AZ_CRC("MainWindow", 0xa280a607);
 }
-struct QtViewOptions
-{
-    QRect paneRect = QRect(50, 50, 1000, 800);
-    Qt::DockWidgetArea preferedDockingArea = Qt::NoDockWidgetArea;
-    bool isDeletable = true;
-    bool isStandard = false; // Console and Rollupbar are standard
-    bool showInMenu = true;
-    bool canHaveMultipleInstances = false; // Set this to true if you have a widget that's not a singleton and you want it to show up in the right-click context menu that pops up from the viewport title
-    int viewportType = -1;
-    bool isPreview = false;
-    QKeySequence shortcut;
-    int builtInActionId = LyViewPane::NO_BUILTIN_ACTION;
-    bool isDockable = true;
 
-
-    bool sendViewPaneNameBackToAmazonAnalyticsServers = false; // ONLY SET THIS IF YOU'RE OK WITH YOUR VIEWPANE'S NAME BEING SENT TO AMAZON SERVERS!
-};
-
-typedef std::function<QWidget*()> ViewPaneFactory;
+typedef AZStd::function<QWidget*()> ViewPaneFactory;
 
 class DockWidget
     : public AzQtComponents::StyledDockWidget
@@ -148,7 +96,7 @@ struct QtViewPane
     QString m_category;
     ViewPaneFactory m_factoryFunc;
     QPointer<DockWidget> m_dockWidget;
-    QtViewOptions m_options;
+    AzToolsFramework::ViewPaneOptions m_options;
 
     bool IsValid() const
     {
@@ -195,8 +143,8 @@ class EDITOR_CORE_API QtViewPaneManager
 public:
     explicit QtViewPaneManager(QObject* parent = nullptr);
     ~QtViewPaneManager();
-    void SetMainWindow(QMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking);
-    void RegisterPane(const QString &name, const QString &category, ViewPaneFactory, const QtViewOptions& = {});
+    void SetMainWindow(QMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool useNewDocking, bool enableLegacyCryEntities);
+    void RegisterPane(const QString &name, const QString &category, ViewPaneFactory, const AzToolsFramework::ViewPaneOptions& = {});
     void UnregisterPane(const QString& name);
     QtViewPane* GetPane(int id);
     QtViewPane* GetPane(const QString& name);
@@ -273,8 +221,9 @@ private:
 
     ViewLayoutState GetLayout() const;
     bool RestoreLayout(const ViewLayoutState& state);
+    void SaveStateToLayout(const ViewLayoutState& state, const QString& layoutName);
 
-    bool ClosePane(QtViewPane*);
+    bool ClosePane(QtViewPane* pane, QtViewPane::CloseModes closeModes = QtViewPane::CloseMode::None);
     int NextAvailableId();
     QtViewPanes m_registeredPanes;
     QByteArray m_defaultMainWindowState;
@@ -285,18 +234,19 @@ private:
     bool m_restoreInProgress;
 
     bool m_useNewDocking;
+    bool m_enableLegacyCryEntities;
     FancyDocking* m_advancedDockManager;
 };
 
 template<class TWidget>
-bool RegisterQtViewPane(IEditor* editor, const QString& name, const QString& category, const QtViewOptions& options = {})
+bool RegisterQtViewPane(IEditor* editor, const QString& name, const QString& category, const AzToolsFramework::ViewPaneOptions& options = {})
 {
     QtViewPaneManager::instance()->RegisterPane(name, category, []() { return new TWidget(); }, options);
     return true;
 }
 
 template<class TWidget>
-bool RegisterQtViewPaneWithName(IEditor* editor, const QString& name, const QString& category, const QtViewOptions& options = {})
+bool RegisterQtViewPaneWithName(IEditor* editor, const QString& name, const QString& category, const AzToolsFramework::ViewPaneOptions& options = {})
 {
     QtViewPaneManager::instance()->RegisterPane(name, category, [name]() { return new TWidget(name); }, options);
     return true;
@@ -320,4 +270,4 @@ TWidget* FindViewPane(const QString& name)
 Q_DECLARE_OPERATORS_FOR_FLAGS(QtViewPane::OpenModes)
 Q_DECLARE_OPERATORS_FOR_FLAGS(QtViewPane::CloseModes)
 
-#endif
+

@@ -759,41 +759,41 @@ ILINE unsigned int Color_tpl<T>::pack_argb8888() const
 template <class T>
 inline void Color_tpl<T>::toHSV(f32& h, f32& s, f32& v) const
 {
-    f32 r, g, b;
+    f32 red, green, blue;
     if (sizeof(this->r) == 1) // 8bit integer
     {
-        r = this->r * (1.0f / f32(0xff));
-        g = this->g * (1.0f / f32(0xff));
-        b = this->b * (1.0f / f32(0xff));
+        red = this->r * (1.0f / f32(0xff));
+        green = this->g * (1.0f / f32(0xff));
+        blue = this->b * (1.0f / f32(0xff));
     }
     else if (sizeof(this->r) == 2) // 16bit integer
     {
-        r = this->r * (1.0f / f32(0xffff));
-        g = this->g * (1.0f / f32(0xffff));
-        b = this->b * (1.0f / f32(0xffff));
+        red = this->r * (1.0f / f32(0xffff));
+        green = this->g * (1.0f / f32(0xffff));
+        blue = this->b * (1.0f / f32(0xffff));
     }
     else // floating point
     {
-        r = this->r;
-        g = this->g;
-        b = this->b;
+        red = this->r;
+        green = this->g;
+        blue = this->b;
     }
 
-    if ((b > g) && (b > r))
+    if ((blue > green) && (blue > red))
     {
-        if (!::iszero(v = b))
+        if (!::iszero(v = blue))
         {
-            const f32 min = r < g ? r : g;
+            const f32 min = red < green ? red : green;
             const f32 delta = v - min;
             if (!::iszero(delta))
             {
                 s = delta / v;
-                h = (240.0f / 360.0f) + (r - g) / delta * (60.0f / 360.0f);
+                h = (240.0f / 360.0f) + (red - green) / delta * (60.0f / 360.0f);
             }
             else
             {
                 s = 0.0f;
-                h = (240.0f / 360.0f) + (r - g) * (60.0f / 360.0f);
+                h = (240.0f / 360.0f) + (red - green) * (60.0f / 360.0f);
             }
             if (h < 0.0f)
             {
@@ -806,21 +806,21 @@ inline void Color_tpl<T>::toHSV(f32& h, f32& s, f32& v) const
             h = 0.0f;
         }
     }
-    else if (g > r)
+    else if (green > red)
     {
-        if (!::iszero(v = g))
+        if (!::iszero(v = green))
         {
-            const f32 min = r < b ? r : b;
+            const f32 min = red < blue ? red : blue;
             const f32 delta = v - min;
             if (!::iszero(delta))
             {
                 s = delta / v;
-                h = (120.0f / 360.0f) + (b - r) / delta * (60.0f / 360.0f);
+                h = (120.0f / 360.0f) + (blue - red) / delta * (60.0f / 360.0f);
             }
             else
             {
                 s = 0.0f;
-                h = (120.0f / 360.0f) + (b - r) * (60.0f / 360.0f);
+                h = (120.0f / 360.0f) + (blue - red) * (60.0f / 360.0f);
             }
             if (h < 0.0f)
             {
@@ -835,19 +835,19 @@ inline void Color_tpl<T>::toHSV(f32& h, f32& s, f32& v) const
     }
     else
     {
-        if (!::iszero(v = r))
+        if (!::iszero(v = red))
         {
-            const f32 min = g < b ? g : b;
+            const f32 min = green < blue ? green : blue;
             const f32 delta = v - min;
             if (!::iszero(delta))
             {
                 s = delta / v;
-                h = (g - b) / delta * (60.0f / 360.0f);
+                h = (green - blue) / delta * (60.0f / 360.0f);
             }
             else
             {
                 s = 0.0f;
-                h = (g - b) * (60.0f / 360.0f);
+                h = (green - blue) * (60.0f / 360.0f);
             }
             if (h < 0.0f)
             {
@@ -867,18 +867,18 @@ inline void Color_tpl<T>::toHSV(f32& h, f32& s, f32& v) const
 template <class T>
 inline void Color_tpl<T>::fromHSV(f32 h, f32 s, f32 v)
 {
-    f32 r, g, b;
+    f32 red, green, blue;
     if (::iszero(v))
     {
-        r = 0.0f;
-        g = 0.0f;
-        b = 0.0f;
+        red = 0.0f;
+        green = 0.0f;
+        blue = 0.0f;
     }
     else if (::iszero(s))
     {
-        r = v;
-        g = v;
-        b = v;
+        red = v;
+        green = v;
+        blue = v;
     }
     else
     {
@@ -893,71 +893,71 @@ inline void Color_tpl<T>::fromHSV(f32 h, f32 s, f32 v)
         switch (i)
         {
         case 0:
-            r = v;
-            g = v2;
-            b = v0;
+            red = v;
+            green = v2;
+            blue = v0;
             break;
         case 1:
-            r = v1;
-            g = v;
-            b = v0;
+            red = v1;
+            green = v;
+            blue = v0;
             break;
         case 2:
-            r = v0;
-            g = v;
-            b = v2;
+            red = v0;
+            green = v;
+            blue = v2;
             break;
         case 3:
-            r = v0;
-            g = v1;
-            b = v;
+            red = v0;
+            green = v1;
+            blue = v;
             break;
         case 4:
-            r = v2;
-            g = v0;
-            b = v;
+            red = v2;
+            green = v0;
+            blue = v;
             break;
         case 5:
-            r = v;
-            g = v0;
-            b = v1;
+            red = v;
+            green = v0;
+            blue = v1;
             break;
 
         case 6:
-            r = v;
-            g = v2;
-            b = v0;
+            red = v;
+            green = v2;
+            blue = v0;
             break;
         case -1:
-            r = v;
-            g = v0;
-            b = v1;
+            red = v;
+            green = v0;
+            blue = v1;
             break;
         default:
-            r = 0.0f;
-            g = 0.0f;
-            b = 0.0f;
+            red = 0.0f;
+            green = 0.0f;
+            blue = 0.0f;
             break;
         }
     }
 
     if (sizeof(this->r) == 1) // 8bit integer
     {
-        this->r = r * f32(0xff);
-        this->g = g * f32(0xff);
-        this->b = b * f32(0xff);
+        this->r = red * f32(0xff);
+        this->g = green * f32(0xff);
+        this->b = blue * f32(0xff);
     }
     else if (sizeof(this->r) == 2) // 16bit integer
     {
-        this->r = r * f32(0xffff);
-        this->g = g * f32(0xffff);
-        this->b = b * f32(0xffff);
+        this->r = red * f32(0xffff);
+        this->g = green * f32(0xffff);
+        this->b = blue * f32(0xffff);
     }
     else // floating point
     {
-        this->r = r;
-        this->g = g;
-        this->b = b;
+        this->r = red;
+        this->g = green;
+        this->b = blue;
     }
 }
 #pragma warning(pop)

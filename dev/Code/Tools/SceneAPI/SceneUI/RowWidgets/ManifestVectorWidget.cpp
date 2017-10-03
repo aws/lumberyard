@@ -60,6 +60,13 @@ namespace AZ
 
                 // Add empty menu for visual consistency.
                 m_ui->m_addObjectButton->setMenu(new QMenu(this));
+
+                BusConnect();
+            }
+
+            ManifestVectorWidget::~ManifestVectorWidget()
+            {
+                BusDisconnect();
             }
 
             void ManifestVectorWidget::SetManifestVector(const ManifestVectorType& manifestVector, DataTypes::IManifestObject* ownerObject)
@@ -114,10 +121,10 @@ namespace AZ
                     {
                         m_manifestVector.erase(it);
                         QTimer::singleShot(0, this, 
-                            [this]()
+                            [this, object]()
                             {
                                 UpdatePropertyGrid();
-                                emit valueChanged();
+                                EmitObjectChanged(m_ownerObject);
                             });
                         return true;
                     }
@@ -212,7 +219,7 @@ namespace AZ
                 
                 m_manifestVector.push_back(newObject);
                 UpdatePropertyGrid();
-                emit valueChanged();
+                EmitObjectChanged(m_ownerObject);
             }
 
             void ManifestVectorWidget::UpdatePropertyGrid()
@@ -242,9 +249,45 @@ namespace AZ
                 }
             }
 
-            void ManifestVectorWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/)
+            void ManifestVectorWidget::EmitObjectChanged(const DataTypes::IManifestObject* object)
             {
                 emit valueChanged();
+
+                ManifestWidget* root = ManifestWidget::FindRoot(this);
+                AZ_Assert(root, "ManifestVectorWidget is not a child of a ManifestWidget.");
+                if (!root)
+                {
+                    return;
+                }
+                AZStd::shared_ptr<Containers::Scene> scene = root->GetScene();
+                if (!scene)
+                {
+                    return;
+                }
+
+                Events::ManifestMetaInfoBus::Broadcast(&Events::ManifestMetaInfoBus::Events::ObjectUpdated, *scene, object, this);
+            }
+
+            void ManifestVectorWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode* node)
+            {
+                if (node && node->GetParent())
+                {
+                    AzToolsFramework::InstanceDataNode* owner = node->GetParent();
+                    const AZ::SerializeContext::ClassData* data = owner->GetClassMetadata();
+                    if (data && data->m_azRtti)
+                    {
+                        const DataTypes::IManifestObject* cast = data->m_azRtti->Cast<DataTypes::IManifestObject>(owner->FirstInstance());
+                        if (cast)
+                        {
+                            AZ_Assert(AZStd::find_if(m_manifestVector.begin(), m_manifestVector.end(),
+                                [cast](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
+                                {
+                                    return object.get() == cast;
+                                }) != m_manifestVector.end(), "ManifestVectorWidget detected an update of a field it doesn't own.");
+                            EmitObjectChanged(cast);
+                        }
+                    }
+                }
             }
 
             void ManifestVectorWidget::RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* /*node*/, const QPoint& /*point*/)
@@ -271,8 +314,23 @@ namespace AZ
             {
                 UpdatePropertyGridSize();
             }
-        } // UI
-    } // SceneAPI
-} // AZ
+
+            void ManifestVectorWidget::ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender)
+            {
+                if (sender != this && target != nullptr && m_propertyEditor)
+                {
+                    if (AZStd::find_if(m_manifestVector.begin(), m_manifestVector.end(),
+                        [target](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
+                        {
+                            return object.get() == target;
+                        }) != m_manifestVector.end())
+                    {
+                        m_propertyEditor->InvalidateAttributesAndValues();
+                    }
+                }
+            }
+        } // namespace UI
+    } // namespace SceneAPI
+} // namespace AZ
 
 #include <RowWidgets/ManifestVectorWidget.moc>

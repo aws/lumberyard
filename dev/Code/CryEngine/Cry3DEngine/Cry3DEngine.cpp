@@ -103,7 +103,7 @@ public:
                 Cry3DEngineBase::Get3DEngine()->SetObjectTree(nullptr);
             }
 
-            if (CObjManager* pObjManager = Cry3DEngineBase::GetObjManager())
+            if (IObjManager* pObjManager = Cry3DEngineBase::GetObjManager())
             {
                 pObjManager->UnloadObjects(true);
             }

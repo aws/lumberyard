@@ -11,8 +11,7 @@
 */
 #include "StdAfx.h"
 #include "PrimitiveColliderComponent.h"
-#include <AzCore/Component/TransformBus.h>
-#include <AzCore/Math/Transform.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/sort.h>
 #include <I3DEngine.h>
 #include <IPhysics.h>
@@ -38,33 +37,75 @@ namespace LmbrCentral
         return nullptr;
     }
 
-    void PrimitiveColliderConfiguration::Reflect(AZ::ReflectContext* context)
+    AZStd::vector<AZStd::string> GetSurfaceTypeNames()
+    {
+        AZStd::vector<AZStd::string> names;
+
+        if (ISurfaceTypeManager* pSurfaceManager = GetSurfaceTypeManager())
+        {
+            if (ISurfaceTypeEnumerator* surfaceEnumerator = pSurfaceManager->GetEnumerator())
+            {
+                for (ISurfaceType* surfaceType = surfaceEnumerator->GetFirst(); surfaceType; surfaceType = surfaceEnumerator->GetNext())
+                {
+                    // put default material at start of list
+                    if (surfaceType->GetId() == 0)
+                    {
+                        names.insert(names.begin(), surfaceType->GetName());
+                    }
+                    else
+                    {
+                        names.emplace_back(surfaceType->GetName());
+                    }
+                }
+            }
+        }
+
+        // make empty string the very first entry. It's the default value of PrimitiveColliderConfig::m_surfaceTypeName
+        names.insert(names.begin(), "");
+
+        // alphabetize everything after the empty string and the default material.
+        if (names.size() >= 2)
+        {
+            AZStd::sort(names.begin() + 2, names.end());
+        }
+
+        return names;
+    }
+
+    void PrimitiveColliderConfig::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<PrimitiveColliderConfiguration>()
+            serializeContext->Class<PrimitiveColliderConfig>()
                 ->Version(1)
-                ->Field("SurfaceTypeName", &PrimitiveColliderConfiguration::m_surfaceTypeName)
+                ->Field("SurfaceTypeName", &PrimitiveColliderConfig::m_surfaceTypeName)
                 ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<PrimitiveColliderConfiguration>("Primitive Collider Configuration", "")
+                editContext->Class<PrimitiveColliderConfig>("Primitive Collider Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &PrimitiveColliderConfiguration::m_surfaceTypeName,
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &PrimitiveColliderConfig::m_surfaceTypeName,
                         "Surface Type", "The collider will use this surface type in the physics simulation.")
-                        ->Attribute(AZ::Edit::Attributes::StringList, &PrimitiveColliderConfiguration::GetSurfaceTypeNames)
+                        ->Attribute(AZ::Edit::Attributes::StringList, &GetSurfaceTypeNames)
                 ;
             }
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<PrimitiveColliderConfig>()
+                ->Property("SurfaceTypeName", BehaviorValueProperty(&PrimitiveColliderConfig::m_surfaceTypeName))
+                ;
         }
     }
 
     void PrimitiveColliderComponent::Reflect(AZ::ReflectContext* context)
     {
-        PrimitiveColliderConfiguration::Reflect(context);
+        PrimitiveColliderConfig::Reflect(context);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -85,51 +126,17 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PrimitiveCollider.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-primitive-collider.html")
                     ->DataElement(0, &PrimitiveColliderComponent::m_configuration, "Configuration", "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
-       }
-    }
-
-    PrimitiveColliderConfiguration::PrimitiveColliderConfiguration()
-    {
-        // Get the default surface type from the surface type manager.
-        if (ISurfaceTypeManager* manager = GetSurfaceTypeManager())
-        {
-            enum { DefaultSurfaceTypeId = 0 };
-            if (ISurfaceType* surfaceType = manager->GetSurfaceType(DefaultSurfaceTypeId))
-            {
-                m_surfaceTypeName = surfaceType->GetName();
-            }
         }
-    }
-
-    AZStd::vector<AZStd::string> PrimitiveColliderConfiguration::GetSurfaceTypeNames() const
-    {
-        AZStd::vector<AZStd::string> names;
-
-        if (ISurfaceTypeManager* pSurfaceManager = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeManager())
+        
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            if (ISurfaceTypeEnumerator* surfaceEnumerator = pSurfaceManager->GetEnumerator())
-            {
-                for (ISurfaceType* surfaceType = surfaceEnumerator->GetFirst(); surfaceType; surfaceType = surfaceEnumerator->GetNext())
-                {
-                    names.emplace_back(surfaceType->GetName());
-                }
-            }
+            behaviorContext->Constant("PrimitiveColliderComponentTypeId", BehaviorConstant(PrimitiveColliderComponentTypeId));
         }
-
-        // Alphabetize
-        AZStd::sort(names.begin(), names.end());
-
-        return names;
-    }
-
-
-    PrimitiveColliderComponent::PrimitiveColliderComponent(const PrimitiveColliderConfiguration& configuration)
-        : m_configuration(configuration)
-    {
     }
 
     //! Create IGeometry. Returns IGeometry wrapped in a _smart_ptr.
@@ -158,7 +165,7 @@ namespace LmbrCentral
 
         if (shapeType == AZ::Crc32("Sphere"))
         {
-            SphereShapeConfiguration config;
+            SphereShapeConfig config;
             EBUS_EVENT_ID_RESULT(config, entityId, SphereShapeComponentRequestsBus, GetSphereConfiguration);
             primitives::sphere sphere;
             sphere.center.Set(0.f, 0.f, 0.f);
@@ -167,7 +174,7 @@ namespace LmbrCentral
         }
         else if (shapeType == AZ::Crc32("Box"))
         {
-            BoxShapeConfiguration config;
+            BoxShapeConfig config;
             EBUS_EVENT_ID_RESULT(config, entityId, BoxShapeComponentRequestsBus, GetBoxConfiguration);
             primitives::box box;
             box.Basis.SetIdentity();
@@ -181,7 +188,7 @@ namespace LmbrCentral
         }
         else if (shapeType == AZ::Crc32("Cylinder"))
         {
-            CylinderShapeConfiguration config;
+            CylinderShapeConfig config;
             EBUS_EVENT_ID_RESULT(config, entityId, CylinderShapeComponentRequestsBus, GetCylinderConfiguration);
             primitives::cylinder cylinder;
             cylinder.center.Set(0.f, 0.f, 0.f);
@@ -194,7 +201,7 @@ namespace LmbrCentral
         }
         else if (shapeType == AZ::Crc32("Capsule"))
         {
-            CapsuleShapeConfiguration config;
+            CapsuleShapeConfig config;
             EBUS_EVENT_ID_RESULT(config, entityId, CapsuleShapeComponentRequestsBus, GetCapsuleConfiguration);
             primitives::capsule capsule;
             capsule.center.Set(0.f, 0.f, 0.f);
@@ -219,9 +226,9 @@ namespace LmbrCentral
             m_recipientOfNewlyActivatedShapes = &physicalEntity;
             m_recipientOfNewlyActivatedShapesNextPartId = nextPartId;
             m_recipientOfNewlyActivatedShapesFinalPartId = NoPartsAdded;
-            for (const AZ::EntityId& entityId : config.GetChildEntities())
+            for (const AZ::EntityId& childEntityId : config.GetChildEntities())
             {
-                AZ::EntityBus::MultiHandler::BusConnect(entityId);
+                AZ::EntityBus::MultiHandler::BusConnect(childEntityId);
             }
             m_recipientOfNewlyActivatedShapes = nullptr;
             return m_recipientOfNewlyActivatedShapesFinalPartId;
@@ -320,6 +327,26 @@ namespace LmbrCentral
     {
         ColliderComponentRequestBus::Handler::BusDisconnect();
         ShapeComponentNotificationsBus::Handler::BusDisconnect();
+    }
+
+    bool PrimitiveColliderComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
+    {
+        if (auto config = azrtti_cast<const PrimitiveColliderConfig*>(baseConfig))
+        {
+            m_configuration = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool PrimitiveColliderComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<PrimitiveColliderConfig*>(outBaseConfig))
+        {
+            *outConfig = m_configuration;
+            return true;
+        }
+        return false;
     }
 
     void PrimitiveColliderComponent::OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason)

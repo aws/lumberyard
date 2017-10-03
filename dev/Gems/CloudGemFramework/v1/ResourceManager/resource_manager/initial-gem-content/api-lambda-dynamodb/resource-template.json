@@ -1,0 +1,229 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    }, 
+    "Outputs": {
+        "ServiceUrl": {
+            "Description": "The service url.", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceApi", 
+                    "Url"
+                ]
+            }
+        }
+    }, 
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup", 
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.", 
+            "Type": "String"
+        }, 
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.", 
+            "Type": "String"
+        }, 
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.", 
+            "Type": "String"
+        }, 
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.", 
+            "Type": "String"
+        }, 
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.", 
+            "Type": "String"
+        }, 
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.", 
+            "Type": "String"
+        }, 
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterEnabled": {
+            "Default": "false", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        }, 
+        "ServiceApiCacheClusterSize": {
+            "Default": "0.5", 
+            "Description": "Indicates whether cache clustering is enabled for the service API.", 
+            "Type": "String"
+        },
+        "ReadCapacityUnits": {
+            "Type": "Number",
+            "Default": "1",
+            "Description": "Number of game state reads per second."
+        },
+        "WriteCapacityUnits": {
+            "Type": "Number",
+            "Default": "1",
+            "Description": "Number of game state writes per second."
+        }
+    }, 
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "Table", 
+                "ServiceApi", 
+                "ServiceLambda"
+            ], 
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            }, 
+            "Type": "Custom::AccessControl"
+        }, 
+        "Table": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "Key",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "Key",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": { "Ref": "ReadCapacityUnits" },
+                    "WriteCapacityUnits": { "Ref": "WriteCapacityUnits" }
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceLambda",
+                            "Action": [
+                                "dynamodb:DeleteItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:Scan"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "ServiceApi": {
+            "Properties": {
+                "CacheClusterEnabled": {
+                    "Ref": "ServiceApiCacheClusterEnabled"
+                }, 
+                "CacheClusterSize": {
+                    "Ref": "ServiceApiCacheClusterSize"
+                }, 
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "MethodSettings": {}, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "SwaggerSettings": {
+                    "ServiceLambdaArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda", 
+                            "Arn"
+                        ]
+                    }
+                }
+            }, 
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": {
+                        "AbstractRole": "Player",
+                        "Action": "execute-api:Invoke",
+                        "ResourceSuffix": [
+                            "/api/GET/example/data",
+                            "/api/PUT/example/data"
+                        ]
+                    }
+                }
+            }, 
+            "Type": "Custom::ServiceApi"
+        }, 
+        "ServiceLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "ServiceApi", 
+                            "Action": "lambda:InvokeFunction"
+                        }
+                    ]
+                }
+            }, 
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Handler": "service.dispatch", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Role"
+                    ]
+                }, 
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ServiceLambdaConfiguration", 
+                        "Runtime"
+                    ]
+                }
+            }, 
+            "Type": "AWS::Lambda::Function"
+        }, 
+        "ServiceLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "FunctionName": "ServiceLambda", 
+                "Runtime": "python2.7", 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "Settings": {
+                    "Table": { "Ref": "Table" }
+                }
+            }, 
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

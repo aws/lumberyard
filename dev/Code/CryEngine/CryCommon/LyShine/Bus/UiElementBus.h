@@ -129,6 +129,9 @@ public: // member functions
     //! \param result, any matching elements will be added to this array
     virtual void FindDescendantElements(std::function<bool(const AZ::Entity*)> predicate, LyShine::EntityArray& result) = 0;
 
+    //! Return whether a given element is an ancestor of this element
+    virtual bool IsAncestor(AZ::EntityId id) = 0;
+
     //! Enabled/disabled
     virtual bool IsEnabled() = 0;
     virtual void SetIsEnabled(bool isEnabled) = 0;

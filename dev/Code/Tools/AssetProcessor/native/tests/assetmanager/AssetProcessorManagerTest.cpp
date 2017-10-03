@@ -54,7 +54,7 @@ void AssetProcessorManagerTest::SetUp()
 
     AssetProcessorTest::SetUp();
 
-    AssetUtilities::ResetEngineRoot();
+    AssetUtilities::ResetAssetRoot();
 
     m_scopeDir.Setup(m_tempDir.path());
     QDir tempPath(m_tempDir.path());
@@ -63,7 +63,7 @@ void AssetProcessorManagerTest::SetUp()
 
     m_gameName = AssetUtilities::ComputeGameName();
 
-    AssetUtilities::ResetEngineRoot();
+    AssetUtilities::ResetAssetRoot();
     QDir newRoot;
     AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
 
@@ -85,7 +85,7 @@ void AssetProcessorManagerTest::SetUp()
 
 void AssetProcessorManagerTest::TearDown()
 {
-    AssetUtilities::ResetEngineRoot();
+    AssetUtilities::ResetAssetRoot();
     delete m_assetProcessorManager;
     delete m_qApp;
 

@@ -24,6 +24,9 @@
 
 #include "Lambda/FlowNode_LambdaInvoke.h"
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 namespace LmbrAWS
 {
     static const char* CLASS_TAG = "AWS:Primitive:LambdaInvoke";
@@ -83,7 +86,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Invoke"),
-            m_functionClientPort.GetConfiguration("FunctionName", _HELP("A lambda function to call from the cloud")),
+            InputPortConfig<string>("FunctionName", _HELP("A lambda function to call from the cloud")),
             InputPortConfig<string>("RequestBody", _HELP("The data that will be sent to the lambda function call as arguments in JSON format.  For more information see http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html#API_Invoke_RequestSyntax"), "Args")
         };
 
@@ -112,18 +115,11 @@ namespace LmbrAWS
 
     void FlowNode_LambdaInvoke::ProcessInvokePort(IFlowNode::SActivationInfo* pActInfo)
     {
-        string functionName;
         string requestBody;
         IFlowGraph* flowGraph = pActInfo->pGraph;
 
-        auto client = m_functionClientPort.GetClient(pActInfo);
-        if (!client.IsReady())
-        {
-            ErrorNotify(flowGraph, pActInfo->myID, "Client configuration not ready.");
-            return;
-        }
-
-        functionName = client.GetFunctionName();
+        AZStd::string functionName = GetPortString(pActInfo, EIP_FunctionClient).c_str();
+        EBUS_EVENT_RESULT(functionName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, functionName);
 
         pActInfo->pInputPorts[EIP_RequestBody].GetValueWithConversion(requestBody);
 
@@ -134,7 +130,7 @@ namespace LmbrAWS
         }
 
         Aws::Lambda::Model::InvokeRequest request;
-        request.SetFunctionName(functionName);
+        request.SetFunctionName(functionName.c_str());
         request.SetInvocationType(Aws::Lambda::Model::InvocationType::RequestResponse);
         request.SetContentType("application/javascript");
         request.SetLogType(Aws::Lambda::Model::LogType::Tail);

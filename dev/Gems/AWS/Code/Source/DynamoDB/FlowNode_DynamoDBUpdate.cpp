@@ -17,6 +17,9 @@
 #include <aws/core/utils/Outcome.h>
 #include <memory>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 using namespace Aws::DynamoDB;
 
@@ -38,7 +41,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("UpdateItem", _HELP("Activate this to write data to the cloud on an existing item")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to use")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to use")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("Key name to use in this table")),
             InputPortConfig<string>("Key", _HELP("The key you wish to write"), "KeyValue"),
             InputPortConfig<string>("Attribute", _HELP("The attribute you wish to write"), "AttributeToWrite"),
@@ -64,14 +67,9 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_StartUpdate))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
 
-            auto& tableName = client.GetTableName();
             auto& keyName = GetPortString(pActInfo, EIP_TableKeyName);
             auto& key = GetPortString(pActInfo, EIP_Key);
             auto& attributeStr = GetPortString(pActInfo, EIP_Attribute);
@@ -79,7 +77,7 @@ namespace LmbrAWS
             auto attributeMustExist = GetPortBool(pActInfo, EIP_AttributeMustExist);
 
             Aws::DynamoDB::Model::UpdateItemRequest updateRequest;
-            updateRequest.SetTableName(tableName);
+            updateRequest.SetTableName(tableName.c_str());
 
             AttributeValue hk;
             hk.SetS(key);

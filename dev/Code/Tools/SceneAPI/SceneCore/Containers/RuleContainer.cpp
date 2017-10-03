@@ -80,7 +80,7 @@ namespace AZ
             void RuleContainer::Reflect(ReflectContext* context)
             {
                 SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(RuleContainer::TYPEINFO_Uuid()))
+                if (!serializeContext)
                 {
                     return;
                 }
@@ -93,7 +93,7 @@ namespace AZ
                 if (editContext)
                 {
                     editContext->Class<RuleContainer>("Rule Container", "Description.")
-                        ->DataElement(AZ_CRC("ManifestVector"), &RuleContainer::m_rules, "", "Add or remove entries to fine-tune source file processing.")
+                        ->DataElement(AZ_CRC("ManifestVector", 0x895aa9aa), &RuleContainer::m_rules, "", "Add or remove entries to fine-tune source file processing.")
                             ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
                             ->Attribute(AZ_CRC("CollectionName", 0xbbc1c898), "Modifiers")
                             ->Attribute(AZ_CRC("ObjectTypeName", 0x6559e0c0), "Modifier")
@@ -106,7 +106,7 @@ namespace AZ
             // groups now have a RuleContainer as a member. This version converter converts from groups holding the vector
             bool RuleContainer::VectorToRuleContainerConverter(SerializeContext& context, SerializeContext::DataElementNode& classElement)
             {
-                int elementIndex = classElement.FindElement(AZ_CRC("rules"));
+                int elementIndex = classElement.FindElement(AZ_CRC("rules", 0x899a993c));
                 if (elementIndex >= 0)
                 {
                     AZ::SerializeContext::DataElementNode& rulesElement = classElement.GetSubElement(elementIndex);

@@ -37,6 +37,9 @@
             ],
             "gmock_main/lib": [
                 "gmock_main.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
             ]
         },
         "darwin_x64": {
@@ -94,6 +97,17 @@
             "gmock_main/lib": [
                 "gmock_main.lib"
             ]
-        }
+        },
+        "orbis": {
+            "libpath_debug": [
+                "lib/orbis/Debug"
+            ],
+            "libpath_release": [
+                "lib/orbis/Release"
+            ],
+            "gmock/lib": [
+                "libgmock.a"
+            ]
+        }		
     }
 }

@@ -20,7 +20,7 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/std/string/string.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     /*!
     * SequenceComponentRequests EBus Interface
@@ -96,17 +96,23 @@ namespace LmbrCentral
             {
                 boolValue = GetBoolValue();
             }
+            void GetValue(AZ::u32& u32Value) const
+            {
+                u32Value = GetU32Value();
+            }
             // same as above but returning the value
             virtual AZ::Quaternion GetQuaternionValue() const = 0;
             virtual AZ::Vector3 GetVector3Value() const = 0;
             virtual float       GetFloatValue() const = 0;
             virtual bool        GetBoolValue() const = 0;
+            virtual AZ::u32     GetU32Value() const = 0;
 
             // Set the value to the given arg. Returns true if the arg is the 'native' type of the concrete animated value
             virtual bool SetValue(const AZ::Vector3& vector3Value) = 0;
             virtual bool SetValue(const AZ::Quaternion& quaternionValue) = 0;
             virtual bool SetValue(float floatValue) = 0;
             virtual bool SetValue(bool boolValue) = 0;
+            virtual bool SetValue(AZ::u32 u32Value) = 0;
 
             virtual bool IsClose(const AnimatedFloatValue& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
             virtual bool IsClose(const AnimatedVector3Value& rhs, float tolerance = AZ::g_simdTolerance) const = 0;
@@ -147,6 +153,10 @@ namespace LmbrCentral
             {
                 return (!AZ::IsClose(m_value, .0f, FLT_EPSILON));
             }
+            AZ::u32 GetU32Value() const override
+            {
+                return static_cast<AZ::u32>(m_value);
+            }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
             {
@@ -166,6 +176,11 @@ namespace LmbrCentral
             bool SetValue(bool boolValue) override
             {
                 m_value = boolValue ? 1.0f : .0f;
+                return false;
+            }
+            bool SetValue(AZ::u32 u32Value) override
+            {
+                m_value = static_cast<float>(u32Value);
                 return false;
             }
 
@@ -221,6 +236,10 @@ namespace LmbrCentral
             {
                 return !m_value.IsClose(AZ::Vector3::CreateZero());
             }
+            AZ::u32 GetU32Value() const override
+            {
+                return static_cast<AZ::u32>(m_value.GetX());
+            }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
             {
@@ -240,6 +259,11 @@ namespace LmbrCentral
             bool SetValue(bool boolValue) override
             {
                 m_value = boolValue ? AZ::Vector3::CreateOne() : AZ::Vector3::CreateZero();
+                return false;
+            }
+            bool SetValue(AZ::u32 u32Value) override
+            {
+                m_value.Set(static_cast<float>(u32Value));
                 return false;
             }
 
@@ -296,6 +320,10 @@ namespace LmbrCentral
             {
                 return !m_value.IsZero();
             }
+            AZ::u32 GetU32Value() const override
+            {
+                return static_cast<AZ::u32>(m_value.GetLength());
+            }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
             {
@@ -316,6 +344,11 @@ namespace LmbrCentral
             bool SetValue(bool boolValue) override
             {
                 m_value = boolValue ? AZ::Quaternion::CreateIdentity() : AZ::Quaternion::CreateZero();
+                return false;
+            }
+            bool SetValue(AZ::u32 u32Value) override
+            {
+                m_value.Set(static_cast<float>(u32Value));
                 return false;
             }
 
@@ -370,6 +403,10 @@ namespace LmbrCentral
             {
                 return m_value;
             }
+            AZ::u32 GetU32Value() const override
+            {
+                return m_value ? 1 : 0;
+            }
 
             bool SetValue(const AZ::Vector3& vector3Value) override
             {
@@ -390,6 +427,11 @@ namespace LmbrCentral
             {
                 m_value = boolValue;
                 return true;
+            }
+            bool SetValue(AZ::u32 u32Value) override
+            {
+                m_value = u32Value != 0;
+                return false;
             }
 
             bool IsClose(const AnimatedFloatValue& rhs, float tolerance = AZ::g_fltEps) const override
@@ -438,7 +480,7 @@ namespace LmbrCentral
 
         /** Returns the Uuid of the type for the property at the animatableAddress on the given entityId
         */
-        virtual AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& enityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
+        virtual AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& enityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
 
         //////////////////////////////////////////////////////////////////////////
         // Behaviors
@@ -545,14 +587,14 @@ namespace LmbrCentral
     };
 
     using SequenceComponentNotificationBus = AZ::EBus<SequenceComponentNotification>;
-} // namespace LmbrCentral
+} // namespace Maestro
 
 namespace AZStd
 {
     template <>
-    struct hash < LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress >
+    struct hash < Maestro::SequenceComponentRequests::AnimatablePropertyAddress >
     {
-        inline size_t operator()(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatablePropertyAddress) const
+        inline size_t operator()(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatablePropertyAddress) const
         {
             AZStd::hash<AZ::ComponentId> componentIdHasher;
             size_t retVal = componentIdHasher(animatablePropertyAddress.GetComponentId());

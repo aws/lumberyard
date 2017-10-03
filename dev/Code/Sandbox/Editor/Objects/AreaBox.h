@@ -98,6 +98,9 @@ public:
     int GetAreaId();
     void SetBox(AABB box);
     AABB GetBox();
+    float GetWidth() { return mv_width; }
+    float GetLength() { return mv_length; }
+    float GetHeight() { return mv_height; }
 
     virtual void UpdateGameArea();
 

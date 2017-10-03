@@ -67,6 +67,7 @@ namespace AzToolsFramework
         /// and is requesting that a notification be sent to the tree view.
         /// These requests should be handled, considered, and either acted on or queued
         virtual void ModelEntitySelectionChanged(const AZStd::unordered_set<AZ::EntityId>& /*selectedEntityIdList*/, const AZStd::unordered_set<AZ::EntityId>& /*deselectedEntityIdList*/) {}
+        virtual void QueueScrollToNewContent(const AZ::EntityId& /*entityId*/) {}
     };
 
     /// \ref EditorVisibilityNotifications

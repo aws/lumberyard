@@ -11,8 +11,10 @@
 */
 #include <StdAfx.h>
 #include <Configuration/FlowNode_ConfigureProxy.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+
+#include <CloudGemFramework/AwsApiJob.h>
+#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 namespace LmbrAWS
 {
@@ -45,15 +47,16 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Configure))
         {
-            auto clientManager = gEnv->pLmbrAWS->GetClientManager();
-
-            auto settings = clientManager->GetDefaultClientSettings();
-            settings.proxyHost = GetPortString(pActInfo, EIP_Host);
-            settings.proxyPort = GetPortInt(pActInfo, EIP_Port);
-            settings.proxyUserName = GetPortString(pActInfo, EIP_UserName);
-            settings.proxyPassword = GetPortString(pActInfo, EIP_Password);
-
-            clientManager->ApplyConfiguration();
+            CloudGemFramework::AwsApiJob::Config* defaultClientSettings{ nullptr };
+            EBUS_EVENT_RESULT(defaultClientSettings, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultConfig);
+            if (defaultClientSettings)
+            {
+                defaultClientSettings->proxyHost = GetPortString(pActInfo, EIP_Host).c_str();
+                defaultClientSettings->proxyPort = GetPortInt(pActInfo, EIP_Port);
+                defaultClientSettings->proxyUserName = GetPortString(pActInfo, EIP_UserName).c_str();
+                defaultClientSettings->proxyPassword = GetPortString(pActInfo, EIP_Password).c_str();
+            }
+            EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
 
             ActivateOutput(pActInfo, EOP_Success, true);
         }

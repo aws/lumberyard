@@ -42,13 +42,17 @@ class ConnectionManager;
 class FolderWatchCallbackEx;
 //! This class is the Application manager for Batch Mode
 
+namespace AzToolsFramework
+{
+    class Ticker;
+}
+
 
 class BatchApplicationManager
     : public ApplicationManager
     , public AssetBuilderSDK::AssetBuilderBus::Handler
     , public AssetProcessor::AssetBuilderInfoBus::Handler
     , public AssetProcessor::AssetBuilderRegistrationBus::Handler
-    , public AssetProcessor::AssetRegistryNotificationBus::Handler
     , public AZ::Debug::TraceMessageBus::Handler
     , protected AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler
 {
@@ -96,9 +100,6 @@ public:
     //! TraceMessageBus Interface
     bool OnError(const char* window, const char* message) override;
 
-    //! AssetRegistryNotificationBus::Handler
-    void OnRegistrySaveComplete(int assetCatalogVersion) override;
-
 Q_SIGNALS:
     void CheckAssetProcessorManagerIdleState();
     void ConnectionStatusMsg(QString message);
@@ -136,6 +137,10 @@ protected:
 
     ApplicationServer* m_applicationServer = nullptr;
     ConnectionManager* m_connectionManager = nullptr;
+
+    // keep track of the critical loading point where we are loading other dlls so the error messages can be better.
+    bool m_isCurrentlyLoadingGems = false;
+
 public Q_SLOTS:
     void OnActiveJobsCountChanged(unsigned int count);
 private Q_SLOTS:
@@ -149,7 +154,7 @@ private:
     int m_processedAssetCount = 0;
     int m_failedAssetsCount = 0;
     bool m_AssetProcessorManagerIdleState = false;
-
+    
     AZStd::vector<AZStd::unique_ptr<FolderWatchCallbackEx> > m_folderWatches;
     FileWatcher m_fileWatcher;
     AZStd::vector<int> m_watchHandles;
@@ -177,12 +182,12 @@ private:
     AZStd::list<AssetProcessor::ExternalModuleAssetBuilderInfo*>    m_externalAssetBuilders;
     AssetProcessor::ExternalModuleAssetBuilderInfo*                 m_currentExternalAssetBuilder;
     
-    QMap<int, qintptr> m_queuedConnections;
     QAtomicInt m_connectionsAwaitingAssetCatalogSave = 0;
     int m_remainingAPMJobs = 0;
     bool m_assetProcessorManagerIsReady = false;
 
     unsigned int m_highestConnId = 0;
+    AzToolsFramework::Ticker* m_ticker = nullptr; // for ticking the tickbus.
 };
 
 

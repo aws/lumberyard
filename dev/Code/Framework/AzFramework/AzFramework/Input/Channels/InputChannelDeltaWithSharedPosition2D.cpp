@@ -19,7 +19,7 @@ namespace AzFramework
     InputChannelDeltaWithSharedPosition2D::InputChannelDeltaWithSharedPosition2D(
         const AzFramework::InputChannelId& inputChannelId,
         const InputDevice& inputDevice,
-        const AZStd::shared_ptr<InputChannel::PositionData2D>& sharedPositionData)
+        const SharedPositionData2D& sharedPositionData)
     : InputChannelDelta(inputChannelId, inputDevice)
     , m_sharedPositionData(sharedPositionData)
     {

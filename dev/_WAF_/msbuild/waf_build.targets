@@ -124,7 +124,7 @@ DESCRIPTION: This file defines the steps/targets required to build WAF based pro
              As a last thing set ConfigurationType -> Application
              This is after we loaded all MSBUILD common targets with the ConfigurationType specified by the project.
              Reason: Visual Studio appears to take the last ConfigurationType to enable/disable some features
-                     e.g. "Single file compilation" and "Durango deploy and start debugging"
+                     e.g. "Single file compilation" and "Console deploy and start debugging"
              ******************************************************************************************* -->
     <PropertyGroup>
         <ConfigurationType>Application</ConfigurationType>

@@ -14,7 +14,7 @@
 
 #include <AzFramework/API/ApplicationAPI.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     //=========================================================================
     namespace ClassConverters
@@ -65,7 +65,7 @@ namespace LmbrCentral
         {
             m_sequenceEntityIds.insert(sequenceEntityId);
             // connect to EBus between the given SequenceComponent and me
-            LmbrCentral::SequenceAgentEventBusId busId(sequenceEntityId, GetEntityId());
+            Maestro::SequenceAgentEventBusId busId(sequenceEntityId, GetEntityId());
             SequenceAgentComponentRequestBus::MultiHandler::BusConnect(busId);
         }
     }
@@ -73,7 +73,7 @@ namespace LmbrCentral
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgentComponent::DisconnectSequence()
     {
-        const LmbrCentral::SequenceAgentEventBusId *busIdToDisconnect = SequenceAgentComponentRequestBus::GetCurrentBusId();
+        const Maestro::SequenceAgentEventBusId *busIdToDisconnect = SequenceAgentComponentRequestBus::GetCurrentBusId();
         if (busIdToDisconnect)
         {
             AZ::EntityId sequenceEntityId = busIdToDisconnect->first;
@@ -95,7 +95,7 @@ namespace LmbrCentral
         // Connect all buses
         for (auto iter = m_sequenceEntityIds.begin(); iter != m_sequenceEntityIds.end(); iter++)
         {
-            LmbrCentral::SequenceAgentEventBusId busIdToConnect(*iter, GetEntityId());
+            Maestro::SequenceAgentEventBusId busIdToConnect(*iter, GetEntityId());
             SequenceAgentComponentRequestBus::MultiHandler::BusConnect(busIdToConnect);
         }
     }
@@ -106,19 +106,19 @@ namespace LmbrCentral
         // disconnect all buses
         for (auto iter = m_sequenceEntityIds.begin(); iter != m_sequenceEntityIds.end(); iter++)
         {
-            LmbrCentral::SequenceAgentEventBusId busIdToDisconnect(*iter, GetEntityId());
+            Maestro::SequenceAgentEventBusId busIdToDisconnect(*iter, GetEntityId());
             SequenceAgentComponentRequestBus::MultiHandler::BusDisconnect(busIdToDisconnect);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    void SequenceAgentComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    void SequenceAgentComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
     {
         SequenceAgent::GetAnimatedPropertyValue(returnValue, GetEntityId(), animatableAddress);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool SequenceAgentComponent::SetAnimatedPropertyValue(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
+    bool SequenceAgentComponent::SetAnimatedPropertyValue(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
     {
         return SequenceAgent::SetAnimatedPropertyValue(GetEntityId(), animatableAddress, value);
     }
@@ -151,4 +151,4 @@ namespace LmbrCentral
             return true;
         }
     } // namespace ClassConverters
-}// namespace LmbrCentral
+}// namespace Maestro

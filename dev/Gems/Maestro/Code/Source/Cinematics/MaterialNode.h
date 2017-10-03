@@ -21,12 +21,14 @@ class CAnimMaterialNode
     : public CAnimNode
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimMaterialNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimMaterialNode, "{15B1E5EA-BB12-445E-B937-34CD559347ED}", CAnimNode);
+
+    CAnimMaterialNode();
     CAnimMaterialNode(const int id);
     static void Initialize();
 
     virtual void SetName(const char* name);
-
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Material; }
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CAnimNode
@@ -40,17 +42,13 @@ public:
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
     virtual const char* GetParamName(const CAnimParamType& paramType) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
-
     virtual void GetKeyValueRange(float& fMin, float& fMax) const { fMin = m_fMinKeyValue; fMax = m_fMaxKeyValue; };
     virtual void SetKeyValueRange(float fMin, float fMax){ m_fMinKeyValue = fMin; m_fMaxKeyValue = fMax; };
 
     virtual void InitializeTrack(IAnimTrack* pTrack, const CAnimParamType& paramType);
     
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 

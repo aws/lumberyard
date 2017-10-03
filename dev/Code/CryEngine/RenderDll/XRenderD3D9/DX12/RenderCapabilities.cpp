@@ -33,4 +33,14 @@ namespace RenderCapabilities
     {
         return false;
     }
+
+    bool SupportsDualSourceBlending()
+    {
+        return true;
+    }
+
+    bool SupportsDepthClipping()
+    {
+        return true;
+    }
 }

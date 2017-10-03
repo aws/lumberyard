@@ -54,7 +54,7 @@ namespace Audio
     {
     public:
         virtual ~AudioSystemThreadSafeInternalRequests() = default;
-        virtual void ProcessRequestThreadSafe(CAudioRequestInternal& audioRequestData) = 0;
+        virtual void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestData) = 0;
     };
 
     using AudioSystemThreadSafeInternalRequestBus = AZ::EBus<AudioSystemThreadSafeInternalRequests>;
@@ -74,7 +74,7 @@ namespace Audio
         using MutexType = AZStd::mutex;
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
-        virtual void ProcessRequestByPriority(CAudioRequestInternal& audioRequestData) = 0;
+        virtual void ProcessRequestByPriority(CAudioRequestInternal audioRequestData) = 0;
     };
 
     using AudioSystemInternalRequestBus = AZ::EBus<AudioSystemInternalRequests>;
@@ -107,8 +107,8 @@ namespace Audio
         void PushRequest(const SAudioRequest& audioRequestData) override;
         void PushRequestBlocking(const SAudioRequest& audioRequestData) override;
         void PushRequestThreadSafe(const SAudioRequest& audioRequestData) override;
-        void ProcessRequestThreadSafe(CAudioRequestInternal& audioRequestInternalData) override;
-        void ProcessRequestByPriority(CAudioRequestInternal& audioRequestInternalData) override;
+        void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestInternalData) override;
+        void ProcessRequestByPriority(CAudioRequestInternal audioRequestInternalData) override;
 
         void ExternalUpdate() override;
 

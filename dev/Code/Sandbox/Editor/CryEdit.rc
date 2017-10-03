@@ -6619,14 +6619,14 @@ BEGIN
         BEGIN
             POPUP "Graphics Performance"
             BEGIN
-                MENUITEM "PC - Very High", ID_GAME_ENABLEVERYHIGHSPEC
-                MENUITEM "PC - High", ID_GAME_ENABLEHIGHSPEC
-                MENUITEM "PC - Medium", ID_GAME_ENABLEMEDIUMSPEC
-                MENUITEM "PC - Low", ID_GAME_ENABLELOWSPEC
-                MENUITEM "Xbox One", ID_GAME_ENABLEDURANGOSPEC
-                MENUITEM "PS4", ID_GAME_ENABLEORBISSPEC
-                MENUITEM "Android", ID_GAME_ENABLEANDROIDSPEC
-                MENUITEM "iOS", ID_GAME_ENABLEIOSSPEC
+                MENUITEM "PC - Very High", ID_GAME_PC_ENABLEVERYHIGHSPEC
+                MENUITEM "PC - High", ID_GAME_PC_ENABLEHIGHSPEC
+                MENUITEM "PC - Medium", ID_GAME_PC_ENABLEMEDIUMSPEC
+                MENUITEM "PC - Low", ID_GAME_PC_ENABLELOWSPEC
+                MENUITEM "Xbox One", ID_GAME_XBONE_ENABLELOWSPEC
+                MENUITEM "PS4", ID_GAME_PS4_ENABLELOWSPEC
+                MENUITEM "Android", ID_GAME_ANDROID_ENABLELOWSPEC
+                MENUITEM "iOS", ID_GAME_IOS_ENABLELOWSPEC
             END
             POPUP "Keyboard Customization"
             BEGIN
@@ -7509,7 +7509,7 @@ BEGIN
     CG_IDS_FILE_ABSENT      "Tips file does not exist in the prescribed directory"
     CG_IDS_FILE_CORRUPT     "Trouble reading the tips file"
     CG_IDS_TIPOFTHEDAYHELP  "&Help"
-    IDR_MAINFRAME           "Lumberyard Editor\n\nEditor\nEditor Files (*.cry)\n.cry\nEditor.Document\nEditor Document"
+    IDR_MAINFRAME           "Lumberyard Editor\n\nEditor\nEditor Files (*.ly)\n.ly\nEditor.Document\nEditor Document"
     IDD_VEED_PARTS_PANEL    "Parts dialog"
     IDD_VEED_SEATS_PANEL    "Seats Panel"
     IDS_VEED_NEW            "To create a new vehicle, place an exisiting prototype in your level (use ""DefaultVehicle"" for a nearly empty template) and select ""Save As"" to save it as new vehicle class. The Editor needs to be restarted to register the new vehicle class."

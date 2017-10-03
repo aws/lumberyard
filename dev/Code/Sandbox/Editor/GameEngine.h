@@ -89,6 +89,8 @@ public:
     void SetMissionName(const QString& mission);
     //! Return name of currently loaded level.
     const QString& GetLevelName() const { return m_levelName; };
+    //! Return extension of currently loaded level.
+    const QString& GetLevelExtension() const { return m_levelExtension; };
     //! Return name of currently active mission.
     const QString& GetMissionName() const { return m_missionName; };
     //! Get fully specified level path.
@@ -172,6 +174,8 @@ public:
     void OnTerrainModified(const Vec2& modPosition, float modAreaRadius, bool fullTerrain);
     void OnAreaModified(const AABB& modifiedArea);
 
+    void ExecuteQueuedEvents();
+
     //! mutex used by other threads to lock up the PAK modification,
     //! so only one thread can modify the PAK at once
     static CryMutex& GetPakModifyMutex()
@@ -194,6 +198,7 @@ private:
 
     CLogFile m_logFile;
     QString m_levelName;
+    QString m_levelExtension;
     QString m_missionName;
     QString m_levelPath;
     QString m_MOD;

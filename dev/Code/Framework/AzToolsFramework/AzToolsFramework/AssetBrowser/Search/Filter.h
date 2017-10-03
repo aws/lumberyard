@@ -11,7 +11,6 @@
 */
 #pragma once
 
-#include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 
 #include <QObject>
@@ -28,6 +27,8 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // AssetBrowserEntryFilter
         //////////////////////////////////////////////////////////////////////////
+        //! Filters are used to fascilitate searching asset browser for specific asset
+        //! They are also used for enforcing selection constraints for asset picking
         class AssetBrowserEntryFilter
             : public QObject
         {
@@ -35,7 +36,11 @@ namespace AzToolsFramework
         public:
             //! Propagate direction allows match satisfaction based on entry parents and/or children
             /*
-                E.g. if PropagateDirection = Down, and entry does not satisfy filter, evaluation will propagate recursively to its children
+                if PropagateDirection = Down, and entry does not satisfy filter, evaluation will propagate recursively to its children
+                until at least one child satisfies the filter, then the original entry would match
+                if PropagateDirection = Up, and entry does not satisfy filter, evaluation will propagate recursively upwards to its parents
+                until first parent matches the filter, then the original entry would match
+                if PropagateDirection = None, only entry itself is considered by the filter
             */
             enum PropagateDirection : int
             {
@@ -53,21 +58,26 @@ namespace AzToolsFramework
             //! Retrieve all matching entries that are either entry itself or its parents or children
             void Filter(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const;
 
+            //! Filter name is used to uniquely identify the filter
             QString GetName() const;
             void SetName(const QString& name);
 
-            //! Tags are used for identifying filters
+            //! Tags are used for identifying filter groups
             const QString& GetTag() const;
             void SetTag(const QString& tag);
 
             void SetFilterPropagation(int direction);
 
         Q_SIGNALS:
+            //! Emitted every time a filter is updated, in case of composite filter, the signal is propagated to the top level filter so only one listener needs to connected
             void updatedSignal() const;
 
         protected:
+            //! Internal name auto generated based on filter type and data
             virtual QString GetNameInternal() const = 0;
+            //! Internal matching logic overrided by every filter type
             virtual bool MatchInternal(const AssetBrowserEntry* entry) const = 0;
+            //! Internal filtering logic overrided by every filter type
             virtual void FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const;
 
         private:
@@ -225,6 +235,27 @@ namespace AzToolsFramework
             ~InverseFilter() override = default;
 
             void SetFilter(FilterConstType filter);
+
+        protected:
+            QString GetNameInternal() const override;
+            bool MatchInternal(const AssetBrowserEntry* entry) const override;
+            void FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const override;
+
+        private:
+            FilterConstType m_filter;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        // InverseFilter
+        //////////////////////////////////////////////////////////////////////////
+        //! Inverse filter negates result of its child filter
+        class ProductsFilter
+            : public AssetBrowserEntryFilter
+        {
+            Q_OBJECT
+        public:
+            ProductsFilter();
+            ~ProductsFilter() override = default;
 
         protected:
             QString GetNameInternal() const override;

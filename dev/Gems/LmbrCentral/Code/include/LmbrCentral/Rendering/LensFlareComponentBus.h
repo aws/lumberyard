@@ -25,8 +25,8 @@ namespace LmbrCentral
     public:
         enum class State
         {
-            On,
             Off,
+            On,
         };
 
         virtual ~LensFlareComponentRequests() {}
@@ -51,18 +51,22 @@ namespace LmbrCentral
      * LensFlareEditorRequestBus
      * Editor/UI messages serviced by the Lens Flare component.
      */
-    class LensFlareComponentEditorRequests
+    class EditorLensFlareComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        virtual ~LensFlareComponentEditorRequests() {}
+        virtual ~EditorLensFlareComponentRequests() {}
 
         //! Recreates the lens flare.
         virtual void RefreshLensFlare() = 0;
     };
 
-    using LensFlareComponentEditorRequestBus = AZ::EBus<LensFlareComponentEditorRequests>;
+    using EditorLensFlareComponentRequestBus = AZ::EBus<EditorLensFlareComponentRequests>;
 
+    //! @deprecated Use EditorLensFlareComponentRequests
+    using LensFlareComponentEditorRequests = EditorLensFlareComponentRequests;
+    //! @deprecated Use EditorLensFlareComponentRequestBus
+    using LensFlareComponentEditorRequestBus = EditorLensFlareComponentRequestBus;
 
     /*!
      * LensFlareComponentEventBus

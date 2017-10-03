@@ -13,8 +13,9 @@
 #include <Configuration/FlowNode_ConfigureAnonymousCognito.h>
 #include <aws/identity-management/auth/CognitoCachingCredentialsProvider.h>
 #include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudGemFramework/AwsApiJob.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
+#include <CloudGemFramework/CloudGemFrameworkBus.h>
 
 namespace LmbrAWS
 {
@@ -71,10 +72,8 @@ namespace LmbrAWS
                 }
                 else
                 {
-                    auto clientManager = gEnv->pLmbrAWS->GetClientManager();
-                    clientManager->GetDefaultClientSettings().credentialProvider = credProvider;
-
-                    clientManager->ApplyConfiguration();
+                    EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, SetPlayerCredentialsProvider, credProvider);
+                    EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
 
                     SFlowAddress addr(activationInfo->myID, EOP_IdentityID, true);
                     activationInfo->pGraph->ActivatePortCString(addr, identityProvider->GetIdentityId().c_str());

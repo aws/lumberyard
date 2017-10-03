@@ -63,6 +63,7 @@ namespace Audio
         static void CmdSetRtpc(IConsoleCmdArgs* pCmdArgs);
         static void CmdSetSwitchState(IConsoleCmdArgs* pCmdArgs);
         static void CmdPlayFile(IConsoleCmdArgs* pCmdArgs);
+        static void CmdMicrophone(IConsoleCmdArgs* pCmdArgs);
     };
 
     extern CSoundCVars g_audioCVars;

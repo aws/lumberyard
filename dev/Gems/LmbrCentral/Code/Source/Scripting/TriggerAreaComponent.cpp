@@ -456,12 +456,12 @@ namespace LmbrCentral
         auto foundIter = AZStd::find(m_entitiesInside.begin(), m_entitiesInside.end(), entityId);
         if (foundIter != m_entitiesInside.end())
         {
+            m_entitiesInside.erase(foundIter);
+
             retVal = true;
 
             EBUS_EVENT_ID(GetEntityId(), TriggerAreaNotificationBus, OnTriggerAreaExited, entityId);
             EBUS_EVENT_ID(entityId, TriggerAreaEntityNotificationBus, OnEntityExitedTriggerArea, GetEntityId());
-
-            m_entitiesInside.erase(foundIter);
         }
 
         auto excludedEntityIter = AZStd::find(m_entitiesInsideExcludedByTags.begin(), m_entitiesInsideExcludedByTags.end(), entityId);

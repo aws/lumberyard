@@ -363,19 +363,17 @@ struct STerrainNodeLeafData
 
     struct TextureParams
     {
-        void Set(const SSectorTextureSet& set, float colorMultiplier_)
+        void Set(const SSectorTextureSet& set)
         {
             offsetX = set.fTexOffsetX;
             offsetY = set.fTexOffsetY;
             scale = set.fTexScale;
-            colorMultiplier = colorMultiplier_;
             id = set.nTex0;
         }
 
         float offsetX;
         float offsetY;
         float scale;
-        float colorMultiplier;
         uint32 id;
     };
 

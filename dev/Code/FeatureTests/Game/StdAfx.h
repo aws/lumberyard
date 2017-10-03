@@ -33,7 +33,6 @@
 #include <ISystem.h>
 #include <I3DEngine.h>
 #include <IConsole.h>
-#include <IInput.h>
 #include <ILog.h>
 #include <ISerialize.h>
 #include <ITimer.h>

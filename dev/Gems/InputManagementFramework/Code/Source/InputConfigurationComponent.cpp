@@ -53,6 +53,7 @@ namespace Input
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/InputConfig.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/InputConfig.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-input.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &InputConfigurationComponent::m_inputEventBindingsAsset, "Input to event bindings",
                     "Asset containing input to event binding information.")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -148,11 +149,7 @@ namespace Input
 
     void InputConfigurationComponent::OnInputContextActivated()
     {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZ::InputRequestBus::Broadcast(&AZ::InputRequests::RequestDeviceIndexMapping, AZ::Crc32(m_associatedProfileName.c_str()));
-#else
-        AZ::InputRequestBus::Broadcast(&AZ::InputRequests::RequestDeviceMapping, AZ::Crc32(m_associatedProfileName.c_str()), GetEntityId());
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
         m_inputEventBindings.Activate(Input::ProfileId(m_associatedProfileName.c_str()));
     }
 

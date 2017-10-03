@@ -25,7 +25,8 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Slice/SliceComponent.h>
-#include <AzFramework/Entity/EntityContextBus.h>
+#include <AzFramework/Entity/BehaviorEntity.h>
+#include <AzCore/Serialization/IdUtils.h>
 
 namespace AZ
 {
@@ -73,6 +74,13 @@ namespace AzFramework
          * @return A pointer to a new entity.
          */
         virtual AZ::Entity* CreateGameEntity(const char* /*name*/) { return nullptr; }
+
+        /**
+         * Creates an entity in the game context.
+         * @param name A name for the new entity.
+         * @return An entity wrapper for use within the BehaviorContext.
+         */
+        virtual BehaviorEntity CreateGameEntityForBehaviorContext(const char* /*name*/) { return BehaviorEntity(); }
 
         /**
          * Adds an existing entity to the game context.
@@ -123,7 +131,7 @@ namespace AzFramework
          * subscribe to the AzFramework::SliceInstantiationResultBus for this ticket to receive results 
          * for this request. 
          */
-        virtual SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& /*sliceAsset*/, const AZ::Transform& /*worldTransform*/, const AZ::EntityUtils::EntityIdMapper& /*customIdMapper*/) { return SliceInstantiationTicket(); }
+        virtual SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& /*sliceAsset*/, const AZ::Transform& /*worldTransform*/, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& /*customIdMapper*/) { return SliceInstantiationTicket(); }
 
         /**
          * Loads game entities from a stream.

@@ -13,9 +13,7 @@
 
 #include <AzCore/EBus/EBus.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvas.h>
 
 namespace CloudCanvasCommon
 {
@@ -30,23 +28,35 @@ namespace CloudCanvasCommon
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
-        // TODO: this bus will support resource logical to physical mapping lookup
-
-        //////////////////////////////////////////////////////////////////////////
-        /// Returns an actual AWS resource name given a "ResourceGroup.Resource" 
-        /// format "logical" resource name.
-        virtual AZStd::string GetLogicalToPhysicalResourceMapping(const AZStd::string& logicalResourceName) = 0;
-
-        // Create the S3 client for S3 Presign Node 
-        virtual LmbrAWS::S3::BucketClient GetBucketClient(const AZStd::string& bucketName) = 0;
-
         // Some platforms (Android) need to point the http client at the certificate bundle to avoid SSL errors
-        virtual LmbrAWS::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) = 0;
-
-        // Query the lambda manager for mapped function names (TODO when client manager just stores by type
-        // make general queries like "GetLogicalResourceNamesByType"
-        virtual AZStd::vector<AZStd::string> GetLogicalResourceNames(const AZStd::string& resourceType) = 0;
+        virtual CloudCanvas::RequestRootCAFileResult RequestRootCAFile(AZStd::string& resultPath) = 0;
     };
     using CloudCanvasCommonRequestBus = AZ::EBus<CloudCanvasCommonRequests>;
 
+    // Bus used to send notifications about CloudCanvasCommon initialization
+    class CloudCanvasCommonNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual void RootCAFileSet(const AZStd::string& caPath) {}
+
+        // Called after we've initialized the NativeSDK - this does not guarantee that we're yet ready
+        // to make Http calls on all platforms - OnPostInitialization is best for that
+        virtual void ApiInitialized() {}
+
+        // We delay some actions (Copying RootCA file) until after CrySystemInitialization currently because things
+        // like logging and the file system aren't fully set up yet.  
+        virtual void OnPostInitialization() {}
+
+        virtual void BeforeShutdown() {}
+        virtual void ShutdownComplete() {}
+    };
+    using CloudCanvasCommonNotificationsBus = AZ::EBus<CloudCanvasCommonNotifications>;
 } // namespace CloudCanvasCommon

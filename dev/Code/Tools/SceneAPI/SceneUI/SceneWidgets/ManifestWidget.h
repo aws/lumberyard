@@ -59,13 +59,10 @@ namespace AZ
                 AZStd::shared_ptr<Containers::Scene> GetScene();
                 AZStd::shared_ptr<const Containers::Scene> GetScene() const;
 
-                // Finds this ManifestWidget if the given widget is it's child, otherwise returns null.
+                //! Finds this ManifestWidget if the given widget is it's child, otherwise returns null.
                 static ManifestWidget* FindRoot(QWidget* child);
-                // Finds this ManifestWidget if the given widget is it's child, otherwise returns null.
+                //! Finds this ManifestWidget if the given widget is it's child, otherwise returns null.
                 static const ManifestWidget* FindRoot(const QWidget* child);
-
-            signals:
-                void ManifestUpdated();
 
             protected:
                 void BuildPages();
@@ -76,6 +73,6 @@ namespace AZ
                 AZStd::shared_ptr<Containers::Scene> m_scene;
                 SerializeContext* m_serializeContext;
             };
-        } // UI
-    } // SceneAPI
-} // AZ
+        } // namespace UI
+    } // namespace SceneAPI
+} // namespace AZ

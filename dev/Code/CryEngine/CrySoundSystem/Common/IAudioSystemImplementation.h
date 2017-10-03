@@ -967,7 +967,7 @@ namespace Audio
         // See Also:
         //		DestroyAudioSource
         ///////////////////////////////////////////////////////////////////////////////////////////////
-        virtual TAudioSourceId CreateAudioSource(const SAudioInputConfig& sourceConfig) = 0;
+        virtual bool CreateAudioSource(const SAudioInputConfig& sourceConfig) = 0;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title DestroyAudioSource>

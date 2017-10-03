@@ -23,5 +23,7 @@
         <file>search.png</file>
         <file>close.png</file>
         <file>disabled_header.png</file>
+        <file>help.png</file>
+        <file alias="EntityPicker">eye_dropper.png</file>
     </qresource>
 </RCC>

@@ -12,207 +12,79 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
-#include <AzCore/Math/Aabb.h>
-#include <AzCore/Math/Transform.h>
-#include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Math/Color.h>
 #include <IMaterial.h>
-
-struct IStatObj;
-struct ICharacterInstance;
-
+#include <LmbrCentral/Rendering/MaterialHandle.h>
 
 namespace LmbrCentral
 {
     /*!
-    * MaterialRequestBus
-    * Messages serviced by the component that support materials (e.g. Mesh, Decal).
-    */
-    class MaterialRequests
+     * Messages serviced by components that support materials (e.g. Mesh, Decal).
+     * We specifically chose the name "MaterialOwnerRequestBus" rather than just "MaterialRequestBus" to communicate
+     * the fact that the requests are not for a Material directly, but for an Entity/Component that uses a Material.
+     */
+    class MaterialOwnerRequests
         : public AZ::ComponentBus
     {
     public:
 
+        //! Sets the component's current material.
         virtual void SetMaterial(_smart_ptr<IMaterial>) = 0;
+        //! Gets the component's current material.
         virtual _smart_ptr<IMaterial> GetMaterial() = 0;
+
+        //! Indicates whether the Material Owner is fully initialized, and MaterialOwnerRequestBus can be used on the Material.
+        virtual bool IsMaterialOwnerReady() { return true; }
+
+        //! Sets the component's current material. This MaterialHandle version provides support for BehaviorContext reflection.
+        virtual void SetMaterialHandle(MaterialHandle) {};
+        //! Gets the component's current material. This MaterialHandle version provides support for BehaviorContext reflection.
+        virtual MaterialHandle GetMaterialHandle() { return MaterialHandle(); }
+
+        //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
+        virtual void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) {};
+
+        //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
+        virtual void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) {};
+
+        //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
+        virtual void SetMaterialParamColor(const AZStd::string& /*name*/, const AZ::Color& /*value*/) {};
+
+        //! Sets a Material property for the bus Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.
+        virtual void SetMaterialParamFloat(const AZStd::string& /*name*/, float /*value*/) {};
+
+        //! Returns a Material property value for the bus Entity.
+        virtual AZ::Vector4 GetMaterialParamVector4(const AZStd::string& /*name*/) { return AZ::Vector4::CreateZero(); };
+
+        //! Returns a Material property value for the bus Entity.
+        virtual AZ::Vector3 GetMaterialParamVector3(const AZStd::string& /*name*/) { return AZ::Vector3::CreateZero(); };
+
+        //! Returns a Material property value for the bus Entity.
+        virtual AZ::Color GetMaterialParamColor(const AZStd::string& /*name*/) { return AZ::Color::CreateZero(); };
+
+        //! Returns a Material property value for the bus Entity.
+        virtual float     GetMaterialParamFloat(const AZStd::string& /*name*/) { return 0.0f; };
     };
 
-    using MaterialRequestBus = AZ::EBus<MaterialRequests>;
-
+    using MaterialOwnerRequestBus = AZ::EBus<MaterialOwnerRequests>;
+    
     /*!
-     * MeshComponentRequestBus
-     * Messages serviced by the mesh component.
+     * Messages sent by components that support materials (e.g. Mesh, Decal).
+     * We specifically chose the name "MaterialOwnerNotificationBus" rather than just "MaterialNotificationBus" to communicate
+     * the fact that the requests are not for a Material directly, but for an Entity/Component that uses a Material.
      */
-    class MeshComponentRequests
+    class MaterialOwnerNotifications
         : public AZ::ComponentBus
     {
     public:
 
-        /**
-        * Returns the axis aligned bounding box in world coordinates
-        */
-        virtual AZ::Aabb GetWorldBounds() = 0;
-
-        /**
-        * Returns the axis aligned bounding box in model coordinates
-        */
-        virtual AZ::Aabb GetLocalBounds() = 0;
-
-        /**
-        * Sets the mesh asset for this component
-        */
-        virtual void SetMeshAsset(const AZ::Data::AssetId& id) = 0;
-
-        /**
-        * Returns the asset used by the mesh
-        */
-        virtual AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() = 0;
-
-        /**
-        * Returns true if the mesh is currently visible
-        */
-        virtual bool GetVisibility() { return true; }
-
-        /**
-        * Sets the current visibility of the mesh
-        */
-        virtual void SetVisibility(bool isVisible) {}
-    };
-
-    using MeshComponentRequestBus = AZ::EBus<MeshComponentRequests>;
-
-    /*!
-     * SkeletonHierarchyRequestBus
-     * Messages serviced by components to provide information about skeletal hierarchies.
-     */
-    class SkeletalHierarchyRequests
-        : public AZ::ComponentBus
-    {
-    public:
-
-        /**
-         * \return Number of joints in the skeleton joint hierarchy.
-         */
-        virtual AZ::u32 GetJointCount() { return 0; }
-
-        /**
-        * \param jointIndex Index of joint whose name should be returned.
-        * \return Name of the joint at the specified index. Null if joint index is not valid.
-        */
-        virtual const char* GetJointNameByIndex(AZ::u32 /*jointIndex*/) { return nullptr; }
-
-        /**
-        * \param jointName Name of joint whose index should be returned.
-        * \return Index of the joint with the specified name. -1 if the joint was not found.
-        */
-        virtual AZ::s32 GetJointIndexByName(const char* /*jointName*/) { return 0; }
-
-        /**
-        * \param jointIndex Index of joint whose local-space transform should be returned.
-        * \return Joint's character-space transform. Identify if joint index was not valid.
-        */
-        virtual AZ::Transform GetJointTransformCharacterRelative(AZ::u32 /*jointIndex*/) { return AZ::Transform::CreateIdentity(); }
-    };
-
-    using SkeletalHierarchyRequestBus = AZ::EBus<SkeletalHierarchyRequests>;
-
-    /*!
-     * SkinnedMeshComponentRequestBus
-     * Messages serviced by the mesh component.
-     */
-    class SkinnedMeshComponentRequests
-        : public AZ::ComponentBus
-    {
-    public:
-        virtual ICharacterInstance* GetCharacterInstance() = 0;
-    };
-
-    using SkinnedMeshComponentRequestBus = AZ::EBus<SkinnedMeshComponentRequests>;
-
-    /*!
-    * StaticMeshComponentRequestBus
-    * Messages serviced by the mesh component.
-    */
-    class StaticMeshComponentRequests
-        : public AZ::ComponentBus
-    {
-    public:
-        virtual IStatObj* GetStatObj() = 0;
-    };
-
-    using StaticMeshComponentRequestBus = AZ::EBus<StaticMeshComponentRequests>;
-
-    /*!
-     * MeshComponentNotificationBus
-     * Events dispatched by the mesh component.
-     */
-    class MeshComponentNotifications
-        : public AZ::ComponentBus
-    {
-    public:
-
-        /**
-         * Notifies listeners the mesh instance has been created.
-         * \param asset - The asset the mesh instance is based on.
-         */
-        virtual void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) { (void)asset; }
-
-        /**
-         * Notifies listeners that the mesh instance has been destroyed.
-        */
-        virtual void OnMeshDestroyed() {}
-
-        virtual void OnBoundsReset() {};
-
-        /**
-         * When connecting to this bus if the asset is ready you will immediately get an OnMeshCreated event
-        **/
-        template<class Bus>
-        struct ConnectionPolicy
-            : public AZ::EBusConnectionPolicy<Bus>
-        {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
-            {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
-
-                AZ::Data::Asset<AZ::Data::AssetData> asset;
-                EBUS_EVENT_ID_RESULT(asset, id, MeshComponentRequestBus, GetMeshAsset);
-                if (asset.GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
-                {
-                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
-                    handler->OnMeshCreated(asset);
-                }
-            }
-        };
-    };
-
-    using MeshComponentNotificationBus = AZ::EBus<MeshComponentNotifications>;
-
-    /*
-    * The Mesh Information Bus is a NON ID'd bus that broadcasts information about new skinned and static meshes being created and
-    * destroyed on Component Entities.
-    */
-    class SkinnedMeshInformation : public AZ::EBusTraits
-    {
-
-    public:
-
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;   //single bus
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple; // multi listener
-
-        /**
-        * \brief Informs listeners when a skinned mesh is created
-        * \param characterInstance The character instance associated with this skinned mesh
-        * \param entityId The entity Id for the entity on which this mesh component (and the character instance) exists
-        */
-        virtual void OnSkinnedMeshCreated(ICharacterInstance* characterInstance, const AZ::EntityId& entityId) {};
-
-        /**
-        * \brief Informs listeners when a skinned mesh is destroyed
-        * \param entityId The entity Id for the entity on which this mesh component (and the character instance) exists
-        */
-        virtual void OnSkinnedMeshDestroyed(const AZ::EntityId& entityId) {};
+        //! Sent when the material owner is fully initialized, and MaterialOwnerRequestBus can be used on the Material.
+        //! Before this event, MaterialOwnerRequestBus functions probably won't do anything, because the Material likely
+        //! doesn't exist yet.
+        virtual void OnMaterialOwnerReady() = 0;
 
     };
 
-    using SkinnedMeshInformationBus = AZ::EBus<SkinnedMeshInformation>;
+    using MaterialOwnerNotificationBus = AZ::EBus<MaterialOwnerNotifications>;
+
 } // namespace LmbrCentral

@@ -46,7 +46,7 @@ namespace CharacterTool
     {
         virtual ~IEntryLoader() {}
         virtual bool Load(EntryBase* entry, const char* filename, LoaderContext* context) = 0;
-        virtual bool Save(EntryBase* entry, const char* filename, LoaderContext* context) = 0;
+        virtual bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) = 0;
     };
 
     struct IEntryDependencyExtractor
@@ -60,7 +60,7 @@ namespace CharacterTool
         : IEntryLoader
     {
         bool Load(EntryBase* entry, const char* filename, LoaderContext* context) override;
-        bool Save(EntryBase* entry, const char* filename, LoaderContext* context) override;
+        bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) override;
     };
 
     template<class TSelf>
@@ -71,7 +71,7 @@ namespace CharacterTool
         {
             return ((SEntry<TSelf>*)entry)->content.Load();
         }
-        bool Save(EntryBase* entry, const char* filename, LoaderContext* context) override
+        bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) override
         {
             return ((SEntry<TSelf>*)entry)->content.Save();
         }

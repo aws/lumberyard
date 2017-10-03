@@ -54,7 +54,7 @@ public:
     void ReadList();
     void WriteList();
 
-    static const int Max = 8;
+    static const int Max = 12;
     QStringList m_arrNames;
     QSettings m_settings;
 };
@@ -97,7 +97,8 @@ public:
     {
         ECLR_OK = 0,
         ECLR_ALREADY_EXISTS,
-        ECLR_DIR_CREATION_FAILED
+        ECLR_DIR_CREATION_FAILED,
+        ECLR_MAX_PATH_EXCEEDED
     };
 
     CCryEditApp();
@@ -128,6 +129,7 @@ public:
     RecentFileList* GetRecentFileList();
     virtual void AddToRecentFileList(const QString& lpszPathName);
     ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain);
+    void CloseCurrentLevel();
     static void InitDirectory();
     BOOL FirstInstance(bool bForceNewInstance = false);
     void InitFromCommandLine(CEditCommandLineInfo& cmdInfo);
@@ -162,7 +164,7 @@ public:
     // ClassWizard generated virtual function overrides
 public:
     virtual BOOL InitInstance();
-    virtual int ExitInstance();
+    virtual int ExitInstance(int exitCode = 0);
     virtual BOOL OnIdle(LONG lCount);
     virtual CCryEditDoc* OpenDocumentFile(LPCTSTR lpszFileName);
 
@@ -223,7 +225,7 @@ public:
     void SelectExportPlatform();
     void OnRealtimeAutoSync();
     void OnRealtimeAutoSyncUpdateUI(/*CCmdUI* pCmdUI*/);
-    void OnToggleFullScreenPerspectiveWindow();
+    void OnToggleFullScreenMainWindow();
     void OnExportSelectedObjects();
     void OnExportTerrainArea();
     void OnExportTerrainAreaWithObjects();
@@ -376,6 +378,7 @@ public:
     void OnUpdateTerrainResizeterrain(QAction* action);
     void OnFileSave();
     void OnFileSaveExternalLayers();
+    void OnFileConvertLegacyEntities();
     void OnUpdateDocumentReady(QAction* action);
     void OnUpdateCurrentLayer(QAction* action);
     void OnUpdateNonGameMode(QAction* action);
@@ -406,6 +409,8 @@ private:
     static void CloseSplashScreen();
     static void OutputStartupMessage(QString str);
     bool HasAWSCredentials();
+    void ConvertLegacyEntities(bool closeOnCancel = true);
+    bool ShowEnableDisableCryEntityRemovalDialog();
 
     void OpenAWSConsoleFederated(const QString& str);
 
@@ -594,6 +599,9 @@ private:
     void OnOpenMaterialEditor();
     void OnOpenMannequinEditor();
     void OnOpenCharacterTool();
+#if defined(EMOTIONFX_GEM_ENABLED)
+    void OnOpenEMotionFXEditor();
+#endif // EMOTIONFX_GEM_ENABLED
     void OnOpenDataBaseView();
     void OnOpenFlowGraphView();
     void OnOpenAssetBrowserView();
@@ -617,6 +625,7 @@ private:
     void OnTimeOfDay();
     void OnResolveMissingObjects();
     void OnChangeGameSpec(UINT nID);
+    void SetGameSpecCheck(ESystemConfigSpec spec, ESystemConfigPlatform platform, int &nCheck, bool &enable);
     void OnUpdateGameSpec(QAction* action);
     void OnOpenQuickAccessBar();
     void OnToolsEnableFileChangeMonitoring();

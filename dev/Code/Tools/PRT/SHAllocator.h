@@ -29,11 +29,11 @@
 #endif
 #include <limits>
 
-#if !defined(PS3) && !defined(LINUX) && !defined(ORBIS) && !defined(APPLE)
+#if !defined(PS3) && !defined(LINUX) && !defined(ORBIS) && !defined(APPLE) // ACCEPTED_USE
 #ifdef __cplusplus
 	#include <new.h> 
 #endif
-#endif //PS3
+#endif
 
 #undef min
 #undef max

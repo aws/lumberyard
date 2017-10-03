@@ -10,6 +10,8 @@
 *
 */
 
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/string/regex.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
@@ -144,6 +146,31 @@ namespace AZ
             PatternMatcher::MatchApproach PatternMatcher::GetMatchApproach() const
             {
                 return m_matcher;
+            }
+
+            void PatternMatcher::Reflect(ReflectContext* context)
+            {
+                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+                if (serializeContext)
+                {
+                    serializeContext->Class<PatternMatcher>()
+                        ->Version(1)
+                        ->Field("pattern", &PatternMatcher::m_pattern)
+                        ->Field("matcher", &PatternMatcher::m_matcher);
+
+                    EditContext* editContext = serializeContext->GetEditContext();
+                    if (editContext)
+                    {
+                        editContext->Class<PatternMatcher>("Pattern matcher", "")
+                            ->ClassElement(Edit::ClassElements::EditorData, "")
+                            ->Attribute(Edit::Attributes::AutoExpand, true)
+                            ->DataElement(Edit::UIHandlers::Default, &PatternMatcher::m_pattern, "Pattern", "The pattern the matcher will check against.")
+                            ->DataElement(Edit::UIHandlers::ComboBox, &PatternMatcher::m_matcher, "Matcher", "The used approach for matching.")
+                                ->EnumAttribute(MatchApproach::PreFix, "PreFix")
+                                ->EnumAttribute(MatchApproach::PostFix, "PostFix")
+                                ->EnumAttribute(MatchApproach::Regex, "Regex");
+                    }
+                }
             }
         } // SceneCore
     } // SceneAPI

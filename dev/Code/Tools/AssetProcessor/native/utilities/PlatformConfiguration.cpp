@@ -38,8 +38,8 @@ namespace
         "linux",
         "ios",
         "android",
-        "durango",
-        "orbis"
+        "durango", // ACCEPTED_USE
+        "orbis" // ACCEPTED_USE
     };
 
     const unsigned int numPlatforms = (sizeof(s_platformNames) / sizeof(const char*));
@@ -49,8 +49,8 @@ namespace
         "GL4",
         "GLES3",
         "METAL",
-        "DURANGO",
-        "ORBIS"
+        "DURANGO", // ACCEPTED_USE
+        "ORBIS" // ACCEPTED_USE
     };
 
     const unsigned int numRenderers = (sizeof(s_rendererNames) / sizeof(const char*));
@@ -88,6 +88,33 @@ PlatformConfiguration::~PlatformConfiguration()
 {
 }
 
+void PlatformConfiguration::PopulateEnabledPlatforms(QString fileSource)
+{
+    QStringList platforms = AssetUtilities::ReadPlatformsFromCommandLine();
+
+    if (!platforms.isEmpty())
+    {
+        for (QString platform : platforms)
+        {
+            if (AZStd::find(m_platforms.begin(), m_platforms.end(), platform) == m_platforms.end())
+            {
+                m_platforms.push_back(platform);
+            }
+        }
+
+        //platforms specified in the commandline will always override platforms specified in the config file 
+        return;
+    }
+
+    //if no platforms is specified in the command line we will always insert the current platform by default;
+    if (AZStd::find(m_platforms.begin(), m_platforms.end(), CURRENT_PLATFORM) == m_platforms.end())
+    {
+        m_platforms.push_back(CURRENT_PLATFORM);
+    }
+
+    ReadPlatformsFromConfigFile(fileSource);
+}
+
 void PlatformConfiguration::ReadPlatformsFromConfigFile(QString iniPath)
 {
     if (QFile::exists(iniPath))
@@ -116,28 +143,19 @@ void PlatformConfiguration::ReadPlatformsFromConfigFile(QString iniPath)
         }
         loader.endGroup();
     }
-    QStringList platforms = AssetUtilities::ReadPlatformsFromCommandLine();
-
-    if (platforms.isEmpty())
-    {
-        return;
-    }
-
-    for (QString platform : platforms)
-    {
-        if (std::find(m_platforms.begin(), m_platforms.end(), platform) == m_platforms.end())
-        {
-            AZ_TracePrintf(DebugChannel, "Warning: Platform %s specified in the command line arguement is not enabled in the AssetProcessorPlatformConfig.ini file.\n", platform.toUtf8().data());
-        }
-    }
 }
 
 bool PlatformConfiguration::ReadRecognizersFromConfigFile(QString iniPath)
 {
+    QDir assetRoot;
+    AssetUtilities::ComputeAssetRoot(assetRoot);
+    const QString normalizedRoot = AssetUtilities::NormalizeDirectoryPath(assetRoot.absolutePath());
+    const QString gameName = AssetUtilities::ComputeGameName();
+
     QDir engineRoot;
     AssetUtilities::ComputeEngineRoot(engineRoot);
-    const QString normalizedRoot = AssetUtilities::NormalizeDirectoryPath(engineRoot.absolutePath());
-    const QString gameName = AssetUtilities::ComputeGameName();
+    const QString normalizedEngineRoot = AssetUtilities::NormalizeDirectoryPath(engineRoot.absolutePath());
+
 
     if (QFile::exists(iniPath))
     {
@@ -161,6 +179,7 @@ bool PlatformConfiguration::ReadRecognizersFromConfigFile(QString iniPath)
 
                 watchFolder.replace("@root@", normalizedRoot, Qt::CaseInsensitive);
                 watchFolder.replace("@GAMENAME@", gameName, Qt::CaseInsensitive);
+                watchFolder.replace("@engineroot@", normalizedEngineRoot, Qt::CaseInsensitive);
                 watchFolder = AssetUtilities::NormalizeDirectoryPath(watchFolder);
 
                 if (watchFolder.endsWith(QDir::separator()))
@@ -626,23 +645,33 @@ bool PlatformConfiguration::ReadRecognizerFromConfig(AssetRecognizer& target, QS
     return true;
 }
 
-void PlatformConfiguration::ReadGemsConfigFile(QString gemsFile)
+void PlatformConfiguration::ReadGemsConfigFile(QString gemsFile, QStringList& gemConfigFiles)
 {
     if (QFile::exists(gemsFile))
     {
         // load gems
-        ReadGems(gemsFile);
+        ReadGems(gemsFile, gemConfigFiles);
     }
 }
 
-int PlatformConfiguration::ReadGems(QString gemsConfigName)
+int PlatformConfiguration::ReadGems(QString gemsConfigName, QStringList& gemConfigFiles)
 {
+    QDir assetRoot;
+    AssetUtilities::ComputeAssetRoot(assetRoot);
+
     QDir engineRoot;
     AssetUtilities::ComputeEngineRoot(engineRoot);
+
     // The set of paths to search for each Gem
     QStringList searchPaths;
-    // Always search the engine root
-    searchPaths.append(AssetUtilities::NormalizeDirectoryPath(engineRoot.absolutePath()));
+    // Always search the asset root
+    searchPaths.append(AssetUtilities::NormalizeDirectoryPath(assetRoot.absolutePath()));
+
+    // If the asset root and engine root is not the same, then add the engine root separately
+    if (!(assetRoot == engineRoot))
+    {
+        searchPaths.append(AssetUtilities::NormalizeDirectoryPath(engineRoot.absolutePath()));
+    }
 
     /* Parse SetupAssistantUserPreferences.ini, which contains Gems search paths. Looks like:
      * [General]
@@ -755,6 +784,13 @@ int PlatformConfiguration::ReadGems(QString gemsConfigName)
                 portableKey = QString("rootgem-%1").arg(gemGuid);
                 AZ_TracePrintf(AssetProcessor::DebugChannel, "Adding GEM folder for gem.json: %s.\n", gemFolder.toUtf8().data());
                 AddScanFolder(ScanFolderInfo(gemFolder, folderName, portableKey, gemPath, true, false, gemOrder++));
+
+                QString gemConfigPath = gemFolder + "/AssetProcessorGemConfig.ini";
+                if (QFile::exists(gemConfigPath))
+                {
+                    gemConfigFiles.push_back(gemConfigPath);
+                }
+
                 ++readGems;
 
                 // Stop searching paths once found

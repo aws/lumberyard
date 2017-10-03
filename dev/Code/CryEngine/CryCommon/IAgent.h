@@ -423,42 +423,42 @@ enum EAIWeaponAccessories
 struct AgentPathfindingProperties
 {
     AgentPathfindingProperties(
-        IAISystem::tNavCapMask navCapMask,
-        float triangularResistanceFactor,
-        float waypointResistanceFactor,
-        float flightResistanceFactor,
-        float volumeResistanceFactor,
-        float roadResistanceFactor,
-        float waterResistanceFactor,
-        float maxWaterDepth,
-        float minWaterDepth,
-        float exposureFactor,
-        float dangerCost,
-        float zScale,
+        IAISystem::tNavCapMask _navCapMask,
+        float _triangularResistanceFactor,
+        float _waypointResistanceFactor,
+        float _flightResistanceFactor,
+        float _volumeResistanceFactor,
+        float _roadResistanceFactor,
+        float _waterResistanceFactor,
+        float _maxWaterDepth,
+        float _minWaterDepth,
+        float _exposureFactor,
+        float _dangerCost,
+        float _zScale,
         uint32 _customNavCapsMask = 0,
-        float radius = 0.3f,
-        float height = 2.0f,
-        float maxSlope = 0.0f,
-        int id = -1,
-        bool avoidObstacles = true)
-        : navCapMask(navCapMask)
-        , triangularResistanceFactor(triangularResistanceFactor)
-        , waypointResistanceFactor(waypointResistanceFactor)
-        , flightResistanceFactor(flightResistanceFactor)
-        , volumeResistanceFactor(volumeResistanceFactor)
-        , roadResistanceFactor(roadResistanceFactor)
-        , waterResistanceFactor(waterResistanceFactor)
-        , maxWaterDepth(maxWaterDepth)
-        , minWaterDepth(minWaterDepth)
-        , exposureFactor(exposureFactor)
-        , dangerCost(dangerCost)
-        , zScale(zScale)
+        float _radius = 0.3f,
+        float _height = 2.0f,
+        float _maxSlope = 0.0f,
+        int _id = -1,
+        bool _avoidObstacles = true)
+        : navCapMask(_navCapMask)
+        , triangularResistanceFactor(_triangularResistanceFactor)
+        , waypointResistanceFactor(_waypointResistanceFactor)
+        , flightResistanceFactor(_flightResistanceFactor)
+        , volumeResistanceFactor(_volumeResistanceFactor)
+        , roadResistanceFactor(_roadResistanceFactor)
+        , waterResistanceFactor(_waterResistanceFactor)
+        , maxWaterDepth(_maxWaterDepth)
+        , minWaterDepth(_minWaterDepth)
+        , exposureFactor(_exposureFactor)
+        , dangerCost(_dangerCost)
+        , zScale(_zScale)
         , customNavCapsMask(_customNavCapsMask)
-        , radius(radius)
-        , height(height)
-        , maxSlope(maxSlope)
-        , id(id)
-        , avoidObstacles(avoidObstacles)
+        , radius(_radius)
+        , height(_height)
+        , maxSlope(_maxSlope)
+        , id(_id)
+        , avoidObstacles(_avoidObstacles)
     {
         if (maxWaterDepth < minWaterDepth)
         {
@@ -973,10 +973,10 @@ class CTargetPointRequest
 {
 public:
     CTargetPointRequest()  {}
-    CTargetPointRequest(const Vec3& targetPoint, bool continueMovingAtEnd = true)
-        : targetPoint(targetPoint)
+    CTargetPointRequest(const Vec3& _targetPoint, bool _continueMovingAtEnd = true)
+        : targetPoint(_targetPoint)
         , pathID(-1)
-        , continueMovingAtEnd(continueMovingAtEnd)
+        , continueMovingAtEnd(_continueMovingAtEnd)
         , splitPoint(ZERO) {}
     ETriState GetResult() const { return result; }
     const Vec3& GetPosition() const { return targetPoint; }
@@ -1408,10 +1408,10 @@ struct PATHPOINT
     Vec3 vPos;
     Vec3 vDir;
     PATHPOINT(
-        const Vec3& vPos = Vec3_Zero,
-        const Vec3& vDir = Vec3_Zero)
-        : vPos(vPos)
-        , vDir(vDir) {}
+        const Vec3& _vPos = Vec3_Zero,
+        const Vec3& _vDir = Vec3_Zero)
+        : vPos(_vPos)
+        , vDir(_vDir) {}
 };
 typedef DynArray<PATHPOINT> PATHPOINTVECTOR;
 

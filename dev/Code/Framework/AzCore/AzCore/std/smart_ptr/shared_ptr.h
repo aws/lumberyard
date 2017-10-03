@@ -14,20 +14,20 @@
 
 //////////////////////////////////////////////////////////////////////////
 // Standard C++0x 20.8.10.2, which was drafted from boost.
-// We use as a base boost 1.46 imeplementation
+// We use as a base boost 1.46 implementation
 //
 // IMPORTANT:
-// Even we follow the standard 100% there are some important internall
-// differences (from the boost implementaion) and some important notes on
-// how we should use shared_ptr.
+// Even though we do follow the standard 100%, there are some important internal
+// differences (from the boost implementation) and some important notes on
+// how we use shared_ptr.
 // - We never call new ... all allocation are made using the allocators.
-// - By default (when no user allocator in provided) we use AZStd::allocator
-// which keeps the same behaviour as all containers.
-// - Allocators are passed at contruction time, this keeps the shared_ptr<T> as is in the
-// standard and keeps the templated type simple.
-// - As with contrainers in libs you should always use lib allocators and you should never
-// use the default one. This is becuse we work in memory managed environments and the lib
-// users have the right to choose where to allocate the memory from! \ref AZStd::allocator
+// - By default (when no user allocator is provided) we use AZStd::allocator
+//     which keeps the same behavior as all containers.
+// - Allocators are passed at construction time; this keeps the shared_ptr<T> as is in the
+//     standard and keeps the templated type simple.
+// - As with containers in libs, you should always use lib allocators and you should never
+//     use the default one. This is because we work in memory managed environments and the lib
+//     users have the right to choose where to allocate memory from! \ref AZStd::allocator
 // \ref Containers
 //
 
@@ -79,7 +79,7 @@ namespace AZStd
         {
             typedef void reference;
         };
-        // CV specialzations
+        // CV specializations
         template<>
         struct shared_ptr_traits<void const>
         {

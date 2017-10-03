@@ -147,7 +147,7 @@ namespace AZ
         if (behaviorContext)
         {
             behaviorContext->Class<ScriptDebug>("Debug")
-                ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("Log", &Internal::ScriptLog)
                 ->Method("Warning", &Internal::ScriptWarning)
                 ->Method("Error", &Internal::ScriptError)

@@ -19,7 +19,7 @@ namespace AzFramework
     InputChannelDigitalWithSharedPosition2D::InputChannelDigitalWithSharedPosition2D(
         const AzFramework::InputChannelId& inputChannelId,
         const InputDevice& inputDevice,
-        const AZStd::shared_ptr<InputChannel::PositionData2D>& sharedPositionData)
+        const SharedPositionData2D& sharedPositionData)
     : InputChannelDigital(inputChannelId, inputDevice)
     , m_sharedPositionData(sharedPositionData)
     {

@@ -15,15 +15,16 @@
 #define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERER_H
 #pragma once
 
-
 #include <CryPool/PoolAlloc.h>
 #include "TextMessages.h"                                                           // CTextMessages
+#include <CryEngineAPI.h>
 #include "RenderAuxGeom.h"
 #include "Shaders/Vertex.h"
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/IO/FileOperations.h>
 
 #include <LoadScreenBus.h>
+
 
 
 typedef void (PROCRENDEF)(SShaderPass* l, int nPrimType);
@@ -138,36 +139,6 @@ typedef int (* pDrawModelFunc)(void);
 #else
     #define CBUFFER_NATIVE_DEPTH_DEAFULT_VAL 0
 #endif
-
-
-struct SSpriteInfo
-{
-    SDynTexture2* m_pTex;
-    Vec3 m_vPos;
-    float m_fDX;
-    float m_fDY;
-    float m_fScaleV;
-    UCol m_Color;
-    int  m_nVI;
-    uint8   m_ucTexCoordMinX;           // 0..128 used for the full range (0..1) in the texture (to fit in byte)
-    uint8   m_ucTexCoordMinY;           // 0..128 used for the full range (0..1) in the texture (to fit in byte)
-    uint8   m_ucTexCoordMaxX;           // 0..128 used for the full range (0..1) in the texture (to fit in byte)
-    uint8   m_ucTexCoordMaxY;           // 0..128 used for the full range (0..1) in the texture (to fit in byte)
-};
-
-struct SSpriteGenInfo
-{
-    float fAngle;                               // horizontal rotation in degree
-    float fGenDist;
-    float fBrightness;
-    int nMaterialLayers;
-    _smart_ptr<IMaterial> pMaterial;
-    float* pMipFactor;
-    uint8* pTexturesAreStreamedIn;
-    SDynTexture2** ppTexture;
-    IStatObj* pStatObj;
-    int nSP;
-};
 
 
 //////////////////////////////////////////////////////////////////////
@@ -494,11 +465,14 @@ private:
     IRenderer* m_renderer;
 };
 
+
 //////////////////////////////////////////////////////////////////////
+struct SRenderPipeline;
 class CRenderer
     : public IRenderer
 {
 public:
+
     DEFINE_ALIGNED_DATA(Matrix44A, m_IdentityMatrix, 16);
     DEFINE_ALIGNED_DATA(Matrix44A, m_ViewMatrix, 16);
     DEFINE_ALIGNED_DATA(Matrix44A, m_CameraMatrix, 16);
@@ -557,6 +531,12 @@ public:
     bool              m_bDualStereoSupport;
 
     SRenderThread* m_pRT;
+
+    virtual SRenderPipeline* GetRenderPipeline() override { return &m_RP; }
+    virtual SRenderThread* GetRenderThread() override { return m_pRT; }
+    virtual CShaderMan* GetShaderManager() override { return &m_cEF; }
+    virtual uint32 GetFrameReset() override { return m_nFrameReset; }
+    virtual CDeviceBufferManager* GetDeviceBufferManager() override { return &m_DevBufMan; }
 
     // Shaders pipeline states
     //=============================================================================================================
@@ -698,6 +678,17 @@ protected:
 
 public:
 
+
+    // ----
+    virtual ITexture* GetWhiteTexture() override;// { return CTexture::s_ptexWhite; }
+    virtual ITexture* GetTextureForName(const char* name, uint32 nFlags, ETEX_Format eFormat) override;// { return CTexture::ForName(name, nFlags, eFormat); }
+
+    virtual Matrix44A& GetViewProjectionMatrix() override { return m_ViewProjMatrix; }
+    virtual void SetTranspOrigCameraProjMatrix(Matrix44A& matrix) { m_TranspOrigCameraProjMatrix = matrix; }
+
+
+    //
+
     CRenderer();
     virtual ~CRenderer();
 
@@ -791,6 +782,9 @@ public:
 
     virtual void EF_SetColorOp(byte eCo, byte eAo, byte eCa, byte eAa) = 0;
     virtual void EF_SetSrgbWrite(bool sRGBWrite) = 0;
+
+    virtual Matrix44A GetIdentityMatrix() { return m_IdentityMatrix; }
+
 
     //===============================================================================
 
@@ -1084,12 +1078,12 @@ public:
 
     _inline const CCamera& GetCamera(void) { return(m_RP.m_TI[m_pRT->GetThreadList()].m_cam);  }
 
-    inline const CameraViewParameters& GetViewParameters(void)
+    virtual const CameraViewParameters& GetViewParameters() override
     {
         return(m_RP.m_TI[m_pRT->GetThreadList()].m_cam.m_viewParameters);
     }
 
-    inline void SetViewParameters(CameraViewParameters& viewParameters)
+    virtual void SetViewParameters(const CameraViewParameters& viewParameters) override
     {
         m_RP.m_TI[m_pRT->GetThreadList()].m_cam.m_viewParameters = viewParameters;
     }
@@ -1161,7 +1155,7 @@ public:
     }
 
     // GPU being updated
-    int32 RT_GetCurrGpuID() const
+    virtual int32 RT_GetCurrGpuID() const override
     {
         return gRenDev->m_nFrameSwapID % gRenDev->GetActiveGPUCount();
     }
@@ -1435,9 +1429,10 @@ public:
     virtual CRenderObject* EF_AddPolygonToScene(SShaderItem& si, int numPts, const SVF_P3F_C4B_T2F* verts, const SPipTangents* tangs, CRenderObject* obj, const SRenderingPassInfo& passInfo, uint16* inds, int ninds, int nAW, const SRendItemSorter& rendItemSorter);
     virtual CRenderObject* EF_AddPolygonToScene(SShaderItem& si, CRenderObject* obj, const SRenderingPassInfo& passInfo, int numPts, int ninds, SVF_P3F_C4B_T2F*& verts, SPipTangents*& tangs, uint16*& inds, int nAW, const SRendItemSorter& rendItemSorter);
 
-    void FX_CheckOverflow(int nVerts, int nInds, CRendElementBase* re, int* nNewVerts = NULL, int* nNewInds = NULL);
-    void FX_Start(CShader* ef, int nTech, CShaderResources* Res, CRendElementBase* re);
+    virtual void FX_CheckOverflow(int nVerts, int nInds, CRendElementBase* re, int* nNewVerts = NULL, int* nNewInds = NULL) override;
+    virtual void FX_Start(CShader* ef, int nTech, CShaderResources* Res, CRendElementBase* re) override;
 
+    virtual int GenerateTextureId() override { return m_TexGenID++; }
 
     //==========================================================
     // external interface for shaders
@@ -1560,7 +1555,6 @@ public:
     virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0) = 0;
     void FX_SetStencilState(int st, uint32 nStencRef, uint32 nStencMask, uint32 nStencWriteMask, bool bForceFullReadMask = false);
 
-
     //////////////////////////////////////////////////////////////////////////
     // Deferred ambient passes
 
@@ -1656,7 +1650,8 @@ public:
 
     bool IsHDRModeEnabled() const
     {
-        return (!CV_r_measureoverdraw && !m_wireframe_mode) ? true : false;
+        // If there's no support for floating point render targets, we disable HDR.
+        return (gRenDev && gRenDev->UseHalfFloatRenderTargets()) && !CV_r_measureoverdraw && !m_wireframe_mode;
     }
 
     bool IsShadowPassEnabled() const
@@ -1674,7 +1669,7 @@ public:
 
     virtual void PrecacheTexture(ITexture* pTP, float fMipFactor, float fTimeToReady, int Flags, int nUpdateId, int nCounter = 1);
 
-    virtual SSkinningData* EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobSyncVar);
+    virtual SSkinningData* EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobSyncVar, bool bUseMatrixSkinning = false);
     virtual SSkinningData* EF_CreateRemappedSkinningData(uint32 nNumBones, SSkinningData* pSourceSkinningData, uint32 nCustomDataSize, uint32 pairGuid);
     virtual void EF_ClearSkinningDataPool();
     virtual int EF_GetSkinningPoolID();
@@ -1843,6 +1838,13 @@ public:
     }
 
     //=================================================================
+    // High res screen shot
+
+    int m_screenShotType;
+    virtual void StartScreenShot(int e_ScreenShotType) { m_screenShotType = e_ScreenShotType; }
+    virtual void EndScreenShot(int e_ScreenShotType) { m_screenShotType = 0; }
+
+    //=================================================================
 
     virtual void SetClearColor(const Vec3& vColor) { m_cClearColor.r = vColor[0]; m_cClearColor.g = vColor[1]; m_cClearColor.b = vColor[2]; }
 
@@ -1882,6 +1884,7 @@ public:
 
     static int CV_r_DebugLightLayers;
 
+    static int CV_r_ApplyToonShading;
     static int CV_r_GraphicsPipeline;
 
     static int CV_r_DeferredShadingTiled;
@@ -1896,12 +1899,13 @@ public:
     DeclareStaticConstIntCVar(CV_r_MotionVectors, 1);
     DeclareStaticConstIntCVar(CV_r_MotionVectorsDebug, 0);
     static int CV_r_MotionBlur;
+    static int CV_r_MotionBlurScreenShot;
     static int CV_r_MotionBlurQuality;
     static int CV_r_MotionBlurGBufferVelocity;
     static float CV_r_MotionBlurThreshold;
     static int CV_r_flush;
     static int CV_r_minimizeLatency;
-    static int CV_r_texatlassize;
+    ENGINE_API static int CV_r_texatlassize;
     static int CV_r_DeferredShadingSortLights;
     static int CV_r_DeferredShadingAmbientSClear;
     static int CV_r_batchtype;
@@ -1939,7 +1943,7 @@ public:
     static int CV_r_ShowDynTexturesMaxCount;
     static int CV_r_ShaderCompilerDontCache;
     static int CV_r_dyntexmaxsize;
-    static int CV_r_dyntexatlascloudsmaxsize;
+    ENGINE_API static int CV_r_dyntexatlascloudsmaxsize;
     static int CV_r_texminanisotropy;
     static int CV_r_texmaxanisotropy;
     static int CV_r_texturesstreampooldefragmentation;
@@ -1956,12 +1960,12 @@ public:
     static int CV_r_watervolumecausticsdensity;
     static int CV_r_watervolumecausticsresolution;
 #if !defined(CONSOLE)
-    static int CV_r_shadersorbis;
+    static int CV_r_shadersorbis; // ACCEPTED_USE
     static int CV_r_shadersdx10;
     static int CV_r_shadersdx11;
     static int CV_r_shadersGL4;
     static int CV_r_shadersGLES3;
-    static int CV_r_shadersdurango;
+    static int CV_r_shadersdurango; // ACCEPTED_USE
     // Confetti Nicholas Baldwin: adding metal shader language support
     static int CV_r_shadersMETAL;
 #endif
@@ -1984,12 +1988,12 @@ public:
     static int CV_r_msaa_samples;
     static int CV_r_msaa_quality;
     static int CV_r_msaa_debug;
-    static int CV_r_impostersupdateperframe;
+    ENGINE_API static int CV_r_impostersupdateperframe;
     static int CV_r_beams;
     static int CV_r_nodrawnear;
     static int CV_r_DrawNearShadows;
     static int CV_r_scissor;
-    static int CV_r_usezpass;
+    ENGINE_API static int CV_r_usezpass;
     static int CV_r_ShowVideoMemoryStats;
     static int CV_r_TexturesStreamingDebugMinSize;
     static int CV_r_TexturesStreamingDebugMinMip;
@@ -2054,6 +2058,10 @@ public:
     static int CV_r_HDRDebug;
     static int CV_r_HDRBloom;
     static int CV_r_HDRBloomQuality;
+    static int CV_r_ToneMapTechnique;
+    static int CV_r_ColorSpace;
+    static int CV_r_ToneMapExposureType;
+    static float CV_r_ToneMapManualExposureValue;    
     DeclareStaticConstIntCVar(CV_r_HDRVignetting, 1);
     DeclareStaticConstIntCVar(CV_r_HDRTexFormat, 0);
     static int CV_r_HDREyeAdaptationMode;
@@ -2090,8 +2098,8 @@ public:
     static int CV_r_colorgrading;
     DeclareStaticConstIntCVar(CV_r_colorgrading_levels, 1);
     DeclareStaticConstIntCVar(CV_r_colorgrading_filters, 1);
-    DeclareStaticConstIntCVar(CV_r_cloudsupdatealways, 0);
-    DeclareStaticConstIntCVar(CV_r_cloudsdebug, 0);
+    DeclareAndExportStaticConstIntCVar(CV_r_cloudsupdatealways, 0);
+    DeclareAndExportStaticConstIntCVar(CV_r_cloudsdebug, 0);
     DeclareStaticConstIntCVar(CV_r_showdyntextures, 0);
     DeclareStaticConstIntCVar(CV_r_shownormals, 0);
     DeclareStaticConstIntCVar(CV_r_showlines, 0);
@@ -2105,7 +2113,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_ProfileShadersSmooth, 4);
     DeclareStaticConstIntCVar(CV_r_ProfileShadersGroupByName, 1);
     DeclareStaticConstIntCVar(CV_r_texpostponeloading, 1);
-    DeclareStaticConstIntCVar(CV_r_texpreallocateatlases, TEXPREALLOCATLAS_DEFAULT_VAL);
+    DeclareAndExportStaticConstIntCVar(CV_r_texpreallocateatlases, TEXPREALLOCATLAS_DEFAULT_VAL);
     DeclareStaticConstIntCVar(CV_r_texlog, 0);
     DeclareStaticConstIntCVar(CV_r_texnoload, 0);
     DeclareStaticConstIntCVar(CV_r_texturecompiling, 1);
@@ -2161,7 +2169,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_debugrendermode, 0);
     DeclareStaticConstIntCVar(CV_r_debugrefraction, 0);
     DeclareStaticConstIntCVar(CV_r_meshprecache, 1);
-    DeclareStaticConstIntCVar(CV_r_impostersdraw, 1);
+    DeclareAndExportStaticConstIntCVar(CV_r_impostersdraw, 1);
     static int CV_r_flares;
     DeclareStaticConstIntCVar(CV_r_flareHqShafts, FLARES_HQSHAFTS_DEFAULT_VAL);
     DeclareStaticConstIntCVar(CV_r_ZPassDepthSorting, ZPASS_DEPTH_SORT_DEFAULT_VAL);
@@ -2304,7 +2312,7 @@ public:
     static float CV_r_detaildistance;
     static float CV_r_DrawNearZRange;
     static float CV_r_DrawNearFarPlane;
-    static float CV_r_imposterratio;
+    ENGINE_API static float CV_r_imposterratio;
     static float CV_r_rainamount;
     static float CV_r_MotionBlurShutterSpeed;
     static float CV_r_MotionBlurCameraMotionScale;

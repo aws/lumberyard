@@ -31,7 +31,6 @@
 static const float kDebugCameraMoveSpeed = 5.0f;
 static const float kDebugCameraRotateScale = -0.01f; // negative value to reverse direction of pitch and yaw
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
 static const AzFramework::InputChannelId kDebugCameraInputMap[HMDDebuggerComponent::EHMDDebugCameraKeys::Count] = // maps to EHMDDebugCameraKeys
 {
     AzFramework::InputDeviceKeyboard::Key::AlphanumericW, // Forward
@@ -39,15 +38,6 @@ static const AzFramework::InputChannelId kDebugCameraInputMap[HMDDebuggerCompone
     AzFramework::InputDeviceKeyboard::Key::AlphanumericA, // Left
     AzFramework::InputDeviceKeyboard::Key::AlphanumericD  // Right
 };
-#else
-static const EKeyId kDebugCameraInputMap[HMDDebuggerComponent::EHMDDebugCameraKeys::Count] = // maps to EHMDDebugCameraKeys
-{
-    eKI_W, // Forward
-    eKI_S, // Back
-    eKI_A, // Left
-    eKI_D, // Right
-};
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
 void HMDDebuggerComponent::Reflect(AZ::ReflectContext* context)
 {
@@ -104,7 +94,6 @@ void HMDDebuggerComponent::EnableCamera(bool enable)
 {
     m_debugFlags.set(EHMDDebugFlags::Camera, enable);
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     if (enable)
     {
         InputChannelEventListener::Connect();
@@ -113,17 +102,6 @@ void HMDDebuggerComponent::EnableCamera(bool enable)
     {
         InputChannelEventListener::Disconnect();
     }
-#else
-    const AZ::InputNotificationId inputBusId(0, 0);
-    if (enable)
-    {
-        AZ::InputNotificationBus::Handler::BusConnect(inputBusId);
-    }
-    else
-    {
-        AZ::InputNotificationBus::Handler::BusDisconnect(inputBusId);
-    }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     OnDebugFlagsChanged();
 }
@@ -278,7 +256,6 @@ void HMDDebuggerComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     }
 }
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
 bool HMDDebuggerComponent::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
     const AzFramework::InputChannelId& inputChannelId = inputChannel.GetInputChannelId();
@@ -328,61 +305,3 @@ bool HMDDebuggerComponent::OnInputChannelEventFiltered(const AzFramework::InputC
     }
     return false;
 }
-#else
-void HMDDebuggerComponent::OnNotifyInputEvent(const SInputEvent& completeInputEvent)
-{
-    switch (completeInputEvent.state)
-    {
-        case eIS_Pressed: // update the pressed input state
-        {
-            for (int i = 0; i < EHMDDebugCameraKeys::Count; ++i)
-            {
-                if (completeInputEvent.keyId == kDebugCameraInputMap[i])
-                {
-                    m_debugCameraInputState[i] = true;
-                    break;
-                }
-            }
-            break;
-        }
-        case eIS_Released: // update the released input state
-        {
-            for (int i = 0; i < EHMDDebugCameraKeys::Count; ++i)
-            {
-                if (completeInputEvent.keyId == kDebugCameraInputMap[i])
-                {
-                    m_debugCameraInputState[i] = false;
-                    break;
-                }
-            }
-            break;
-        }
-        case eIS_Changed: // update the camera rotation
-        {
-            switch (completeInputEvent.keyId)
-            {
-                case eKI_MouseX:
-                {
-                    // modify yaw angle
-                    m_debugCameraRotation += AZ::Vector3(0.0f, 0.0f, completeInputEvent.value);
-                    break;
-                }
-                case eKI_MouseY:
-                {
-                    // modify pitch angle
-                    m_debugCameraRotation += AZ::Vector3(completeInputEvent.value, 0.0f, 0.0f);
-                    break;
-                }
-                default:
-                {
-                    break;
-                }
-            }
-        }
-        default:
-        {
-            break;
-        }
-    }
-}
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)

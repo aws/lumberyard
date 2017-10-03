@@ -26,10 +26,11 @@ namespace AzFramework
         void OnReadBegin(void* classPtr) override
         {
             auto* entityReference = reinterpret_cast<EntityReference*>(classPtr);
-            // If the entity does not exist on the Entity Reference, then look it up
-            // from the ComponentApplication before serializing out
-            if (!entityReference->m_entity)
+            // If the entity does not exist on the Entity Reference or the entity::m_id differs from the EntityId
+            // then look it up using the ComponentApplicationBus before serializing out
+            if (!entityReference->m_entity || entityReference->m_entity->GetId() != entityReference->m_entityId)
             {
+                entityReference->m_entity = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(entityReference->m_entity, &AZ::ComponentApplicationRequests::FindEntity, entityReference->m_entityId);
             }
         }

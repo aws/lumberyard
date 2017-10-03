@@ -709,6 +709,7 @@ int CPhysStreamer::CreatePhysicalEntitiesInBox(const Vec3& boxMin, const Vec3& b
         {
             PodArray<IRenderNode*> brushes;
             ((C3DEngine*)gEnv->p3DEngine)->GetObjectTree()->GetObjectsByType(brushes, eERType_Brush, &aabb);
+            ((C3DEngine*)gEnv->p3DEngine)->GetObjectTree()->GetObjectsByType(brushes, eERType_StaticMeshRenderComponent, &aabb);
             for (int i = 0; i < brushes.Count(); ++i)
             {
                 physicalize(brushes[i], false);
@@ -731,6 +732,7 @@ int CPhysStreamer::CreatePhysicalEntitiesInBox(const Vec3& boxMin, const Vec3& b
         {
             PodArray<IRenderNode*> brushes;
             ((C3DEngine*)gEnv->p3DEngine)->m_pVisAreaManager->GetObjectsByType(brushes, eERType_Brush, &aabb);
+            ((C3DEngine*)gEnv->p3DEngine)->m_pVisAreaManager->GetObjectsByType(brushes, eERType_StaticMeshRenderComponent, &aabb);
             for (int i = 0; i < brushes.Count(); ++i)
             {
                 physicalize(brushes[i], false);
@@ -775,6 +777,7 @@ int CPhysStreamer::DestroyPhysicalEntitiesInBox(const Vec3& boxMin, const Vec3& 
         {
             PodArray<IRenderNode*> brushes;
             ((C3DEngine*)gEnv->p3DEngine)->GetObjectTree()->GetObjectsByType(brushes, eERType_Brush, &aabb);
+            ((C3DEngine*)gEnv->p3DEngine)->GetObjectTree()->GetObjectsByType(brushes, eERType_StaticMeshRenderComponent, &aabb);
             for (int i = 0; i < brushes.Count(); ++i)
             {
                 dephysicalize(brushes[i]);
@@ -797,6 +800,7 @@ int CPhysStreamer::DestroyPhysicalEntitiesInBox(const Vec3& boxMin, const Vec3& 
         {
             PodArray<IRenderNode*> brushes;
             ((C3DEngine*)gEnv->p3DEngine)->m_pVisAreaManager->GetObjectsByType(brushes, eERType_Brush, &aabb);
+            ((C3DEngine*)gEnv->p3DEngine)->m_pVisAreaManager->GetObjectsByType(brushes, eERType_StaticMeshRenderComponent, &aabb);
             for (int i = 0; i < brushes.Count(); ++i)
             {
                 dephysicalize(brushes[i]);

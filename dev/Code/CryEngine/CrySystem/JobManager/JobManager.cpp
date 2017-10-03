@@ -32,6 +32,7 @@
 #include <CryProfileMarker.h>
 
 #include <AzCore/Debug/Profiler.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 namespace JobManager {
     namespace Detail {
@@ -374,7 +375,8 @@ JobManager::IJobManager* GetJobManagerInterface()
 }
 
 JobManager::CJobManager::CJobManager()
-    :   m_Initialized(false)
+    : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityDebug())
+    , m_Initialized(false)
     , m_pFallBackBackEnd(NULL)
     , m_pThreadBackEnd(NULL)
     , m_pBlockingBackEnd(NULL)
@@ -960,15 +962,15 @@ void JobManager::CJobManager::Update(int nJobSystemProfiler)
     m_nFallbackJobsRunCounter = 0;
 
     // Listen for keyboard input if enabled
-    if (m_bJobSystemProfilerEnabled != nJobSystemProfiler && gEnv->pInput)
+    if (m_bJobSystemProfilerEnabled != nJobSystemProfiler)
     {
         if (nJobSystemProfiler)
         {
-            gEnv->pInput->AddEventListener(this);
+            AzFramework::InputChannelEventListener::Connect();
         }
         else
         {
-            gEnv->pInput->RemoveEventListener(this);
+            AzFramework::InputChannelEventListener::Disconnect();
         }
 
         m_bJobSystemProfilerEnabled = nJobSystemProfiler;
@@ -1013,7 +1015,7 @@ void JobManager::CJobManager::Update(int nJobSystemProfiler)
 
     float pixelPerTime = (float)fGraphWidth / diffTime.GetValue();
 
-    const int nNumWorker = m_pThreadBackEnd->GetNumWorkerThreads();
+    const int nNumWorker = m_pThreadBackEnd ? m_pThreadBackEnd->GetNumWorkerThreads() : 0;
     const int nNumJobs = m_registeredJobs.size();
     const int nGraphSize = (int)fGraphWidth;
     int nNumRegions =  m_nMainThreadMarkerIndex[nFrameId] + m_nRenderThreadMarkerIndex[nFrameId];
@@ -1697,26 +1699,15 @@ void JobManager::CJobManager::DumpJobList()
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool JobManager::CJobManager::OnInputEvent(const SInputEvent& event)
+bool JobManager::CJobManager::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
-    bool ret = false;
-
-    // Only process keyboard input
-    if (eIDT_Keyboard == event.deviceType)
+    if (inputChannel.IsStateBegan() &&
+        inputChannel.GetInputChannelId() == AzFramework::InputDeviceKeyboard::Key::WindowsSystemScrollLock)
     {
-        // Only if key was pressed
-        if (eIS_Pressed == event.state)
-        {
-            switch (event.keyId)
-            {
-            case eKI_ScrollLock: // Pause/Continue profiler data collection with Scroll Lock key
-                m_bJobSystemProfilerPaused = !m_bJobSystemProfilerPaused;
-                break;
-            }
-        }
+        m_bJobSystemProfilerPaused = !m_bJobSystemProfilerPaused;
     }
 
-    return ret;
+    return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -20,6 +20,8 @@
 
 #if defined(USE_CRY_ASSERT) && defined(ANDROID)
 
+#include <NativeUIRequests.h>
+
 static char gs_szMessage[MAX_PATH];
 
 void CryAssertTrace(const char* szFormat, ...)
@@ -56,6 +58,23 @@ bool CryAssert(const char* szCondition, const char* szFile, unsigned int line, b
 
     if (!gEnv->bNoAssertDialog && !gEnv->bIgnoreAllAsserts)
     {
+        NativeUI::AssertAction result;
+        EBUS_EVENT_RESULT(result, NativeUI::NativeUIRequestBus, DisplayAssertDialog, gs_szMessage);
+
+        switch (result)
+        {
+        case NativeUI::AssertAction::IGNORE_ASSERT:
+            return false;
+        case NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
+            gEnv->bNoAssertDialog = true;
+            gEnv->bIgnoreAllAsserts = true;
+            return false;
+        case NativeUI::AssertAction::BREAK:
+            return true;
+        default:
+            break;
+        }
+        
         return true;
     }
     else

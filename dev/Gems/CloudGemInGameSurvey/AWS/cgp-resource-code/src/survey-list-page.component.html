@@ -1,0 +1,164 @@
+<facet-generator [context]="context"
+                    [tabs]="['Overview', 'History']"
+                    (tabClicked)="onTabIndexUpdated($event)"
+                    [metricIdentifier]="context.identifier"></facet-generator>
+<div *ngIf="tabIndex == 0 || tabIndex == 1">
+    <button class="btn l-primary" (click)="onShowCreateSurveyModal()">
+        Create New Survey
+    </button>
+    <search class="float-right"
+            searchInputPlaceholder="Search Survey"
+            (searchUpdated)="onSurveyNameSearchUpdated($event)"></search>
+
+    <div *ngIf="isLoading">
+        <loading-spinner></loading-spinner>
+    </div>
+
+    <div *ngIf="!isLoading">
+        <div>               
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th> SURVEY NAME </th>
+                        <th>
+                            CREATION TIME
+                            <div class="fa fa-caret-down" (click)="onReverseCurSurveyMetadataListSortOrder()"></div>
+                        </th>
+                        <th>
+                            STATUS
+                            <div *ngIf="tabIndex == 0" class="fa fa-filter status-filter" (click)="onShowStatusFilter()">
+                                <div class="survey-status-filter" [hidden]="!showSurveyFilter">
+                                    <div class="survey-statuses">
+                                        <div class="survey-status">
+                                            <input id="active_filter" type="checkbox" [(ngModel)]="activeFilterChecked" />
+                                            <label class="l-checkbox" for="active_filter">
+                                                Active
+                                            </label>
+                                        </div>
+                                        <div class="survey-status">
+                                            <input id="draft_filter" type="checkbox" [(ngModel)]="draftFilterChecked" />
+                                            <label class="l-checkbox" for="draft_filter">
+                                                Draft
+                                            </label>
+                                        </div>
+                                        <div class="survey-status">
+                                            <input id="scheduled_filter" type="checkbox" [(ngModel)]="scheduledFilterChecked" />
+                                            <label class="l-checkbox" for="scheduled_filter">
+                                                Scheduled
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="survey-status-filter-buttons">
+                                        <button class="btn btn-outline-primary" (click)="onCancelFilterChange()">cancel</button>
+                                        <button class="btn l-primary" (click)="onApplyFilterChange()">Apply Filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </th>
+                        <th> START </th>
+                        <th> END </th>
+                        <th> RESPONSES </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let surveyMetadata of getCurSurveyMetadataList()">
+                        <td (click)="onShowSurveyDetailsPage(surveyMetadata)" placement="top"> {{surveyMetadata.surveyName}} </td>
+                        <td class="float-left" (click)="onShowSurveyDetailsPage(surveyMetadata)"> {{epochToString(surveyMetadata.creationTime)}} </td>
+                        <td (click)="onShowSurveyDetailsPage(surveyMetadata)">
+                            <ng-container [ngSwitch]="surveyMetadata.status">
+                                <span *ngSwitchCase="SurveyStatus.Active" class="fa fa-check-circle active-survey-icon"></span>
+                                <span *ngSwitchCase="SurveyStatus.Draft" class="fa fa-file-text-o"></span>
+                                <span *ngSwitchCase="SurveyStatus.Scheduled" class="fa fa-clock-o scheduled-survey-icon"></span>
+                            </ng-container>                                    
+                            {{SurveyStatus[surveyMetadata.status]}}
+                        </td>
+                        <td (click)="onShowSurveyDetailsPage(surveyMetadata)">
+                            <ng-container *ngIf="surveyMetadata.activationStartTime > 0">{{epochToString(surveyMetadata.activationStartTime)}}</ng-container>
+                            <ng-container *ngIf="surveyMetadata.activationStartTime == 0">Now</ng-container>
+                        </td>
+                        <td (click)="onShowSurveyDetailsPage(surveyMetadata)">
+                            <ng-container *ngIf="surveyMetadata.activationEndTime != undefined && surveyMetadata.activationEndTime != null">{{epochToString(surveyMetadata.activationEndTime)}}</ng-container>
+                            <ng-container *ngIf="surveyMetadata.activationEndTime == undefined || surveyMetadata.activationEndTime == null">Never Expires</ng-container>
+                        </td>
+                        <td (click)="onShowSurveyDetailsPage(surveyMetadata)">{{surveyMetadata.numResponses}}</td>
+                        <td>                                                                                                       
+                            <div class="float-right">
+                                <action-stub-items *ngIf="surveyMetadata.status == SurveyStatus.Active" [model]="surveyMetadata" [edit]="onShowSurveyDetailsPage" [delete]="onShowDeleteSurveyModal" [custom]="activeSurveyActions"></action-stub-items>
+                                <action-stub-items *ngIf="surveyMetadata.status != SurveyStatus.Active" [model]="surveyMetadata" [edit]="onShowSurveyDetailsPage" [delete]="onShowDeleteSurveyModal" [custom]="inactiveSurveyActions"></action-stub-items>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <ng-container [ngSwitch]="tabIndex">
+            <ng-container *ngSwitchCase="0">
+                <pagination [pages]="numFilteredSurveysPages"
+                            (pageChanged)="onPageChanged($event)">
+                </pagination>
+            </ng-container>
+            <ng-container *ngSwitchCase="1">
+                <pagination [pages]="numClosedSurveysPages"
+                            (pageChanged)="onPageChanged($event)">
+                </pagination>
+            </ng-container>
+        </ng-container>            
+    </div>
+</div>
+
+<modal *ngIf="editMode == EditMode.CreateSurvey || editMode == EditMode.CloneSurvey"
+       [title]="editMode == EditMode.CreateSurvey ? 'Create New Survey' : 'Clone Survey'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [submitButtonText]="editMode == EditMode.CreateSurvey ? 'Create Survey' : 'Clone Survey'"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       (modalSubmitted)="editMode == EditMode.CreateSurvey ? onCreateSurvey() : onCloneSurvey()">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <form [formGroup]="surveyNameForm">
+            <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(surveyNameForm, 'surveyName')}">
+                <label class="col-form-label col-4" for="survey_name">
+                    Survey Name
+                </label>
+                <input class="form-control col-8" id="survey_name" type="text" [formControl]="surveyNameForm.controls['surveyName']"
+                       [ngClass]="{'form-control-danger': isFormFieldNotValid(surveyNameForm, 'surveyName')}" />
+
+                <span class="col-4"></span>
+                <div *ngIf="isFormFieldRequiredEmpty(surveyNameForm, 'surveyName')" class="form-control-feedback col-8">Survey name cannot be empty</div>
+            </div>
+        </form>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.DeleteSurvey"
+       title="Delete Survey"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       submitButtonText="Delete Survey"
+       (modalSubmitted)="onDeleteSurvey(curSurveyMetadata)">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <p> Delete a survey will also delete all responses collected so far. </p>
+        <p> Are you sure you want to delete this survey? </p>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.CloseSurvey"
+       title="End Survey"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       closeButtonText="Cancel"
+       submitButtonText="End Survey"
+       (modalSubmitted)="onCloseSurvey(curSurveyMetadata)">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <p> Are you sure you want to end this survey? </p>
+    </div>
+</modal>

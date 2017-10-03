@@ -353,10 +353,6 @@ AZSTD_DECLARE_POD_TYPE(AZ::Matrix4x4);
 
 #if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
     #include <AzCore/Math/Internal/Matrix4x4Win32.inl>
-#elif defined(AZ_SIMD_X360)
-    #include <AzCore/Math/Internal/Matrix4x4X360.inl>
-#elif defined(AZ_SIMD_PS3)
-    #include <AzCore/Math/Internal/Matrix4x4Ps3.inl>
 #else
     #include <AzCore/Math/Internal/Matrix4x4Fpu.inl>
 #endif

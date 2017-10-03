@@ -26,12 +26,15 @@
 #include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
 #include <AzCore/PlatformIncl.h>
+#include <AzCore/Module/ModuleManagerBus.h>
 
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/Asset/AssetCatalogComponent.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
+#include <AzFramework/Components/ConsoleBus.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzFramework/Entity/BehaviorEntity.h>
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
 #include <AzFramework/Entity/EntityReference.h>
@@ -43,6 +46,7 @@
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 #include <GridMate/Memory.h>
@@ -219,16 +223,16 @@ namespace AzFramework
         }
 
         AZ::ComponentApplication::Descriptor& descriptor = *loadDescriptorOutcome.GetValue();
-        for (AZ::ComponentApplication::Descriptor::DynamicModuleDescriptor& moduleDescriptor : descriptor.m_modules)
+
+        AZ::ModuleManagerRequests::LoadModulesResult loadModuleOutcomes;
+        AZ::ModuleManagerRequestBus::BroadcastResult(loadModuleOutcomes, &AZ::ModuleManagerRequests::LoadDynamicModules, descriptor.m_modules, AZ::ModuleInitializationSteps::RegisterComponentDescriptors, true);
+
+        for (const auto& loadModuleOutcome : loadModuleOutcomes)
         {
-            if (!IsModuleLoaded(moduleDescriptor))
+            AZ_Error("Application", loadModuleOutcome.IsSuccess(), loadModuleOutcome.GetError().c_str());
+            if (!loadModuleOutcome.IsSuccess())
             {
-                AZ::ComponentApplication::LoadModuleOutcome loadModuleOutcome = LoadDynamicModule(moduleDescriptor);
-                AZ_Error("Application", loadModuleOutcome.IsSuccess(), loadModuleOutcome.GetError().c_str());
-                if (!loadModuleOutcome.IsSuccess())
-                {
-                    return false;
-                }
+                return false;
             }
         }
 
@@ -326,6 +330,7 @@ namespace AzFramework
         RegisterComponentDescriptor(AzFramework::CreateScriptDebugAgentFactory());
         RegisterComponentDescriptor(AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzFramework::InputSystemComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::DrillerNetworkAgentComponent::CreateDescriptor());
 
 #if !defined(AZCORE_EXCLUDE_LUA)
         RegisterComponentDescriptor(AzFramework::ScriptComponent::CreateDescriptor());
@@ -352,6 +357,7 @@ namespace AzFramework
             azrtti_typeid<AzFramework::TargetManagementComponent>(),
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
+            azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
 
 #if !defined(AZCORE_EXCLUDE_LUA)
             azrtti_typeid<AZ::ScriptSystemComponent>(),
@@ -362,14 +368,17 @@ namespace AzFramework
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, componentUuidsForMetricsCollection);
     }
 
-    void Application::ReflectSerialize()
+    void Application::Reflect(AZ::ReflectContext* context)
     {
-        AZ::ComponentApplication::ReflectSerialize();
-        AZ::DataPatch::Reflect(*m_serializeContext);
-        AZ::EntityUtils::Reflect(*m_serializeContext);
-        AzFramework::EntityContext::ReflectSerialize(*m_serializeContext);
-        AzFramework::SimpleAssetReferenceBase::Reflect(*m_serializeContext);
-        AzFramework::EntityReference::Reflect(m_serializeContext);
+        AZ::ComponentApplication::Reflect(context);
+
+        AZ::DataPatch::Reflect(context);
+        AZ::EntityUtils::Reflect(context);
+        AzFramework::BehaviorEntity::Reflect(context);
+        AzFramework::EntityContext::Reflect(context);
+        AzFramework::SimpleAssetReferenceBase::Reflect(context);
+        AzFramework::EntityReference::Reflect(context);
+        AzFramework::ConsoleRequests::Reflect(context);
     }
 
     void Application::RegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor)
@@ -410,6 +419,7 @@ namespace AzFramework
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
+            azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
 
             AZ::Uuid("{624a7be2-3c7e-4119-aee2-1db2bdb6cc89}"), // ScriptDebugAgent
         });
@@ -438,8 +448,6 @@ namespace AzFramework
 
     void Application::CalculateAppRoot(const char* appRootOverride) // = nullptr
     {
-        CalculateExecutablePath();
-
         if (appRootOverride)
         {
             azstrcpy(m_appRoot, AZ_ARRAY_SIZE(m_appRoot), appRootOverride);
@@ -449,8 +457,6 @@ namespace AzFramework
 #if   defined(AZ_PLATFORM_ANDROID)
             // On Android, all file reads should be relative.
             azstrcpy(m_appRoot, AZ_ARRAY_SIZE(m_appRoot), "");
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-            azstrcpy(m_appRoot, AZ_ARRAY_SIZE(m_appRoot), m_exeDirectory); //We could use this for all platforms.
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
             AZ_Assert(appRootOverride != nullptr, "App root must be set explicitly for apple platforms.");
 #else
@@ -465,23 +471,55 @@ namespace AzFramework
             // http://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
             // http://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe/1024937#1024937
             static char currentDirectory[AZ_MAX_PATH_LEN];
-#   if defined(AZ_COMPILER_MSVC)
-            GetCurrentDirectoryA(sizeof(currentDirectory), currentDirectory);
-#   else
-            getcwd(currentDirectory, sizeof(currentDirectory));
-#   endif // defined(AZ_COMPILER_MSVC)
+            static const char* engineRootFile = "engine.json";
+            static const size_t engineRootFileLength = strlen(engineRootFile);
+
+            CalculateExecutablePath();
+            const char* exeFolderPath = GetExecutableFolder();
+            azstrncpy(currentDirectory, AZ_ARRAY_SIZE(currentDirectory), exeFolderPath, strlen(exeFolderPath));
+
+            AZ_Assert(strlen(currentDirectory) > 0, "Failed to get current working directory.");
 
             AZStd::replace(currentDirectory, currentDirectory + AZ_MAX_PATH_LEN, '\\', '/');
 
-#ifdef BINFOLDER_NAME
-            const size_t binRootCutoff = StringFunc::Find(currentDirectory, "/" BINFOLDER_NAME, 0, true, false);
-#else
-            const size_t binRootCutoff = StringFunc::Find(currentDirectory, "/bin", 0, true, false);
-#endif // BINFOLDER_NAME
-            if (AZStd::string::npos != binRootCutoff)
+            // Add a trailing slash if one does not already exist
+            if (currentDirectory[strlen(currentDirectory) - 1] != '/')
             {
-                currentDirectory[binRootCutoff + 1] = '\0';
+                azstrncat(currentDirectory, AZ_ARRAY_SIZE(currentDirectory), "/", 1);
             }
+
+            // this closures assumes that there is a '/' character at the end
+            auto cdPathUp = [](char path[])
+            {
+                size_t separatorCutoff = StringFunc::Find(path, "/", 1, true, false);
+                if (separatorCutoff != AZStd::string::npos)
+                {
+                    path[separatorCutoff + 1] = '\0';
+                }
+
+                return separatorCutoff;
+            };
+
+            size_t separatorCutoff = AZStd::string::npos;
+            do 
+            {
+                // Add the file to check for into the directory path
+                azstrncat(currentDirectory, AZ_ARRAY_SIZE(currentDirectory), engineRootFile, engineRootFileLength);
+
+                // Look for the file that identifies the engine root
+                bool engineFileExists = AZ::IO::SystemFile::Exists(currentDirectory);
+
+                // remove the filename appended previously to do the engine root file check
+                cdPathUp(currentDirectory);
+
+                if (engineFileExists)
+                {
+                    break;
+                }
+
+                separatorCutoff = cdPathUp(currentDirectory);
+
+            } while (separatorCutoff != AZStd::string::npos);
 
             // Add a trailing slash if one does not already exist
             if (currentDirectory[strlen(currentDirectory) - 1] != '/')
@@ -514,7 +552,7 @@ namespace AzFramework
     {
         // Setup NetworkContext
         m_networkContext.reset(aznew NetworkContext());
-        EBUS_EVENT(AZ::ComponentDescriptorBus, Reflect, m_networkContext.get());
+        Reflect(m_networkContext.get());
     }
 
     ////////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,9 @@ public:
 
     AZ_COMPONENT(LoadScreenComponent, "{97CDBD6C-C621-4427-87C8-10E1B8F947FF}");
 
+    LoadScreenComponent();
+    ~LoadScreenComponent() override;
+
     //////////////////////////////////////////////////////////////////////////
     // AZ::Component interface implementation
     void Init() override;
@@ -41,7 +44,7 @@ public:
 
     ////////////////////////////////////////////////////////////////////////
     // CrySystemEvents
-    void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
+    void OnCrySystemInitialized(ISystem&, const SSystemInitParams& params) override;
     void OnCrySystemShutdown(ISystem&) override;
     ////////////////////////////////////////////////////////////////////////
 
@@ -56,6 +59,10 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
 protected:
+    // Workaround for VS2013
+    // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+    LoadScreenComponent(const LoadScreenComponent&) = delete;
+
     static void Reflect(AZ::ReflectContext* context);
 
     static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

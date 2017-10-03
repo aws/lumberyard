@@ -71,7 +71,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 AZStd::string selectionString(displayedText.substr(firstIndexLineIndex, selectionLength));
                 Vec2 rightSize = drawBatch.font->GetTextSize(selectionString.c_str(), true, m_fontContext);
                 lineOffsetsStack.top()->right.SetX(rightSize.x);
-                m_numCharsSelected += selectionLength;
+                m_numCharsSelected += LyShine::GetUtf8StringLength(selectionString);
 
                 break;
             }
@@ -100,9 +100,10 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
         else if (!lastIndexFound)
         {
             int substrLength = displayedText.length() - firstIndexLineIndex;
-            curLineWidth += drawBatch.font->GetTextSize((displayedText.substr(firstIndexLineIndex, substrLength)).c_str(), false, m_fontContext).x;
+            AZStd::string curSubstring(displayedText.substr(firstIndexLineIndex, substrLength));
+            curLineWidth += drawBatch.font->GetTextSize(curSubstring.c_str(), false, m_fontContext).x;
             lineOffsetsStack.top()->right.SetX(AZStd::GetMax<float>(lineOffsetsStack.top()->right.GetX(), curLineWidth));
-            m_numCharsSelected += substrLength;
+            m_numCharsSelected += LyShine::GetUtf8StringLength(curSubstring);
         }
     }
 }

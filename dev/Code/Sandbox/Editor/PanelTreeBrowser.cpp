@@ -128,14 +128,22 @@ static void PanelTreeBrowserTreeViewDropWrapper(CViewport* viewport, int ptx, in
     treeView->endDrop();
 
     //  Clear the drop callback
-    GetIEditor()->GetViewManager()->GetViewport(ET_ViewportCamera)->SetGlobalDropCallback(nullptr, nullptr);
+    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
+    for (int i = 0; i < numViews; ++i)
+    {
+        GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(nullptr, nullptr);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CPanelTreeBrowserTreeView::startDrag(Qt::DropActions supportedActions)
 {
     //  Also, register drag/drop callback
-    GetIEditor()->GetViewManager()->GetViewport(ET_ViewportCamera)->SetGlobalDropCallback(&PanelTreeBrowserTreeViewDropWrapper, this);
+    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
+    for (int i = 0; i < numViews; ++i)
+    {
+        GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(&PanelTreeBrowserTreeViewDropWrapper, this);
+    }
 
     QTreeView::startDrag(supportedActions);
 }

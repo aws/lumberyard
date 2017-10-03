@@ -38,6 +38,8 @@ namespace AZ
                 const AZStd::string& GetName() const override;
                 void SetName(const AZStd::string& name);
                 void SetName(AZStd::string&& name);
+                const Uuid& GetId() const override;
+                void OverrideId(const Uuid& id);
 
                 Containers::RuleContainer& GetRuleContainer() override;
                 const Containers::RuleContainer& GetRuleContainerConst() const;
@@ -55,13 +57,14 @@ namespace AZ
                 static bool VersionConverter(SerializeContext& context, SerializeContext::DataElementNode& classElement);
 
             protected:
-                DataTypes::IAnimationGroup::PerBoneCompressionList  m_perBoneCompression;
-                Containers::RuleContainer                           m_rules;
-                AZStd::string                                       m_selectedRootBone;
-                AZStd::string                                       m_name;
-                uint32_t                                            m_startFrame;
-                uint32_t                                            m_endFrame;
-                float                                               m_defaultCompressionStrength;
+                DataTypes::IAnimationGroup::PerBoneCompressionList m_perBoneCompression;
+                Containers::RuleContainer  m_rules;
+                AZStd::string m_selectedRootBone;
+                AZStd::string m_name;
+                Uuid m_id;
+                uint32_t m_startFrame;
+                uint32_t m_endFrame;
+                float m_defaultCompressionStrength;
             };
         }
     }

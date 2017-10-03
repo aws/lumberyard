@@ -67,5 +67,5 @@ bool SourceControlStatusModel::FileNeedsCheckout() const
 {
     AzToolsFramework::SourceControlStatus curStatus = GetStatus();
 
-    return (curStatus == AzToolsFramework::SCS_Tracked || curStatus == AzToolsFramework::SCS_NotTracked);
+    return (curStatus == AzToolsFramework::SCS_Tracked);
 }

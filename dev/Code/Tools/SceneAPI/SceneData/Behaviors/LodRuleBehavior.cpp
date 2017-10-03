@@ -51,10 +51,12 @@ namespace AZ
             {
                 Events::ManifestMetaInfoBus::Handler::BusConnect();
                 Events::AssetImportRequestBus::Handler::BusConnect();
+                Events::GraphMetaInfoBus::Handler::BusConnect();
             }
 
             void LodRuleBehavior::Deactivate()
             {
+                Events::GraphMetaInfoBus::Handler::BusDisconnect();
                 Events::AssetImportRequestBus::Handler::BusDisconnect();
                 Events::ManifestMetaInfoBus::Handler::BusDisconnect();
             }
@@ -199,6 +201,11 @@ namespace AZ
                         }
                     }
                 }
+            }
+
+            void LodRuleBehavior::GetAllVirtualTypes(AZStd::set<Crc32>& types)
+            {
+                AZStd::copy(s_lodVirtualTypeKeys.begin(), s_lodVirtualTypeKeys.end(), AZStd::inserter(types, types.begin()));
             }
         } // namespace SceneData
     } // namespace SceneAPI

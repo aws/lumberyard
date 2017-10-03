@@ -36,16 +36,12 @@
             "D3DTexturesStreaming.cpp",
             "D3DTextureStreamPool.cpp",
             "D3DTiledShading.cpp",
-            "D3DVolumetricFog.cpp",
             "CompiledRenderObject.cpp",
             "DriverD3D.cpp",
             "GPUTimer.cpp",
             "PipelineProfiler.cpp",
-            "SmartGlassContext.cpp",
-            "SmartGlassManager.cpp",
             "StatoscopeRenderStats.cpp",
             "D3DREBreakableGlassBuffer.h",
-            "SmartGlassManager.h",
             "MultiLayerAlphaBlendPass.cpp"
         ],
         "Source Files/D3DPostProcess":
@@ -62,14 +58,12 @@
         "Header Files":
         [
             "D3D_SVO.h",
-            "D3DVolumetricFog.h",
             "D3DTiledShading.h",
             "../Common/Textures/ITextureStreamer.h",
             "../Common/Shaders/ShaderAllocator.h",
             "../Common/CryNameR.h",
             "../Common/FencedIB.h",
             "../Common/FencedVB.h",
-            "../Common/ISmartGlassContext.h",
             "D3DColorGradingController.h",
             "D3DDebug.h",
             "D3DDeferredShading.h",
@@ -78,6 +72,7 @@
             "D3DPostProcess.h",
             "D3DRenderAuxGeom.h",
             "D3DStereo.h",
+            "../Common/RendererDefs.h",
             "../Common/Defs.h",
             "DeviceInfo.h",
             "DriverD3D.h",
@@ -105,7 +100,6 @@
             "../Common/ShadowUtils.cpp",
             "../Common/TextMessages.cpp",
             "../Common/WaterUtils.cpp",
-            "../Common/SmartGlassContext.h",
             "../../CryCommon/EngineSettingsManager.h",
             "../Common/ResFileLookupDataMan.h",
             "../Common/TextMessages.h",
@@ -196,8 +190,6 @@
             "DeviceManager/TempDynBuffer.h",
             "DeviceManager/DeviceManager.h",
             "DeviceManager/DeviceManager_D3D11.inl",
-            "DeviceManager/DeviceManager_D3D11_Durango.h",
-            "DeviceManager/DeviceManager_D3D11_Durango.inl",
             "DeviceManager/DeviceManager_D3D11_NVAPI.h",
             "DeviceManager/DeviceManager_D3D11_NVAPI.inl",
             "DeviceManager/DeviceManager_D3D12.inl",
@@ -383,9 +375,14 @@
 
     "none":
     {
-        "Root":
-        [
+        "Root": [
             "../StdAfx.cpp"
+        ],
+        "Source Files": [
+            "D3DVolumetricFog.cpp"
+        ],
+        "Header Files": [
+            "D3DVolumetricFog.h"
         ]
     }
 }

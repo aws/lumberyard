@@ -11,227 +11,345 @@
 */
 
 #include <AzQtComponents/Components/TagSelector.h>
-
-#include <QVBoxLayout>
 #include <QComboBox>
-#include <QGridLayout>
-#include <QPainter>
-#include <QList>
-#include <QPixmap>
-#include <QDebug>
 #include <QLineEdit>
+#include <QVBoxLayout>
 #include <QMouseEvent>
+
 
 namespace AzQtComponents
 {
-    enum
-    {
-        TagBorderWidth = 4,
-        TagDeleteButtonRightMargin = 1,
-        TagTextLeftMargin = 1,
-        TagTextButtonSpacing = 10,
-        TagHeight = 20,
-        TagMaxTextWidth = 100
-    };
-
-    class TagContainer
-        : public QWidget
-    {
-    public:
-        explicit TagContainer(QWidget* parent = nullptr)
-            : QWidget(parent)
-            , m_layout(new QHBoxLayout(this))
-        {
-            m_layout->setMargin(0);
-            m_layout->setSpacing(2);
-            m_layout->addStretch();
-        }
-
-        void setNumColumns(int n)
-        {
-            if (n != m_numColumns)
-            {
-                m_numColumns = n;
-            }
-        }
-
-        void appendTag(const QString& tag)
-        {
-            appendTag(new TagWidget(tag, this));
-        }
-
-        void appendTag(TagWidget* tag)
-        {
-            if (contains(tag->text()))
-            {
-                return;
-            }
-
-            m_tags.append(tag);
-            m_layout->insertWidget(m_layout->count() - 1, tag);
-
-            connect(tag, &TagWidget::deleteClicked, [this, tag] {
-                    removeTag(tag);
-                });
-        }
-
-        void removeTag(TagWidget* tag)
-        {
-            if (m_tags.contains(tag))
-            {
-                m_tags.removeAll(tag);
-                tag->deleteLater();
-            }
-        }
-
-        int count() const
-        {
-            return m_tags.count();
-        }
-
-        bool contains(const QString& tag)
-        {
-            return std::find_if(m_tags.cbegin(), m_tags.cend(), [tag](TagWidget* wid)
-                {
-                    return wid->text() == tag;
-                }) != m_tags.cend();
-        }
-
-        QHBoxLayout* m_layout;
-        int m_numColumns = 4;
-        QList<TagWidget*> m_tags;
-    };
-
     TagWidget::TagWidget(const QString& text, QWidget* parent)
-        : QWidget(parent)
-        , m_deleteButton(":/stylesheet/img/tag_delete.png")
+        : QPushButton(parent)
     {
         setText(text);
+        setMouseTracking(true);
+
+        // Create the close button on the right side.
+        setLayoutDirection(Qt::RightToLeft);
+        setIcon(QIcon(":/stylesheet/img/titlebarmenu/close.png"));
+        
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        connect(this, &QPushButton::clicked, this, &TagWidget::OnClicked);
     }
 
-    void TagWidget::paintEvent(QPaintEvent*)
+
+    void TagWidget::OnClicked()
     {
-        // Draw border-image through stylesheets:
-        QStyleOption opt;
-        opt.init(this);
-        QPainter p(this);
-        style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
-
-        p.setPen(QColor(204, 204, 204));
-        p.drawPixmap(deleteButtonRect(), m_deleteButton, m_deleteButton.rect());
-
-        QFontMetrics fm(font());
-        QRect rect = textRect();
-        QString elidedText = fm.elidedText(m_text, Qt::ElideRight, rect.width());
-        p.drawText(rect, elidedText);
-    }
-
-    void TagWidget::mousePressEvent(QMouseEvent* ev)
-    {
-        m_deleteButtonPressed = deleteButtonRect().contains(ev->pos());
-        update();
-    }
-
-    void TagWidget::mouseReleaseEvent(QMouseEvent* ev)
-    {
-        if (m_deleteButtonPressed && deleteButtonRect().contains(ev->pos()))
+        if (IsOverCloseButton(m_lastMouseX, m_lastMouseY))
         {
-            emit deleteClicked();
-        }
-
-        m_deleteButtonPressed = false;
-        update();
-    }
-
-    QRect TagWidget::textRect() const
-    {
-        const int x = TagBorderWidth + TagTextLeftMargin;
-        const int y = TagBorderWidth - 1;
-
-        // Only subtract one border, it's normal for some characters touch the border, like 'g':
-        const int h = height() - TagBorderWidth;
-
-        QFontMetrics fm(font());
-        const int w = qMin((int)TagMaxTextWidth, fm.width(m_text));
-        return QRect(x, y, w, h);
-    }
-
-    QRect TagWidget::deleteButtonRect() const
-    {
-        const QSize buttonSize = m_deleteButton.size();
-        const int x = width() - delegeButtonRightOffset();
-        const int y = rect().center().y() - (buttonSize.height() / 2) + 1;
-
-        return QRect({ x, y }, buttonSize);
-    }
-
-    int TagWidget::delegeButtonRightOffset() const
-    {
-        return TagBorderWidth + m_deleteButton.width() + TagDeleteButtonRightMargin;
-        ;
-    }
-
-    void TagWidget::setText(const QString& text)
-    {
-        if (m_text != text)
-        {
-            m_text = text;
-            setFixedSize(sizeHint());
-            update();
+            emit DeleteClicked();
         }
     }
 
-    QString TagWidget::text() const
+
+    bool TagWidget::IsOverCloseButton(int localX, int localY)
     {
-        return m_text;
+        Q_UNUSED(localY);
+        return (localX > width() - iconSize().width() * 1.5) && (localX < width());
     }
 
-    QSize TagWidget::sizeHint() const
+
+    void TagWidget::mouseMoveEvent(QMouseEvent* event)
     {
-        const int w = textRect().right() + TagTextButtonSpacing + delegeButtonRightOffset();
-        return QSize(w, TagHeight);
+        m_lastMouseX = event->x();
+        m_lastMouseY = event->y();
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TagWidgetContainer::TagWidgetContainer(QWidget* parent)
+        : QWidget(parent)
+        , m_widget(nullptr)
+    {
+        m_layout = new QVBoxLayout();
+        m_layout->setMargin(0);
+        setLayout(m_layout);
+
+        m_width = 250;
+    }
+
+
+    void TagWidgetContainer::SetWrapWidth(int width)
+    {
+        m_width = width;
+        Reinit(m_tags);
+    }
+
+    
+    void TagWidgetContainer::Reinit(const QVector<QString>& tags)
+    {
+        m_tags = tags;
+
+        if (m_widget)
+        {
+            // Hide the old widget and request deletion.
+            m_widget->hide();
+            m_widget->deleteLater();
+        }
+
+        m_widget = new QWidget(this);
+
+        QVBoxLayout* vLayout = new QVBoxLayout();
+        vLayout->setAlignment(Qt::AlignLeft);
+        vLayout->setMargin(0);
+
+        QHBoxLayout* hLayout = nullptr;
+        int usedSpaceInRow = 0;
+        const int numTags = m_tags.count();
+        for (int i = 0; i < numTags; ++i)
+        {
+            // Create the new tag widget.
+            TagWidget* tagWidget = new TagWidget(m_tags[i]);
+            const int tagWidgetWidth = tagWidget->minimumSizeHint().width();
+
+            // Calculate the width we're currently using in the current row. Does the new tag still fit in the current row?
+            const bool isRowFull = m_width - usedSpaceInRow - tagWidgetWidth < 0;
+            if (isRowFull || i == 0)
+            {
+                // Add a spacer widget after the last tag widget in a row to push the tag widgets to the left.
+                if (i > 0)
+                {
+                    QWidget* spacerWidget = new QWidget();
+                    spacerWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+                    hLayout->addWidget(spacerWidget);
+                }
+
+                // Add a new row for the current tag widget.
+                hLayout = new QHBoxLayout();
+                hLayout->setAlignment(Qt::AlignLeft);
+                hLayout->setMargin(0);
+                vLayout->addLayout(hLayout);
+
+                // Reset the used space in the row.
+                usedSpaceInRow = 0;
+            }
+
+            // Calculate the width of the tag widgets including the spacing between them of the current row.
+            usedSpaceInRow += tagWidgetWidth + hLayout->spacing();
+
+            // Add the tag widget to the current row.
+            hLayout->addWidget(tagWidget);
+
+            // Connect the clicked event of the close button of the tag widget to the remove tag function in the container.
+            connect(tagWidget, &TagWidget::DeleteClicked, [this, tagWidget]{ RemoveTag(tagWidget->text()); });
+        }
+
+        m_widget->setLayout(vLayout);
+        m_layout->addWidget(m_widget);
+    }
+
+
+    int TagWidgetContainer::GetNumTags() const
+    {
+        return m_tags.count();
+    }
+
+
+    const QString& TagWidgetContainer::GetTag(int index) const
+    {
+        return m_tags[index];
+    }
+
+
+    const QVector<QString>& TagWidgetContainer::GetTags() const
+    {
+        return m_tags;
+    }
+
+
+    bool TagWidgetContainer::Contains(const QString& tag) const
+    {
+        return m_tags.contains(tag);
+    }
+
+    
+    void TagWidgetContainer::AddTag(const QString& tag)
+    {
+        // Is the tag already present in our container? If so, return directly to avoid duplicates.
+        if (Contains(tag))
+        {
+            return;
+        }
+
+        m_tags.push_back(tag);
+        Reinit(m_tags);
+        emit TagsChanged();
+    }
+
+
+    void TagWidgetContainer::AddTags(const QVector<QString>& selectedTags)
+    {
+        m_tags.reserve(m_tags.size() + selectedTags.size());
+
+        bool changed = false;
+        for (const QString& tag : selectedTags)
+        {
+            // Is the tag already present in our container? Only add the tag if not to avoid duplicates.
+            if (!Contains(tag))
+            {
+                m_tags.push_back(tag);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            Reinit(m_tags);
+            emit TagsChanged();
+        }
+    }
+
+    
+    void TagWidgetContainer::RemoveTag(const QString& tag)
+    {
+        m_tags.removeAll(tag);
+        Reinit(m_tags);
+        emit TagsChanged();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
     TagSelector::TagSelector(QWidget* parent)
         : QWidget(parent)
-        , m_combo(new QComboBox())
-        , m_tagContainer(new TagContainer())
     {
-        auto layout = new QVBoxLayout(this);
-        m_combo->setEditable(true);
-        m_combo->lineEdit()->setPlaceholderText(tr("Filter by"));
-        m_combo->lineEdit()->setClearButtonEnabled(true);
-        layout->setSpacing(5);
+        Init();
+    }
+
+
+    TagSelector::TagSelector(const QVector<QString>& availableTags, QWidget* parent)
+        : TagSelector(parent)
+    {
+        Reinit(availableTags);
+    }
+
+
+    void TagSelector::Init()
+    {
+        QVBoxLayout* layout = new QVBoxLayout(this);
         layout->setMargin(0);
+
+        // Add the tag widget container representing the currently selected tags.
+        m_tagWidgets = new TagWidgetContainer();
+        layout->addWidget(m_tagWidgets);
+
+        // Add the combo box for adding tags to the selection.
+        m_combo = new QComboBox();
+        m_combo->setEditable(true);
+        m_combo->lineEdit()->setPlaceholderText(tr("Enter tag name..."));
+        m_combo->lineEdit()->setClearButtonEnabled(true);
         layout->addWidget(m_combo);
-        layout->addWidget(m_tagContainer);
 
-        connect(m_combo, SIGNAL(activated(int)), this, SLOT(selectTag(int)));
+        connect(m_combo, SIGNAL(activated(int)), this, SLOT(OnComboActivated(int)));
+        connect(m_tagWidgets, &TagWidgetContainer::TagsChanged, [this]{ Reinit(); emit TagsChanged(); });
     }
 
-    QComboBox* TagSelector::combo() const
+
+    void TagSelector::Reinit(const QVector<QString>& availableTags)
     {
-        return m_combo;
+        m_availableTags = availableTags;
+        Reinit();
     }
 
-    void TagSelector::selectTag(int comboIndex)
+
+    void TagSelector::Reinit()
     {
-        if (comboIndex < 0 || comboIndex >= m_combo->count())
+        m_combo->blockSignals(true);
+        m_combo->clear();
+
+        // Fill the combo box with all available tags so that we can choose tags from them.
+        for (const QString& availableTag : m_availableTags)
+        {
+            // Do not show tags in the combobox that have already been selected.
+            if (!IsTagSelected(availableTag))
+            {
+                m_combo->addItem(availableTag);
+            }
+        }
+
+        m_combo->setCurrentText("");
+        m_combo->blockSignals(false);
+    }
+
+
+    bool TagSelector::IsTagSelected(const QString& tag) const
+    {
+        return m_tagWidgets->Contains(tag);
+    }
+
+
+    void TagSelector::SelectTag(const QString& tag)
+    {
+        // Is the tag available?
+        if (m_availableTags.indexOf(tag) == -1)
         {
             return;
         }
 
-        QString itemText = m_combo->itemText(comboIndex);
-        if (itemText.isEmpty())
+        // Add a tag widget to the container. The tag widgets represent the currently selected tags.
+        m_tagWidgets->AddTag(tag);
+    }
+
+
+    void TagSelector::SelectTags(const QVector<QString>& selectedTags)
+    {
+        QVector<QString> checkedTags;
+        checkedTags.reserve(selectedTags.size());
+
+        for (const QString& tag : selectedTags)
+        {
+            // Is the tag available?
+            if (m_availableTags.indexOf(tag) == -1)
+            {
+                continue;
+            }
+
+            checkedTags.push_back(tag);
+        }
+
+        m_tagWidgets->Reinit(checkedTags);
+        Reinit();
+
+        emit TagsChanged();
+    }
+
+
+    // Called when pressing enter in the combo box.
+    void TagSelector::OnComboActivated(int index)
+    {
+        if (index < 0 || index >= m_combo->count())
         {
             return;
         }
 
+        QString tag = m_combo->itemText(index);
+        if (tag.isEmpty())
+        {
+            return;
+        }
 
-        m_tagContainer->appendTag(itemText);
+        // If the tag is not available, remove it so that it doesn't appear in the combo box.
+        if (m_availableTags.indexOf(tag) == -1)
+        {
+            m_combo->removeItem(index);
+
+            // Clear the text as the tag was not available.
+            m_combo->setCurrentText("");
+            return;
+        }
+
+        // Add a tag widget to the container. The tag widgets represent the currently selected tags.
+        m_tagWidgets->AddTag(tag);
+
+        // Clear the text as the tag got added to selection.
+        m_combo->setCurrentText("");
     }
 
-#include <Components/TagSelector.moc>
+
+    void TagSelector::GetSelectedTagStrings(QVector<QString>& outTags) const
+    {
+        outTags = m_tagWidgets->GetTags();
+    }
 } // namespace AzQtComponents
 
+#include <Components/TagSelector.moc>

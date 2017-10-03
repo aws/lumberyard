@@ -42,6 +42,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AddableByUser, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-proxy.html")
                     ;
             }
         }
@@ -84,6 +85,22 @@ namespace LmbrCentral
         {
             m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
         }
+    }
+    //=========================================================================
+    bool AudioProxyComponent::ExecuteSourceTrigger(const Audio::TAudioControlID triggerID, const Audio::SAudioCallBackInfos& callbackInfo, const Audio::TAudioControlID& sourceId)
+    {
+        if (triggerID != INVALID_AUDIO_CONTROL_ID)
+        {
+            // set the position at the Entity's current location.
+            // need to poll in case we haven't hit a transform update yet.
+            m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
+
+            // ...and kick it off...
+            m_audioProxy->ExecuteSourceTrigger(triggerID, sourceId, callbackInfo);
+            return true;
+        }
+
+        return false;
     }
 
     //=========================================================================

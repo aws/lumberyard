@@ -15,6 +15,7 @@
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "LyShine is the in-game UI system for Lumberyard",
-    "Tags": ["UI"],
-    "IconPath": "preview.png"
+    "Tags": ["UI","Required"],
+    "IconPath": "preview.png",
+    "IsRequired": true
 }

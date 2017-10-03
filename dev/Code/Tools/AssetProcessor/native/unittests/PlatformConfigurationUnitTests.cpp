@@ -89,12 +89,12 @@ void PlatformConfigurationTests::StartTest()
 
         config.EnablePlatform("pc", true);
         config.EnablePlatform("es3", true);
-        config.EnablePlatform("durango", false);
+        config.EnablePlatform("durango", false); // ACCEPTED_USE
 
         AssetRecognizer rec;
         AssetPlatformSpec specpc;
         AssetPlatformSpec speces3;
-        AssetPlatformSpec specdurango;
+        AssetPlatformSpec specxbone; // ACCEPTED_USE
         specpc.m_extraRCParams = ""; // blank must work
         speces3.m_extraRCParams = "testextraparams";
 
@@ -102,7 +102,7 @@ void PlatformConfigurationTests::StartTest()
         rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
-        rec.m_platformSpecs.insert("durango", specdurango);
+        rec.m_platformSpecs.insert("durango", specxbone); // ACCEPTED_USE
         config.AddRecognizer(rec);
 
         // test dual-recognisers - two recognisers for the same pattern.
@@ -296,21 +296,22 @@ void PlatformConfigurationTests::StartTest()
             "       },\n"
             "   ]\n"
             "}\n";
-
+        QStringList dummyPlatformFiles;
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_empty.json"), emptyGemString));
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_ok.json"), realString));
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_badjson.json"), malformedJSON));
         UNIT_TEST_EXPECT_TRUE(CreateDummyFile(tempPath.filePath("gemstest_badstring.json"), badGemString));
 
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath(nonexistantGemFileName)) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_empty.json")) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badjson.json")) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badstring.json")) == 0);
-        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_ok.json")) == 2); // 2 gems expected
+        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath(nonexistantGemFileName), dummyPlatformFiles) == 0);
+        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_empty.json"), dummyPlatformFiles) == 0);
+        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badjson.json"), dummyPlatformFiles) == 0);
+        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_badstring.json"), dummyPlatformFiles) == 0);
+        UNIT_TEST_EXPECT_TRUE(config.ReadGems(tempPath.filePath("gemstest_ok.json"), dummyPlatformFiles) == 2); // 2 gems expected
+        UNIT_TEST_EXPECT_TRUE(dummyPlatformFiles.empty());
 
         QDir realEngineRoot;
-        AssetUtilities::ResetEngineRoot();
-        UNIT_TEST_EXPECT_TRUE(AssetUtilities::ComputeEngineRoot(realEngineRoot));
+        AssetUtilities::ResetAssetRoot();
+        UNIT_TEST_EXPECT_TRUE(AssetUtilities::ComputeAssetRoot(realEngineRoot));
         UNIT_TEST_EXPECT_TRUE(!realEngineRoot.absolutePath().isEmpty());
 
         QString expectedGemFolder = realEngineRoot.absolutePath() + "/Gems/LyShine/Assets";

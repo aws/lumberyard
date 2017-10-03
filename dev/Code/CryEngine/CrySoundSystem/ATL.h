@@ -153,6 +153,7 @@ namespace Audio
         const TAudioObjectID m_nGlobalAudioObjectID;
 
         TAudioTriggerInstanceID m_nTriggerInstanceIDCounter;
+        TAudioSourceId m_nextSourceId;
 
         // Components
         CAudioEventManager m_oAudioEventMgr;

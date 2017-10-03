@@ -13,6 +13,7 @@
 #include "stdafx.h"
 #include "ComponentPaletteUtil.hxx"
 
+#include <AzCore/Debug/Profiler.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -29,6 +30,7 @@ namespace AzToolsFramework
             ComponentDataTable &componentDataTable,
             ComponentIconTable &componentIconTable)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             serializeContext->EnumerateDerived<AZ::Component>(
                 [&](const AZ::SerializeContext::ClassData* componentClass, const AZ::Uuid& knownType) -> bool
             {

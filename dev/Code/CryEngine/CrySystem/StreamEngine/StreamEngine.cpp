@@ -22,6 +22,7 @@
 #include "IPlatformOS.h"
 
 #include <AzFramework/IO/FileOperations.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 #define MAX_HEAVY_ASSETS 20
 
@@ -35,6 +36,7 @@ extern CMTSafeHeap* g_pPakHeap;
 
 //////////////////////////////////////////////////////////////////////////
 CStreamEngine::CStreamEngine()
+    : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityDebug())
 {
     m_nBatchMode = 0;
     m_bShutDown = false;
@@ -81,9 +83,9 @@ CStreamEngine::~CStreamEngine()
 {
 #ifdef STREAMENGINE_ENABLE_STATS
     g_pStreamingStatistics = 0;
-    if (gEnv->pInput && m_bInputCallback)
+    if (m_bInputCallback)
     {
-        gEnv->pInput->RemoveEventListener(this);
+        AzFramework::InputChannelEventListener::Disconnect();
     }
 #endif
     g_pStreamingOpenStatistics = NULL;
@@ -575,10 +577,7 @@ void CStreamEngine::Update()
 
         if (!m_bInputCallback)
         {
-            if (gEnv->pInput)
-            {
-                gEnv->pInput->AddEventListener(this);
-            }
+            AzFramework::InputChannelEventListener::Connect();
             m_bInputCallback = true;
         }
     }
@@ -1541,16 +1540,16 @@ void CStreamEngine::ClearStatistics()
 #endif
 
 //////////////////////////////////////////////////////////////////////////
-bool CStreamEngine::OnInputEvent(const SInputEvent& event)
+bool CStreamEngine::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
 #ifdef STREAMENGINE_ENABLE_STATS
     if (g_cvars.sys_streaming_debug)
     {
-        if (event.keyId == eKI_F11)
+        if (inputChannel.GetInputChannelId() == AzFramework::InputDeviceKeyboard::Key::Function11)
         {
             m_bStreamingStatsPaused = true;
         }
-        if (event.keyId == eKI_F12)
+        if (inputChannel.GetInputChannelId() == AzFramework::InputDeviceKeyboard::Key::Function12)
         {
             m_bStreamingStatsPaused = false;
         }

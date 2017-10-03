@@ -78,6 +78,8 @@ namespace MaterialBuilder
                     AssetBuilderSDK::JobDescriptor descriptor;
                     descriptor.m_jobKey = "Material Builder Job";
                     descriptor.m_platform = platform;
+                    // a priority that is lower than models but still not "the lowest priority"
+                    descriptor.m_priority = 8; 
                     response.m_createJobOutputs.push_back(descriptor);
                     response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
                 }

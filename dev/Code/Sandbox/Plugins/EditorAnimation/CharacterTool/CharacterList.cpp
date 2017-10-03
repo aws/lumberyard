@@ -90,11 +90,16 @@ namespace CharacterTool {
         }
     }
 
-    bool CHRParamsLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context)
+    bool CHRParamsLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context, string& errorString)
     {
         AZStd::string fullFilePath = Path::GamePathToFullPath(filename).toLatin1().data();
 
         SEntry<SkeletonContent>* entry = static_cast<SEntry<SkeletonContent>*>(entryBase);
+        if (!entry->content.IsValid())
+        { 
+            errorString = entry->content.GetErrorString();
+            return false;
+        }
 
         XmlNodeRef root = entry->content.skeletonParameters.SaveToXML();
         if (!root)
@@ -131,7 +136,7 @@ namespace CharacterTool {
         return entry->content.cdf.LoadFromXmlFile(fullFileName.c_str());
     }
 
-    bool CDFLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context)
+    bool CDFLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context, string&)
     {
         AZStd::string fullFileName = Path::GamePathToFullPath(filename).toLatin1().data();
         SEntry<CharacterContent>* entry = static_cast<SEntry<CharacterContent>*>(entryBase);

@@ -15,6 +15,7 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxUvMapImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxUVWrapper.h>
 #include <SceneAPI/SceneData/GraphData/MeshData.h>
@@ -66,12 +67,10 @@ namespace AZ
                         continue;
                     }
 
-                    AZ_TraceContext("UV Map Name", fbxVertexUVs.GetName());
-                    if (!Containers::SceneGraph::IsValidName(fbxVertexUVs.GetName()))
-                    {
-                        AZ_TracePrintf(Utilities::WarningWindow, "Invalid name for uv set, set ignored.");
-                        continue;
-                    }
+                    AZStd::string nodeName = fbxVertexUVs.GetName();
+                    RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition, "UV");
+                    AZ_TraceContext("UV Map Name", nodeName);
+                    
                     AZStd::shared_ptr<DataTypes::IGraphObject> parentData =
                         context.m_scene.GetGraph().GetNodeContent(context.m_currentGraphPosition);
                     AZ_Assert(parentData && parentData->RTTI_IsTypeOf(SceneData::GraphData::MeshData::TYPEINFO_Uuid()),
@@ -96,7 +95,7 @@ namespace AZ
                     }
 
                     Containers::SceneGraph::NodeIndex newIndex =
-                        context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, fbxVertexUVs.GetName());
+                        context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, nodeName.c_str());
 
                     AZ_Assert(newIndex.IsValid(), "Failed to create SceneGraph node for attribute.");
                     if (!newIndex.IsValid())
@@ -106,7 +105,7 @@ namespace AZ
                     }
 
                     Events::ProcessingResult uvMapResults;
-                    SceneAttributeDataPopulatedContext dataPopulated(context, uvMap, newIndex, fbxVertexUVs.GetName());
+                    SceneAttributeDataPopulatedContext dataPopulated(context, uvMap, newIndex, nodeName);
                     uvMapResults = Events::Process(dataPopulated);
 
                     if (uvMapResults != Events::ProcessingResult::Failure)

@@ -236,6 +236,7 @@ public:
 
 public:
     explicit ActionManager(MainWindow* parent, QtViewPaneManager* qtViewPaneManager);
+    ~ActionManager();
     void AddMenu(QMenu* menu);
     MenuWrapper AddMenu(const QString& name);
     MenuWrapper CreateMenuPath(const QStringList& menuPath);

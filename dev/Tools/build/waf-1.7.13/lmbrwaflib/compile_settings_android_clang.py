@@ -37,7 +37,15 @@ def load_android_clang_common_settings(conf):
 
     common_flags = [
         '-femulated-tls',       # All accesses to TLS variables are converted to calls to __emutls_get_address in the runtime library
-        '-Wdeprecated-declarations',
+        '-Wno-unused-lambda-capture',
+
+        # This was originally disabled only when building Android Clang on MacOS, but it seems the updated toolchain in NDK r15 has  
+        # become even more aggressive in "nonportable" include paths, meaning it's nearly impossible to fix the casing the compiler 
+        # thinks the path should be.
+        # ORIGINAL COMMENT: Unless specified, OSX is generally case-preserving but case-insensitive.  Windows is the same way, however
+        # OSX seems to behave differently when it comes to casing at the OS level where a file can be showing as upper-case in Finder 
+        # and Terminal, the OS can see it as lower-case.
+        '-Wno-nonportable-include-path',
     ]
 
     env['CFLAGS'] += common_flags[:]
@@ -55,13 +63,17 @@ def load_android_clang_common_settings(conf):
         os.path.join(stl_root, 'libs', env['ANDROID_ARCH']),
     ]
 
+    env['LINKFLAGS'] += [
+        '-Wl,--gc-sections,--icf=safe', # --gc-sections will discard unused sections. --icf=safe will remove duplicate code
+    ]
+
     # these aren't defined in the common clang settings
     env['SHLIB_MARKER'] = '-Wl,-Bdynamic'
     env['STLIB_MARKER'] = '-Wl,-Bstatic'
 
     # required 3rd party libs that need to be included in the apk
     env['EXT_LIBS'] += [
-        os.path.join(stl_root, 'libs', env['ANDROID_ARCH'], 'libc++_shared.so')
+        conf.add_to_android_cache(os.path.join(stl_root, 'libs', env['ANDROID_ARCH'], 'libc++_shared.so'))
     ]
 
     # not used on android

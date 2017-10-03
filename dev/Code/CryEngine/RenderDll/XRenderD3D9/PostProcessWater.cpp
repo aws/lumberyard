@@ -644,7 +644,7 @@ void CWaterVolume::Render()
 
     CTexture::s_ptexWaterVolumeDDN->GenerateMipMaps();
 
-    // HACK (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set
+    // HACK (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
     gcpRendD3D->FX_SetActiveRenderTargets();
     gcpRendD3D->FX_ResetPipe();
 

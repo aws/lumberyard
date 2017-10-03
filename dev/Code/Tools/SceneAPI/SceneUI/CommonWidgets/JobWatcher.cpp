@@ -10,11 +10,12 @@
 *
 */
 
-#include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h> // for AssetSystemJobRequestBus
+#include <AzToolsFramework/Debug/TraceContext.h>
+#include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
 
 namespace AZ
 {
@@ -24,11 +25,13 @@ namespace AZ
         {
             const int JobWatcher::s_jobQueryInterval = 250; // ms
 
-            JobWatcher::JobWatcher(const AZStd::string& sourceAssetFullPath)
+            JobWatcher::JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag)
                 : m_jobQueryTimer(new QTimer(this))
                 , m_sourceAssetFullPath(sourceAssetFullPath)
                 , m_hasReportedAvailableJobs(false)
+                , m_traceTag(traceTag)
             {
+                AZ_TraceContext("Tag", m_traceTag);
                 connect(m_jobQueryTimer, &QTimer::timeout, this, &JobWatcher::OnQueryJobs);
                 m_jobQueryTimer->start(s_jobQueryInterval);
             }
@@ -42,6 +45,8 @@ namespace AZ
 
             void JobWatcher::OnQueryJobs()
             {
+                AZ_TraceContext("Tag", m_traceTag);
+                
                 // Query for the relevant jobs
                 Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> result = Failure();
                 EBUS_EVENT_RESULT(result, AzToolsFramework::AssetSystemJobRequestBus, GetAssetJobsInfo, m_sourceAssetFullPath, true);

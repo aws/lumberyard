@@ -64,11 +64,15 @@ protected:
 
         if (m_object)
         {
-            m_editorPhysicsComponent = azrtti_cast<EditorStaticPhysicsComponent*>(m_object->GetTemplate());
+            if (m_editorPhysicsComponent = azrtti_cast<EditorStaticPhysicsComponent*>(m_object->GetTemplate()))
+            {
+                m_editorPhysicsComponent->GetConfiguration(m_editorPhysicsConfig);
+            }
         }
     }
 
     EditorStaticPhysicsComponent* m_editorPhysicsComponent = nullptr;
+    EditorStaticPhysicsConfig m_editorPhysicsConfig;
 };
 
 TEST_F(LoadEditorStaticPhysicsComponentFromLegacyData, Application_IsRunning)
@@ -88,5 +92,27 @@ TEST_F(LoadEditorStaticPhysicsComponentFromLegacyData, EditorComponentWithinWrap
 
 TEST_F(LoadEditorStaticPhysicsComponentFromLegacyData, EnabledInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_editorPhysicsComponent->GetConfiguration().m_enabledInitially, false);
+    EXPECT_EQ(m_editorPhysicsConfig.m_enabledInitially, false);
+}
+
+// Serialized kEditorStaticPhysicsConfigurationV1 version 1.
+// This version was accidentally reflected as a templated class.
+const char kEditorStaticPhysicsConfigurationV1[] =
+R"DELIMITER(<ObjectStream version="2">
+    <Class name="EditorStaticPhysicsConfiguration&lt;StaticPhysicsConfiguration &gt;" field="Configuration" type="{8309995F-A628-57DA-AAFE-2E04A257EC40}" version="1" specializationTypeId="{8309995F-A628-57DA-AAFE-2E04A257EC40}">
+        <Class name="StaticPhysicsConfiguration" field="BaseClass1" type="{2129576B-A548-4F3E-A2A1-87851BF48838}" version="1" specializationTypeId="{2129576B-A548-4F3E-A2A1-87851BF48838}">
+            <Class name="bool" field="EnabledInitially" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+        </Class>
+    </Class>
+</ObjectStream>)DELIMITER";
+
+class LoadEditorStaticPhysicsConfigurationV1
+    : public LoadReflectedObjectTest<AzToolsFramework::ToolsApplication, LmbrCentralEditorModule, EditorStaticPhysicsConfig>
+{
+    const char* GetSourceDataBuffer() const override { return kEditorStaticPhysicsConfigurationV1; }
+};
+
+TEST_F(LoadEditorStaticPhysicsConfigurationV1, Load_Succeeds)
+{
+    EXPECT_NE(m_object.get(), nullptr);
 }

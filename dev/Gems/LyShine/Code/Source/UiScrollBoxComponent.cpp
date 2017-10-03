@@ -427,7 +427,7 @@ AZ::EntityId UiScrollBoxComponent::FindClosestContentChildElement()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiScrollBoxComponent::FindNextContentChildElement(EKeyId keyId)
+AZ::EntityId UiScrollBoxComponent::FindNextContentChildElement(UiNavigationHelpers::Command command)
 {
     // if no content entity return an invalid entity id
     if (!m_contentEntity.IsValid())
@@ -450,19 +450,19 @@ AZ::EntityId UiScrollBoxComponent::FindNextContentChildElement(EKeyId keyId)
 
         float dist = 0.0f;
         const float epsilon = 0.01f;
-        if (keyId == eKI_Up)
+        if (command == UiNavigationHelpers::Command::Up)
         {
             dist = scrollOffsetToChild.GetY() < -epsilon ? -scrollOffsetToChild.GetY() : 0.0f;
         }
-        else if (keyId == eKI_Down)
+        else if (command == UiNavigationHelpers::Command::Down)
         {
             dist = scrollOffsetToChild.GetY() > epsilon ? scrollOffsetToChild.GetY() : 0.0f;
         }
-        else if (keyId == eKI_Left)
+        else if (command == UiNavigationHelpers::Command::Left)
         {
             dist = scrollOffsetToChild.GetX() < -epsilon ? -scrollOffsetToChild.GetX() : 0.0f;
         }
-        else // eKI_Right
+        else if (command == UiNavigationHelpers::Command::Right)
         {
             dist = scrollOffsetToChild.GetX() > epsilon ? scrollOffsetToChild.GetX() : 0.0f;
         }
@@ -472,12 +472,12 @@ AZ::EntityId UiScrollBoxComponent::FindNextContentChildElement(EKeyId keyId)
             if (dist < shortestDist)
             {
                 shortestDist = dist;
-                shortestPerpendicularDist = fabs((keyId == eKI_Up || keyId == eKI_Down) ? scrollOffsetToChild.GetX() : scrollOffsetToChild.GetY());
+                shortestPerpendicularDist = fabs((command == UiNavigationHelpers::Command::Up || command == UiNavigationHelpers::Command::Down) ? scrollOffsetToChild.GetX() : scrollOffsetToChild.GetY());
                 closestChild = child->GetId();
             }
             else if (dist == shortestDist)
             {
-                float perpDist = fabs((keyId == eKI_Up || keyId == eKI_Down) ? scrollOffsetToChild.GetX() : scrollOffsetToChild.GetY());
+                float perpDist = fabs((command == UiNavigationHelpers::Command::Up || command == UiNavigationHelpers::Command::Down) ? scrollOffsetToChild.GetX() : scrollOffsetToChild.GetY());
                 if (perpDist < shortestPerpendicularDist)
                 {
                     shortestPerpendicularDist = perpDist;
@@ -640,7 +640,19 @@ bool UiScrollBoxComponent::HandleEnterPressed(bool& shouldStayActive)
 }
 
 /////////////////////////////////////////////////////////////////
-bool UiScrollBoxComponent::HandleKeyInput(EKeyId keyId, int modifiers)
+bool UiScrollBoxComponent::HandleAutoActivation()
+{
+    if (!m_isHandlingEvents)
+    {
+        return false;
+    }
+
+    m_isActive = true;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////
+bool UiScrollBoxComponent::HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys)
 {
     if (!m_isHandlingEvents)
     {
@@ -655,13 +667,14 @@ bool UiScrollBoxComponent::HandleKeyInput(EKeyId keyId, int modifiers)
 
     bool result = false;
 
-    if (m_isHorizontalScrollingEnabled && ((keyId == eKI_Left || keyId == eKI_Right))
-        || (m_isVerticalScrollingEnabled && (keyId == eKI_Up || keyId == eKI_Down)))
+    const UiNavigationHelpers::Command command = UiNavigationHelpers::MapInputChannelIdToUiNavigationCommand(inputSnapshot.m_channelId, activeModifierKeys);
+    if (m_isHorizontalScrollingEnabled && ((command == UiNavigationHelpers::Command::Left || command == UiNavigationHelpers::Command::Right))
+        || (m_isVerticalScrollingEnabled && (command == UiNavigationHelpers::Command::Up || command == UiNavigationHelpers::Command::Down)))
     {
         AZ::Vector2 newScrollOffset = m_scrollOffset;
         if (m_snapMode == UiScrollBoxInterface::SnapMode::Children)
         {
-            AZ::EntityId closestChild = FindNextContentChildElement(keyId);
+            AZ::EntityId closestChild = FindNextContentChildElement(command);
             if (closestChild.IsValid())
             {
                 // want elastic animation eventually
@@ -691,19 +704,19 @@ bool UiScrollBoxComponent::HandleKeyInput(EKeyId keyId, int modifiers)
         }
         else if (m_snapMode == UiScrollBoxInterface::SnapMode::Grid)
         {
-            if (keyId == eKI_Up)
+            if (command == UiNavigationHelpers::Command::Up)
             {
                 newScrollOffset.SetY(newScrollOffset.GetY() + m_snapGrid.GetY());
             }
-            else if (keyId == eKI_Down)
+            else if (command == UiNavigationHelpers::Command::Down)
             {
                 newScrollOffset.SetY(newScrollOffset.GetY() - m_snapGrid.GetY());
             }
-            else if (keyId == eKI_Left)
+            else if (command == UiNavigationHelpers::Command::Left)
             {
                 newScrollOffset.SetX(newScrollOffset.GetX() + m_snapGrid.GetX());
             }
-            else // eKI_Right
+            else if (command == UiNavigationHelpers::Command::Right)
             {
                 newScrollOffset.SetX(newScrollOffset.GetX() - m_snapGrid.GetX());
             }
@@ -734,15 +747,15 @@ bool UiScrollBoxComponent::HandleKeyInput(EKeyId keyId, int modifiers)
 
                 const float keySteps = 10.0f;
 
-                if (keyId == eKI_Left || keyId == eKI_Right)
+                if (command == UiNavigationHelpers::Command::Left || command == UiNavigationHelpers::Command::Right)
                 {
                     float xStep = parentRect.GetSize().GetX() / keySteps;
-                    newScrollOffset.SetX(newScrollOffset.GetX() + (keyId == eKI_Left ? xStep : -xStep));
+                    newScrollOffset.SetX(newScrollOffset.GetX() + (command == UiNavigationHelpers::Command::Left ? xStep : -xStep));
                 }
                 else
                 {
                     float yStep = parentRect.GetSize().GetY() / keySteps;
-                    newScrollOffset.SetY(newScrollOffset.GetY() + (keyId == eKI_Up ? yStep : -yStep));
+                    newScrollOffset.SetY(newScrollOffset.GetY() + (command == UiNavigationHelpers::Command::Up ? yStep : -yStep));
                 }
 
                 // do constraining
@@ -916,11 +929,137 @@ void UiScrollBoxComponent::LostActiveStatus()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBoxComponent::HandleDescendantReceivedHoverByNavigation(AZ::EntityId descendantEntityId)
+{
+    // Check if the content element is an ancestor of the descendant element
+    bool isAncestor = false;
+    if (m_contentEntity.IsValid())
+    {
+        EBUS_EVENT_ID_RESULT(isAncestor, descendantEntityId, UiElementBus, IsAncestor, m_contentEntity);
+    }
+
+    if (isAncestor)
+    {
+        AZ::Vector2 newScrollOffset = m_scrollOffset;
+
+        if (m_snapMode == UiScrollBoxInterface::SnapMode::Children)
+        {
+            // Find the descendant's ancestor that's a direct child of the content entity
+            AZ::EntityId parent;
+            EBUS_EVENT_ID_RESULT(parent, descendantEntityId, UiElementBus, GetParentEntityId);
+            while (parent.IsValid())
+            {
+                if (parent == m_contentEntity)
+                {
+                    break;
+                }
+
+                descendantEntityId = parent;
+                parent.SetInvalid();
+                EBUS_EVENT_ID_RESULT(parent, descendantEntityId, UiElementBus, GetParentEntityId);
+            }
+
+            if (descendantEntityId.IsValid())
+            {
+                AZ::Vector2 offset = ComputeCurrentOffsetToChild(descendantEntityId);
+
+                if (!m_isHorizontalScrollingEnabled)
+                {
+                    offset.SetX(0.0f);
+                }
+                if (!m_isVerticalScrollingEnabled)
+                {
+                    offset.SetY(0.0f);
+                }
+
+                newScrollOffset = m_scrollOffset - offset;
+            }
+        }
+        else
+        {
+            // Check if the descendant element is visible in the viewport area
+            AZ::EntityId contentParent;
+            EBUS_EVENT_ID_RESULT(contentParent, m_contentEntity, UiElementBus, GetParentEntityId);
+            if (contentParent.IsValid())
+            {
+                UiTransformInterface::Rect contentParentRect;
+                AZ::Matrix4x4 transformFromViewport;
+                EBUS_EVENT_ID(contentParent, UiTransformBus, GetCanvasSpaceRectNoScaleRotate, contentParentRect);
+                EBUS_EVENT_ID(contentParent, UiTransformBus, GetTransformFromViewport, transformFromViewport);
+
+                UiTransformInterface::RectPoints descendantPoints;
+                EBUS_EVENT_ID(descendantEntityId, UiTransformBus, GetViewportSpacePoints, descendantPoints);
+                descendantPoints = descendantPoints.Transform(transformFromViewport);
+
+                UiTransformInterface::Rect descendantRect;
+                descendantRect.left = descendantPoints.GetAxisAlignedTopLeft().GetX();
+                descendantRect.right = descendantPoints.GetAxisAlignedBottomRight().GetX();
+                descendantRect.top = descendantPoints.GetAxisAlignedTopLeft().GetY();
+                descendantRect.bottom = descendantPoints.GetAxisAlignedBottomRight().GetY();
+
+                bool descendantInsideH = (descendantRect.left >= contentParentRect.left &&
+                    descendantRect.right <= contentParentRect.right);
+                bool descendantInsideV = (descendantRect.top >= contentParentRect.top &&
+                    descendantRect.bottom <= contentParentRect.bottom);
+
+                if (!descendantInsideH || !descendantInsideV)
+                {
+                    AZ::Vector2 offset(0.0f, 0.0f);
+
+                    // Scroll to make the descendant visible in the viewport area
+                    if (!descendantInsideH && m_isHorizontalScrollingEnabled)
+                    {
+                        float leftOffset = descendantRect.left - contentParentRect.left;
+                        float rightOffset = descendantRect.right - contentParentRect.right;
+                        bool shouldOffsetFromLeft = fabs(leftOffset) < fabs(rightOffset);
+                        offset.SetX(shouldOffsetFromLeft ? leftOffset : rightOffset);
+                    }
+                    if (!descendantInsideV && m_isVerticalScrollingEnabled)
+                    {
+                        float topOffset = descendantRect.top - contentParentRect.top;
+                        float bottomOffset = descendantRect.bottom - contentParentRect.bottom;
+                        bool shouldOffsetFromTop = fabs(topOffset) < fabs(bottomOffset);
+                        offset.SetY(shouldOffsetFromTop ? topOffset : bottomOffset);
+                    }
+
+                    newScrollOffset = m_scrollOffset - offset;
+
+                    if (m_snapMode == UiScrollBoxInterface::SnapMode::Grid)
+                    {
+                        // Make sure new offset is on the grid
+                        const float gridEpsilon = 0.00001f;
+
+                        if (m_snapGrid.GetX() >= gridEpsilon && m_isHorizontalScrollingEnabled)
+                        {
+                            float gridSteps = newScrollOffset.GetX() / m_snapGrid.GetX();
+                            float roundedGridSteps = (offset.GetX() < 0.0f) ? ceil(gridSteps) : floor(gridSteps);
+                            newScrollOffset.SetX(roundedGridSteps * m_snapGrid.GetX());
+                        }
+
+                        if (m_snapGrid.GetY() >= gridEpsilon && m_isVerticalScrollingEnabled)
+                        {
+                            float gridSteps = newScrollOffset.GetY() / m_snapGrid.GetY();
+                            float roundedGridSteps = (offset.GetY() < 0.0f) ? ceil(gridSteps) : floor(gridSteps);
+                            newScrollOffset.SetY(roundedGridSteps * m_snapGrid.GetY());
+                        }
+                    }
+                }
+            }
+        }
+
+        if (newScrollOffset != m_scrollOffset)
+        {
+            SetScrollOffset(newScrollOffset);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBoxComponent::OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTransformInterface::Rect& oldRect, const UiTransformInterface::Rect& newRect)
 {
     // If old rect equals new rect, size changed due to initialization
     bool sizeChanged = (oldRect == newRect) || (!oldRect.GetSize().IsClose(newRect.GetSize(), 0.05f));
- 
+
     if (sizeChanged)
     {
         ContentOrParentSizeChanged();
@@ -958,6 +1097,12 @@ void UiScrollBoxComponent::Deactivate()
     {
         UiScrollerToScrollableNotificationBus::MultiHandler::BusDisconnect(m_vScrollBarEntity);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiScrollBoxComponent::IsAutoActivationSupported()
+{
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1104,6 +1249,7 @@ void UiScrollBoxComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiScrollBoxBus>("UiScrollBoxBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetScrollOffset", &UiScrollBoxBus::Events::GetScrollOffset)
             ->Event("SetScrollOffset", &UiScrollBoxBus::Events::SetScrollOffset)
             ->Event("GetNormalizedScrollValue", &UiScrollBoxBus::Events::GetNormalizedScrollValue)
@@ -1143,9 +1289,11 @@ void UiScrollBoxComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiScrollBoxInterface::ScrollBarVisibility::AutoHideAndResizeViewport>("eUiScrollBoxScrollBarVisibility_AutoHideAndResizeViewport");
 
         behaviorContext->EBus<UiScrollBoxNotificationBus>("UiScrollBoxNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollBoxNotificationBusHandler>();
 
         behaviorContext->EBus<UiScrollableNotificationBus>("UiScrollableNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiScrollableNotificationBusHandler>();
     }
 }
@@ -1914,7 +2062,7 @@ void UiScrollBoxComponent::UpdateScrollBarVisiblity()
                 else
                 {
                     // Next, check if only a vertical scrollbar is needed
-                    AZ::Vector2 supposedParentSize = parentSize;
+                    supposedParentSize = parentSize;
 
                     if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
                     {

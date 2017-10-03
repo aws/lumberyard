@@ -1874,7 +1874,7 @@ void CImageCompiler::GetFinalImageInfo(int platform, EPixelFormat& finalFormat, 
 
         m_pInputImage->GetExtentTransformed(dwInputWidth, dwInputHeight, dwMips, m_Props);
     }
-
+   
     {
         finalFormat = m_Props.GetDestPixelFormat(m_Props.m_bPreserveAlpha, false, platform);
         if (finalFormat < 0)
@@ -1890,11 +1890,41 @@ void CImageCompiler::GetFinalImageInfo(int platform, EPixelFormat& finalFormat, 
 
     const uint32 dwMaxMipCount = CPixelFormats::ComputeMaxMipCount(finalFormat, dwInputWidth, dwInputHeight, bCubemap);
     const uint32 dwWantedReduce = m_Props.GetRequestedResolutionReduce(dwInputWidth, dwInputHeight, platform);
-    const uint32 dwFinalReduce = Util::getMin(dwWantedReduce, dwMaxMipCount - 1U);
-    const uint32 dwFinalMipCount = m_Props.GetMipMaps(platform) ? dwMaxMipCount - dwFinalReduce : 1U;
+    uint32 dwFinalReduce = Util::getMin(dwWantedReduce, dwMaxMipCount - 1U);
+    uint32 dwFinalMipCount = dwMaxMipCount - dwFinalReduce;
 
-    const uint32 dwFinalWidth  = Util::getMax(dwInputWidth  >> dwFinalReduce, 1U);
-    const uint32 dwFinalHeight = Util::getMax(dwInputHeight >> dwFinalReduce, 1U);
+    uint32 dwFinalWidth = Util::getMax(dwInputWidth >> dwFinalReduce, 1U);
+    uint32 dwFinalHeight = Util::getMax(dwInputHeight >> dwFinalReduce, 1U);
+
+    //Apply maxtexturesize if it is specified
+    const int maxTextureSize = m_Props.GetMaxTextureSize();
+    const int minTextureSize = m_Props.GetMinTextureSize();
+   
+    if (maxTextureSize > 0)
+    {
+        while ((dwFinalWidth > (uint32)maxTextureSize) || (dwFinalHeight > (uint32)maxTextureSize))
+        {
+            dwFinalWidth = Util::getMax(dwFinalWidth >> 1, 1U);
+            dwFinalHeight = Util::getMax(dwFinalHeight >> 1, 1U);
+
+            --dwFinalMipCount;
+            ++dwFinalReduce;
+        }
+    }
+
+    if (minTextureSize > 0)
+    {
+        while ((dwFinalWidth < (uint32)minTextureSize) || (dwFinalHeight < (uint32)minTextureSize))
+        {
+            dwFinalWidth = Util::getMax(dwFinalWidth << 1, 1U);
+            dwFinalHeight = Util::getMax(dwFinalHeight << 1, 1U);
+
+            ++dwFinalMipCount;
+            --dwFinalReduce;
+        }
+    }
+
+    dwFinalMipCount = (m_Props.GetMipMaps(platform) ? Util::getMax(dwFinalMipCount, 1U) : 1U);
 
     mipCount = dwFinalMipCount;
     mipReduce = dwFinalReduce;

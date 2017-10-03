@@ -21,21 +21,29 @@ def build(bld):
                     bld.Path('Code/Tools'),
                     bld.Path('Code/Tools/SDKs'),
                     bld.Path('Code/Tools/RC/ResourceCompiler'),
+                    bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/Etc'),
+                    bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/EtcCodec'),
                     bld.Path('Code/Tools/CryCommonTools'),
                     bld.Path('Code/CryEngine/CryCommon'),
                     bld.Path('Code/Tools/SDKs/squish-ccr')]
-    copy_external = [ ]
+    win_copy_dependent_files    = [ 'Bin64/rc/PVRTexLib.dll']
+    darwin_copy_dependent_files = [ 'Bin64/rc/libPVRTexLib.dylib']
     defines     = [ 'RESOURCECOMPILERIMAGE_EXPORTS',
                     'RESOURCE_COMPILER_IMAGE']
-    win_lib     = [ 'PVRTexLib', 'Gdi32' ]
+    win_lib     = [ 'PVRTexLib', 'Gdi32', 'EtcLib' ]
     win_libpath = [ bld.Path('Code/Tools/SDKs/PowerVRTexTool/Windows_x86_64')]
+    win_x64_vs2013_debug_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/Windows_x86_64/vc120/Debug')]     
+    win_x64_vs2013_profile_libpath      = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/Windows_x86_64/vc120/Release')]    
+    win_x64_vs2015_debug_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/Windows_x86_64/vc140/Debug')]           
+    win_x64_vs2015_profile_libpath      = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/Windows_x86_64/vc140/Release')]
 
     bld.CryResourceCompilerModule(
         # Settings
         target                      = 'ResourceCompilerImage',
         vs_filter                   = 'RC',
         copyright_org               = 'Amazon-CryTek',
-        file_list                   = 'resourcecompilerimage.waf_files',
+        file_list                   = [ 'resourcecompilerimage.waf_files',
+				      ],
         platforms                   = ['win', 'darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         win_cflags                  = ['/W3', '/EHsc'],
@@ -44,31 +52,43 @@ def build(bld):
                                         'QT5GUI',
                                         'QT5WIDGETS',
                                         'QT5SVG',
-                                        'TIFFSTATIC',
+                                        'TIFF',
                                         'ZLIB',
                                         'TIFF'],
         features                    = ['qt5'],
         includes                    = includes,
         win_defines                 = ['_WIN64'],
-        copy_external               = copy_external,
         defines                     = defines,
         libpath                     = [ bld.Path('Code/Tools/CryCommonTools')],
 
-        win_copy_dependent_files    = [ 'Bin64/rc/PVRTexLib.dll'],
-        darwin_copy_dependent_files = [ 'Bin64/rc/libPVRTexLib.dylib'],
+        win_copy_dependent_files    = win_copy_dependent_files,
+        darwin_copy_dependent_files = darwin_copy_dependent_files,
 
         # Configuration Specific
-        win_export_definitions          = 'ImageExports.def',
+        win_export_definitions      = 'ImageExports.def',
 
-        # Platform Specific
+        # Platform Specific 
         win_lib                     = win_lib,
         win_libpath                 = win_libpath,
+        win_x64_vs2013_debug_libpath            = win_x64_vs2013_debug_libpath,        
+        win_x64_vs2013_debug_test_libpath       = win_x64_vs2013_debug_libpath,        
+        win_x64_vs2013_profile_libpath          = win_x64_vs2013_profile_libpath,        
+        win_x64_vs2013_profile_test_libpath     = win_x64_vs2013_profile_libpath,        
+        win_x64_vs2015_debug_libpath            = win_x64_vs2015_debug_libpath,        
+        win_x64_vs2015_debug_test_libpath       = win_x64_vs2015_debug_libpath,        
+        win_x64_vs2015_profile_libpath          = win_x64_vs2015_profile_libpath,        
+        win_x64_vs2015_profile_test_libpath     = win_x64_vs2015_profile_libpath,        
         win_cxxflags= [
             '/wd4819',      # Invalid characters not in default code page.  Source contain characters above extended ascii, including in comments.
         ],
 
-        darwin_lib                  = [ 'PVRTexLib' ],
+        darwin_lib                  = [ 'PVRTexLib', 'EtcLib' ],
         darwin_libpath              = [ bld.Path('Code/Tools/SDKs/PowerVRTexTool/OSX_x86')],
+        darwin_debug_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Debug')],
+        darwin_release_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
+        darwin_profile_libpath        = [ bld.Path('Code/Tools/SDKs/etc2comp/EtcLib/OSX_x86/Release')],
+        
+
         darwin_cflags               = ['-Wno-shift-count-overflow',
                                     '-Wno-sometimes-uninitialized',
                                     '-Wno-shift-negative-value'],
@@ -76,6 +96,7 @@ def build(bld):
                                     '-Wno-sometimes-uninitialized',
                                     '-Wno-shift-negative-value'],
 
+                                    
         # Testing
         test_all_file_list          = ['resourcecompilerimage_test.waf_files'],
     )

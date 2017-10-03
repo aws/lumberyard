@@ -14,6 +14,8 @@
 
 #include <ISystem.h>
 
+#include <CloudGemFramework/ServiceJob.h>
+
 namespace CloudGemFramework
 {
     inline bool CanProcessResponse()
@@ -25,4 +27,21 @@ namespace CloudGemFramework
         }
         return true;
     }
+
+    inline void ConfigureJsonServiceRequest(HttpRequestJob& request, AZStd::string jsonBody)
+    {
+        size_t len = jsonBody.length();
+
+        if (len > 0)
+        {
+            AZStd::string lenStr = AZStd::string::format("%d", len);
+            request.SetContentLength(lenStr);
+            request.SetContentType("application/json");
+            request.SetBody(std::move(jsonBody));
+        }
+
+        request.SetAccept("application/json");
+        request.SetAcceptCharSet("utf-8");
+    }
+
 } // namespace CloudGemFramework

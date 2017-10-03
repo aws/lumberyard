@@ -28,7 +28,7 @@
     <height>29</height>
    </size>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2,0,0,0,0,0,0,0,0,0,0,0,0">
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2,0,0,0,0,0,0,0,0">
    <property name="leftMargin">
     <number>10</number>
    </property>
@@ -43,6 +43,15 @@
    </property>
    <item>
     <widget class="QLabel" name="m_titleBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::NoContextMenu</enum>
+     </property>
      <property name="text">
       <string>Static</string>
      </property>
@@ -71,23 +80,10 @@
     </widget>
    </item>
    <item>
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+    <widget class="QLabel" name="m_fovLabel">
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
      </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <widget class="QLabel" name="label">
      <property name="text">
       <string>FOV:</string>
      </property>
@@ -101,29 +97,19 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
      <property name="text">
       <string>120°</string>
      </property>
     </widget>
    </item>
    <item>
-    <spacer name="horizontalSpacer_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+    <widget class="QLabel" name="m_ratioLabel">
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
      </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_2">
      <property name="text">
       <string>Ratio:</string>
      </property>
@@ -149,26 +135,13 @@
        <height>16777215</height>
       </size>
      </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
      <property name="text">
       <string>000:000</string>
      </property>
     </widget>
-   </item>
-   <item>
-    <spacer name="horizontalSpacer_3">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
    <item>
     <widget class="QLabel" name="m_sizeStaticCtrl">
@@ -189,6 +162,9 @@
        <width>60</width>
        <height>16777215</height>
       </size>
+     </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
      </property>
      <property name="text">
       <string>0000 x 0000</string>
@@ -226,35 +202,19 @@
      </property>
     </widget>
    </item>
-   <item>
-    <spacer name="rightSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>5</width>
-       <height>5</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
   </layout>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>AzQtComponents::SearchLineEdit</class>
-   <extends>QLineEdit</extends>
-   <header>AzQtComponents/Components/SearchLineEdit.h</header>
-  </customwidget>
   <customwidget>
    <class>AzQtComponents::ButtonDivider</class>
    <extends>QWidget</extends>
    <header>AzQtComponents/Components/ButtonDivider.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::SearchLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>AzQtComponents/Components/SearchLineEdit.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

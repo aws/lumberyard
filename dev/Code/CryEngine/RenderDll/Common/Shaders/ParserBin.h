@@ -18,6 +18,7 @@
 #define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_SHADERS_PARSERBIN_H
 #pragma once
 
+#include <CryEngineAPI.h>
 
 #include "ShaderCache.h"
 #include "ShaderAllocator.h"
@@ -283,8 +284,8 @@ enum EToken
     eT_MIN_MAG_MIP_LINEAR,
     eT_MIN_MAG_LINEAR_MIP_POINT,
     eT_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
-  eT_MINIMUM_MIN_MAG_MIP_LINEAR,
-  eT_MAXIMUM_MIN_MAG_MIP_LINEAR,
+    eT_MINIMUM_MIN_MAG_MIP_LINEAR,
+    eT_MAXIMUM_MIN_MAG_MIP_LINEAR,
 
     eT_Clamp,
     eT_Border,
@@ -628,8 +629,8 @@ enum EToken
 
     eT_AnisotropyLevel,
 
-    eT_ORBIS,
-    eT_DURANGO,
+    eT_ORBIS, // ACCEPTED_USE
+    eT_DURANGO, // ACCEPTED_USE
     eT_PCDX11,
     eT_GL4,
     eT_OSXGL4,
@@ -694,9 +695,9 @@ enum EToken
     eT_GatherGreen,
     eT_GatherBlue,
     eT_GatherAlpha,
-        
+
     eT_NoDepthClipping,
-    
+
     eT_max,
     eT_user_first = eT_max + 1
 };
@@ -822,8 +823,8 @@ struct SortByToken
 #define SF_METAL 0x04000000
 #define SF_GLES3 0x08000000
 #define SF_D3D11 0x10000000
-#define SF_ORBIS 0x20000000
-#define SF_DURANGO 0x40000000
+#define SF_ORBIS 0x20000000 // ACCEPTED_USE
+#define SF_DURANGO 0x40000000 // ACCEPTED_USE
 #define SF_GL4 0x80000000
 #define SF_PLATFORM 0xfc000000
 
@@ -865,10 +866,16 @@ public:
     CParserBin(SShaderBin* pBin);
     CParserBin(SShaderBin* pBin, CShader* pSH);
 
-    static FXMacroBin& GetStaticMacroses() { return m_StaticMacros; }
-    static const char* GetString(uint32 nToken, FXShaderToken& Table, bool bOnlyKey = false);
+    SParserFrame& GetData() {return m_Data; }
     const char* GetString(uint32 nToken, bool bOnlyKey = false);
     string GetString(SParserFrame& Frame);
+    SParserFrame BeginFrame(SParserFrame& Frame);
+    void EndFrame(SParserFrame& Frame);
+    ETokenStorageClass ParseObject(SFXTokenBin* pTokens, int& nIndex);
+    ETokenStorageClass ParseObject(SFXTokenBin* pTokens);
+
+    static FXMacroBin& GetStaticMacroses() { return m_StaticMacros; }
+    static const char* GetString(uint32 nToken, FXShaderToken& Table, bool bOnlyKey = false);
     CCryNameR GetNameString(SParserFrame& Frame);
     void BuildSearchInfo();
     bool PreprocessTokens(ShaderTokensVec& Tokens, int nPass, PodArray<uint32>& tokensBuffer);
@@ -937,16 +944,11 @@ public:
         return 0;
     }
 
-    SParserFrame BeginFrame(SParserFrame& Frame);
-    void EndFrame(SParserFrame& Frame);
-
     byte GetCompareFunc(EToken eT);
     int  GetSrcBlend(EToken eT);
     int  GetDstBlend(EToken eT);
 
     void InsertSkipTokens(const uint32* pTokens, uint32 nStart, uint32 nTokens, bool bSingle, PodArray<uint32>& tokensBuffer);
-    ETokenStorageClass ParseObject(SFXTokenBin* pTokens, int& nIndex);
-    ETokenStorageClass ParseObject(SFXTokenBin* pTokens);
     int  GetNextToken(uint32& nStart, ETokenStorageClass& nTokenStorageClass);
     bool FXGetAssignmentData(SParserFrame& Frame);
     bool FXGetAssignmentData2(SParserFrame& Frame);
@@ -986,7 +988,7 @@ public:
     static uint32 NextToken(char*& buf, char* com, bool& bKey);
     static void Init();
     static void RemovePlatformDefines();
-    static void SetupForOrbis();
+    static void SetupForOrbis(); // ACCEPTED_USE
     static void SetupForD3D9();
     static void SetupForD3D11();
     static void SetupForGL4();
@@ -996,21 +998,21 @@ public:
     // Confetti David Srour: sets up GMEM path related macros
     // 0 = no gmem, 1 = 256bpp, 2 = 128bpp (matches the r_enableGMEMPath cvar)
     static void SetupForGMEM(int gmemPath, int& curMacroNum);
-    static void SetupForDurango();
+    static void SetupForDurango(); // ACCEPTED_USE
     static void SetupFeatureDefines();
     static CCryNameTSCRC GetPlatformSpecName(CCryNameTSCRC orgName);
     static const char* GetPlatformShaderlistName();
 
-    static bool PlatformSupportsConstantBuffers(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL); };
-    static bool PlatformSupportsGeometryShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); }
-    static bool PlatformSupportsHullShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); }
-    static bool PlatformSupportsDomainShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); }
+    static bool PlatformSupportsConstantBuffers(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL); }; // ACCEPTED_USE
+    static bool PlatformSupportsGeometryShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); } // ACCEPTED_USE
+    static bool PlatformSupportsHullShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); } // ACCEPTED_USE
+    static bool PlatformSupportsDomainShaders(){return (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4); } // ACCEPTED_USE
     static bool PlatformSupportsComputeShaders()
     {
-        bool ret = (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3);
+        bool ret = (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3); // ACCEPTED_USE
         return ret;
     }
-    static bool PlatformIsConsole(){return (CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO); };
+    static bool PlatformIsConsole(){return (CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO); }; // ACCEPTED_USE
 
     static bool m_bEditable;
     static uint32 m_nPlatform;

@@ -20,9 +20,8 @@ namespace CloudCanvas
     class IPresignedURLRequest
     {
     public:
-
-        virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName) = 0;
-        virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName) = 0;
+        virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
+        virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
     };
 
     class PresignedURLRequestBusTraits
@@ -40,11 +39,10 @@ namespace CloudCanvas
 
     using PresignedURLRequestBus = AZ::EBus<IPresignedURLRequest, PresignedURLRequestBusTraits>;
 
-
     class PresignedURLResult
     {
     public:
-        virtual void GotPresignedURLResult(const AZStd::string& requestURL, int responseCode, const AZStd::string& responseMessage) = 0;
+        virtual void GotPresignedURLResult(const AZStd::string& requestURL, int responseCode, const AZStd::string& responseMessage, const AZStd::string& outputFile) = 0;
     };
 
     class PresignedURLResultBusTraits
@@ -54,7 +52,8 @@ namespace CloudCanvas
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        typedef AZ::EntityId BusIdType;
         //////////////////////////////////////////////////////////////////////////
     };
 

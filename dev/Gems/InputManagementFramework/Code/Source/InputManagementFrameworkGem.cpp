@@ -40,9 +40,7 @@ namespace Input
 {
     class InputManagementFrameworkSystemComponent
         : public AZ::Component
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         , public AZ::InputRequestBus::Handler
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
     {
     public:
         AZ_COMPONENT(InputManagementFrameworkSystemComponent, "{B52457FC-2DEA-4F0E-B0D0-F17786B40F02}");
@@ -96,24 +94,19 @@ namespace Input
             m_inputEventBindingsAssetHandler = aznew AzFramework::GenericAssetHandler<Input::InputEventBindingsAsset>("inputbindings");
             m_inputEventBindingsAssetHandler->Register();
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
             AZ::InputRequestBus::Handler::BusConnect();
             AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
         }
 
         void Deactivate() override
         {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
             AZ::InputRequestBus::Handler::BusDisconnect();
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
             delete m_inputEventBindingsAssetHandler;
             m_inputEventBindingsAssetHandler = nullptr;
         }
 
     protected:
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZ::u8 RequestDeviceIndexMapping(const Input::ProfileId& profileId) override
         {
             if (m_profileIdToDeviceIndex.find(profileId) == m_profileIdToDeviceIndex.end())
@@ -181,16 +174,12 @@ namespace Input
         {
             return m_contexts;
         }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     private:
         AzFramework::GenericAssetHandler<Input::InputEventBindingsAsset>* m_inputEventBindingsAssetHandler = nullptr;
-
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZStd::unordered_map<Input::ProfileId, AZ::u8> m_profileIdToDeviceIndex;
         AZStd::vector<AZStd::string> m_contexts;
         AZ::u8 m_nextValidDeviceIndex = 0;
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
     };
 
     class InputManagementFrameworkModule
@@ -229,7 +218,6 @@ namespace Input
             };
         }
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         void OnSystemEvent(ESystemEvent event, UINT_PTR, UINT_PTR) override
         {
             switch (event)
@@ -245,7 +233,6 @@ namespace Input
                 break;
             }
         }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
     };
 }
 

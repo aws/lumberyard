@@ -94,8 +94,13 @@ bool AzToLyInputDevice::SetForceFeedback(IFFParams params)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void AzToLyInputDevice::OnInputChannelEvent(const InputChannel& inputChannel, bool& /*o_hasBeenConsumed*/)
+void AzToLyInputDevice::OnInputChannelEvent(const InputChannel& inputChannel, bool& o_hasBeenConsumed)
 {
+    if (o_hasBeenConsumed)
+    {
+        return;
+    }
+
     if (inputChannel.GetInputDevice().GetInputDeviceId() != m_azFrameworkInputDeviceId)
     {
         return;
@@ -165,7 +170,6 @@ void AzToLyInputDevice::PostCryInputEvent(const InputChannel& inputChannel, SInp
 
     // CryInput dispatched 'changed' events for touch inputs, in addition to the regular pressed/held/released
     if (inputSymbol.deviceType == eIDT_TouchScreen &&
-        inputChannel.GetDelta() != 0.0f &&
         inputSymbol.state == eIS_Down)
     {
         inputEvent.state = eIS_Changed;

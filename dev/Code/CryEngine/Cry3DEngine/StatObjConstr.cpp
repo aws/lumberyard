@@ -333,14 +333,14 @@ int CStatObj::Release()
 //////////////////////////////////////////////////////////////////////////
 void* CStatObj::operator new (size_t size)
 {
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
     assert(size == sizeof(CStatObj));
     return pObjManager->AllocateStatObj();
 }
 
 void CStatObj::operator delete (void* pToFree)
 {
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
     pObjManager->FreeStatObj((CStatObj*)pToFree);
 }
 
@@ -587,7 +587,7 @@ void CStatObj::GetMemoryUsage(ICrySizer* pSizer) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CStatObj::SetLodObject(int nLod, CStatObj* pLod)
+void CStatObj::SetLodObject(int nLod, IStatObj* pLod)
 {
     assert(nLod > 0 && nLod < MAX_STATOBJ_LODS_NUM);
     if (nLod <= 0 || nLod >= MAX_STATOBJ_LODS_NUM)
@@ -623,8 +623,8 @@ void CStatObj::SetLodObject(int nLod, CStatObj* pLod)
         else
         {
             int min_tris = GetCVars()->e_LodMinTtris;
-            if (((pLod->m_nLoadedTrisCount >= min_tris || nPrevLodTris >= (3 * min_tris) / 2)
-                 || pLod->m_nRenderMatIds < nPrevLodMatIds) && nLod > (int)m_nMaxUsableLod)
+            if (((pLod->GetLoadedTrisCount() >= min_tris || nPrevLodTris >= (3 * min_tris) / 2)
+                 || pLod->GetRenderMatIds() < nPrevLodMatIds) && nLod > (int)m_nMaxUsableLod)
             {
                 m_nMaxUsableLod = nLod;
             }
@@ -635,10 +635,10 @@ void CStatObj::SetLodObject(int nLod, CStatObj* pLod)
             m_pParentObject->m_nMaxUsableLod = m_nMaxUsableLod;
         }
 
-        pLod->m_pLod0 = this;
-        pLod->m_pMaterial = m_pMaterial; // Lod must use same material as parent.
+        pLod->SetLodLevel0(this);
+        pLod->SetMaterial(m_pMaterial); // Lod must use same material as parent.
 
-        if (pLod->m_nLoadedTrisCount > MAX_TRIS_IN_LOD_0)
+        if (pLod->GetLoadedTrisCount() > MAX_TRIS_IN_LOD_0)
         {
             if ((strstr(pLod->GetProperties(), "lowspeclod0") != 0) && !m_bLowSpecLod0Set)
             {
@@ -668,7 +668,7 @@ void CStatObj::SetLodObject(int nLod, CStatObj* pLod)
     if (pLod && bLodCompound)
     {
         m_nMaxUsableLod = nLod;
-        pLod->m_bUnmergable = m_bUnmergable;
+        pLod->SetUnmergable(m_bUnmergable);
     }
 
     if (!m_pLODs && pLod)
@@ -678,7 +678,7 @@ void CStatObj::SetLodObject(int nLod, CStatObj* pLod)
 
     if (m_pLODs)
     {
-        m_pLODs[nLod] = pLod;
+        m_pLODs[nLod] = (CStatObj*)pLod;
     }
 }
 
@@ -1246,7 +1246,7 @@ void CStatObj::MergeSubObjectsRenderMeshes(bool bFromStreaming, CStatObj* pLod0,
         if (m_pLod0)
         {
             // Make sure upmost lod is also marked to be merged.
-            m_pLod0->m_bMerged = true;
+            m_pLod0->SetMerged(true);
         }
     }
 }
@@ -1793,7 +1793,7 @@ float CStatObj::GetOcclusionAmount()
             {
                 Vec3 vStart (x, m_vBoxMin.y, z);
                 Vec3 vEnd       (x, m_vBoxMax.y, z);
-                if (CObjManager::RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
+                if (GetObjManager()->RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
                 {
                     fHits++;
                 }
@@ -1808,7 +1808,7 @@ float CStatObj::GetOcclusionAmount()
             {
                 Vec3 vStart (m_vBoxMin.x, y, z);
                 Vec3 vEnd       (m_vBoxMax.x, y, z);
-                if (CObjManager::RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
+                if (GetObjManager()->RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
                 {
                     fHits++;
                 }
@@ -1823,7 +1823,7 @@ float CStatObj::GetOcclusionAmount()
             {
                 Vec3 vStart (x, y, m_vBoxMax.z);
                 Vec3 vEnd       (x, y, m_vBoxMin.z);
-                if (CObjManager::RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
+                if (GetObjManager()->RayStatObjIntersection(this, objMatrix, GetMaterial(), vStart, vEnd, vClosestHitPoint, fClosestHitDistance, true))
                 {
                     fHits++;
                 }
@@ -1922,7 +1922,7 @@ void CStatObj::CheckUpdateObjectHeightmap()
             Vec3 vClosestHitPoint(0, 0, 0);
             float fClosestHitDistance = 1000000;
 
-            if (CObjManager::RayStatObjIntersection(this, objMatrix, GetMaterial(),
+            if (GetObjManager()->RayStatObjIntersection(this, objMatrix, GetMaterial(),
                     vStart, vEnd, vClosestHitPoint, fClosestHitDistance, false))
             {
                 int nX = CLAMP(int((x - m_vBoxMin.x) / dx), 0, m_nHeightmapSize - 1);
@@ -1951,14 +1951,14 @@ float CStatObj::GetObjectHeight(float x, float y)
 #endif
 
 //////////////////////////////////////////////////////////////////////////
-int CStatObj::CountChildReferences()
+int CStatObj::CountChildReferences() const
 {
     // Check if it must be released.
     int nChildRefs = 0;
     int numChilds = (int)m_subObjects.size();
     for (int i = 0; i < numChilds; i++)
     {
-        IStatObj::SSubObject& so = m_subObjects[i];
+        const IStatObj::SSubObject& so = m_subObjects[i];
         CStatObj* pChildStatObj = (CStatObj*)so.pStatObj;
         if (!pChildStatObj) // All stat objects must be at the begining of the array//
         {

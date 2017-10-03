@@ -215,7 +215,7 @@ public:
         return m_fEmitCountScale;
     }
 
-    void RefreshEffect();
+    void RefreshEffect(bool recreateContainer = false);
 
     void UpdateEffects();
 

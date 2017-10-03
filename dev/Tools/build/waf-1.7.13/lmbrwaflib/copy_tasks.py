@@ -10,6 +10,8 @@
 #
 from waflib.Task import Task, RUN_ME, SKIP_ME
 from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
+from cry_utils import flatten_list
+from utils import fast_copy2, should_overwrite_file
 from waflib import Logs, Utils, Errors
 import os
 import glob
@@ -51,78 +53,6 @@ def h_file(filename):
     return hash(filename)
 
 Utils.h_file = h_file
-
-def fast_copyfile(src, dst, buffer_size=1024*1024):
-    """
-    Copy data from src to dst - reimplemented with a buffer size
-    Note that this function is simply a copy of the function from the official python shutils.py file, but
-    with an increased (configurable) buffer size fed into copyfileobj instead of the original 16kb one
-    """
-    if shutil._samefile(src, dst):
-        raise shutil.Error("`%s` and `%s` are the same file" % (src, dst))
-
-    for fn in [src, dst]:
-        try:
-            st = os.stat(fn)
-        except OSError:
-            # File most likely does not exist
-            pass
-        else:
-            # XXX What about other special files? (sockets, devices...)
-            if stat.S_ISFIFO(st.st_mode):
-                raise shutil.SpecialFileError("`%s` is a named pipe" % fn)
-
-    with open(src, 'rb') as fsrc:
-        with open(dst, 'wb') as fdst:
-            shutil.copyfileobj(fsrc, fdst, buffer_size)
-
-def fast_copy2(src, dst, buffer_size=1024*1024):
-    """
-    Copy data and all stat info ("cp -p src dst").
-    The destination may be a directory.
-    Note that this is just a copy of the copy2 function from shutil.py that calls the above fast copyfile
-    """
-
-    if os.path.isdir(dst):
-        dst = os.path.join(dst, os.path.basename(src))
-    fast_copyfile(src, dst, buffer_size)
-    shutil.copystat(src, dst)
-
-
-MAX_TIMESTAMP_DELTA_MILS = datetime.timedelta(milliseconds=1)
-
-
-def should_overwrite_file(source_path, dest_path):
-    """
-    Generalized decision to perform a copy/overwrite of an existing file.
-
-    For improved performance only a comparison of size and mod times of the file is checked.
-
-    :param source_path:     The source file path to copy from
-    :param dest_path:     The target file path to copy to
-    :return:  True if the target file does not exist or the target file is different from the source based on a specific criteria
-    """
-
-    copy = False
-    if os.path.exists(source_path):
-        if not os.path.exists(dest_path):
-            # File does not exist, so always perform a copy
-            copy = True
-        elif os.path.isfile(source_path) and os.path.isfile(dest_path):
-            # Only overwrite for files
-            source_stat = os.stat(source_path)
-            dest_stat = os.stat(dest_path)
-            # Right now, ony compare the file sizes and mod times to detect if an overwrite is necessary
-            if source_stat.st_size != dest_stat.st_size:
-                copy = True
-            else:
-                # If the sizes are the same, then check the timestamps for the last mod time
-                source_mod_time = datetime.datetime.fromtimestamp(source_stat.st_mtime)
-                dest_mod_time = datetime.datetime.fromtimestamp(dest_stat.st_mtime)
-                if abs(source_mod_time-dest_mod_time) > MAX_TIMESTAMP_DELTA_MILS:
-                    copy = True
-
-    return copy
 
 
 def copy_tree2(src, dst, overwrite_existing_file=False, ignore_paths=None, fail_on_error=True):
@@ -272,6 +202,10 @@ class copy_outputs(Task):
         return SKIP_ME
 
 
+class macapp(copy_outputs):
+    color = 'PINK'
+
+
 @taskgen_method
 def copy_files(self, source_file, check_timestamp_and_size=True):
 
@@ -293,25 +227,7 @@ def copy_files(self, source_file, check_timestamp_and_size=True):
 
     # If there is an attribute for 'output_folder', then this is an override of the output target folder
     # Note that subfolder if present will still be applied
-    output_folder = getattr(self, 'output_folder', None)
-    if output_folder:
-        # Convert to a list if necessary
-        if isinstance(output_folder,list):
-            output_folders = output_folder
-        else:
-            output_folders = [output_folder]
-        # Process each output folder and build the list of output nodes
-        if len(output_folders) > 0:
-            output_nodes = []
-            for output_folder in output_folders:
-                if os.path.isabs(output_folder):
-                    target_path = self.bld.root.make_node(output_folder)
-                else:
-                    target_path = self.bld.path.make_node(output_folder)
-                output_nodes.append(target_path)
-
-    else:
-        output_nodes = self.bld.get_output_folders(self.bld.env['PLATFORM'], self.bld.env['CONFIGURATION'])
+    output_nodes = self.bld.get_output_folders(self.bld.env['PLATFORM'], self.bld.env['CONFIGURATION'], self)
 
     for node in output_nodes:
         output_node = node
@@ -349,6 +265,198 @@ def create_copy_task(self, source_file, output_node, optional=False, check_times
         self.bld.existing_copy_tasks[output_node] = new_task
 
     return self.bld.existing_copy_tasks[output_node]
+	
+@taskgen_method
+def create_macapp_task(self, source_file, output_node, check_timestamp_and_size=True):
+    new_task = self.create_task('macapp', source_file, output_node)
+    new_task.check_timestamp_and_size = check_timestamp_and_size
+    return new_task
+
+
+if os.name == "nt":
+    os_symlink = getattr(os, "symlink", None)
+    if callable(os_symlink):
+        pass
+    else:
+        def symlink_ms(source, link_name):
+            import ctypes
+            csl = ctypes.windll.kernel32.CreateSymbolicLinkW
+            csl.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+            csl.restype = ctypes.c_ubyte
+            flags = 1 if os.path.isdir(source) else 0
+            try:
+                if csl(link_name, source.replace('/', '\\'), flags) == 0:
+                    raise ctypes.WinError()
+            except:
+                pass
+        os.symlink = symlink_ms
+
+class symlink_outputs(Task):
+    """
+    Class to handle symlinking
+    """
+    color = 'YELLOW'
+    optional = False
+    """If True, build doesn't fail if symlink fails."""
+
+    def run(self):
+        src = self.inputs[0].abspath()
+        tgt = self.outputs[0].abspath()
+
+        # Create output folder
+        tries = 0
+        dir = os.path.dirname(tgt)
+        created = False
+        while not created and tries < 10:
+            try:
+                os.makedirs(dir)
+                created = True
+            except OSError as ex:
+                self.err_msg = "%s\nCould not mkdir for symlink %s -> %s" % (str(ex), src, tgt)
+                # ignore Directory already exists when this is called from multiple threads simultaneously
+                if os.path.isdir(dir):
+                    created = True
+            tries += 1
+
+        if not created:
+            return -1
+
+        tries = 0
+        result = -1
+        while result == -1 and tries < 10:
+            try:
+                os.symlink(src, tgt)
+                result = 0
+                self.err_msg = None
+            except Exception as why:
+                self.err_msg = "Could not perform symlink %s -> %s\n\t%s" % (src, tgt, str(why))
+                result = -1
+                time.sleep(tries)
+            tries += 1
+
+        if result != 0 and self.optional:
+            result = 0
+
+        return result
+
+@taskgen_method
+def create_symlink_task(self, source_file, output_node, optional=False, check_timestamp_and_size=True):
+    if not getattr(self.bld, 'existing_symlink_tasks', None):
+        self.bld.existing_symlink_tasks = dict()
+
+    if output_node in self.bld.existing_symlink_tasks:
+        Logs.debug('create_symlink_task: skipping duplicate output node: (%s, %s)' % (output_node.abspath(), self))
+    else:
+        new_task = self.create_task('symlink_outputs', source_file, output_node)
+        new_task.optional = optional
+        new_task.check_timestamp_and_size = check_timestamp_and_size #unused, keep only for compat with copy_task
+        self.bld.existing_symlink_tasks[output_node] = new_task
+
+    return self.bld.existing_symlink_tasks[output_node]
+
+
+if os.name == "nt":
+    os_hardlink = getattr(os, "link", None)
+    if callable(os_hardlink):
+        pass
+    else:
+        def hardlink_ms(source, link_name):
+            import ctypes
+            csl = ctypes.windll.kernel32.CreateHardLinkW
+            csl.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+            csl.restype = ctypes.c_ubyte
+            flags = 1 if os.path.isdir(source) else 0
+            try:
+                if csl(link_name, source.replace('/', '\\'), flags) == 0:
+                    raise ctypes.WinError()
+            except:
+                pass
+        os.link = hardlink_ms
+
+class hardlink_outputs(Task):
+    """
+    Class to handle hardlinking
+    """
+    color = 'YELLOW'
+    optional = False
+    """If True, build doesn't fail if hardlink fails."""
+
+    def run(self):
+        src = self.inputs[0].abspath()
+        tgt = self.outputs[0].abspath()
+
+        # Create output folder
+        tries = 0
+        dir = os.path.dirname(tgt)
+        created = False
+        while not created and tries < 10:
+            try:
+                os.makedirs(dir)
+                created = True
+            except OSError as ex:
+                self.err_msg = "%s\nCould not mkdir for hardlink %s -> %s" % (str(ex), src, tgt)
+                # ignore Directory already exists when this is called from multiple threads simultaneously
+                if os.path.isdir(dir):
+                    created = True
+            tries += 1
+
+        if not created:
+            return -1
+
+        tries = 0
+        result = -1
+        while result == -1 and tries < 10:
+            try:
+                os.link(src, tgt)
+                result = 0
+                self.err_msg = None
+            except Exception as why:
+                self.err_msg = "Could not perform hardlink %s -> %s\n\t%s" % (src, tgt, str(why))
+                result = -1
+                time.sleep(tries)
+            tries += 1
+
+        if result != 0 and self.optional:
+            result = 0
+
+        return result
+
+@taskgen_method
+def create_hardlink_task(self, source_file, output_node, optional=False, check_timestamp_and_size=True):
+    if not getattr(self.bld, 'existing_hardlink_tasks', None):
+        self.bld.existing_hardlink_tasks = dict()
+
+    if output_node in self.bld.existing_hardlink_tasks:
+        Logs.debug('create_hardlink_task: skipping duplicate output node: (%s, %s)' % (output_node.abspath(), self))
+    else:
+        new_task = self.create_task('hardlink_outputs', source_file, output_node)
+        new_task.optional = optional
+        new_task.check_timestamp_and_size = check_timestamp_and_size #unused, keep only for compat with copy_task
+        self.bld.existing_hardlink_tasks[output_node] = new_task
+
+    return self.bld.existing_hardlink_tasks[output_node]
+
+
+
+@taskgen_method
+def create_hardlink_if_same_device_else_copy_task(self, source_file, output_node, optional=False, check_timestamp_and_size=True):
+    if not getattr(self.bld, 'existing_hardlink_tasks', None):
+        self.bld.existing_hardlink_tasks = dict()
+    if not getattr(self.bld, 'existing_symlink_tasks', None):
+        self.bld.existing_symlink_tasks = dict()
+    if not getattr(self.bld, 'existing_copy_tasks', None):
+        self.bld.existing_copy_tasks = dict()
+
+    if output_node in self.bld.existing_hardlink_tasks or output_node in self.bld.existing_symlink_tasks or output_node in self.bld.existing_copy_tasks:
+        Logs.debug('create_hardlink_if_same_device_else_copy_task: skipping duplicate output node: (%s, %s)' % (output_node.abspath(), self))
+        return None
+    else:
+        (src_drive, src_tail) = os.path.splitdrive(source_file.abspath())
+        (output_drive, output_tail) = os.path.splitdrive(output_node.abspath())
+        if src_drive.lower() == output_drive.lower():
+            return create_hardlink_task(self, source_file, output_node, optional, check_timestamp_and_size)
+        else:
+            return create_copy_task(self, source_file, output_node, optional, check_timestamp_and_size)
 
 
 ###############################################################################
@@ -461,11 +569,7 @@ def add_copy_artifacts(self):
     output_sub_folder = getattr(self, 'output_sub_folder', None)
 
     # If we have a custom output folder, then make a list of nodes from it
-    target_folders = getattr(self, 'output_folder', [])
-    if len(target_folders) > 0:
-        target_folders = [source_node.make_node(node) if isinstance(node, str) else node for node in target_folders]
-    else:
-        target_folders = self.bld.get_output_folders(current_platform, current_configuration)
+    target_folders = self.bld.get_output_folders(current_platform, current_configuration, self)
 
     # Copy to each output folder target node
     for target_node in target_folders:
@@ -511,7 +615,7 @@ def add_mirror_artifacts(self):
     else:
         source_node = self.bld.path.make_node('Bin64') #default
 
-    output_folders = self.bld.get_output_folders(current_platform, current_configuration)
+    output_folders = self.bld.get_output_folders(current_platform, current_configuration, self)
     for target_node in output_folders:
 
         # Skip if the output folder is Bin64 already (this is where the source is)
@@ -547,7 +651,7 @@ def add_copy_3rd_party_artifacts(self):
 
         copied_files = 0
         # Iterate through all target output folders
-        for target_node in self.bld.get_output_folders(current_platform, current_configuration):
+        for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
 
             # Determine the final output directory
             output_sub_folder = getattr(self, 'output_sub_folder', None)
@@ -612,7 +716,7 @@ def copy_external_files(self):
                           .format(copy_external_file, target_file))
 
     # Iterate through all target output folders
-    for target_node in self.bld.get_output_folders(current_platform, current_configuration):
+    for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
 
         if hasattr(self, 'output_sub_folder'):
             output_path = os.path.join(target_node.abspath(), self.output_sub_folder)
@@ -660,15 +764,9 @@ def copy_3rd_party_binaries(self):
         for source_file in source_files:
 
             source_file_file_norm_path = os.path.normpath(source_file)
-            if source_file_file_norm_path.startswith(project_root_norm_path):
-                # Convert each full path into a Node.  The path is convertible only if it shares
-                # the same prefix as the root and create a copy task
-                source_file_relative_path = source_file_file_norm_path[len(project_root_norm_path):]
-                source_node = self.bld.srcnode.make_node(source_file_relative_path)
-                self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
-            else:
-                # If the path is not within the root folder, we cannot use the copy task
-                Logs.warn("Cannot copy file '{}' outside of the project root.  Skipping.".format(source_file))
+
+            source_node = self.bld.root.make_node(source_file_file_norm_path)
+            self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
 
     # Get the project root path information in order to convert the paths to nodes
     project_root_norm_path = os.path.normpath(self.bld.srcnode.abspath())
@@ -806,7 +904,7 @@ def copy_3rd_party_extras(self):
             Logs.warn("Cannot copy source '{}' File not found.  Skipping.".format(source))
             return False
 
-        for target_node in self.bld.get_output_folders(current_platform, current_configuration):
+        for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
             for source_file, target_file in raw_src_and_tgt:
                 source_file_relative_path = source_file[len(project_root_norm_path)+1:]
                 source = self.bld.srcnode.make_node(source_file_relative_path)
@@ -872,33 +970,38 @@ def copy_module_dependent_files(self):
             return False
 
     # Iterate through all target output folders
-    for target_node in self.bld.get_output_folders(current_platform, current_configuration):
+    for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
 
-        if hasattr(self, 'output_sub_folder'):
-            output_path = os.path.join(target_node.abspath(), self.output_sub_folder)
+        output_paths = []
+        if getattr(self, 'output_sub_folder', None):
+            output_sub_folder_value = flatten_list(self.output_sub_folder)
+            for output_sub_folder in output_sub_folder_value:
+                output_paths.append(os.path.join(target_node.abspath(), output_sub_folder))
         else:
-            output_path = target_node.abspath()
+            output_paths.append(target_node.abspath())
 
-        for copy_external_file in external_files:
+        for output_path in output_paths:
 
-            # Is this a potential wildcard pattern?
-            is_pattern = '*' in os.path.basename(copy_external_file)
-            if is_pattern:
-                # If this is a wildcard pattern, make sure its base directory is valid
-                if not os.path.exists(os.path.dirname(copy_external_file)):
-                    continue
-                files_from_pattern = glob.glob(copy_external_file)
-                for file_from_pattern in files_from_pattern:
-                    if _copy_single_file(file_from_pattern, output_path):
+            for copy_external_file in external_files:
+
+                # Is this a potential wildcard pattern?
+                is_pattern = '*' in os.path.basename(copy_external_file)
+                if is_pattern:
+                    # If this is a wildcard pattern, make sure its base directory is valid
+                    if not os.path.exists(os.path.dirname(copy_external_file)):
+                        continue
+                    files_from_pattern = glob.glob(copy_external_file)
+                    for file_from_pattern in files_from_pattern:
+                        if _copy_single_file(file_from_pattern, output_path):
+                            copied_files += 1
+                else:
+                    # Skip if the file does not exist or is a directory
+                    if not os.path.exists(copy_external_file):
+                        continue
+                    if os.path.isdir(copy_external_file):
+                        continue
+                    if _copy_single_file(copy_external_file, output_path):
                         copied_files += 1
-            else:
-                # Skip if the file does not exist or is a directory
-                if not os.path.exists(copy_external_file):
-                    continue
-                if os.path.isdir(copy_external_file):
-                    continue
-                if _copy_single_file(copy_external_file, output_path):
-                    copied_files += 1
 
     if copied_files > 0:
         Logs.info('[INFO] {} dependent files copied for target {}.'.format(copied_files, self.target))

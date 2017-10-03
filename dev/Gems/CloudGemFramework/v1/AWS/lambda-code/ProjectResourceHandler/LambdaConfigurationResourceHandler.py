@@ -118,7 +118,8 @@ def handler(event, context):
             'ConfigurationBucket': props.ConfigurationBucket,
             'ConfigurationKey': output_key,
             'Runtime': props.Runtime,
-            'Role': role_arn
+            'Role': role_arn,
+            'RoleName': role_utils.get_access_control_role_name(stack_arn, logical_role_name)
         }
 
     physical_resource_id = aws_utils.construct_custom_physical_resource_id_with_data(stack_arn, event['LogicalResourceId'], id_data)
@@ -150,12 +151,12 @@ def _add_built_in_settings(settings, stack_arn):
     else:
         print 'Skipping setting CloudCanvas::IdentityPool: access stack not found.'
 
-    project_service_lambda = stack.deployment.project.resources.get_by_logical_id("ProjectServiceLambda", "AWS::Lambda::Function", True)
+    project_service_lambda = stack.deployment.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", True)
     if project_service_lambda:
-        settings["CloudCanvas::ProjectServiceLambda"] = project_service_lambda.physical_id
-        print 'Adding setting CloudCanvas::ProjectServiceLambda = {}'.format(settings["CloudCanvas::ProjectServiceLambda"])
+        settings["CloudCanvas::ServiceLambda"] = project_service_lambda.physical_id
+        print 'Adding setting CloudCanvas::ServiceLambda = {}'.format(settings["CloudCanvas::ServiceLambda"])
     else:
-        print 'Skipping setting CloudCanvas::ProjectServiceLambda: resource not found.'
+        print 'Skipping setting CloudCanvas::ServiceLambda: resource not found.'
 
     settings["CloudCanvas::DeploymentName"] = stack.deployment.deployment_name
 
@@ -163,7 +164,7 @@ def _get_project_service_lambda_arn(stack_arn):
     stack = stack_info.get_stack_info(stack_arn)
 
     if stack.stack_type == stack.STACK_TYPE_RESOURCE_GROUP:
-        project_service_lambda = stack.deployment.project.resources.get_by_logical_id("ProjectServiceLambda", "AWS::Lambda::Function", True)
+        project_service_lambda = stack.deployment.project.resources.get_by_logical_id("ServiceLambda", "AWS::Lambda::Function", True)
         if project_service_lambda:
             return project_service_lambda.resource_arn
     return None

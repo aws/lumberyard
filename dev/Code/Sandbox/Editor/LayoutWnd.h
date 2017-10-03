@@ -23,6 +23,7 @@
 
 #include <QSplitter>
 #include <QPointer>
+#include <AzQtComponents/Components/ToolBarArea.h>
 
 class CLayoutViewPane;
 class CViewport;
@@ -77,7 +78,7 @@ private:
 /** Main layout window.
 */
 class CLayoutWnd
-    : public QWidget
+    : public AzQtComponents::ToolBarArea
 {
     // Construction
     Q_OBJECT
@@ -119,7 +120,6 @@ public:
 
     // Generated message map functions
 protected:
-    void resizeEvent(QResizeEvent* event) override;
     void OnDestroy();
 
     // Bind viewports to split panes.
@@ -151,11 +151,12 @@ private:
     QPointer<CLayoutSplitter> m_splitWnd3;
 
     //! View pane for maximized layout.
-    CLayoutViewPane* m_maximizedView;
+    QPointer<CLayoutViewPane> m_maximizedView;
     // Id of maximized view pane.
     int m_maximizedViewId;
 
     CInfoBar* m_infoBar;
+    QToolBar* m_infoToolBar;
     QSize m_infoBarSize;
     QSettings* m_settings;
 };

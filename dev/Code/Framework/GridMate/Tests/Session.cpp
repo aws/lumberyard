@@ -56,7 +56,7 @@ namespace UnitTest
         }
     }
 
-    class LANSessionMatchmakingParamsTest
+    class Integ_LANSessionMatchmakingParamsTest
         : public GridMateMPTestFixture
         , public SessionEventBus::MultiHandler
     {
@@ -68,7 +68,7 @@ namespace UnitTest
         }
 
     public:
-        LANSessionMatchmakingParamsTest(bool useIPv6 = false)
+        Integ_LANSessionMatchmakingParamsTest(bool useIPv6 = false)
             : m_hostSession(nullptr)
             , m_clientGridMate(nullptr)
         {
@@ -87,7 +87,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(GridMate::LANSessionServiceBus::FindFirstHandler(m_clientGridMate) != nullptr);
             //////////////////////////////////////////////////////////////////////////
         }
-        virtual ~LANSessionMatchmakingParamsTest()
+        virtual ~Integ_LANSessionMatchmakingParamsTest()
         {
             SessionEventBus::MultiHandler::BusDisconnect(m_gridMate);
             SessionEventBus::MultiHandler::BusDisconnect(m_clientGridMate);
@@ -98,7 +98,7 @@ namespace UnitTest
 
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_familyType = m_driverType;
@@ -123,7 +123,7 @@ namespace UnitTest
             sp.m_params[sp.m_numParams].m_id = "VT_STRING";
             sp.m_params[sp.m_numParams].SetValue("string");
             sp.m_numParams++;
-            GridSession* hostSession = nullptr;            
+            GridSession* hostSession = nullptr;
             EBUS_EVENT_ID_RESULT(hostSession,m_gridMate,LANSessionServiceBus,HostSession,sp,carrierDesc);
             AZ_TEST_ASSERT(hostSession);
 
@@ -156,10 +156,10 @@ namespace UnitTest
                 while (!searchHandle->IsDone())
                 {
                     AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(30));
-                    
+
                     m_gridMate->Update();
                     UpdateReplicaManager(hostSession->GetReplicaMgr());
-                    
+
                     m_clientGridMate->Update();
                 }
                 AZ_TEST_ASSERT(searchHandle->GetNumResults() == 0);
@@ -170,11 +170,11 @@ namespace UnitTest
             }
 
             // Perform search with all matching parameters
-            EBUS_EVENT_ID_RESULT(searchHandle,m_clientGridMate,LANSessionServiceBus,StartGridSearch,searchParams);            
+            EBUS_EVENT_ID_RESULT(searchHandle,m_clientGridMate,LANSessionServiceBus,StartGridSearch,searchParams);
             while (!searchHandle->IsDone())
             {
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(30));
-                
+
                 m_gridMate->Update();
                 UpdateReplicaManager(hostSession->GetReplicaMgr());
 
@@ -185,7 +185,7 @@ namespace UnitTest
             searchHandle->Release();
 
             // Perform search with no parameters
-            searchParams.m_numParams = 0;            
+            searchParams.m_numParams = 0;
             EBUS_EVENT_ID_RESULT(searchHandle,m_clientGridMate,LANSessionServiceBus,StartGridSearch,searchParams);
             while (!searchHandle->IsDone())
             {
@@ -208,7 +208,7 @@ namespace UnitTest
         IGridMate* m_clientGridMate;
     };
 
-    class LANSessionTest
+    class Integ_LANSessionTest
         : public GridMateMPTestFixture
     {
         class TestPeerInfo
@@ -279,7 +279,7 @@ namespace UnitTest
         };
 
     public:
-        LANSessionTest(bool useIPv6 = false)
+        Integ_LANSessionTest(bool useIPv6 = false)
         {
             m_driverType = useIPv6 ? Driver::BSD_AF_INET6 : Driver::BSD_AF_INET;
             m_doSessionParamsTest = k_numMachines > 1;
@@ -305,7 +305,7 @@ namespace UnitTest
                 AZ_TEST_ASSERT(LANSessionServiceBus::FindFirstHandler(m_peers[i].m_gridMate) != nullptr);
             }
         }
-        virtual ~LANSessionTest()
+        virtual ~Integ_LANSessionTest()
         {
             StopGridMateService<LANSessionService>(m_peers[0].m_gridMate);
 
@@ -328,7 +328,7 @@ namespace UnitTest
         {
             //StartDrilling("lansession");
 
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = /*false*/ true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_familyType = m_driverType;
@@ -347,7 +347,7 @@ namespace UnitTest
                 searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
                 searchParams.m_familyType = m_driverType;
 
-                EBUS_EVENT_ID_RESULT(m_peers[0].m_lanSearch,m_peers[0].m_gridMate,LANSessionServiceBus,StartGridSearch,searchParams);                
+                EBUS_EVENT_ID_RESULT(m_peers[0].m_lanSearch,m_peers[0].m_gridMate,LANSessionServiceBus,StartGridSearch,searchParams);
                 while (!m_peers[0].m_lanSearch->IsDone())
                 {
                     m_peers[0].m_gridMate->Update();
@@ -374,7 +374,7 @@ namespace UnitTest
                 else
                 {
                     // we found a session join it
-                    EBUS_EVENT_ID_RESULT(m_peers[0].m_session,m_peers[0].m_gridMate,LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_peers[0].m_lanSearch->GetResult(0)),JoinParams(),carrierDesc);                    
+                    EBUS_EVENT_ID_RESULT(m_peers[0].m_session,m_peers[0].m_gridMate,LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_peers[0].m_lanSearch->GetResult(0)),JoinParams(),carrierDesc);
                     m_peers[0].m_lanSearch->Release();
                 }
                 m_peers[0].m_lanSearch = nullptr;
@@ -440,7 +440,7 @@ namespace UnitTest
                     if (m_peers[i].m_lanSearch && m_peers[i].m_lanSearch->IsDone())
                     {
                         AZ_TEST_ASSERT(m_peers[i].m_lanSearch->GetNumResults() == 1);
-                        EBUS_EVENT_ID_RESULT(m_peers[i].m_session,m_peers[i].m_gridMate,LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_peers[i].m_lanSearch->GetResult(0)),JoinParams(),carrierDesc);                        
+                        EBUS_EVENT_ID_RESULT(m_peers[i].m_session,m_peers[i].m_gridMate,LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_peers[i].m_lanSearch->GetResult(0)),JoinParams(),carrierDesc);
 
                         m_peers[i].m_lanSearch->Release();
                         m_peers[i].m_lanSearch = nullptr;
@@ -570,15 +570,15 @@ namespace UnitTest
         bool m_doSessionParamsTest;
     };
 
-    class LANSessionTestIPv6
-        : public LANSessionTest
+    class Integ_LANSessionTestIPv6
+        : public Integ_LANSessionTest
     {
     public:
-        LANSessionTestIPv6()
-            : LANSessionTest(true) {}
+        Integ_LANSessionTestIPv6()
+            : Integ_LANSessionTest(true) {}
     };
 
-    class LANMultipleSessionTest
+    class Integ_LANMultipleSessionTest
         : public GridMateMPTestFixture
         , public SessionEventBus::Handler
     {
@@ -634,7 +634,7 @@ namespace UnitTest
             m_sessions[i] = nullptr;
         }
 
-        LANMultipleSessionTest()
+        Integ_LANMultipleSessionTest()
             : GridMateMPTestFixture(200 * 1024 * 1024)
         {
             //////////////////////////////////////////////////////////////////////////
@@ -659,7 +659,7 @@ namespace UnitTest
             }
         }
 
-        virtual ~LANMultipleSessionTest()
+        virtual ~Integ_LANMultipleSessionTest()
         {
             GridMate::StopGridMateService<GridMate::LANSessionService>(m_gridMates[0]);
 
@@ -677,9 +677,10 @@ namespace UnitTest
 
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = /*false*/ true;
             carrierDesc.m_threadUpdateTimeMS = 10;
+            carrierDesc.m_connectionTimeoutMS = 15000;
 
             memset(m_sessions, 0, sizeof(m_sessions));
             memset(m_lanSearch, 0, sizeof(m_lanSearch));
@@ -697,7 +698,7 @@ namespace UnitTest
                 sp.m_params[1].m_id = "Param2";
                 sp.m_params[1].SetValue(25);
                 sp.m_flags = LANSessionParams::SF_HOST_MIGRATION_NO_EMPTY_SESSIONS;
-                EBUS_EVENT_ID_RESULT(m_sessions[hostId],m_gridMates[k_host],LANSessionServiceBus,HostSession,sp,carrierDesc);                
+                EBUS_EVENT_ID_RESULT(m_sessions[hostId],m_gridMates[k_host],LANSessionServiceBus,HostSession,sp,carrierDesc);
 
                 int listenPort = hostPort;
                 for (int i = 0; i < k_numMachines; ++i)
@@ -716,7 +717,7 @@ namespace UnitTest
                     searchParams.m_params[0].SetValue(25);
                     searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
                     int fi = i + iSession * k_numMachines;
-                    EBUS_EVENT_ID_RESULT(m_lanSearch[fi],m_gridMates[i],LANSessionServiceBus,StartGridSearch,searchParams);                    
+                    EBUS_EVENT_ID_RESULT(m_lanSearch[fi],m_gridMates[i],LANSessionServiceBus,StartGridSearch,searchParams);
                 }
             }
 
@@ -812,7 +813,7 @@ namespace UnitTest
      * Testing session with low latency. This is special mode usually used by tools and communication channels
      * where we try to response instantly on messages.
      */
-    class LANLatencySessionTest
+    class Integ_LANLatencySessionTest
         : public GridMateMPTestFixture
         , public SessionEventBus::Handler
     {
@@ -869,7 +870,7 @@ namespace UnitTest
             m_sessions[i] = nullptr;
         }
 
-        LANLatencySessionTest()
+        Integ_LANLatencySessionTest()
 #ifdef AZ_TEST_LANLATENCY_ENABLE_MONSTER_BUFFER
             : GridMateMPTestFixture(50 * 1024 * 1024)
 #endif
@@ -896,7 +897,7 @@ namespace UnitTest
             }
         }
 
-        virtual ~LANLatencySessionTest()
+        virtual ~Integ_LANLatencySessionTest()
         {
             StopGridMateService<LANSessionService>(m_gridMates[0]);
 
@@ -916,7 +917,7 @@ namespace UnitTest
 
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_threadInstantResponse = true;  // enable low latency mode
@@ -937,7 +938,7 @@ namespace UnitTest
             sp.m_params[1].m_id = "Param2";
             sp.m_params[1].SetValue(25);
             sp.m_flags = LANSessionParams::SF_HOST_MIGRATION_NO_EMPTY_SESSIONS;
-            EBUS_EVENT_ID_RESULT(m_sessions[k_host],m_gridMates[k_host],LANSessionServiceBus,HostSession,sp,carrierDesc);            
+            EBUS_EVENT_ID_RESULT(m_sessions[k_host],m_gridMates[k_host],LANSessionServiceBus,HostSession,sp,carrierDesc);
 
             memset(m_lanSearch, 0, sizeof(m_lanSearch));
             int listenPort = k_hostPort;
@@ -956,7 +957,7 @@ namespace UnitTest
                 searchParams.m_params[0].m_id = "Param2";
                 searchParams.m_params[0].SetValue(25);
                 searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                EBUS_EVENT_ID_RESULT(m_lanSearch[i],m_gridMates[i],LANSessionServiceBus,StartGridSearch,searchParams);                
+                EBUS_EVENT_ID_RESULT(m_lanSearch[i],m_gridMates[i],LANSessionServiceBus,StartGridSearch,searchParams);
             }
 
             int maxNumUpdates = 500 /*25000*/;
@@ -1174,7 +1175,7 @@ namespace UnitTest
      * 5. After host migration we drop the new host again. (after migration we have 3 members).
      * Session should be fully operational at the end with 3 members left.
      */
-    class LANSessionMigarationTestTest
+    class Integ_LANSessionMigarationTestTest
         : public SessionEventBus::Handler
         , public GridMateMPTestFixture
     {
@@ -1268,7 +1269,7 @@ namespace UnitTest
             }
         }
 
-        LANSessionMigarationTestTest()
+        Integ_LANSessionMigarationTestTest()
         {
             //////////////////////////////////////////////////////////////////////////
             // Create all grid mates
@@ -1294,7 +1295,7 @@ namespace UnitTest
             //StartDrilling("lanmigration");
         }
 
-        virtual ~LANSessionMigarationTestTest()
+        virtual ~Integ_LANSessionMigarationTestTest()
         {
             StopGridMateService<LANSessionService>(m_gridMates[0]);
 
@@ -1314,7 +1315,7 @@ namespace UnitTest
 
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = /*false*/ true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_simulator = &m_simulators[0];
@@ -1331,7 +1332,7 @@ namespace UnitTest
             sp.m_params[0].SetValue(15);
             sp.m_params[1].m_id = "Param2";
             sp.m_params[1].SetValue(25);
-            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);            
+            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);
 
             memset(m_lanSearch, 0, sizeof(m_lanSearch));
             int listenPort = k_hostPort;
@@ -1352,7 +1353,7 @@ namespace UnitTest
                 searchParams.m_params[0].m_id = "Param2";
                 searchParams.m_params[0].SetValue(25);
                 searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);                
+                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);
             }
 
             int maxNumUpdates = 1000;
@@ -1383,7 +1384,7 @@ namespace UnitTest
                         if (m_lanSearch[i]->GetNumResults() == 1)
                         {
                             carrierDesc.m_simulator = &m_simulators[i];
-                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);                            
+                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);
                         }
 
                         m_lanSearch[i]->Release();
@@ -1487,7 +1488,7 @@ namespace UnitTest
      * 5. We join a 2 new members to the session.
      * Session should be fully operational at the end with 4 members in it.
      */
-    class LANSessionMigarationTestTest2
+    class Integ_LANSessionMigarationTestTest2
         : public SessionEventBus::Handler
         , public GridMateMPTestFixture
     {
@@ -1581,7 +1582,7 @@ namespace UnitTest
                 }
             }
         }
-        LANSessionMigarationTestTest2()
+        Integ_LANSessionMigarationTestTest2()
         {
             //////////////////////////////////////////////////////////////////////////
             // Create all grid mates
@@ -1607,7 +1608,7 @@ namespace UnitTest
 
             //StartDrilling("lanmigration2");
         }
-        virtual ~LANSessionMigarationTestTest2()
+        virtual ~Integ_LANSessionMigarationTestTest2()
         {
             StopGridMateService<LANSessionService>(m_gridMates[0]);
 
@@ -1626,7 +1627,7 @@ namespace UnitTest
         }
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = /*false*/ true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_simulator = &m_simulators[0];
@@ -1643,7 +1644,7 @@ namespace UnitTest
             sp.m_params[0].SetValue(15);
             sp.m_params[1].m_id = "Param2";
             sp.m_params[1].SetValue(25);
-            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);            
+            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);
 
             memset(m_lanSearch, 0, sizeof(m_lanSearch));
             int listenPort = k_hostPort;
@@ -1663,7 +1664,7 @@ namespace UnitTest
                 searchParams.m_params[0].m_id = "Param2";
                 searchParams.m_params[0].SetValue(25);
                 searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);                
+                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);
             }
 
             int maxNumUpdates = 800;
@@ -1694,7 +1695,7 @@ namespace UnitTest
                         if (m_lanSearch[i]->GetNumResults() == 1)
                         {
                             carrierDesc.m_simulator = &m_simulators[i];
-                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);                            
+                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);
                         }
 
                         m_lanSearch[i]->Release();
@@ -1773,7 +1774,7 @@ namespace UnitTest
                         searchParams.m_params[0].m_id = "Param2";
                         searchParams.m_params[0].SetValue(25);
                         searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                        EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);                        
+                        EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);
                     }
                 }
 
@@ -1826,7 +1827,7 @@ namespace UnitTest
      * 3. Add 2 new joins to the original session.
      * Original session should remain fully operational with 4 members in it.
      */
-    class LANSessionMigarationTestTest3
+    class Integ_LANSessionMigarationTestTest3
         : public SessionEventBus::Handler
         , public GridMateMPTestFixture
     {
@@ -1919,7 +1920,7 @@ namespace UnitTest
                 }
             }
         }
-        LANSessionMigarationTestTest3()
+        Integ_LANSessionMigarationTestTest3()
         {
             //////////////////////////////////////////////////////////////////////////
             // Create all grid mates
@@ -1945,7 +1946,7 @@ namespace UnitTest
             //StartDrilling("lanmigration2");
         }
 
-        virtual ~LANSessionMigarationTestTest3()
+        virtual ~Integ_LANSessionMigarationTestTest3()
         {
             StopGridMateService<LANSessionService>(m_gridMates[0]);
 
@@ -1965,7 +1966,7 @@ namespace UnitTest
 
         void run()
         {
-            CarrierDesc carrierDesc;
+            TestCarrierDesc carrierDesc;
             carrierDesc.m_enableDisconnectDetection = /*false*/ true;
             carrierDesc.m_threadUpdateTimeMS = 10;
             carrierDesc.m_simulator = &m_simulators[0];
@@ -1983,7 +1984,7 @@ namespace UnitTest
             sp.m_params[0].SetValue(15);
             sp.m_params[1].m_id = "Param2";
             sp.m_params[1].SetValue(25);
-            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);            
+            EBUS_EVENT_ID_RESULT(m_sessions[m_host],m_gridMates[m_host],LANSessionServiceBus,HostSession,sp,carrierDesc);
 
             memset(m_lanSearch, 0, sizeof(m_lanSearch));
             int listenPort = k_hostPort;
@@ -2003,7 +2004,7 @@ namespace UnitTest
                 searchParams.m_params[0].m_id = "Param2";
                 searchParams.m_params[0].SetValue(25);
                 searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);                
+                EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);
             }
 
             int maxNumUpdates = 600;
@@ -2034,7 +2035,7 @@ namespace UnitTest
                         if (m_lanSearch[i]->GetNumResults() == 1)
                         {
                             carrierDesc.m_simulator = &m_simulators[i];
-                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);                            
+                            EBUS_EVENT_ID_RESULT(m_sessions[i],m_gridMates[i],LANSessionServiceBus,JoinSessionBySearchInfo,static_cast<const LANSearchInfo&>(*m_lanSearch[i]->GetResult(0)),JoinParams(),carrierDesc);
                         }
 
                         m_lanSearch[i]->Release();
@@ -2085,7 +2086,7 @@ namespace UnitTest
                         searchParams.m_params[0].m_id = "Param2";
                         searchParams.m_params[0].SetValue(25);
                         searchParams.m_params[0].m_op = GridSessionSearchOperators::SSO_OPERATOR_EQUAL;
-                        EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);                        
+                        EBUS_EVENT_ID_RESULT(m_lanSearch[numSessionsUsed],m_gridMates[numSessionsUsed],LANSessionServiceBus,StartGridSearch,searchParams);
                     }
                 }
 
@@ -2166,7 +2167,7 @@ namespace UnitTest
             }
 
 
-            
+
             // Hook to session events bus.
             SessionEventBus::Handler::BusConnect(m_gridMate);
         }
@@ -2185,7 +2186,7 @@ namespace UnitTest
 
 
             Gamepad gamepad(m_userService->GetUser(0));
-            
+
             unsigned int numUpdates = 0;
             while (!search->IsDone() && numUpdates++ < 10000)
             {
@@ -2297,13 +2298,13 @@ namespace UnitTest
 }
 
 GM_TEST_SUITE(SessionSuite)
-GM_TEST(LANSessionMatchmakingParamsTest)
-GM_TEST(LANSessionTest)
+GM_TEST(Integ_LANSessionMatchmakingParamsTest)
+GM_TEST(Integ_LANSessionTest)
 #if defined(AZ_SOCKET_IPV6_SUPPORT)
-GM_TEST(LANSessionTestIPv6)
+GM_TEST(Integ_LANSessionTestIPv6)
 #endif  // AZ_SOCKET_IPV6_SUPPORT
-GM_TEST(LANMultipleSessionTest)
-GM_TEST(LANLatencySessionTest)
+GM_TEST(Integ_LANMultipleSessionTest)
+GM_TEST(Integ_LANLatencySessionTest)
 
 // Manually enabled tests (require 2+ machines and online services)
 //GM_TEST(LANSessionMigarationTestTest)

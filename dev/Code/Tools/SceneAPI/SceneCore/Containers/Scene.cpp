@@ -28,19 +28,26 @@ namespace AZ
             {
             }
 
-            void Scene::SetSourceFilename(const AZStd::string& name)
+            void Scene::SetSource(const AZStd::string& filename, const Uuid& guid)
             {
-                m_sourceFilename = name;
+                m_sourceFilename = filename;
+                m_sourceGuid = guid;
             }
 
-            void Scene::SetSourceFilename(AZStd::string&& name)
+            void Scene::SetSource(AZStd::string&& filename, const Uuid& guid)
             {
-                m_sourceFilename = AZStd::move(name);
+                m_sourceFilename = AZStd::move(filename);
+                m_sourceGuid = guid;
             }
 
             const AZStd::string& Scene::GetSourceFilename() const
             {
                 return m_sourceFilename;
+            }
+
+            const Uuid& Scene::GetSourceGuid() const
+            {
+                return m_sourceGuid;
             }
 
             void Scene::SetManifestFilename(const AZStd::string& name)
@@ -81,6 +88,16 @@ namespace AZ
             const AZStd::string& Scene::GetName() const
             {
                 return m_name;
+            }
+
+            void Scene::SetOriginalSceneOrientation(SceneOrientation orientation)
+            {
+                m_originalOrientation = orientation;
+            }
+
+            Scene::SceneOrientation Scene::GetOriginalSceneOrientation() const
+            {
+                return m_originalOrientation;
             }
         } // Containers
     } // SceneAPI

@@ -16,6 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/Component/TickBus.h>
 
 #include <QAbstractTableModel>
 #include <QVariant>
@@ -32,6 +33,7 @@ namespace AzToolsFramework
         class AssetBrowserModel
             : public QAbstractTableModel
             , public AssetBrowserModelRequestsBus::Handler
+            , public AZ::TickBus::Handler
         {
             Q_OBJECT
         public:
@@ -60,6 +62,11 @@ namespace AzToolsFramework
             void EndAddEntry() override;
             void BeginRemoveEntry(AssetBrowserEntry* entry) override;
             void EndRemoveEntry() override;
+            
+            //////////////////////////////////////////////////////////////////////////
+            // TickBus
+            //////////////////////////////////////////////////////////////////////////
+            void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
             AZStd::shared_ptr<RootAssetBrowserEntry> GetRootEntry() const;
             void SetRootEntry(AZStd::shared_ptr<RootAssetBrowserEntry> rootEntry);

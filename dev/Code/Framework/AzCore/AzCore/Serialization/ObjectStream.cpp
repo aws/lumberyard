@@ -78,6 +78,10 @@ namespace AZ
                 OPF_SAVING      = 1 << 16,
             };
 
+            // These are written with every data element. Note that the size can be
+            // encoded in the flags if it is < 7 (this optimizes the common case 
+            // of size=4). If new flags are required, they will need to be packed
+            // into the extra size field
             enum BinaryFlags
             {
                 ST_BINARYFLAG_MASK              = 0xF8, // upper-5 bits of a byte
@@ -496,7 +500,7 @@ namespace AZ
                         dynamicElementMetadata.m_dataSize = sizeof(void*);
                         dynamicElementMetadata.m_flags = SerializeContext::ClassElement::FLG_POINTER;   // we want to load the data as a pointer
                         dynamicElementMetadata.m_azRtti = classData->m_azRtti;
-                        dynamicElementMetadata.m_genericClassInfo = m_sc->FindGenericClassInfo(fieldContainer->m_typeId);
+                        dynamicElementMetadata.m_genericClassInfo = m_sc->FindGenericClassInfo(element.m_specializedId);
                         dynamicElementMetadata.m_typeId = fieldContainer->m_typeId;
                         classElement = &dynamicElementMetadata;
                     }
@@ -565,6 +569,7 @@ namespace AZ
                 }
 
                 void* dataAddress = nullptr;
+                void* reserveAddress = nullptr; // Stores the dataAddress from IDataContainer::ReserveElement
 
                 // Handle version conversions for non-custom serialized classes
                 if (element.m_version < classData->m_version && !classData->m_serializer)
@@ -643,6 +648,7 @@ namespace AZ
                         dataAddress = reinterpret_cast<char*>(parentClassPtr) + classElement->m_offset;
                     }
 
+                    reserveAddress = dataAddress;
                     // create a new instance if needed
                     if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                     {
@@ -686,6 +692,8 @@ namespace AZ
                             AZ_Assert(false, "Creator for class %s(%s) returned a NULL pointer!", classData->m_name, element.m_id.ToString<AZStd::string>().c_str());
                         }
                     }
+
+                    reserveAddress = dataAddress;
                 }
 
 #if defined(AZ_ENABLE_TRACING)
@@ -723,9 +731,6 @@ namespace AZ
                             // Queue the asset for load if it passes the filter.
                             if (asset->GetId().IsValid() && m_filterDesc.m_assetCB(*asset))
                             {
-                                AssetSerializer* assetSerializer = static_cast<AssetSerializer*>(classData->m_serializer);
-                                assetSerializer->RemapLegacyIds(asset);
-
                                 // Construct the asset.
                                 const u8 assetFlags = asset->GetFlags();
                                 *asset = Data::AssetManager::Instance().GetAsset(asset->GetId(), asset->GetType(), false);
@@ -795,7 +800,7 @@ namespace AZ
 
                 if (classContainer)
                 {
-                    classContainer->StoreElement(parentClassPtr, dataAddress);
+                    classContainer->StoreElement(parentClassPtr, reserveAddress);
                 }
                 else if (!parentClassPtr)
                 {
@@ -1222,6 +1227,11 @@ namespace AZ
                             bytesToSkip += sizeof(u8);
                         }
 
+                        if (m_version > 1) // need to account for the specialized uuid
+                        {
+                            bytesToSkip += sizeof(Uuid);
+                        }
+
                         m_stream->Seek(bytesToSkip, IO::GenericStream::ST_SEEK_CUR);
 
                         if (flagsSize & ST_BINARYFLAG_HAS_VALUE)
@@ -1236,7 +1246,7 @@ namespace AZ
                                     u8 size;
                                     nBytesRead = m_stream->Read(sizeof(u8), &size);
                                     AZ_Assert(nBytesRead == sizeof(u8), "Failed trying to read extra size field!");
-                                    bytesToSkip += size;
+                                    bytesToSkip = size;
                                     break;
                                 }
                                 case 2:
@@ -1247,7 +1257,7 @@ namespace AZ
 #if !defined(AZ_BIG_ENDIAN)
                                     AZStd::endian_swap(size);
 #endif
-                                    bytesToSkip += size;
+                                    bytesToSkip = size;
                                     break;
                                 }
                                 case 4:
@@ -1258,7 +1268,7 @@ namespace AZ
 #if !defined(AZ_BIG_ENDIAN)
                                     AZStd::endian_swap(size);
 #endif
-                                    bytesToSkip += size;
+                                    bytesToSkip = size;
                                     break;
                                 }
                                 default:

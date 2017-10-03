@@ -12,10 +12,11 @@
 *
 */
 
+#include <AzCore/EBus/ebus.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_set.h>
-#include <AzCore/EBus/ebus.h>
 #include <SceneAPI/SceneCore/SceneCoreConfiguration.h>
 #include <SceneAPI/SceneCore/Events/ProcessingResult.h>
 
@@ -42,7 +43,7 @@ namespace AZ
             {
             public:
                 inline LoadingResultCombiner();
-                inline void operator=(LoadingResult rhs);
+                inline void operator= (LoadingResult rhs);
                 inline ProcessingResult GetManifestResult() const;
                 inline ProcessingResult GetAssetResult() const;
 
@@ -51,7 +52,7 @@ namespace AZ
                 ProcessingResult m_assetResult;
             };
 
-            class AssetImportRequest
+            class SCENE_CORE_API AssetImportRequest
                 : public AZ::EBusTraits
             {
             public:
@@ -71,41 +72,52 @@ namespace AZ
 
                 virtual ~AssetImportRequest() = 0;
 
-                // Fills the given list with all available file extensions, excluding the extension for the manifest.
-                SCENE_CORE_API virtual void GetSupportedFileExtensions(AZStd::unordered_set<AZStd::string>& extensions);
-                // Gets the file extension for the manifest.
-                SCENE_CORE_API virtual void GetManifestExtension(AZStd::string& result);
+                //! Fills the given list with all available file extensions, excluding the extension for the manifest.
+                virtual void GetSupportedFileExtensions(AZStd::unordered_set<AZStd::string>& extensions);
+                //! Gets the file extension for the manifest.
+                virtual void GetManifestExtension(AZStd::string& result);
 
-                // Before asset loading starts this is called to allow for any required initialization.
-                SCENE_CORE_API virtual ProcessingResult PrepareForAssetLoading(Containers::Scene& scene, RequestingApplication requester);
-                // Starts the loading of the asset at the given path in the given scene. Loading optimizations can be applied based on 
-                //      the calling application.
-                SCENE_CORE_API virtual LoadingResult LoadAsset(Containers::Scene& scene, const AZStd::string& path, RequestingApplication requester);
-                // FinalizeAssetLoading can be used to do any work to complete loading, such as complete asynchronous loading
-                //      or adjust the loaded content in the the SceneGraph. While manifest changes can be done here as well, it's
-                //      recommended to wait for the UpdateManifest call.
-                SCENE_CORE_API virtual void FinalizeAssetLoading(Containers::Scene& scene, RequestingApplication requester);
-                // After all loading has completed, this call can be used to make adjustments to the manifest. Based on the given
-                //      action this can mean constructing a new manifest or updating an existing manifest. This call is intended
-                //      to deal with any default behavior of the manifest.
-                SCENE_CORE_API virtual ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
+                //! Before asset loading starts this is called to allow for any required initialization.
+                virtual ProcessingResult PrepareForAssetLoading(Containers::Scene& scene, RequestingApplication requester);
+                //! Starts the loading of the asset at the given path in the given scene. Loading optimizations can be applied based on
+                //! the calling application.
+                virtual LoadingResult LoadAsset(Containers::Scene& scene, const AZStd::string& path, const Uuid& guid, RequestingApplication requester);
+                //! FinalizeAssetLoading can be used to do any work to complete loading, such as complete asynchronous loading
+                //! or adjust the loaded content in the the SceneGraph. While manifest changes can be done here as well, it's
+                //! recommended to wait for the UpdateManifest call.
+                virtual void FinalizeAssetLoading(Containers::Scene& scene, RequestingApplication requester);
+                //! After all loading has completed, this call can be used to make adjustments to the manifest. Based on the given
+                //! action this can mean constructing a new manifest or updating an existing manifest. This call is intended
+                //! to deal with any default behavior of the manifest.
+                virtual ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester);
 
-                // Utility function to load an asset and manifest from file by using the EBus functions above. If the given path
-                //      is to a manifest file this function will attempt to find the matching source file.
-                SCENE_CORE_API static AZStd::shared_ptr<Containers::Scene> LoadScene(const AZStd::string& assetFilePath,
-                    RequestingApplication requester);
-                // Utility function to load an asset and manifest from file by using the EBus functions above. This function assumes
-                //      that the given path points to the asset (not the manifest) and that it has been checked to exist.
-                SCENE_CORE_API static AZStd::shared_ptr<Containers::Scene> LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath,
-                    RequestingApplication requester);
+                //! @deprecated Function deprecated, use SceneSerializationBus::LoadScene instead.
+                AZ_DEPRECATED(static AZStd::shared_ptr<Containers::Scene> LoadScene(const AZStd::string& assetFilePath,
+                    RequestingApplication requester), "Function deprecated, use SceneSerializationBus::LoadScene instead.");
+                //! @deprecated Function deprecated, use SceneSerializationBus::LoadScene instead.
+                AZ_DEPRECATED(static AZStd::shared_ptr<Containers::Scene> LoadScene(const AZStd::string& assetFilePath,
+                    const Uuid& sourceGuid, RequestingApplication requester), "Function deprecated, use SceneSerializationBus::LoadScene instead.");
+
+                //! Utility function to load an asset and manifest from file by using the EBus functions above.
+                //! @param assetFilePath The absolute path to the source file (not the manifest).
+                //! @param sourceGuid The guid assigned to the source file (not the manifest).
+                //! @param requester The application making the request to load the file. This can be used to optimize the type and amount of data
+                //! to load.
+                static AZStd::shared_ptr<Containers::Scene> LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath,
+                    const Uuid&sourceGuid, RequestingApplication requester);
+
+                //! Utility function to determine if a given file path points to a scene manifest file (.assetinfo).
+                //! @param filePath A relative or absolute path to the file to check.
+                static bool IsManifestExtension(const char* filePath);
+                //! Utility function to determine if a given file path points to a scene file (for instance .fbx).
+                //! @param filePath A relative or absolute path to the file to check.
+                static bool IsSceneFileExtension(const char* filePath);
             };
 
             using AssetImportRequestBus = AZ::EBus<AssetImportRequest>;
 
-            inline AssetImportRequest::~AssetImportRequest()
-            {
-            }
-        } // Events
-    } // SceneAPI
-} // AZ
+            inline AssetImportRequest::~AssetImportRequest() = default;
+        } // namespace Events
+    } // namespace SceneAPI
+} // namespace AZ

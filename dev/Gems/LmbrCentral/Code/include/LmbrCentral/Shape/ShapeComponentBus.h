@@ -15,11 +15,6 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/ComponentBus.h>
 
-namespace AZ
-{
-    class BehaviorContext;
-}
-
 namespace LmbrCentral
 {
     /*

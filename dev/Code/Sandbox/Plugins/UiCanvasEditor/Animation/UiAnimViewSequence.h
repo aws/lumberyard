@@ -140,10 +140,6 @@ public:
     void BeginCutScene(const bool bResetFx) const;
     void EndCutScene() const;
 
-    // Time step
-    float GetFixedTimeStep() const { return m_pAnimSequence->GetFixedTimeStep(); }
-    void SetFixedTimeStep(const float dt) { m_pAnimSequence->SetFixedTimeStep(dt); }
-
     // Reset
     void Reset(const bool bSeekToStart) { m_pAnimSequence->Reset(bSeekToStart); }
     void ResetHard() { m_pAnimSequence->ResetHard(); }

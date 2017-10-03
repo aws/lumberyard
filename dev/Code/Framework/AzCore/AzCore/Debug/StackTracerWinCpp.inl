@@ -1050,33 +1050,6 @@ cleanup:
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-#if defined(AZ_DEBUG_BUILD)
-    /**
-     * Load symbols from a devkit session.
-     */
-    class X360Symbols
-    {
-        bool m_isSymLoaded;
-    public:
-        X360Symbols()
-            : m_isSymLoaded(false) {}
-
-        bool LoadSymbols(const void* moduleInfoData, unsigned int moduleInfoDataSize)
-        {
-            //\todo ref CallstackDisplay sample
-            (void)moduleInfoData;
-            (void)moduleInfoDataSize;
-            return false;
-        }
-        void CleanUpSymbols() {}
-
-        AZ_FORCE_INLINE bool IsSymLoaded() const { return m_isSymLoaded; }
-    };
-
-
-    X360Symbols      g_x360Symbols;
-#endif
-
     //=========================================================================
     // SymbolStorage
     // [7/29/2009]
@@ -1085,10 +1058,8 @@ cleanup:
     {
 #if defined(AZ_DEBUG_BUILD)
         LoadDbgHelp();
-
-        // Load module info here. We can load XBox symbol info too, since it cannot be debugged on devkit.
-        // \ref X360 demo CallStackDisplay
-        g_x360Symbols.LoadSymbols(moduleInfoData, moduleInfoDataSize);
+        (void)moduleInfoData;
+        (void)moduleInfoDataSize;
 #else
         (void)moduleInfoData;
         (void)moduleInfoDataSize;
@@ -1232,7 +1203,6 @@ cleanup:
             GetSymbols().DecodeFrames(frames, numFrames, textLines);
         }
 
-        //if( g_x360)
 #else
         (void)frames;
         (void)numFrames;

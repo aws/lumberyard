@@ -23,9 +23,12 @@
 #include <LmbrCentral/Rendering/DecalComponentBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 
 namespace LmbrCentral
 {
+    class MaterialOwnerRequestBusHandlerImpl;
+
     /*!
     * Contains properties used to create decals, these properties are later propagated to the
     * 3D engine decal system.
@@ -101,12 +104,14 @@ namespace LmbrCentral
         , public DecalComponentRequestBus::Handler
         , public RenderNodeRequestBus::Handler
         , public AZ::TransformNotificationBus::Handler
+        , public MaterialOwnerRequestBus::Handler
     {
     public:
 
         AZ_COMPONENT(DecalComponent, "{1C2CEAA8-786F-4684-8202-CA7D940D627B}");
 
         DecalComponent();
+        ~DecalComponent() override;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component implementation.
@@ -133,6 +138,23 @@ namespace LmbrCentral
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
         //////////////////////////////////////////////////////////////////////////
 
+        //////////////////////////////////////////////////////////////////////////
+        // MaterialOwnerRequestBus interface implementation
+        bool IsMaterialOwnerReady() override;
+        void SetMaterial(_smart_ptr<IMaterial>) override;
+        _smart_ptr<IMaterial> GetMaterial() override;
+        void SetMaterialHandle(MaterialHandle) override;
+        MaterialHandle GetMaterialHandle() override;
+        void SetMaterialParamVector4( const AZStd::string& /*name*/, const AZ::Vector4& /*value*/) override;
+        void SetMaterialParamVector3( const AZStd::string& /*name*/, const AZ::Vector3& /*value*/) override;
+        void SetMaterialParamColor(   const AZStd::string& /*name*/, const AZ::Color& /*value*/) override;
+        void SetMaterialParamFloat(   const AZStd::string& /*name*/, float /*value*/) override;
+        AZ::Vector4 GetMaterialParamVector4( const AZStd::string& /*name*/) override;
+        AZ::Vector3 GetMaterialParamVector3( const AZStd::string& /*name*/) override;
+        AZ::Color   GetMaterialParamColor(   const AZStd::string& /*name*/) override;
+        float       GetMaterialParamFloat(   const AZStd::string& /*name*/) override;
+        ///////////////////////////////////
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("DecalService", 0xfb7f71ae));
@@ -158,5 +180,6 @@ namespace LmbrCentral
 
         IDecalRenderNode* m_decalRenderNode;
         DecalConfiguration m_configuration;
+        MaterialOwnerRequestBusHandlerImpl* m_materialBusHandler;
     };
 } // namespace LmbrCentral

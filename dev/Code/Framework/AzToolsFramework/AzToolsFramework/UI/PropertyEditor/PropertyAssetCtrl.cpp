@@ -22,6 +22,8 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QMenu>
+#include <QClipboard>
 #include <QtGui/QPixmapCache>
 #include <QtCore/QMimeData>
 #include <QtWidgets/QFileDialog>
@@ -39,9 +41,11 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzToolsFramework/UI/Logging/GenericLogPanel.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 
 namespace AzToolsFramework
 {
@@ -113,6 +117,69 @@ namespace AzToolsFramework
 
         m_label->installEventFilter(this);
         m_currentAssetType = AZ::Data::s_invalidAssetType;
+
+        setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
+            this, SLOT(ShowContextMenu(const QPoint&)));
+    }
+
+    void PropertyAssetCtrl::ShowContextMenu(const QPoint& pos)
+    {
+        QClipboard* clipboard = QApplication::clipboard();
+        if (!clipboard)
+        {
+            // Can't do anything without a clipboard, so just return
+            return;
+        }
+
+        QPoint globalPos = mapToGlobal(pos);
+
+        QMenu myMenu;
+        
+        QAction* copyAction = myMenu.addAction(tr("Copy asset reference"));
+        QAction* pasteAction = myMenu.addAction(tr("Paste asset reference"));
+        
+        copyAction->setEnabled(GetCurrentAssetID().IsValid());
+
+        bool canPasteFromClipboard = false;
+
+        // Do we have stuff on the clipboard?
+        const QMimeData* mimeData = clipboard->mimeData();
+        AZ::Data::AssetId readId;
+
+        if (mimeData && mimeData->hasFormat(EditorAssetMimeDataContainer::GetMimeType()))
+        {
+            AZ::Data::AssetType readType;
+            // This verifies that the mime data matches any restrictions for this particular asset property
+            if (IsCorrectMimeData(mimeData, &readId, &readType))
+            {
+                if (readId.IsValid())
+                {
+                    canPasteFromClipboard = true;
+                }
+            }
+        }
+
+        pasteAction->setEnabled(canPasteFromClipboard);
+
+        QAction* selectedItem = myMenu.exec(globalPos);
+        if (selectedItem == copyAction)
+        {
+            QMimeData* newMimeData = aznew QMimeData();
+
+            AzToolsFramework::EditorAssetMimeDataContainer mimeDataContainer;
+            mimeDataContainer.AddEditorAsset(m_currentAssetID, m_currentAssetType);
+            mimeDataContainer.AddToMimeData(newMimeData);
+
+            clipboard->setMimeData(newMimeData);
+        }
+        else if (selectedItem == pasteAction)
+        {
+            if (canPasteFromClipboard)
+            {
+                SetCurrentAssetID(readId);
+            }
+        }
     }
 
     bool PropertyAssetCtrl::IsCorrectMimeData(const QMimeData* pData, AZ::Data::AssetId* pAssetId, AZ::Data::AssetType* pAssetType) const
@@ -502,7 +569,7 @@ namespace AzToolsFramework
             }
         }
 
-        QMessageBox::warning(nullptr, tr("Unable to Edit Asset"),
+        QMessageBox::warning(GetActiveWindow(), tr("Unable to Edit Asset"),
             tr("No callback is provided and no associated editor could be found."), QMessageBox::Ok, QMessageBox::Ok);
     }
 
@@ -525,6 +592,7 @@ namespace AzToolsFramework
     void PropertyAssetCtrl::ClearAsset()
     {
         SetCurrentAssetID(AZ::Data::AssetId());
+        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
     }
 
 

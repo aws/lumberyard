@@ -32,10 +32,10 @@ namespace
 //////////////////////////////////////////////////////////////////////////
 void CPythonScriptsDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CPythonScriptsDialog>(GetIEditor(), "Python Scripts", LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CPythonScriptsDialog>("Python Scripts", LyViewPane::CategoryOther, options);
 }
 
 

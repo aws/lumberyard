@@ -77,7 +77,7 @@ void CGameObjectSystem::LoadSerializationOrderFile()
 
     if (xmlNodeRoot == (IXmlNode*)NULL)
     {
-        CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "CGameObjectSystem::LoadSerializationOrderFile() - Failed to load '%s'. sorting disabled.", SERIALIZATIONORDER_FILE);
+        AZ_Printf("CGameObjectSystem", "CGameObjectSystem::LoadSerializationOrderFile() - Failed to load '%s'. sorting disabled.", SERIALIZATIONORDER_FILE);
         return;
     }
 

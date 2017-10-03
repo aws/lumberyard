@@ -144,6 +144,7 @@ namespace AssetProcessor
         void SetState(const JobState& state);
 
         QString GetInputFileAbsolutePath() const;
+        const AZ::Uuid& GetInputFileUuid() const;
         QString GetInputFileRelativePath() const;
 
         QString GetDestination() const;

@@ -14,6 +14,7 @@
 
 #include <LmbrCentral/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -57,7 +58,7 @@ namespace LmbrCentral
 
         if (types & PhysicalEntityTypes::Static)
         {
-            result |= ent_static | ent_terrain;
+            result |= ent_static;
         }
         if (types & PhysicalEntityTypes::Dynamic)
         {
@@ -71,6 +72,10 @@ namespace LmbrCentral
         {
             result |= ent_independent;
         }
+        if (types & PhysicalEntityTypes::Terrain)
+        {
+            result |= ent_terrain;
+        }
 
         return result;
     }
@@ -83,7 +88,7 @@ namespace LmbrCentral
         , public AZ::BehaviorEBusHandler
     {
     public:
-        AZ_EBUS_BEHAVIOR_BINDER(PhysicsSystemEventBusBehaviorHandler, "", AZ::SystemAllocator
+        AZ_EBUS_BEHAVIOR_BINDER(PhysicsSystemEventBusBehaviorHandler, "{BA278D21-0BB0-43B9-8FFA-08BE25316BC4}", AZ::SystemAllocator
             , OnPrePhysicsUpdate
             , OnPostPhysicsUpdate
             );
@@ -131,13 +136,37 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+
+            serializeContext->Class<RayCastHit>()
+                ->Version(1)
+                ->Field("distance", &RayCastHit::m_distance)
+                ->Field("position", &RayCastHit::m_position)
+                ->Field("normal", &RayCastHit::m_normal)
+                ->Field("entityId", &RayCastHit::m_entityId)
+                ;
+
+            serializeContext->Class<RayCastResult>()
+                ->Version(1)
+                ->SerializerForEmptyClass()
+                ;
+
+            serializeContext->Class<RayCastConfiguration>()
+                ->Version(1)
+                ->Field("origin", &RayCastConfiguration::m_origin)
+                ->Field("direction", &RayCastConfiguration::m_direction)
+                ->Field("maxDistance", &RayCastConfiguration::m_maxDistance)
+                ->Field("ignoreEntityIds", &RayCastConfiguration::m_ignoreEntityIds)
+                ->Field("maxHits", &RayCastConfiguration::m_maxHits)
+                ->Field("piercesSurfacesGreaterThan", &RayCastConfiguration::m_piercesSurfacesGreaterThan)
+                ->Field("physicalEntityTypes", &RayCastConfiguration::m_physicalEntityTypes)
+                ;
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             // RayCast return type
             behaviorContext->Class<RayCastHit>()
-                //->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Property("distance", BehaviorValueGetter(&RayCastHit::m_distance), nullptr)
                 ->Property("position", BehaviorValueGetter(&RayCastHit::m_position), nullptr)
                 ->Property("normal", BehaviorValueGetter(&RayCastHit::m_normal), nullptr)
@@ -147,6 +176,8 @@ namespace LmbrCentral
 
             // RayCastConfiguration
             behaviorContext->Class<RayCastConfiguration>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Property("origin", BehaviorValueProperty(&RayCastConfiguration::m_origin))
                 ->Property("direction", BehaviorValueProperty(&RayCastConfiguration::m_direction))
                 ->Property("maxDistance", BehaviorValueProperty(&RayCastConfiguration::m_maxDistance))
@@ -158,6 +189,8 @@ namespace LmbrCentral
 
             // RayCastResult
             behaviorContext->Class<RayCastResult>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("GetHitCount", &RayCastResult::GetHitCount)
                 ->Method("GetHit", &RayCastResult::GetHit)
                     ->Attribute(AZ::Script::Attributes::MethodOverride, &RayCastResultScriptOverrides::GetHit)
@@ -177,15 +210,18 @@ namespace LmbrCentral
 
             // Entity query flags
             behaviorContext->Class<PhysicalEntityTypesHolder>("PhysicalEntityTypes")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Constant("Static", BehaviorConstant(PhysicalEntityTypes::Static))
                 ->Constant("Dynamic", BehaviorConstant(PhysicalEntityTypes::Dynamic))
                 ->Constant("Living", BehaviorConstant(PhysicalEntityTypes::Living))
                 ->Constant("Independent", BehaviorConstant(PhysicalEntityTypes::Independent))
+                ->Constant("Terrain", BehaviorConstant(PhysicalEntityTypes::Terrain))
                 ->Constant("All", BehaviorConstant(PhysicalEntityTypes::All))
                 ;
 
             behaviorContext->EBus<PhysicsSystemRequestBus>("PhysicsSystemRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("RayCast", &PhysicsSystemRequestBus::Events::RayCast)
                 ->Event("GatherPhysicalEntitiesInAABB", &PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesInAABB)
                 ->Event("GatherPhysicalEntitiesAroundPoint", &PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesAroundPoint)
@@ -247,7 +283,7 @@ namespace LmbrCentral
                 case PHYS_FOREIGN_ID_COMPONENT_ENTITY:
                 {
                     AZ::EntityId id = static_cast<AZ::EntityId>(event.pForeignData[entityIndex]);
-                    LmbrCentral::MaterialRequestBus::EventResult(mat, id, &LmbrCentral::MaterialRequestBus::Events::GetMaterial);
+                    LmbrCentral::MaterialOwnerRequestBus::EventResult(mat, id, &LmbrCentral::MaterialOwnerRequestBus::Events::GetMaterial);
                     break;
                 }
                 case PHYS_FOREIGN_ID_ENTITY:

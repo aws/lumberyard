@@ -23,6 +23,9 @@ class CCommentTrack
     : public TAnimTrack<ICommentKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CCommentTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CCommentTrack, "{A28FE42D-5B42-4E47-9813-4290D275D5A9}", IAnimTrack);
+
     //-----------------------------------------------------------------------------
     //!
     CCommentTrack();
@@ -33,11 +36,11 @@ public:
     virtual void GetKeyInfo(int key, const char*& description, float& duration);
     virtual void SerializeKey(ICommentKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const;
-
     //-----------------------------------------------------------------------------
     //!
     void ValidateKeyOrder() { CheckValid(); }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_COMMENTTRACK_H

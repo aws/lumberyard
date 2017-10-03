@@ -39,14 +39,14 @@ namespace AZ
             virtual void RecordSlice(
                 const char* name,
                 const char* category,
-                const AZStd::thread_id& threadId,
+                const AZStd::thread_id threadId,
                 AZ::u64 timestamp,
                 AZ::u32 duration) = 0;
 
             virtual void RecordInstantThread(
                 const char* name,
                 const char* category,
-                const AZStd::thread_id& threadId,
+                const AZStd::thread_id threadId,
                 AZ::u64 timestamp) = 0;
 
             virtual void RecordInstantGlobal(

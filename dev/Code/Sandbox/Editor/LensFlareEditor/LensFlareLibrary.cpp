@@ -29,7 +29,7 @@ bool CLensFlareLibrary::Load(const QString& filename)
         return false;
     }
     SetFilename(filename);
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (!root)
     {
         return false;
@@ -55,10 +55,11 @@ void CLensFlareLibrary::Serialize(XmlNodeRef& root, bool bLoading)
             pLensFlareItem->Serialize(ctx);
         }
         SetModified(false);
+        m_bNewLibrary = false;
     }
     else
     {
-        root->setAttr("Name", GetName().toLatin1().data());
+        root->setAttr("Name", GetName().toUtf8().data());
 
         for (int i = 0; i < GetItemCount(); i++)
         {

@@ -1,0 +1,8 @@
+{
+    "name": "@cloud-gems/cloudgemtexttospeech",
+    "version": "1.0.0",
+    "description": "Cloud Gem - Text To Speech",
+    "private": true,
+    "dependencies": {
+    }
+}

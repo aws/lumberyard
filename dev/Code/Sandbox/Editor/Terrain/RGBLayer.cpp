@@ -620,7 +620,7 @@ bool CRGBLayer::IsDirty() const
 
 
 //////////////////////////////////////////////////////////////////////////
-QString CRGBLayer::GetFullFileName()
+QString CRGBLayer::GetFullFileName() const
 {
     QString pathRel = GetIEditor()->GetGameEngine()->GetLevelPath();
     QString pathPak = Path::AddSlash(pathRel) + m_TerrainRGBFileName;
@@ -1209,7 +1209,7 @@ bool CRGBLayer::TryImportTileRect(
         }
         // Rotating by 270-degrees to match loaded PGM heightmap and orientation of the image in content creation tools
         srcImage.RotateOrt(newImage, ImageRotationDegrees::Rotate270);
-        srcImage.SwapRedAndBlue();
+        srcImage.SwapRedAndBlue(); // Swap loaded image to BGR format.
     }
     else
     {
@@ -1323,7 +1323,7 @@ void CRGBLayer::ExportTileRect(
 
     if (!filename.empty())
     {
-        dstImage.SwapRedAndBlue();
+        dstImage.SwapRedAndBlue(); // swap image back to RGB before saving.
         CImageEx newImage;
         newImage.RotateOrt(dstImage, ImageRotationDegrees::Rotate90);
         CImageUtil::SaveBitmap(filename.c_str(), newImage);
@@ -1376,4 +1376,35 @@ bool CRGBLayer::ExportTile(CMemoryBlock& mem, uint32 dwTileX, uint32 dwTileY, bo
     }
 
     return true;
+}
+
+void CRGBLayer::ApplyColorMultiply(float colorMultiply)
+{
+
+    for (uint32 dwTileY = 0; dwTileY < m_dwTileCountY; ++dwTileY)
+    {
+        for (uint32 dwTileX = 0; dwTileX <m_dwTileCountX; ++dwTileX)
+        {
+            CTerrainTextureTiles* tile = LoadTileIfNeeded(dwTileX, dwTileY);
+            assert(tile);
+            assert(tile->m_pTileImage);
+            tile->m_bDirty = true;
+
+            const uint tileWidth = tile->m_pTileImage->GetWidth();
+            const uint tileHeight = tile->m_pTileImage->GetHeight();
+
+            for (uint32 y = 0; y < tileWidth; y++)
+            {
+                for (uint32 x = 0; x < tileHeight; x++)
+                {
+                    ColorB color = tile->m_pTileImage->ValueAt(x, y);
+                    color.r *= colorMultiply;
+                    color.g *= colorMultiply;
+                    color.b *= colorMultiply;
+                    tile->m_pTileImage->ValueAt(x, y) = color.pack_rgb888();
+                }
+            }
+        }
+    }
+
 }

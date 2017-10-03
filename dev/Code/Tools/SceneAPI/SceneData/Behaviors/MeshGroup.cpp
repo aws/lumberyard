@@ -21,7 +21,7 @@
 #include <SceneAPI/SceneCore/Containers/Views/FilterIterator.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
-#include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
@@ -115,13 +115,18 @@ namespace AZ
 
             Events::ProcessingResult MeshGroup::BuildDefault(Containers::Scene& scene) const
             {
-                if (SceneHasMeshGroup(scene) || !Utilities::DoesSceneGraphContainDataLike<DataTypes::IMeshData>(scene, true))
+                if (SceneHasMeshGroup(scene) || !Utilities::DoesSceneGraphContainDataLike<DataTypes::IMeshData>(scene, true) || Utilities::DoesSceneGraphContainDataLike<DataTypes::IBoneData>(scene, true))
                 {
                     return Events::ProcessingResult::Ignored;
                 }
 
                 // There are meshes but no mesh group, so add a default mesh group to the manifest.
                 AZStd::shared_ptr<SceneData::MeshGroup> group = AZStd::make_shared<SceneData::MeshGroup>();
+                
+                // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
+                //      in the same way again. To guarantee the same uuid, generate a stable one instead.
+                group->OverrideId(DataTypes::Utilities::CreateStableUuid(scene, MeshGroup::TYPEINFO_Uuid()));
+                
                 EBUS_EVENT(Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
                 scene.GetManifest().AddEntry(AZStd::move(group));
 
@@ -139,6 +144,12 @@ namespace AZ
                     if (group.GetName().empty())
                     {
                         group.SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::IMeshGroup>(scene.GetName(), scene.GetManifest()));
+                    }
+                    if (group.GetId().IsNull())
+                    {
+                        // When the uuid it's null is likely because the manifest has been updated from an older version. Include the 
+                        // name of the group as there could be multiple groups.
+                        group.OverrideId(DataTypes::Utilities::CreateStableUuid(scene, MeshGroup::TYPEINFO_Uuid(), group.GetName()));
                     }
                     Utilities::SceneGraphSelector::UpdateNodeSelection(scene.GetGraph(), group.GetSceneNodeSelectionList());
                     updated = true;

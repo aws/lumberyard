@@ -12,8 +12,10 @@
 #include "StdAfx.h"
 #include <DynamicContentTransferManager.h>
 #include <DynamicContent/DynamicContentBus.h>
-
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Module/ModuleManager.h>
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -62,10 +64,12 @@ static const char* manifestExtension = ".json";
 static const char* publicCertName = "DynamicContent.pub.pem";
 static const char* allPlatformsName = "shared";
 
+
 namespace CloudCanvas
 {
     namespace DynamicContent
     {
+        AZ::EntityId DynamicContentTransferManager::m_moduleEntity;
 
         DynamicContentTransferManager::DynamicContentTransferManager() 
         {
@@ -110,18 +114,27 @@ namespace CloudCanvas
 
         void DynamicContentTransferManager::Init()
         {
+
         }
 
         void DynamicContentTransferManager::Activate()
         {
+            if (azrtti_istypeof<AZ::ModuleEntity>(GetEntity()))
+            {
+                m_moduleEntity = GetEntityId();
+            }
             DynamicContentRequestBus::Handler::BusConnect(m_entity->GetId());
-            CloudCanvas::PresignedURLResultBus::Handler::BusConnect();
+            CloudCanvas::PresignedURLResultBus::Handler::BusConnect(m_entity->GetId());
         }
 
         void DynamicContentTransferManager::Deactivate()
         {
             CloudCanvas::PresignedURLResultBus::Handler::BusDisconnect();
             DynamicContentRequestBus::Handler::BusDisconnect();
+            if (azrtti_istypeof<AZ::ModuleEntity>(GetEntity()))
+            {
+                m_moduleEntity.SetInvalid();
+            }
         }
 
         void DynamicContentTransferManager::Reflect(AZ::ReflectContext* context)
@@ -162,6 +175,9 @@ namespace CloudCanvas
                     ->Event("GetPakStatusString", &DynamicContentRequestBus::Events::GetPakStatusString)
                     ;
 
+                behaviorContext->Class<DynamicContentTransferManager>("DynamicContent")
+                    ->Property("ModuleEntity", BehaviorValueGetter(&DynamicContentTransferManager::m_moduleEntity), nullptr);
+
                 behaviorContext->EBus<DynamicContentUpdateBus>("DynamicContentUpdateBus")
                     ->Handler<BehaviorDynamicContentComponentNotificationBusHandler>()
                     ;
@@ -169,7 +185,7 @@ namespace CloudCanvas
         }
 
         // Handles the result of a presigned url request
-        void DynamicContentTransferManager::GotPresignedURLResult(const AZStd::string& requestURL, int responseCode, const AZStd::string& resultString)
+        void DynamicContentTransferManager::GotPresignedURLResult(const AZStd::string& requestURL, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile)
         {
             DynamicFileInfoPtr requestPtr = GetAndRemovePresignedRequest(requestURL);
             if(!requestPtr)
@@ -990,7 +1006,7 @@ namespace CloudCanvas
                     requestPtr->SetSignature(signatureString);
                     AZStd::string localFile = requestPtr->GetFullLocalFileName();
  
-                    EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, fileURL, localFile);
+                    EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, fileURL, localFile, AZ::EntityId());
                 }
             },
             [this](PostClientContentRequestJob* job)

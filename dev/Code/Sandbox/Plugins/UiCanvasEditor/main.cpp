@@ -13,6 +13,9 @@
 
 #include "EditorCommon.h"
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include "../Editor/LyViewPaneNames.h"
+
 // UI_ANIMATION_REVISIT, added includes so that we can register the UI Animation system on startup
 #include "EditorDefs.h"
 #include "Resource.h"
@@ -63,13 +66,13 @@ public:
             int x = (int)((float)deskRect.left() + (((float)deskRect.width() - availableWidth) / 2.0f) + ((availableWidth - editorWidth) / 2.0f));
             int y = (int)((float)deskRect.top() + (((float)deskRect.height() - availableHeight) / 2.0f) + ((availableHeight - editorHeight) / 2.0f));
 
-            QtViewOptions opt;
+            AzToolsFramework::ViewPaneOptions opt;
             opt.isPreview = true;
             opt.paneRect = QRect(x, y, (int)editorWidth, (int)editorHeight);
             opt.isDeletable = true; // we're in a plugin; make sure we can be deleted
             // opt.canHaveMultipleInstances = true; // uncomment this when CUiAnimViewSequenceManager::CanvasUnloading supports multiple canvases
             opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-            RegisterQtViewPane<EditorWrapper>(editor, UICANVASEDITOR_NAME_LONG, LyViewPane::CategoryTools, opt);
+            AzToolsFramework::RegisterViewPane<EditorWrapper>(UICANVASEDITOR_NAME_LONG, LyViewPane::CategoryTools, opt);
             CUiAnimViewSequenceManager::Create();
         }
     }
@@ -78,7 +81,7 @@ public:
     {
         if (IsCanvasEditorEnabled())
         {
-            UnregisterQtViewPane<EditorWrapper>();
+            AzToolsFramework::UnregisterViewPane(UICANVASEDITOR_NAME_LONG);
             CUiAnimViewSequenceManager::Destroy();
         }
 

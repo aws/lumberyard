@@ -25,6 +25,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -72,14 +73,6 @@ GemManager::~GemManager()
         m_registry->DestroyProjectSettings(m_projectSettings);
         DestroyGemRegistry(m_registry);
     }
-
-#ifndef AZ_MONOLITHIC_BUILD
-    if (m_registryModule)
-    {
-        m_registryModule->Unload();
-        m_registryModule.reset();
-    }
-#endif//AZ_MONOLITHIC_BUILD
 }
 
 const IGem* GemManager::GetGem(const CryClassID& classID) const
@@ -108,17 +101,24 @@ bool GemManager::IsGemEnabled(const AZ::Uuid& id, const AZStd::vector<AZStd::str
 bool GemManager::InitRegistry()
 {
 #ifndef AZ_MONOLITHIC_BUILD
-    m_registryModule = AZ::DynamicModuleHandle::Create("GemRegistry");
-    if (!m_registryModule || !m_registryModule->Load(true))
+    AZ::ModuleManagerRequests::LoadModuleOutcome result = AZ::Failure(AZStd::string("Failed to connect to ModuleManagerRequestBus"));
+    AZ::ModuleManagerRequestBus::BroadcastResult(result, &AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "GemRegistry", AZ::ModuleInitializationSteps::Load, false);
+    if (result.IsSuccess())
     {
-        AZ_Error("Gems", false, "Failed to load GemRegistry module.");
-        return false;
-    }
+        // Use shared_ptr aliasing ctor to use the refcount/deleter from the moduledata pointer, but we only need to store the dynamic module handle.
+        m_registryModule = AZStd::shared_ptr<AZ::DynamicModuleHandle>(result.GetValue(), result.GetValue()->GetDynamicModuleHandle());
+
     CreateGemRegistry = m_registryModule->GetFunction<Gems::RegistryCreatorFunction>(GEMS_REGISTRY_CREATOR_FUNCTION_NAME);
     DestroyGemRegistry = m_registryModule->GetFunction<Gems::RegistryDestroyerFunction>(GEMS_REGISTRY_DESTROYER_FUNCTION_NAME);
     if (!CreateGemRegistry || !DestroyGemRegistry)
     {
         AZ_Error("Gems", false, "Failed to load GemRegistry functions.");
+        return false;
+    }
+    }
+    else
+    {
+        AZ_Error("Gems", false, "Failed to load GemRegistry module.");
         return false;
     }
 #endif//AZ_MONOLITHIC_BUILD
@@ -159,7 +159,7 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
 #if !defined(AZ_MONOLITHIC_BUILD)
     // List of Gem modules not loaded
-    AZStd::vector<AZStd::string> unfoundModules;
+    AZStd::vector<AZStd::string> missingModules;
 #endif // AZ_MONOLITHIC_BUILD
 
     for (const auto& pair : m_projectSettings->GetGems())
@@ -185,16 +185,13 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
         gemDescs.push_back(desc);
 
 #if !defined(AZ_MONOLITHIC_BUILD)
-        if (desc->HasDll())
+        Gems::ModuleDefinition::Type type = gEnv->IsEditor()
+            ? Gems::ModuleDefinition::Type::EditorModule
+            : Gems::ModuleDefinition::Type::GameModule;
+
+        for (const auto& modulePtr : desc->GetModulesOfType(type))
         {
-            if (gEnv->IsEditor())
-            {
-                unfoundModules.emplace_back(desc->GetEditorDllFileName());
-            }
-            else
-            {
-                unfoundModules.emplace_back(desc->GetDllFileName());
-            }
+            missingModules.emplace_back(modulePtr->m_fileName);
         }
 #endif // AZ_MONOLITHIC_BUILD
     }
@@ -208,34 +205,35 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
 #if !defined(AZ_MONOLITHIC_BUILD)
     // Init all the modules with ModuleInitISystem in them
-    EBUS_EVENT(AZ::ComponentApplicationBus, EnumerateModules, [&initParams, &unfoundModules](AZ::Module*, AZ::DynamicModuleHandle* handle)
+    EBUS_EVENT(AZ::ModuleManagerRequestBus, EnumerateModules, [&missingModules](const AZ::ModuleData& moduleData)
     {
         // If dynamic module handle...
-        if (handle)
+        if (moduleData.GetDynamicModuleHandle())
         {
+            const AZ::DynamicModuleHandle* handle = moduleData.GetDynamicModuleHandle();
             // Check if the variable inserted by GEM_REGISTER macro exists
             if (handle->GetFunction<int(*)()>("ThisModuleIsAGem"))
             {
                 if (auto moduleInitFun = handle->GetFunction<void(*)(ISystem*, const char*)>("ModuleInitISystem"))
                 {
-                    moduleInitFun(GetISystem(), handle->GetFilename().c_str());
+                    moduleInitFun(GetISystem(), moduleData.GetDebugName());
                 }
             }
 
             // Find the Gem for this module, and remove it from the missing list
-            auto gemIt = AZStd::find_if(unfoundModules.begin(), unfoundModules.end(), [handle](AZStd::string gemModuleName) {
+            auto gemIt = AZStd::find_if(missingModules.begin(), missingModules.end(), [handle](AZStd::string gemModuleName) {
                 return strstr(handle->GetFilename().c_str(), gemModuleName.c_str()) != nullptr;
             });
-            if (gemIt != unfoundModules.end())
+            if (gemIt != missingModules.end())
             {
-                unfoundModules.erase(gemIt);
+                missingModules.erase(gemIt);
             }
         }
 
         return true;
     });
 
-    for (const auto& missingModule : unfoundModules)
+    for (const auto& missingModule : missingModules)
     {
 #if (_MSC_VER == 1900)
         const char * bin64Folder = "Bin64vc140";
@@ -253,7 +251,7 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
     for (const auto& desc : gemDescs)
     {
-        if (desc->GetLinkType() != Gems::IGemDescription::LinkType::NoCode)
+        if (!desc->GetModules().empty())
         {
             // Attempt to initialize old style Gems
             IGemPtr pModule;

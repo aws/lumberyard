@@ -99,12 +99,8 @@ protected:
     afx_msg void OnCustomize();
     afx_msg int OnCreateControl(LPCREATECONTROLSTRUCT lpCreateControl);
     afx_msg void OnSelectionChanged(NMHDR* pNMHDR, LRESULT* pResult);
-    afx_msg void OnExecuteTool(UINT nID);
-    afx_msg void OnExecuteToolShelve(UINT nID);
     afx_msg void OnUpdateControlBar(CCmdUI* pCmdUI);
-    afx_msg void OnUpdateTool(CCmdUI* pCmdUI);
 
-    afx_msg void OnCustomUICommand(UINT nID);
     DECLARE_MESSAGE_MAP()
 
     static void Command_Open_MaterialEditor();

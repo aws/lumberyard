@@ -291,12 +291,6 @@ bool RootOpticsElement::ProcessAll(CShader* shader, SFlareLight& light, bool bFo
         return false;
     }
 
-    float fFade = 1 - 1000.f * m_fDistanceFadingFactor * linearDepth;
-    if (!light.m_bAttachToSun && fFade <= 0.001f)
-    {
-        return false;
-    }
-
     bool bVisible(!IsOcclusionEnabled());
 
     if (!bVisible && !bForceRender)

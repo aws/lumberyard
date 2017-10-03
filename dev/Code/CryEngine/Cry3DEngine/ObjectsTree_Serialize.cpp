@@ -273,7 +273,7 @@ inline static uint8 CheckLayerVisibility(const uint16 layerId, const SLayerVisib
 }
 
 //////////////////////////////////////////////////////////////////////////
-int COctreeNode::SaveObjects(CMemoryBlock* pMemBlock, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, const SHotUpdateInfo* pExportInfo)
+int COctreeNode::SaveObjects(CMemoryBlock* pMemBlock, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, const SHotUpdateInfo* pExportInfo)
 {
 # if !ENGINE_ENABLE_COMPILATION
     CryFatalError("serialization code removed, please enable ENGINE_ENABLE_COMPILATION in Cry3DEngine/StdAfx.h");
@@ -334,7 +334,7 @@ int COctreeNode::SaveObjects(CMemoryBlock* pMemBlock, std::vector<IStatObj*>* pS
 }
 
 //////////////////////////////////////////////////////////////////////////
-int COctreeNode::LoadObjects(byte* pPtr, byte* pEndPtr, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, int nChunkVersion, const SLayerVisibility* pLayerVisibility)
+int COctreeNode::LoadObjects(byte* pPtr, byte* pEndPtr, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, EEndian eEndian, int nChunkVersion, const SLayerVisibility* pLayerVisibility)
 {
     while (pPtr < pEndPtr)
     {
@@ -419,7 +419,7 @@ int COctreeNode::GetSingleObjectSize(IRenderNode* pObj, const SHotUpdateInfo* pE
     return nBlockSize;
 }
 
-void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pEnt, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, const SHotUpdateInfo* pExportInfo)
+void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pEnt, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, EEndian eEndian, const SHotUpdateInfo* pExportInfo)
 {
     EERType eType = pEnt->GetRenderNodeType();
 
@@ -555,7 +555,7 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
     {
         AddToPtr(pPtr, nDatanSize, eType, eEndian);
 
-        CDecalRenderNode* pObj((CDecalRenderNode*) pEnt);
+        CDecalRenderNode* pObj((CDecalRenderNode*)pEnt);
 
         SDecalChunk chunk;
 
@@ -579,7 +579,7 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
     }
     else if (eERType_WaterVolume == eType)
     {
-        CWaterVolumeRenderNode* pObj((CWaterVolumeRenderNode*) pEnt);
+        CWaterVolumeRenderNode* pObj((CWaterVolumeRenderNode*)pEnt);
 
         // get access to serialization parameters
         const SWaterVolumeSerialize* pSerData(pObj->GetSerializationParams());
@@ -667,7 +667,7 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
     }
     else if (eERType_WaterWave == eType)
     {
-        CWaterWaveRenderNode* pObj((CWaterWaveRenderNode*) pEnt);
+        CWaterWaveRenderNode* pObj((CWaterWaveRenderNode*)pEnt);
 
         // get access to serialization parameters
         const SWaterWaveSerialize* pSerData(pObj->GetSerializationParams());
@@ -724,7 +724,7 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
     }
 }
 
-void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, EEndian eEndian, int nChunkVersion, const SLayerVisibility* pLayerVisibility, int nSID)
+void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, EEndian eEndian, int nChunkVersion, const SLayerVisibility* pLayerVisibility, int nSID)
 {
     EERType eType = *StepData<EERType>(pPtr, eEndian);
 
@@ -790,12 +790,12 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
 
         SVegetationChunkOld* pChunk = StepData<SVegetationChunkOld>(pPtr, eEndian);
 
-        if (!CheckRenderFlagsMinSpec(GetObjManager()->m_lstStaticTypes[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
+        if (!CheckRenderFlagsMinSpec(GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
         {
             return;
         }
 
-        StatInstGroup* pGroup = &GetObjManager()->m_lstStaticTypes[nSID][pChunk->m_nObjectTypeIndex];
+        StatInstGroup* pGroup = &GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex];
         if (!pGroup->GetStatObj() || (pGroup->GetStatObj()->GetRadius() * pChunk->m_fScale < GetCVars()->e_VegetationMinSize))
         {
             return; // skip creation of very small objects
@@ -826,12 +826,12 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
 
         SVegetationChunk* pChunk = StepData<SVegetationChunk>(pPtr, eEndian);
 
-        if (!CheckRenderFlagsMinSpec(GetObjManager()->m_lstStaticTypes[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
+        if (!CheckRenderFlagsMinSpec(GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex].m_dwRndFlags))
         {
             return;
         }
 
-        StatInstGroup* pGroup = &GetObjManager()->m_lstStaticTypes[nSID][pChunk->m_nObjectTypeIndex];
+        StatInstGroup* pGroup = &GetObjManager()->GetListStaticTypes()[nSID][pChunk->m_nObjectTypeIndex];
         if (!pGroup->GetStatObj() || (pGroup->GetStatObj()->GetRadius() * pChunk->m_fScale < GetCVars()->e_VegetationMinSize))
         {
             return; // skip creation of very small objects
@@ -1033,7 +1033,7 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
         else
         {
             Get3DEngine()->RegisterEntity(pObj, nSID, nSID);
-            GetObjManager()->m_decalsToPrecreate.push_back(pObj);
+            GetObjManager()->GetDecalsToPrecreate().push_back(pObj);
         }
     }
     else if (eERType_WaterVolume == eType)

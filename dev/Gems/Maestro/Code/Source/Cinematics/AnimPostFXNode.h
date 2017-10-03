@@ -25,25 +25,23 @@ class CAnimPostFXNode
     : public CAnimNode
 {
 public:
-    //-----------------------------------------------------------------------------
-    //!
-    static void Initialize();
+    AZ_CLASS_ALLOCATOR(CAnimPostFXNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimPostFXNode, "{41FCA8BB-46A8-4F37-87C2-C1D10994854B}", CAnimNode);
 
     //-----------------------------------------------------------------------------
     //!
+    static void Initialize();
+    static CFXNodeDescription* GetFXNodeDescription(EAnimNodeType nodeType);
     static CAnimNode* CreateNode(const int id, EAnimNodeType nodeType);
 
     //-----------------------------------------------------------------------------
     //!
-    CAnimPostFXNode(const int id, CFXNodeDescription* pDesc);
+    CAnimPostFXNode();
+    CAnimPostFXNode(const int id, EAnimNodeType nodeType, CFXNodeDescription* pDesc);
 
     //-----------------------------------------------------------------------------
     //!
     virtual void SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
-
-    //-----------------------------------------------------------------------------
-    //!
-    virtual EAnimNodeType GetType() const;
 
     //-----------------------------------------------------------------------------
     //!
@@ -62,6 +60,10 @@ public:
     //-----------------------------------------------------------------------------
     //!
     virtual void Animate(SAnimContext& ac);
+
+    void InitPostLoad(IAnimSequence* sequence) override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;

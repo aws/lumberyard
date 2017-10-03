@@ -23,6 +23,11 @@ void ShadowCache::InitShadowFrustum(ShadowMapFrustum*& pFr, int nLod, int nFirst
     FUNCTION_PROFILER_3DENGINE;
     assert(nLod >= 0);
 
+    if ( m_nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eManualUpdate )
+    {
+        return;
+    }
+
     if (!pFr)
     {
         pFr = new ShadowMapFrustum;

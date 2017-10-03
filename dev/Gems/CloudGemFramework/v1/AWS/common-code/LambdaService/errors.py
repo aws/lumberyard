@@ -35,6 +35,7 @@ rather than trying to parse the error message.
 For internal service errors, errorType will always be "ServiceError".
 '''
 
+
 class ClientError(RuntimeError):
     '''Exception type raised when a client makes an invalid request.
     This exception type prefixes the provided message with "Client Error: ".
@@ -43,10 +44,20 @@ class ClientError(RuntimeError):
     def __init__(self, message):
         super(ClientError, self).__init__('Client Error: ' + message)
 
+
 class ForbiddenRequestError(RuntimeError):
     '''Exception type raised when a client makes a request that is forbidden.
     This exception type prefixes the provided message with "Forbidden:".
     See documentation above for more information.
     '''
-    def __init__(self, message_string=''):
-        super(ForbiddenRequestError, self).__init__('Forbidden: ' + message_string)
+    def __init__(self, message='Access to the requested resource is not allowed.'):
+        super(ForbiddenRequestError, self).__init__('Forbidden: ' + message)
+
+
+class NotFoundError(RuntimeError):
+    '''Exception type raised when a client requests an entity that does not exist.
+    This exception type prefixes the provided message with "Not Found: ".
+    See documentation above for more information.'''
+
+    def __init__(self, message = 'The resource you requested was not found.'):
+        super(NotFoundError, self).__init__('Not Found: ' + message)

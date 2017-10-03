@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include <AzFramework/Input/System/InputSystemComponent.h>
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
-
 #include <AzCore/Socket/AzSocket_fwd.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -70,70 +67,3 @@ namespace SynergyInput
         AZ::s32             m_packetOverrun;
     };
 } // namespace SynergyInput
-
-#elif defined(USE_SYNERGY_INPUT)
-
-#include <AzCore/Socket/AzSocket_fwd.h>
-#include "CryThread.h"
-
-#define MAX_CLIPBOARD_SIZE  1024
-
-#define SYNERGY_MODIFIER_SHIFT          0x1
-#define SYNERGY_MODIFIER_CTRL               0x2
-#define SYNERGY_MODIFIER_LALT               0x4
-#define SYNERGY_MODIFIER_WINDOWS        0x10
-#define SYNERGY_MODIFIER_RALT               0x20
-#define SYNERGY_MODIFIER_CAPSLOCK   0x1000
-#define SYNERGY_MODIFIER_NUMLOCK    0x2000
-#define SYNERGY_MODIFIER_SCROLLOCK  0x4000
-
-class CSynergyContext
-    : public CryThread<CSynergyContext>
-    , public CMultiThreadRefCount
-{
-public:
-    CSynergyContext(const char* pIdentifier, const char* pHost);
-    ~CSynergyContext();
-    void Run();
-
-    bool GetKey(uint32& key, bool& bPressed, bool& bRepeat, uint32& modifier);
-    bool GetMouse(uint16& x, uint16& y, uint16& wheelX, uint16& wheelY, bool& buttonL, bool& buttonM, bool& buttonR);
-    const char* GetClipboard();
-
-    const string& GetClientScreenName() const { return m_name; }
-    const string& GetServerHostName() const { return m_host; }
-
-public:
-    struct KeyPress
-    {
-        KeyPress(uint32 _key, bool _bPressed, bool _bRepeat, uint32 _modifier) { key = _key; bPressed = _bPressed; bRepeat = _bRepeat; modifier = _modifier; }
-        uint32 key;
-        bool bPressed;
-        bool bRepeat;
-        uint32 modifier;
-    };
-    struct MouseEvent
-    {
-        uint16 x, y, wheelX, wheelY;
-        bool button[3];
-    };
-
-    CryCriticalSection m_keyboardLock;
-    CryCriticalSection m_mouseLock;
-    CryCriticalSection m_clipboardLock;
-    std::deque<KeyPress> m_keyboardQueue;
-    std::deque<MouseEvent> m_mouseQueue;
-    char m_clipboard[MAX_CLIPBOARD_SIZE];
-    char m_clipboardThread[MAX_CLIPBOARD_SIZE];
-    string m_host;
-    string m_name;
-    MouseEvent m_mouseState;
-    AZSOCKET m_socket;
-    int m_packetOverrun;
-
-private:
-
-    bool m_threadQuit;
-};
-
-#endif // USE_SYNERGY_INPUT

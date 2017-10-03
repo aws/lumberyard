@@ -881,7 +881,7 @@ void DockableLODPanel::ItemSelectionChanged(CBaseLibraryItem* item)
     }
     else
     {
-        m_LodWidget->ClearGUI();
+        m_LodWidget->RefreshGUI(nullptr);
         m_selectedParticle = nullptr;
     }
 }

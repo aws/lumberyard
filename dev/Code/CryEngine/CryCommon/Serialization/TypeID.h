@@ -178,8 +178,8 @@ namespace Serialization {
             YASLI_ASSERT(s == send && "Type name does not fit into the buffer");
         }
 
-        TypeInfo(size_t size, const char* templatedFunctionName)
-            : size(size)
+        TypeInfo(size_t _size, const char* templatedFunctionName)
+            : size(_size)
         {
             extractTypeName(name, templatedFunctionName);
             id.typeInfo_ = this;

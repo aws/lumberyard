@@ -18,13 +18,14 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/IdUtils.h>
 
 #include "EntityContextBus.h"
 
 namespace AZ
 {
     class SliceComponent;
-    class SerializeContext;
+    class ReflectContext;
 }
 
 namespace AzFramework
@@ -73,7 +74,7 @@ namespace AzFramework
 
         /// Instantiate a slice asset in the context. Listen for the OnSliceInstantiated() / OnSliceInstantiationFailed()
         /// events for details about the resulting entities.
-        virtual SliceInstantiationTicket InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::EntityUtils::EntityIdMapper& customIdMapper = nullptr);
+        virtual SliceInstantiationTicket InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper = nullptr);
 
         /** 
          * Clones an existing slice instance in the context. New instance is immediately returned. 
@@ -99,11 +100,18 @@ namespace AzFramework
         /// \param idRemapTable - if remapIds is true, the provided table is filled with a map of original ids to new ids.
         virtual bool HandleLoadedRootSliceEntity(AZ::Entity* rootEntity, bool remapIds, AZ::SliceComponent::EntityIdToEntityIdMap* idRemapTable = nullptr);
 
+        /// Properly process new metadata entities created during slice streaming
+        /// Because the streaming process bypasses slice creation, the entity context has to make sure they're handled properly.
+        /// \param slice - The slice that was streamed in
+        virtual void HandleNewMetadataEntitiesCreated(AZ::SliceComponent& /*slice*/) {};
+
         //////////////////////////////////////////////////////////////////////////
         // EntityContextRequestBus
         AZ::SliceComponent* GetRootSlice() override;
         AZ::Entity* CreateEntity(const char* name) override;
         void AddEntity(AZ::Entity* entity) override;
+        void ActivateEntity(AZ::EntityId entityId) override;
+        void DeactivateEntity(AZ::EntityId entityId) override;
         bool DestroyEntity(AZ::Entity* entity) override;
         bool DestroyEntity(AZ::EntityId entityId) override;
         AZ::Entity* CloneEntity(const AZ::Entity& sourceEntity) override;
@@ -111,7 +119,7 @@ namespace AzFramework
         const AZ::SliceComponent::EntityIdToEntityIdMap& GetLoadedEntityIdMap() override;
         //////////////////////////////////////////////////////////////////////////
 
-        static void ReflectSerialize(AZ::SerializeContext& serialize);
+        static void Reflect(AZ::ReflectContext* context);
 
     protected:
 
@@ -165,7 +173,7 @@ namespace AzFramework
         /// Tracking of pending slice instantiations, each being the requested asset and the associated request's ticket.
         struct InstantiatingSliceInfo
         {
-            InstantiatingSliceInfo(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const SliceInstantiationTicket& ticket, const AZ::EntityUtils::EntityIdMapper& customMapper)
+            InstantiatingSliceInfo(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const SliceInstantiationTicket& ticket, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper)
                 : m_asset(asset)
                 , m_ticket(ticket)
                 , m_customMapper(customMapper)
@@ -174,7 +182,7 @@ namespace AzFramework
 
             AZ::Data::Asset<AZ::Data::AssetData> m_asset;
             SliceInstantiationTicket m_ticket;
-            AZ::EntityUtils::EntityIdMapper m_customMapper;
+            AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper m_customMapper;
         };
         AZStd::vector<InstantiatingSliceInfo> m_queuedSliceInstantiations;
     };

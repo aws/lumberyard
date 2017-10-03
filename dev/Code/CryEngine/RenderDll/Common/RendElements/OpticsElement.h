@@ -104,7 +104,7 @@ protected:
     bool m_bDynamicsInvert : 1;
 
 #if defined(FLARES_SUPPORT_EDITING)
-    DynArray<FuncVariableGroup> paramGroups;
+    DynArray<FuncVariableGroup> m_paramGroups;
 #endif
 public:
 
@@ -156,7 +156,7 @@ public:
     {
         *this = copyFrom;
 #if defined(FLARES_SUPPORT_EDITING)
-        paramGroups.clear();
+        m_paramGroups.clear();
 #endif
     }
 

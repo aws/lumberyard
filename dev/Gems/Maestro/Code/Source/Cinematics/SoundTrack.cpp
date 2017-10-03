@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "SoundTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -21,12 +22,10 @@ void CSoundTrack::SerializeKey(ISoundKey& key, XmlNodeRef& keyNode, bool bLoadin
     {
         const char* sTemp;
         sTemp = keyNode->getAttr("StartTrigger");
-        strncpy(key.sStartTrigger, sTemp, sizeof(key.sStartTrigger));
-        key.sStartTrigger[sizeof(key.sStartTrigger) - 1] = '\0';
+        key.sStartTrigger = sTemp;
 
         sTemp = keyNode->getAttr("StopTrigger");
-        strncpy(key.sStopTrigger, sTemp, sizeof(key.sStopTrigger));
-        key.sStopTrigger[sizeof(key.sStopTrigger) - 1] = '\0';
+        key.sStopTrigger = sTemp;
 
         float fDuration = 0.0f;
 
@@ -39,8 +38,8 @@ void CSoundTrack::SerializeKey(ISoundKey& key, XmlNodeRef& keyNode, bool bLoadin
     }
     else
     {
-        keyNode->setAttr("StartTrigger", key.sStartTrigger);
-        keyNode->setAttr("StopTrigger", key.sStopTrigger);
+        keyNode->setAttr("StartTrigger", key.sStartTrigger.c_str());
+        keyNode->setAttr("StopTrigger", key.sStopTrigger.c_str());
         keyNode->setAttr("Duration", key.fDuration);
         keyNode->setAttr("CustomColor", key.customColor);
     }
@@ -54,8 +53,29 @@ void CSoundTrack::GetKeyInfo(int key, const char*& description, float& duration)
     description = 0;
     duration = m_keys[key].fDuration;
 
-    if (strlen(m_keys[key].sStartTrigger) > 0)
+    if (!m_keys[key].sStartTrigger.empty())
     {
-        description = m_keys[key].sStartTrigger;
+        description = m_keys[key].sStartTrigger.c_str();
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ISoundKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ISoundKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ISoundKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ISoundKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ISoundKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ISoundKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSoundTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ISoundKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CSoundTrack, TAnimTrack<ISoundKey> >()
+        ->Version(1);
 }

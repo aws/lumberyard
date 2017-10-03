@@ -305,25 +305,15 @@ CMannContextEditorDialog::~CMannContextEditorDialog()
 //////////////////////////////////////////////////////////////////////////
 void CMannContextEditorDialog::OnInitDialog()
 {
-    ui->m_wndReport->header()->resizeSection(0, 80);
-    ui->m_wndReport->header()->resizeSection(1, 120);
-    ui->m_wndReport->header()->resizeSection(2, 50);
-    ui->m_wndReport->header()->resizeSection(3, 120);
-    ui->m_wndReport->header()->resizeSection(4, 80);
-    ui->m_wndReport->header()->resizeSection(5, 120);
-    ui->m_wndReport->header()->resizeSection(6, 80);
-    ui->m_wndReport->header()->resizeSection(7, 120);
-    ui->m_wndReport->header()->resizeSection(8, 80);
-    ui->m_wndReport->header()->resizeSection(9, 80);
-    ui->m_wndReport->header()->resizeSection(10, 80);
-    ui->m_wndReport->header()->resizeSection(11, 80);
-    ui->m_wndReport->header()->resizeSection(12, 80);
-    ui->m_wndReport->header()->resizeSection(13, 80);
-    ui->m_wndReport->header()->resizeSection(14, 80);
-
     PopulateReport();
 
     EnableControls();
+
+    int colCount = ui->m_wndReport->header()->count();
+    for (int col = 0; col < colCount; col++)
+    {
+        ui->m_wndReport->header()->resizeSection(col, ui->m_wndReport->header()->sectionSizeHint(col) + 30);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -299,7 +299,7 @@ void ViewportSnap::ResizeByGizmo(HierarchyWidget* hierarchy,
 
             if (grabbedGizmoParts.m_right)
             {
-                float snappedWidth = EntityHelpers::Snap(newWidth, snapDistance);
+                float snappedWidth = ViewportHelpers::IsHorizontallyFit(element) ? newWidth : EntityHelpers::Snap(newWidth, snapDistance);
                 float deltaWidth = snappedWidth - newWidth;
 
                 snappedOffsets.m_left = offsets.m_left - deltaWidth * pivot.GetX(); // move left when width increases, so decrease offset
@@ -308,7 +308,7 @@ void ViewportSnap::ResizeByGizmo(HierarchyWidget* hierarchy,
 
             if (grabbedGizmoParts.m_top)
             {
-                float snappedHeight = EntityHelpers::Snap(newHeight, snapDistance);
+                float snappedHeight = ViewportHelpers::IsVerticallyFit(element) ? newHeight : EntityHelpers::Snap(newHeight, snapDistance);
                 float deltaHeight = snappedHeight - newHeight;
 
                 snappedOffsets.m_top = offsets.m_top - deltaHeight * pivot.GetY(); // move left when width increases, so decrease offset

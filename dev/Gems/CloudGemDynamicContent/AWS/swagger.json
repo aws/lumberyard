@@ -23,7 +23,6 @@
                 "module": "service_status"
             },
             "get": {
-                "operationId": "get_service_status",
                 "description": "Returns the service's status. Useful for testing connectivity.",
                 "responses": {
                     "200": {
@@ -41,10 +40,10 @@
                     "module": "portal_request",
                     "function": "describe_content"
                 },
-                "operationId": "describe_portal_content",
                 "description": "Returns information about a specific file to the portal.",
                 "parameters": [
                     {
+						"description": "The pak file name to retrieve information about.",
                         "name": "file_name",
                         "in": "path",
                         "type": "string"
@@ -70,10 +69,10 @@
                     "module": "portal_request",
                     "function": "delete_content"
                 },
-                "operationId": "delete_content",
                 "description": "Request to delete an existing item from the bucket and table.",
                 "parameters": [
                     {
+						"description": "The pak file name to retrieve information about.",
                         "name": "file_name",
                         "in": "path",
                         "type": "string"
@@ -101,7 +100,6 @@
                     "module": "portal_request",
                     "function": "list_all_content"
                 },
-                "operationId": "list_portal_content",
                 "description": "Returns the list of content which should be displayed in the web portal.",
                 "responses": {
                     "200": {
@@ -117,7 +115,6 @@
                     "module": "portal_request",
                     "function": "delete_all_content"
                 },
-                "operationId": "delete_all_content",
                 "description": "Deletes all content from the bucket and staging table",
                 "responses": {
                     "200": {
@@ -133,7 +130,6 @@
                     "module": "portal_request",
                     "function": "set_file_statuses"
                 },
-                "operationId": "set_file_statuses",
                 "description": "Request from the portal to adjust file status",
                 "parameters": [
                     {
@@ -160,7 +156,6 @@
                 "function": "request_url_list"
             },
             "post": {
-                "operationId": "query",
                 "description": "Request presigned urls for a list of files",
                 "parameters": [
                     {
@@ -187,6 +182,7 @@
             "type": "object",
             "properties": {
                 "status": {
+					"description": "The status of the service api.",
                     "type": "string"
                 }
             },
@@ -213,6 +209,7 @@
             "type": "object",
             "properties": {
                 "FileList": {
+					"description": "An array of pak file names to read. Example. ['file1.shared.pak','file2.shared.pak']",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -241,6 +238,7 @@
             "type": "object",
             "properties": {
                 "results": {
+					"description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00', 'Parent': 'file1parent.shared.pak'}]",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/PortalFileInfo"
@@ -254,13 +252,13 @@
         "FileRequestResult": {
             "type": "object",
             "properties": {
-                "FileName": {
+                "FileName": {					
                     "type": "string"
                 },
-                "FileStatus": {
+                "FileStatus": {				
                     "type": "string"
                 },
-                "PresignedURL": {
+                "PresignedURL": {					
                     "type": "string"
                 },
                 "Signature": {
@@ -276,18 +274,23 @@
             "type": "object",
             "properties": {
                 "FileName": {
+					"description": "The pak file name. Example.  file1.shared.pak",
                     "type": "string"
                 },
                 "StagingStatus": {
+					"description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
                     "type": "string"
                 },
                 "StagingStart": {
+					"description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
                     "type": "string"
                 },
                 "StagingEnd": {
+					"description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
                     "type": "string"
                 },
                 "Parent": {
+					"description": "The parent pak of this pak.  Example.  file1parent.shared.pak",
                     "type": "string"
                 }
             },
@@ -300,6 +303,7 @@
             "type": "object",
             "properties": {
                 "FileList": {
+					"description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00'}]",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/PortalFileRequest"
@@ -314,15 +318,19 @@
             "type": "object",
             "properties": {
                 "FileName": {
+					"description": "The pak file name. Example.  file1.shared.pak",
                     "type": "string"
                 },
                 "StagingStatus": {
+					"description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
                     "type": "string"
                 },
                 "StagingStart": {
+					"description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
                     "type": "string"
                 },
                 "StagingEnd": {
+					"description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
                     "type": "string"
                 }
             },

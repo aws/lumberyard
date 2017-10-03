@@ -73,7 +73,7 @@ public:
         settings = m_zoomScrollSettings;
     }
 
-    IAnimSequence* GetSequence() {return m_pSequence; }
+    IAnimSequence* GetSequence() {return m_pSequence.get(); }
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from IAnimSequenceOwner
@@ -100,7 +100,7 @@ protected:
     // Local callbacks.
 
 private:
-    _smart_ptr<struct IAnimSequence> m_pSequence;
+    AZStd::intrusive_ptr<struct IAnimSequence> m_pSequence;
 
     // Zoom/scroll settings for this sequence in TrackView dialog
     CZoomScrollSettings m_zoomScrollSettings;

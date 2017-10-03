@@ -437,6 +437,7 @@ struct CVars
     int e_ShadowsCacheUpdate;
     int e_ShadowsCacheObjectLod;
     int e_ShadowsCacheRenderCharacters;
+    int e_ShadowsCacheRequireManualUpdate;
     int e_ShadowsPerObject;
     int e_DynamicDistanceShadows;
     float e_ShadowsPerObjectResolutionScale;

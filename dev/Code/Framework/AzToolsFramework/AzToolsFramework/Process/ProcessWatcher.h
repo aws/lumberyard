@@ -52,22 +52,6 @@ namespace AzToolsFramework
         bool LaunchUnwatchedProcess(const ProcessLaunchInfo& processLaunchInfo);
     }  // namespace ProccessLauncher
 
-    class ProcessOutput
-    {
-    public:
-        AZStd::string outputResult;
-        AZStd::string errorResult;
-
-        void Clear()
-        {
-            outputResult.clear();
-            errorResult.clear();
-        }
-
-        bool HasOutput() const { return !outputResult.empty(); }
-        bool HasError() const { return !errorResult.empty(); }
-    };
-
     class ProcessWatcher
     {
     public:
@@ -76,8 +60,6 @@ namespace AzToolsFramework
 
         // Use LaunchProcessAndRetrieveOutput to launch a process via LaunchProcess and return its output, as of now used for fire-and-forget executables (exe's that do something and close immediately)
         static bool LaunchProcessAndRetrieveOutput(const ProcessLauncher::ProcessLaunchInfo& processLaunchInfo, ProcessCommunicationType communicationType, AzToolsFramework::ProcessOutput& outProcessOutput);
-
-        static void ReadIntoProcessOutput(ProcessOutput& processOutput, ProcessCommunicator* processCommunicator, bool shouldSafelyPeek = false);
 
         // GetCommunicatorForChildProcess is used when you are implementing the given child process and want a better interface than std::in/std::out (not required)
         static AZStd::shared_ptr<class ProcessCommunicatorForChildProcess> GetCommunicatorForChildProcess(ProcessCommunicationType communicationType);

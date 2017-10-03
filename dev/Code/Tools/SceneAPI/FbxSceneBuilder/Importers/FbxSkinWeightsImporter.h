@@ -12,8 +12,11 @@
 
 #pragma once
 
+#include <AzCore/std/containers/vector.h>
 #include <SceneAPI/FbxSceneBuilder/ImportContexts/FbxImportContexts.h>
+#include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/SceneCore/Components/LoadingComponent.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
 
 namespace AZ
 {
@@ -32,6 +35,11 @@ namespace AZ
 
     namespace SceneAPI
     {
+        namespace Events
+        {
+            class PostImportEventContext;
+        }
+
         namespace FbxSceneBuilder
         {
             class FbxSkinWeightsImporter
@@ -46,8 +54,15 @@ namespace AZ
                 static void Reflect(ReflectContext* context);
 
                 Events::ProcessingResult ImportSkinWeights(SceneNodeAppendedContext& context);
+                Events::ProcessingResult SetupNamedBoneLinks(FinalizeSceneContext& context);
 
             protected:
+                struct Pending
+                {
+                    std::shared_ptr<const FbxSDKWrapper::FbxMeshWrapper> m_fbxMesh;
+                    AZStd::shared_ptr<const FbxSDKWrapper::FbxSkinWrapper> m_fbxSkin;
+                    AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> m_skinWeightData;
+                };
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
                 // Workaround for VS2013 - Delete the copy constructor and make it private
                 // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
@@ -55,6 +70,12 @@ namespace AZ
 #endif
                 AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> BuildSkinWeightData(
                     const std::shared_ptr<const FbxSDKWrapper::FbxMeshWrapper>& fbxMesh, int skinIndex);
+
+                //! List of skin weights that still need to be filled in. Setting the data for skin weights is
+                //! delayed until after the tree has been fully constructed as bones are linked by name, but until
+                //! the graph has been fully filled in, those names can change which would break the names recorded
+                //! for the skin.
+                AZStd::vector<Pending> m_pendingSkinWeights;
 
                 static const AZStd::string s_skinWeightName;
             };

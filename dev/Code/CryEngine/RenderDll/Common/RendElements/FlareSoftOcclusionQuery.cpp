@@ -213,16 +213,16 @@ void CFlareSoftOcclusionQuery::BatchReadResults()
         return;
     }
     CTexture::s_ptexFlaresOcclusionRing[s_ringWriteIdx]->GetDevTexture()->AccessCurrStagingResource(0, false, [=](void* pData, uint32 rowPitch, uint32 slicePitch)
-    {
-        unsigned char* pTexBuf = reinterpret_cast<unsigned char*>(pData);
-        int validLineStrideBytes = s_nIDColMax * 4;
-        for (int i = 0; i < s_nIDRowMax; i++)
         {
-            memcpy(s_paletteRawCache + i * validLineStrideBytes, pTexBuf + i * rowPitch, validLineStrideBytes);
-        }
+            unsigned char* pTexBuf = reinterpret_cast<unsigned char*>(pData);
+            int validLineStrideBytes = s_nIDColMax * 4;
+            for (int i = 0; i < s_nIDRowMax; i++)
+            {
+                memcpy(s_paletteRawCache + i * validLineStrideBytes, pTexBuf + i * rowPitch, validLineStrideBytes);
+            }
 
-        return true;
-    });
+            return true;
+        });
 }
 
 void CFlareSoftOcclusionQuery::ReadbackSoftOcclQuery()
@@ -251,7 +251,7 @@ void CSoftOcclusionManager::ComputeVisibility()
 
     const uint32 vertexCount = GetSize() * 4;
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(vertexCount);
     SVF_P3F_C4B_T2F* pDeviceVBAddr = vb.Lock();
 
@@ -310,7 +310,7 @@ bool CSoftOcclusionManager::GenerateIndexBuffer()
         return false;
     }
 
-    TempDynIB16 ib;
+    TempDynIB16 ib(gcpRendD3D);
     ib.Allocate(m_IndexBufferCount);
     uint16* pDeviceIBAddr = ib.Lock();
 
@@ -352,7 +352,7 @@ void CSoftOcclusionManager::GatherOcclusions()
 
     const uint32 vertexCount = GetSize() * 4;
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(vertexCount);
     SVF_P3F_C4B_T2F* pDeviceVBAddr = vb.Lock();
 

@@ -13,15 +13,31 @@
 #pragma once
 
 #include "TexturePool.h"
+#include "../../Cry3DEngineBase.h"
+#include <IStreamEngine.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/string/string.h>
 
 namespace Morton
 {
     using Key = uint32;
 }
+
+struct MacroTextureConfiguration
+{
+    AZStd::vector<int16> indexBlocks;
+    AZStd::string filePath = "";
+    uint32 maxElementCountPerPool = 0x1000;
+    uint32 totalSectorDataSize = 0;
+    uint32 tileSizeInPixels = 0;
+    uint32 sectorStartDataOffset = 0;
+    float colorMultiplier_deprecated = 1.0f;
+    ETEX_Format texureFormat = eTF_Unknown;
+    bool endian = eLittleEndian;
+};
 
 /*!
  * A runtime class for a tiled, quadtree-based megatexture format. This implementation
@@ -34,6 +50,8 @@ class MacroTexture
     , public IStreamCallback
 {
 public:
+
+    MacroTexture(const MacroTextureConfiguration& configuration);
     ~MacroTexture();
 
     using UniquePtr = AZStd::unique_ptr<MacroTexture>;
@@ -125,14 +143,11 @@ public:
         return m_TileSizeInPixels;
     }
 
-    inline float GetColorMultiplier() const
-    {
-        return m_ColorMultiplier;
-    }
-
 private:
-    MacroTexture(uint32 maxElementCountPerPool);
-    bool Init(const char* filepath);
+
+    MacroTexture(const MacroTexture& other) AZ_DELETE_METHOD;
+    MacroTexture& operator=(const MacroTexture& other) AZ_DELETE_METHOD;
+	
     void InitNodeTree(Morton::Key key, Region region, uint32 depth, const int16*& indices, uint16& elementsLeft);
 
     struct Node
@@ -180,7 +195,6 @@ private:
     uint32 m_Timestamp;
     EEndian m_Endian;
     string m_Filename;
-    float m_ColorMultiplier;
 
     AZStd::vector<Node> m_Nodes;
     AZStd::unordered_map<Morton::Key, uint32> m_NodeMortonLookup;

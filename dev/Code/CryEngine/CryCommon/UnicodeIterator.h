@@ -157,10 +157,10 @@ namespace Unicode
             type begin, end;
             type it;
 
-            SBaseIterators(const BaseIterator& begin, const BaseIterator& end)
-                : begin(begin)
-                , end(end)
-                , it(begin) {}
+            SBaseIterators(const BaseIterator& _begin, const BaseIterator& _end)
+                : begin(_begin)
+                , end(_end)
+                , it(_begin) {}
 
             SBaseIterators(const SBaseIterators& other)
                 : begin(other.begin)
@@ -175,14 +175,14 @@ namespace Unicode
                 return *this;
             }
 
-            bool IsBegin(const BaseIterator& it) const
+            bool IsBegin(const BaseIterator& _it) const
             {
-                return begin == it;
+                return begin == _it;
             }
 
-            bool IsEnd(const BaseIterator& it) const
+            bool IsEnd(const BaseIterator& _it) const
             {
-                return end == it;
+                return end == _it;
             }
 
             bool IsEqual(const SBaseIterators& other) const
@@ -194,11 +194,11 @@ namespace Unicode
 
             // Note: Only called inside assert.
             // O(N) version; works with any forward-iterator (or better)
-            bool IsInRange(const BaseIterator& it, std::forward_iterator_tag) const
+            bool IsInRange(const BaseIterator& _it, std::forward_iterator_tag) const
             {
                 for (BaseIterator i = begin; i != end; ++i)
                 {
-                    if (it == i)
+                    if (_it == i)
                     {
                         return true;
                     }
@@ -208,16 +208,16 @@ namespace Unicode
 
             // Note: Only called inside assert.
             // O(1) version; requires random-access-iterator.
-            bool IsInRange(const BaseIterator& it, std::random_access_iterator_tag) const
+            bool IsInRange(const BaseIterator& _it, std::random_access_iterator_tag) const
             {
-                return (begin <= it && it < end);
+                return (begin <= _it && _it < end);
             }
 
             // Note: Only called inside assert.
             // Dispatches to the O(1) version if a random-access iterator is used (common case).
-            bool IsInRange(const BaseIterator& it) const
+            bool IsInRange(const BaseIterator& _it) const
             {
-                return IsInRange(it, typename std::iterator_traits<BaseIterator>::iterator_category());
+                return IsInRange(_it, typename std::iterator_traits<BaseIterator>::iterator_category());
             }
         };
 
@@ -245,12 +245,12 @@ namespace Unicode
                 return *this;
             }
 
-            bool IsBegin(const BaseIterator& it) const
+            bool IsBegin(const BaseIterator&) const
             {
                 return false;
             }
 
-            bool IsEnd(const BaseIterator& it) const
+            bool IsEnd(const BaseIterator&) const
             {
                 return false;
             }
@@ -260,7 +260,7 @@ namespace Unicode
                 return it == other.it;
             }
 
-            bool IsInRange(const BaseIterator& it) const
+            bool IsInRange(const BaseIterator&) const
             {
                 return true;
             }

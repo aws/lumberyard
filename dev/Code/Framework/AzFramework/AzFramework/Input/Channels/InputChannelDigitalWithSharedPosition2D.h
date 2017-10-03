@@ -37,7 +37,7 @@ namespace AzFramework
         explicit InputChannelDigitalWithSharedPosition2D(
             const AzFramework::InputChannelId& inputChannelId,
             const InputDevice& inputDevice,
-            const AZStd::shared_ptr<InputChannel::PositionData2D>& sharedPositionData);
+            const SharedPositionData2D& sharedPositionData);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Disable copying
@@ -55,6 +55,6 @@ namespace AzFramework
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        const AZStd::shared_ptr<InputChannel::PositionData2D> m_sharedPositionData; //!< Position data
+        const SharedPositionData2D m_sharedPositionData; //!< Shared position data
     };
 } // namespace LmbrCentral

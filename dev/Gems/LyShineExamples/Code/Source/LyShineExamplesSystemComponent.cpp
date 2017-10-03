@@ -5,13 +5,18 @@
 #include <AzCore/Serialization/EditContext.h>
 
 #include "LyShineExamplesSystemComponent.h"
+#include "LyShineExamplesSerialize.h"
+
 #include "UiDynamicContentDatabase.h"
+#include "LyShineExamplesCppExample.h"
 
 namespace LyShineExamples
 {
     void LyShineExamplesSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        LyShineExamplesSerialize::ReflectTypes(context);
         UiDynamicContentDatabase::Reflect(context);
+        LyShineExamplesCppExample::Reflect(context);
 
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
@@ -63,6 +68,7 @@ namespace LyShineExamples
     void LyShineExamplesSystemComponent::Activate()
     {
         m_uiDynamicContentDatabase = new UiDynamicContentDatabase();
+        m_cppExample = new LyShineExamplesCppExample();
 
         LyShineExamplesRequestBus::Handler::BusConnect();
         LyShineExamplesInternalBus::Handler::BusConnect();
@@ -74,5 +80,6 @@ namespace LyShineExamples
         LyShineExamplesInternalBus::Handler::BusDisconnect();
 
         SAFE_DELETE(m_uiDynamicContentDatabase);
+        SAFE_DELETE(m_cppExample);
     }
 }

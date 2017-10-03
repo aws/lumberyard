@@ -92,7 +92,6 @@ namespace AZ
         // Read any native string as any AZStd::string
         static bool FromLua(lua_State* lua, int stackIndex, BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator* stackTempAllocator)
         {
-            (void)valueClass;
             const char* str = ScriptValue<const char*>::StackRead(lua, stackIndex);
             if (stackTempAllocator)
             {
@@ -100,6 +99,12 @@ namespace AZ
                 // If passing by reference, we need to construct it ahead of time (in this allocated space)
                 // If not, StoreResult will construct it for us, and we can pass in a temp
                 value.m_value = stackTempAllocator->allocate(sizeof(ContainerType), AZStd::alignment_of<ContainerType>::value, 0);
+
+                if (valueClass->m_defaultConstructor)
+                {
+                    valueClass->m_defaultConstructor(value.m_value, valueClass->m_userData);
+                }
+
             }
             else if (value.m_value)
             {
@@ -110,10 +115,15 @@ namespace AZ
                 AZ_Assert(false, "Invalid call to FromLua! Either a stack allocator must be passed, or value.m_value must be a valid storage location.");
             }
 
+            // Can't construct string from nullptr, so replace it with empty string
+            if (str == nullptr)
+            {
+                str = "";
+            }
+
             if (value.m_traits & BehaviorParameter::TR_REFERENCE)
             {
-                ContainerType* basicString = new(value.m_value) ContainerType(str);
-                value.StoreResult<ContainerType>(AZStd::move(*basicString));
+                new(value.m_value) ContainerType(str);
             }
             else
             {
@@ -129,7 +139,7 @@ namespace AZ
             if (behaviorContext)
             {
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->template Constructor<typename ContainerType::value_type*>()
                         ->Attribute(AZ::Script::Attributes::ConstructorOverride, &CustomConstructor)
@@ -223,6 +233,121 @@ namespace AZ
         }
     };
 
+    /// OnDemand reflection for AZStd::basic_string_view
+    template<class Element, class Traits>
+    struct OnDemandReflection< AZStd::basic_string_view<Element, Traits> >
+    {
+        using ContainerType = AZStd::basic_string_view<Element, Traits>;
+        using SizeType = typename ContainerType::size_type;
+        using ValueType = typename ContainerType::value_type;
+
+        // TODO: Count reflection types for a proper un-reflect 
+
+        static void CustomConstructor(ContainerType* thisPtr, ScriptDataContext& dc)
+        {
+            if (dc.GetNumArguments() == 1)
+            {
+                if (dc.IsString(0))
+                {
+                    typename ContainerType::basic_string str;
+                    dc.ReadArg(0, str);
+                    new(thisPtr) ContainerType(str);
+                }
+                else if (dc.IsClass<ContainerType>(0))
+                {
+                    dc.ReadArg(0, thisPtr);
+                }
+            }
+        }
+
+        // Store any string as a Lua native string
+        static void ToLua(lua_State* lua, BehaviorValueParameter& value)
+        {
+            ScriptValue<const char*>::StackPush(lua, reinterpret_cast<ContainerType*>(value.GetValueAddress())->data());
+        }
+
+        // Read any native string as an AZStd::string_view
+        static bool FromLua(lua_State* lua, int stackIndex, BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator* stackTempAllocator)
+        {
+            const char* str = ScriptValue<const char*>::StackRead(lua, stackIndex);
+            if (stackTempAllocator)
+            {
+                // Allocate space for the string.
+                // If passing by reference, we need to construct it ahead of time (in this allocated space)
+                // If not, StoreResult will construct it for us, and we can pass in a temp
+                value.m_value = stackTempAllocator->allocate(sizeof(ContainerType), AZStd::alignment_of<ContainerType>::value, 0);
+
+                if (valueClass->m_defaultConstructor)
+                {
+                    valueClass->m_defaultConstructor(value.m_value, valueClass->m_userData);
+                }
+
+            }
+            else if (value.m_value)
+            {
+                // If there's no allocator, it's possible the destination has already been set-up
+            }
+            else
+            {
+                AZ_Assert(false, "Invalid call to FromLua! Either a stack allocator must be passed, or value.m_value must be a valid storage location.");
+            }
+
+            if (value.m_traits & BehaviorParameter::TR_REFERENCE)
+            {
+                new(value.m_value) ContainerType(str);
+            }
+            else
+            {
+                // Otherwise, we can construct the string as we pass it, but need to allocate value.m_value ahead of time
+                value.StoreResult<ContainerType>(ContainerType(str));
+            }
+            return true;
+        }
+
+        static void Reflect(ReflectContext* context)
+        {
+            BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context);
+            if (behaviorContext)
+            {
+                behaviorContext->Class<ContainerType>()
+                    ->Attribute(AZ::Script::Attributes::Category, "Core")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                    ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                    ->template Constructor<typename ContainerType::value_type*>()
+                    ->Attribute(AZ::Script::Attributes::ConstructorOverride, &CustomConstructor)
+                    ->Attribute(AZ::Script::Attributes::ReaderWriterOverride, ScriptContext::CustomReaderWriter(&ToLua, &FromLua))
+                    ->Method("ToString", [](const ContainerType& stringView) { return stringView.to_string(); }, { { { "Reference", "String view object being converted to string" } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Converts string_view to string")
+                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
+                    ->template WrappingMember<const char*>(&ContainerType::data)
+                    ->Method("data", &ContainerType::data)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns reference to raw string data")
+                    ->Method("length", [](ContainerType* thisPtr) { return aznumeric_cast<int>(thisPtr->length()); }, { { { "This", "Reference to the object the method is being performed on" } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns length of string view")
+                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)
+                    ->Method("size", [](ContainerType* thisPtr) { return aznumeric_cast<int>(thisPtr->size()); }, { { { "This", "Reference to the object the method is being performed on" }} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns length of string view")
+                    ->Method("find", [](ContainerType* thisPtr, ContainerType stringToFind, int startPos)
+                    {
+                        return aznumeric_cast<int>(thisPtr->find(stringToFind, startPos));
+                    }, { { { "This", "Reference to the object the method is being performed on" }, { "View", "View to search " }, { "Position", "Index in view to start search" }} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Searches for supplied string within this string")
+                    ->Method("substr", [](ContainerType* thisPtr, int pos, int len)
+                    {
+                        return thisPtr->substr(pos, len);
+                    }, { {{"This", "Reference to the object the method is being performed on"}, {"Position", "Index in view that indicates the beginning of the sub string"}, {"Count", "Length of characters that sub string view occupies" }} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Creates a sub view of this string view. The string data is not actually modified")
+                    ->Method("remove_prefix", [](ContainerType* thisPtr, int n) {thisPtr->remove_prefix(n); },
+                    { { { "This", "Reference to the object the method is being performed on" }, { "Count", "Number of characters to remove from start of view" }} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Moves the supplied number of characters from the beginning of this sub view")
+                    ->Method("remove_suffix", [](ContainerType* thisPtr, int n) {thisPtr->remove_suffix(n); },
+                    { { { "This", "Reference to the object the method is being performed on" } ,{ "Count", "Number of characters to remove from end of view" }} })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Moves the supplied number of characters from the end of this sub view")
+                    ;
+            }
+        }
+    };
+
     /// OnDemand reflection for AZStd::intrusive_ptr
     template<class T>
     struct OnDemandReflection< AZStd::intrusive_ptr<T> >
@@ -255,7 +380,7 @@ namespace AZ
             if (behaviorContext)
             {
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructibleFromNil, true)
                     ->template Constructor<typename ContainerType::value_type*>()
@@ -299,7 +424,7 @@ namespace AZ
             if (behaviorContext)
             {
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructibleFromNil, true)
                     ->template Constructor<typename ContainerType::value_type*>()
@@ -328,8 +453,16 @@ namespace AZ
         // resize the container to the appropriate size if needed and set the element
         static void Insert(ContainerType* thisPtr, int index, T& value)
         {
-            thisPtr->resize(index + 1);
+            if (thisPtr->size() <= index)
+            {
+                thisPtr->resize(index + 1);
+            }
             (*thisPtr)[index] = value;
+        }
+
+        static void LuaInsert(ContainerType* thisPtr, int index, T& value)
+        {
+            Insert(thisPtr, index - 1, value);
         }
 
         static void Reflect(ReflectContext* context)
@@ -339,7 +472,7 @@ namespace AZ
             {
                 // note we can reflect iterator types and support iterators, as of know we want to keep it simple
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
                     ->template Method<void(ContainerType::*)(typename ContainerType::const_reference)>("push_back", &ContainerType::push_back)
                     ->Method("pop_back", &ContainerType::pop_back)
@@ -348,6 +481,7 @@ namespace AZ
                         ->Attribute(AZ::Script::Attributes::MethodOverride, &ScriptAt)
                     ->Method("insert", &Insert)
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::IndexWrite)
+                        ->Attribute(AZ::Script::Attributes::MethodOverride, &LuaInsert)
                     ->Method("size", [](ContainerType* thisPtr) { return aznumeric_cast<int>(thisPtr->size()); })
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)
                     ->Method("clear", &ContainerType::clear)
@@ -377,7 +511,7 @@ namespace AZ
             {
                 // note we can reflect iterator types and support iterators, as of know we want to keep it simple
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn)
                     ->template Method<typename ContainerType::reference(ContainerType::*)(typename ContainerType::size_type)>("at", &ContainerType::at)
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::IndexRead)
@@ -402,7 +536,7 @@ namespace AZ
             {
                 // note we can reflect iterator types and support iterators, as of know we want to keep it simple
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Property("first", [](ContainerType* thisPtr) { return thisPtr->first; }, [](ContainerType* thisPtr, const T1& value) { thisPtr->first = value; })
                     ->Property("second", [](ContainerType* thisPtr) { return thisPtr->second; }, [](ContainerType* thisPtr, const T2& value) { thisPtr->second = value; })
@@ -422,7 +556,7 @@ namespace AZ
             if (behaviorContext)
             {
                 behaviorContext->Class<ContainerType>()
-                    ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::ScriptOwn);
             }
         }

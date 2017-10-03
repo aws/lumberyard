@@ -27,6 +27,9 @@ class TAnimTrack
     : public IAnimTrack
 {
 public:
+    AZ_CLASS_ALLOCATOR(TAnimTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI((TAnimTrack<KeyType>, "{D6E0F0E3-8843-46F0-8484-7B6E130409AE}", KeyType), IAnimTrack);
+
     TAnimTrack();
 
     virtual EAnimCurveType GetCurveType() { return eAnimCurveType_Unknown; };
@@ -41,17 +44,13 @@ public:
     virtual const char* GetSubTrackName(int nIndex) const { return NULL; };
     virtual void SetSubTrackName(int nIndex, const char* name) { assert(0); }
 
-    virtual CAnimParamType  GetParameterType() const { return m_nParamType; };
+    virtual const CAnimParamType& GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CAnimParamType type) { m_nParamType = type; };
 
     //////////////////////////////////////////////////////////////////////////
-    virtual void Release()
-    {
-        if (--m_nRefCounter <= 0)
-        {
-            delete this;
-        }
-    }
+    // for intrusive_ptr support 
+    void add_ref() override;
+    void release() override;
     //////////////////////////////////////////////////////////////////////////
 
     virtual bool IsKeySelected(int key) const
@@ -204,6 +203,8 @@ public:
         m_trackMultiplier = trackMultiplier;
     }
  
+    static void Reflect(AZ::SerializeContext* serializeContext) {}
+
 protected:
     void CheckValid()
     {
@@ -214,7 +215,9 @@ protected:
     };
     void Invalidate() { m_bModified = 1; };
 
-    typedef std::vector<KeyType> Keys;
+    int m_refCount;
+
+    typedef AZStd::vector<KeyType> Keys;
     Keys m_keys;
     Range m_timeRange;
 
@@ -239,7 +242,25 @@ protected:
 
 //////////////////////////////////////////////////////////////////////////
 template <class KeyType>
+inline void TAnimTrack<KeyType>::add_ref()
+{
+    ++m_refCount;
+}
+
+//////////////////////////////////////////////////////////////////////////
+template <class KeyType>
+inline void TAnimTrack<KeyType>::release()
+{
+    if (--m_refCount <= 0)
+    {
+        delete this;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template <class KeyType>
 inline TAnimTrack<KeyType>::TAnimTrack()
+    : m_refCount(0)
 {
     m_currKey = 0;
     m_flags = 0;
@@ -337,6 +358,7 @@ inline void TAnimTrack<KeyType>::SortKeys()
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 template <class KeyType>
 inline bool TAnimTrack<KeyType>::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {

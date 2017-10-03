@@ -25,7 +25,7 @@ local RotateEntity =
 
 
 function RotateEntity:OnActivate()
-	local gameplayBusId = GameplayNotificationId(self.entityId, self.Properties.IncomingGameplayEventName)
+	local gameplayBusId = GameplayNotificationId(self.entityId, self.Properties.IncomingGameplayEventName, "float")
 	self.gameplayBus = GameplayNotificationBus.Connect(self, gameplayBusId)
 end
 

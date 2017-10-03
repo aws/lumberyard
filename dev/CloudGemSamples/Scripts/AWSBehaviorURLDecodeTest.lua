@@ -4,14 +4,14 @@ local AWSBehaviorURLDecodeTest = {}
 
 function AWSBehaviorURLDecodeTest:OnActivate()
      -- Connect our EBus to listen for the master entity events.
-    local runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests")  
+    local runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))  
     self.GamePlayHandler = GameplayNotificationBus.Connect(self, runTestsEventId)
     
     -- Listen for the AWS behavior notification.
     self.URLHandler = AWSBehaviorURLNotificationsBus.Connect(self, self.entityId)  
 end
 
-function AWSBehaviorURLDecodeTest:OnEventBegin()
+function AWSBehaviorURLDecodeTest:OnEventBegin(message)
     if isActive == false then
         Debug.Log("AWSBehaviorURLDecodeTest not active")
         self:NotifyMainEntity("success")
@@ -41,7 +41,7 @@ end
 
 function AWSBehaviorURLDecodeTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 return AWSBehaviorURLDecodeTest

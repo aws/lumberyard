@@ -15,6 +15,7 @@
 #include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxTransformImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneData/GraphData/TransformData.h>
@@ -59,14 +60,14 @@ namespace AZ
                     return Events::ProcessingResult::Ignored;
                 }
 
-#if !defined(MOTIONCANVAS_GEM_ENABLED)
+
                 context.m_sourceSceneSystem.SwapTransformForUpAxis(localTransform);
-#endif
+
                 context.m_sourceSceneSystem.ConvertUnit(localTransform);
 
                 AZStd::shared_ptr<SceneData::GraphData::TransformData> transformData = 
                     AZStd::make_shared<SceneData::GraphData::TransformData>(localTransform);
-                AZ_Assert(transformData, "Failed to allocate tranform data.");
+                AZ_Assert(transformData, "Failed to allocate transform data.");
                 if (!transformData)
                 {
                     return Events::ProcessingResult::Failure;
@@ -78,8 +79,12 @@ namespace AZ
                 {
                     if (!context.m_scene.GetGraph().IsNodeEndPoint(context.m_currentGraphPosition))
                     {
+                        AZStd::string nodeName = s_transformNodeName;
+                        RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition);
+                        AZ_TraceContext("Transform node name", nodeName);
+
                         Containers::SceneGraph::NodeIndex newIndex =
-                            context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, s_transformNodeName);
+                            context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, nodeName.c_str());
 
                         AZ_Assert(newIndex.IsValid(), "Failed to create SceneGraph node for attribute.");
                         if (!newIndex.IsValid())
@@ -88,8 +93,7 @@ namespace AZ
                         }
 
                         Events::ProcessingResult transformAttributeResult;
-                        SceneAttributeDataPopulatedContext dataPopulated(context, transformData, newIndex, 
-                            s_transformNodeName);
+                        SceneAttributeDataPopulatedContext dataPopulated(context, transformData, newIndex, nodeName);
                         transformAttributeResult = Events::Process(dataPopulated);
 
                         if (transformAttributeResult != Events::ProcessingResult::Failure)

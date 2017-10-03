@@ -40,6 +40,7 @@ void FileWatcherUnitTestRunner::StartTest()
     FolderWatchCallbackEx folderWatch(tempPath, "", true);
 
     fileWatcher.AddFolderWatch(&folderWatch);
+    fileWatcher.StartWatching();
 
     { // test a single file create/write
         bool foundFile = false;

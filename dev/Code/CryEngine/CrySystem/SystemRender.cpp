@@ -49,7 +49,6 @@
 #include "ThreadProfiler.h"
 #include "IDiskProfiler.h"
 #include "ITextModeConsole.h"
-#include "HardwareMouse.h"
 #include <IEntitySystem.h> // <> required for Interfuscator
 #include "../CryAction/IActorSystem.h"
 #include "../CryAction/ILevelSystem.h"
@@ -159,6 +158,8 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
                     cvar->Set(static_cast<int>(eDVM_Disabled));
                 }
             });
+    // Restrict the limits of this cvar to the eDolbyVisionMode values
+    m_rHDRDolby->SetLimits(static_cast<float>(eDVM_Disabled), static_cast<float>(eDVM_Vision));
 
 #if defined(WIN32) || defined(WIN64)
     REGISTER_INT("r_overrideDXGIAdapter", -1, VF_REQUIRE_APP_RESTART,

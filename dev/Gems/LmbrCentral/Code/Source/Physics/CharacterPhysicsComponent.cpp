@@ -360,6 +360,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/CharacterPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-character.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterPhysicsComponent::m_configuration,
                     "Configuration", "Character Physics Configuration")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
@@ -371,6 +372,7 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<CryCharacterPhysicsRequestBus>("CryCharacterPhysicsRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("RequestVelocity", &CryCharacterPhysicsRequestBus::Events::RequestVelocity);
         }
     }

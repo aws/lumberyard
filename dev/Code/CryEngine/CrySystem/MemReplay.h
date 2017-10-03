@@ -172,8 +172,8 @@ namespace MemReplayPlatformIds
     {
         PI_Unknown = 0,
         PI_PC,
-        PI_Durango,
-        PI_Orbis
+        PI_Durango, // ACCEPTED_USE
+        PI_Orbis // ACCEPTED_USE
     };
 };
 
@@ -182,10 +182,10 @@ namespace MemReplayPlatformIds
 
 struct MemReplayLogHeader
 {
-    MemReplayLogHeader(uint32 tag, uint32 platform, uint32 pointerWidth)
-        : tag(tag)
-        , platform(platform)
-        , pointerWidth(pointerWidth)
+    MemReplayLogHeader(uint32 _tag, uint32 _platform, uint32 _pointerWidth)
+        : tag(_tag)
+        , platform(_platform)
+        , pointerWidth(_pointerWidth)
     {
     }
 
@@ -196,10 +196,10 @@ struct MemReplayLogHeader
 
 struct MemReplayEventHeader
 {
-    MemReplayEventHeader(int id, size_t size, uint8 sequenceCheck)
-        : sequenceCheck(sequenceCheck)
-        , eventId(static_cast<uint8>(id))
-        , eventLength(static_cast<uint16>(size))
+    MemReplayEventHeader(int _id, size_t _size, uint8 _sequenceCheck)
+        : sequenceCheck(_sequenceCheck)
+        , eventId(static_cast<uint8>(_id))
+        , eventLength(static_cast<uint16>(_size))
     {
     }
 
@@ -214,8 +214,8 @@ struct MemReplayFrameStartEvent
 
     uint32 frameId;
 
-    MemReplayFrameStartEvent(uint32 frameId)
-        : frameId(frameId)
+    MemReplayFrameStartEvent(uint32 _frameId)
+        : frameId(_frameId)
     {}
 } __PACKED;
 
@@ -225,10 +225,10 @@ struct MemReplayLabelEvent
 
     char label[1];
 
-    MemReplayLabelEvent(const char* label)
+    MemReplayLabelEvent(const char* _label)
     {
         // Assume there is room beyond this instance.
-        strcpy(this->label, label); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
+        strcpy(this->label, _label); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
     }
 } __PACKED;
 
@@ -244,14 +244,14 @@ struct MemReplayPushContextEvent
     // for the structure to hold the required name.
     char name[1];
 
-    MemReplayPushContextEvent(uint32 threadId, const char* name, EMemStatContextTypes::Type type, uint32 flags)
+    MemReplayPushContextEvent(uint32 _threadId, const char* _name, EMemStatContextTypes::Type _type, uint32 _flags)
     {
         // We're going to assume that there actually is enough space to store the name directly in the struct.
 
-        this->threadId = threadId;
-        this->contextType = static_cast<uint32>(type);
-        this->flags = flags;
-        strcpy(this->name, name); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
+        this->threadId = _threadId;
+        this->contextType = static_cast<uint32>(_type);
+        this->flags = _flags;
+        strcpy(this->name, _name); // we're intentionally writing beyond the end of this array, so don't use cry_strcpy()
     }
 } __PACKED;
 
@@ -261,9 +261,9 @@ struct MemReplayPopContextEvent
 
     uint32 threadId;
 
-    explicit MemReplayPopContextEvent(uint32 threadId)
+    explicit MemReplayPopContextEvent(uint32 _threadId)
     {
-        this->threadId = threadId;
+        this->threadId = _threadId;
     }
 } __PACKED;
 
@@ -275,11 +275,11 @@ struct MemReplayModuleRefEvent
     char path[256];
     char sig[512];
 
-    MemReplayModuleRefEvent(const char* name, const char* path, const char* sig)
+    MemReplayModuleRefEvent(const char* _name, const char* _path, const char* _sig)
     {
-        cry_strcpy(this->name, name);
-        cry_strcpy(this->path, path);
-        cry_strcpy(this->sig, sig);
+        cry_strcpy(this->name, _name);
+        cry_strcpy(this->path, _path);
+        cry_strcpy(this->sig, _sig);
     }
 } __PACKED;
 
@@ -289,8 +289,8 @@ struct MemReplayModuleUnRefEvent
 
     UINT_PTR address;
 
-    MemReplayModuleUnRefEvent(UINT_PTR address)
-        : address(address) {}
+    MemReplayModuleUnRefEvent(UINT_PTR _address)
+        : address(_address) {}
 } __PACKED;
 
 struct MemReplayModuleRefShortEvent
@@ -299,9 +299,9 @@ struct MemReplayModuleRefShortEvent
 
     char name[256];
 
-    MemReplayModuleRefShortEvent(const char* name)
+    MemReplayModuleRefShortEvent(const char* _name)
     {
-        cry_strcpy(this->name, name);
+        cry_strcpy(this->name, _name);
     }
 } __PACKED;
 
@@ -322,16 +322,16 @@ struct MemReplayAllocEvent
     uint16 callstackLength;
     UINT_PTR callstack[1];  // Must be last.
 
-    MemReplayAllocEvent(uint32 threadId, uint16 moduleId, uint16 allocClass, uint16 allocSubClass, UINT_PTR id, uint32 alignment, uint32 sizeReq, uint32 sizeCon, int32 sizeGlobal)
-        : threadId(threadId)
-        , id(id)
-        , alignment(alignment)
-        , sizeRequested(sizeReq)
-        , sizeConsumed(sizeCon)
-        , sizeGlobal(sizeGlobal)
-        , moduleId(moduleId)
-        , allocClass(allocClass)
-        , allocSubClass(allocSubClass)
+    MemReplayAllocEvent(uint32 _threadId, uint16 _moduleId, uint16 _allocClass, uint16 _allocSubClass, UINT_PTR _id, uint32 _alignment, uint32 _sizeReq, uint32 _sizeCon, int32 _sizeGlobal)
+        : threadId(_threadId)
+        , id(_id)
+        , alignment(_alignment)
+        , sizeRequested(_sizeReq)
+        , sizeConsumed(_sizeCon)
+        , sizeGlobal(_sizeGlobal)
+        , moduleId(_moduleId)
+        , allocClass(_allocClass)
+        , allocSubClass(_allocSubClass)
         , callstackLength(0)
     {
     }
@@ -352,13 +352,13 @@ struct MemReplayFreeEvent
     uint16 callstackLength;
     UINT_PTR callstack[1];  // Must be last.
 
-    MemReplayFreeEvent(uint32 threadId, uint16 moduleId, uint16 allocClass, uint16 allocSubClass, UINT_PTR id, int32 sizeGlobal)
-        : threadId(threadId)
-        , id(id)
-        , sizeGlobal(sizeGlobal)
-        , moduleId(moduleId)
-        , allocClass(allocClass)
-        , allocSubClass(allocSubClass)
+    MemReplayFreeEvent(uint32 _threadId, uint16 _moduleId, uint16 _allocClass, uint16 _allocSubClass, UINT_PTR _id, int32 _sizeGlobal)
+        : threadId(_threadId)
+        , id(_id)
+        , sizeGlobal(_sizeGlobal)
+        , moduleId(_moduleId)
+        , allocClass(_allocClass)
+        , allocSubClass(_allocSubClass)
         , callstackLength(0)
     {
     }
@@ -372,10 +372,10 @@ struct MemReplayInfoEvent
     uint32 initialGlobalSize;
     uint32 bucketsFree;
 
-    MemReplayInfoEvent(uint32 executableSize, uint32 initialGlobalSize, uint32 bucketsFree)
-        : executableSize(executableSize)
-        , initialGlobalSize(initialGlobalSize)
-        , bucketsFree(bucketsFree)
+    MemReplayInfoEvent(uint32 _executableSize, uint32 _initialGlobalSize, uint32 _bucketsFree)
+        : executableSize(_executableSize)
+        , initialGlobalSize(_initialGlobalSize)
+        , bucketsFree(_bucketsFree)
     {
     }
 } __PACKED;
@@ -387,9 +387,9 @@ struct MemReplayAddressProfileEvent
     UINT_PTR rsxStart;
     uint32 rsxLength;
 
-    MemReplayAddressProfileEvent(UINT_PTR rsxStart, uint32 rsxLength)
-        : rsxStart(rsxStart)
-        , rsxLength(rsxLength)
+    MemReplayAddressProfileEvent(UINT_PTR _rsxStart, uint32 _rsxLength)
+        : rsxStart(_rsxStart)
+        , rsxLength(_rsxLength)
     {
     }
 } __PACKED;
@@ -402,10 +402,10 @@ struct MemReplayAllocUsageEvent
     UINT_PTR id;
     uint32 used;
 
-    MemReplayAllocUsageEvent(uint16 allocClass, UINT_PTR id, uint32 used)
-        : allocClass(allocClass)
-        , id(id)
-        , used(used)
+    MemReplayAllocUsageEvent(uint16 _allocClass, UINT_PTR _id, uint32 _used)
+        : allocClass(_allocClass)
+        , id(_id)
+        , used(_used)
     {
     }
 } __PACKED;
@@ -427,9 +427,9 @@ struct MemReplaySizerPushEvent
 
     char name[1];
 
-    MemReplaySizerPushEvent(const char* name)
+    MemReplaySizerPushEvent(const char* _name)
     {
-        strcpy(this->name, name);
+        strcpy(this->name, _name);
     }
 } __PACKED;
 
@@ -446,10 +446,10 @@ struct MemReplaySizerAddRangeEvent
     uint32 size;
     int32 count;
 
-    MemReplaySizerAddRangeEvent(const UINT_PTR address, uint32 size, int32 count)
-        : address(address)
-        , size(size)
-        , count(count)
+    MemReplaySizerAddRangeEvent(const UINT_PTR _address, uint32 _size, int32 _count)
+        : address(_address)
+        , size(_size)
+        , count(_count)
     {}
 } __PACKED;
 
@@ -462,11 +462,11 @@ struct MemReplayBucketMarkEvent
     int32 index;
     uint32 alignment;
 
-    MemReplayBucketMarkEvent(UINT_PTR address, uint32 length, int32 index, uint32 alignment)
-        : address(address)
-        , length(length)
-        , index(index)
-        , alignment(alignment)
+    MemReplayBucketMarkEvent(UINT_PTR _address, uint32 _length, int32 _index, uint32 _alignment)
+        : address(_address)
+        , length(_length)
+        , index(_index)
+        , alignment(_alignment)
     {}
 } __PACKED;
 
@@ -477,9 +477,9 @@ struct MemReplayBucketUnMarkEvent
     UINT_PTR address;
     int32 index;
 
-    MemReplayBucketUnMarkEvent(UINT_PTR address, int32 index)
-        : address(address)
-        , index(index)
+    MemReplayBucketUnMarkEvent(UINT_PTR _address, int32 _index)
+        : address(_address)
+        , index(_index)
     {}
 } __PACKED;
 
@@ -492,9 +492,9 @@ struct MemReplayAddAllocReferenceEvent
     uint32 callstackLength;
     UINT_PTR callstack[1];
 
-    MemReplayAddAllocReferenceEvent(UINT_PTR address, UINT_PTR referenceId)
-        : address(address)
-        , referenceId(referenceId)
+    MemReplayAddAllocReferenceEvent(UINT_PTR _address, UINT_PTR _referenceId)
+        : address(_address)
+        , referenceId(_referenceId)
         , callstackLength(0)
     {
     }
@@ -506,8 +506,8 @@ struct MemReplayRemoveAllocReferenceEvent
 
     UINT_PTR referenceId;
 
-    MemReplayRemoveAllocReferenceEvent(UINT_PTR referenceId)
-        : referenceId(referenceId)
+    MemReplayRemoveAllocReferenceEvent(UINT_PTR _referenceId)
+        : referenceId(_referenceId)
     {
     }
 } __PACKED;
@@ -522,13 +522,13 @@ struct MemReplayPoolMarkEvent
     uint32 alignment;
     char name[1];
 
-    MemReplayPoolMarkEvent(UINT_PTR address, uint32 length, int32 index, uint32 alignment, const char* name)
-        : address(address)
-        , length(length)
-        , index(index)
-        , alignment(alignment)
+    MemReplayPoolMarkEvent(UINT_PTR _address, uint32 _length, int32 _index, uint32 _alignment, const char* _name)
+        : address(_address)
+        , length(_length)
+        , index(_index)
+        , alignment(_alignment)
     {
-        strcpy(this->name, name);
+        strcpy(this->name, _name);
     }
 } __PACKED;
 
@@ -539,9 +539,9 @@ struct MemReplayPoolUnMarkEvent
     UINT_PTR address;
     int32 index;
 
-    MemReplayPoolUnMarkEvent(UINT_PTR address, int32 index)
-        : address(address)
-        , index(index)
+    MemReplayPoolUnMarkEvent(UINT_PTR _address, int32 _index)
+        : address(_address)
+        , index(_index)
     {}
 } __PACKED;
 
@@ -556,14 +556,14 @@ struct MemReplayTextureAllocContextEvent
     uint32 flags;
     char name[1];
 
-    MemReplayTextureAllocContextEvent(UINT_PTR ptr, uint32 mip, uint32 width, uint32 height, uint32 flags, const char* name)
-        : address(ptr)
-        , mip(mip)
-        , width(width)
-        , height(height)
-        , flags(flags)
+    MemReplayTextureAllocContextEvent(UINT_PTR _ptr, uint32 _mip, uint32 _width, uint32 _height, uint32 _flags, const char* _name)
+        : address(_ptr)
+        , mip(_mip)
+        , width(_width)
+        , height(_height)
+        , flags(_flags)
     {
-        strcpy(this->name, name);
+        strcpy(this->name, _name);
     }
 } __PACKED;
 
@@ -574,9 +574,9 @@ struct MemReplayBucketCleanupEnabledEvent
     UINT_PTR allocatorBaseAddress;
     uint32 cleanupsEnabled;
 
-    MemReplayBucketCleanupEnabledEvent(UINT_PTR allocatorBaseAddress, bool cleanupsEnabled)
-        : allocatorBaseAddress(allocatorBaseAddress)
-        , cleanupsEnabled(cleanupsEnabled ? 1 : 0)
+    MemReplayBucketCleanupEnabledEvent(UINT_PTR _allocatorBaseAddress, bool _cleanupsEnabled)
+        : allocatorBaseAddress(_allocatorBaseAddress)
+        , cleanupsEnabled(_cleanupsEnabled ? 1 : 0)
     {
     }
 } __PACKED;
@@ -600,17 +600,17 @@ struct MemReplayReallocEvent
     uint16 callstackLength;
     UINT_PTR callstack[1];  // Must be last.
 
-    MemReplayReallocEvent(uint32 threadId, uint16 moduleId, uint16 allocClass, uint16 allocSubClass, UINT_PTR oldId, UINT_PTR newId, uint32 alignment, uint32 newSizeReq, uint32 newSizeCon, int32 sizeGlobal)
-        : threadId(threadId)
-        , oldId(oldId)
-        , newId(newId)
-        , alignment(alignment)
-        , newSizeRequested(newSizeReq)
-        , newSizeConsumed(newSizeCon)
-        , sizeGlobal(sizeGlobal)
-        , moduleId(moduleId)
-        , allocClass(allocClass)
-        , allocSubClass(allocSubClass)
+    MemReplayReallocEvent(uint32 _threadId, uint16 _moduleId, uint16 _allocClass, uint16 _allocSubClass, UINT_PTR _oldId, UINT_PTR _newId, uint32 _alignment, uint32 _newSizeReq, uint32 _newSizeCon, int32 _sizeGlobal)
+        : threadId(_threadId)
+        , oldId(_oldId)
+        , newId(_newId)
+        , alignment(_alignment)
+        , newSizeRequested(_newSizeReq)
+        , newSizeConsumed(_newSizeCon)
+        , sizeGlobal(_sizeGlobal)
+        , moduleId(_moduleId)
+        , allocClass(_allocClass)
+        , allocSubClass(_allocSubClass)
         , callstackLength(0)
     {
     }
@@ -626,9 +626,9 @@ struct MemReplayRegisterContainerEvent
     uint32 callstackLength;
     UINT_PTR callstack[1]; // Must be last
 
-    MemReplayRegisterContainerEvent(UINT_PTR key, uint32 type)
-        : key(key)
-        , type(type)
+    MemReplayRegisterContainerEvent(UINT_PTR _key, uint32 _type)
+        : key(_key)
+        , type(_type)
         , callstackLength(0)
     {
     }
@@ -640,8 +640,8 @@ struct MemReplayUnregisterContainerEvent
 
     UINT_PTR key;
 
-    explicit MemReplayUnregisterContainerEvent(UINT_PTR key)
-        : key(key)
+    explicit MemReplayUnregisterContainerEvent(UINT_PTR _key)
+        : key(_key)
     {
     }
 } __PACKED;
@@ -653,9 +653,9 @@ struct MemReplayBindToContainerEvent
     UINT_PTR key;
     UINT_PTR ptr;
 
-    MemReplayBindToContainerEvent(UINT_PTR key, UINT_PTR ptr)
-        : key(key)
-        , ptr(ptr)
+    MemReplayBindToContainerEvent(UINT_PTR _key, UINT_PTR _ptr)
+        : key(_key)
+        , ptr(_ptr)
     {
     }
 } __PACKED;
@@ -667,9 +667,9 @@ struct MemReplayUnbindFromContainerEvent
     UINT_PTR key;
     UINT_PTR ptr;
 
-    MemReplayUnbindFromContainerEvent(UINT_PTR key, UINT_PTR ptr)
-        : key(key)
-        , ptr(ptr)
+    MemReplayUnbindFromContainerEvent(UINT_PTR _key, UINT_PTR _ptr)
+        : key(_key)
+        , ptr(_ptr)
     {
     }
 } __PACKED;
@@ -683,11 +683,11 @@ struct MemReplayRegisterFixedAddressRangeEvent
 
     char name[1];
 
-    MemReplayRegisterFixedAddressRangeEvent(UINT_PTR address, uint32 length, const char* name)
-        : address(address)
-        , length(length)
+    MemReplayRegisterFixedAddressRangeEvent(UINT_PTR _address, uint32 _length, const char* _name)
+        : address(_address)
+        , length(_length)
     {
-        strcpy(this->name, name);
+        strcpy(this->name, _name);
     }
 } __PACKED;
 
@@ -698,9 +698,9 @@ struct MemReplaySwapContainersEvent
     UINT_PTR keyA;
     UINT_PTR keyB;
 
-    MemReplaySwapContainersEvent(UINT_PTR keyA, UINT_PTR keyB)
-        : keyA(keyA)
-        , keyB(keyB)
+    MemReplaySwapContainersEvent(UINT_PTR _keyA, UINT_PTR _keyB)
+        : keyA(_keyA)
+        , keyB(_keyB)
     {
     }
 } __PACKED;
@@ -714,9 +714,9 @@ struct MemReplayMapPageEvent
     uint32 callstackLength;
     UINT_PTR callstack[1];
 
-    MemReplayMapPageEvent(UINT_PTR address, uint32 length)
-        : address(address)
-        , length(length)
+    MemReplayMapPageEvent(UINT_PTR _address, uint32 _length)
+        : address(_address)
+        , length(_length)
         , callstackLength(0)
     {
     }
@@ -729,9 +729,9 @@ struct MemReplayUnMapPageEvent
     UINT_PTR address;
     uint32 length;
 
-    MemReplayUnMapPageEvent(UINT_PTR address, uint32 length)
-        : address(address)
-        , length(length)
+    MemReplayUnMapPageEvent(UINT_PTR _address, uint32 _length)
+        : address(_address)
+        , length(_length)
     {
     }
 } __PACKED;

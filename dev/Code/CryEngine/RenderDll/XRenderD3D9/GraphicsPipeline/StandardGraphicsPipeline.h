@@ -46,8 +46,8 @@ public:
 
     struct ViewParameters
     {
-        ViewParameters(const CameraViewParameters& viewParameters, const CCamera& ccamera)
-            : viewParameters(viewParameters)
+        ViewParameters(const CameraViewParameters& params, const CCamera& ccamera)
+            : viewParameters(params)
             , camera(ccamera)
         {}
 

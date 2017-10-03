@@ -94,7 +94,6 @@ namespace GridMate
         /// Return packet overhead size in bytes.
         virtual unsigned int GetPacketOverheadSize() const { return 8 /* standard UDP*/ + 20 /* min for IPv4 */; }
         /*
-        X360
         UDP/VDP has a 44 byte header when using port 1000 - the header is up to 4 bytes larger when using other ports
         using voice chat over VDP adds an additional 2 bytes to the packet header
         worst case VDP header with voice is 52 bytes - additional overhead incurred for using other ports cannot exceed 4 bytes so this is partially unaccounted for

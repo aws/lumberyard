@@ -11,21 +11,19 @@
 */
 #pragma once
 
-#include <AzCore/RTTI/ReflectContext.h>
-
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/Preprocessor/Sequences.h> // for AZ_EBUS_BEHAVIOR_BINDER
+#include <AzCore/RTTI/BehaviorObjectSignals.h>
+#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/unordered_map.h>
-#include <AzCore/std/utils.h>
-
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/typetraits/decay.h>
+#include <AzCore/std/typetraits/function_traits.h>
 #include <AzCore/std/typetraits/is_function.h>
 #include <AzCore/std/typetraits/is_same.h>
-#include <AzCore/RTTI/OnDemandReflection.h>
-#include <AzCore/RTTI/BehaviorObjectSignals.h>
-#include <AzCore/Preprocessor/Sequences.h> // for AZ_EBUS_BEHAVIOR_BINDER
-#include <AzCore/std/containers/array.h>
-#include <AzCore/std/typetraits/function_traits.h>
+#include <AzCore/std/utils.h>
 
 #if defined(AZ_COMPILER_MSVC)
 #   pragma warning(push)
@@ -41,6 +39,7 @@ namespace AZ
     class BehaviorClass;
     class BehaviorProperty;
     class BehaviorEBusHandler;
+    class BehaviorDefaultValue;
 
     struct BehaviorObject // same as DynamicSerializableField, make sure we merge them... so we can store the object easily 
     {
@@ -66,18 +65,61 @@ namespace AZ
         /**
          * Function parameters traits
          */
-        enum Traits
+        enum Traits : u32
         {
             TR_POINTER = (1 << 0),
             TR_CONST = (1 << 1),
             TR_REFERENCE = (1 << 2),
             TR_THIS_PTR = (1 << 3), // set if the parameter is a this pointer to a method
+            TR_STRING = (1 << 4),
+            TR_ARRAY_BEGIN = (1 << 5), // Parameter specifies the begin address of the array inclusive
+            TR_ARRAY_END = (1 << 6),  // Parameter specifies the end address of the array exclusive (conflicts with TR_ARRAY_SIZE)
+            TR_ARRAY_SIZE = (1 << 7), // Parameter specifies the number of elements in an array parameter (conflicts with TR_ARRAY_END)
+            TR_NONE = 0U,
         };
 
         const char* m_name;
         Uuid m_typeId;
         IRttiHelper* m_azRtti;
-        u8 m_traits;
+        u32 m_traits;
+    };
+
+    /*
+     * struct to help with Additional data to be associated with parameters(Argument names and tooltips, type traits and default values), these are usually in arrays
+     */
+    struct BehaviorParameterMetadata
+    {
+        BehaviorParameterMetadata(AZStd::string_view name = {}, AZStd::string_view toolTip = {}, BehaviorDefaultValue* defaultValue = {})
+            : m_name(name)
+            , m_toolTip(toolTip)
+            , m_defaultValue(defaultValue)
+        {}
+        AZStd::string m_name;
+        AZStd::string m_toolTip;
+        BehaviorDefaultValue* m_defaultValue;
+    };
+
+    /*
+     * Struct to use to pass per parameter overrides when reflecting a Method or Event
+     * \param addTraits - OR'ed against the traits of the BehaviorParameter being overridden. This specifies which flags to add.
+     * \param keepTraits - AND'ed against the traits of the BehaviorParameter being overridden. This specifies which flags to keep.
+     */
+    struct BehaviorParameterOverrides
+    {
+        BehaviorParameterOverrides(AZStd::string_view name = {}, AZStd::string_view toolTip = {}, BehaviorDefaultValue* defaultValue = {},
+            u32 addTraits = BehaviorParameter::Traits::TR_NONE, u32 removeTraits = BehaviorParameter::Traits::TR_NONE)
+            : m_name(name)
+            , m_toolTip(toolTip)
+            , m_defaultValue(defaultValue)
+            , m_addTraits(addTraits)
+            , m_removeTraits(removeTraits)
+        {}
+
+        AZStd::string m_name;
+        AZStd::string m_toolTip;
+        BehaviorDefaultValue* m_defaultValue;
+        AZ::u32 m_addTraits;
+        AZ::u32 m_removeTraits;
     };
 
     /**
@@ -90,7 +132,8 @@ namespace AZ
     struct BehaviorValueParameter : public BehaviorParameter
     {
         BehaviorValueParameter();
-
+        BehaviorValueParameter(const BehaviorValueParameter&) = default;
+        BehaviorValueParameter(BehaviorValueParameter&&);
         template<class T>
         BehaviorValueParameter(T* value);
 
@@ -119,6 +162,8 @@ namespace AZ
         template<typename T>
         AZStd::decay_t<T>*  GetAsUnsafe() const;
 
+        BehaviorValueParameter& operator=(const BehaviorValueParameter&) = default;
+        BehaviorValueParameter& operator=(BehaviorValueParameter&&);
         template<typename T>
         BehaviorValueParameter& operator=(T&& result);
 
@@ -136,8 +181,36 @@ namespace AZ
     };
 
     /**
+    * Class that handles a single default value. The Value type is verified to match parameter signature
+    */
+    class BehaviorDefaultValue
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(BehaviorDefaultValue, AZ::SystemAllocator, 0);
+
+        /**
+        * Create a default value for a specific method parameter. The Default values is stored by value
+        * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
+        * can easily change that if it became a problem.
+        */
+        template<typename Value>
+        BehaviorDefaultValue(Value&& value)
+        {
+            m_value.StoreInTempData(AZStd::forward<Value>(value));
+        }
+
+        const BehaviorValueParameter& GetValue() const
+        {
+            return m_value;
+        }
+
+        BehaviorValueParameter m_value;
+    };
+
+
+    /**
      * Base class that handles default values. Values types are verified to match exactly the function signature.
-     * the oder of the default values is the same as in C++ (going in reverse the back).
+     * the order of the default values is the same as in C++ (going in reverse the back).
      */
     class BehaviorValues
     {
@@ -145,17 +218,18 @@ namespace AZ
         virtual ~BehaviorValues() {}
 
         virtual size_t GetNumValues() const = 0;
-        virtual const BehaviorValueParameter& GetValue(size_t i) const = 0;
+        virtual BehaviorDefaultValue* GetDefaultValue(size_t i) const = 0;
     };
 
     /**
      * Use behavior method to get type information and invoke reflected methods.
      */
     class BehaviorMethod
+        : public OnDemandReflectionOwner
     {
     public:
-        BehaviorMethod();
-        virtual ~BehaviorMethod();
+        BehaviorMethod(BehaviorContext* context);
+        ~BehaviorMethod() override;
 
         template<class... Args>
         bool Invoke(Args&&... args);
@@ -165,23 +239,37 @@ namespace AZ
         bool InvokeResult(R& r, Args&&... args);
         template<class R>
         bool InvokeResult(R& r);
+        void SetDeprecatedName(const AZStd::string& name) { m_deprecatedName = name; }
+        const AZStd::string& GetDeprecatedName() const { return m_deprecatedName; }
 
         virtual bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result = nullptr) = 0;
         virtual bool HasResult() const = 0;
         /// Returns true if the method is a class member method. If true the first argument should always be the "this"/ClassType pointer.
         virtual bool IsMember() const = 0;
+        /// Returns true if the method is an ebus method with a bus id argument.
+        virtual bool HasBusId() const = 0;
+        /// Returns the BehaviorParameter corresponding to the ThisPtr argument if it this method is a class memver
+        virtual const BehaviorParameter* GetThisPtrArgument() const = 0;
+        /// Returns the BehaviorParameter corresponding to the the ebus BusId argument if the ebus method is addressed by Id
+        virtual const BehaviorParameter* GetBusIdArgument() const = 0;
+
+        virtual void OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits) = 0;
+
         virtual size_t GetNumArguments() const = 0;
-        virtual size_t GetNumArgumentNames() const = 0;
         /// Return the minimum number of arguments needed (considering default arguments)
-        size_t GetMinNumberOfArguments() const;
+        virtual size_t GetMinNumberOfArguments() const = 0;
         virtual const BehaviorParameter* GetArgument(size_t index) const = 0;
         virtual const AZStd::string* GetArgumentName(size_t index) const = 0;
         virtual void SetArgumentName(size_t index, const AZStd::string& name) = 0;
+        virtual const AZStd::string* GetArgumentToolTip(size_t index) const = 0;
+        virtual void SetArgumentToolTip(size_t index, const AZStd::string& name) = 0;
+        virtual void SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue) = 0;
+        virtual BehaviorDefaultValue* GetDefaultValue(size_t index) const = 0;
         virtual const BehaviorParameter* GetResult() const = 0;
 
         AZStd::string m_name;   ///< Debug friendly behavior method name
+        AZStd::string m_deprecatedName;     ///<this is the deprecated name of this method
         const char* m_debugDescription;
-        BehaviorValues* m_defaultArguments;
         bool m_isConst = false; ///< Is member function const (false if not a member function)
         AttributeArray m_attributes;    ///< Attributes for the method
     };
@@ -194,17 +282,17 @@ namespace AZ
             // convert
             void* convertedAddress = sourceRtti->Cast(sourceAddress, targetType);
             if (convertedAddress && convertedAddress != sourceAddress) // if we converted as we have a different address
-        {
+            {
                 // allocate temp storage and store it
                 targetAddress = tempAllocator.allocate(sizeof(void*), AZStd::alignment_of<void*>::value, 0);
                 *reinterpret_cast<void**>(targetAddress) = convertedAddress;
             }
             return convertedAddress != nullptr;
-            }
+        }
 
         // Assumes parameters array is big enough to store all parameters
         template<class... Args>
-        void SetParameters(BehaviorParameter* parameters, BehaviorContext* behaviorContext = nullptr);
+        void SetParameters(BehaviorParameter* parameters, OnDemandReflectionOwner* onDemandReflection = nullptr);
 
         // call helper
         template<class R, class... Args>
@@ -246,28 +334,39 @@ namespace AZ
 
             AZ_CLASS_ALLOCATOR(BehaviorMethodImpl<R(Args...)>, AZ::SystemAllocator, 0);
 
-            static const int s_startNamedArgumentIndex = 1; // +1 for result type
+            static const int s_startArgumentIndex = 1; // +1 for result type
+            static const int s_startNamedArgumentIndex = s_startArgumentIndex; // +1 for result type
 
             BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
+            ~BehaviorMethodImpl() override;
 
             bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
 
             bool HasResult() const override;
             bool IsMember() const override;
+            bool HasBusId() const override;
+
+            const BehaviorParameter* GetThisPtrArgument() const override;
+            const BehaviorParameter* GetBusIdArgument() const override;
 
             size_t GetNumArguments() const override;
-            size_t GetNumArgumentNames() const override;
+            size_t GetMinNumberOfArguments() const override;
 
             const BehaviorParameter* GetArgument(size_t index) const override;
             const AZStd::string* GetArgumentName(size_t index) const override;
             void SetArgumentName(size_t index, const AZStd::string& name) override;
-
+            const AZStd::string* GetArgumentToolTip(size_t index) const override;
+            void SetArgumentToolTip(size_t index, const AZStd::string& name) override;
+            void SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue) override;
+            BehaviorDefaultValue* GetDefaultValue(size_t index) const override;
             const BehaviorParameter* GetResult() const override;
+
+            void OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits) override;
 
             FunctionPointer m_functionPtr;
 
-            BehaviorParameter m_parameters[sizeof...(Args) + s_startNamedArgumentIndex]; 
-            AZStd::string m_argumentNames[sizeof...(Args) +s_startNamedArgumentIndex];
+            BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
+            AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
 
         template<class R, class C, class... Args>
@@ -280,26 +379,38 @@ namespace AZ
 
             AZ_CLASS_ALLOCATOR(BehaviorMethodImpl<R(C::*)(Args...)>, AZ::SystemAllocator, 0);
 
-            static const int s_startNamedArgumentIndex = 2; // +1 for result type, +1 for class Type (this ptr)
+            static const int s_startArgumentIndex = 1; // +1 for result type
+            static const int s_startNamedArgumentIndex = s_startArgumentIndex + 1; // +1 for result type, +1 for class Type (this ptr)
 
             BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
             BehaviorMethodImpl(FunctionPointerConst functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
+            ~BehaviorMethodImpl() override;
 
             bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
 
             bool HasResult() const override;
             bool IsMember() const override;
+            bool HasBusId() const override;
+
+            const BehaviorParameter* GetThisPtrArgument() const override;
+            const BehaviorParameter* GetBusIdArgument() const override;
 
             size_t GetNumArguments() const override;
-            size_t GetNumArgumentNames() const override;
+            size_t GetMinNumberOfArguments() const override;
             const BehaviorParameter* GetArgument(size_t index) const override;
             const AZStd::string* GetArgumentName(size_t index) const override;
             void SetArgumentName(size_t index, const AZStd::string& name) override;
+            const AZStd::string* GetArgumentToolTip(size_t index) const override;
+            void SetArgumentToolTip(size_t index, const AZStd::string& name) override;
+            virtual void SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue) override;
+            virtual BehaviorDefaultValue* GetDefaultValue(size_t index) const override;
             const BehaviorParameter* GetResult() const override;
 
+            void OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits) override;
+
             FunctionPointer m_functionPtr;
-            BehaviorParameter m_parameters[sizeof...(Args) +s_startNamedArgumentIndex];
-            AZStd::string m_argumentNames[sizeof...(Args) +s_startNamedArgumentIndex];
+            BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
+            AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
 
         enum BehaviorEventType
@@ -333,8 +444,8 @@ namespace AZ
                 (void)arguments;
                 if (result)
                 {
-                EBus::BroadcastResult(*result, e, *arguments[Is].GetAsUnsafe<Args>()...);
-            }
+                    EBus::BroadcastResult(*result, e, *arguments[Is].GetAsUnsafe<Args>()...);
+                }
                 else
                 {
                     EBus::Broadcast(e, *arguments[Is].GetAsUnsafe<Args>()...);
@@ -364,8 +475,8 @@ namespace AZ
                 BehaviorValueParameter& id = *arguments++;
                 if (result)
                 {
-                EBus::EventResult(*result, *id.GetAsUnsafe<typename EBus::BusIdType>(), e, *arguments[Is].GetAsUnsafe<Args>()...);
-            }
+                    EBus::EventResult(*result, *id.GetAsUnsafe<typename EBus::BusIdType>(), e, *arguments[Is].GetAsUnsafe<Args>()...);
+                }
                 else
                 {
                     EBus::Event(*id.GetAsUnsafe<typename EBus::BusIdType>(), e, *arguments[Is].GetAsUnsafe<Args>()...);
@@ -403,15 +514,18 @@ namespace AZ
         class BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)> : public BehaviorMethod
         {
         public:
-            typedef R(C::*FunctionPointer)(Args...);
+            using FunctionPointer = R(C::*)(Args...);
+            using FunctionPointerConst = R(C::*)(Args...) const;
 
             static const int s_isBusIdParameter = (EventType == BE_EVENT_ID || EventType == BE_QUEUE_EVENT_ID) ? 1 : 0;
-
-            static const int s_startNamedArgumentIndex = 1 + s_isBusIdParameter; // +1 for result type, +1 (optional for busID)
+            static const int s_startArgumentIndex = 1; // +1 for result type
+            static const int s_startNamedArgumentIndex = s_startArgumentIndex + s_isBusIdParameter; // +1 for result type, +1 (optional for busID)
 
             AZ_CLASS_ALLOCATOR(BehaviorEBusEvent, AZ::SystemAllocator, 0);
 
             BehaviorEBusEvent(FunctionPointer functionPointer, BehaviorContext* context);
+            BehaviorEBusEvent(FunctionPointerConst functionPointer, BehaviorContext* context);
+            ~BehaviorEBusEvent() override;
 
             template<bool IsBusId>
             inline AZStd::enable_if_t<IsBusId> SetBusIdType();
@@ -422,18 +536,28 @@ namespace AZ
             bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
             bool HasResult() const override;
             bool IsMember() const override;
+            bool HasBusId() const override;
+
+            const BehaviorParameter* GetThisPtrArgument() const override;
+            const BehaviorParameter* GetBusIdArgument() const override;
 
             size_t GetNumArguments() const override;
-            size_t GetNumArgumentNames() const override;
+            size_t GetMinNumberOfArguments() const override;
+
             const BehaviorParameter* GetArgument(size_t index) const override;
             const AZStd::string* GetArgumentName(size_t index) const override;
             void SetArgumentName(size_t index, const AZStd::string& name) override;
+            const AZStd::string* GetArgumentToolTip(size_t index) const override;
+            void SetArgumentToolTip(size_t index, const AZStd::string& name) override;
+            void SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue) override;
+            BehaviorDefaultValue* GetDefaultValue(size_t index) const override;
             const BehaviorParameter* GetResult() const override;
 
-            FunctionPointer m_functionPtr;
-            BehaviorParameter m_parameters[sizeof...(Args) + s_startNamedArgumentIndex];
-            AZStd::string m_argumentNames[sizeof...(Args) + s_startNamedArgumentIndex];
+            void OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits) override;
 
+            FunctionPointer m_functionPtr;
+            BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
+            AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
 
         template<class F>
@@ -477,32 +601,33 @@ namespace AZ
             template<class LastValue>
             inline void SetValues(LastValue&& value)
             {
-                m_values[sizeof...(Values)-1].StoreInTempData(AZStd::forward<LastValue>(value));
+                m_values[sizeof...(Values)-1] = aznew BehaviorDefaultValue(AZStd::forward<LastValue>(value));
             }
 
             template<class CurrentValue, class... RestValues>
             inline void SetValues(CurrentValue&& value, RestValues&&... values)
             {
-                m_values[sizeof...(Values)-sizeof...(RestValues)-1].StoreInTempData(AZStd::forward<CurrentValue>(value));
+                m_values[sizeof...(Values)-sizeof...(RestValues)-1] = aznew BehaviorDefaultValue(AZStd::forward<CurrentValue>(value));
                 SetValues(AZStd::forward<RestValues>(values)...);
             };
 
             BehaviorValuesSpecialization(Values&&... values)
             {
-                SetValues(values...);
+                SetValues(AZStd::forward<Values>(values)...);
             }
 
             size_t GetNumValues() const override
             {
                 return sizeof...(Values);
             }
-            const BehaviorValueParameter& GetValue(size_t i) const override
+
+            BehaviorDefaultValue* GetDefaultValue(size_t i) const override
             {
                 AZ_Assert(i < sizeof...(Values), "Invalid value index!");
                 return m_values[i];
             }
 
-            BehaviorValueParameter m_values[sizeof...(Values)];
+            BehaviorDefaultValue* m_values[sizeof...(Values)];
         };
 
         template<class Owner>
@@ -549,6 +674,17 @@ namespace AZ
         };
     } // namespace Internal
 
+      /**
+      * Create a default value to be stored with the parameter metadata. Default value are stored by value
+      * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
+      * can easily change that if it became a problem.
+      */
+    template<class Value>
+    inline BehaviorDefaultValue* BehaviorMakeDefaultValue(Value&& defaultValue)
+    {
+        return aznew BehaviorDefaultValue(AZStd::forward<Value>(defaultValue));
+    }
+
     /**
      * Create a container of default values to be used with methods. Default values are stored by value
      * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
@@ -591,12 +727,14 @@ namespace AZ
             template<T C::* Member>
             static T& Get(C* thisPtr)
             {
+                AZ_Assert(thisPtr, "null thisPtr in BehaviorValuePropertyHelper::Get, clients must check for must check for TR_THIS_PTR trait and a valid value address before member functions");
                 return thisPtr->*Member;
             }
 
             template<T C::* Member>
             static void Set(C* thisPtr, const T& v)
             {
+                AZ_Assert(thisPtr, "null thisPtr in BehaviorValuePropertyHelper::Set, clients must check for TR_THIS_PTR trait and a valid value address before member functions");
                 thisPtr->*Member = v;
             }
         };
@@ -627,6 +765,9 @@ namespace AZ
         // Create the object with default constructor if possible otherwise returns an invalid object
         BehaviorObject Create() const;
 
+        // Create the object with default constructor in the provided memory if possible otherwise returns an invalid object
+        BehaviorObject Create(void* address) const;
+
         // TODO: Should we do that or just ask users to Allocate and invoke the constructor manually ?
         //template<class... Args>
         //BehaviorObject Create();
@@ -653,10 +794,8 @@ namespace AZ
         AZStd::string m_name;
         AZStd::vector<AZ::Uuid> m_baseClasses;  
         AZStd::unordered_map<AZStd::string, BehaviorMethod*> m_methods;
-        AZStd::list<BehaviorMethod*> m_attributeMethods;
         AZStd::unordered_map<AZStd::string, BehaviorProperty*> m_properties;
         AttributeArray m_attributes;
-        AZStd::unordered_set<OnDemandReflectionFunction> m_onDemandReflection; /// Store the on demand reflect function so we can un-reflect when needed.
         AZStd::unordered_set<AZStd::string> m_requestBuses;
         AZStd::unordered_set<AZStd::string> m_notificationBuses;
         AZ::Uuid m_typeId;
@@ -680,13 +819,14 @@ namespace AZ
 
     /**
      * Property representation, a property has getter and setter. A read only property will have a "nullptr" for a setter.
-     * You can use lamdas, global of member function. If you want to just expose a variable (not write the function and handle changes)
+     * You can use lambdas, global of member function. If you want to just expose a variable (not write the function and handle changes)
      * you can use \ref BehaviorValueProperty macros (or BehaviorValueGetter/Setter to control read/write functionality)
      * Member constants are a property too, use \ref BehaviorConstant for it. Everything is either a property or a method, the main reason 
      * why we "push" people to use functions is that in most cases when we manipulate an object, you will need to do more than just set a value
      * to a new value.
      */
     class BehaviorProperty
+        : public OnDemandReflectionOwner
     {
         template<class Getter>
         bool SetGetter(Getter, BehaviorClass* /*currentClass*/, BehaviorContext* context, const AZStd::true_type& /* is AZStd::is_same<Getter,nullptr_t>::type() */);
@@ -703,9 +843,8 @@ namespace AZ
     public:
         AZ_CLASS_ALLOCATOR(BehaviorProperty, AZ::SystemAllocator, 0);
 
-        BehaviorProperty();
-        virtual ~BehaviorProperty();
-
+        BehaviorProperty(BehaviorContext* context);
+        ~BehaviorProperty() override;
 
         template<class Getter, class Setter>
         bool Set(Getter getter, Setter setter, BehaviorClass* currentClass, BehaviorContext* context);
@@ -745,6 +884,7 @@ namespace AZ
         BehaviorMethod* m_event = nullptr;
         BehaviorMethod* m_queueBroadcast = nullptr;
         BehaviorMethod* m_queueEvent = nullptr;
+        AZStd::string m_deprecatedName;
         AttributeArray m_attributes;
     };
 
@@ -777,12 +917,13 @@ namespace AZ
         BehaviorMethod* m_destroyHandler;
 
         AZStd::string m_name;
+        AZStd::string m_deprecatedName;
+        AZStd::string m_toolTip;
         BehaviorMethod* m_queueFunction;
         BehaviorParameter m_idParam; /// Invalid if bus doesn't have ID (you can check the typeId for invalid)
         BehaviorMethod* m_getCurrentId; ///< Method that returns current ID of the message, null if this EBus has not ID.
         AZStd::unordered_map<AZStd::string, BehaviorEBusEventSender> m_events;
         AZStd::unordered_map<AZStd::string, VirtualProperty> m_virtualProperties;
-        AZStd::unordered_set<OnDemandReflectionFunction> m_onDemandReflection; /// Store the on demand reflect function so we can un-reflect when needed.
         AttributeArray m_attributes;
     };
 
@@ -821,6 +962,8 @@ namespace AZ
             bool HasResult() const;
 
             AZStd::vector<BehaviorParameter> m_parameters; // result, userdata, arguments...
+            AZStd::vector<BehaviorParameterMetadata> m_metadataParameters; //< Custom Metadata for the parameter. Contains Names and Tooltips for each parameter.
+                                                           // Not consolidated with the above vector, because existing internal functions expect BehaviorParameters to be laid out contiguously
         };
 
         typedef AZStd::vector<BusForwarderEvent> EventArray;
@@ -859,6 +1002,9 @@ namespace AZ
     protected:
         template<class Event>
         void SetEvent(Event e, const char* name);
+
+        template<class Event>
+        void SetEvent(Event e, AZStd::string_view name, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Event>::num_args>& args);
 
         template<class... Args>
         void Call(int index, Args&&... args);
@@ -1082,77 +1228,88 @@ namespace AZ
         AZ_CLASS_ALLOCATOR(BehaviorContext, SystemAllocator, 0);
         AZ_RTTI(BehaviorContext, "{ED75FE05-9196-4F69-A3E5-1BDF5FF034CF}", ReflectContext);
 
-        struct GlobalMethodInfo : public Internal::GenericAttributes<GlobalMethodInfo>
+        struct GlobalMethodBuilder : public Internal::GenericAttributes<GlobalMethodBuilder>
         {
-            typedef Internal::GenericAttributes<GlobalMethodInfo> Base;
-            GlobalMethodInfo(BehaviorContext* context, const char* methodName, BehaviorMethod* method);
-            ~GlobalMethodInfo();
-            GlobalMethodInfo* operator->();
+            typedef Internal::GenericAttributes<GlobalMethodBuilder> Base;
+            GlobalMethodBuilder(BehaviorContext* context, const char* methodName, BehaviorMethod* method);
+            ~GlobalMethodBuilder();
+            GlobalMethodBuilder* operator->();
 
             const char* m_name;
             BehaviorMethod* m_method;
         };
          
-        struct GlobalPropertyInfo : public Internal::GenericAttributes<GlobalPropertyInfo>
+        struct GlobalPropertyBuilder : public Internal::GenericAttributes<GlobalPropertyBuilder>
         {
-            typedef Internal::GenericAttributes<GlobalPropertyInfo> Base;
+            typedef Internal::GenericAttributes<GlobalPropertyBuilder> Base;
 
-            GlobalPropertyInfo(BehaviorContext* context, BehaviorProperty* prop);
-            ~GlobalPropertyInfo();
-            GlobalPropertyInfo* operator->();
+            GlobalPropertyBuilder(BehaviorContext* context, BehaviorProperty* prop);
+            ~GlobalPropertyBuilder();
+            GlobalPropertyBuilder* operator->();
 
             BehaviorProperty* m_prop;
         };
 
         /// Internal structure to maintain class information while we are describing a class.
         template<class C>
-        struct ClassReflection : public Internal::GenericAttributes<ClassReflection<C>>
+        struct ClassBuilder : public Internal::GenericAttributes<ClassBuilder<C>>
         {
-            typedef Internal::GenericAttributes<ClassReflection<C>> Base;
+            typedef Internal::GenericAttributes<ClassBuilder<C>> Base;
 
             //////////////////////////////////////////////////////////////////////////
             /// Internal implementation
-            ClassReflection(BehaviorContext* context, BehaviorClass* behaviorClass);
-            ~ClassReflection();
-            ClassReflection* operator->();
+            ClassBuilder(BehaviorContext* context, BehaviorClass* behaviorClass);
+            ~ClassBuilder();
+            ClassBuilder* operator->();
           
             /**
             * Sets custom allocator for a class, this function will error if this not inside a class.
             * This is only for very specific cases when you want to override AZ_CLASS_ALLOCATOR or you are dealing with 3rd party classes, otherwise
             * you should use AZ_CLASS_ALLOCATOR to control which allocator the class uses.
             */
-            ClassReflection* Allocator(BehaviorClass::AllocateType allocate, BehaviorClass::DeallocateType deallocate);
+            ClassBuilder* Allocator(BehaviorClass::AllocateType allocate, BehaviorClass::DeallocateType deallocate);
 
             /// Attaches different constructor signatures to the class.
             template<class... Params>
-            ClassReflection* Constructor();
+            ClassBuilder* Constructor();
 
             /// When your class is a wrapper, like smart pointers, you should use this to describe how to unwrap the class.
             template<class WrappedType>
-            ClassReflection* Wrapping(BehaviorClassUnwrapperFunction unwrapper, void* userData);
+            ClassBuilder* Wrapping(BehaviorClassUnwrapperFunction unwrapper, void* userData);
 
             /// Provide a function to unwrap this class (use an underlaying class)
             template<class WrappedType, class MemberFunction>
-            ClassReflection* WrappingMember(MemberFunction memberFunction);
+            ClassBuilder* WrappingMember(MemberFunction memberFunction);
 
             /// Sets userdata to a class.
-            ClassReflection* UserData(void *userData);
+            ClassBuilder* UserData(void *userData);
+
+            /// Setup methods
+            ///< \deprecated Use "Method(const char* name, Function f, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr)" instead
+            ///< This method does not support passing in argument names and tooltips nor does it support overriding specific parameter Behavior traits
+            template<class Function>
+            ClassBuilder* Method(const char* name, Function, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+
+            ///< \deprecated Use "Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr)" instead
+            ///< This method does not support passing in argument names and tooltips nor does it support overriding specific parameter Behavior traits
+            template<class Function>
+            ClassBuilder* Method(const char* name, Function f, const char* deprecatedName, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
 
             template<class Function>
-            ClassReflection* Method(const char* name, Function, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+            ClassBuilder* Method(const char* name, Function f, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr);
 
-            template<class Function, class = AZStd::enable_if_t<AZStd::function_traits<Function>::num_args != 0>>
-            ClassReflection* Method(const char* name, Function, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args>, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+            template<class Function>
+            ClassBuilder* Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr);
 
             template<class Getter, class Setter>
-            ClassReflection* Property(const char* name, Getter getter, Setter setter);
+            ClassBuilder* Property(const char* name, Getter getter, Setter setter);
 
             /// All enums are treated as ints
             template<int Value>
-            ClassReflection* Enum(const char* name);
+            ClassBuilder* Enum(const char* name);
 
             template<class Getter>
-            ClassReflection* Constant(const char* name, Getter getter);
+            ClassBuilder* Constant(const char* name, Getter getter);
 
             /**
              * You can describe buses that this class uses to communicate. Those buses will be used by tools when 
@@ -1162,8 +1319,8 @@ namespace AZ
              * the pattern of Request and Notification buses.
              * {@
              */
-            ClassReflection* RequestBus(const char* busName);
-            ClassReflection* NotificationBus(const char* busName);
+            ClassBuilder* RequestBus(const char* busName);
+            ClassBuilder* NotificationBus(const char* busName);
             // @}
 
 
@@ -1172,23 +1329,26 @@ namespace AZ
 
         /// Internal structure to maintain EBus information while describing it.
         template<typename Bus>
-        struct EBusReflection : public Internal::GenericAttributes<EBusReflection<Bus>>
+        struct EBusBuilder : public Internal::GenericAttributes<EBusBuilder<Bus>>
         {
-            typedef Internal::GenericAttributes<EBusReflection<Bus>> Base;
+            typedef Internal::GenericAttributes<EBusBuilder<Bus>> Base;
 
-            EBusReflection(BehaviorContext* context, BehaviorEBus* behaviorEBus);
-            ~EBusReflection();
-            EBusReflection* operator->();
+            EBusBuilder(BehaviorContext* context, BehaviorEBus* behaviorEBus);
+            ~EBusBuilder();
+            EBusBuilder* operator->();
 
             /**
             * Reflects an EBus event, valid only when used with in the context of an EBus reflection.
             * We will automatically add all possible variations (Broadcast,Event,QueueBroadcast and QueueEvent)
             */
-            template<class Function, class = AZStd::enable_if_t<AZStd::function_traits<Function>::num_args != 0>>
-            EBusReflection* Event(const char* name, Function, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args>);
+            template<class Function>
+            EBusBuilder* Event(const char* name, Function f, const char* deprecatedName = nullptr);
 
             template<class Function>
-            EBusReflection* Event(const char* name, Function);
+            EBusBuilder* Event(const char* name, Function f, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args);
+
+            template<class Function>
+            EBusBuilder* Event(const char* name, Function f, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args);
 
             /**
             * Every \ref EBus has two components, sending and receiving. Sending is reflected via \ref BehaviorContext::Event calls and Handler/Received
@@ -1200,13 +1360,13 @@ namespace AZ
             * Handler()
             */
             template<typename HandlerCreator, typename HandlerDestructor >
-            EBusReflection* Handler(HandlerCreator creator, HandlerDestructor destructor);
+            EBusBuilder* Handler(HandlerCreator creator, HandlerDestructor destructor);
 
             /** Set the Handler/Receiver for ebus evens that will be forwarded to BehaviorFunctions. This is a helper implementation where aznew/delete
             * is ready to called on the handler.
             */
             template<class H>
-            EBusReflection* Handler();
+            EBusBuilder* Handler();
 
             /**
              * With request buses (please refer to component communication patterns documentation) we ofter have EBus events
@@ -1217,22 +1377,43 @@ namespace AZ
              * \note Make sure you call this function after you have reflected the getter and setter events as it will report an error
              * if we can't find the function
              */
-            EBusReflection* VirtualProperty(const char* name, const char* getterEvent, const char* setterEvent);
+            EBusBuilder* VirtualProperty(const char* name, const char* getterEvent, const char* setterEvent);
 
             BehaviorEBus* m_ebus;
         };
 
+        /// @cond EXCLUDE_DOCS
+        using GlobalMethodInfo = GlobalMethodBuilder; ///< @deprecated Use BehaviorContext::GlobalMethodBuilder
+        using GlobalPropertyInfo = GlobalPropertyBuilder; ///< @deprecated Use BehaviorContext::GlobalPropertyBuilder
+
+        template<class C>
+        using ClassReflection = ClassBuilder<C>; ///< @deprecated Use BehaviorContext::ClassBuilder
+
+        template<typename Bus>
+        using EBusReflection = EBusBuilder<Bus>; ///< @deprecated Use BehaviorContext::EBusBuilder
+        /// @endcond
+
          BehaviorContext();
         ~BehaviorContext();
      
+        ///< \deprecated Use "Method(const char*, Function, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>&, const char*)" instead
+        ///< This method does not support passing in argument names and tooltips nor does it support overriding specific parameter Behavior traits
         template<class Function>
-        GlobalMethodInfo Method(const char* name, Function f, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+        GlobalMethodBuilder Method(const char* name, Function f, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
 
-        template<class Function, class = AZStd::enable_if_t<AZStd::function_traits<Function>::num_args != 0>>
-        GlobalMethodInfo Method(const char* name, Function f, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args>, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+        ///< \deprecated Use "Method(const char*, Function, const char*, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>&, const char*)" instead
+        ///< This method does not support passing in argument names and tooltips nor does it support overriding specific parameter Behavior traits
+        template<class Function>
+        GlobalMethodBuilder Method(const char* name, Function f, const char* deprecatedName, BehaviorValues* defaultValues = nullptr, const char* dbgDesc = nullptr);
+        
+        template<class Function>
+        GlobalMethodBuilder Method(const char* name, Function f, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr);
+
+        template<class Function>
+        GlobalMethodBuilder Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr);
 
         template<class Getter, class Setter>
-        GlobalPropertyInfo Property(const char* name, Getter getter, Setter setter);
+        GlobalPropertyBuilder Property(const char* name, Getter getter, Setter setter);
 
         /// All enums are treated as ints
         template<int Value>
@@ -1242,24 +1423,20 @@ namespace AZ
         BehaviorContext* Constant(const char* name, Getter getter);
 
         template<class T>
-        ClassReflection<T> Class(const char* name = nullptr);
+        ClassBuilder<T> Class(const char* name = nullptr);
 
         template<class T>
-        EBusReflection<T> EBus(const char* name);
+        EBusBuilder<T> EBus(const char* name, const char *deprecatedName = nullptr, const char *toolTip = nullptr);
 
         // TODO: This is only for searching by string, do we even need that?
-        //ClassReflection< OpenNamespace(const char* name);
-        //ClassReflection<T> CloneNamespace();
+        //ClassBuilder< OpenNamespace(const char* name);
+        //ClassBuilder<T> CloneNamespace();
 
         AZStd::unordered_map<AZStd::string, BehaviorMethod*> m_methods; // TODO: make it a set and use the name inside method
-        AZStd::list<BehaviorMethod*> m_attributeMethods; // Methods that we generate for attribute generic calling
         AZStd::unordered_map<AZStd::string, BehaviorProperty*> m_properties; // TODO: make it a set and use the name inside property
         AZStd::unordered_map<AZStd::string, BehaviorClass*> m_classes; // TODO: make it a set and use the name inside class
         AZStd::unordered_map<AZ::Uuid, BehaviorClass*> m_typeToClassMap; // TODO: make it a set and use the UUID inside the class
         AZStd::unordered_map<AZStd::string, BehaviorEBus*> m_ebuses; // TODO: make it a set and use the name inside EBus
-        AZStd::unordered_map<AZ::Uuid,OnDemandReflectionFunction> m_onDemandReflection; /// Store the on demand reflect function so we can un-reflect when needed.
-
-        AZStd::unordered_map<AZ::Uuid, OnDemandReflectionFunction> m_toProcessOnDemandReflection;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -1275,6 +1452,10 @@ namespace AZ
         }
 
         AZ::BehaviorClass* GetClass(BehaviorContext* behaviorContext, const AZ::Uuid& id);
+        const BehaviorClass* GetClass(const AZStd::string& classNameString);
+        const BehaviorClass* GetClass(AZ::Uuid typeID);
+        AZ::Uuid GetClassType(const AZStd::string& classNameString);
+        bool IsStringParameter(const BehaviorParameter& parameter);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1322,6 +1503,65 @@ namespace AZ
     _Handler(){\
         m_events.resize(FN_MAX);\
         AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_REG_EVENT, AZ_EBUS_SEQ(__VA_ARGS__))\
+    }\
+    bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
+        return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
+    }
+
+ /**
+ * Provides the same functionality of the AZ_EBUS_BEHAVIOR_BINDER macro above with the additional ability to specifiy the names and a tooltips of handler methods
+ * after listing the handler method in the macro.
+ * An example Usage is 
+ * class MyEBusBehaviorHandler : public MyEBus::Handler, public AZ::BehaviorEBusHandler
+ * {
+ * public:
+ *      AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(MyEBusBehaviorHandler, "{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXXXX}",Allocator, OnEvent1, ({#OnEvent1 first parameter name(int), #OnEvent1 first parameter tooltip(int)}),
+ *            OnEvent2, ({#OnEvent2 first parameter name(float), #OnEvent2 first parameter tooltip(float)}, {#OnEvent2 second parameter name(bool), {#OnEvent2 second parameter tooltip(bool)}),
+ *            OnEvent3, ());
+ *      // The reason for needing parenthesis around the parameter name and tooltip object(AZ::BehaviorParameterOverrides) is to prevent the macro from parsing the comma in the intializer as seperate parameters
+ *      // When using this macro, the BehaviorParameterOverrides objects must be placed after every listing a function as a handler. Furthermore the number of BehaviorParameterOverrides objects for each function must match the number of parameters 
+ *      // to that function
+ *      // Ex. for a function called HugeEvent with a signature of void HugeEvent(int, float, double, char, short), two arguments must be supplied to the macro.
+ *      // 1. HugeEvent
+ *      // 2. ({<BehaviorParameterOverrides>}, {<BehaviorParameterOverrides>}, {<BehaviorParameterOverrides>}, {<BehaviorParameterOverrides>}, {<BehaviorParameterOverrides>}) - Note Parenthesis here. Also note that because HugeEvent takes 5 arguments, 5 pairs of name and tooltips are required
+ *      // If a function accepts no arguments such as void NoArgEvent(), the two arguments are
+ *      // 1. NoArgEvent
+ *      // 2. () - Parenthesis are required for the empty argument to parsed by the macro
+ *
+ *
+ *      int OnEvent1(int data) override
+ *      {
+ *          // Handle event and return
+ *      }
+ *      int OnEvent2(float, bool) override
+ *      {
+ *          // Handle event and return
+ *      }
+ *      void OnEvent3() override
+ *      {
+ *          // Handle event and return
+ *      }
+ *      // handle the other events here
+ * };
+ */
+#define AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(_Handler,_Uuid,_Allocator,...)\
+    AZ_CLASS_ALLOCATOR(_Handler,_Allocator,0)\
+    AZ_RTTI(_Handler,_Uuid,AZ::BehaviorEBusHandler)\
+    typedef _Handler ThisType;\
+    enum {\
+        AZ_BEHAVIOR_EBUS_MACRO_CALLER(AZ_BEHAVIOR_EBUS_FUNC_ENUM, __VA_ARGS__)\
+        FN_MAX\
+    };\
+    int GetFunctionIndex(const char* functionName) const override {\
+        AZ_BEHAVIOR_EBUS_MACRO_CALLER(AZ_BEHAVIOR_EBUS_FUNC_INDEX, __VA_ARGS__)\
+        return -1;\
+    }\
+    void Disconnect() override {\
+        BusDisconnect();\
+    }\
+    _Handler(){\
+        m_events.resize(FN_MAX);\
+        AZ_BEHAVIOR_EBUS_MACRO_CALLER(AZ_BEHAVIOR_EBUS_REG_EVENT, __VA_ARGS__)\
     }\
     bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
         return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
@@ -1379,6 +1619,40 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_REG_EVENT(name)             AZ_BEHAVIOR_EBUS_REG_EVENT_I(name);
 #define AZ_BEHAVIOR_EBUS_REG_EVENT_I(name)           SetEvent(&ThisType::name,#name);
 
+
+#define AZ_BEHAVIOR_EBUS_FUNC_ENUM_WITH_DOC(name, args)             AZ_BEHAVIOR_EBUS_FUNC_ENUM_I(name),
+
+#define AZ_BEHAVIOR_EBUS_FUNC_INDEX_WITH_DOC(name, args)             AZ_BEHAVIOR_EBUS_FUNC_INDEX_I(name);
+
+#define AZ_BEHAVIOR_EBUS_REG_EVENT_WITH_DOC(name, args)             AZ_BEHAVIOR_EBUS_REG_EVENT_WITH_DOC_1(name, args)
+#define AZ_BEHAVIOR_EBUS_REG_EVENT_WITH_DOC_1(name, args)           SetEvent(&ThisType::name, #name, {{AZ_BEHAVIOR_REMOVE_PARENTHESIS(args)}});
+
+// Macro Helpers
+#define AZ_BEHAVIOR_EXPAND(...)  __VA_ARGS__ 
+#define AZ_BEHAVIOR_EXTRACT(...) AZ_INTERNAL_EXTRACT __VA_ARGS__
+#define AZ_BEHAVIOR_NOTHING_AZ_INTERNAL_EXTRACT
+#define AZ_BEHAVIOR_PASTE(_x, ...)  _x ## __VA_ARGS__
+#define AZ_BEHAVIOR_EVALUATING_PASTE(_x, ...) AZ_INTERNAL_PASTE(_x, __VA_ARGS__)
+#define AZ_BEHAVIOR_REMOVE_PARENTHESIS(_x) AZ_INTERNAL_EVALUATING_PASTE(AZ_INTERNAL_NOTHING_, AZ_INTERNAL_EXTRACT _x)
+
+#define AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) macro## _WITH_DOC(name, args)
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(...) AZ_SEQ_JOIN(AZ_BEHAVIOR_EBUS_MACRO_CALLER_, AZ_VA_NUM_ARGS(__VA_ARGS__))
+
+// Supports Handler functions with up to 10 parameters
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_0(macro)
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_2(macro, name, args)       AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args)
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_4(macro, name, args, ...)  AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_6(macro, name, args, ...)  AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_8(macro, name, args, ...)  AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_10(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_12(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_14(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_16(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_18(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_20(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER(macro, ...) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     // Template implementations
@@ -1417,6 +1691,14 @@ namespace AZ
         m_typeId = Uuid::CreateNull();
         m_azRtti = nullptr;
         m_traits = 0;
+    }
+
+    inline BehaviorValueParameter::BehaviorValueParameter(BehaviorValueParameter&& other)
+        : BehaviorParameter(AZStd::move(other))
+        , m_value(AZStd::move(other.m_value))
+        , m_onAssignedResult(AZStd::move(other.m_onAssignedResult))
+        , m_tempData(AZStd::move(other.m_tempData))
+    {
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1540,7 +1822,7 @@ namespace AZ
             else if (IsValueCopy)
             {
                 // value copy
-                new(param.m_value) Type((Type)result);
+                *reinterpret_cast<Type*>(param.m_value) = result;
                 return true;
             }
             return false;
@@ -1609,12 +1891,21 @@ namespace AZ
             }
             else if (IsValueCopy)
             {
-                new(param.m_value) Type((Type)result);
+                *reinterpret_cast<Type*>(param.m_value) = result;
                 return true;
             }
             return false;
         }
     };
+
+    AZ_FORCE_INLINE BehaviorValueParameter& BehaviorValueParameter::operator=(BehaviorValueParameter&& other)
+    {
+        *static_cast<BehaviorParameter*>(this) = AZStd::move(static_cast<BehaviorParameter&&>(other));
+        m_value = AZStd::move(other.m_value);
+        m_onAssignedResult = AZStd::move(other.m_onAssignedResult);
+        m_tempData = AZStd::move(other.m_tempData);
+        return *this;
+    }
 
     template<typename T>
     AZ_FORCE_INLINE BehaviorValueParameter& BehaviorValueParameter::operator=(T&& result)
@@ -1738,11 +2029,23 @@ namespace AZ
             // check getter to have only return value
             if (m_getter->GetNumArguments() > 0)
             {
-                if (currentClass && m_getter->GetNumArguments() == 1 && m_getter->GetArgument(0)->m_typeId == currentClass->m_typeId)
+                bool isValidSignature = false;
+                if (currentClass && m_getter->GetNumArguments() == 1)
                 {
-                    // it's ok as this is a different way to represent a member function
+                    AZ::TypeId thisPtrType = m_getter->GetArgument(0)->m_typeId;
+                    // Check that the class is either the same as the first argument, or they are convertible
+                    if (currentClass->m_azRtti)
+                    {
+                        isValidSignature = currentClass->m_azRtti->IsTypeOf(thisPtrType);
+                    }
+                    else
+                    {
+                        // No rtti, need to ensure types are the same
+                        isValidSignature = thisPtrType == currentClass->m_typeId;
+                    }
                 }
-                else
+
+                if (!isValidSignature)
                 {
                     AZ_Assert(false, "Getter can't have any argument just return type: %s!", currentClass->m_name.c_str());
                     delete m_getter;
@@ -1796,18 +2099,32 @@ namespace AZ
             // check setter have only 1 argument
             if (m_setter->GetNumArguments() != 1)
             {
-                if (currentClass && m_setter->GetNumArguments() == 2 && m_setter->GetArgument(0)->m_typeId == currentClass->m_typeId)
+                bool isValidSignature = false;
+                if (currentClass && m_setter->GetNumArguments() == 2)
                 {
-                    // it's ok as this is a different way to represent a member function
-                    valueIndex = 1; // since this pointer is at 0
+                    AZ::TypeId thisPtrType = m_setter->GetArgument(0)->m_typeId;
+                    // Check that the class is either the same as the first argument, or they are convertible
+                    if (currentClass->m_azRtti)
+                    {
+                        isValidSignature = currentClass->m_azRtti->IsTypeOf(thisPtrType);
+                    }
+                    else
+                    {
+                        // No rtti, need to ensure types are the same
+                        isValidSignature = thisPtrType == currentClass->m_typeId;
+                    }
                 }
-                else
+
+                if (!isValidSignature)
                 {
                     AZ_Assert(false, "Setter should have 1 argument, data value to be set!");
                     delete m_setter;
                     m_setter = nullptr;
                     return false;
                 }
+
+                // it's ok as this is a different way to represent a member function
+                valueIndex = 1; // since this pointer is at 0
             }
 
             // check getter result type is equal to setter input type
@@ -1847,7 +2164,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::Set(Event e, BehaviorContext* context)
     {
-        m_broadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_BROADCAST, typename AZStd::remove_pointer<Event>::type>(e, context);
+        m_broadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         SetEvent<EBus>(e, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
         SetQueueBroadcast<EBus>(e, context, typename AZStd::is_same<typename EBus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
         SetQueueEvent<EBus>(e, context, typename AZStd::conditional<AZStd::is_same<typename EBus::BusIdType, NullBusId>::value || AZStd::is_same<typename EBus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value, AZStd::true_type, AZStd::false_type>::type());
@@ -1940,6 +2257,26 @@ namespace AZ
             m_events[i].m_name = name;
             m_events[i].m_function = nullptr;
             Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
+            m_events[i].m_metadataParameters.resize(m_events[i].m_parameters.size());
+        }
+    }
+
+    template<class Event>
+    void BehaviorEBusHandler::SetEvent(Event e, AZStd::string_view name, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Event>::num_args>& args)
+    {
+        (void)e;
+        int i = GetFunctionIndex(name.data());
+        if (i != -1)
+        {
+            m_events.resize(i + 1);
+            m_events[i].m_name = name.data();
+            m_events[i].m_function = nullptr;
+            Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
+            m_events[i].m_metadataParameters.resize(m_events[i].m_parameters.size());
+            for (size_t argIndex = 0; argIndex < args.size(); ++argIndex)
+            {
+                m_events[i].m_metadataParameters[AZ::eBehaviorBusForwarderEventIndices::ParameterFirst] = { args[argIndex].m_name, args[argIndex].m_toolTip };
+            }
         }
     }
 
@@ -1997,7 +2334,7 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class T>
-    BehaviorContext::ClassReflection<T> BehaviorContext::Class(const char* name)
+    BehaviorContext::ClassBuilder<T> BehaviorContext::Class(const char* name)
     {
         if (name == nullptr)
         {
@@ -2023,7 +2360,7 @@ namespace AZ
                 delete classTypeIt->second;
                 m_typeToClassMap.erase(classTypeIt);
             }
-            return ClassReflection<T>(this, static_cast<BehaviorClass*>(nullptr));
+            return ClassBuilder<T>(this, static_cast<BehaviorClass*>(nullptr));
         }
         else
         {
@@ -2034,14 +2371,14 @@ namespace AZ
                 classTypeIt->first.ToString(uuidName, AZ::Uuid::MaxStringBuffer);
                 
                 AZ_Error("Reflection", false, "Class '%s' is already registered using Uuid: %s!", name, uuidName);
-                return ClassReflection<T>(this, static_cast<BehaviorClass*>(nullptr));
+                return ClassBuilder<T>(this, static_cast<BehaviorClass*>(nullptr));
             }
 
             // TODO: make it a set and use the name inside the class
             if (m_classes.find(name) != m_classes.end())
             {
                 AZ_Error("Reflection", false, "A class with name '%s' is already registered!", name);
-                return ClassReflection<T>(this, static_cast<BehaviorClass*>(nullptr));
+                return ClassBuilder<T>(this, static_cast<BehaviorClass*>(nullptr));
             }
 
             BehaviorClass* behaviorClass = aznew BehaviorClass();
@@ -2074,14 +2411,14 @@ namespace AZ
             // Switch to Set (we store the name in the class)
             m_classes.insert(AZStd::make_pair(behaviorClass->m_name, behaviorClass));
             m_typeToClassMap.insert(AZStd::make_pair(behaviorClass->m_typeId, behaviorClass));
-            return ClassReflection<T>(this, behaviorClass);
+            return ClassBuilder<T>(this, behaviorClass);
         }
     };
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>::ClassReflection(BehaviorContext* context, BehaviorClass* behaviorClass)
-        : Internal::GenericAttributes<ClassReflection<C>>(context)
+    BehaviorContext::ClassBuilder<C>::ClassBuilder(BehaviorContext* context, BehaviorClass* behaviorClass)
+        : Internal::GenericAttributes<ClassBuilder<C>>(context)
         , m_class(behaviorClass)
     {
         Base::m_currentAttributes = &behaviorClass->m_attributes;
@@ -2089,14 +2426,10 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>::~ClassReflection()
+    BehaviorContext::ClassBuilder<C>::~ClassBuilder()
     {
         // process all on demand queued reflections
-        decltype (Base::m_context->m_toProcessOnDemandReflection) toProcess(AZStd::move(Base::m_context->m_toProcessOnDemandReflection));
-        for (auto toReflectIt : toProcess)
-        {
-            toReflectIt.second(Base::m_context);
-        }
+        Base::m_context->ExecuteQueuedOnDemandReflections();
 
         if (!Base::m_context->IsRemovingReflection())
         {
@@ -2106,7 +2439,7 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::operator->()
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::operator->()
     {
         return this;
     }
@@ -2114,9 +2447,12 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<class... Params>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Constructor()
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Constructor()
     {
+        if (!Base::m_context->IsRemovingReflection())
+        {
         AZ_Error("BehaviorContext", m_class, "You can set constructors only on valid classes!");
+        }
         if (m_class)
         {
             BehaviorMethod* constructor = aznew Internal::BehaviorMethodImpl<void(C* address, Params...)>(&Construct<C, Params...>, Base::m_context, AZStd::string::format("%s::Constructor", m_class->m_name.c_str()));
@@ -2128,9 +2464,12 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<class WrappedType>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Wrapping(BehaviorClassUnwrapperFunction unwrapper, void* userData)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Wrapping(BehaviorClassUnwrapperFunction unwrapper, void* userData)
     {
+        if (!Base::m_context->IsRemovingReflection())
+        {
         AZ_Error("BehaviorContext", m_class, "You can wrap only valid classes!");
+        }
         if (m_class)
         {
             m_class->m_wrappedTypeId = AzTypeInfo<WrappedType>::Uuid();
@@ -2143,7 +2482,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<class WrappedType, class MemberFunction>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::WrappingMember(MemberFunction memberFunction)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::WrappingMember(MemberFunction memberFunction)
     {
         union
         {
@@ -2154,24 +2493,43 @@ namespace AZ
         return Wrapping<WrappedType>(&WrappedClassCaller<C, WrappedType, MemberFunction>::Unwrap, u.userData);
     }
 
-    template<class Function, class>
-    BehaviorContext::GlobalMethodInfo BehaviorContext::Method(const char* name, Function f, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args> args, BehaviorValues* defaultValues, const char* dbgDesc)
+    template<class Function>
+    BehaviorContext::GlobalMethodBuilder BehaviorContext::Method(const char* name, Function f, BehaviorValues* defaultValues, const char* dbgDesc)
     {
-        BehaviorContext::GlobalMethodInfo info = Method(name, f, defaultValues, dbgDesc);
+        return Method(name, f, nullptr, defaultValues, dbgDesc);
+    }
 
-        if (!args.empty())
+
+    //////////////////////////////////////////////////////////////////////////
+    ///< \deprecated Use "Method(const char*, Function, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>&, const char*)" instead
+    template<class Function>
+    BehaviorContext::GlobalMethodBuilder BehaviorContext::Method(const char* name, Function f, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args> & args, const char* dbgDesc)
+    {
+        return Method(name, f, nullptr, args, dbgDesc);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    ///< \deprecated Use "Method(const char*, Function, const char*, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>&, const char*)" instead
+    template<class Function>
+    BehaviorContext::GlobalMethodBuilder BehaviorContext::Method(const char* name, Function f, const char* deprecatedName, BehaviorValues* defaultValues, const char* dbgDesc)
+    {
+        AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args> parameterOverrides;
+        if (defaultValues)
         {
-            for (size_t i = 0; i < args.size(); ++i)
+            AZ_Assert(defaultValues->GetNumValues() <= parameterOverrides.size(), "You can't have more default values than the number of function arguments");
+            // Copy default values to parameter override structure
+            size_t startArgumentIndex = parameterOverrides.size() - defaultValues->GetNumValues();
+            for (size_t i = 0; i < defaultValues->GetNumValues(); ++i)
             {
-                info->m_method->SetArgumentName(i, args[i]);
+                parameterOverrides[startArgumentIndex + i].m_defaultValue = defaultValues->GetDefaultValue(i);
             }
+            delete defaultValues;
         }
-
-        return info;
+        return Method(name, f, deprecatedName, parameterOverrides, dbgDesc);
     }
 
     template<class Function>
-    BehaviorContext::GlobalMethodInfo BehaviorContext::Method(const char* name, Function f, BehaviorValues* defaultValues, const char* dbgDesc)
+    BehaviorContext::GlobalMethodBuilder BehaviorContext::Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc)
     {
         if (IsRemovingReflection())
         {
@@ -2179,29 +2537,46 @@ namespace AZ
             if (globalMethodIt != m_methods.end())
             {
                 BehaviorContextBus::Event(this, &BehaviorContextBus::Events::OnRemoveGlobalMethod, name, globalMethodIt->second);
+                delete globalMethodIt->second;
+                m_methods.erase(globalMethodIt);
             }
-            return GlobalMethodInfo(this, nullptr, nullptr);
+            return GlobalMethodBuilder(this, nullptr, nullptr);
         }
 
         AZ_Assert(!AZStd::is_member_function_pointer<Function>::value, "This is a member %s method declared as global! use script.Class<Type>(Name)->Method()->Value()!\n", name);
         typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
         BehaviorMethod* method = aznew BehaviorMethodType(f, this, name);
         method->m_debugDescription = dbgDesc;
-        method->m_defaultArguments = defaultValues;
-        if (defaultValues)
+
+        /*
+        ** check to see if the deprecated name is used, and ensure its not duplicated.
+        */
+
+        if (deprecatedName != nullptr)
         {
-            AZ_Assert(defaultValues->GetNumValues() <= method->GetNumArguments(), "You can't have more default values than the number of function arguments");
-            // validate all default value types
-            size_t startMethodIndex = method->GetNumArguments() - defaultValues->GetNumValues();
-            for (size_t i = 0; i < defaultValues->GetNumValues(); ++i)
+            auto itr = m_methods.find(deprecatedName);
+            if (itr != m_methods.end())
             {
-                if (defaultValues->GetValue(i).m_typeId != method->GetArgument(startMethodIndex + i)->m_typeId)
+                // now check to make sure that the deprecated name is not being used as a identical deprecated name for another method.
+                bool isDuplicate = false;
+                for (const auto & i : m_methods)
                 {
-                    AZ_Assert(false, "Argument %d default value type, doesn't match! Default value should be the same type! Current type %s!", defaultValues->GetValue(i).m_name);
-                    delete defaultValues;
-                    delete method;
-                    return GlobalMethodInfo(this, nullptr, nullptr);
+                    if (i.second->GetDeprecatedName() == deprecatedName)
+                    {
+                        AZ_Warning("BehaviorContext", false, "Method %s is attempting to use a deprecated name of %s which is already in use for method %s! Deprecated name is ignored!", name, deprecatedName, i.first.c_str());
+                        isDuplicate = true;
+                        break;
+                    }
                 }
+
+                if (!isDuplicate)
+                {
+                    itr->second->SetDeprecatedName(deprecatedName);
+                }
+            }
+            else
+            {
+                AZ_Warning("BehaviorContext", false, "Method %s is attempting to use a deprecated name of %s which is already in use! Deprecated name is ignored!", name, deprecatedName);
             }
         }
 
@@ -2210,36 +2585,96 @@ namespace AZ
         {
             AZ_Error("Reflection", false, "Method '%s' is already registered in the global context!", name);
             delete method;
-            return GlobalMethodInfo(this, nullptr, nullptr);
+            return GlobalMethodBuilder(this, nullptr, nullptr);
         }
 
-        return GlobalMethodInfo(this, name, method);
+        size_t classPtrIndex = method->IsMember() ? 1 : 0;
+        for (size_t i = 0; i < args.size(); ++i)
+        {
+            method->SetArgumentName(i + classPtrIndex, args[i].m_name);
+            method->SetArgumentToolTip(i + classPtrIndex, args[i].m_toolTip);
+            method->SetDefaultValue(i + classPtrIndex, args[i].m_defaultValue);
+            method->OverrideParameterTraits(i + classPtrIndex, args[i].m_addTraits, args[i].m_removeTraits);
+        }
+
+        return GlobalMethodBuilder(this, name, method);
     }
 
     template<class C>
     template<class Function>
-    inline BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Method(const char* name, Function f, BehaviorValues* defaultValues, const char* dbgDesc)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Method(const char* name, Function f, BehaviorValues* defaultValues, const char* dbgDesc)
+    {
+        return Method(name, f, nullptr, defaultValues, dbgDesc);
+    }
+
+    template<class C>
+    template<class Function>
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Method(const char* name, Function f, const char* deprecatedName, BehaviorValues* defaultValues, const char* dbgDesc)
+    {
+        AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args> parameterOverrides;
+        if (defaultValues)
+        {
+            AZ_Assert(defaultValues->GetNumValues() <= parameterOverrides.size(), "You can't have more default values than the number of function arguments");
+            // Copy default values to parameter override structure
+            size_t startArgumentIndex = parameterOverrides.size() - defaultValues->GetNumValues();
+            for (size_t i = 0; i < defaultValues->GetNumValues(); ++i)
+            {
+                parameterOverrides[startArgumentIndex + i].m_defaultValue = defaultValues->GetDefaultValue(i);
+            }
+            delete defaultValues;
+        }
+
+        return Method(name, f, deprecatedName, parameterOverrides, dbgDesc);
+    }
+
+    ///< \deprecated Use "Method(const char* name, Function f, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr)" instead
+    template<class C>
+    template<class Function>
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Method(const char* name, Function f, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc)
+    {
+        return Method(name, f, nullptr, args, dbgDesc);
+    }
+
+    ///< \deprecated Use "Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<ParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc = nullptr)" instead
+    template<class C>
+    template<class Function>
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Method(const char* name, Function f, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args, const char* dbgDesc)
     {
         if (m_class)
         {
             typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
             BehaviorMethod* method = aznew BehaviorMethodType(f, Base::m_context, AZStd::string::format("%s::%s", m_class->m_name.c_str(), name));
             method->m_debugDescription = dbgDesc;
-            method->m_defaultArguments = defaultValues;
-            if (defaultValues)
+
+            /*
+            ** check to see if the deprecated name is used, and ensure its not duplicated.
+            */
+
+            if (deprecatedName != nullptr)
             {
-                AZ_Assert(defaultValues->GetNumValues() <= method->GetNumArguments(), "You can't have more default values than the number of function arguments");
-                // validate all default value types
-                size_t startMethodIndex = method->GetNumArguments() - defaultValues->GetNumValues();
-                for (size_t i = 0; i < defaultValues->GetNumValues(); ++i)
+                auto itr = m_class->m_methods.find(name);
+                if (itr != m_class->m_methods.end())
                 {
-                    if (defaultValues->GetValue(i).m_typeId != method->GetArgument(startMethodIndex + i)->m_typeId)
+                    // now check to make sure that the deprecated name is not being used as a identical deprecated name for another method.
+                    bool isDuplicate = false;
+                    for (const auto & i : m_class->m_methods)
                     {
-                        AZ_Assert(false, "Argument %d default value type, doesn't match! Default value should be the same type! Current type %s!", defaultValues->GetValue(i).m_name);
-                        delete defaultValues;
-                        delete method;
-                        return this;
+                        if (i.second->GetDeprecatedName() == deprecatedName)
+                        {
+                            AZ_Warning("BehaviorContext", false, "Method %s is attempting to use a deprecated name of %s which is already in use for method %s! Deprecated name is ignored!", name, deprecatedName, i.first.c_str());
+                            isDuplicate = true;
+                            break;
+                        }
                     }
+
+                    if (!isDuplicate)
+                    {
+                        itr->second->SetDeprecatedName(deprecatedName);
+                    }
+                }
+                else
+                {
+                    AZ_Warning("BehaviorContext", false, "Method %s does not exist, so the deprecated name is ignored!", name, deprecatedName);
                 }
             }
 
@@ -2253,6 +2688,15 @@ namespace AZ
                 return this;
             }
 
+            size_t classPtrIndex = method->IsMember() ? 1 : 0;
+            for (size_t i = 0; i < args.size(); ++i)
+            {
+                method->SetArgumentName(i + classPtrIndex, args[i].m_name);
+                method->SetArgumentToolTip(i + classPtrIndex, args[i].m_toolTip);
+                method->SetDefaultValue(i + classPtrIndex, args[i].m_defaultValue);
+                method->OverrideParameterTraits(i + classPtrIndex, args[i].m_addTraits, args[i].m_removeTraits);
+            }
+
             // \note we can start returning a context so we can maintain the scope
             Base::m_currentAttributes = &method->m_attributes;
         }
@@ -2260,39 +2704,15 @@ namespace AZ
         return this;
     }
 
-    template<class C>
-    template<class Function, class>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Method(const char* name, Function f, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args> args, BehaviorValues* defaultValues, const char* dbgDesc)
-    {
-        BehaviorContext::ClassReflection<C>* classReflection = Method(name, f, defaultValues, dbgDesc);
-        auto methodIterator = classReflection->m_class->m_methods.find(name);
-        if (methodIterator != classReflection->m_class->m_methods.end())
-        {
-            if (!args.empty())
-            {
-                for (size_t i = 0; i < args.size(); ++i)
-                {
-                    methodIterator->second->SetArgumentName(i, args[i]);
-                }
-            }
-        }
-
-        if (args.empty())
-        {
-            AZ_TracePrintf("BehaviorContext", "Method: %s does not have named attributes\n", name);
-        }
-
-        return classReflection;
-    }
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<class Getter, class Setter>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Property(const char* name, Getter getter, Setter setter)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Property(const char* name, Getter getter, Setter setter)
     {
         if (m_class)
         {
-            BehaviorProperty* prop = aznew BehaviorProperty;
+            BehaviorProperty* prop = aznew BehaviorProperty(Base::m_context);
             prop->m_name = name;
             if (!prop->Set(getter, setter, m_class, Base::m_context))
             {
@@ -2312,7 +2732,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<int Value>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Enum(const char* name)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Enum(const char* name)
     {
         Property(name, []() { return Value; }, nullptr);
         return this;
@@ -2321,7 +2741,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     template<class Getter>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Constant(const char* name, Getter getter)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Constant(const char* name, Getter getter)
     {
         Property(name, getter, nullptr);
         return this;
@@ -2330,30 +2750,30 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::RequestBus(const char* name)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::RequestBus(const char* name)
     {
         if (m_class)
         {
             m_class->m_requestBuses.insert(name);
         }
         return this;
-    };
+    }
 
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::NotificationBus(const char* name)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::NotificationBus(const char* name)
     {
         if (m_class)
         {
             m_class->m_notificationBuses.insert(name);
         }
         return this;
-    };
+    }
 
     //////////////////////////////////////////////////////////////////////////
     template<class C>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::Allocator(BehaviorClass::AllocateType allocate, BehaviorClass::DeallocateType deallocate)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Allocator(BehaviorClass::AllocateType allocate, BehaviorClass::DeallocateType deallocate)
     {
         AZ_Error("BehaviorContext", m_class, "Allocator can be set on valid classes only!");
         if (m_class)
@@ -2365,7 +2785,7 @@ namespace AZ
     }
 
     template<class C>
-    BehaviorContext::ClassReflection<C>* BehaviorContext::ClassReflection<C>::UserData(void *userData)
+    BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::UserData(void *userData)
     {
         AZ_Error("BehaviorContext", m_class, "UserData can be set on valid classes only!");
         if (m_class)
@@ -2375,9 +2795,8 @@ namespace AZ
         return this;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     template<class Getter, class Setter>
-    BehaviorContext::GlobalPropertyInfo BehaviorContext::Property(const char* name, Getter getter, Setter setter)
+    BehaviorContext::GlobalPropertyBuilder BehaviorContext::Property(const char* name, Getter getter, Setter setter)
     {
         if (IsRemovingReflection())
         {
@@ -2385,24 +2804,26 @@ namespace AZ
             if (globalPropIt != m_properties.end())
             {
                 BehaviorContextBus::Event(this, &BehaviorContextBus::Events::OnRemoveGlobalProperty, name, globalPropIt->second);
+                delete globalPropIt->second;
+                m_properties.erase(globalPropIt);
             }
-            return GlobalPropertyInfo(this, nullptr);
+            return GlobalPropertyBuilder(this, nullptr);
         }
 
         AZ_Assert(!AZStd::is_member_function_pointer<Getter>::value, "Getter for %s is a member method! script.Class<Type>(Name)->Property()!\n", name);
         AZ_Assert(!AZStd::is_member_function_pointer<Setter>::value, "Setter for %s is a member method! script.Class<Type>(Name)->Property()!\n", name);
 
-        BehaviorProperty* prop = aznew BehaviorProperty;
+        BehaviorProperty* prop = aznew BehaviorProperty(this);
         prop->m_name = name;
         if (!prop->Set(getter, setter, nullptr, this))
         {
             delete prop;
-            return GlobalPropertyInfo(this, nullptr);
+            return GlobalPropertyBuilder(this, nullptr);
         }
 
         m_properties.insert(AZStd::make_pair(name, prop));
 
-        return GlobalPropertyInfo(this, prop);
+        return GlobalPropertyBuilder(this, prop);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2423,8 +2844,8 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class T>
-    BehaviorContext::EBusReflection<T>::EBusReflection(BehaviorContext* context, BehaviorEBus* ebus)
-        : Internal::GenericAttributes<EBusReflection<T>>(context)
+    BehaviorContext::EBusBuilder<T>::EBusBuilder(BehaviorContext* context, BehaviorEBus* ebus)
+        : Internal::GenericAttributes<EBusBuilder<T>>(context)
         , m_ebus(ebus)
     {
         Base::m_currentAttributes = &ebus->m_attributes;
@@ -2432,14 +2853,10 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class T>
-    BehaviorContext::EBusReflection<T>::~EBusReflection()
+    BehaviorContext::EBusBuilder<T>::~EBusBuilder()
     {
         // process all on demand queued reflections
-        decltype (Base::m_context->m_toProcessOnDemandReflection) toProcess(AZStd::move(Base::m_context->m_toProcessOnDemandReflection));
-        for (auto toReflectIt : toProcess)
-        {
-            toReflectIt.second(Base::m_context);
-        }
+        Base::m_context->ExecuteQueuedOnDemandReflections();
 
         if (!Base::m_context->IsRemovingReflection())
         {
@@ -2449,14 +2866,15 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class T>
-    BehaviorContext::EBusReflection<T>* BehaviorContext::EBusReflection<T>::operator->()
+    BehaviorContext::EBusBuilder<T>* BehaviorContext::EBusBuilder<T>::operator->()
     {
         return this;
     }
 
+   
     //////////////////////////////////////////////////////////////////////////
     template<class T>
-    BehaviorContext::EBusReflection<T> BehaviorContext::EBus(const char* name)
+    BehaviorContext::EBusBuilder<T> BehaviorContext::EBus(const char* name, const char* deprecatedName /*=nullptr*/, const char* toolTip /*=nullptr*/)
     {
         // should we require AzTypeInfo for EBus, technically we should if we want to work around the compiler issue that made us to do it in first place
         if (IsRemovingReflection())
@@ -2465,54 +2883,78 @@ namespace AZ
             if (ebusIt != m_ebuses.end())
             {
                 BehaviorContextBus::Event(this, &BehaviorContextBus::Events::OnRemoveEBus, name, ebusIt->second);
+
+                // Erase the deprecated name as well
+                auto deprecatedIt = m_ebuses.find(ebusIt->second->m_deprecatedName);
+                if (deprecatedIt != m_ebuses.end())
+                {
+                    m_ebuses.erase(deprecatedIt);
+                }
+
                 delete ebusIt->second;
                 m_ebuses.erase(ebusIt);
             }
-            return EBusReflection<T>(this, nullptr);
+
+            return EBusBuilder<T>(this, nullptr);
         }
         else
         {
-            AZ_Error("BehaviorContext", m_ebuses.find(name) == m_ebuses.end(), "You shouldn't reflect an EBus multiple times (%s), subsequent reflections will not be registered!", name)
+            AZ_Error("BehaviorContext", m_ebuses.find(name) == m_ebuses.end(), "You shouldn't reflect an EBus multiple times (%s), subsequent reflections will not be registered!", name);
+
             BehaviorEBus* behaviorEBus = aznew BehaviorEBus();
             behaviorEBus->m_name = name;
+
+            if(toolTip != nullptr)
+            {
+                behaviorEBus->m_toolTip = toolTip;
+            }
+
+            /*
+            ** If we have a deprecated name, lets make sure the its not in use as an existing bus.
+            */
+
+            if (deprecatedName != nullptr)
+            {
+                if(*deprecatedName == '\0')
+                {
+                    AZ_Warning("BehaviorContext", false, "Deprecated name can't be a empty string!", deprecatedName);
+                }
+                else if (m_ebuses.find(deprecatedName) != m_ebuses.end())
+                {
+                    AZ_Warning("BehaviorContext", false, "EBus %s is attempting to use the deprecated name (%s) that is already used! Ignored!", name, deprecatedName);
+                }
+                else
+                {
+                    behaviorEBus->m_deprecatedName = deprecatedName;
+                }
+            }
+
             EBusSetIdFeatures<T>(behaviorEBus);
             behaviorEBus->m_queueFunction = QueueFunctionMethod<T>();
 
             // Switch to Set (we store the name in the class)
             m_ebuses.insert(AZStd::make_pair(behaviorEBus->m_name, behaviorEBus));
-            return EBusReflection<T>(this, behaviorEBus);
+            if (!behaviorEBus->m_deprecatedName.empty())
+            {
+                m_ebuses.insert(AZStd::make_pair(behaviorEBus->m_deprecatedName, behaviorEBus));
+            }
+
+            return EBusBuilder<T>(this, behaviorEBus);
         }
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class Bus>
-    template<class Function, class>
-    BehaviorContext::EBusReflection<Bus>* BehaviorContext::EBusReflection<Bus>::Event(const char* name, Function e, AZStd::array<AZStd::string, AZStd::function_traits<Function>::num_args> args)
+    template<class Function>
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Event(const char* name, Function e, const char *deprecatedName /*=nullptr*/)
     {
-        BehaviorContext::EBusReflection<Bus>* ebusReflection = Event(name, e);
-        auto eventIterator = ebusReflection->m_ebus->m_events.find(name);
-        if (eventIterator != ebusReflection->m_ebus->m_events.end())
-        {
-            if (eventIterator->second.m_event)
-            {
-                for (size_t i = 0; i < args.size(); ++i)
-                {
-                    eventIterator->second.m_event->SetArgumentName(i, args[i]);
-                }
-            }
-        }
-
-        if (args.empty())
-        {
-            AZ_TracePrintf("BehaviorContext", "Method: %s does not have named attributes\n", name);
-        }
-
-        return ebusReflection;
+        AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args> parameterOverrides;
+        return Event(name, e, deprecatedName, parameterOverrides);
     }
 
     template<class Bus>
     template<class Function>
-    BehaviorContext::EBusReflection<Bus>* BehaviorContext::EBusReflection<Bus>::Event(const char* name, Function e)
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Event(const char* name, Function e, const char* deprecatedName, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args)
     {
         if (m_ebus)
         {
@@ -2521,17 +2963,77 @@ namespace AZ
             ebusEvent.Set<Bus>(e, Base::m_context);
 
             auto insertIt = m_ebus->m_events.insert(AZStd::make_pair(name, ebusEvent));
-            AZ_Assert(insertIt.second, "Reflection inserted a duplicate event: '%s' for bus '%s' - please check that you are not reflecting the same event repeatedly.  This would cause memory leaks.", name, m_ebus->m_name.c_str());
 
-            Base::m_currentAttributes = &insertIt.first->second.m_attributes;
+            if (!insertIt.second)
+            {
+                AZ_Error("BehaviorContext", false, "Reflection inserted a duplicate event: '%s' for bus '%s' - please check that you are not reflecting the same event repeatedly. This will cause memory leaks.", name, m_ebus->m_name.c_str());
+            }
+            else
+            {
+                // do we have a deprecated name for this event?
+                if (deprecatedName != nullptr)
+                {
+                    // ensure deprecated name is not in use as a existing name
+                    auto itr = m_ebus->m_events.find(deprecatedName);
+
+                    if (itr != m_ebus->m_events.end())
+                    {
+                        AZ_Warning("BehaviorContext", false, "Event %s is attempting to use %s as a deprecated name, but the deprecated name is already in use! The deprecated name is ignored!", name, deprecatedName);
+                    }
+                    else
+                    {
+                        // ensure that we won't have a duplicate deprecated name
+                        bool isDuplicated = false;
+                        for (const auto & i : m_ebus->m_events)
+                        {
+                            if (i.second.m_deprecatedName == deprecatedName)
+                            {
+                                isDuplicated = true;
+                                AZ_Warning("BehaviorContext", false, "Event %s is attempting to use %s as a deprecated name, but the deprecated name is already used as a deprecated name for the Event %s! The deprecated name is ignored!", name, deprecatedName, i.first.c_str());
+                                break;
+                            }
+                        }
+
+                        if (!isDuplicated)
+                        {
+                            insertIt.first->second.m_deprecatedName = deprecatedName;
+                        }
+                    }
+                }
+
+                for (BehaviorMethod* method : { ebusEvent.m_event, ebusEvent.m_broadcast })
+                {
+                    if (method)
+                    {
+                        size_t busIdParameterIndex = method->HasBusId() ? 1 : 0;
+                        for (size_t i = 0; i < args.size(); ++i)
+                        {
+                            method->SetArgumentName(i + busIdParameterIndex, args[i].m_name);
+                            method->SetArgumentToolTip(i + busIdParameterIndex, args[i].m_toolTip);
+                            method->SetDefaultValue(i + busIdParameterIndex, args[i].m_defaultValue);
+                            method->OverrideParameterTraits(i + busIdParameterIndex, args[i].m_addTraits, args[i].m_removeTraits);
+                        }
+                    }
+                }
+
+                Base::m_currentAttributes = &insertIt.first->second.m_attributes;
+            }
         }
+
         return this;
+    }
+
+    template<class Bus>
+    template<class Function>
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Event(const char* name, Function e, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Function>::num_args>& args)
+    {
+        return Event(name, e, nullptr, args);
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class Bus>
     template<typename HandlerCreator, typename HandlerDestructor >
-    BehaviorContext::EBusReflection<Bus>* BehaviorContext::EBusReflection<Bus>::Handler(HandlerCreator creator, HandlerDestructor destructor)
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Handler(HandlerCreator creator, HandlerDestructor destructor)
     {
         if (m_ebus)
         {
@@ -2562,7 +3064,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class Bus>
     template<class H>
-    BehaviorContext::EBusReflection<Bus>* BehaviorContext::EBusReflection<Bus>::Handler()
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Handler()
     {
         Handler(&AZ::Internal::BehaviorEBusHandlerFactory<H>::Create, &AZ::Internal::BehaviorEBusHandlerFactory<H>::Destroy);
         return this;
@@ -2570,7 +3072,7 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class Bus>
-    BehaviorContext::EBusReflection<Bus>* BehaviorContext::EBusReflection<Bus>::VirtualProperty(const char* name, const char* getterEvent, const char* setterEvent)
+    BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::VirtualProperty(const char* name, const char* getterEvent, const char* setterEvent)
     {
         if (m_ebus)
         {
@@ -2652,7 +3154,7 @@ namespace AZ
 
         // Assumes parameters array is big enough to store all parameters
         template<class... Args>
-        inline void SetParametersStripped(BehaviorParameter* parameters, BehaviorContext* behaviorContext)
+        inline void SetParametersStripped(BehaviorParameter* parameters, OnDemandReflectionOwner* onDemandReflection)
         {
             // +1 to avoid zero array size
             Uuid argumentTypes[sizeof...(Args)+1] = { AzTypeInfo<Args>::Uuid()... };
@@ -2671,30 +3173,32 @@ namespace AZ
                 parameters[i].m_traits = (argumentIsPointer[i] ? BehaviorParameter::TR_POINTER : 0) |
                     (argumentIsConst[i] ? BehaviorParameter::TR_CONST : 0) |
                     (argumentIsReference[i] ? BehaviorParameter::TR_REFERENCE : 0);
+
+                // String parameter detection
+                if ((parameters[i].m_typeId == azrtti_typeid<char>() && (parameters[i].m_traits | (BehaviorParameter::TR_POINTER & BehaviorParameter::TR_CONST))) // const char* detection
+                    || parameters[i].m_typeId == azrtti_typeid<AZStd::string>() || parameters[i].m_typeId == azrtti_typeid<AZStd::string_view>()) // AZStd::string and AZStd::string_view detection
+                {
+                    parameters[i].m_traits |= BehaviorParameter::TR_STRING;
+                }
             }
 
-            if (behaviorContext)
+            if (onDemandReflection)
             {
                 // deal with OnDemand reflection
-                OnDemandReflectionFunction reflectHooks[sizeof...(Args)+1] = { OnDemandReflectHook<typename AZStd::remove_pointer<typename AZStd::decay<Args>::type>::type>::Get()... };
+                OnDemandReflectionFunctionPtr reflectHooks[sizeof...(Args)+1] = { OnDemandReflectHook<typename AZStd::remove_pointer<typename AZStd::decay<Args>::type>::type>::Get()... };
                 for (size_t i = 0; i < sizeof...(Args); ++i)
                 {
                     if (reflectHooks[i])
                     {
-                        // One reflection per type 
-                        bool isReflecting = behaviorContext->m_onDemandReflection.insert(AZStd::make_pair(argumentTypes[i],reflectHooks[i])).second;
-                        if (isReflecting)
-                        {
-                            behaviorContext->m_toProcessOnDemandReflection.insert(AZStd::make_pair(argumentTypes[i], reflectHooks[i]));
-                        }
+                        onDemandReflection->AddReflectFunction(argumentTypes[i], reflectHooks[i]);
                     }
                 }
             }
         }
         template<class... Args>
-        inline void SetParameters(BehaviorParameter* parameters, BehaviorContext* behaviorContext)
+        inline void SetParameters(BehaviorParameter* parameters, OnDemandReflectionOwner* onDemandReflection)
         {
-            SetParametersStripped<AZStd::RemoveEnumT<Args>...>(parameters, behaviorContext);
+            SetParametersStripped<AZStd::RemoveEnumT<Args>...>(parameters, onDemandReflection);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -2732,49 +3236,56 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
         BehaviorMethodImpl<R(Args...)>::BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name)
-            : m_functionPtr(functionPointer)
+            : BehaviorMethod(context)
+            , m_functionPtr(functionPointer)
         {
             m_name = name;
-            SetParameters<R>(m_parameters, context);
-            SetParameters<Args...>(&m_parameters[1], context);
+            SetParameters<R>(m_parameters, this);
+            SetParameters<Args...>(&m_parameters[s_startNamedArgumentIndex], this);
+        }
+
+        template<class R, class... Args>
+        BehaviorMethodImpl<R(Args...)>::~BehaviorMethodImpl()
+        {
+            for (size_t i = 0; i < GetNumArguments(); ++i)
+            {
+                delete GetDefaultValue(i);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
         bool BehaviorMethodImpl<R(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
         {
-            if (numArguments < AZ_ARRAY_SIZE(m_parameters) - 1)
+            size_t totalArguments = GetNumArguments();
+            if (numArguments < totalArguments)
             {
-                if (m_defaultArguments && m_defaultArguments->GetNumValues() + numArguments >= AZ_ARRAY_SIZE(m_parameters) - 1)
+                // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
+                // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
+                BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*  totalArguments));
+                // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
+                size_t argIndex = 0;
+                for (; argIndex < numArguments; ++argIndex)
                 {
-                    // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
-                    // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-                    BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*(AZ_ARRAY_SIZE(m_parameters) - 1)));
-                    // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-                    unsigned int iNewArgument = 0;
-                    for (unsigned int i = 0; i < numArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(arguments[i]);
-                    }
-                    // clone from default list but
-                    size_t defaultNumArguments = AZ_ARRAY_SIZE(m_parameters) - 1 - numArguments;
-                    size_t defaultStartIndex = m_defaultArguments->GetNumValues() - defaultNumArguments;
-                    for (size_t i = 0; i < defaultNumArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(m_defaultArguments->GetValue(i + defaultStartIndex));
-                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(arguments[argIndex]);
+                }
 
-                    arguments = newArguments;
-                }
-                else
+                // clone the default parameters if they exist
+                for (; argIndex < totalArguments; ++argIndex)
                 {
-                    // not enough arguments
-                    AZ_Warning("Behavior", false, "Not enough arguments to make a member call! %d needed %d", numArguments, AZ_ARRAY_SIZE(m_parameters) - 1);
-                    return false;
+                    BehaviorDefaultValue* defaultValue = GetDefaultValue(argIndex);
+                    if (!defaultValue)
+                    {
+                        AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", numArguments, totalArguments);
+                        return false;
+                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(defaultValue->GetValue());
                 }
+
+                arguments = newArguments;
             }
 
-            for (size_t i = 1; i < AZ_ARRAY_SIZE(m_parameters); ++i)
+            for (size_t i = s_startArgumentIndex; i < AZ_ARRAY_SIZE(m_parameters); ++i)
             {
                 if (!arguments[i - 1].ConvertTo(m_parameters[i].m_typeId))
                 {
@@ -2804,36 +3315,68 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
+        bool BehaviorMethodImpl<R(Args...)>::HasBusId() const
+        {
+            return false;
+        }
+
+        template<class R, class... Args>
+        const BehaviorParameter* BehaviorMethodImpl<R(Args...)>::GetThisPtrArgument() const
+        {
+            return nullptr;
+        }
+        template<class R, class... Args>
+        const BehaviorParameter* BehaviorMethodImpl<R(Args...)>::GetBusIdArgument() const
+        {
+            return nullptr;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class R, class... Args>
         size_t BehaviorMethodImpl<R(Args...)>::GetNumArguments() const
         {
-            return AZ_ARRAY_SIZE(m_parameters) - 1;
+            return AZ_ARRAY_SIZE(m_parameters) - s_startArgumentIndex;
+        }
+
+        template<class R, class... Args>
+        size_t BehaviorMethodImpl<R(Args...)>::GetMinNumberOfArguments() const
+        {
+            // Iterate from end of MetadataParameters and count the number of consecutive valid BehaviorValue objects
+            size_t numDefaultArguments = 0;
+            for (size_t i = GetNumArguments() - 1; i >= 0 && GetDefaultValue(i); --i, ++numDefaultArguments)
+            {
+            }
+            return GetNumArguments() - numDefaultArguments;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
         const BehaviorParameter* BehaviorMethodImpl<R(Args...)>::GetArgument(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_parameters) - 1)
+            if (index < GetNumArguments())
             {
-                return &m_parameters[index + 1];
+                return &m_parameters[index + s_startArgumentIndex];
             }
             return nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
-        size_t BehaviorMethodImpl<R(Args...)>::GetNumArgumentNames() const
+        void BehaviorMethodImpl<R(Args...)>::OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits)
         {
-            return AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex;
+            if (index < GetNumArguments())
+            {
+                m_parameters[index + s_startArgumentIndex].m_traits = (m_parameters[index + s_startArgumentIndex].m_traits & ~removeTraits) | addTraits;
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
         const AZStd::string* BehaviorMethodImpl<R(Args...)>::GetArgumentName(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - 1)
+            if (index < GetNumArguments())
             {
-                return &m_argumentNames[index + s_startNamedArgumentIndex];
+                return &m_metadataParameters[index + s_startArgumentIndex].m_name;
             }
             return nullptr;
         }
@@ -2841,10 +3384,55 @@ namespace AZ
         template<class R, class... Args>
         void BehaviorMethodImpl<R(Args...)>::SetArgumentName(size_t index, const AZStd::string& name)
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex)
+            if (index < GetNumArguments())
             {
-                m_argumentNames[index + s_startNamedArgumentIndex] = name;
+                m_metadataParameters[index + s_startArgumentIndex].m_name = name;
             }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class R, class... Args>
+        const AZStd::string* BehaviorMethodImpl<R(Args...)>::GetArgumentToolTip(size_t index) const
+        {
+            if (index < GetNumArguments())
+            {
+                return &m_metadataParameters[index + s_startArgumentIndex].m_toolTip;
+            }
+            return nullptr;
+        }
+
+        template<class R, class... Args>
+        void BehaviorMethodImpl<R(Args...)>::SetArgumentToolTip(size_t index, const AZStd::string& toolTip)
+        {
+            if (index < GetNumArguments())
+            {
+                m_metadataParameters[index + s_startArgumentIndex].m_toolTip = toolTip;
+            }
+        }
+
+        template<class R, class... Args>
+        void BehaviorMethodImpl<R(Args...)>::SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue)
+        {
+            if (index < GetNumArguments())
+            {
+                if (defaultValue && defaultValue->GetValue().m_typeId != GetArgument(index)->m_typeId)
+                {
+                    AZ_Assert(false, "Argument %zu default value type, doesn't match! Default value should be the same type! Current type %s!", index, defaultValue->GetValue().m_name);
+                    delete defaultValue;
+                    return;
+                }
+                m_metadataParameters[index + s_startArgumentIndex].m_defaultValue = defaultValue;
+            }
+        }
+
+        template<class R, class... Args>
+        BehaviorDefaultValue* BehaviorMethodImpl<R(Args...)>::GetDefaultValue(size_t index) const
+        {
+            if (index < GetNumArguments())
+            {
+                return m_metadataParameters[index + s_startArgumentIndex].m_defaultValue;
+            }
+            return nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -2857,56 +3445,63 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
         BehaviorMethodImpl<R(C::*)(Args...)>::BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name)
-            : m_functionPtr(functionPointer)
+            : BehaviorMethod(context)
+            , m_functionPtr(functionPointer)
         {
             m_name = name;
-            SetParameters<R>(m_parameters, context);
-            SetParameters<C*>(&m_parameters[1], context);
-            m_parameters[1].m_traits |= BehaviorParameter::TR_THIS_PTR;
-            SetParameters<Args...>(&m_parameters[2], context);
+            SetParameters<R>(m_parameters, this);
+            SetParameters<C*>(&m_parameters[s_startArgumentIndex], this);
+            m_parameters[s_startArgumentIndex].m_traits |= BehaviorParameter::TR_THIS_PTR;
+            SetParameters<Args...>(&m_parameters[s_startNamedArgumentIndex], this);
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
         BehaviorMethodImpl<R(C::*)(Args...)>::BehaviorMethodImpl(FunctionPointerConst functionPointer, BehaviorContext* context, const AZStd::string& name)
-            : BehaviorMethodImpl((FunctionPointer)functionPointer, context, name)
+            : BehaviorMethodImpl(reinterpret_cast<FunctionPointer>(functionPointer), context, name)
         {
             m_isConst = true;
+        }
+
+        template<class R, class C, class... Args>
+        BehaviorMethodImpl<R(C::*)(Args...)>::~BehaviorMethodImpl()
+        {
+            for (size_t i = 0; i < GetNumArguments(); ++i)
+            {
+                delete GetDefaultValue(i);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
         bool BehaviorMethodImpl<R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
         {
-            if (numArguments < AZ_ARRAY_SIZE(m_parameters) - 1)
+            size_t totalArguments = GetNumArguments();
+            if (numArguments < totalArguments)
             {
-                if (m_defaultArguments && m_defaultArguments->GetNumValues() + numArguments >= AZ_ARRAY_SIZE(m_parameters) - 1)
+                // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
+                // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
+                BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*  totalArguments));
+                // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
+                size_t argIndex = 0;
+                for (; argIndex < numArguments; ++argIndex)
                 {
-                    // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
-                    // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-                    BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*(AZ_ARRAY_SIZE(m_parameters) - 1)));
-                    // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-                    unsigned int iNewArgument = 0;
-                    for (unsigned int i = 0; i < numArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(arguments[i]);
-                    }
-                    // clone from default list but
-                    size_t defaultNumArguments = AZ_ARRAY_SIZE(m_parameters) - 1 - numArguments;
-                    size_t defaultStartIndex = m_defaultArguments->GetNumValues() - defaultNumArguments;
-                    for (size_t i = 0; i < defaultNumArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(m_defaultArguments->GetValue(i + defaultStartIndex));
-                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(arguments[argIndex]);
+                }
 
-                    arguments = newArguments;
-                }
-                else
+                // clone the default parameters if they exist
+                for (; argIndex < totalArguments; ++argIndex)
                 {
-                    // not enough arguments
-                    AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", numArguments, AZ_ARRAY_SIZE(m_parameters) - 1);
-                    return false;
+                    BehaviorDefaultValue* defaultValue = GetDefaultValue(argIndex);
+                    if (!defaultValue)
+                    {
+                        AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", numArguments, totalArguments);
+                        return false;
+                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(defaultValue->GetValue());
                 }
+
+                arguments = newArguments;
             }
 
             if (!arguments[0].ConvertTo(AzTypeInfo<C>::Uuid()))
@@ -2916,7 +3511,7 @@ namespace AZ
                 return false;
             }
 
-            for (size_t i = 2; i < AZ_ARRAY_SIZE(m_parameters); ++i)
+            for (size_t i = s_startNamedArgumentIndex; i < AZ_ARRAY_SIZE(m_parameters); ++i)
             {
                 if (!arguments[i - 1].ConvertTo(m_parameters[i].m_typeId))
                 {
@@ -2948,36 +3543,70 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
+        bool BehaviorMethodImpl<R(C::*)(Args...)>::HasBusId() const
+        {
+            return false;
+        }
+
+        template<class R, class C, class... Args>
+        const BehaviorParameter* BehaviorMethodImpl<R(C::*)(Args...)>::GetThisPtrArgument() const
+        {
+            return GetArgument(0);
+        }
+
+        template<class R, class C, class... Args>
+        const BehaviorParameter* BehaviorMethodImpl<R(C::*)(Args...)>::GetBusIdArgument() const
+        {
+            return nullptr;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class R, class C, class... Args>
         size_t BehaviorMethodImpl<R(C::*)(Args...)>::GetNumArguments() const
         {
-            return AZ_ARRAY_SIZE(m_parameters) - 1;
+            return AZ_ARRAY_SIZE(m_parameters) - s_startArgumentIndex;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class R, class C, class... Args>
+        size_t BehaviorMethodImpl<R(C::*)(Args...)>::GetMinNumberOfArguments() const
+        {
+            // Iterate from end of MetadataParameters and count the number of consecutive valid BehaviorValue objects
+            size_t numDefaultArguments = 0;
+            for (size_t i = GetNumArguments() - 1; i >= 0 && GetDefaultValue(i); --i, ++numDefaultArguments)
+            {
+            }
+            return GetNumArguments() - numDefaultArguments;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
         const BehaviorParameter* BehaviorMethodImpl<R(C::*)(Args...)>::GetArgument(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_parameters) - 1)
+            if (index < GetNumArguments())
             {
-                return &m_parameters[index + 1];
+                return &m_parameters[index + s_startArgumentIndex];
             }
             return nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
-        size_t BehaviorMethodImpl<R(C::*)(Args...)>::GetNumArgumentNames() const
+        void BehaviorMethodImpl<R(C::*)(Args...)>::OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits)
         {
-            return AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex;
+            if (index < GetNumArguments())
+            {
+                m_parameters[index + s_startArgumentIndex].m_traits = (m_parameters[index + s_startArgumentIndex].m_traits & ~removeTraits) | addTraits;
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
         const AZStd::string* BehaviorMethodImpl<R(C::*)(Args...)>::GetArgumentName(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex)
+            if (index < GetNumArguments())
             {
-                return &m_argumentNames[index + s_startNamedArgumentIndex];
+                return &m_metadataParameters[index + s_startArgumentIndex].m_name;
             }
             return nullptr;
         }
@@ -2985,13 +3614,55 @@ namespace AZ
         template<class R, class C, class... Args>
         void BehaviorMethodImpl<R(C::*)(Args...)>::SetArgumentName(size_t index, const AZStd::string& name)
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex)
+            if (index < GetNumArguments())
             {
-                m_argumentNames[index + s_startNamedArgumentIndex] = name;
+                m_metadataParameters[index + s_startArgumentIndex].m_name = name;
             }
         }
 
+        template<class R, class C, class... Args>
+        const AZStd::string* BehaviorMethodImpl<R(C::*)(Args...)>::GetArgumentToolTip(size_t index) const
+        {
+            if (index <GetNumArguments())
+            {
+                return &m_metadataParameters[index + s_startArgumentIndex].m_toolTip;
+            }
+            return nullptr;
+        }
 
+        template<class R, class C, class... Args>
+        void BehaviorMethodImpl<R(C::*)(Args...)>::SetArgumentToolTip(size_t index, const AZStd::string& toolTip)
+        {
+            if (index < GetNumArguments())
+            {
+                m_metadataParameters[index + s_startArgumentIndex].m_toolTip = toolTip;
+            }
+        }
+
+        template<class R, class C, class... Args>
+        void BehaviorMethodImpl<R(C::*)(Args...)>::SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue)
+        {
+            if (index < GetNumArguments())
+            {
+                if (defaultValue && defaultValue->GetValue().m_typeId != GetArgument(index)->m_typeId)
+                {
+                    AZ_Assert(false, "Argument %zu default value type, doesn't match! Default value should be the same type! Current type %s!", index, defaultValue->GetValue().m_name);
+                    delete defaultValue;
+                    return;
+                }
+                m_metadataParameters[index + s_startArgumentIndex].m_defaultValue = defaultValue;
+            }
+        }
+
+        template<class R, class C, class... Args>
+        BehaviorDefaultValue* BehaviorMethodImpl<R(C::*)(Args...)>::GetDefaultValue(size_t index) const
+        {
+            if (index < GetNumArguments())
+            {
+                return m_metadataParameters[index + s_startArgumentIndex].m_defaultValue;
+            }
+            return nullptr;
+        }
 
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
@@ -3003,12 +3674,40 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::BehaviorEBusEvent(FunctionPointer functionPointer, BehaviorContext* context)
-            : m_functionPtr(functionPointer)
+            : BehaviorMethod(context)
+            , m_functionPtr(functionPointer)
         {
-            SetParameters<R>(m_parameters, context);
-            SetParameters<Args...>(&m_parameters[1 + s_isBusIdParameter], context);
+            SetParameters<R>(m_parameters, this);
+            SetParameters<Args...>(&m_parameters[s_startNamedArgumentIndex], this);
             // optional ID parameter
             SetBusIdType<s_isBusIdParameter == 1>();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::BehaviorEBusEvent(FunctionPointerConst functionPointer, BehaviorContext* context)
+            : BehaviorEBusEvent(reinterpret_cast<FunctionPointer>(functionPointer), context)
+        {
+            m_isConst = true;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::~BehaviorEBusEvent()
+        {
+            // The BehaviorEBus creates both a Broadcast BehaviorEBusEvent object and an Event BehaviorEBusEvent object
+            // This is done in the BehaviorContext::EBusBuilder<Bus>::Event function
+            // Also in that function the supplied BehaviorDefaultValue* instance is assigned to both methods
+            // Because both methods reference the same BehaviorDefault* instance, it should only be deleted by accessing the
+            // instance on one of the two BehaviorEBusEvent objects.
+            // The instance will be deleted from the Broadcast BehaviorEBusEvent object as it always exist for each reflected EBus Event(see BehaviorEBusEventSender::Set)
+            if (EventType == BE_QUEUE_BROADCAST)
+            {
+                for (size_t i = 0; i < GetNumArguments(); ++i)
+                {
+                    delete GetDefaultValue(i);
+                }
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -3016,7 +3715,7 @@ namespace AZ
         template<bool IsBusId>
         inline AZStd::enable_if_t<IsBusId> BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::SetBusIdType()
         {
-            SetParameters<typename EBus::BusIdType>(&m_parameters[1]);
+            SetParameters<typename EBus::BusIdType>(&m_parameters[s_startArgumentIndex]);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -3030,35 +3729,32 @@ namespace AZ
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         bool BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
         {
-            if (numArguments < AZ_ARRAY_SIZE(m_parameters) - 1)
+            size_t totalArguments = GetNumArguments();
+            if (numArguments < totalArguments)
             {
-                if (m_defaultArguments && m_defaultArguments->GetNumValues() + numArguments >= AZ_ARRAY_SIZE(m_parameters) - 1)
+                // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
+                // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
+                BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*  totalArguments));
+                // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
+                size_t argIndex = 0;
+                for (; argIndex < numArguments; ++argIndex)
                 {
-                    // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array 
-                    // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-                    BehaviorValueParameter* newArguments = reinterpret_cast<BehaviorValueParameter*>(alloca(sizeof(BehaviorValueParameter)*(AZ_ARRAY_SIZE(m_parameters) - 1)));
-                    // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-                    unsigned int iNewArgument = 0;
-                    for (unsigned int i = 0; i < numArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(arguments[i]);
-                    }
-                    // clone from default list but
-                    size_t defaultNumArguments = AZ_ARRAY_SIZE(m_parameters) - 1 - numArguments;
-                    size_t defaultStartIndex = m_defaultArguments->GetNumValues() - defaultNumArguments;
-                    for (size_t i = 0; i < defaultNumArguments; ++i, ++iNewArgument)
-                    {
-                        new(&newArguments[iNewArgument]) BehaviorValueParameter(m_defaultArguments->GetValue(i + defaultStartIndex));
-                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(arguments[argIndex]);
+                }
 
-                    arguments = newArguments;
-                }
-                else
+                // clone the default parameters if they exist
+                for (; argIndex < totalArguments; ++argIndex)
                 {
-                    // not enough arguments
-                    AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", numArguments, AZ_ARRAY_SIZE(m_parameters) - 1);
-                    return false;
+                    BehaviorDefaultValue* defaultValue = GetDefaultValue(argIndex);
+                    if (!defaultValue)
+                    {
+                        AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", numArguments, totalArguments);
+                        return false;
+                    }
+                    new(&newArguments[argIndex]) BehaviorValueParameter(defaultValue->GetValue());
                 }
+
+                arguments = newArguments;
             }
 
             if (s_isBusIdParameter && !arguments[0].ConvertTo(m_parameters[1].m_typeId))
@@ -3067,7 +3763,7 @@ namespace AZ
                 return false;
             }
 
-            for (size_t i = 1 + s_isBusIdParameter; i < AZ_ARRAY_SIZE(m_parameters); ++i)
+            for (size_t i = s_startNamedArgumentIndex; i < AZ_ARRAY_SIZE(m_parameters); ++i)
             {
                 if (!arguments[i - 1].ConvertTo(m_parameters[i].m_typeId))
                 {
@@ -3097,36 +3793,70 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        bool BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::HasBusId() const
+        {
+            return s_isBusIdParameter != 0;
+        }
+
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        const BehaviorParameter* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetThisPtrArgument() const
+        {
+            return nullptr;
+        }
+
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        const BehaviorParameter* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetBusIdArgument() const
+        {
+            return HasBusId() ? GetArgument(0) : nullptr;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         size_t BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetNumArguments() const
         {
-            return AZ_ARRAY_SIZE(m_parameters) - 1;
+            return AZ_ARRAY_SIZE(m_parameters) - s_startArgumentIndex;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        size_t BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetMinNumberOfArguments() const
+        {
+            // Iterate from end of MetadataParameters and count the number of consecutive valid BehaviorValue objects
+            size_t numDefaultArguments = 0;
+            for (size_t i = GetNumArguments() - 1; i >= 0 && GetDefaultValue(i); --i, ++numDefaultArguments)
+            {
+            }
+            return GetNumArguments() - numDefaultArguments;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         const BehaviorParameter* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetArgument(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_parameters) - 1)
+            if (index < GetNumArguments())
             {
-                return &m_parameters[index + 1];
+                return &m_parameters[index + s_startArgumentIndex];
             }
             return nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
-        size_t BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetNumArgumentNames() const
+        void BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::OverrideParameterTraits(size_t index, AZ::u32 addTraits, AZ::u32 removeTraits)
         {
-            return AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex;
+            if (index < GetNumArguments())
+            {
+                m_parameters[index + s_startArgumentIndex].m_traits = (m_parameters[index + s_startArgumentIndex].m_traits & ~removeTraits) | addTraits;
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         const AZStd::string* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetArgumentName(size_t index) const
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex)
+            if (index < GetNumArguments())
             {
-                return &m_argumentNames[index + s_startNamedArgumentIndex];
+                return &m_metadataParameters[index + s_startArgumentIndex].m_name;
             }
             return nullptr;
         }
@@ -3134,12 +3864,56 @@ namespace AZ
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
         void BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::SetArgumentName(size_t index, const AZStd::string& name)
         {
-            if (index < AZ_ARRAY_SIZE(m_argumentNames) - s_startNamedArgumentIndex)
+            if (index < GetNumArguments())
             {
-                m_argumentNames[index + s_startNamedArgumentIndex] = name;
+                m_metadataParameters[index + s_startArgumentIndex].m_name = name;
             }
         }
 
+        //////////////////////////////////////////////////////////////////////////
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        const AZStd::string* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetArgumentToolTip(size_t index) const
+        {
+            if (index < GetNumArguments())
+            {
+                return &m_metadataParameters[index + s_startArgumentIndex].m_toolTip;
+            }
+            return nullptr;
+        }
+
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        void BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::SetArgumentToolTip(size_t index, const AZStd::string& toolTip)
+        {
+            if (index < GetNumArguments())
+            {
+                m_metadataParameters[index + s_startArgumentIndex].m_toolTip = toolTip;
+            }
+        }
+
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        void BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::SetDefaultValue(size_t index, BehaviorDefaultValue* defaultValue)
+        {
+            if (index < GetNumArguments())
+            {
+                if (defaultValue && defaultValue->GetValue().m_typeId != GetArgument(index)->m_typeId)
+                {
+                    AZ_Assert(false, "Argument %zu default value type, doesn't match! Default value should be the same type! Current type %s!", index, defaultValue->GetValue().m_name);
+                    delete defaultValue;
+                    return;
+                }
+                m_metadataParameters[index + s_startArgumentIndex].m_defaultValue = defaultValue;
+            }
+        }
+
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        BehaviorDefaultValue* BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::GetDefaultValue(size_t index) const
+        {
+            if (index < GetNumArguments())
+            {
+                return m_metadataParameters[index + s_startArgumentIndex].m_defaultValue;
+            }
+            return nullptr;
+        }
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
@@ -3308,9 +4082,16 @@ namespace AZ
             {
                 (void)id;
                 handler->BusConnect();
-                return false;
+                return true;
             }
         };
+
+        //////////////////////////////////////////////////////////////////////////
+        // Passed to Attribute::SetContext data, to destroy the behavior method
+        inline void DestroyAttributeMethod(void* contextData)
+        {
+            delete reinterpret_cast<BehaviorMethod*>(contextData);
+        }
 
         //////////////////////////////////////////////////////////////////////////
         template<class Owner>
@@ -3318,8 +4099,7 @@ namespace AZ
         void GenericAttributes<Owner>::SetAttributeContextData(T value, AZ::Attribute* attribute, const AZStd::true_type& /* is_function<remove_pointer<T>::type> && is_member_function_pointer<T>*/)
         {
             BehaviorMethod* method = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<T>::type>(value, m_context, AZStd::string("Function-Attribute"));
-            attribute->SetContextData(method);
-            m_context->m_attributeMethods.push_back(method);
+            attribute->SetContextData(method, &DestroyAttributeMethod);
         }
 
         //////////////////////////////////////////////////////////////////////////

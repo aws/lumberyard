@@ -532,22 +532,22 @@ public:
 //!   // function body will be profiled.
 //! }
 #define FUNCTION_PROFILER_LEGACYONLY(pISystem, subsystem)                                                               \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, __FUNC__, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler);
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, __FUNC__, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__));
 
 #define FUNCTION_PROFILER(pISystem, subsystem)                                                               \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, __FUNC__, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler); \
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, __FUNC__, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__)); \
     AZ_PROFILE_FUNCTION(static_cast<AZ::Debug::ProfileCategory>(subsystem));
 
 #define FUNCTION_PROFILER_FAST(pISystem, subsystem, bProfileEnabled)                                         \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, __FUNC__, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler); \
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, __FUNC__, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__)); \
     AZ_PROFILE_FUNCTION(static_cast<AZ::Debug::ProfileCategory>(subsystem));
 
 #define FUNCTION_PROFILER_ALWAYS(pISystem, subsystem)                                                              \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, __FUNC__, subsystem, true); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler); \
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, __FUNC__, subsystem, true); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__)); \
     AZ_PROFILE_FUNCTION(static_cast<AZ::Debug::ProfileCategory>(subsystem));
 
 //////////////////////////////////////////////////////////////////////////
@@ -560,18 +560,18 @@ public:
 //!     }
 //! }
 #define FRAME_PROFILER_LEGACYONLY(szProfilerName, pISystem, subsystem)                                                        \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, szProfilerName, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler);
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, szProfilerName, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__));
 
 #define FRAME_PROFILER(szProfilerName, pISystem, subsystem)                                                        \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, szProfilerName, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler); \
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, szProfilerName, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__)); \
     AZ_PROFILE_SCOPE(static_cast<AZ::Debug::ProfileCategory>(subsystem), szProfilerName);
 
 //! Older version of FRAME_PROFILE macro
 #define FRAME_PROFILER_FAST(szProfilerName, pISystem, subsystem, bProfileEnabled)                                  \
-    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler staticFrameProfiler(pISystem, szProfilerName, subsystem); \
-    CFrameProfilerSection frameProfilerSection(&staticFrameProfiler); \
+    PREFAST_SUPPRESS_WARNING(6246) static CFrameProfiler AZ_JOIN(staticFrameProfiler, __LINE__)(pISystem, szProfilerName, subsystem); \
+    CFrameProfilerSection AZ_JOIN(frameProfilerSection, __LINE__)(&AZ_JOIN(staticFrameProfiler, __LINE__)); \
     AZ_PROFILE_SCOPE(static_cast<AZ::Debug::ProfileCategory>(subsystem), szProfilerName);
 
 #else //#if !defined(USE_FRAME_PROFILER)

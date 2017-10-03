@@ -149,7 +149,7 @@ QString CCryEditDoc::GetPathName() const
 void CCryEditDoc::SetPathName(const QString& pathName)
 {
     m_pathName = pathName;
-    SetTitle(pathName.isEmpty() ? tr("Untitle") : PathUtil::GetFileName(pathName.toLatin1().data()).c_str());
+    SetTitle(pathName.isEmpty() ? tr("Untitled") : PathUtil::GetFileName(pathName.toLatin1().data()).c_str());
 }
 
 QString CCryEditDoc::GetTitle() const
@@ -249,6 +249,8 @@ void CCryEditDoc::DeleteContents()
     Audio::SAudioManagerRequestData<Audio::eAMRT_CLEAR_PRELOADS_DATA> oAMData3(Audio::eADS_LEVEL_SPECIFIC);
     oAudioRequestData.pData = &oAMData3;
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+
+    GetIEditor()->Notify(eNotify_OnSceneClosed);    
 }
 
 
@@ -600,34 +602,55 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
     // Load or restore the viewer settings from an XML
     if (xmlAr.bLoading)
     {
+        bool useOldViewFormat = false;
         // Loading
         CLogFile::WriteLine("Loading View settings...");
 
-        Vec3 vp(0.0f, 0.0f, 256.0f);
-        Ang3 va(ZERO);
+        int numberOfGameViewports = GetIEditor()->GetViewManager()->GetNumberOfGameViewports();
 
-        XmlNodeRef view = xmlAr.root->findChild("View");
-        if (view)
+        for (int i = 0; i < numberOfGameViewports; i++)
         {
-            view->getAttr("ViewerPos", vp);
-            view->getAttr("ViewerAngles", va);
-        }
+            XmlNodeRef view;
+            Vec3 vp(0.0f, 0.0f, 256.0f);
+            Ang3 va(ZERO);
 
-        CViewport* pVP = GetIEditor()->GetViewManager()->GetGameViewport();
+            auto viewName = QString("View%1").arg(i);
+            view = xmlAr.root->findChild(viewName.toUtf8().constData());
 
-        if (pVP)
-        {
-            Matrix34 tm = Matrix34::CreateRotationXYZ(va);
-            tm.SetTranslation(vp);
-            pVP->SetViewTM(tm);
-        }
+            if (!view)
+            {
+                view = xmlAr.root->findChild("View");
+                if (view)
+                {
+                    useOldViewFormat = true;
+                }
+            }
 
-        // Load grid.
-        XmlNodeRef gridNode = xmlAr.root->findChild("Grid");
+            if (view)
+            {
+                auto viewerPosName = QString("ViewerPos%1").arg(useOldViewFormat ? "" : QString::number(i));
+                view->getAttr(viewerPosName.toUtf8().constData(), vp);
+                auto viewerAnglesName = QString("ViewerAngles%1").arg(useOldViewFormat ? "" : QString::number(i));
+                view->getAttr(viewerAnglesName.toUtf8().constData(), va);
+            }
 
-        if (gridNode)
-        {
-            GetIEditor()->GetViewManager()->GetGrid()->Serialize(gridNode, xmlAr.bLoading);
+            CViewport* pVP = GetIEditor()->GetViewManager()->GetView(i);
+
+            if (pVP)
+            {
+                Matrix34 tm = Matrix34::CreateRotationXYZ(va);
+                tm.SetTranslation(vp);
+                pVP->SetViewTM(tm);
+            }
+
+            // Load grid.
+            auto gridName = QString("Grid%1").arg(useOldViewFormat ? "" : QString::number(i));
+            XmlNodeRef gridNode = xmlAr.root->newChild(gridName.toUtf8().constData());
+
+            if (gridNode)
+            {
+                GetIEditor()->GetViewManager()->GetGrid()->Serialize(gridNode, xmlAr.bLoading);
+            }
         }
     }
     else
@@ -635,20 +658,30 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
         // Storing
         CLogFile::WriteLine("Storing View settings...");
 
-        XmlNodeRef view = xmlAr.root->newChild("View");
-        CViewport* pVP = GetIEditor()->GetViewManager()->GetGameViewport();
+        int numberOfGameViewports = GetIEditor()->GetViewManager()->GetNumberOfGameViewports();
 
-        if (pVP)
+        for (int i = 0; i < numberOfGameViewports; i++)
         {
-            Vec3 pos = pVP->GetViewTM().GetTranslation();
-            Ang3 angles = Ang3::GetAnglesXYZ(Matrix33(pVP->GetViewTM()));
-            view->setAttr("ViewerPos", pos);
-            view->setAttr("ViewerAngles", angles);
-        }
+            auto viewName = QString("View%1").arg(i);
+            XmlNodeRef view = xmlAr.root->newChild(viewName.toUtf8().constData());
 
-        // Save grid.
-        XmlNodeRef gridNode = xmlAr.root->newChild("Grid");
-        GetIEditor()->GetViewManager()->GetGrid()->Serialize(gridNode, xmlAr.bLoading);
+            CViewport* pVP = GetIEditor()->GetViewManager()->GetView(i);
+
+            if (pVP)
+            {
+                Vec3 pos = pVP->GetViewTM().GetTranslation();
+                Ang3 angles = Ang3::GetAnglesXYZ(Matrix33(pVP->GetViewTM()));
+                auto viewerPosName = QString("ViewerPos%1").arg(i);
+                view->setAttr(viewerPosName.toUtf8().constData(), pos);
+                auto viewerAnglesName = QString("ViewerAngles%1").arg(i);
+                view->setAttr(viewerAnglesName.toUtf8().constData(), angles);
+            }
+
+            // Save grid.
+            auto gridName = QString("Grid%1").arg(i);
+            XmlNodeRef gridNode = xmlAr.root->newChild(gridName.toUtf8().constData());
+            GetIEditor()->GetViewManager()->GetGrid()->Serialize(gridNode, xmlAr.bLoading);
+        }
     }
 }
 
@@ -950,6 +983,7 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
     TDocMultiArchive arrXmlAr = {};
     if (!LoadXmlArchiveArray(arrXmlAr, absoluteLevelCryFilePath, levelPath))
     {
+        m_bLoadFailed = true;
         return FALSE;
     }
 
@@ -960,11 +994,18 @@ bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& c
         string level = absoluteLevelCryFilePath.toLatin1().data();
         pGameframework->SetEditorLevel(PathUtil::GetFileName(level).c_str(), PathUtil::GetPath(level).c_str());
     }
-    LoadLevel(arrXmlAr, absoluteLevelCryFilePath);
+    if (!LoadLevel(arrXmlAr, absoluteLevelCryFilePath))
+    {
+        m_bLoadFailed = true;
+    }
+
     ReleaseXmlArchiveArray(arrXmlAr);
 
     // Load AZ entities for the editor.
-    LoadEntities(absoluteLevelCryFilePath);
+    if (!LoadEntities(absoluteLevelCryFilePath))
+    {
+        m_bLoadFailed = true;
+    }
 
     if (m_bLoadFailed)
     {
@@ -1176,7 +1217,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
                     continue;
                 }
 
-                bool skipFile = sourceName.contains(".cry"); // .cry file will be written out by saving, ignore the source one
+                bool skipFile = sourceName.contains(".cry") || sourceName.contains(".ly"); // level file will be written out by saving, ignore the source one
                 if (skipFile)
                 {
                     continue;
@@ -1227,6 +1268,8 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         return false;
     }
 
+    bool pakContentsAllSaved = false; // abort level pak save if anything within it fails
+
     // Save AZ entities to the editor level pak.
     bool savedEntities = false;
     AZStd::vector<char> entitySaveBuffer;
@@ -1238,16 +1281,27 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     if (savedEntities)
     {
         pakFile.UpdateFile("LevelEntities.editor_xml", entitySaveBuffer.begin(), entitySaveBuffer.size());
+
+        // Save XML archive to pak file.
+        bool bSaved = xmlAr.SaveToPak(Path::GetPath(tempSaveFile), pakFile);
+        if (bSaved)
+        {
+            pakContentsAllSaved = true;
+        }
+        else
+        {
+            gEnv->pLog->LogWarning("Unable to write the level data to file %s", tempSaveFile.toLatin1().data());
+        }
+    }
+    else
+    {
+        gEnv->pLog->LogWarning("Unable to generate entity data for level save", tempSaveFile.toLatin1().data());
     }
 
-    // Save XML archive to pak file.
-    bool bSaved = xmlAr.SaveToPak(Path::GetPath(tempSaveFile), pakFile);
     pakFile.Close();
-
-    if (!bSaved)
+    if (!pakContentsAllSaved)
     {
         QFile::remove(tempSaveFile);
-        gEnv->pLog->LogWarning("Unable to write the level data to file %s", tempSaveFile.toLatin1().data());
         return false;
     }
     
@@ -1381,7 +1435,7 @@ void CCryEditDoc::Hold(const QString& holdName)
 
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
     QString holdPath = levelPath + "/" + holdName + "/";
-    QString holdFilename = holdPath + holdName + ".cry";
+    QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     // never auto-backup while we're trying to hold.
     bool oldBackup = gSettings.bBackupOnSave;
@@ -1401,7 +1455,7 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
 
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
     QString holdPath = levelPath + "/" + holdName + "/";
-    QString holdFilename = holdPath + holdName + ".cry";
+    QString holdFilename = holdPath + holdName + GetIEditor()->GetGameEngine()->GetLevelExtension();
 
     {
         QFile cFile(holdFilename);
@@ -1533,6 +1587,7 @@ bool CCryEditDoc::BackupBeforeSave(bool force)
     ignoredFiles += kHoldFolder;
 
     // copy that whole tree:
+    AZ_TracePrintf("Editor", "Saving level backup to '%s'...\n", backupPath.toLatin1().data());
     if (IFileUtil::ETREECOPYOK != CFileUtil::CopyTree(sourcePath, backupPath, true, false, ignoredFiles.toLatin1().data()))
     {
         gEnv->pLog->LogWarning("Attempting to save backup to %s before saving, but could not write all files.", backupPath.toLatin1().data());
@@ -1581,7 +1636,7 @@ void CCryEditDoc::SaveAutoBackup(bool bForce)
     QString subFolder = theTime.toString(QStringLiteral("yyyy-MM-dd [HH.mm.ss]"));
 
     QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
-    QString filename = autoBackupPath + "/" + subFolder + "/" + levelName + "/" + levelName + ".cry";
+    QString filename = autoBackupPath + "/" + subFolder + "/" + levelName + "/" + levelName + GetIEditor()->GetGameEngine()->GetLevelExtension();
     SaveLevel(filename);
     GetIEditor()->GetGameEngine()->SetLevelPath(levelPath);
 
@@ -2017,12 +2072,12 @@ BOOL CCryEditDoc::LoadXmlArchiveArray(TDocMultiArchive& arrXmlAr, const QString&
         QString relPath = Path::GetRelativePath(absoluteLevelPath, true);
 
         // bound to the level folder, as if it were the assets folder.
-        // this mounts (whateverlevelname.cry) as @assets@/Levels/whateverlevelname/ and thus it works...
+        // this mounts (whateverlevelname.ly) as @assets@/Levels/whateverlevelname/ and thus it works...
         QString bindRootRel = Path::GetPath(relPath);
         bool openLevelPakFileSuccess = pIPak->OpenPack((QString("@assets@/") + bindRootRel).toLatin1().data(), absoluteLevelPath.toLatin1().data());
         if (!openLevelPakFileSuccess)
         {
-            Q_UNREACHABLE();
+            return FALSE;
         }
 
         CPakFile pakFile;

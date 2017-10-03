@@ -57,7 +57,7 @@ struct SImpl_GPUParticleContainer
             reShadow[i]->Release();
         }
 
-        if (instance)
+        if (instance &&  renderer->GetGPUParticleEngine())
         {
             // cleanup emitter
             renderer->GetGPUParticleEngine()->RemoveEmitter(instance);
@@ -91,16 +91,28 @@ CParticleContainerGPU::~CParticleContainerGPU()
 
 void CParticleContainerGPU::Initialize(CParticleContainer* parent)
 {
-    CRY_ASSERT(parent);
+    if (!parent)
+    {
+        CRY_ASSERT(parent);
+        return;
+    }
 
     m_impl->parent = parent;
     m_impl->renderer = m_impl->parent->GetRenderer();
 
-    CRY_ASSERT(m_impl->renderer);
+    if (!m_impl->renderer)
+    {
+        CRY_ASSERT(m_impl->renderer);
+        return;
+    }
 
     IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
 
-    CRY_ASSERT(particleEngine);
+    if (!particleEngine)
+    {
+        CRY_ASSERT(particleEngine);
+        return;
+    }
 
     void* GPUparent = nullptr;
     if (m_impl->parent->GetParent() && m_impl->parent->GetParent()->GetGPUData())
@@ -139,6 +151,22 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
         return;
     }
 
+    IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
+
+    if (!particleEngine)
+    {
+        CRY_ASSERT(particleEngine);
+        return;
+    }
+
+    SShaderItem* shaderItem = particleEngine->GetRenderShader();
+
+    if (!shaderItem)
+    {
+        CRY_ASSERT(shaderItem);
+        return;
+    }
+
     //Set the lod blend value for gpu.
     SetLodBlendAlpha(m_impl->parent->ComputeLodBlend(PRParams.m_fCamDistance, m_impl->parent->GetAge() - m_impl->lodBlendAlphaUpdateTime));
     m_impl->lodBlendAlphaUpdateTime = m_impl->parent->GetAge();
@@ -161,17 +189,8 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
         pObj->m_ObjFlags &= (~FOB_PARTICLE_SHADOWS);
     }
 
-
-    IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
-
-    CRY_ASSERT(particleEngine);
-
-    SShaderItem* shaderItem = particleEngine->GetRenderShader();
-
-    CRY_ASSERT(shaderItem);
-
     // create lighting information
-    auto * pParams = &m_impl->parent->GetParams();
+    auto* pParams = &m_impl->parent->GetParams();
 
     CRenderObject* pRenderObject = pObj;
     SRenderObjData* pOD = gEnv->pRenderer->EF_GetObjData(pRenderObject, true, passInfo.ThreadID());
@@ -221,12 +240,18 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     {
         SRendItemSorter rendItemSorter = SRendItemSorter::CreateShadowPassRendItemSorter(passInfo);
         const int shadowIndex = static_cast<int>(passInfo.GetShadowMapType());
-        CRY_ASSERT(m_impl->reShadow[shadowIndex ]);
-        pRenderObject->m_ObjFlags |= FOB_DYNAMIC_OBJECT;
-        m_impl->reShadow[shadowIndex]->SetCameraFOV(camInfo.pCamera->GetFov());
-        m_impl->reShadow[shadowIndex]->SetAspectRatio(camInfo.pCamera->GetProjRatio());
-        m_impl->reShadow[shadowIndex]->SetWireframeEnabled(rParam.bIsShowWireframe);
-        m_impl->renderer->EF_AddEf((CRendElementBase*)m_impl->reShadow[shadowIndex], *shaderItem, pObj, passInfo, EFSLIST_SHADOW_GEN, 0, rendItemSorter);
+        if (m_impl->reShadow[shadowIndex])
+        {
+            pRenderObject->m_ObjFlags |= FOB_DYNAMIC_OBJECT;
+            m_impl->reShadow[shadowIndex]->SetCameraFOV(camInfo.pCamera->GetFov());
+            m_impl->reShadow[shadowIndex]->SetAspectRatio(camInfo.pCamera->GetProjRatio());
+            m_impl->reShadow[shadowIndex]->SetWireframeEnabled(rParam.bIsShowWireframe);
+            m_impl->renderer->EF_AddEf((CRendElementBase*)m_impl->reShadow[shadowIndex], *shaderItem, pObj, passInfo, EFSLIST_SHADOW_GEN, 0, rendItemSorter);
+        }
+        else
+        {
+            CRY_ASSERT(m_impl->reShadow[shadowIndex]);
+        }
     }
     else
     {
@@ -245,12 +270,17 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
 
         SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
 
-        CRY_ASSERT(re);
-        re->SetCameraFOV(camInfo.pCamera->GetFov());
-        re->SetAspectRatio(camInfo.pCamera->GetProjRatio());
-        re->SetWireframeEnabled(rParam.bIsShowWireframe);
-
-         m_impl->renderer->EF_AddEf((CRendElementBase*)re, *shaderItem, pObj, passInfo, EFSLIST_TRANSP, 1, rendItemSorter);
+        if (re)
+        {
+            re->SetCameraFOV(camInfo.pCamera->GetFov());
+            re->SetAspectRatio(camInfo.pCamera->GetProjRatio());
+            re->SetWireframeEnabled(rParam.bIsShowWireframe);
+            m_impl->renderer->EF_AddEf((CRendElementBase*)re, *shaderItem, pObj, passInfo, EFSLIST_TRANSP, 1, rendItemSorter);
+        }
+        else
+        {
+            CRY_ASSERT(re);
+        }
     }
 
     //get list of objects for cubemap depth collision if necessary
@@ -276,19 +306,38 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
 
 void CParticleContainerGPU::OnContainerUpdateLife()
 {
-    CRY_ASSERT(m_impl->renderer);
+    if (!m_impl->renderer)
+    {
+        CRY_ASSERT(m_impl->renderer);
+        return;
+    }
 
     IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
 
-    CRY_ASSERT(particleEngine);
-    CRY_ASSERT(m_impl->parent);
+    if (!particleEngine)
+    {
+        CRY_ASSERT(particleEngine);
+        return;
+    }
+
+    if (!m_impl->parent)
+    {
+        CRY_ASSERT(m_impl->parent);
+        return;
+    }
 
     if (AZ::IsClose(m_impl->parent->GetAge(), 0.0f, EPSILON))
     {
-        CRY_ASSERT(m_impl->instance);
-        particleEngine->ResetEmitter(m_impl->instance);
+        if (m_impl->instance)
+        {
+            particleEngine->ResetEmitter(m_impl->instance);
+        }
+        else
+        {
+            CRY_ASSERT(m_impl->instance);
+        }
     }
-    else if(m_impl->parent->GetAge() >= m_impl->parent->GetMain().GetStopAge())
+    else if (m_impl->parent->GetAge() >= m_impl->parent->GetMain().GetStopAge())
     {
         // Without this, disabling the emitter was not actually stopping particle generation
         particleEngine->StopEmitter(m_impl->instance);
@@ -302,24 +351,52 @@ void CParticleContainerGPU::OnContainerUpdateLife()
 void CParticleContainerGPU::SetLodBlendAlpha(float blendAlpha)
 {
     IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
-    particleEngine->SetEmitterLodBlendAlpha(m_impl->instance, blendAlpha);
+    if (particleEngine)
+    {
+        particleEngine->SetEmitterLodBlendAlpha(m_impl->instance, blendAlpha);
+    }
+    else
+    {
+        CRY_ASSERT(particleEngine);
+    }
 }
 
 void CParticleContainerGPU::OnEffectChange()
 {
     //tell GPUEngine to verify that internal emitter still is set up properly
     IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
-    particleEngine->OnEffectChanged(m_impl->instance);
+    if (particleEngine)
+    {
+        particleEngine->OnEffectChanged(m_impl->instance);
+    }
+    else
+    {
+        CRY_ASSERT(particleEngine);
+    }
 }
 
 void CParticleContainerGPU::Update()
 {
     m_impl->target.bTarget = false;
-    m_impl->parent->GetTarget(m_impl->target, m_impl->parent->GetDirectEmitter());
+    if (m_impl->parent)
+    {
+        m_impl->parent->GetTarget(m_impl->target, m_impl->parent->GetDirectEmitter());
+    }
+    else
+    {
+        CRY_ASSERT(m_impl->parent);
+    }
 }
 
 void CParticleContainerGPU::Prime(float equilibriumAge)
 {
     IGPUParticleEngine* particleEngine = m_impl->renderer->GetGPUParticleEngine();
-    particleEngine->PrimeEmitter(m_impl->instance, equilibriumAge);
+    if (particleEngine)
+    {
+        particleEngine->PrimeEmitter(m_impl->instance, equilibriumAge);
+    }
+    else
+    {
+        CRY_ASSERT(particleEngine);
+    }
 }

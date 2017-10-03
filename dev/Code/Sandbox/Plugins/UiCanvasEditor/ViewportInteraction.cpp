@@ -1044,16 +1044,25 @@ void ViewportInteraction::DrawAxisGizmo(Draw2dHelper& draw2d, const AZ::Entity* 
         }
 
         // Draw up axis
-        AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_top) ? ViewportHelpers::highlightColor : ViewportHelpers::yColor;
-        lineTextureY->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsVerticallyFit(element))
+        {
+            AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_top) ? ViewportHelpers::highlightColor : ViewportHelpers::yColor;
+            lineTextureY->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        }
 
         // Draw right axis
-        color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_right) ? ViewportHelpers::highlightColor : ViewportHelpers::xColor;
-        lineTextureX->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsHorizontallyFit(element))
+        {
+            AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_right) ? ViewportHelpers::highlightColor : ViewportHelpers::xColor;
+            lineTextureX->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        }
 
         // Draw center square
-        color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.Both()) ? ViewportHelpers::highlightColor : ViewportHelpers::zColor;
-        m_centerSquare->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsHorizontallyFit(element) && !ViewportHelpers::IsVerticallyFit(element))
+        {
+            AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.Both()) ? ViewportHelpers::highlightColor : ViewportHelpers::zColor;
+            m_centerSquare->Draw(draw2d, pivotPosition, transform, 0.0f, color);
+        }
     }
 }
 

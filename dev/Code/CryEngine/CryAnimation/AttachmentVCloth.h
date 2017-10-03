@@ -1294,11 +1294,13 @@ public:
     uint64 m_clothCacheKey;
 
     // history for skinning data, needed for motion blur
+    static const int tripleBufferSize = 3;
     struct
     {
         SSkinningData* pSkinningData;
+        int nNumBones;
         int nFrameID;
-    } m_arrSkinningRendererData[3];                                                      // triple buffered for motion blur
+    } m_arrSkinningRendererData[tripleBufferSize];                                                      // triple buffered for motion blur
 
     //! Lock whenever creating/releasing bone remappings
     AZStd::mutex m_remapMutex;

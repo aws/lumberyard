@@ -214,6 +214,12 @@ struct IPlatformOS
         eMsgBoxNumButtons
     };
 
+    enum EMsgBoxFlags
+    {
+        eMsgBox_Normal              = 0,
+        eMsgBox_FatalDoNotReturn    = 0x1,
+    };
+
     enum
     {
         KbdFlag_Default         = 0x1, // Keyboard in current selected language
@@ -543,7 +549,7 @@ struct IPlatformOS
     // Local user profile functions to check/initiate user sign in:
 
     // UserGetMaximumSignedInUsers:
-    //   Returns the maximum number of signed in users. EG: On Xbox is 4.
+    //   Returns the maximum number of signed in users.
     virtual unsigned int    UserGetMaximumSignedInUsers() const = 0;
 
     // UserIsSignedIn:
@@ -670,20 +676,17 @@ struct IPlatformOS
     //
 
     // KeyboardStart
-    //   Starts the virtual keyboard. Flags are from KbdFlag_* enum. title string is not copied. you must pass a set of callbacks via IVirtualKeyboardEvents
-    //   title & initialInput params must remain valid for the duration of the system keyboard, therefore they must NOT have been originally declared on the stack
-    //   returns false if the keyboard failed to start
-    virtual bool KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback) = 0;
+    //   Starts the virtual keyboard
+    virtual bool AZ_DEPRECATED(KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback),
+                               "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") = 0;
 
     // KeyboardIsRunning:
     //   Returns whether the virtual keyboard is currently displayed
-    virtual bool KeyboardIsRunning() = 0;
+    virtual bool AZ_DEPRECATED(KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") = 0;
 
     // KeyboardCancel
-    //   Cancels the on screen keyboard if it is running. Calls the IVirtualKeyboardEvents::KeyboardCancelled() method
-    //   Not supported on 360
-    //   Returns true if successful, false if the keyboard can't be cancelled, in which case check if it is still running with KeyboardIsRunning()
-    virtual bool KeyboardCancel() = 0;
+    //   Cancels the on screen keyboard if it is running
+    virtual bool AZ_DEPRECATED(KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // String Verification
@@ -711,7 +714,7 @@ struct IPlatformOS
     virtual const char* GetSKUId() = 0;
 
     // Compose a bitfield that enumerates the languages available on this system OS. This is used to determine the overlap
-    // between languages supplied in a SKU and languages available on a system. Some platforms like the PS3 have TRCs relating
+    // between languages supplied in a SKU and languages available on a system. Some platforms have TRCs relating
     // to whether or not you should show a language select screen based on this information.
     virtual ILocalizationManager::TLocalizationBitfield GetSystemSupportedLanguages() = 0;
 
@@ -722,7 +725,7 @@ struct IPlatformOS
     //   body   -  text body of the message
     //   title  -  title text of the message
     //   flags  -  reserved for future use
-    virtual IPlatformOS::EMsgBoxResult DebugMessageBox(const char* body, const char* title, unsigned int flags = 0) const = 0;
+    virtual IPlatformOS::EMsgBoxResult DebugMessageBox(const char* body, const char* title, unsigned int flags = eMsgBox_Normal) const = 0;
 
     //Begin platform specific boot checks to meet TRCs/TCRs. Call after localization has been initialized and chosen to meet TCG's guidance.
     //This should tend to throw fatal errors using platform specific APIs in order to meet TRCs robustly.
@@ -799,7 +802,7 @@ struct IPlatformOS
 
             // szGreatestMomentId
             // The title-defined ID string that identifies the description of the clip.
-            // Developers set up valid identifiers through Xbox Developer Portal. The cloud service uses this ID to look up the description string in the ApplicationClip class.
+            // Developers set up valid identifiers through relevant console Developer Portals. The cloud service uses this ID to look up the description string in the ApplicationClip class.
             const char* szGreatestMomentId;
 
             // wszLocalizedClipName

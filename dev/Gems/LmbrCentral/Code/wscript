@@ -40,10 +40,9 @@ def build(bld):
                           'QT5WIDGETS'],
             defines     =['LMBR_CENTRAL_EDITOR'],
 
-            darwin_uselib   =['AWS_CPP_SDK_ALL'],
-            darwin_lib      =['curl'],
+            darwin_uselib   =['AWS_CPP_SDK_CORE'],
 
-
+            shared_settings = ['awsgem.json'],
             win_uselib      =['XTP'],
             win_features    =['crcfix'],
             win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED']

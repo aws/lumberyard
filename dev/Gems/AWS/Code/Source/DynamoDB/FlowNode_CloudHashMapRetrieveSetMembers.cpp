@@ -17,6 +17,9 @@
 #include <aws/core/utils/Outcome.h>
 #include <memory>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 
 namespace LmbrAWS
@@ -34,7 +37,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("GetItem", _HELP("Activate this to read data from the cloud")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to use")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to use")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("Key name used in this table")),
             InputPortConfig<string>("Key", _HELP("The key you wish to read or write")),
             InputPortConfig<string>("Attribute", _HELP("The String Set attribute you wish to read or write")),
@@ -57,20 +60,14 @@ namespace LmbrAWS
         //Get Item
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_GetItem))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& tableName = client.GetTableName();
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
             auto& keyName = GetPortString(pActInfo, EIP_TableKeyName);
             auto& key = GetPortString(pActInfo, EIP_Key);
             auto& attribute = GetPortString(pActInfo, EIP_Attribute);
 
             Aws::DynamoDB::Model::GetItemRequest getRequest;
-            getRequest.SetTableName(tableName);
+            getRequest.SetTableName(tableName.c_str());
             Aws::Map<Aws::String, AttributeValue> item;
             AttributeValue hk;
             hk.SetS(key);

@@ -31,7 +31,7 @@ public:
         FilterType_Lanczos,
     };
 
-    virtual void CopyTextureToScreen(CTexture*& pSrc, const RECT* srcRegion = NULL, const int filterMode = -1);
+    virtual void CopyTextureToScreen(CTexture*& pSrc, const RECT* srcRegion = NULL, const int filterMode = -1, bool sRGBLookup = false);
     virtual void CopyScreenToTexture(CTexture*& pDst, const RECT* srcRegion = NULL);
     virtual void StretchRect(CTexture* pSrc, CTexture*& pDst, bool bClearAlpha = false, bool bDecodeSrcRGBK = false, bool bEncodeDstRGBK = false, bool bBigDownsample = false, EDepthDownsample depthDownsampleMode = eDepthDownsample_None, bool bBindMultisampled = false, const RECT* srcRegion = NULL);
     void SwapRedBlue(CTexture* pSrc, CTexture* pDst);
@@ -69,7 +69,8 @@ public:
 
     SDepthTexture* GetDepthSurface(CTexture* pTex);
     void ResolveRT(CTexture*& pDst, const RECT* pSrcRect);
-
+    void SetSRGBShaderFlags();
+    
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 

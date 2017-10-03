@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 import fnmatch
 import os
@@ -49,8 +49,7 @@ def create_stack(context, args):
         raise HandledError('The project has already been initialized and is using the {} AWS Cloud Formation stack.'.format(context.config.project_stack_id))
 
     # Project settings writable?
-    context.config.validate_writable(context.config.local_project_settings_path)
-    context.config.local_project_settings.check()
+    context.config.validate_writable(context.config.local_project_settings.path)
 
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)
@@ -95,8 +94,60 @@ def create_stack(context, args):
     __update_project_stack(context, pending_resource_status, capabilities)
 
 
-def update_stack(context, args):
+def update_framework_version(context, args):
 
+    current_framework_version = context.config.framework_version
+    if context.gem.framework_gem.version == current_framework_version:
+        raise HandledError('The framework version used by the project is already {}, the same version as the enabled CloudGemFramework gem.'.format(current_framework_version))
+
+    # Project settings writable?
+
+    writable_file_paths = set( [ context.config.local_project_settings.path ] )
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'add_framework_version_update_writable_files', 
+        kwargs={
+            'from_version': current_framework_version,
+            'to_version': context.gem.framework_gem.version,
+            'writable_file_paths': writable_file_paths
+        }
+    )
+
+    if not util.validate_writable_list(context, writable_file_paths):
+        return
+
+    context.view.updating_framework_version(current_framework_version, context.gem.framework_gem.version)
+    context.config.set_pending_framework_version(context.gem.framework_gem.version)
+
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_framework_version_updated', 
+        kwargs={
+            'from_version': current_framework_version,
+            'to_version': context.gem.framework_gem.version
+        }
+    )
+
+    if context.config.project_initialized:
+         
+        # Is it ok to do this?
+        pending_resource_status = __get_pending_resource_status(context)
+        capabilities = context.stack.confirm_stack_operation(
+            context.config.project_stack_id,
+            'project stack',
+            args,
+            pending_resource_status
+        )
+
+        __update_project_stack(context, pending_resource_status, capabilities)
+
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_framework_version_updated', 
+        kwargs={
+            'from_version': current_framework_version,
+            'to_version': context.gem.framework_gem.version
+        }
+    )
+
+    context.config.save_pending_framework_version()
+
+
+def update_stack(context, args):
 
     # Has the project been initialized?
     if not context.config.project_initialized:
@@ -128,7 +179,6 @@ def update_stack(context, args):
     )
 
     # Do the update...
-
     __update_project_stack(context, pending_resource_status, capabilities)
 
 
@@ -255,9 +305,8 @@ def __get_pending_resource_status(context, deleting=False):
         if name == 'ProjectResourceHandler':
             lambda_function_content_paths.extend(__get_plugin_project_code_paths(context).values())
 
-    # TODO: this is a hack... will be resolved when merging of resource manager and cloud gem framework
-    # is completed. Also need to support swagger.json files IN the lambda directory.
-    service_api_content_paths = [ os.path.join(context.config.framework_aws_directory_path, 'project_service_swagger.json') ]
+    # TODO: need to support swagger.json IN the lambda directory.
+    service_api_content_paths = [ os.path.join(context.config.framework_aws_directory_path, 'swagger.json') ]
 
     # TODO: get_pending_resource_status's new_content_paths parameter needs to support
     # a per-resource mapping instead of an per-type mapping. As is, a change in any lambda
@@ -359,7 +408,7 @@ def describe(context, args):
         'ProjectInitialized': context.config.project_initialized,
         'ProjectInitializing': not context.config.project_initialized and context.config.get_pending_project_stack_id() is not None,
         'HasAWSDirectoryContent': context.config.has_aws_directory_content,
-        'ProjectSettingsFilePath' : context.config.local_project_settings_path,
+        'ProjectSettingsFilePath' : context.config.local_project_settings.path,
         'UserSettingsFilePath': context.config.user_settings_path,
         'ProjectTemplateFilePath': context.config.project_template_aggregator.extension_file_path,
         'DeploymentTemplateFilePath': context.config.deployment_template_aggregator.extension_file_path,
@@ -368,7 +417,8 @@ def describe(context, args):
         'ProjectCodeDirectoryPath': context.config.project_lambda_code_path,
         'DefaultAWSProfile': context.config.user_default_profile,
         'GuiRefreshFilePath': context.config.gui_refresh_file_path,
-        'ProjectUsesAWS': True if context.resource_groups.keys() else False
+        'ProjectUsesAWS': True if context.resource_groups.keys() else False,
+        'GemsFilePath': context.gem.get_gems_file_path()
     }
 
     context.view.project_description(description)

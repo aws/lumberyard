@@ -2,43 +2,45 @@
 #include "StdAfx.h"
 #include <platform_impl.h>
 
+#include <CloudGemFrameworkModule.h>
+
 #include "CloudGemFrameworkSystemComponent.h"
 
 #include <CloudGemFramework/HttpClientComponent.h>
-
+#include <MappingsComponent.h>
+#include <PlayerIdentityComponent.h>
 #include <IGem.h>
 
 namespace CloudGemFramework
 {
-    class CloudGemFrameworkModule
-        : public CryHooksModule
+    CloudGemFrameworkModule::CloudGemFrameworkModule()
+        : CryHooksModule()
     {
-    public:
-        AZ_RTTI(CloudGemFrameworkModule, "{0003F1F0-2E9F-4753-8E65-01E2A5CFBE76}", CryHooksModule);
+        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+        m_descriptors.insert(m_descriptors.end(), {
+            CloudGemFrameworkSystemComponent::CreateDescriptor(),
+            HttpClientComponent::CreateDescriptor(),
+            CloudCanvasMappingsComponent::CreateDescriptor(),
+            CloudCanvasPlayerIdentityComponent::CreateDescriptor(),
+        });
+    }
 
-        CloudGemFrameworkModule()
-            : CryHooksModule()
-        {
-            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-            m_descriptors.insert(m_descriptors.end(), {
-                CloudGemFrameworkSystemComponent::CreateDescriptor(),
-                HttpClientComponent::CreateDescriptor(),
-            });
-        }
-
-        /**
-         * Add required SystemComponents to the SystemEntity.
-         */
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            return AZ::ComponentTypeList{
-                azrtti_typeid<CloudGemFrameworkSystemComponent>(),
-            };
-        }
-    };
+    /**
+        * Add required SystemComponents to the SystemEntity.
+        */
+    AZ::ComponentTypeList CloudGemFrameworkModule::GetRequiredSystemComponents() const 
+    {
+        return AZ::ComponentTypeList{
+            azrtti_typeid<CloudGemFrameworkSystemComponent>(),
+            azrtti_typeid<CloudCanvasMappingsComponent>(),
+            azrtti_typeid<CloudCanvasPlayerIdentityComponent>(),
+        };
+    }
 }
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM
 // The first parameter should be GemName_GemIdLower
 // The second should be the fully qualified name of the class above
+#if !defined(CLOUD_GEM_FRAMEWORK_EDITOR)
 AZ_DECLARE_MODULE_CLASS(CloudGemFramework_6fc787a982184217a5a553ca24676cfa, CloudGemFramework::CloudGemFrameworkModule)
+#endif

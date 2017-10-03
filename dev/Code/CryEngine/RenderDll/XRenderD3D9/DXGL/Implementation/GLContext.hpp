@@ -23,6 +23,9 @@
 #include "GLResource.hpp"
 #include "GLShader.hpp"
 #include "GLView.hpp"
+#include "GLBlitFramebufferHelper.hpp"
+
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace NCryOpenGL
 {
@@ -541,11 +544,19 @@ namespace NCryOpenGL
         friend struct SStreamingBufferContext;
 #endif
     public:
+        enum ContextType
+        {
+            RenderingType, // Context used to render to a window
+            ResourceType, // Context used for loading resources
+            NumContextTypes // Must be last one
+        };
+
         CContext(
             CDevice* pDevice,
             const TRenderingContext& kRenderingContext,
             const TWindowContext& kDefaultWindowContext,
-            uint32 uIndex);
+            uint32 uIndex,
+            ContextType type);
         ~CContext();
 
         bool Initialize();
@@ -557,6 +568,7 @@ namespace NCryOpenGL
         const TWindowContext& GetWindowContext() { return m_kWindowContext; }
         CDevice* GetDevice() { return m_pDevice; }
         uint32 GetIndex() { return m_uIndex; }
+        ContextType GetType() const { return m_type; }
         CContext* GetReservedContext() { return m_pReservedContext; }
         void SetReservedContext(CContext* pReservedContext) { m_pReservedContext = pReservedContext; }
         void SetWindowContext(const TWindowContext& kWindowContext);
@@ -809,6 +821,28 @@ namespace NCryOpenGL
         struct SFrameBufferCache* m_pFrameBufferCache;
         struct SPipelineCache* m_pPipelineCache;
         struct SUnitMapCache* m_pUnitMapCache;
+
+        ContextType m_type;
+		
+    public:
+        // Blit a texture into a framebuffer using a shader instead of the glBlitFramebuffer function.
+        // If possible use Context::BlitFrameBuffer instead.
+        bool BlitTextureToFrameBuffer(SShaderTextureView* srcTexture,
+                                        SFrameBufferObject& kDstFBO,
+                                        GLenum eDstColorBuffer,
+                                        GLint iSrcXMin, GLint iSrcYMin, GLint iSrcXMax, GLint iSrcYMax,
+                                        GLint iDstXMin, GLint iDstYMin, GLint iDstXMax, GLint iDstYMax,
+                                        GLenum minFilter, GLenum magFilter) 
+        {
+            return m_blitHelper.BlitTexture(srcTexture, kDstFBO, eDstColorBuffer, 
+                                            iSrcXMin, iSrcYMin, iSrcXMax, iSrcYMax, 
+                                            iDstXMin, iDstYMin, iDstXMax, iDstYMax, 
+                                            minFilter, magFilter);
+        }
+
+    private:
+        friend class GLBlitFramebufferHelper;
+        GLBlitFramebufferHelper m_blitHelper;
     };
 
     //  Confetti BEGIN: Igor Lobanchikov

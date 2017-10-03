@@ -20,8 +20,11 @@
 #define CRYINCLUDE_CRYMOVIE_ANIMSPLINETRACK_VEC2SPECIALIZATION_H
 #pragma once
 
+#include <CryCommonReflection.h>
+
 template <>
 inline TAnimSplineTrack<Vec2>::TAnimSplineTrack()
+    : m_refCount(0)
 {
     AllocSpline();
     m_flags = 0;
@@ -149,6 +152,7 @@ inline int TAnimSplineTrack<Vec2>::CopyKey(IAnimTrack* pFromTrack, int nFromKey)
     return newIndex;
 }
 
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 template <>
 inline bool TAnimSplineTrack<Vec2>::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
@@ -336,4 +340,56 @@ inline void TAnimSplineTrack<Vec2>::GetKeyInfo(int index, const char*& descripti
     sprintf_s(str, "%.2f", k.value.y);
 }
 
+using BezierSplineVec2 = spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2>>;
+using TSplineBezierBasisVec2 = spline::TSpline<spline::SplineKeyEx<Vec2>, spline::BezierBasis>;
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(spline::TrackSplineInterpolator<Vec2>, "{173AC8F0-FD63-4583-8D38-F43FE59F2209}");
+
+    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKeyEx<Vec2>, "{96BCA307-A4D5-43A0-9985-08A29BCCCB30}");
+
+    AZ_TYPE_INFO_SPECIALIZE(BezierSplineVec2, "{EE318F13-A608-4047-85B3-3D40745A19C7}");
+    AZ_TYPE_INFO_SPECIALIZE(TSplineBezierBasisVec2, "{B638C840-C1D7-483A-B04E-B22DA539DB8D}");
+}
+
+namespace spline
+{
+    //////////////////////////////////////////////////////////////////////////
+    template <>
+    inline void TSplineBezierBasisVec2::Reflect(AZ::SerializeContext* serializeContext)
+    {
+        serializeContext->Class<TSplineBezierBasisVec2>()
+            ->Version(1)
+            ->Field("Keys", &BezierSplineVec2::m_keys);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    template <>
+    inline void BezierSplineVec2::Reflect(AZ::SerializeContext* serializeContext)
+    {
+        TSplineBezierBasisVec2::Reflect(serializeContext);
+
+        serializeContext->Class<BezierSplineVec2, TSplineBezierBasisVec2>()
+            ->Version(1);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimSplineTrack<Vec2>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    spline::SplineKey<Vec2>::Reflect(serializeContext);
+    spline::SplineKeyEx<Vec2>::Reflect(serializeContext);
+
+    spline::TrackSplineInterpolator<Vec2>::Reflect(serializeContext);
+    BezierSplineVec2::Reflect(serializeContext);
+
+    serializeContext->Class<TAnimSplineTrack<Vec2> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimSplineTrack<Vec2>::m_flags)
+        ->Field("DefaultValue", &TAnimSplineTrack<Vec2>::m_defaultValue)
+        ->Field("ParamType", &TAnimSplineTrack<Vec2>::m_nParamType)
+        ->Field("Spline", &TAnimSplineTrack<Vec2>::m_spline);
+}
 #endif // CRYINCLUDE_CRYMOVIE_ANIMSPLINETRACK_VEC2SPECIALIZATION_H

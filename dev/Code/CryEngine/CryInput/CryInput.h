@@ -14,40 +14,9 @@
 // Description : Here the actual input implementation gets chosen for the
 //               different platforms
 
-
-#ifndef CRYINCLUDE_CRYINPUT_CRYINPUT_H
-#define CRYINCLUDE_CRYINPUT_CRYINPUT_H
 #pragma once
 
-#include <AzFramework/Input/System/InputSystemComponent.h>
-
 #if !defined(DEDICATED_SERVER)
-    #if defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        #define USE_AZ_TO_LY_INPUT
-        #include "AzToLyInput.h"
-    #elif defined(ANDROID)
-        #define USE_ANDROIDINPUT
-        #include "AndroidInput.h"
-    #elif defined(IOS)
-// Mobile client
-        #define USE_IOSINPUT
-        #include "IosInput.h"
-    #elif defined(APPLETV)
-        #define USE_APPLETVINPUT
-        #include "AppleTVInput.h"
-    #elif defined(LINUX) || defined(APPLE)
-// Linux client (not dedicated server)
-        #define USE_LINUXINPUT
-        #include "LinuxInput.h"
-    #elif defined (WIN32)
-        #define USE_DXINPUT
-        #include "DXInput.h"
-    #endif
-    #if !defined(_RELEASE) && !defined(WIN32)
-        #define USE_SYNERGY_INPUT
-    #endif
-    #include "InputCVars.h"
+#   include "AzToLyInput.h"
+#   include "InputCVars.h"
 #endif
-
-#endif // CRYINCLUDE_CRYINPUT_CRYINPUT_H
-

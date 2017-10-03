@@ -1838,7 +1838,9 @@ BC4 SParametricSamplerInternal::WeightTetrahedron(const Vec3& CP, const Vec3& t0
     bc.w2 = (((t0 - t3) % (t1 - t3)) | (CP - t2)) / m + 1;
     bc.w3 = (((t2 - t0) % (t1 - t0)) | (CP - t3)) / m + 1;
     f32 sum = bc.w0 + bc.w1 + bc.w2 + bc.w3;
-    CRY_ASSERT(fabsf(sum - 1.0f) < 0.0001f);
+    //The scale of the points involved can generate floating point error outside the bounds of this epsilon error check.
+    //It would need to be increased or removed in that case.
+    CRY_ASSERT(fabsf(sum - 1.0f) < 0.0002f);
     return bc;
 }
 

@@ -25,9 +25,6 @@
 /// - Add IsOpen() function to GenericStream.
 /// - Added plane line-ray intersections.
 ///
-/// \section Build186 Build 186 Thu 07/19/2012 11:59:40.56
-/// - Durango support. Script bind supports inheritance.
-///
 /// \section Build177 Build 177 Thu 06/21/2012 10:00:03.17
 /// - Added AssetDatabase
 /// - Added generic stream wrappers.
@@ -64,13 +61,13 @@
 /// - Expose streamer caching parameters in the streamer descriptor.
 ///
 /// \section Build98 Build 98 Wed 11/23/2011 13:24:48.37
-/// - Initial VS2010 support (no optimizations), PS3 SystemFile supports FindFile.
+/// - Initial VS2010 support (no optimizations)
 ///
 /// \section Build91 Build 91 Tue 11/01/2011 12:05:31.28
 /// - Added memory allocator statistics for user requested bytes and peak of requested bytes.
 ///
 /// \section Build73 Build 73 Fri 09/16/2011 14:27:51.33
-/// - Optimized load/store functions from floats with regular alignment, at least for X360 and SSE
+/// - Optimized load/store functions from floats with regular alignment, at least for SSE
 ///
 /// \section Build50 Build 50 Mon 08/08/2011 14:11:26.12
 /// - Added RapidXML implementaion. All allocations are piped trough the system allocator.
@@ -104,7 +101,7 @@
 ///
 /// \section Build115 Build 115 Fri 03/11/2011 19:33:43.86
 /// - Checked iterators are disabled by default.
-/// - Speed up for check iterators, especially on windows&x360.
+/// - Speed up for check iterators, especially on windows.
 ///
 /// \section Build111 Build 111 Tue 03/08/2011 22:21:12.89
 /// - EBus (Event Bus) implementation.
@@ -171,9 +168,6 @@
 /// \section Build65 Build 65 Tue 12/08/2009 16:38:11.91
 /// - Added spin_mutex
 ///
-/// \section Build63 Build 63 Mon 12/07/2009 14:35:16.57
-/// - Improved the high precision timers accuracy on X360.
-///
 /// \section Build54 Build 54 Mon 10/26/2009 19:56:48.29
 /// - Removed thread constructors which take additional parameters for the thread function. These are in the standard, but conflict with our thread_desc extension. Since we have AZStd::function, they are unnecessary anyway.
 ///
@@ -231,7 +225,7 @@
 /// - Allowed full reroute of the trace messages.
 ///
 /// \section Build71 Build 71 Fri 11/05/2010 10:44:05.48
-/// - Fixed the SF_OPEN_APPEND mode on windows and x360.
+/// - Fixed the SF_OPEN_APPEND mode on windows.
 ///
 /// \section Build69 Build 69 Tue 10/26/2010 22:02:36.42
 /// - Pipe the default AZStd assert function trough the Trace system.

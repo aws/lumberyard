@@ -1,14 +1,16 @@
 #include "stdafx.h"
 
+#include "Clipboard.h"
 #include "ReflectedPropertyCtrl.h"
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditorHeader.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
-#include <AZCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include "ReflectedPropertyItem.h"
 #include "PropertyCtrl.h"
 #include "ReflectedVar.h"
 
+#include <QScopedValueRollback>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -70,7 +72,10 @@ void ReflectedPropertyControl::Setup(bool showScrollbars /*= true*/, int labelWi
     }
 }
 
-
+QSize ReflectedPropertyControl::sizeHint() const
+{
+    return m_editor->sizeHint();
+}
 
 ReflectedPropertyItem* ReflectedPropertyControl::AddVarBlock(CVarBlock *varBlock, const char *szCategory /*= nullptr*/)
 {
@@ -111,20 +116,21 @@ ReflectedPropertyItem* ReflectedPropertyControl::AddVarBlock(CVarBlock *varBlock
 
     CPropertyContainer *parentContainer = m_rootContainer.get();
     ReflectedPropertyItem *parentItem = m_root;
-    QString currentGroupName;
+    QChar currentGroupInitial;
     for (auto var : variables)
-    {      
+    {
         if (m_groupProperties)
         {
             //check to see if this item starts with same letter as last. If not, create a new group for it.
-            const QString groupName = var->GetName().toUpper().left(1);
-            if (groupName != currentGroupName)
+            const QChar groupInitial = var->GetName().toUpper().at(0);
+            if (groupInitial != currentGroupInitial)
             {
-                currentGroupName = groupName;
+                currentGroupInitial = groupInitial;
                 //make new group be the parent for this item
                 parentItem = new ReflectedPropertyItem(this, parentItem);
 
-                parentContainer = new CPropertyContainer(groupName.toLatin1().data());
+                QString groupName(groupInitial);
+                parentContainer = new CPropertyContainer(AZStd::string(groupName.toUtf8().data()));
                 parentContainer->SetAutoExpand(false);
                 m_rootContainer->AddProperty(parentContainer);
             }
@@ -522,12 +528,29 @@ void ReflectedPropertyControl::RequestPropertyContextMenu(AzToolsFramework::Inst
     ReflectedPropertyItem *pItem = m_root->findItem(pReflectedVar);
     AZ_Assert(pItem, "No item found in Context Menu callback");
 
+    if (GetSelectedItems().isEmpty())
+        m_editor->SelectInstance(pNode);
+
+    CClipboard clipboard(nullptr);
+
     // Popup Menu with Event selection.
     QMenu menu;
     UINT i = 0;
 
     const int ePPA_CustomItemBase = 10; // reserved from 10 to 99
     const int ePPA_CustomPopupBase = 100; // reserved from 100 to x*100+100 where x is size of m_customPopupMenuPopups
+
+    menu.addAction(tr("Copy"), [&]() { OnCopy(false); });
+    menu.addAction(tr("Copy Recursively"), [&]() { OnCopy(true); });
+    menu.addAction(tr("Copy All"), [&]() { OnCopyAll(); });
+    menu.addSeparator();
+    menu.addAction(tr("Paste"), [&]() { OnPaste(); })->setEnabled(!clipboard.IsEmpty());
+
+
+    if (!m_customPopupMenuItems.empty() || !m_customPopupMenuPopups.empty())
+    {
+        menu.addSeparator();
+    }
 
     for (auto itr = m_customPopupMenuItems.cbegin(); itr != m_customPopupMenuItems.cend(); ++itr, ++i)
     {
@@ -650,9 +673,8 @@ void ReflectedPropertyControl::DoUpdateCallback(IVariable *var)
     if (m_updateVarFunc == 0)
         return;
 
-    m_bEnableCallback = false;
+    QScopedValueRollback<bool> rb(m_bEnableCallback, false);
     m_updateVarFunc(var);
-    m_bEnableCallback = true;
 }
 
 void ReflectedPropertyControl::DoUpdateObjectCallback(IVariable *var)
@@ -660,9 +682,8 @@ void ReflectedPropertyControl::DoUpdateObjectCallback(IVariable *var)
     if (m_updateObjectFunc == 0)
         return;
 
-    m_bEnableCallback = false;
+    QScopedValueRollback<bool> rb(m_bEnableCallback, false);
     m_updateObjectFunc(var);
-    m_bEnableCallback = true;
 }
 
 void ReflectedPropertyControl::InvalidateCtrl(bool queued)
@@ -718,7 +739,7 @@ ReflectedPropertyItem* ReflectedPropertyControl::GetSelectedItem()
     AzToolsFramework::PropertyRowWidget *widget = m_editor->GetWidgetFromNode(m_editor->GetSelectedInstance());
     if (widget)
     {
-       return m_root->findItem(widget->label().toLatin1().data());
+       return m_root->findItem(widget->label());
     }
     return nullptr;
 }
@@ -726,7 +747,8 @@ ReflectedPropertyItem* ReflectedPropertyControl::GetSelectedItem()
 
 QVector<ReflectedPropertyItem*> ReflectedPropertyControl::GetSelectedItems()
 {
-    return QVector<ReflectedPropertyItem*>{GetSelectedItem()};
+    auto item = GetSelectedItem();
+    return item == nullptr ? QVector<ReflectedPropertyItem*>() : QVector<ReflectedPropertyItem*>{item};
 }
 
 void ReflectedPropertyControl::SetDisplayOnlyModified(bool displayOnlyModified)
@@ -739,9 +761,73 @@ void ReflectedPropertyControl::SetDisplayOnlyModified(bool displayOnlyModified)
     //just use that. 
 }
 
+void ReflectedPropertyControl::OnCopy(bool bRecursively)
+{
+    auto selection = GetSelectedItems();
+    if (!selection.isEmpty())
+    {
+        CClipboard clipboard(nullptr);
+        auto rootNode = XmlHelpers::CreateXmlNode("PropertyCtrl");
+        for (auto item : selection)
+        {
+            CopyItem(rootNode, item, bRecursively);
+        }
+        clipboard.Put(rootNode);
+    }
+}
+
+void ReflectedPropertyControl::OnCopyAll()
+{
+    if (m_root)
+    {
+        CClipboard clipboard(nullptr);
+        auto rootNode = XmlHelpers::CreateXmlNode("PropertyCtrl");
+        for (int i = 0; i < m_root->GetChildCount(); i++)
+        {
+            CopyItem(rootNode, m_root->GetChild(i), true);
+        }
+        clipboard.Put(rootNode);
+    }
+}
+
+void ReflectedPropertyControl::OnPaste()
+{
+    CClipboard clipboard(nullptr);
+
+    CUndo undo("Paste Properties");
+
+    XmlNodeRef rootNode = clipboard.Get();
+    if (rootNode != NULL && rootNode->isTag("PropertyCtrl"))
+    {
+        for (int i = 0; i < rootNode->getChildCount(); i++)
+        {
+            XmlNodeRef node = rootNode->getChild(i);
+            QString value;
+            QString name;
+            node->getAttr("Name", name);
+            node->getAttr("Value", value);
+            auto pItem = m_root->FindItemByFullName(name);
+            if (pItem)
+            {
+                pItem->SetValue(value);
+                OnItemChange(pItem);
+            }
+        }
+    }
+}
+
 void ReflectedPropertyControl::CopyItem(XmlNodeRef rootNode, ReflectedPropertyItem* pItem, bool bRecursively)
 {
-    //KDAB_PROPERTYCTRL_PORT_TODO
+    XmlNodeRef node = rootNode->newChild("PropertyItem");
+    node->setAttr("Name", pItem->GetFullName().toLatin1().data());
+    node->setAttr("Value", pItem->GetVariable()->GetDisplayValue().toLatin1().data());
+    if (bRecursively)
+    {
+        for (int i = 0; i < pItem->GetChildCount(); i++)
+        {
+            CopyItem(rootNode, pItem->GetChild(i), bRecursively);
+        }
+    }
 }
 
 
@@ -777,6 +863,13 @@ bool ReflectedPropertyControl::FindVariable(IVariable *categoryItem) const
 
 void ReflectedPropertyControl::EnableUpdateCallback(bool bEnable)
 {
+    // Handle case where update callbacks were disabled and we're enabling them now
+    // Need to force immediate invalidation of any queued invalidations made while callbacks were disabled
+    // to make them fire now, while m_bEnableCallback is still false.
+    if (bEnable && !m_bEnableCallback)
+    {
+        m_editor->ForceQueuedInvalidation();
+    }
     m_bEnableCallback = bEnable;
 }
 
@@ -841,33 +934,46 @@ void ReflectedPropertyControl::ExpandAllChildren(ReflectedPropertyItem* item, bo
 
 TwoColumnPropertyControl::TwoColumnPropertyControl(QWidget *parent /*= nullptr*/)
     : QWidget(parent)
+    , m_twoColumns(true)
 {
     QHBoxLayout *mainlayout = new QHBoxLayout(this);
 
-    QWidget *leftContainer = new QWidget;
-    m_leftLayout = new QVBoxLayout(leftContainer);
-    m_leftLayout->setContentsMargins(0, 0, 0, 0);
+    m_leftContainer = new QWidget;
+    auto leftLayout = new QVBoxLayout(m_leftContainer);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+
     m_leftScrollArea = new QScrollArea;
-    m_leftScrollArea->setWidget(leftContainer);
+    m_leftScrollArea->setMinimumWidth(minimumColumnWidth);
+
+    m_leftScrollArea->setWidget(m_leftContainer);
     m_leftScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_leftScrollArea->setWidgetResizable(true);
     mainlayout->addWidget(m_leftScrollArea);
 
-    QWidget *rightContainer = new QWidget;
-    m_rightLayout = new QVBoxLayout(rightContainer);
-    m_rightLayout->setContentsMargins(0, 0, 0, 0);
+    m_rightContainer = new QWidget;
+
+    auto rightLayout = new QVBoxLayout(m_rightContainer);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+
     m_rightScrollArea = new QScrollArea;
-    m_rightScrollArea->setWidget(rightContainer);
+    m_rightScrollArea->setMinimumWidth(minimumColumnWidth);
+
+    m_rightScrollArea->setWidget(m_rightContainer);
     m_rightScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_rightScrollArea->setWidgetResizable(true);
     mainlayout->addWidget(m_rightScrollArea);
 }
 
 void TwoColumnPropertyControl::Setup(bool showScrollbars /*= true*/, int labelWidth /*= 150*/)
 {
 }
-
 void TwoColumnPropertyControl::AddVarBlock(CVarBlock *varBlock, const char *szCategory /*= nullptr*/)
 {
     m_pVarBlock = varBlock;
+
+    auto leftLayout = static_cast<QBoxLayout *>(m_leftContainer->layout());
+    auto rightLayout = static_cast<QBoxLayout *>(m_rightContainer->layout());
+
     for (int i = 0; i < m_pVarBlock->GetNumVariables(); ++i)
     {
         CVarBlock *vb = new CVarBlock;
@@ -880,47 +986,47 @@ void TwoColumnPropertyControl::AddVarBlock(CVarBlock *varBlock, const char *szCa
 
         if (var->GetFlags() & IVariable::UI_ROLLUP2)
         {
-            m_rightLayout->addWidget(ctrl);
+            rightLayout->addWidget(ctrl);
         }
         else
         {
-            m_leftLayout->addWidget(ctrl);
+            leftLayout->addWidget(ctrl);
         }
-        connect(ctrl, &PropertyCard::OnExpansionContractionDone, this, [this, ctrl]()
-        {
-            QMetaObject::invokeMethod(this, "UpdateLayouts", Qt::QueuedConnection);
-        });
     }
-    m_leftLayout->addStretch(1);
-    m_rightLayout->addStretch(1);
-}
 
-void TwoColumnPropertyControl::UpdateLayouts()
-{
-    //resize all of the controls to the size of their content, whether expanded or contracted
-    for (auto control : m_controlList)
-    {
-        control->setFixedHeight(control->sizeHint().height());
-    }
-    m_leftLayout->update();
-    m_leftLayout->activate();
-    m_rightLayout->update();
-    m_rightLayout->activate();
-
-    const QSize availableSize = m_leftScrollArea->size();
-
-    const int leftContentHeight = m_leftScrollArea->widget()->sizeHint().height();
-    const int extraLeftScrollBarSpace = leftContentHeight <= availableSize.height() ? 0 : m_leftScrollArea->verticalScrollBar()->width();
-    m_leftScrollArea->widget()->setFixedSize(availableSize.width() - extraLeftScrollBarSpace, leftContentHeight);
-
-    const int rightContentHeight = m_rightScrollArea->widget()->sizeHint().height();
-    const int extraRightScrollBarSpace = rightContentHeight <= availableSize.height() ? 0 : m_rightScrollArea->verticalScrollBar()->width();
-    m_rightScrollArea->widget()->setFixedSize(availableSize.width() - extraRightScrollBarSpace, rightContentHeight);
+    leftLayout->addStretch(1);
+    rightLayout->addStretch(1);
 }
 
 void TwoColumnPropertyControl::resizeEvent(QResizeEvent *event)
 {
-    UpdateLayouts();
+    const bool twoColumns = event->size().width() >= minimumTwoColumnWidth;
+    if (m_twoColumns != twoColumns)
+    {
+        ToggleTwoColumnLayout();
+    }
+}
+
+void TwoColumnPropertyControl::ToggleTwoColumnLayout()
+{
+    auto leftLayout = static_cast<QBoxLayout *>(m_leftContainer->layout());
+
+    if (m_twoColumns)
+    {
+        // change layout to one column
+        leftLayout->insertWidget(0, m_rightScrollArea->takeWidget());
+        m_rightScrollArea->hide();
+    }
+    else
+    {
+        // change layout to two columns
+        auto item = leftLayout->takeAt(0);
+        m_rightScrollArea->setWidget(item->widget());
+        delete item;
+        m_rightScrollArea->show();
+    }
+
+    m_twoColumns = !m_twoColumns;
 }
 
 void TwoColumnPropertyControl::ReplaceVarBlock(IVariable *categoryItem, CVarBlock *varBlock)

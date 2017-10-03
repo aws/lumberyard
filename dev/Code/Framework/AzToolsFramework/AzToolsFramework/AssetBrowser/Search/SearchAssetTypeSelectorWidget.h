@@ -37,6 +37,8 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
+        class FilterByWidget;
+
         class SearchAssetTypeSelectorWidget
             : public QWidget
         {
@@ -47,14 +49,17 @@ namespace AzToolsFramework
             explicit SearchAssetTypeSelectorWidget(QWidget* parent = nullptr);
             ~SearchAssetTypeSelectorWidget() override;
 
-            void ClearAll() const;
+            void UpdateFilterByWidget() const;
             FilterConstType GetFilter() const;
             bool IsLocked() const;
+
+        public Q_SIGNAL:
+            void ClearAll() const;
 
         private:
             QScopedPointer<Ui::SearchAssetTypeSelectorWidgetClass> m_ui;
             QSharedPointer<CompositeFilter> m_filter;
-            QCheckBox* m_allCheckbox;
+            FilterByWidget* m_filterByWidget;
             AZStd::vector<QCheckBox*> m_assetTypeCheckboxes;
             AZStd::unordered_map<QCheckBox*, FilterConstType> m_actionFiltersMapping;
             bool m_locked;

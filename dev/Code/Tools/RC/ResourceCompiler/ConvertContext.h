@@ -78,6 +78,7 @@ struct ConvertContext
     virtual void SetPlatformIndex(int platformIndex)
     {        
         this->platform = platformIndex;
+        multiConfig->setActivePlatform(platformIndex);
     }
     virtual void SetThreads(int threads)
     {

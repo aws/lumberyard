@@ -12,8 +12,6 @@
 #pragma once
 
 #include <AzCore/Component/TickBus.h>
-#include <LmbrAWS/IAWSClientManager.h>
-#include <LmbrAWS/ILmbrAWS.h>
 #include <CloudGemFramework/AwsApiRequestJob.h>
 
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
@@ -24,6 +22,7 @@
 #pragma warning(default: 4355)
 
 #include <CloudGemPlayerAccount/CloudGemPlayerAccountBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 using namespace CloudGemPlayerAccount;
 
@@ -245,7 +244,7 @@ public:
     void AdminConfirmSignUp(const AZStd::string& username)
     {
         AZStd::string userPool;
-        EBUS_EVENT_RESULT(userPool, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.PlayerUserPool");
+        EBUS_EVENT_RESULT(userPool, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "CloudGemPlayerAccount.PlayerUserPool");
 
         using ConfirmSignUpRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, AdminConfirmSignUp);
 
@@ -312,10 +311,10 @@ protected:
         m_events.push_back({ CloudGemPlayerAccountEventType::GlobalSignOut, resultInfo });
     }
 
-    virtual void OnSignOutComplete(const char* username) override
+    virtual void OnSignOutComplete(const BasicResultInfo& resultInfo) override
     {
         std::lock_guard<std::mutex> lock(m_eventMutex);
-        m_events.push_back({ CloudGemPlayerAccountEventType::SignOut, BasicResultInfo() });
+        m_events.push_back({ CloudGemPlayerAccountEventType::SignOut, resultInfo });
     }
 
     virtual void OnSignUpComplete(const BasicResultInfo& resultInfo, const DeliveryDetails& deliveryDetails, bool wasConfirmed) override

@@ -14,6 +14,8 @@
 
 #include <AzCore/Component/Component.h>
 
+#include <LmbrCentral/Rendering/MaterialAsset.h>
+
 #include <LyShine/LyShineBus.h>
 #include <LyShine/Bus/UiSystemBus.h>
 #include <LyShine/Bus/UiCanvasManagerBus.h>
@@ -40,6 +42,8 @@ namespace LyShine
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
         static void SetLyShineComponentDescriptors(const AZStd::list<AZ::ComponentDescriptor*>* descriptors);
+
+        LyShineSystemComponent();
 
     protected:
 
@@ -68,9 +72,13 @@ namespace LyShine
         void DestroyCanvas(CanvasAssetHandle* canvas) override;
         ////////////////////////////////////////////////////////////////////////
 
+        void BroadcastCursorImagePathname();
+
     protected:  // data
 
         CLyShine* m_pLyShine = nullptr;
+
+        AzFramework::SimpleAssetReference<LmbrCentral::TextureAsset> m_cursorImagePathname;
 
         // The components types registers in order to cotrol their order in the add component
         // menu and the properties pane - may go away soon

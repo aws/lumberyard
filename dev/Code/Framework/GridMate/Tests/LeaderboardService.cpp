@@ -13,8 +13,6 @@
 #include <AzCore/std/parallel/thread.h>
 #include <GridMate/Leaderboard/LeaderboardService.h>
 
-#include <GridMate/Online/PS4UserService.h>
-#include <GridMate/Leaderboard/PS4LeaderboardService.h>
 
 using namespace GridMate;
 

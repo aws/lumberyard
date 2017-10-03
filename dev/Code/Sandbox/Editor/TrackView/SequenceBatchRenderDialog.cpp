@@ -859,7 +859,7 @@ void CSequenceBatchRenderDialog::StartCaptureItem()
     // Set specific capture options for this item.
     m_renderContext.captureOptions.timeStep = 1.0f / renderItem.fps;
     m_renderContext.captureOptions.captureBufferIndex = renderItem.bufferIndex;
-    cry_strcpy(m_renderContext.captureOptions.prefix, renderItem.prefix.toLatin1().data());
+    m_renderContext.captureOptions.prefix = renderItem.prefix.toLatin1().data();
     switch (renderItem.formatIndex)
     {
     case ICaptureKey::Jpg:
@@ -894,7 +894,7 @@ void CSequenceBatchRenderDialog::StartCaptureItem()
         finalFolder += suffix;
         ++i;
     }
-    cry_strcpy(m_renderContext.captureOptions.folder, finalFolder.toLatin1().data());
+    m_renderContext.captureOptions.folder = finalFolder.toLatin1().data();
 
     /// Change the resolution.
     const int renderWidth = getResWidth(renderItem.resW);
@@ -982,7 +982,7 @@ void CSequenceBatchRenderDialog::EndCaptureItem(IAnimSequence* pSequence)
     {
         // Create a video using the ffmpeg plug-in from captured images.
         m_renderContext.bFFMPEGProcessing = true;
-        QString outputFolder = m_renderContext.captureOptions.folder;
+        QString outputFolder = m_renderContext.captureOptions.folder.c_str();
         auto future = QtConcurrent::run(
             [&renderItem, &outputFolder]
         {

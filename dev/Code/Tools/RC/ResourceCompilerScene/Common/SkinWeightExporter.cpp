@@ -191,18 +191,23 @@ namespace AZ
         int SkinWeightExporter::GetGlobalBoneId(
             const AZStd::shared_ptr<const SceneDataTypes::ISkinWeightData>& skinWeights, BoneNameIdMap boneNameIdMap, int boneId)
         {
-            if (skinWeights->GetBoneName(boneId).empty())
+            AZ_TraceContext("Bone id", boneId);
+            const AZStd::string& boneName = skinWeights->GetBoneName(boneId);
+            AZ_TraceContext("Bone name", boneName);
+
+            if (boneName.empty())
             {
-                AZ_TracePrintf(SceneUtils::WarningWindow, "Invalid local bone id %i referenced in skin weight data", boneId);
+                AZ_TracePrintf(SceneUtils::WarningWindow, "Invalid local bone id referenced in skin weight data");
                 return -1;
             }
-            AZStd::string boneName = skinWeights->GetBoneName(boneId);
-            if (boneNameIdMap.find(boneName) == boneNameIdMap.end())
+            
+            auto it = boneNameIdMap.find(boneName);
+            if (it == boneNameIdMap.end())
             {
-                AZ_TracePrintf(SceneUtils::WarningWindow, "Local bone name %s referenced in skin weight data doesn't exist in global bone map", boneName);
+                AZ_TracePrintf(SceneUtils::WarningWindow, "Local bone name referenced in skin weight data doesn't exist in global bone map");
                 return -1;
             }
-            return boneNameIdMap[boneName];
+            return it->second;
         }
     } // namespace RC
 } // namespace AZ

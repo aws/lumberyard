@@ -23,7 +23,6 @@
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/Containers/Views/PairIterator.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 #include <SceneAPI/SceneUI/SceneWidgets/ManifestWidget.h>
 #include <SceneAPI/SceneUI/SceneWidgets/ManifestWidgetPage.h>
@@ -48,6 +47,13 @@ namespace AZ
                 ui->m_mainLayout->insertWidget(0, m_propertyEditor);
 
                 BuildAndConnectAddButton();
+
+                BusConnect();
+            }
+
+            ManifestWidgetPage::~ManifestWidgetPage()
+            {
+                BusDisconnect();
             }
 
             void ManifestWidgetPage::SetCapSize(size_t size)
@@ -81,6 +87,10 @@ namespace AZ
                         AZ_Assert(false, "Failed to add manifest object to Reflected Property Editor.");
                         return false;
                     }
+
+                    // Add new object to the list so it's ready for updating later on.
+                    m_objects.push_back(object);
+
                     m_propertyEditor->InvalidateAll();
                     m_propertyEditor->ExpandAll();
 
@@ -90,8 +100,6 @@ namespace AZ
                             ScrollToBottom();
                         }
                     );
-
-                    m_objects.push_back(object);
 
                     return true;
                 }
@@ -122,7 +130,7 @@ namespace AZ
                     if (m_objects.size() == 0)
                     {
                         // We won't get property modified event  if it's the last element removed
-                        emit PageUpdated();
+                        EmitObjectChanged();
                     }
 
                     // If the property editor is immediately updated here QT will do some processing in an unexpected order,
@@ -172,9 +180,26 @@ namespace AZ
             {
             }
 
-            void ManifestWidgetPage::AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*pNode*/)
+            void ManifestWidgetPage::AfterPropertyModified(AzToolsFramework::InstanceDataNode* node)
             {
-                emit PageUpdated();
+                if (node && node->GetParent())
+                {
+                    AzToolsFramework::InstanceDataNode* owner = node->GetParent();
+                    const AZ::SerializeContext::ClassData* data = owner->GetClassMetadata();
+                    if (data && data->m_azRtti)
+                    {
+                        const DataTypes::IManifestObject* cast = data->m_azRtti->Cast<DataTypes::IManifestObject>(owner->FirstInstance());
+                        if (cast)
+                        {
+                            AZ_Assert(AZStd::find_if(m_objects.begin(), m_objects.end(), 
+                                [cast](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
+                                {
+                                    return object.get() == cast;
+                                }) != m_objects.end(), "ManifestWidgetPage detected an update of a field it doesn't own.");
+                            EmitObjectChanged(cast);
+                        }
+                    }
+                }
             }
 
             void ManifestWidgetPage::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*pNode*/)
@@ -353,12 +378,45 @@ namespace AZ
                             AZ_Assert(false, "Unable to add new object to Reflected Property Editor.");
                         }
 
-                        return;
+                        EmitObjectChanged();
                     }
                 }
             }
-        } // UI
-    } // SceneAPI
-} // AZ
+
+            void ManifestWidgetPage::EmitObjectChanged(const DataTypes::IManifestObject* object)
+            {
+                ManifestWidget* parent = ManifestWidget::FindRoot(this);
+                AZ_Assert(parent, "ManifestWidgetPage isn't docked in a ManifestWidget.");
+                if (!parent)
+                {
+                    return;
+                }
+
+                AZStd::shared_ptr<Containers::Scene> scene = parent->GetScene();
+                if (!scene)
+                {
+                    return;
+                }
+
+                Events::ManifestMetaInfoBus::Broadcast(&Events::ManifestMetaInfoBus::Events::ObjectUpdated, *scene, object, this);
+            }
+
+            void ManifestWidgetPage::ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender)
+            {
+                if (sender != this && target != nullptr && m_propertyEditor)
+                {
+                    if (AZStd::find_if(m_objects.begin(), m_objects.end(),
+                        [target](const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
+                        {
+                            return object.get() == target;
+                        }) != m_objects.end())
+                    {
+                        m_propertyEditor->InvalidateAttributesAndValues();
+                    }
+                }
+            }
+        } // namespace UI
+    } // namespace SceneAPI
+} // namespace AZ
 
 #include <SceneWidgets/ManifestWidgetPage.moc>

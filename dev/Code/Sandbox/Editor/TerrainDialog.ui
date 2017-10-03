@@ -465,10 +465,6 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset resource="MainWindow.qrc">
-     <normaloff>:/bmp00005_02.png</normaloff>:/bmp00005_02.png</iconset>
-   </property>
    <property name="text">
     <string>Auto-Scale Grey Range</string>
    </property>

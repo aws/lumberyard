@@ -33,7 +33,8 @@
 static const char lastLoadPathFilename[] = "lastLoadPath.preset";
 
 // File name extension for the main level file
-static const char kLevelExtension[] = "cry";
+static const char kLevelExtension[] = "ly";
+static const char kOldLevelExtension[] = "cry";
 
 // Folder in which levels are stored
 static const char kLevelsFolder[] = "Levels";
@@ -96,10 +97,13 @@ CLevelFileDialog::CLevelFileDialog(bool openDialog, QWidget* parent)
     {
         setWindowTitle(tr("Save Level As "));
         ui->okButton->setText(tr("Save"));
+
+        // Make the name input the default active field for the save as dialog
+        // The filter input will still be the default active field for the open dialog
+        setTabOrder(ui->nameLineEdit, ui->filterLineEdit);
     }
 
     ReloadTree();
-    ui->filterLineEdit->setFocus(Qt::OtherFocusReason);
     LoadLastUsedLevelPath();
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 }
@@ -229,7 +233,9 @@ bool CLevelFileDialog::IsValidLevelSelected()
     QString levelPath = GetLevelPath();
     m_fileName = GetFileName(levelPath);
 
-    bool isInvalidFileExtension = Path::GetExt(m_fileName) != kLevelExtension;
+    QString currentExtension = Path::GetExt(m_fileName);
+
+    bool isInvalidFileExtension = (currentExtension != kLevelExtension && currentExtension != kOldLevelExtension);
 
     if (!isInvalidFileExtension && CFileUtil::FileExists(m_fileName))
     {
@@ -264,9 +270,10 @@ QString CLevelFileDialog::GetFileName(QString levelPath)
 
     if (CheckLevelFolder(levelPath, &levelFiles) && levelFiles.size() >= 1)
     {
-        // A level folder was entered. Prefer the .cry file with the
+        // A level folder was entered. Prefer the .ly/.cry file with the
         // folder name, otherwise pick the first one in the list
-        QString needle = Path::GetFileName(levelPath) + "." + kLevelExtension;
+        QString path = Path::GetFileName(levelPath);
+        QString needle = path + "." + kLevelExtension;
         auto iter = std::find(levelFiles.begin(), levelFiles.end(), needle);
 
         if (iter != levelFiles.end())
@@ -275,7 +282,16 @@ QString CLevelFileDialog::GetFileName(QString levelPath)
         }
         else
         {
-            fileName = levelPath + "/" + levelFiles[0];
+            needle = path + "." + kOldLevelExtension;
+            iter = std::find(levelFiles.begin(), levelFiles.end(), needle);
+            if (iter != levelFiles.end())
+            {
+                fileName = levelPath + "/" + *iter;
+            }
+            else
+            {
+                fileName = levelPath + "/" + levelFiles[0];
+            }
         }
     }
     else
@@ -412,7 +428,7 @@ bool CLevelFileDialog::CheckLevelFolder(const QString folder, QStringList* level
         {
             QString ext = Path::GetExt(fileName);
 
-            if (ext == kLevelExtension)
+            if (ext == kLevelExtension || ext == kOldLevelExtension)
             {
                 bIsLevelFolder = true;
 

@@ -20,13 +20,16 @@
 
 #include "ViewportTitleDlg.h"
 
+#include <AzQtComponents/Components/ToolBarArea.h>
+
 class CViewport;
+class QToolBar;
 
 /////////////////////////////////////////////////////////////////////////////
 // CViewPane view
 
 class CLayoutViewPane
-    : public QWidget
+    : public AzQtComponents::ToolBarArea
 {
     Q_OBJECT
 public:
@@ -44,7 +47,6 @@ public:
 
     //! Assign viewport to this pane.
     void SwapViewports(CLayoutViewPane* pView);
-    void SwaphViewports(CLayoutViewPane* pView);
 
     void AttachViewport(QWidget* pViewport);
     //! Detach viewport from this pane.
@@ -53,14 +55,14 @@ public:
     void ReleaseViewport();
 
     void SetFullscren(bool f);
-    bool IsFullscreen() const { return m_bFullscreen; };
+    bool IsFullscreen() const { return m_bFullscreen; }
 
     void SetFullscreenViewport(bool b);
 
-    QWidget* GetViewport() { return m_viewport; };
+    QWidget* GetViewport() { return m_viewport; }
 
     //////////////////////////////////////////////////////////////////////////
-    bool IsActiveView() const { return m_active; };
+    bool IsActiveView() const { return m_active; }
 
     void ShowTitleMenu();
     void ToggleMaximize();
@@ -82,7 +84,7 @@ protected:
     void OnDestroy();
     void focusInEvent(QFocusEvent* event) override;
 
-    void RecalcLayout();
+    void DisconnectRenderViewportInteractionRequestBus();
 
 private:
     QString m_viewPaneClass;

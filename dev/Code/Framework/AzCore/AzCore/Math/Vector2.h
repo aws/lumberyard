@@ -110,7 +110,7 @@ namespace AZ
         AZ_MATH_FORCE_INLINE const Vector2 GetNormalizedSafe(float tolerance = 0.0001f) const
         {
             float length = GetLength();
-            if (length < tolerance)
+            if (length <= tolerance)
             {
                 return Vector2(1.0f, 0.0f);
             }
@@ -134,7 +134,7 @@ namespace AZ
         AZ_MATH_FORCE_INLINE float NormalizeSafeWithLength(float tolerance = 0.0001f)
         {
             float length = GetLength();
-            if (length < tolerance)
+            if (length <= tolerance)
             {
                 Set(1.0f, 0.0f);
             }
@@ -154,7 +154,7 @@ namespace AZ
         }
         AZ_MATH_FORCE_INLINE bool IsNormalized(float tolerance = 0.01f) const
         {
-            return (fabsf(GetLengthSq() - 1.0f) < tolerance);
+            return (fabsf(GetLengthSq() - 1.0f) <= tolerance);
         }
 
         /**
@@ -202,7 +202,7 @@ namespace AZ
         */
         AZ_MATH_FORCE_INLINE bool IsClose(const Vector2& v, float tolerance = 0.001f) const
         {
-            return ((fabsf(v.m_x - m_x) < tolerance) && (fabsf(v.m_y - m_y) < tolerance));
+            return ((fabsf(v.m_x - m_x) <= tolerance) && (fabsf(v.m_y - m_y) <= tolerance));
         }
 
         AZ_MATH_FORCE_INLINE bool IsZero(float tolerance = AZ_FLT_EPSILON) const { return IsClose(Vector2::CreateZero(), tolerance); }

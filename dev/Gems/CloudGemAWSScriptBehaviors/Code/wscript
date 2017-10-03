@@ -26,8 +26,7 @@ def build(bld):
 
     bld.DefineGem(
         includes        = [bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Code/CryEngine/LmbrAWS/Configuration'),
-                           bld.Path('Code/SDKs/AWSNativeSDK/include'),
+                           bld.Path('Code/SDKs/AWSNativeSDK/include')
         ],
         platforms = ['all'],
 
@@ -37,5 +36,7 @@ def build(bld):
         uselib = ['AWS_CPP_SDK_CORE',
                   'AWS_CPP_SDK_LAMBDA',
                   'AWS_CPP_SDK_S3'],
-        shared_settings = ['awsgem.json']
+        shared_settings = ['awsgem.json'],
+
+       
     )

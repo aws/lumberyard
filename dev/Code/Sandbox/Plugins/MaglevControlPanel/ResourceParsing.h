@@ -24,6 +24,7 @@ namespace ResourceParsing
     QString ParseResourceVariant(const QVariant& thisResource);
     QString GetResourceContent(const QString& baseContent, const QString& resourceName, bool addRelated);
     void AddRelatedResources(const QVariantMap& primaryResource, const QString& resourceName, const QVariantMap& resourceMap, QVariantMap& outputMap);
+    void RemoveResourceDependency(QJsonObject& resourcesObject, const QString& resourceName);
     QString SetResourceContent(const QString& baseContent, const QString& resourceName, const QString& contentData);
     QString ReadResources(const QString& baseContent, const QString& contentData);
     QString DeleteResource(const QString& baseContent, const QString& resourceName);

@@ -110,13 +110,22 @@
         "ServiceApi": {
             "Metadata": {
                 "CloudCanvas": {
-                    "Permissions": {
-                        "AbstractRole": "Player",
-                        "Action": "execute-api:Invoke",
-                        "ResourceSuffix": [
-                            "/api/GET/player/messages"
-                        ]
-                    }
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/player/messages"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "Server",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/player/messages"
+                            ]
+                        }
+                    ]
                 }
             },
             "Properties": {

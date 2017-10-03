@@ -701,6 +701,11 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
                 kerningOffset = m_pFontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
             }
 
+            if (nextCh)
+            {
+                charX += ctx.m_tracking * scaleInfo.scale.x;
+            }
+
             charX += advance + kerningOffset.x;
         }
 
@@ -866,6 +871,12 @@ Vec2 CFFont::GetTextSizeUInternal(const char* pStr, const bool asciiMultiLine, c
             if (ctx.m_kerningEnabled && nextCh)
             {
                 kerningOffset = m_pFontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
+            }
+
+            // Adjust char width with tracking only if there is a next character
+            if (nextCh)
+            {
+                charX += ctx.m_tracking * scaleInfo.scale.x;
             }
 
             charX += advance + kerningOffset.x;

@@ -16,8 +16,6 @@
 #include <GridMate/NetworkGridMate.h>
 
 #include "Multiplayer/GridMateServiceWrapper/GridMateLANServiceWrapper.h"
-#include "Multiplayer/GridMateServiceWrapper/GridMatePSNServiceWrapper.h"
-#include "Multiplayer/GridMateServiceWrapper/GridMateXboneServiceWrapper.h"
 #include "Multiplayer/MultiplayerUtils.h"
 
 namespace Multiplayer
@@ -262,8 +260,6 @@ namespace Multiplayer
             {
                 behaviorContext->Class<GridMate::ServiceType>("GridServiceType")
                     ->Enum<(int)GridMate::ST_LAN>("LAN")
-                    ->Enum<(int)GridMate::ST_PSN>("PSN")
-                    ->Enum<(int)GridMate::ST_XLIVE>("XboxOne")
                     ;
 
                 // expose the parameters for a GridSession
@@ -275,7 +271,7 @@ namespace Multiplayer
                     ->Property("enableDisconnectDetection", BehaviorValueProperty(&SessionDesc::m_enableDisconnectDetection))
                     ->Property("connectionTimeoutMS", BehaviorValueProperty(&SessionDesc::m_connectionTimeoutMS))
                     ->Property("threadUpdateTimeMS", BehaviorValueProperty(&SessionDesc::m_threadUpdateTimeMS))
-                    ->Property("serviceType", [](SessionDesc* that) { return that->m_serviceType; }, [](SessionDesc* that, int value) { that->m_serviceType = static_cast<GridMate::ServiceType>(value); });
+                    ->Property("serviceType", [](SessionDesc* that) -> int { return that->m_serviceType; }, [](SessionDesc* that, int value) { that->m_serviceType = static_cast<GridMate::ServiceType>(value); });
                 ;
 
                 behaviorContext->EBus<SessionManagerBus>("SessionManagerBus")

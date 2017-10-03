@@ -41,8 +41,13 @@ public:
 
     virtual void paintEvent(QPaintEvent* event);
 protected:
+    void showEvent(QShowEvent* event) override;
+    void InitializeContent();
+
     SCurveEditorContent m_content;
     ISplineInterpolator* m_spline;
+
+    bool m_contentInitialized = false;
 };
 
 #endif // QCurveSwatchWidget_h__

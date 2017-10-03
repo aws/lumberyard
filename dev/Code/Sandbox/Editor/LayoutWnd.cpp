@@ -85,7 +85,7 @@ void CLayoutSplitter::CreateLayoutView(int row, int col, int id)
 // CLayoutWnd
 //////////////////////////////////////////////////////////////////////////
 CLayoutWnd::CLayoutWnd(QSettings* settings, QWidget* parent)
-    : QWidget(parent)
+    : AzQtComponents::ToolBarArea(parent)
     , m_settings(settings)
 {
     m_bMaximized = false;
@@ -97,6 +97,13 @@ CLayoutWnd::CLayoutWnd(QSettings* settings, QWidget* parent)
 
     m_infoBar = new CInfoBar(this);
     connect(qApp, &QApplication::focusChanged, this, &CLayoutWnd::OnFocusChanged);
+
+    m_infoToolBar = CreateToolBarFromWidget(m_infoBar,
+                                            Qt::BottomToolBarArea,
+                                            QStringLiteral("Info Panel"));
+    m_infoToolBar->setMovable(false);
+
+    setContextMenuPolicy(Qt::NoContextMenu);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -107,35 +114,6 @@ CLayoutWnd::~CLayoutWnd()
     delete m_splitWnd3;
 
     OnDestroy();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CLayoutWnd::resizeEvent(QResizeEvent* event)
-{
-    QWidget::resizeEvent(event);
-
-    QRect rc = rect();
-
-    int h = m_infoBar->sizeHint().height();
-    m_infoBar->setGeometry(rc.left(), rc.bottom() - h, rc.width(), h);
-
-    rc.setBottom(rc.bottom() - h);
-
-    m_infoBarSize = QSize(rc.width(), h);
-    
-    // Move primary split window.
-    // Secondary split window will be resized within primary.
-    if (m_splitWnd)
-    {
-        m_splitWnd->setGeometry(rc);
-    }
-
-
-    // Resize maximized view.
-    if (m_maximizedView)
-    {
-        m_maximizedView->setGeometry(rc);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -227,6 +205,9 @@ void CLayoutWnd::MaximizeViewport(int paneId)
             }
             m_maximizedView->setFocus();
 
+            SetMainWidget(m_maximizedView);
+            m_maximizedView->setVisible(true);
+
             MainWindow::instance()->SetActiveView(m_maximizedView);
         }
     }
@@ -251,9 +232,9 @@ void CLayoutWnd::MaximizeViewport(int paneId)
         if (m_splitWnd)
         {
             m_splitWnd->setVisible(true);
+            SetMainWidget(m_splitWnd);
+            FocusFirstLayoutViewPane(m_splitWnd);
         }
-
-        FocusFirstLayoutViewPane(m_splitWnd);
     }
 }
 
@@ -293,16 +274,16 @@ void CLayoutWnd::CreateLayout(EViewLayout layout, bool bBindViewports, EViewport
     }
 
     QRect rcView = rect();
-    rcView.setBottom(rcView.bottom() - m_infoBarSize.height());
+    rcView.setBottom(rcView.bottom() - m_infoBar->height());
 
-    if (!m_maximizedView)
-    {
-        m_maximizedView = new CLayoutViewPane(this);
-        m_maximizedView->SetId(0);
-        m_maximizedView->setGeometry(rcView);
-        m_maximizedView->setVisible(false);
-        m_maximizedView->SetFullscren(true);
-    }
+    if (m_maximizedView)
+        m_maximizedView->deleteLater();
+
+    m_maximizedView = new CLayoutViewPane(this);
+    m_maximizedView->SetId(0);
+    m_maximizedView->setGeometry(rcView);
+    m_maximizedView->setVisible(false);
+    m_maximizedView->SetFullscren(true);
 
     switch (layout)
     {
@@ -416,6 +397,7 @@ void CLayoutWnd::CreateLayout(EViewLayout layout, bool bBindViewports, EViewport
         m_splitWnd->setGeometry(rcView);
         m_splitWnd->setVisible(true);
         FocusFirstLayoutViewPane(m_splitWnd);
+        SetMainWidget(m_splitWnd);
     }
 
     if (bBindViewports && !m_bMaximized)

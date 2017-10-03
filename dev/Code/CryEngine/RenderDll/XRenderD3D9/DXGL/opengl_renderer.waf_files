@@ -47,7 +47,10 @@
 			"Implementation/GLState.cpp",
 			"Implementation/GLState.hpp",
 			"Implementation/GLView.cpp",
-			"Implementation/GLView.hpp"
+			"Implementation/GLView.hpp",
+			"Implementation/GLBlitFramebufferHelper.hpp",
+			"Implementation/GLBlitFramebufferHelper.cpp",
+			"Implementation/GLBlitShaders.hpp"
 		],
 		"DXGL/Interfaces":
 		[

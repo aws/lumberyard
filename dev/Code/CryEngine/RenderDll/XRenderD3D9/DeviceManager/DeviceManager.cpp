@@ -19,7 +19,7 @@
 #include <Common/Memory/VRAMDrillerBus.h>
 #include "Base.h"
 
-#if defined(CRY_USE_DX12)
+#if   defined(CRY_USE_DX12)
     #include "DeviceManager_D3D12.inl"
 #else
     #include "DeviceManager_D3D11.inl"
@@ -271,11 +271,7 @@ HRESULT CDeviceManager::CreateDirectAccessBuffer(uint32 nSize, uint32 elemSize, 
 {
     int32 nUsage =
         CDeviceManager::USAGE_CPU_WRITE
-        //  Confetti BEGIN: Igor Lobanchikov
-#if !defined(CRY_USE_METAL) || BUFFER_ENABLE_DIRECT_ACCESS != 0
         | CDeviceManager::USAGE_DIRECT_ACCESS
-#endif
-        //  Confetti End: Igor Lobanchikov
         | CDeviceManager::USAGE_DIRECT_ACCESS_CPU_COHERENT
         | CDeviceManager::USAGE_DIRECT_ACCESS_GPU_COHERENT;
 
@@ -516,7 +512,7 @@ void CDeviceManager::BindPlatformConstantBuffer(
 
 void CDeviceManager::UnbindConstantBuffer(AzRHI::ConstantBuffer* constantBuffer)
 {
-    if(!constantBuffer)
+    if(!constantBuffer || !constantBuffer->GetPlatformBuffer())
     {
         return;
     }
@@ -930,7 +926,6 @@ int CDeviceTexture::Cleanup()
     int32 nRef = -1;
     if (m_pD3DTexture)
     {
-        // The registration events have been disabled for durango, so I'm disabling the unregister events as well
         // Unregister the VRAM allocation with the VRAM driller
         EBUS_EVENT(Render::Debug::VRAMDrillerBus, UnregisterAllocation, static_cast<void*>(m_pD3DTexture));
         nRef = m_pD3DTexture->Release();

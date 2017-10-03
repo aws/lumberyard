@@ -103,10 +103,11 @@ std::shared_ptr<AZ::Test::IFunctionHandle> ModuleHandle::GetFunction(const std::
     return std::make_shared<FunctionHandle>(*this, name);
 }
 
-namespace AZ
-{
-    namespace Test
+namespace AZ 
+{ 
+    namespace Test 
     {
+
         Platform& GetPlatform()
         {
             static Platform s_platform;

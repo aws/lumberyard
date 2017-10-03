@@ -96,6 +96,7 @@ void CGameContextBridge::OnContextBridgeDataActivated(CGameContextBridgeDataPtr 
 
     if (netData->IsMaster())
     {
+        OverrideRootSliceLoadMode(true);
         CGameContext* gameContext = CCryAction::GetCryAction()->GetGameContext();
         if (gameContext)
         {
@@ -116,6 +117,7 @@ void CGameContextBridge::OnContextBridgeDataActivated(CGameContextBridgeDataPtr 
     }
     else
     {
+        OverrideRootSliceLoadMode(false);
         SyncGameContext();
     }
 }

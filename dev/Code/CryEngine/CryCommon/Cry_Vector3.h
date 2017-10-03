@@ -281,12 +281,12 @@ struct Vec3_tpl
         return !(v0 == v1);
     }
 
-    ILINE bool IsZero(F e = (F)0.0) const
+    ILINE bool IsZero(F e = (F) 0.0) const
     {
         return (fabs_tpl(x) <= e) && (fabs_tpl(y) <= e) && (fabs_tpl(z) <= e);
     }
 
-    ILINE bool IsZeroFast(F e = (F)0.0003) const
+    ILINE bool IsZeroFast(F e = (F) 0.0003) const
     {
         return (fabs_tpl(x) + fabs_tpl(y) + fabs_tpl(z)) <= e;
     }
@@ -948,6 +948,7 @@ ILINE bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, f32 epsilo
 // Typedefs                                                                  //
 ///////////////////////////////////////////////////////////////////////////////
 typedef Vec3_tpl<f32>    Vec3;  // always 32 bit
+
 typedef Vec3_tpl<f64>    Vec3d; // always 64 bit
 typedef Vec3_tpl<int32>  Vec3i;
 typedef Vec3_tpl<uint32> Vec3ui;
@@ -961,6 +962,7 @@ template<>
 inline Vec3_tpl<f32>::Vec3_tpl(type_min) { x = y = z = -3.3E38f; }
 template<>
 inline Vec3_tpl<f32>::Vec3_tpl(type_max) { x = y = z = 3.3E38f; }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -1425,5 +1427,8 @@ const Vec3_tpl<float> Vec3_OneY(0, 1, 0);
 const Vec3_tpl<float> Vec3_OneZ(0, 0, 1);
 const Vec3_tpl<float> Vec3_One(1, 1, 1);
 
-
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Vec3, "{DFA993FB-4E92-4A13-BDB3-4E9285A5346F}");
+}
 #endif // CRYINCLUDE_CRYCOMMON_CRY_VECTOR3_H

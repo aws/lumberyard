@@ -23,14 +23,12 @@ SUBFOLDERS = [
         'CryAnimation',
         'CryEntitySystem',
         'CryFont',
-        'CryMovie',
         'CryNetwork',
         'CryPhysics',
         'CryScriptSystem',
         'CrySystem',
         'RenderDll',
         'CryCommon',
-        'LmbrAWS',
     ]
 
 def build(bld):

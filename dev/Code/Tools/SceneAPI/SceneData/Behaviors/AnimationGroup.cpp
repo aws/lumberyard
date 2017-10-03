@@ -35,14 +35,18 @@ namespace AZ
 
             void AnimationGroup::Activate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::ManifestMetaInfoBus::Handler::BusConnect();
                 Events::AssetImportRequestBus::Handler::BusConnect();
+#endif // ENABLE_LEGACY_ANIMATION         
             }
 
             void AnimationGroup::Deactivate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::AssetImportRequestBus::Handler::BusDisconnect();
                 Events::ManifestMetaInfoBus::Handler::BusDisconnect();
+#endif // ENABLE_LEGACY_ANIMATION
             }
 
             void AnimationGroup::Reflect(ReflectContext* context)
@@ -130,6 +134,11 @@ namespace AZ
 
                 // There are animations but no animation group, so add a default animation group to the manifest.
                 AZStd::shared_ptr<SceneData::AnimationGroup> group = AZStd::make_shared<SceneData::AnimationGroup>();
+
+                // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
+                //      in the same way again. To guarantee the same uuid, generate a stable one instead.
+                group->OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::AnimationGroup::TYPEINFO_Uuid()));
+
                 EBUS_EVENT(Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
                 scene.GetManifest().AddEntry(AZStd::move(group));
 
@@ -147,6 +156,13 @@ namespace AZ
                     if (group.GetName().empty())
                     {
                         group.SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::IAnimationGroup>(scene.GetName(), scene.GetManifest()));
+                        updated = true;
+                    }
+                    if (group.GetId().IsNull())
+                    {
+                        // When the uuid is null it's likely because the manifest has been updated from an older version. Include the 
+                        // name of the group as there could be multiple groups.
+                        group.OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::AnimationGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
                     }
                 }

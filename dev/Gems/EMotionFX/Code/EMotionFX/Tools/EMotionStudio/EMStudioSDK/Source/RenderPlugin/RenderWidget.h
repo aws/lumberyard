@@ -1,0 +1,198 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#ifndef __EMSTUDIO_RENDERWIDGET_H
+#define __EMSTUDIO_RENDERWIDGET_H
+
+//
+#include <MCore/Source/StandardHeaders.h>
+#include <MCore/Source/UnicodeString.h>
+#include "../EMStudioConfig.h"
+#include <EMotionFX/Rendering/Common/Camera.h>
+#include <EMotionFX/Rendering/Common/TransformationManipulator.h>
+#include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Source/EventManager.h>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QWheelEvent>
+
+
+namespace EMStudio
+{
+    // forward declaration
+    class RenderPlugin;
+    class RenderViewWidget;
+
+    class EMSTUDIO_API RenderWidget
+    {
+        MCORE_MEMORYOBJECTCATEGORY(RenderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
+
+    public:
+        enum CameraMode
+        {
+            CAMMODE_ORBIT       = 0,
+            CAMMODE_FIRSTPERSON = 1,
+            CAMMODE_FRONT       = 2,
+            CAMMODE_BACK        = 3,
+            CAMMODE_LEFT        = 4,
+            CAMMODE_RIGHT       = 5,
+            CAMMODE_TOP         = 6,
+            CAMMODE_BOTTOM      = 7
+        };
+
+        struct Line
+        {
+            MCore::Vector3  mPosA;
+            MCore::Vector3  mPosB;
+            uint32          mColor;
+
+            Line() {}
+            MCORE_INLINE Line(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)
+                : mPosA(posA)
+                , mPosB(posB)
+                , mColor(color) {}
+        };
+
+        struct Triangle
+        {
+            MCore::Vector3  mPosA;
+            MCore::Vector3  mPosB;
+            MCore::Vector3  mPosC;
+
+            MCore::Vector3  mNormalA;
+            MCore::Vector3  mNormalB;
+            MCore::Vector3  mNormalC;
+
+            uint32          mColor;
+
+            Triangle() {}
+            Triangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)
+                : mPosA(posA)
+                , mPosB(posB)
+                , mPosC(posC)
+                , mNormalA(normalA)
+                , mNormalB(normalB)
+                , mNormalC(normalC)
+                , mColor(color) {}
+        };
+
+
+        class EventHandler
+            : public EMotionFX::EventHandler
+        {
+        public:
+            EventHandler(RenderWidget* widget)
+                : EMotionFX::EventHandler() { mWidget = widget; }
+            ~EventHandler() {}
+
+            // overloaded
+            MCORE_INLINE void OnDrawLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)                                                                                                                                      { mWidget->AddLine(posA, posB, color); }
+            MCORE_INLINE void OnDrawTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)         { mWidget->AddTriangle(posA, posB, posC, normalA, normalB, normalC, color); }
+            MCORE_INLINE void OnDrawTriangles()                                                                                                                                                                                                     { mWidget->RenderTriangles(); }
+
+        private:
+            RenderWidget*   mWidget;
+        };
+
+        RenderWidget(RenderPlugin* renderPlugin, RenderViewWidget* viewWidget);
+        virtual ~RenderWidget();
+
+        // main render callback
+        virtual void Render() = 0;
+        virtual void Update() = 0;
+
+        // line rendering helper functions
+        MCORE_INLINE void AddLine(const MCore::Vector3& posA, const MCore::Vector3& posB, uint32 color)     { mLines.Add(Line(posA, posB, color)); }
+        MCORE_INLINE void AddTriangle(const MCore::Vector3& posA, const MCore::Vector3& posB, const MCore::Vector3& posC, const MCore::Vector3& normalA, const MCore::Vector3& normalB, const MCore::Vector3& normalC, uint32 color)        { mTriangles.Add(Triangle(posA, posB, posC, normalA, normalB, normalC, color)); }
+        MCORE_INLINE void ClearLines()                                                                      { mLines.Clear(false); }
+        MCORE_INLINE void ClearTriangles()                                                                  { mTriangles.Clear(false); }
+        void RenderTriangles();
+
+        // event handler
+        MCORE_INLINE EventHandler* GetEventHandler() const                                                  { return mEventHandler; }
+
+        // helper rendering functions
+        void RenderActorInstances();
+        void RenderGrid();
+        void RenderCustomPluginData();
+        void RenderAxis();
+        void RenderNodeFilterString();
+        void RenderManipulators();
+        void UpdateCamera();
+
+        // camera helper functions
+        MCORE_INLINE MCommon::Camera* GetCamera() const                                                     { return mCamera; }
+        MCORE_INLINE CameraMode GetCameraMode() const                                                       { return mCameraMode; }
+        MCORE_INLINE void SetSkipFollowCalcs(bool skipFollowCalcs)                                          { mSkipFollowCalcs = skipFollowCalcs; }
+        void ViewCloseup(const MCore::AABB& aabb, float flightTime, uint32 viewCloseupWaiting = 5);
+        void SwitchCamera(CameraMode mode);
+
+        // render bugger dimensions
+        MCORE_INLINE uint32 GetScreenWidth() const                                                          { return mWidth; }
+        MCORE_INLINE uint32 GetScreenHeight() const                                                         { return mHeight; }
+
+        // helper functions for easy calling
+        void OnMouseMoveEvent(QWidget* renderWidget, QMouseEvent* event);
+        void OnMousePressEvent(QWidget* renderWidget, QMouseEvent* event);
+        void OnMouseReleaseEvent(QWidget* renderWidget, QMouseEvent* event);
+        void OnWheelEvent(QWidget* renderWidget, QWheelEvent* event);
+        void OnKeyPressEvent(QWidget* renderWidget, QKeyEvent* event);
+        void OnKeyReleaseEvent(QWidget* renderWidget, QKeyEvent* event);
+        void OnContextMenuEvent(QWidget* renderWidget, bool shiftPressed, bool altPressed, int32 localMouseX, int32 localMouseY, QPoint globalMousePos);
+
+    protected:
+        void UpdateActiveTransformationManipulator(MCommon::TransformationManipulator* activeManipulator);
+        void UpdateCharacterFollowModeData();
+
+        void closeEvent(QCloseEvent* event);
+
+        RenderPlugin*                           mPlugin;
+        RenderViewWidget*                       mViewWidget;
+        MCore::Array<Line>                      mLines;
+        MCore::Array<Triangle>                  mTriangles;
+        EventHandler*                           mEventHandler;
+
+        MCore::Array<EMotionFX::ActorInstance*> mSelectedActorInstances;
+
+        MCommon::TransformationManipulator*     mActiveTransformManip;
+
+        // camera helper data
+        CameraMode                              mCameraMode;
+        MCommon::Camera*                        mCamera;
+        MCommon::Camera*                        mAxisFakeCamera;
+        bool                                    mIsCharacterFollowModeActive;
+        bool                                    mSkipFollowCalcs;
+        bool                                    mNeedDisableFollowMode;
+
+        // render buffer dimensions
+        uint32                                  mWidth;
+        uint32                                  mHeight;
+
+        // used for closeup camera flights
+        uint32                                  mViewCloseupWaiting;
+        MCore::AABB                             mViewCloseupAABB;
+        float                                   mViewCloseupFlightTime;
+
+        // manipulator helper data
+        MCore::Vector3                          mOldActorInstancePos;
+        int32                                   mPrevMouseX;
+        int32                                   mPrevMouseY;
+        int32                                   mPrevLocalMouseX;
+        int32                                   mPrevLocalMouseY;
+        int32                                   mRightClickPosX;
+        int32                                   mRightClickPosY;
+        int32                                   mPixelsMovedSinceRightClick;
+    };
+} // namespace EMStudio
+
+
+#endif

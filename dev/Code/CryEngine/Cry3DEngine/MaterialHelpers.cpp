@@ -740,9 +740,9 @@ void MaterialHelpers::SetShaderParamsFromXml(SInputShaderResources& pShaderResou
         // try to set existing param first
         bool bFound = false;
 
-        for (int i = 0; i < pShaderResources.m_ShaderParams.size(); i++)
+        for (int j = 0; j < pShaderResources.m_ShaderParams.size(); j++)
         {
-            SShaderParam* pParam = &pShaderResources.m_ShaderParams[i];
+            SShaderParam* pParam = &pShaderResources.m_ShaderParams[j];
 
             if (strcmp(pParam->m_Name, key) == 0)
             {

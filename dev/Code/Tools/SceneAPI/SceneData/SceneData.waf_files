@@ -35,15 +35,7 @@
             "Behaviors/LodRuleBehavior.h",
             "Behaviors/LodRuleBehavior.cpp",
             "Behaviors/BlendShapeRuleBehavior.h",
-            "Behaviors/BlendShapeRuleBehavior.cpp",
-            "Behaviors/ActorGroup.h",
-            "Behaviors/ActorGroup.cpp",
-            "Behaviors/EFXMeshRuleBehavior.h",
-            "Behaviors/EFXMeshRuleBehavior.cpp",
-            "Behaviors/EFXSkinRuleBehavior.h",
-            "Behaviors/EFXSkinRuleBehavior.cpp",
-            "Behaviors/EFXMotionGroupBehavior.h",
-            "Behaviors/EFXMotionGroupBehavior.cpp"
+            "Behaviors/BlendShapeRuleBehavior.cpp"
         ],
         "Groups":
         [
@@ -54,11 +46,7 @@
             "Groups/SkinGroup.h",
             "Groups/SkinGroup.cpp",
             "Groups/AnimationGroup.h",
-            "Groups/AnimationGroup.cpp",
-            "Groups/ActorGroup.h",
-            "Groups/ActorGroup.cpp",
-            "Groups/EFXMotionGroup.h",
-            "Groups/EFXMotionGroup.cpp"			
+            "Groups/AnimationGroup.cpp"	
         ],
         "ManifestBase":
         [
@@ -84,17 +72,7 @@
             "Rules/SkeletonProxyRule.h",
             "Rules/SkeletonProxyRule.cpp",
             "Rules/SkinMeshAdvancedRule.h",
-            "Rules/SkinMeshAdvancedRule.cpp",
-            "Rules/EFXMeshRule.h",
-            "Rules/EFXMeshRule.cpp",
-            "Rules/EFXSkinRule.h",
-            "Rules/EFXSkinRule.cpp",
-            "Rules/EFXMotionCompressionSettingsRule.h",
-            "Rules/EFXMotionCompressionSettingsRule.cpp",
-            "Rules/EFXMotionScaleRule.h",
-            "Rules/EFXMotionScaleRule.cpp",
-            "Rules/EFXActorScaleRule.h",
-            "Rules/EFXActorScaleRule.cpp"
+            "Rules/SkinMeshAdvancedRule.cpp"
         ],
         "GraphData":
         [
@@ -121,12 +99,6 @@
             "GraphData/AnimationData.cpp",
             "GraphData/BlendShapeData.h",
             "GraphData/BlendShapeData.cpp"
-        ],
-        "EMotionFX/Rules":
-        [
-            "EMotionFX/Rules/MetaDataRule.h",
-            "EMotionFX/Rules/MetaDataRule.inl",
-            "EMotionFX/Rules/MetaDataRule.cpp"
         ]
     }
 }

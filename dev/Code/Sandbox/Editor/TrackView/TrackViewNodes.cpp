@@ -18,7 +18,7 @@
 
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
@@ -526,10 +526,6 @@ int CTrackViewNodesCtrl::GetIconIndexForTrack(const CTrackViewTrack* pTrack) con
     else if (type == eAnimParamType_Console)
     {
         nImage = 15;
-    }
-    else if (type == eAnimParamType_Music)
-    {
-        nImage = 19;
     }
     else if (type == eAnimParamType_LookAt)
     {
@@ -1072,10 +1068,14 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
     }
     else if (cmd == eMI_RemoveSelected)
     {
+        // Let the AZ Undo system manage the nodes on the sequence entity
+        AzToolsFramework::ScopedUndoBatch undoBatch("Delete selected TrackView Nodes/Tracks");
         CUndo undo("Delete selected TrackView Nodes/Tracks");
         BeginUndoTransaction();
+        auto id = pSequence->GetSequenceComponentEntityId();
         pSequence->DeleteSelectedNodes();
         EndUndoTransaction();
+        undoBatch.MarkEntityDirty(id);
     }
 
     if (pGroupNode)
@@ -1100,6 +1100,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
             if (cmd == eMI_AddSelectedEntities)
             {
                 CUndo undo("Add Entities to TrackView");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add Entities to TrackView");
 
                 CTrackViewAnimNodeBundle addedNodes = pGroupNode->AddSelectedEntities(m_pTrackViewDialog->GetDefaultTracksForEntityNode());
 
@@ -1115,53 +1116,73 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 }
 
                 pGroupNode->BindToEditorObjects();
+
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddCurrentLayer)
             {
                 CUndo undo("Add Current Layer to TrackView");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add Current Layer to TrackView");
                 pGroupNode->AddCurrentLayer();
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddScreenfader)
             {
                 CUndo undo("Add TrackView Screen Fader Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Screen Fader Node");
                 pGroupNode->CreateSubNode("ScreenFader", eAnimNodeType_ScreenFader);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddCommentNode)
             {
                 CUndo undo("Add TrackView Comment Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Comment Node");
                 QString commentNodeName = pGroupNode->GetAvailableNodeNameStartingWith("Comment");
                 pGroupNode->CreateSubNode(commentNodeName, eAnimNodeType_Comment);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddRadialBlur)
             {
                 CUndo undo("Add TrackView Radial Blur Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Radial Blur Node");
                 pGroupNode->CreateSubNode("RadialBlur", eAnimNodeType_RadialBlur);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddColorCorrection)
             {
                 CUndo undo("Add TrackView Color Correction Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Color Correction Node");
                 pGroupNode->CreateSubNode("ColorCorrection", eAnimNodeType_ColorCorrection);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddDOF)
             {
                 CUndo undo("Add TrackView Depth of Field Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Depth of Field Node");
                 pGroupNode->CreateSubNode("DepthOfField", eAnimNodeType_DepthOfField);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddShadowSetup)
             {
                 CUndo undo("Add TrackView Shadow Setup Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Shadow Setup Node");
                 pGroupNode->CreateSubNode("ShadowsSetup", eAnimNodeType_ShadowSetup);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddEnvironment)
             {
                 CUndo undo("Add TrackView Environment Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Environment Node");
                 pGroupNode->CreateSubNode("Environment", eAnimNodeType_Environment);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddDirectorNode)
             {
                 CUndo undo("Add TrackView Director Node");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Director Node");
                 QString name = pGroupNode->GetAvailableNodeNameStartingWith("Director");
                 pGroupNode->CreateSubNode(name, eAnimNodeType_Director);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_AddConsoleVariable)
             {
@@ -1169,8 +1190,10 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     CUndo undo("Add TrackView Console (CVar) Node");
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Console (CVar) Node");
                     QString name = pGroupNode->GetAvailableNodeNameStartingWith(dlg.GetString());
                     pGroupNode->CreateSubNode(name, eAnimNodeType_CVar);
+                    undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
             }
             else if (cmd == eMI_AddScriptVariable)
@@ -1179,8 +1202,10 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     CUndo undo("Add TrackView Script Variable Node");
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Script Variable Node");
                     QString name = pGroupNode->GetAvailableNodeNameStartingWith(dlg.GetString());
                     pGroupNode->CreateSubNode(name, eAnimNodeType_ScriptVar);
+                    undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
             }
             else if (cmd == eMI_AddMaterial)
@@ -1191,7 +1216,9 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                     if (pGroupNode->GetAnimNodesByName(dlg.GetString().toLatin1().data()).GetCount() == 0)
                     {
                         CUndo undo("Add TrackView Material Node");
+                        AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Material Node");
                         pGroupNode->CreateSubNode(dlg.GetString(), eAnimNodeType_Material);
+                        undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                     }
                 }
             }
@@ -1201,13 +1228,17 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     CUndo undo("Add TrackView Event Node");
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Add TrackView Event Node");
                     pGroupNode->CreateSubNode(dlg.GetString(), eAnimNodeType_Event);
+                    undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
             }
             else if (cmd == eMI_PasteNodes)
             {
                 CUndo undo("Paste TrackView Nodes");
+                AzToolsFramework::ScopedUndoBatch undoBatch("Paste TrackView Nodes");
                 pGroupNode->PasteNodesFromClipboard(this);
+                undoBatch.MarkEntityDirty(pGroupNode->GetSequence()->GetSequenceComponentEntityId());
             }
             else if (cmd == eMI_CreateFolder)
             {
@@ -1303,6 +1334,19 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                     if (nameExists)
                     {
                         QMessageBox::warning(this, tr("Entity already exists"), QString(tr("Entity named '%1' already exists.\n\nPlease choose another unique name.")).arg(newName));
+                        return false;
+                    }
+                    // Max name length is 512 when creating a new sequence, match that here for rename.
+                    // It would be nice to make this a restriction at input but I didnt see a way to do that with StringDlg and this is
+                    // very unlikely to happen in normal usage.
+                    const int maxLenth = 512;
+                    if (newName.length() > maxLenth)
+                    {
+                        QMessageBox::warning(
+                            this,
+                            tr("New entity name is too long"), 
+                            QString(tr("New entity name is over the maximum of %1.\n\nPlease reduce the length.")).arg(maxLenth)
+                        );
                         return false;
                     }
                     return true;
@@ -1919,8 +1963,7 @@ int CTrackViewNodesCtrl::ShowPopupMenuSingleSelection(SContextMenu& contextMenu,
 
         if (bOnTrack)
         {
-            if (pTrack->GetParameterType() == eAnimParamType_Music
-                || pTrack->GetParameterType() == eAnimParamType_Sound)
+            if (pTrack->GetParameterType() == eAnimParamType_Sound)
             {
                 AddMenuSeperatorConditional(contextMenu.main, bAppended);
                 bool bMuted = pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Muted;
@@ -2215,8 +2258,8 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
             const AZ::EntityId azEntityId = static_cast<CTrackViewAnimNode*>(parentNode)->GetAzEntityId();
 
             // query the animatable component properties from the Sequence Component
-            LmbrCentral::EditorSequenceComponentRequestBus::Event(const_cast<CTrackViewAnimNode*>(pAnimNode)->GetSequence()->GetSequenceComponentEntityId(), 
-                                                                    &LmbrCentral::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent, 
+            Maestro::EditorSequenceComponentRequestBus::Event(const_cast<CTrackViewAnimNode*>(pAnimNode)->GetSequence()->GetSequenceComponentEntityId(), 
+                                                                    &Maestro::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent, 
                                                                     animatableProperties, azEntityId, pAnimNode->GetComponentId());
 
             // also add any properties handled in CryMovie

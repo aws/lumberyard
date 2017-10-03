@@ -27,14 +27,15 @@ namespace SliceBuilder
     void BuilderPluginComponent::Activate()
     {
         // Register Slice Builder
+        m_sliceBuilder.reset(aznew SliceBuilderWorker);
+
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Slice Builder";
         builderDescriptor.m_version = 1;
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.slice", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = SliceBuilderWorker::GetUUID();
-        builderDescriptor.m_createJobFunction = AZStd::bind(&SliceBuilderWorker::CreateJobs, &m_sliceBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        builderDescriptor.m_processJobFunction = AZStd::bind(&SliceBuilderWorker::ProcessJob, &m_sliceBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        m_sliceBuilder.BusConnect(builderDescriptor.m_busId);
+        builderDescriptor.m_createJobFunction = AZStd::bind(&SliceBuilderWorker::CreateJobs, m_sliceBuilder.get(), AZStd::placeholders::_1, AZStd::placeholders::_2);
+        builderDescriptor.m_processJobFunction = AZStd::bind(&SliceBuilderWorker::ProcessJob, m_sliceBuilder.get(), AZStd::placeholders::_1, AZStd::placeholders::_2);
 
         AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, builderDescriptor);
 
@@ -63,7 +64,7 @@ namespace SliceBuilder
         AssetBuilderSDK::ToolsAssetSystemBus::Broadcast(&AssetBuilderSDK::ToolsAssetSystemBus::Handler::UnregisterSourceAssetType, azrtti_typeid<LyShine::CanvasAsset>());
 
         m_uiSliceBuilder.BusDisconnect();
-        m_sliceBuilder.BusDisconnect();
+        m_sliceBuilder.reset();
     }
 
     void BuilderPluginComponent::Reflect(AZ::ReflectContext* context)

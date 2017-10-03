@@ -23,6 +23,8 @@
 #include <AzCore/Driller/Driller.h>
 #include <AzCore/Memory/MemoryDriller.h>
 
+#include <GridMate/Carrier/Carrier.h>
+
 #define GM_TEST_MEMORY_DRILLING 0
 
 
@@ -41,6 +43,15 @@
 
 namespace UnitTest
 {
+    struct TestCarrierDesc
+        : GridMate::CarrierDesc
+    {
+        TestCarrierDesc() : CarrierDesc()
+        {
+            m_connectionTimeoutMS = 15000;
+        }
+    };
+
     class GridMateTestFixture
     {
     protected:

@@ -97,8 +97,8 @@ bool CCaptureKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
             mv_duration = captureKey.duration;
             mv_timeStep = captureKey.timeStep;
             mv_format = captureKey.GetFormat();
-            mv_prefix = captureKey.prefix;
-            mv_folder = captureKey.folder;
+            mv_prefix = captureKey.prefix.c_str();
+            mv_folder = captureKey.folder.c_str();
             mv_captureBufferType = captureKey.captureBufferIndex;
             mv_once = captureKey.once;
 
@@ -152,12 +152,12 @@ void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             if (pVar == mv_folder.GetVar())
             {
                 QString sFolder = mv_folder;
-                cry_strcpy(captureKey.folder, sFolder.toLatin1().data());
+                captureKey.folder = sFolder.toLatin1().data();
             }
             if (pVar == mv_prefix.GetVar())
             {
                 QString sPrefix = mv_prefix;
-                cry_strcpy(captureKey.prefix, sPrefix.toLatin1().data());
+                captureKey.prefix = sPrefix.toLatin1().data();
             }
             if (pVar == mv_captureBufferType.GetVar())
             {

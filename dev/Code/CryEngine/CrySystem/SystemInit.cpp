@@ -24,6 +24,7 @@
 #include "MemoryManager.h"
 #include <IThreadManager.h>
 
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include "RemoteFileIO.h"
 
@@ -33,6 +34,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
 #include "AZCoreLogSink.h"
 #include <AzCore/Math/MathUtils.h>
 #include "CryPakFileIO.h"
@@ -89,7 +91,7 @@
 #include "Statistics/LocalMemoryUsage.h"
 #include "ThreadProfiler.h"
 #include "ThreadConfigManager.h"
-#include "HardwareMouse.h"
+#include "IHardwareMouse.h"
 #include "Validator.h"
 #include "ServerThrottle.h"
 #include "SystemCFG.h"
@@ -123,6 +125,7 @@
 #include <CrySystemBus.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <AzFramework/Driller/DrillerConsoleAPI.h>
 
 #include "IPlatformOS.h"
 #include "PerfHUD.h"
@@ -147,6 +150,10 @@
     #include <AzCore/Android/JNI/Object.h>
 
     #include "AndroidConsole.h"
+#endif
+
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+#include "MobileDetectSpec.h"
 #endif
 
 #include "IDebugCallStack.h"
@@ -222,7 +229,6 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_INITFUNC_INPUT "CreateInput"
 #   define DLL_INITFUNC_SOUND "CreateSoundSystem"
 #   define DLL_INITFUNC_PHYSIC "CreatePhysicalWorld"
-#   define DLL_INITFUNC_MOVIE "CreateMovieSystem"
 #   define DLL_INITFUNC_AI "CreateAISystem"
 #   define DLL_INITFUNC_SCRIPT "CreateScriptSystem"
 #   define DLL_INITFUNC_FONT "CreateCryFontInterface"
@@ -238,7 +244,6 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_INITFUNC_INPUT     (LPCSTR)1
 #   define DLL_INITFUNC_SOUND     (LPCSTR)1
 #   define DLL_INITFUNC_PHYSIC    (LPCSTR)1
-#   define DLL_INITFUNC_MOVIE     (LPCSTR)1
 #   define DLL_INITFUNC_AI        (LPCSTR)1
 #   define DLL_INITFUNC_SCRIPT    (LPCSTR)1
 #   define DLL_INITFUNC_FONT      (LPCSTR)1
@@ -254,7 +259,6 @@ CUNIXConsole* pUnixConsole;
 extern "C"
 {
 IAISystem* CreateAISystem(ISystem* pSystem);
-IMovieSystem* CreateMovieSystem(ISystem* pSystem);
 }
 #endif //AZ_MONOLITHIC_BUILD
 //////////////////////////////////////////////////////////////////////////
@@ -268,7 +272,7 @@ extern HMODULE gDLLHandle;
 namespace
 {
 #if defined(AZ_PLATFORM_WINDOWS)
-    // on windows, we lock our cache using a lockfile.  On other platforms this is not necessary since devices like ios, android, PS4, and XBONE cannot
+    // on windows, we lock our cache using a lockfile.  On other platforms this is not necessary since devices like ios, android, consoles cannot
     // run more than one game process that uses the same folder anyway.
     HANDLE g_cacheLock = INVALID_HANDLE_VALUE;
 #endif
@@ -464,7 +468,93 @@ struct SysSpecOverrideSinkConsole
 };
 #endif
 
-static void OnSysSpecChange(ICVar* pVar)
+static ESystemConfigPlatform GetDevicePlatform()
+{
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
+    return CONFIG_PC;
+#elif defined(AZ_PLATFORM_ANDROID)
+    return CONFIG_ANDROID;
+#elif defined(AZ_PLATFORM_APPLE_IOS)
+    return CONFIG_IOS;
+#elif defined(AZ_PLATFORM_APPLE_TV)
+    return CONFIG_APPLETV;
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    const char* driverName = GetISystem()->GetRenderingDriverName();
+    // If a driver name is not specified then we could be running as a tool like
+    // the resource compiler. It will never set r_driver so pick our default on
+    // macOS - Metal.
+    if (driverName == nullptr)
+    {
+        return CONFIG_OSX_METAL;
+    }
+    if (strcmp(driverName, "GL") == 0)
+    {
+        return CONFIG_OSX_GL;
+    }
+    else if (strcmp(driverName, "METAL") == 0)
+    {
+        return CONFIG_OSX_METAL;
+    }
+    else
+    {
+        AZ_Assert(false, "Renderer type %s not supported", driverName);
+        return CONFIG_INVALID_PLATFORM;
+    }
+#else
+    AZ_Assert(false, "Platform not supported");
+    return CONFIG_INVALID_PLATFORM;
+#endif
+}
+
+static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string &cfgFile, int platform)
+{
+    switch (platform)
+    {
+    case CONFIG_PC:
+        cfgFile = "pc";
+        break;
+    case CONFIG_ANDROID:
+        cfgFile = "android";
+        break;
+    case CONFIG_IOS:
+        cfgFile = "ios";
+        break;
+    case CONFIG_APPLETV:
+    case CONFIG_OSX_GL:
+    case CONFIG_OSX_METAL:
+        // Spec level is hardcoded for these platforms
+        cfgFile = "";
+        return;
+    default:
+        AZ_Assert(false, "Platform not supported");
+        return;
+    }
+
+    switch (pVar->GetIVal())
+    {
+    case CONFIG_AUTO_SPEC:
+        // Spec level is set for autodetection
+        cfgFile = "";
+        break;
+    case CONFIG_LOW_SPEC:
+        cfgFile += "_low.cfg";
+        break;
+    case CONFIG_MEDIUM_SPEC:
+        cfgFile += "_medium.cfg";
+        break;
+    case CONFIG_HIGH_SPEC:
+        cfgFile += "_high.cfg";
+        break;
+    case CONFIG_VERYHIGH_SPEC:
+        cfgFile += "_veryhigh.cfg";
+        break;
+    default:
+        AZ_Assert(false, "Invalid value for r_GraphicsQuality");
+        break;
+    }
+}
+
+static void LoadDetectedSpec(ICVar* pVar)
 {
     CDebugAllowFileAccess ignoreInvalidFileAccess;
     SysSpecOverrideSink sysSpecOverrideSink;
@@ -482,57 +572,143 @@ static void OnSysSpecChange(ICVar* pVar)
         return;
     }
     no_recursive = true;
-    // Called when sys_spec (client config spec) variable changes.
+
     int spec = pVar->GetIVal();
-
-    if (spec > ((CSystem*)gEnv->pSystem)->GetMaxConfigSpec())
+    int platform = GetDevicePlatform();
+    if (gEnv->IsEditor())
     {
-        spec = ((CSystem*)gEnv->pSystem)->GetMaxConfigSpec();
-        pVar->Set(spec);
+        int configPlatform = GetISystem()->GetConfigPlatform();
+        // Check if the config platform is set first. 
+        if (configPlatform != CONFIG_INVALID_PLATFORM)
+        {
+            platform = configPlatform;
+        }
     }
-
-    CryLog("OnSysSpecChange(%d)", spec);
-    const char* driverName = GetISystem()->GetRenderingDriverName();
-    switch (spec)
+    
+    AZStd::string configFile;
+    GetSpecConfigFileToLoad(pVar, configFile, platform);
+    if (configFile.length())
     {
-    case CONFIG_LOW_SPEC:
-        GetISystem()->LoadConfiguration("LowSpec.cfg", &sysSpecOverrideSink);
-        break;
-    case CONFIG_MEDIUM_SPEC:
-        GetISystem()->LoadConfiguration("MedSpec.cfg", &sysSpecOverrideSink);
-        break;
-    case CONFIG_HIGH_SPEC:
-        GetISystem()->LoadConfiguration("HighSpec.cfg", &sysSpecOverrideSink);
-        break;
-    case CONFIG_VERYHIGH_SPEC:
-        GetISystem()->LoadConfiguration("VeryHighSpec.cfg", &sysSpecOverrideSink);
-        break;
-    case CONFIG_DURANGO:
-        GetISystem()->LoadConfiguration("durango.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_ORBIS:
-        GetISystem()->LoadConfiguration("orbis.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_ANDROID:
-        GetISystem()->LoadConfiguration("android.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_IOS:
-        GetISystem()->LoadConfiguration("ios.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_APPLETV:
-        GetISystem()->LoadConfiguration("appletv.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_MACOS_GL:
-        AZ_Assert(driverName == nullptr || (strcmp(driverName, "GL") == 0), "Rendering driver and sys_spec dont match. Please edit the r_driver and sys_spec in system_osx_osx.cfg to fix this issue.");
-        GetISystem()->LoadConfiguration("osx_gl.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    case CONFIG_MACOS_METAL:
-        AZ_Assert(driverName == nullptr || (strcmp(driverName, "METAL") == 0), "Rendering driver and sys_spec dont match. Please edit the r_driver and sys_spec in system_osx_osx.cfg to fix this issue.");
-        GetISystem()->LoadConfiguration("osx_metal.cfg", pSysSpecOverrideSinkConsole);
-        break;
-    default:
-        // Do nothing.
-        break;
+        GetISystem()->LoadConfiguration(configFile.c_str(), platform == CONFIG_PC ? &sysSpecOverrideSink : pSysSpecOverrideSinkConsole);
+    }
+    else
+    {
+        // Automatically sets graphics quality - spec level autodetected for ios/android, hardcoded for all other platforms
+
+        switch (platform)
+        {
+        case CONFIG_PC:
+        {
+            // TODO: add support for autodetection
+            pVar->Set(CONFIG_VERYHIGH_SPEC);
+            GetISystem()->LoadConfiguration("pc_veryhigh.cfg", &sysSpecOverrideSink);
+            break;
+        }
+        case CONFIG_ANDROID:
+        {
+#if defined(AZ_PLATFORM_ANDROID)
+            AZStd::string file;
+            if (MobileSysInspect::GetAutoDetectedSpecName(file))
+            {
+                if (file == "android_low.cfg")
+                {
+                    pVar->Set(CONFIG_LOW_SPEC);
+                }
+                if (file == "android_medium.cfg")
+                {
+                    pVar->Set(CONFIG_MEDIUM_SPEC);
+                }
+                if (file == "android_high.cfg")
+                {
+                    pVar->Set(CONFIG_HIGH_SPEC);
+                }
+                if (file == "android_veryhigh.cfg")
+                {
+                    pVar->Set(CONFIG_VERYHIGH_SPEC);
+                }
+                GetISystem()->LoadConfiguration(file.c_str(), pSysSpecOverrideSinkConsole);
+            }
+            else
+            {
+                float totalRAM = MobileSysInspect::GetDeviceRamInGB();
+                if (totalRAM < MobileSysInspect::LOW_SPEC_RAM)
+                {
+                    pVar->Set(CONFIG_LOW_SPEC);
+                    GetISystem()->LoadConfiguration("android_low.cfg", pSysSpecOverrideSinkConsole);
+                }
+                else if (totalRAM < MobileSysInspect::MEDIUM_SPEC_RAM)
+                {
+                    pVar->Set(CONFIG_MEDIUM_SPEC);
+                    GetISystem()->LoadConfiguration("android_medium.cfg", pSysSpecOverrideSinkConsole);
+                }
+                else if (totalRAM < MobileSysInspect::HIGH_SPEC_RAM)
+                {
+                    pVar->Set(CONFIG_HIGH_SPEC);
+                    GetISystem()->LoadConfiguration("android_high.cfg", pSysSpecOverrideSinkConsole);
+                }
+                else
+                {
+                    pVar->Set(CONFIG_VERYHIGH_SPEC);
+                    GetISystem()->LoadConfiguration("android_veryhigh.cfg", pSysSpecOverrideSinkConsole);
+                }
+            }
+#endif
+            break;
+        }
+        case CONFIG_IOS:
+        {
+#if defined(AZ_PLATFORM_APPLE_IOS)
+            AZStd::string file;
+            if (MobileSysInspect::GetAutoDetectedSpecName(file))
+            {
+                if (file == "ios_low.cfg")
+                {
+                    pVar->Set(CONFIG_LOW_SPEC);
+                }
+                if (file == "ios_medium.cfg")
+                {
+                    pVar->Set(CONFIG_MEDIUM_SPEC);
+                }
+                if (file == "ios_high.cfg")
+                {
+                    pVar->Set(CONFIG_HIGH_SPEC);
+                }
+                if (file == "ios_veryhigh.cfg")
+                {
+                    pVar->Set(CONFIG_VERYHIGH_SPEC);
+                }
+                GetISystem()->LoadConfiguration(file.c_str(), pSysSpecOverrideSinkConsole);
+            }
+            else
+            {
+                pVar->Set(CONFIG_MEDIUM_SPEC);
+                GetISystem()->LoadConfiguration("ios_medium.cfg", pSysSpecOverrideSinkConsole);
+            }
+#endif
+            break;
+        }
+        case CONFIG_APPLETV:
+        {
+            pVar->Set(CONFIG_MEDIUM_SPEC);
+            GetISystem()->LoadConfiguration("appletv.cfg", pSysSpecOverrideSinkConsole);
+            break;
+        }
+        case CONFIG_OSX_GL:
+        {
+            pVar->Set(CONFIG_HIGH_SPEC);
+            GetISystem()->LoadConfiguration("osx_gl.cfg", pSysSpecOverrideSinkConsole);
+            break;
+        }
+        case CONFIG_OSX_METAL:
+        {
+            pVar->Set(CONFIG_HIGH_SPEC);
+            GetISystem()->LoadConfiguration("osx_metal.cfg", pSysSpecOverrideSinkConsole);
+            break;
+        }
+        default:
+            AZ_Assert(false, "Platform not supported");
+            break;
+        }
     }
 
     // make sure editor specific settings are not changed
@@ -558,7 +734,7 @@ static void OnSysSpecChange(ICVar* pVar)
     }
     if (bChangeServerSpec)
     {
-        GetISystem()->SetConfigSpec((ESystemConfigSpec)spec, false);
+        GetISystem()->SetConfigSpec((ESystemConfigSpec)spec, (ESystemConfigPlatform)platform, false);
     }
 
     if (gEnv->p3DEngine)
@@ -597,7 +773,7 @@ struct SCryEngineLanguageConfigLoader
 };
 
 //////////////////////////////////////////////////////////////////////////
-#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4)
+#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
 WIN_HMODULE CSystem::LoadDynamiclibrary(const char* dllName) const
 {
     WIN_HMODULE handle = NULL;
@@ -662,7 +838,7 @@ WIN_HMODULE CSystem::LoadDLL(const char* dllName, bool bQuitIfNotFound)
 
     return handle;
 }
-#endif //#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4)
+#endif //#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
 
 //////////////////////////////////////////////////////////////////////////
 bool CSystem::LoadEngineDLLs()
@@ -698,7 +874,17 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
 
     stack_string msg;
     msg = "Initializing ";
-    msg += dllName;
+    AZStd::string dll = dllName;
+
+    // Strip off Cry if the dllname is Cry<something>
+    if (dll.find("Cry") == 0)
+    {
+        msg += dll.substr(3).c_str();
+    }
+    else
+    {
+        msg += dllName;
+    }
     msg += "...";
 
     if (m_pUserCallback)
@@ -1823,24 +2009,6 @@ bool CSystem::InitPhysicsRenderer(const SSystemInitParams& initParams)
 }
 
 /////////////////////////////////////////////////////////////////////////////////
-bool CSystem::InitMovieSystem(const SSystemInitParams& initParams)
-{
-    LOADING_TIME_PROFILE_SECTION(GetISystem());
-
-    if (!InitializeEngineModule(DLL_MOVIE, "EngineModule_CryMovie", initParams, true))
-    {
-        return false;
-    }
-
-    if (!m_env.pMovieSystem)
-    {
-        CryFatalError("Error creating Movie System!");
-        return false;
-    }
-    return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::InitAISystem(const SSystemInitParams& initParams)
 {
@@ -2021,6 +2189,41 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             m_pUserCallback->OnInitProgress("Connecting to the Asset Processor.");
         }
 
+        //check the ip for obvious things wrong
+        size_t iplen = strlen(initParams.remoteIP);
+        int countseperators = 0;
+        bool isNumeric = true;
+        for (int i = 0; isNumeric && i < iplen; ++i)
+        {
+            if (initParams.remoteIP[i] == '.')
+            {
+                countseperators++;
+            }
+            else if (!isdigit(initParams.remoteIP[i]))
+            {
+                isNumeric = false;
+            }
+        }
+
+        if (iplen < 7 || 
+            countseperators != 3 ||
+            !isNumeric)
+        {
+            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
+            if (pOS)
+            {
+                if (waitForConnect)
+                {
+                    pOS->DebugMessageBox("IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
+                    return false;
+                }
+                else
+                {
+                    pOS->DebugMessageBox("IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\n Acknowledge to Continue...", "AP Connection Failure");
+                }
+            }
+        }
+
         //start the asset processor connection async
         engineConnection->Connect(initParams.remoteIP, initParams.remotePort);
 
@@ -2029,6 +2232,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
         {
             AZStd::chrono::system_clock::time_point start, last;
             start = last = AZStd::chrono::system_clock::now();
+            bool isAssetProcessorLaunched = false;
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
             //poll, wait for either connection or failure/timeout
             //we don't care if we actually connected and the negotiation failed until
@@ -2038,7 +2242,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             //we can present that information to the user
 
             //we should be able to connect
-            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(2500))
+            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(5000))
             {
                 //update the feedback text to animate and pump every 250 milliseconds
                 if (m_pUserCallback && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - last) >= AZStd::chrono::milliseconds(250))
@@ -2052,9 +2256,21 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
 
                 AZStd::this_thread::yield();
             }
-            if (!engineConnection->IsConnected())
+            if (engineConnection->NegotiationFailed())
             {
-                bool isAssetProcessorLaunched = LaunchAssetProcessor();
+                EBUS_EVENT(AzFramework::AssetSystemConnectionNotificationsBus, NegotiationFailed);
+                engineConnection->Disconnect();
+
+                if (m_pUserCallback)
+                {
+                    m_pUserCallback->OnInitProgress("Negotiation failed with the Asset Processor! Quitting...");
+                }
+
+                return false;
+            }
+            if (!engineConnection->IsConnected() && !engineConnection->NegotiationFailed())
+            {
+                isAssetProcessorLaunched = LaunchAssetProcessor();
                 if (!isAssetProcessorLaunched)
                 {
                     // if we are unable to launch asset processor
@@ -2063,10 +2279,11 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             }
 #endif//defined(AZ_PLATFORM_WINDOWS)
 
-            //give the AP 20 seconds to connect (virus scanner can really slow it down on its initial launch!)
+            //give the AP 2.5 seconds to connect BUT if we launched the ap then give the AP 120 seconds to connect (virus scanner can really slow it down on its initial launch!)
+            int timeToConnect = isAssetProcessorLaunched ? 120000 : 5000;
             start = AZStd::chrono::system_clock::now();
             last = start;
-            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(120000))
+            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(timeToConnect))
             {
                 if (m_pUserCallback && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - last) >= AZStd::chrono::milliseconds(250))
                 {
@@ -2097,7 +2314,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                 IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
                 if (pOS)
                 {
-                    pOS->DebugMessageBox("Negotiation failed with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal");
+                    pOS->DebugMessageBox("Negotiation failed with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
                 }
 
                 return false;
@@ -2119,7 +2336,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                 IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
                 if (pOS)
                 {
-                    pOS->DebugMessageBox("Connection timeout with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal");
+                    pOS->DebugMessageBox("Connection timeout with the Asset Processor!\nMake sure the Asset Processor is running out of the correct branch.\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
                 }
 
                 return false;
@@ -2161,7 +2378,7 @@ void CSystem::WaitForAssetProcessorToBeReady()
             IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
             if (pOS)
             {
-                pOS->DebugMessageBox("Lost the connection to the Asset Processor!\nMake sure the Asset Processor is running.", "AP Fatal");
+                pOS->DebugMessageBox("Lost the connection to the Asset Processor!\nMake sure the Asset Processor is running.", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
             }
 
             return;
@@ -2177,7 +2394,7 @@ void CSystem::WaitForAssetProcessorToBeReady()
             IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
             if (pOS)
             {
-                pOS->DebugMessageBox("Failed to send Asset Processor Status request!", "AP Fatal");
+                pOS->DebugMessageBox("Failed to send Asset Processor Status request!", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
             }
 
             return;
@@ -2298,12 +2515,6 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
                 //since we are initiating, we can fail, we take care of that here by returning false
                 if (!ConnectToAssetProcessor(initParams, waitForConnection))
                 {
-                    IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                    if (pOS)
-                    {
-                        pOS->DebugMessageBox("We failed to connect to the Asset Processor!\nQuitting...", "AP Fatal");
-                    }
-
                     return false;
                 }
             }
@@ -2322,6 +2533,14 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
         if (engineConnection->IsConnected())
         {
+            bool catalogIsReady = false;
+            AzFramework::AssetSystemRequestBus::BroadcastResult(catalogIsReady, &AzFramework::AssetSystem::AssetSystemRequests::SaveCatalog);
+
+            if (!catalogIsReady)
+            {
+                AZ_Error("Editor", false, "The Asset Processor was unable to save the asset catalog and it is needed to start this application. Please check the Asset Processor logs for problems, and then try again.\n");
+                return false;
+            }
             //if we are connected than we must check and make sure that AP is ready before proceeding further.
             WaitForAssetProcessorToBeReady();
 
@@ -2333,7 +2552,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
                 IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
                 if (pOS)
                 {
-                    pOS->DebugMessageBox("Closing application.  The application cannot continue because the AssetProcessor is no longer running.  Please restart the application and make sure that the AssetProcessor is running!\nQuitting...", "AP Fatal");
+                    pOS->DebugMessageBox("Closing application.  The application cannot continue because the AssetProcessor is no longer running.  Please restart the application and make sure that the AssetProcessor is running!\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
                 }
 
                 return false;
@@ -2374,7 +2593,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
         if (pOS)
         {
-            pOS->DebugMessageBox("No root path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal");
+            pOS->DebugMessageBox("No root path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
         }
 
         return false;
@@ -2387,7 +2606,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
         if (pOS)
         {
-            pOS->DebugMessageBox("No assets path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal");
+            pOS->DebugMessageBox("No assets path specified in SystemInitParams. We cannot continue!\nQuitting...", "SystemInitParams Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
         }
 
         return false;
@@ -2486,7 +2705,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
                 IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
                 if (pOS)
                 {
-                    pOS->DebugMessageBox("Couldn't find a valid cache folder, cannot continue!\nQuitting...", "AP Fatal");
+                    pOS->DebugMessageBox("Couldn't find a valid cache folder, cannot continue!\nQuitting...", "AP Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
                 }
 
                 return false;
@@ -2535,11 +2754,18 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
         if (pOS)
         {
-            pOS->DebugMessageBox("Crypak init failed, cannot continue!\nQuitting...", "CryPak Fatal");
+            pOS->DebugMessageBox("Crypak init failed, cannot continue!\nQuitting...", "CryPak Fatal", IPlatformOS::eMsgBox_FatalDoNotReturn);
         }
 
         return false;
     }
+
+    // Now that file systems are init, we will clear any events that have arrived
+    // during file system init, so that systems do not reload assets that were already compiled in the
+    // critical compilation section.
+
+    AzFramework::AssetSystemBus::ClearQueuedEvents();
+    AzFramework::LegacyAssetEventBus::ClearQueuedEvents();
 
     //we are good to go
     return true;
@@ -2592,8 +2818,9 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
         LoadConfiguration(m_systemConfigName.c_str(), pCVarsWhiteListConfigSink);
         CryLogAlways("Loading system configuration from %s...", m_systemConfigName.c_str());
     }
-
-
+    
+    GetISystem()->SetConfigPlatform(GetDevicePlatform());
+    
 #if defined(CRY_ENABLE_RC_HELPER)
     if (!m_env.pResourceCompilerHelper)
     {
@@ -2867,26 +3094,6 @@ bool CSystem::InitGems(const SSystemInitParams& initParams)
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-bool CSystem::InitLmbrAWS(const SSystemInitParams& initParams)
-{
-    LOADING_TIME_PROFILE_SECTION(GetISystem());
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Init LmbrAWS");
-
-    if (!InitializeEngineModule(DLL_LMBRAWS, "EngineModule_LmbrAWS", initParams))
-    {
-        return false;
-    }
-
-    if (!m_env.pLmbrAWS)
-    {
-        CryFatalError("Error creating LmbrAWS System!");
-        return false;
-    }
-    return true;
-}
-
 //////////////////////////////////////////////////////////////////////////
 void CSystem::InitLocalization()
 {
@@ -2972,8 +3179,8 @@ void CSystem::OpenBasicPaks()
 #ifdef AZ_PLATFORM_ANDROID
     // Load Android Obb files if available
     const char* obbStorage = AZ::Android::Utils::GetObbStoragePath();
-    AZStd::string mainObbPath = AZStd::move(AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(true).c_str()));
-    AZStd::string patchObbPath = AZStd::move(AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(false).c_str()));
+    AZStd::string mainObbPath = AZStd::move(AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(true)));
+    AZStd::string patchObbPath = AZStd::move(AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(false)));
     m_env.pCryPak->OpenPack("@assets@", mainObbPath.c_str());
     m_env.pCryPak->OpenPack("@assets@", patchObbPath.c_str());
 #endif //AZ_PLATFORM_ANDROID
@@ -3629,6 +3836,10 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             CreateRendererVars(startupParams);
         }
 
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+        MobileSysInspect::LoadDeviceSpecMapping();
+#endif
+
         InitFileSystem_LoadEngineFolders(startupParams);
 
         LogVersion();
@@ -3657,7 +3868,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
 
         int curSpecVal = 0;
-        ICVar* pSysSpecCVar = gEnv->pConsole->GetCVar("sys_spec");
+        ICVar* pSysSpecCVar = gEnv->pConsole->GetCVar("r_GraphicsQuality");
         if (gEnv->pSystem->IsDevMode())
         {
             if (pSysSpecCVar && pSysSpecCVar->GetFlags() & VF_WASINCONFIG)
@@ -3713,24 +3924,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
         }
 
-#if   defined(AZ_PLATFORM_ANDROID)
-        LoadConfiguration("android.cfg");
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-        LoadConfiguration("ios.cfg");
-#elif defined(AZ_PLATFORM_APPLE_TV)
-        LoadConfiguration("appletv.cfg");
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-        const char* driverName = GetRenderingDriverName();
-        if (driverName && strcmp(driverName, "GL") == 0)
-        {
-            LoadConfiguration("osx_gl.cfg");
-        }
-        else if (driverName && strcmp(driverName, "METAL") == 0)
-        {
-            LoadConfiguration("osx_metal.cfg");
-        }
-#endif
-
 #if defined(PERFORMANCE_BUILD)
         LoadConfiguration("performance.cfg");
 #endif
@@ -3756,9 +3949,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         CryLogAlways("Stream Engine Initialization");
         InitStreamEngine();
         InlineInitializationProcessing("CSystem::Init StreamEngine");
-
-        //  if (!g_sysSpecChanged)
-        //      OnSysSpecChange( m_sys_spec );
 
         {
             if (m_pCmdLine->FindArg(eCLAT_Pre, "DX11"))
@@ -4043,41 +4233,25 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
 
         //////////////////////////////////////////////////////////////////////////
-        // MOVIE
         //////////////////////////////////////////////////////////////////////////
-        if (!startupParams.bSkipMovie && !startupParams.bShaderCacheGen)
-        {
-            CryLogAlways("MovieSystem initialization");
-            INDENT_LOG_DURING_SCOPE();
-            if (!InitMovieSystem(startupParams))
-            {
-                return false;
-            }
-        }
-
-        InlineInitializationProcessing("CSystem::Init InitMovie");
-
+        // System cursor
         //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        // Hardware mouse
-        //////////////////////////////////////////////////////////////////////////
-        // - Dedicated server is in console mode by default (Hardware Mouse is always shown when console is)
-        // - Mouse is always visible by default in Editor (we never start directly in Game Mode)
-        // - Mouse has to be enabled manually by the Game (this is typically done in the main menu)
-
-        m_env.pHardwareMouse = NULL;
+        // - Dedicated server is in console mode by default (system cursor is always shown when console is)
+        // - System cursor is always visible by default in Editor (we never start directly in Game Mode)
+        // - System cursor has to be enabled manually by the Game if needed; the custom UiCursor will typically be used instead
 
 #if !defined(DEDICATED_SERVER)
-        if (m_env.pRenderer)
+        if (m_env.pRenderer &&
+            !gEnv->IsEditor() &&
+            !startupParams.bTesting &&
+            !m_pCmdLine->FindArg(eCLAT_Pre, "nomouse"))
         {
-            if (!startupParams.bTesting)
-            {
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
-                m_env.pHardwareMouse = new HardwareMouse(false, "EngineAssets/Textures/Cursor_Green.tif");
-#else
-                m_env.pHardwareMouse = new CHardwareMouse(true);
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
-            }
+            AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                            &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                            AzFramework::SystemCursorState::ConstrainedAndHidden);
+
+            // Legacy, should be removed along with the deprecated IHardwareMouse interface
+            m_env.pHardwareMouse = new IHardwareMouse();
         }
 #endif
 
@@ -4115,13 +4289,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             {
                 return false;
             }
-
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-            if (m_env.pHardwareMouse)
-            {
-                m_env.pHardwareMouse->OnPostInitInput();
-            }
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
         }
 
         InlineInitializationProcessing("CSystem::Init InitInput");
@@ -4503,19 +4670,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             m_env.pLyShine->PostInit();
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        if ((!startupParams.bMinimal) && (!startupParams.bShaderCacheGen))
-        {
-            CryLogAlways("LmbrAWS system initialization");
-            INDENT_LOG_DURING_SCOPE();
-            if (!InitLmbrAWS(startupParams))
-            {
-                return false;
-            }
-        }
-#endif
-
         InlineInitializationProcessing("CSystem::Init InitLmbrAWS");
 
         // final tryflush to be sure that all framework init request have been processed
@@ -4581,7 +4735,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif
 
     // All CVars should be registered by this point, we must now flush the cvar groups
-    OnSysSpecChange(m_sys_spec);
+    LoadDetectedSpec(m_sys_GraphicsQuality);
 
     //Connect to the render bus
     AZ::RenderNotificationsBus::Handler::BusConnect();
@@ -4590,6 +4744,12 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
     // Send out EBus event
     EBUS_EVENT(CrySystemEventBus, OnCrySystemInitialized, *this, startupParams);
+
+    // Verify that the Maestro Gem initialized the movie system correctly. This can be removed if and when Maestro is not a required Gem
+    if (gEnv->IsEditor() && !gEnv->pMovieSystem)
+    {
+        CryFatalError("Error initializing the Cinematic System. Please check that the Maestro Gem is enabled for this project using the ProjectConfigurator.");
+    }
 
     return (true);
 }
@@ -5615,7 +5775,9 @@ static void SysRestoreSpecCmd(IConsoleCmdArgs* pParams)
         {
             const char* szPrefix = "sys_spec_";
 
-            ESystemConfigSpec originalSpec = CONFIG_CUSTOM;
+            ESystemConfigSpec originalSpec = CONFIG_AUTO_SPEC;
+            ESystemConfigPlatform originalPlatform = GetDevicePlatform();
+
             if (gEnv->IsEditor())
             {
                 originalSpec = gEnv->pSystem->GetConfigSpec(true);
@@ -5663,7 +5825,7 @@ static void SysRestoreSpecCmd(IConsoleCmdArgs* pParams)
 
             if (gEnv->IsEditor())
             {
-                gEnv->pSystem->SetConfigSpec(originalSpec, true);
+                gEnv->pSystem->SetConfigSpec(originalSpec, originalPlatform, true);
             }
             return;
         }
@@ -5671,6 +5833,46 @@ static void SysRestoreSpecCmd(IConsoleCmdArgs* pParams)
 
     gEnv->pLog->LogWithType(ILog::eInputResponse, "ERROR: sys_RestoreSpec invalid arguments");
 }
+
+void CmdDrillToFile(IConsoleCmdArgs* pArgs)
+{
+    if (stricmp(pArgs->GetArg(0), "DrillerStop") == 0)
+    {
+        EBUS_EVENT(AzFramework::DrillerConsoleCommandBus, StopDrillerSession, AZ::Crc32("DefaultDrillerSession"));
+    }
+    else
+    {
+        if (pArgs->GetArgCount() > 1)
+        {
+            AZ::Debug::DrillerManager::DrillerListType drillersToEnable;
+            for (int iArg = 1; iArg < pArgs->GetArgCount(); ++iArg)
+            {
+                if (stricmp(pArgs->GetArg(iArg), "Replica") == 0)
+                {
+                    drillersToEnable.push_back();
+                    drillersToEnable.back().id = AZ::Crc32("ReplicaDriller");
+                }
+                else if (stricmp(pArgs->GetArg(iArg), "Carrier") == 0)
+                {
+                    drillersToEnable.push_back();
+                    drillersToEnable.back().id = AZ::Crc32("CarrierDriller");
+                }
+                else
+                {
+                    CryLogAlways("Driller %s not supported.", pArgs->GetArg(iArg));
+                }
+            }
+            EBUS_EVENT(AzFramework::DrillerConsoleCommandBus, StartDrillerSession, drillersToEnable, AZ::Crc32("DefaultDrillerSession"));
+        }
+        else
+        {
+            CryLogAlways("Syntax: DrillerStart [Driller1] [Driller2] [...]");
+            CryLogAlways("Supported Drillers:");
+            CryLogAlways("    Carrier");
+            CryLogAlways("    Replica");
+        }
+    }
+};
 
 void ChangeLogAllocations(ICVar* pVal)
 {
@@ -5984,12 +6186,10 @@ void CSystem::CreateSystemVars()
 
     REGISTER_COMMAND("sys_job_system_dump_job_list", CmdDumpJobManagerJobList, VF_CHEAT, "Show a list of all registered job in the console");
 
-    m_sys_spec = REGISTER_INT_CB("sys_spec", CONFIG_CUSTOM, VF_ALWAYSONCHANGE,      // starts with CONFIG_CUSTOM so callback is called when setting initial value
-            "Specifies the system cfg spec. (0=custom, 1=low, 2=med, 3=high, 4=very high, 5=Xbox One, 6=PS4, 7=Mobile)\n"
-            "Setting this in system.cfg only applies to the game launcher and not the editor.\n"
-            "Setting this in editor.cfg hardcodes the config spec in the editor and will no longer be configurable via the Config Spec menu item.",
-            OnSysSpecChange);
-
+    m_sys_GraphicsQuality = REGISTER_INT_CB("r_GraphicsQuality", 0, VF_ALWAYSONCHANGE,
+        "Specifies the system cfg spec. 1=low, 2=med, 3=high, 4=very high)",
+        LoadDetectedSpec);
+    
     m_sys_SimulateTask = REGISTER_INT("sys_SimulateTask", 0, 0,
             "Simulate a task in System:Update which takes X ms");
 
@@ -6296,6 +6496,9 @@ void CSystem::CreateSystemVars()
     // Since the UI Canvas Editor is incomplete, we have a variable to enable it.
     // By default it is now enabled. Modify system.cfg or game.cfg to disable it
     REGISTER_INT("sys_enableCanvasEditor", 1, VF_NULL, "Enables the UI Canvas Editor");
+
+    REGISTER_COMMAND_DEV_ONLY("DrillerStart", CmdDrillToFile, VF_DEV_ONLY, "Start a driller capture.");
+    REGISTER_COMMAND_DEV_ONLY("DrillerStop", CmdDrillToFile, VF_DEV_ONLY, "Stop a driller capture.");
 }
 
 //////////////////////////////////////////////////////////////////////////

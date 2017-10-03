@@ -147,7 +147,7 @@ bool UiDraggableComponent::HandleEnterPressed(bool& shouldStayActive)
 }
 
 /////////////////////////////////////////////////////////////////
-bool UiDraggableComponent::HandleKeyInput(EKeyId keyId, int modifiers)
+bool UiDraggableComponent::HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys)
 {
     if (!m_isHandlingEvents)
     {
@@ -162,7 +162,11 @@ bool UiDraggableComponent::HandleKeyInput(EKeyId keyId, int modifiers)
 
     bool result = false;
 
-    if (keyId == eKI_Left || keyId == eKI_Right || keyId == eKI_Up || keyId == eKI_Down)
+    const UiNavigationHelpers::Command command = UiNavigationHelpers::MapInputChannelIdToUiNavigationCommand(inputSnapshot.m_channelId, activeModifierKeys);
+    if (command == UiNavigationHelpers::Command::Up ||
+        command == UiNavigationHelpers::Command::Down ||
+        command == UiNavigationHelpers::Command::Left ||
+        command == UiNavigationHelpers::Command::Right)
     {
         AZ::EntityId closestDropTarget = FindClosestNavigableDropTarget();
 
@@ -185,7 +189,7 @@ bool UiDraggableComponent::HandleKeyInput(EKeyId keyId, int modifiers)
                     return false;
                 };
 
-            newElement = UiNavigationHelpers::GetNextElement(m_hoverDropTarget, keyId,
+            newElement = UiNavigationHelpers::GetNextElement(m_hoverDropTarget, command,
                 navigableElements, closestDropTarget, isValidDropTarget);
         }
         else
@@ -550,6 +554,7 @@ void UiDraggableComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiDraggableInterface::DragState::Invalid>("eUiDragState_Invalid");
 
         behaviorContext->EBus<UiDraggableBus>("UiDraggableBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetDragState", &UiDraggableBus::Events::GetDragState)
             ->Event("SetDragState", &UiDraggableBus::Events::SetDragState)
             ->Event("RedoDrag", &UiDraggableBus::Events::RedoDrag)
@@ -557,10 +562,11 @@ void UiDraggableComponent::Reflect(AZ::ReflectContext* context)
             ->Event("ProxyDragEnd", &UiDraggableBus::Events::ProxyDragEnd)
             ->Event("IsProxy", &UiDraggableBus::Events::IsProxy)
             ->Event("GetOriginalFromProxy", &UiDraggableBus::Events::GetOriginalFromProxy)
-            ->Event("GetCanDropOnAnyCanvas", &UiDraggableBus::Events::ProxyDragEnd)
+            ->Event("GetCanDropOnAnyCanvas", &UiDraggableBus::Events::GetCanDropOnAnyCanvas)
             ->Event("SetCanDropOnAnyCanvas", &UiDraggableBus::Events::SetCanDropOnAnyCanvas);
 
         behaviorContext->EBus<UiDraggableNotificationBus>("UiDraggableNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiDraggableNotificationBusBehaviorHandler>();
     }
 }

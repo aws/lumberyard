@@ -21,6 +21,7 @@ namespace AZ
     public:
         virtual void Load() = 0;
         virtual void Save() = 0;
+        virtual void Finalize() = 0;
     };
     using UserSettingsComponentRequestBus = AZ::EBus<UserSettingsComponentRequests>;
 
@@ -51,6 +52,7 @@ namespace AZ
         // UserSettingsComponentRequestBus
         void Load() override;
         void Save() override;
+        void Finalize() override;
         //////////////////////////////////////////////////////////////////////////
 
         /// \ref ComponentDescriptor::GetProvidedServices
@@ -62,5 +64,6 @@ namespace AZ
 
         UserSettingsProvider    m_provider;
         u32                     m_providerId;
+        bool                    m_saveOnShutdown = true;
     };
 }   // namespace AZ

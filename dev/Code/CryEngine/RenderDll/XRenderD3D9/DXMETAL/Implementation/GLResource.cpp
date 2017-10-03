@@ -189,11 +189,8 @@ namespace NCryMetal
             bool bHasStecnilAttachment = false;
             MTLPixelFormat  eMetalFormat = pTexFormat->m_eMetalFormat;
 
-            bool isDepthStencilBuffer = pFormat->m_eTypelessFormat == eGIF_R32G8X24_TYPELESS || pFormat->m_eDXGIFormat == DXGI_FORMAT_R32G8X24_TYPELESS || pFormat->m_eDXGIFormat == DXGI_FORMAT_R16_TYPELESS ;
-#if defined(AZ_PLATFORM_APPLE_OSX)
-            //OSX only supports MTLPixelFormatDepth32Float_Stencil8 or MTLPixelFormatDepth24Unorm_Stencil8
-            isDepthStencilBuffer = isDepthStencilBuffer || eMetalFormat == MTLPixelFormatDepth32Float;
-#endif
+            bool isDepthStencilBuffer = pFormat->m_eTypelessFormat == eGIF_R32G8X24_TYPELESS || pFormat->m_eDXGIFormat == DXGI_FORMAT_R32G8X24_TYPELESS || pFormat->m_eDXGIFormat == DXGI_FORMAT_R16_TYPELESS || pFormat->m_eDXGIFormat == DXGI_FORMAT_R32_TYPELESS ;
+            
             //  Igor: Special handling for the texture which is actually 2 textures
             if (isDepthStencilBuffer)
             {
@@ -233,7 +230,7 @@ namespace NCryMetal
                 }
 
                 Desc.mipmapLevelCount = iLevels;
-#if defined(AZ_PLATFORM_APPLE_OSX)
+                
                 if (uBindFlags & D3D11_BIND_RENDER_TARGET)
                 {
                     Desc.usage = MTLTextureUsageRenderTarget;
@@ -257,8 +254,7 @@ namespace NCryMetal
                 {
                     Desc.usage |= MTLTextureUsagePixelFormatView;
                 }
-#endif
-
+                
                 pTexture->m_Texture = [mtlDevice newTextureWithDescriptor:Desc];
 
                 if (!pTexture->m_Texture)
@@ -2512,6 +2508,7 @@ bytesPerImage: kMappedSubTex.m_uImagePitch];
         case D3D11_USAGE_DIRECT_ACCESS:
             spBuffer->m_pfUnmapSubresource  = &SDirectAccessBufferImpl::UnmapBuffer;
             spBuffer->m_pfMapBufferRange    = &SDirectAccessBufferImpl::MapBufferRange;
+            spBuffer->m_pfMapSubresource    = &SDirectAccessBufferImpl::MapBuffer;
             spBuffer->m_eUsage = eBU_DirectAccess;
             bVideoMemory = true;
             bAllocateSystemMemory = false;

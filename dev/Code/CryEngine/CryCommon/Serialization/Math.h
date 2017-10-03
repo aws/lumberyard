@@ -75,8 +75,8 @@ namespace Serialization
     struct SRadianAng3AsDeg
     {
         Ang3_tpl<T>* ang3;
-        SRadianAng3AsDeg(Ang3_tpl<T>* ang3)
-            : ang3(ang3) {}
+        SRadianAng3AsDeg(Ang3_tpl<T>* _ang3)
+            : ang3(_ang3) {}
     };
 
     template<class T>
@@ -89,8 +89,8 @@ namespace Serialization
     struct SRadiansAsDeg
     {
         T* radians;
-        SRadiansAsDeg(T* radians)
-            : radians(radians) {}
+        SRadiansAsDeg(T* _radians)
+            : radians(_radians) {}
     };
 
     template<class T>
@@ -117,8 +117,8 @@ namespace Serialization
     struct QuatAsAng3
     {
         Quat_tpl<T>* quat;
-        QuatAsAng3(Quat_tpl<T>& quat)
-            : quat(&quat) {}
+        QuatAsAng3(Quat_tpl<T>& _quat)
+            : quat(&_quat) {}
     };
 
     template<class T>
@@ -137,8 +137,8 @@ namespace Serialization
     struct QuatTAsVec3Ang3
     {
         QuatT_tpl<T>* trans;
-        QuatTAsVec3Ang3(QuatT_tpl<T>& trans)
-            : trans(&trans) {}
+        QuatTAsVec3Ang3(QuatT_tpl<T>& _trans)
+            : trans(&_trans) {}
     };
 
     template<class T>

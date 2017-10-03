@@ -219,6 +219,10 @@ ActionManager::ActionManager(MainWindow* parent, QtViewPaneManager* const qtView
     timer->start();
 }
 
+ActionManager::~ActionManager()
+{
+}
+
 void ActionManager::AddMenu(QMenu* menu)
 {
     m_menus.push_back(menu);
@@ -326,6 +330,13 @@ void ActionManager::AddAction(QAction* action)
     {
         widget->addAction(action);
     }
+
+    // This is to prevent icons being shown in the main menu.
+    // Currently, the goal is to show icons in the toolbar but not in the main menu,
+    // and the code that handles showing icon in the LevelEditorMenuHandler.cpp
+    // has been removed. This fix is a short term solution as in the future
+    // we need to add custom different icons on the menus.
+    action->setIconVisibleInMenu(false);
 }
 
 ActionManager::ActionWrapper ActionManager::AddAction(int id, const QString& name)

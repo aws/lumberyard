@@ -64,6 +64,13 @@ namespace AzToolsFramework
                 "ON Products.JobPK = Jobs.JobID WHERE "
                 "Jobs.Platform = :platform;";
 
+
+            static const char* QUERY_LEGACYSUBIDSBYPRODUCTID = "AzToolsFramework::AssetDatabase::QueryLegacySubIDsByProductID";
+            static const char* QUERY_LEGACYSUBIDSBYPRODUCTID_STATEMENT =
+                "SELECT * from LegacySubIDs "
+                " WHERE "
+                "   LegacySubIDs.ProductPK = :productId;";
+
             //////////////////////////////////////////////////////////////////////////
             //projection and combination queries
 
@@ -427,6 +434,11 @@ namespace AzToolsFramework
             static const char* QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT =
                 "SELECT * from SourceDependency WHERE "
                 "DependsOnSource = :dependsOnSource;";
+
+            static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE = "AzToolsFramework::AssetDatabase::QueryDependsOnSourceBySource";
+            static const char* QUERY_DEPENDSONSOURCE_BY_SOURCE_STATEMENT =
+                "SELECT * from SourceDependency WHERE "
+                "Source = :source;";
 
             static const char* QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE = "AzToolsFramework::AssetDatabase::QuerySourceDependencyByBuilderGUIDAndSource";
             static const char* QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE_STATEMENT =
@@ -919,112 +931,20 @@ namespace AzToolsFramework
             return AZStd::string::format("ProductDatabaseEntry id:%i jobpk: %i subid: %i productname: %s assettype: %s", m_productID, m_jobPK, m_subID, m_productName.c_str(), m_assetType.ToString<AZStd::string>().c_str());
         }
 
-        //////////////////////////////////////////////////////////////////////////
-        //CombinedDatabaseEntry
-        CombinedDatabaseEntry::CombinedDatabaseEntry(const CombinedDatabaseEntry& other)
-            : ScanFolderDatabaseEntry(other)
-            , SourceDatabaseEntry(other)
-            , JobDatabaseEntry(other)
-            , ProductDatabaseEntry(other)
+        /////////////////////////////
+        // LegacySubIDsEntry
+        // loaded from db, and thus includes the PK
+        LegacySubIDsEntry::LegacySubIDsEntry(AZ::s64 subIDsEntryID, AZ::s64 productPK, AZ::u32 subId)
+            : m_subIDsEntryID(subIDsEntryID)
+            , m_productPK(productPK)
+            , m_subID(subId)
         {
         }
 
-        CombinedDatabaseEntry::CombinedDatabaseEntry(CombinedDatabaseEntry&& other)
+        LegacySubIDsEntry::LegacySubIDsEntry(AZ::s64 productPK, AZ::u32 subId)
+            : m_productPK(productPK)
+            , m_subID(subId)
         {
-            *this = AZStd::move(other);
-        }
-
-        CombinedDatabaseEntry& CombinedDatabaseEntry::operator=(CombinedDatabaseEntry&& other)
-        {
-            if (this != &other)
-            {
-                m_scanFolder = AZStd::move(other.m_scanFolder);
-                m_scanFolderID = other.m_scanFolderID;
-                m_displayName = other.m_displayName;
-                m_outputPrefix = other.m_outputPrefix;
-
-                m_sourceID = other.m_sourceID;
-                m_scanFolderPK = other.m_scanFolderPK;
-                m_sourceName = AZStd::move(other.m_sourceName);
-                m_sourceGuid = other.m_sourceGuid;
-
-                m_jobID = other.m_jobID;
-                m_sourcePK = other.m_sourcePK;
-                m_jobKey = AZStd::move(other.m_jobKey);
-                m_fingerprint = other.m_fingerprint;
-                m_platform = AZStd::move(other.m_platform);
-                m_builderGuid = other.m_builderGuid;
-                m_jobRunKey = other.m_jobRunKey;
-                m_firstFailLogTime = other.m_firstFailLogTime;
-                m_firstFailLogFile = AZStd::move(other.m_firstFailLogFile);
-                m_lastFailLogTime = other.m_lastFailLogTime;
-                m_lastFailLogFile = AZStd::move(other.m_lastFailLogFile);
-                m_lastLogTime = other.m_lastLogTime;
-                m_lastLogFile = AZStd::move(other.m_lastLogFile);
-
-                m_productID = other.m_productID;
-                m_jobPK = other.m_jobPK;
-                m_subID = other.m_subID;
-                m_productName = AZStd::move(other.m_productName);
-                m_assetType = other.m_assetType;
-                m_legacyGuid = other.m_legacyGuid;
-            }
-            return *this;
-        }
-
-        CombinedDatabaseEntry& CombinedDatabaseEntry::operator=(const CombinedDatabaseEntry& other)
-        {
-            m_scanFolder = other.m_scanFolder;
-            m_scanFolderID = other.m_scanFolderID;
-            m_displayName = other.m_displayName;
-            m_outputPrefix = other.m_outputPrefix;
-
-            m_sourceID = other.m_sourceID;
-            m_scanFolderPK = other.m_scanFolderPK;
-            m_sourceName = other.m_sourceName;
-            m_sourceGuid = other.m_sourceGuid;
-
-            m_jobID = other.m_jobID;
-            m_sourcePK = other.m_sourcePK;
-            m_jobKey = other.m_jobKey;
-            m_fingerprint = other.m_fingerprint;
-            m_platform = other.m_platform;
-            m_builderGuid = other.m_builderGuid;
-            m_jobRunKey = other.m_jobRunKey;
-            m_firstFailLogTime = other.m_firstFailLogTime;
-            m_firstFailLogFile = other.m_firstFailLogFile;
-            m_lastFailLogTime = other.m_lastFailLogTime;
-            m_lastFailLogFile = other.m_lastFailLogFile;
-            m_lastLogTime = other.m_lastLogTime;
-            m_lastLogFile = other.m_lastLogFile;
-
-            m_productID = other.m_productID;
-            m_jobPK = other.m_jobPK;
-            m_subID = other.m_subID;
-            m_productName = other.m_productName;
-            m_assetType = other.m_assetType;
-            m_legacyGuid = other.m_legacyGuid;
-            return *this;
-        }
-
-        bool CombinedDatabaseEntry::operator==(const CombinedDatabaseEntry& other) const
-        {
-            //! equivalence for a combined entry is when all ids match
-            /*! Basically, combined entries are different then other entries as they are only ever created by query.
-             *! Other entries we can create, set , update, etc... combined entries can't. Most of the
-             *! time we don't know the value database artifacts like ids, however we may want to know
-             *! equivalence based on information we do have, so we construct an entry without artifacts
-             *! and test. Therefore equivalence for these are based on field equality minus database generated artifacts
-             *! like id. However since combined entries are themselves are database artifacts as they are
-             *! only ever made from database queries, it makes more sense to use the database artifacts
-             *! themselves for equivalence. It makes the equality result more meaningful and more efficient.
-             *! It's hard for me to see a use case for field equality on a combined entry, but If we can think
-             *! of one, we would add a field equality operator, or alter this one.
-             */
-            return m_scanFolderID == other.m_scanFolderID &&
-                   m_sourceID == other.m_sourceID &&
-                   m_jobID == other.m_jobID &&
-                   m_productID == other.m_productID;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1125,6 +1045,7 @@ namespace AzToolsFramework
             m_databaseConnection->AddStatement(QUERY_PRODUCTS_TABLE, QUERY_PRODUCTS_TABLE_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_PRODUCTS_TABLE_PLATFORM, QUERY_PRODUCTS_TABLE_PLATFORM_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SCANFOLDERS_TABLE, QUERY_SCANFOLDERS_TABLE_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_LEGACYSUBIDSBYPRODUCTID, QUERY_LEGACYSUBIDSBYPRODUCTID_STATEMENT);
 
             //////////////////////////////////////////////////////////////////////////
             //projection and combination queries
@@ -1196,6 +1117,7 @@ namespace AzToolsFramework
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY_BY_SOURCEDEPENDENCYID, QUERY_SOURCEDEPENDENCY_BY_SOURCEDEPENDENCYID_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY, QUERY_SOURCEDEPENDENCY_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE_STATEMENT);
+            m_databaseConnection->AddStatement(QUERY_DEPENDSONSOURCE_BY_SOURCE, QUERY_DEPENDSONSOURCE_BY_SOURCE_STATEMENT);
             m_databaseConnection->AddStatement(QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE, QUERY_SOURCEDEPENDENCY_BY_BUILDERGUID_SOURCE_STATEMENT);
         }
         //////////////////////////////////////////////////////////////////////////
@@ -2179,8 +2101,33 @@ namespace AzToolsFramework
             return GetProductResult(name, statement, handler, builderGuid, jobKey, status);
         }
 
+        bool AssetDatabaseConnection::QueryLegacySubIdsByProductID(AZ::s64 productId, legacySubIDsHandler handler)
+        {
+            const char* name = QUERY_LEGACYSUBIDSBYPRODUCTID;
+            if (!ValidateDatabaseTable(name, "LegacySubIDs"))
+            {
+                return false;
+            }
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, name);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", name);
+                return false;
+            }
+            int productIdx = statement->GetNamedParamIdx(":productId");
+            if (!productIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :productId parameter in %s", name);
+                return false;
+            }
 
-        bool AssetDatabaseConnection::QueryCombined(combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, const char* platform, AssetSystem::JobStatus status)
+            statement->BindValueInt64(productIdx, productId);
+
+            return GetLegacySubIDsResult(name, statement, handler);
+        }
+
+        bool AssetDatabaseConnection::QueryCombined(combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, const char* platform, AssetSystem::JobStatus status, bool includeLegacySubIDs)
         {
             const char* name = QUERY_COMBINED;
             if (platform && strlen(platform))
@@ -2216,7 +2163,7 @@ namespace AzToolsFramework
                 statement->BindValueText(platformIdx, platform);
             }
 
-            return GetCombinedResult(name, statement, handler, builderGuid, jobKey, status);
+            return GetCombinedResult(name, statement, handler, builderGuid, jobKey, status, includeLegacySubIDs);
         }
 
         bool AssetDatabaseConnection::QueryCombinedBySourceID(AZ::s64 sourceID, combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, const char* platform, AssetSystem::JobStatus status)
@@ -2839,7 +2786,34 @@ namespace AzToolsFramework
 
             statement->BindValueText(dependsOnSourceIdx, dependsOnSource);
 
-            return GetSourceDependencyResult(QUERY_SOURCEDEPENDENCY_BY_SOURCEDEPENDENCYID, statement, handler);
+            return GetSourceDependencyResult(QUERY_SOURCEDEPENDENCY_BY_DEPENDSONSOURCE, statement, handler);
+        }
+
+        bool AssetDatabaseConnection::QueryDependsOnSourceBySourceDependency(const char* sourceDependency, sourceFileDependencyHandler handler)
+        {
+            if (!ValidateDatabaseTable(QUERY_DEPENDSONSOURCE_BY_SOURCE, "SourceDependency"))
+            {
+                return false;
+            }
+
+            StatementAutoFinalizer autoFinal(*m_databaseConnection, QUERY_DEPENDSONSOURCE_BY_SOURCE);
+            Statement* statement = autoFinal.Get();
+            if (!statement)
+            {
+                AZ_Error(LOG_NAME, false, "Unable to find SQL statement: %s", QUERY_DEPENDSONSOURCE_BY_SOURCE);
+                return false;
+            }
+
+            int sourceIdx = statement->GetNamedParamIdx(":source");
+            if (!sourceIdx)
+            {
+                AZ_Error(LOG_NAME, false, "Could not find :source parameter in %s", QUERY_DEPENDSONSOURCE_BY_SOURCE);
+                return false;
+            }
+
+            statement->BindValueText(sourceIdx, sourceDependency);
+
+            return GetSourceDependencyResult(QUERY_DEPENDSONSOURCE_BY_SOURCE, statement, handler);
         }
 
         bool AssetDatabaseConnection::QuerySourceDependencyByBuilderGUIDAndSource(const AZ::Uuid& builderGuid, const char* source, sourceFileDependencyHandler handler)
@@ -3393,7 +3367,62 @@ namespace AzToolsFramework
             return validResult;
         }
 
-        bool AssetDatabaseConnection::GetCombinedResult(const char* callName, Statement* statement, combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, AssetSystem::JobStatus status)
+        bool AssetDatabaseConnection::GetLegacySubIDsResult(const char* callName, SQLite::Statement* statement, legacySubIDsHandler handler)
+        {
+            (void)callName; // AZ_Error may be compiled out entirely in release builds.
+
+            Statement::SqlStatus result = statement->Step();
+
+            int sourceLegacySubIDIdx = statement->FindColumn("LegacySubID");
+            if (sourceLegacySubIDIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "LegacySubID");
+                return false;
+            }
+
+            int productPKIdx = statement->FindColumn("ProductPK");
+            if (productPKIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "ProductPK");
+                return false;
+            }
+
+            int subIDIdx = statement->FindColumn("SubID");
+            if (subIDIdx == -1)
+            {
+                AZ_Error(LOG_NAME, false, "Results from %s failed to have a %s column", callName, "SubID");
+                return false;
+            }
+            bool validResult = result == Statement::SqlDone;
+            while (result == Statement::SqlOK)
+            {
+                LegacySubIDsEntry entry;
+                entry.m_subIDsEntryID = statement->GetColumnInt64(sourceLegacySubIDIdx);
+                entry.m_productPK = statement->GetColumnInt64(productPKIdx);
+                entry.m_subID = statement->GetColumnInt(subIDIdx);
+
+                if (handler(entry))
+                {
+                    result = statement->Step();
+                }
+                else
+                {
+                    result = Statement::SqlDone;
+                }
+                validResult = true;
+            }
+
+            if (result == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Error occurred while stepping %s", callName);
+                return false;
+            }
+
+            return validResult;
+        }
+
+
+        bool AssetDatabaseConnection::GetCombinedResult(const char* callName, Statement* statement, combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, AssetSystem::JobStatus status, bool includeLegacySubIDs)
         {
             (void)callName; // AZ_Error may be compiled out entirely in release builds.
             Statement::SqlStatus result = statement->Step();
@@ -3651,6 +3680,16 @@ namespace AzToolsFramework
                     combined.m_productName = AZStd::move(statement->GetColumnText(productNameColumnIdx));
                     combined.m_assetType = statement->GetColumnUuid(assetTypeColumnIdx);
                     combined.m_legacyGuid = statement->GetColumnUuid(legacyGuidColumnIdx);
+
+                    if (includeLegacySubIDs)
+                    {
+                        QueryLegacySubIdsByProductID(combined.m_productID, [&combined](LegacySubIDsEntry& entry)
+                        {
+                            combined.m_legacySubIDs.emplace_back(AZStd::move(entry));
+                            return true;
+                        }
+                        );
+                    }
 
                     if (handler(combined))
                     {

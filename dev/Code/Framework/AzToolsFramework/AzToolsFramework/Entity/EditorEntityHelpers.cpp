@@ -10,8 +10,16 @@
 *
 */
 #include "EditorEntityHelpers.h"
+
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Debug/Profiler.h>
+#include <AzCore/RTTI/AttributeReader.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+
+#include <AzCore/std/sort.h>
 
 namespace AzToolsFramework
 {
@@ -25,33 +33,23 @@ namespace AzToolsFramework
 
         AZ::Entity* entity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
-        AZ_Assert(entity, "Unable to find entity for EntityID %llu", entityId);
         return entity;
     }
 
-    AZ::Entity::ComponentArrayType GetAllComponentsForEntity(const AZ::Entity* entity)
+    void GetAllComponentsForEntity(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity)
     {
-        if (!entity)
+        if (entity)
         {
-            return AZ::Entity::ComponentArrayType();
+            //build a set of all active and pending components associated with the entity
+            componentsOnEntity.insert(componentsOnEntity.end(), entity->GetComponents().begin(), entity->GetComponents().end());
+            EditorPendingCompositionRequestBus::Event(entity->GetId(), &EditorPendingCompositionRequests::GetPendingComponents, componentsOnEntity);
+            EditorDisabledCompositionRequestBus::Event(entity->GetId(), &EditorDisabledCompositionRequests::GetDisabledComponents, componentsOnEntity);
         }
-
-        //build a set of all active and pending components associated with the entity
-        AZ::Entity::ComponentArrayType componentsForEntity = entity->GetComponents();
-
-        AZ::Entity::ComponentArrayType pendingComponents;
-        EditorPendingCompositionRequestBus::EventResult(pendingComponents, entity->GetId(), &EditorPendingCompositionRequests::GetPendingComponents);
-        componentsForEntity.insert(componentsForEntity.end(), pendingComponents.begin(), pendingComponents.end());
-
-        AZ::Entity::ComponentArrayType disabledComponents;
-        EditorDisabledCompositionRequestBus::EventResult(disabledComponents, entity->GetId(), &EditorDisabledCompositionRequests::GetDisabledComponents);
-        componentsForEntity.insert(componentsForEntity.end(), disabledComponents.begin(), disabledComponents.end());
-        return componentsForEntity;
     }
 
-    AZ::Entity::ComponentArrayType GetAllComponentsForEntity(const AZ::EntityId& entityId)
+    void GetAllComponentsForEntity(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity)
     {
-        return GetAllComponentsForEntity(GetEntity(entityId));
+        GetAllComponentsForEntity(GetEntity(entityId), componentsOnEntity);
     }
 
     AZ::Uuid GetComponentTypeId(const AZ::Component* component)
@@ -73,7 +71,7 @@ namespace AzToolsFramework
         return componentClassData;
     }
 
-    const char* GetFriendlyComponentName(const AZ::Component* component)
+    AZStd::string GetFriendlyComponentName(const AZ::Component* component)
     {
         auto className = component->RTTI_GetTypeName();
         auto classData = GetComponentClassData(component);
@@ -81,9 +79,24 @@ namespace AzToolsFramework
         {
             return className;
         }
-        return classData->m_editData
-            ? classData->m_editData->m_name
-            : classData->m_name;
+
+        if (!classData->m_editData)
+        {
+            return classData->m_name;
+        }
+
+        if (auto editorData = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+        {
+            if (auto nameAttribute = editorData->FindAttribute(AZ::Edit::Attributes::NameLabelOverride))
+            {
+                AZStd::string name;
+                AZ::AttributeReader nameReader(const_cast<AZ::Component*>(component), nameAttribute);
+                nameReader.Read<AZStd::string>(name);
+                return name;
+            }
+        }
+
+        return classData->m_editData->m_name;
     }
 
     const char* GetFriendlyComponentDescription(const AZ::Component* component)
@@ -116,4 +129,118 @@ namespace AzToolsFramework
         AZ_Assert(editorComponentBaseComponent, "Editor component does not derive from EditorComponentBase");
         return editorComponentBaseComponent;
     }
-} // namespace AzToolsFramework;
+
+    AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId)
+    {
+        AZ::EntityId sortEntityId = parentId;
+        if (!sortEntityId.IsValid())
+        {
+            AzFramework::EntityContextId editorEntityContextId = AzFramework::EntityContextId::CreateNull();
+            EditorEntityContextRequestBus::BroadcastResult(editorEntityContextId, &EditorEntityContextRequestBus::Events::GetEditorEntityContextId);
+            AZ::SliceComponent* rootSliceComponent = nullptr;
+            AzFramework::EntityContextRequestBus::EventResult(rootSliceComponent, editorEntityContextId, &AzFramework::EntityContextRequestBus::Events::GetRootSlice);
+            if (rootSliceComponent)
+            {
+                return rootSliceComponent->GetMetadataEntity()->GetId();
+            }
+        }
+        return sortEntityId;
+    }
+
+    void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
+
+        bool success = false;
+        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::AddChildEntity, childId, !parentId.IsValid() || forceAddToBack);
+        if (success && parentId != sortEntityId)
+        {
+            EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
+        }
+    }
+
+    void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
+
+        bool success = false;
+        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::RemoveChildEntity, childId);
+        if (success && parentId != sortEntityId)
+        {
+            EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
+        }
+    }
+
+    void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        auto sortEntityId = GetEntityIdForSortInfo(parentId);
+
+        bool success = false;
+        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::SetChildEntityOrderArray, children);
+        if (success && parentId != sortEntityId)
+        {
+            EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
+        }
+    }
+
+    EntityIdList GetEntityChildOrder(const AZ::EntityId parentId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        EntityIdList children;
+        EditorEntityInfoRequestBus::EventResult(children, parentId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+        EntityIdList entityChildOrder;
+        AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
+        EditorEntitySortRequestBus::EventResult(entityChildOrder, sortEntityId, &EditorEntitySortRequestBus::Events::GetChildEntityOrderArray);
+
+        // Prune out any entries in the child order array that aren't currently known to be children
+        entityChildOrder.erase(
+            AZStd::remove_if(
+                entityChildOrder.begin(), 
+                entityChildOrder.end(), 
+                [&children](const AZ::EntityId& entityId)
+                {
+                    // Return true to remove if entity id was not in the child array
+                    return AZStd::find(children.begin(), children.end(), entityId) == children.end();
+                }
+            ),
+            entityChildOrder.end()
+        );
+
+        return entityChildOrder;
+    }
+
+    //build an address based on depth and order of entities
+    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location)
+    {
+        if(entityId.IsValid())
+        {
+            AZ::EntityId parentId;
+            EditorEntityInfoRequestBus::EventResult(parentId, entityId, &EditorEntityInfoRequestBus::Events::GetParent);
+            AZ::u64 entityOrder = 0;
+            EditorEntitySortRequestBus::EventResult(entityOrder, GetEntityIdForSortInfo(parentId), &EditorEntitySortRequestBus::Events::GetChildEntityIndex, entityId);
+            location.push_front(entityOrder);
+            GetEntityLocationInHierarchy(parentId, location);
+        }
+    }
+
+    //sort vector of entities by how they're arranged
+    void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        //cache locations for faster sort
+        AZStd::unordered_map<AZ::EntityId, std::list<AZ::u64>> locations;
+        for (auto entityId : entityIds)
+        {
+            GetEntityLocationInHierarchy(entityId, locations[entityId]);
+        }
+        AZStd::sort(entityIds.begin(), entityIds.end(), [&locations](const AZ::EntityId& e1, const AZ::EntityId& e2) {
+            //sort by container contents
+            return locations[e1] < locations[e2];
+        });
+    }
+
+} // namespace AzToolsFramework

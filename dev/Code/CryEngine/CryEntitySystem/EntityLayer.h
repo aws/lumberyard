@@ -23,9 +23,9 @@
 
 struct SEntityLayerGarbage
 {
-    SEntityLayerGarbage(IGeneralMemoryHeap* pHeap, const string& layerName)
-        : pHeap(pHeap)
-        , layerName(layerName)
+    SEntityLayerGarbage(IGeneralMemoryHeap* _pHeap, const string& _layerName)
+        : pHeap(_pHeap)
+        , layerName(_layerName)
         , nAge(0)
     {
     }

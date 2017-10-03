@@ -73,7 +73,26 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // EditorParticleComponentRequestBus interface implementation
-        void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libName) override;
+        void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libPath) override;
+
+        void SetVisibility(bool visible) override;
+        void Enable(bool enable) override;
+        void SetColorTint(const AZ::Color& tint) override;
+        void SetCountScale(float scale) override;
+        void SetTimeScale(float scale) override;
+        void SetSpeedScale(float scale) override;
+        void SetGlobalSizeScale(float scale) override;
+        void SetParticleSizeScaleX(float scale) override;
+        void SetParticleSizeScaleY(float scale) override;
+        bool GetVisibility() override;
+        bool GetEnable() override;
+        AZ::Color GetColorTint() override;
+        float GetCountScale() override;
+        float GetTimeScale() override;
+        float GetSpeedScale() override;
+        float GetGlobalSizeScale() override;
+        float GetParticleSizeScaleX() override;
+        float GetParticleSizeScaleY() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

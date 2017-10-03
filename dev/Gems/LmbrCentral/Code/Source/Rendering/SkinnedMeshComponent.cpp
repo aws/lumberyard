@@ -23,7 +23,7 @@
 
 #include <I3DEngine.h>
 #include <ICryAnimation.h>
-#include "StaticMeshComponent.h"
+#include "MeshComponent.h"
 
 namespace LmbrCentral
 {
@@ -70,20 +70,15 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<SkinnedMeshComponentRenderNode::SkinnedRenderOptions>()
-                ->Version(3, &VersionConverter)
+                ->Version(4, &VersionConverter)
                 ->Field("Opacity", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_opacity)
                 ->Field("MaxViewDistance", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_maxViewDist)
                 ->Field("ViewDistanceMultiplier", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_viewDistMultiplier)
                 ->Field("LODRatio", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_lodRatio)
                 ->Field("CastDynamicShadows", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_castShadows)
-                ->Field("CastLightmapShadows", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_castLightmap)
                 ->Field("UseVisAreas", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_useVisAreas)
                 ->Field("RainOccluder", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_rainOccluder)
-                ->Field("AffectDynamicWater", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_affectDynamicWater)
-                ->Field("ReceiveWind", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_receiveWind)
                 ->Field("AcceptDecals", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_acceptDecals)
-                ->Field("AffectNavmesh", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_affectNavmesh)
-                ->Field("VisibilityOccluder", &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_visibilityOccluder)
                 ;
         }
     }
@@ -107,6 +102,21 @@ namespace LmbrCentral
         if (classElement.GetVersion() <= 2)
         {
             classElement.RemoveElementByName(AZ_CRC("IndoorOnly", 0xc8ab6ddb));
+        }
+
+        // conversion from version 3:
+        // - Remove CastLightmapShadows (m_castLightmap)
+        // - Remove AffectDynamicWater (m_affectDynamicWater)
+        // - Remove ReceiveWind (m_receiveWind)
+        // - Remove AffectNavmesh (m_affectNavmesh)
+        // - Remove VisibilityOccluder (m_visibilityOccluder)
+        if (classElement.GetVersion() <= 3)
+        {
+            classElement.RemoveElementByName(AZ_CRC("CastLightmapShadows", 0x10ce0bf8));
+            classElement.RemoveElementByName(AZ_CRC("AffectDynamicWater", 0xe6774a5b));
+            classElement.RemoveElementByName(AZ_CRC("ReceiveWind", 0x952a1261));
+            classElement.RemoveElementByName(AZ_CRC("AffectNavmesh", 0x77bd2697));
+            classElement.RemoveElementByName(AZ_CRC("VisibilityOccluder", 0xe5819c29));
         }
 
         return true;
@@ -206,13 +216,8 @@ namespace LmbrCentral
         , m_lodRatio(100)
         , m_useVisAreas(true)
         , m_castShadows(true)
-        , m_castLightmap(true)
         , m_rainOccluder(true)
-        , m_affectNavmesh(true)
-        , m_affectDynamicWater(false)
         , m_acceptDecals(true)
-        , m_receiveWind(false)
-        , m_visibilityOccluder(false)
     {
         m_maxViewDist = GetDefaultMaxViewDist();
     }
@@ -547,14 +552,9 @@ namespace LmbrCentral
         // Update flags according to current render settings
         UpdateRenderFlag(m_renderOptions.m_useVisAreas == false, ERF_OUTDOORONLY, flags);
         UpdateRenderFlag(m_renderOptions.m_castShadows, ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS, flags);
-        UpdateRenderFlag(m_renderOptions.m_castLightmap, ERF_DYNAMIC_DISTANCESHADOWS, flags);
         UpdateRenderFlag(m_renderOptions.m_rainOccluder, ERF_RAIN_OCCLUDER, flags);
+        UpdateRenderFlag(true, ERF_EXCLUDE_FROM_TRIANGULATION, flags);
         UpdateRenderFlag(m_visible == false, ERF_HIDDEN, flags);
-        UpdateRenderFlag(m_renderOptions.m_receiveWind, ERF_RECVWIND, flags);
-        UpdateRenderFlag(m_renderOptions.m_visibilityOccluder, ERF_GOOD_OCCLUDER, flags);
-
-        UpdateRenderFlag(false == m_renderOptions.m_affectNavmesh, ERF_EXCLUDE_FROM_TRIANGULATION, flags);
-        UpdateRenderFlag(false == m_renderOptions.m_affectDynamicWater, ERF_NODYNWATER, flags);
         UpdateRenderFlag(false == m_renderOptions.m_acceptDecals, ERF_NO_DECALNODE_DECALS, flags);
 
         // Apply current auxiliary render flags
@@ -814,7 +814,7 @@ namespace LmbrCentral
 
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
-        MaterialRequestBus::Handler::BusConnect(m_entity->GetId());
+        MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
         m_skinnedMeshRenderNode.CreateMesh();
@@ -826,7 +826,7 @@ namespace LmbrCentral
     {
         SkeletalHierarchyRequestBus::Handler::BusDisconnect();
         SkinnedMeshComponentRequestBus::Handler::BusDisconnect();
-        MaterialRequestBus::Handler::BusDisconnect();
+        MaterialOwnerRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
 
@@ -1010,8 +1010,6 @@ namespace LmbrCentral
             renderOptions.GetChildData(AZ_CRC("ReceiveWind", 0x952a1261), receiveWind);
             bool acceptDecals = true;
             renderOptions.GetChildData(AZ_CRC("AcceptDecals", 0x3b3240a7), acceptDecals);
-            bool affectNavmesh = true;
-            renderOptions.GetChildData(AZ_CRC("AffectNavmesh", 0x77bd2697), affectNavmesh);
             bool visibilityOccluder = false;
             renderOptions.GetChildData(AZ_CRC("VisibilityOccluder", 0xe5819c29), visibilityOccluder);
             bool depthTest = true;
@@ -1056,9 +1054,9 @@ namespace LmbrCentral
             {
                 newComponentStringGuid = "{2F4BAD46-C857-4DCB-A454-C412DE67852A}";
                 renderNodeName = "Static Mesh Render Node";
-                renderNodeUuid = AZ::AzTypeInfo<StaticMeshComponentRenderNode>::Uuid();
-                meshAssetUuId = AZ::AzTypeInfo<StaticMeshAsset>::Uuid();
-                renderOptionUuid = StaticMeshComponentRenderNode::GetRenderOptionsUuid();
+                renderNodeUuid = AZ::AzTypeInfo<MeshComponentRenderNode>::Uuid();
+                meshAssetUuId = AZ::AzTypeInfo<MeshAsset>::Uuid();
+                renderOptionUuid = MeshComponentRenderNode::GetRenderOptionsUuid();
                 meshTypeString = "Static Mesh";
             }
             else
@@ -1107,7 +1105,6 @@ namespace LmbrCentral
             newRenderOptions.AddElementWithData(context, "AffectDynamicWater", affectDynamicWater);
             newRenderOptions.AddElementWithData(context, "ReceiveWind", receiveWind);
             newRenderOptions.AddElementWithData(context, "AcceptDecals", acceptDecals);
-            newRenderOptions.AddElementWithData(context, "affectNavmesh", affectNavmesh);
             newRenderOptions.AddElementWithData(context, "VisibilityOccluder", visibilityOccluder);
             newRenderOptions.AddElementWithData(context, "DepthTest", depthTest);
             //////////////////////////////////////////////////////////////////////////

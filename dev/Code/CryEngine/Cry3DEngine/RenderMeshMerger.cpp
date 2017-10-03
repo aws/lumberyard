@@ -146,16 +146,16 @@ int CRenderMeshMerger::Cmp_RenderChunks_(const void* v1, const void* v2)
     return Cmp_Materials(pMat1, pMat2);
 }
 
-void CRenderMeshMerger::IsChunkValid(const CRenderChunk& Ch, PodArray<SVF_P3S_C4B_T2S>& m_lstVerts, PodArray<uint32>& m_lstIndices)
+void CRenderMeshMerger::IsChunkValid(const CRenderChunk& Ch, PodArray<SVF_P3S_C4B_T2S>& lstVerts, PodArray<uint32>& lstIndices)
 {
 #ifdef _DEBUG
-    assert(Ch.nFirstIndexId + Ch.nNumIndices <= (uint32)m_lstIndices.Count());
-    assert(Ch.nFirstVertId + Ch.nNumVerts <= (uint16)m_lstVerts.Count());
+    assert(Ch.nFirstIndexId + Ch.nNumIndices <= (uint32)lstIndices.Count());
+    assert(Ch.nFirstVertId + Ch.nNumVerts <= (uint16)lstVerts.Count());
 
     for (uint32 i = Ch.nFirstIndexId; i < Ch.nFirstIndexId + Ch.nNumIndices; i++)
     {
-        assert(m_lstIndices[i] >= Ch.nFirstVertId && m_lstIndices[i] < (uint32)(Ch.nFirstVertId + Ch.nNumVerts));
-        assert(m_lstIndices[i] >= 0 && m_lstIndices[i] < (uint32)m_lstVerts.Count());
+        assert(lstIndices[i] >= Ch.nFirstVertId && lstIndices[i] < (uint32)(Ch.nFirstVertId + Ch.nNumVerts));
+        assert(lstIndices[i] >= 0 && lstIndices[i] < (uint32)lstVerts.Count());
     }
 #endif
 }

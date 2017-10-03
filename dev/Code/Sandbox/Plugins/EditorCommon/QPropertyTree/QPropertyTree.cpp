@@ -41,6 +41,7 @@ using Serialization::Range;
 #include "PropertyRowContainer.h"
 // ^^^
 #include "PropertyRowObject.h"
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
 
 using Serialization::SStructs;
 
@@ -2848,7 +2849,7 @@ void QPropertyTree::mouseMoveEvent(QMouseEvent* ev)
 			{
 				pressDelta_ += pointToRootSpace(ev->pos()) - pressPoint_;
 				pointerMovedSincePress_ = true;
-				QCursor::setPos(mapToGlobal(pointFromRootSpace(pressPoint_)));
+				AzQtComponents::SetCursorPos(mapToGlobal(pointFromRootSpace(pressPoint_)));
 			}
 			else
 			{

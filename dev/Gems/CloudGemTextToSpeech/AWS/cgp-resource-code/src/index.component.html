@@ -1,0 +1,457 @@
+﻿<facet-generator [context]="context"
+                 [tabs]="['Speech Library', 'Characters', 'Generated Packages', 'Settings']"
+                 (tabClicked)="getSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
+
+<div #speechLibTabArea *ngIf="subNavActiveIndex == 0" (click)="clickTabArea($event)">
+    <button class="btn l-primary" (click)="addNewRow()">
+        New Speech Line
+    </button>
+    <button class="btn btn-outline-primary" (click)="clickImportButton()" data-toggle="tooltip" data-placement="right" title="The CSV format can be defined as you see fit.  The next step of the import will ask you to define the mappings for your file.">
+        Import .csv
+    </button>
+    <input #import class="import" type="file" (change)="getImportableSpeeches($event)" accept=".csv" />
+    <label class="number float-right">{{pendingJobs.length}}</label>
+    <ng-template #popContent class="popover-content">
+        <div *ngIf="pendingJobs.length > 0">
+            <div *ngFor="let pendingJob of pendingJobs">
+                <label>{{pendingJob["name"]}}</label>
+                <span [ngSwitch]="pendingJob['status']">
+                    <i *ngSwitchCase="'Pending'" class="fa fa-spinner fa-spin float-right" aria-hidden="true"></i>
+                    <i *ngSwitchCase="'Success'" class="fa fa-check download-succeeded float-right" aria-hidden="true"></i>
+                    <i *ngSwitchCase="'Failure'" class="fa fa-times download-failed float-right" aria-hidden="true"></i>
+                </span>
+            </div>
+            <div class="clear-pending-jobs">
+                <button class="btn btn-outline-primary clear-button" (click)="clearPendingJobsList()">Clear</button>
+            </div>
+        </div>
+        <div *ngIf="pendingJobs.length == 0">
+            No pending download jobs
+        </div>
+    </ng-template>
+    <i [ngClass]="pendingJobs.length > 0 ? 'fa fa-cloud-download float-right pending-jobs-exist' : 'fa fa-cloud-download float-right no-pending-jobs'" aria-hidden="true" [ngbPopover]="popContent" placement="left" popoverTitle="Pending Downloads"></i>
+    <button class="btn l-primary float-right" [disabled]="!selectedSpeechesNum > 0" (click)="downloadModal()">
+        Download Speech Files (.zip)
+    </button>
+    <label class="number float-right">{{selectedSpeechesNum}} Selected</label>
+    <div [ngSwitch]="isLoadingSpeechLibrary">
+        <div *ngSwitchCase="true">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div class="content-container" *ngSwitchCase="false">
+            <div *ngIf="(!speechLibrary || speechLibrary.length == 0) && !filterApplied">
+                No speechLibrary
+            </div>
+            <div *ngIf="speechLibrary.length > 0 || filterApplied">
+                <table class="table table-hover speech-lib float-left">
+                    <thead>
+                        <tr>
+                            <th class="select-column">
+                                <input #selectAllSpeeches type="checkbox" [id]="'select-all-speeches'" name="'select-all-speeches'" (change)="selectAll($event, speechLibrary, 'list')">
+                                <label [attr.for]="'select-all-speeches'"></label>
+                            </th>
+                            <th class="character-column" (click)="sortTable('SpeechLibrary')">
+                                CHARACTER
+                                <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                            </th>
+                            <th class="line-column"> SPEECH LINE </th>
+                            <th class="preview-column"></th>
+                            <th class="tags-column">
+                                TAGS
+                                <i [ngClass]="filterApplied ? 'fa fa-filter filtered' : 'fa fa-filter'" aria-hidden="true" (click)="clickFilterIcon()">
+                                    <span *ngIf="filterApplied" class="filtered">
+                                        Filtered
+                                    </span>
+                                </i>
+                                <div class="btn-group">
+                                    <ul [ngClass]="filterOpen ? 'dropdown-menu' : 'dropdown-menu-hide'">
+                                        <li *ngIf="filterOpen">
+                                            <div class="form-group">
+                                                <input type="text" [(ngModel)]="filterText" placeholder="Search tags..." />
+                                            </div>
+                                        </li>
+                                        <li *ngFor="let tag of tagList">
+                                            <div *ngIf="tag.name.toLowerCase().includes(filterText.toLowerCase())">
+                                                <input type="checkbox" [id]="tag.name" name="tag.name" [(ngModel)]="tag.isSelected" />
+                                                <label class="l-checkbox" [attr.for]="tag.name">
+                                                    {{tag.name}}
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <hr class="filter-parting-line">
+                                            <button class="btn l-primary edit-button float-right" (click)="applyFilter()">Apply</button>
+                                            <button class="btn btn-outline-primary edit-button float-right" (click)="cancelFilter()">Cancel</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </th>
+                            <th class="control-column"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let speech of speechLibOnCurrentPage let i = index" [ngClass]="i == 0 && highlightNewRow? 'new-row' : ''">
+                            <td class="select-column">
+                                <input type="checkbox" [id]="speech.character + speech.line" [(ngModel)]="speech.isSelected.list" (click)="updateSelectedSpeechesNum(speech)">
+                                <label [attr.for]="speech.character + speech.line"></label>
+                            </td>
+                            <td class="character-column" (click)="selectCurrentRow(speech)">
+                                <select [(ngModel)]="speech.character" (click)="onEditableFieldsClicked(speech)" [ngClass]="characterNames.includes(speech.character) ? 'valid-selection' : 'invalid-selection'">
+                                    <option *ngIf="!characterNames.includes(speech.character)" [ngValue]="speech.character">{{speech.character}}</option>
+                                    <option *ngFor="let character of characterNames" [ngValue]="character">{{character}}</option>
+                                </select>
+                            </td>
+                            <td class="line-column" (click)="selectCurrentRow(speech)">
+                                <inline-editing [(content)]="speech.line" type="text" (startEditing)="onEditableFieldsClicked(speech)" [isEditing]="speech.isEditing"></inline-editing>
+                            </td>
+                            <td class="preview-column">
+                                <i [ngClass]="speech.previewLabelText == 'Preview' ? 'fa fa-volume-up preview-icon' : 'fa fa-refresh fa-spin preview-icon'" data-toggle="tooltip" data-placement="top" title="Preview" (click)="preview(speech, 'speech')"></i>
+                                <label class="preview-label" (click)="preview(speech, 'speech')">{{speech.previewLabelText}}</label>
+                            </td>
+                            <td class="tags-column" (click)="selectCurrentRow(speech)">
+                                <inline-editing [(content)]="speech.tags" type="tags" (startEditing)="onEditableFieldsClicked(speech)" [isEditing]="speech.isEditing"></inline-editing>
+                            <td (click)="selectCurrentRow(speech)">
+                                <div class="float-right">
+                                    <span *ngIf="speech.isEditing">
+                                        <button class="btn l-primary edit-button" (click)="save(speech)">Save</button>
+                                        <button class="btn btn-outline-primary edit-button" (click)="cancel(speech)">Cancel</button>
+                                    </span>
+                                    <i (click)="deleteModal(speech)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="web-gl float-right">
+                    <label>FACIAL RIG PREVIEW</label>
+                    <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="top" ngbTooltip="Preview the audio and the lip sync."></i>
+                    <div class="container rectangular-box">
+                        <div class="row">
+                            <iframe id="playvisemes" class="fbx-view" src="https://m.media-amazon.com/images/I/91XDP5dWVvL.html?fbxfile=https://m.media-amazon.com/images/I/B1PsuiLXSQS.fbx&posesfile=https://m.media-amazon.com/images/G/01/cloudcanvas/didimo/poses_diff_auto._V519600406_.json"></iframe>
+                        </div>
+                        <div class="row justify-content-center">
+                            <a href="http://www.mydidimo.com/" target="didimo" style="max-width:50%;" data-toggle="tooltip" data-placement="left" title="Preview provided by MyDidimo.com"><img src="https://m.media-amazon.com/images/G/01/cloudcanvas/didimo/logo_mydidimo_final._V518016670_.png" border="0" /></a>
+                        </div>
+                        <div class="row justify-content-center">
+                            Preview provided by&nbsp;<a href="http://www.mydidimo.com/" target="didimo">MyDidimo.com</a>
+                        </div>
+                        <div class="row">
+                            <a #play href="{{previewUrl}}"
+                               onclick="document.getElementById('playvisemes').contentWindow.postMessage(this.href, 'https://m.media-amazon.com'); return false;"></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page">
+            <pagination [pages]="speechLinePages"
+                        (pageChanged)="updatePageContent($event)" (click)="saveCurrentEditing()"></pagination>
+        </div>
+    </div>
+</div>
+<div *ngIf="subNavActiveIndex == 1">    
+    <button class="btn l-primary" (click)="addNewRow()">
+        New Character
+    </button>
+    <div [ngSwitch]="isLoadingCharacters">
+        <div *ngSwitchCase="true">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div class="content-container" *ngSwitchCase="false">
+            <div *ngIf="!characters || characters.length == 0">
+                No character
+            </div>
+            <div *ngIf="characters.length > 0">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="character-column" (click)="sortTable('Characters')">
+                                NAME
+                                <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                            </th>
+                            <th class="language-column"> LANGUAGE </th>
+                            <th class="voice-column"> VOICE </th>
+                            <th class="speechmark-column">
+                                SPEECH MARKS
+                                <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="top" [ngbTooltip]="speechMarksTip"></i>
+                            </th>
+                            <th class="control-column"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let character of charactersOnCurrentPage; let i = index" [ngClass]="i == 0 && highlightNewRow? 'new-row' : ''">
+                            <td class="character-column">
+                                <inline-editing [(content)]="character.name" type="text" (startEditing)="onEditableFieldsClicked(character)" [isEditing]="character.isEditing"></inline-editing>
+                            </td>
+                            <td class="language-column">
+                                <select [(ngModel)]="character.language" (ngModelChange)="onLanguageChanged(character)" (click)="onEditableFieldsClicked(character)">
+                                    <option *ngFor="let language of languages" [ngValue]="language">{{language}}</option>
+                                </select>
+                            </td>
+                            <td class="voice-column">
+                                <select [(ngModel)]="character.voice" (click)="onEditableFieldsClicked(character)">
+                                    <option *ngFor="let voice of character.voiceList" [ngValue]="voice.voiceId">{{voice.voiceId + ', ' + voice.gender}}</option>
+                                </select>
+                            </td>
+                            <td class="speechmark-column">
+                                <span *ngFor="let speechmark of character.speechMarksStatus">
+                                    <input type="checkbox" [id]="character.name + character.line + speechmark.name" [(ngModel)]="speechmark.isChecked" (change)="onSpeechMarksChanged(character, speechmark.name)">
+                                    <label [attr.for]="character.name + character.line + speechmark.name">{{speechmark.name}}</label>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="float-right">
+                                    <span *ngIf="character.isEditing">
+                                        <button class="btn l-primary edit-button" (click)="save(character)">Save</button>
+                                        <button class="btn btn-outline-primary edit-button" (click)="cancel(character)">Cancel</button>
+                                    </span>
+                                    <i [ngClass]="character.previewLabelText == 'Preview' ? 'fa fa-volume-up preview-icon' : 'fa fa-refresh fa-spin preview-icon'" data-toggle="tooltip" data-placement="top" title="Preview" (click)="preview(character, 'character')"></i>
+                                    <label class="preview-label" (click)="preview(character, 'character')">{{character.previewLabelText}}</label>
+                                    <i (click)="editModal(character)" class="fa fa-cog" data-toggle="tooltip" data-placement="top" title="Edit SSML Tags"></i>
+                                    <i (click)="deleteModal(character)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <pagination [pages]="characterPages"
+                        (pageChanged)="updatePageContent($event)" (click)="saveCurrentEditing()"></pagination>
+        </div>
+    </div>
+</div>
+<div *ngIf="subNavActiveIndex == 2">
+    <button class="btn l-primary float-right" [disabled]="!selectedPackagesNum > 0" (click)="downloadModal()">
+        Download Generated Packages
+    </button>
+    <label class="number float-right">{{selectedPackagesNum}} Selected</label>
+    <div [ngSwitch]="isLoadingGeneratedPackages">
+        <div *ngSwitchCase="true">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div class="content-container" *ngSwitchCase="false">
+            <div *ngIf="!generatedPackages || generatedPackages.length == 0">
+                No generated packages
+            </div>
+            <div *ngIf="generatedPackages.length > 0">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="select-column">
+                                <input #selectAllGeneratedPackages type="checkbox" [id]="'select-all-packages'" name="'select-all-packages'" (change)="selectAll($event, generatedPackages)">
+                                <label [attr.for]="'select-all-packages'"></label>
+                            </th>
+                            <th class="package-name-column" (click)="sortTable('SpeechLibrary')">
+                                NAME
+                                <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                            </th>
+                            <th class="last-modified-column"> LAST MODIFIED </th>
+                            <th class="size-column"> SIZE (MB) </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let generatedPackage of generatedPackagesOnCurrentPage">
+                            <td class="select-column">
+                                <input type="checkbox" [id]="generatedPackage.name" [(ngModel)]="generatedPackage.isSelected" (click)="updateSelectedPackgesNum(generatedPackage)">
+                                <label [attr.for]="generatedPackage.name"></label>
+                            </td>
+                            <td class="package-name-column">
+                                {{generatedPackage.name}}
+                            </td>
+                            <td class="last-modified-column">
+                                {{generatedPackage.lastModified}}
+                            </td>
+                            <td class="size-column">
+                                {{(generatedPackage.size / 1048576).toFixed(3)}}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <pagination [pages]="generatedPackagesPages"
+                    (pageChanged)="updatePageContent($event)"></pagination>
+    </div>
+</div>
+<div *ngIf="subNavActiveIndex == 3">
+    <div [ngSwitch]="isLoadingSettings">
+        <div *ngSwitchCase="true">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div *ngSwitchCase="false">
+            <div class="form-group row">
+                <p class="col-10">
+                    <label class="settings-label">
+                        Runtime Capabilities
+                        <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="top" ngbTooltip="If you disable the runtime capabilities, you will not be able to use a game client to generate speech files."></i>
+                    </label>
+                    <switch-button [(enabled)]="runtimeCapabilitiesEnabled" (switch)="switchRuntimeCapabilitiesStatus()"></switch-button>
+                </p>
+            </div>
+            <div class="form-group row">
+                <p class="col-10">
+                    <label class="settings-label">
+                        Runtime Caching
+                        <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="top" ngbTooltip="If you disable the runtime caching, files created from game clients will expire after one day."></i>
+                    </label>
+                    <switch-button [(enabled)]="runtimeCacheEnabled" (switch)="switchRuntimeCacheStatus()"></switch-button>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete modal -->
+<modal *ngIf="mode == Modes.Delete"
+       [title]="subNavActiveIndex == 0 ? 'Delete Speech' : 'Delete Chatacter'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="subNavActiveIndex == 0 ? 'Delete Speech' : 'Delete Character'"
+       (modalSubmitted)="delete()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div *ngIf="subNavActiveIndex == 0">
+            <p> Are you sure you want to delete this speech?</p>
+            <pre>{{currentSpeech | json | devonly}}</pre>
+
+        </div>
+        <div *ngIf="subNavActiveIndex == 1">
+            <p> Are you sure you want to delete this character?</p>
+            <pre>{{currentCharacter | json | devonly}}</pre>
+        </div>
+    </div>
+</modal>
+
+<!-- Import speeches modal -->
+<modal *ngIf="mode == Modes.Import"
+       [title]="'Import'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Continue'"
+       (modalSubmitted)="customMappingsLoaded ? importSelectedSpeeches() : listImportableSpeeches()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div [ngSwitch]="customMappingsLoaded">
+            <div *ngSwitchCase="true">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="select-column">
+                                <input type="checkbox" [id]="'select-all-new'" name="'select-all-new'" (change)="selectAll($event, importableSpeeches, 'import')">
+                                <label [attr.for]="'select-all-new'"></label>
+                            </th>
+                            <th class="character-column"> CHARACTER </th>
+                            <th class="line-column"> SPEECH LINE </th>
+                            <th class="metadata-column"> TAGS </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let speech of importableSpeeches">
+                            <td class="select-column">
+                                <input type="checkbox" [id]="speech.character + speech.line" [(ngModel)]="speech.isSelected.import">
+                                <label [attr.for]="speech.character + speech.line"></label>
+                            </td>
+                            <td class="character-column">{{speech.character}}</td>
+                            <td class="line-column">  {{speech.line}} </td>
+                            <td class="tags-column">
+                                <tag *ngFor="let tag of speech.tags" [tagName]="tag" [isEditing]="false"></tag>
+                            <td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div *ngSwitchCase="false">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="csv-header-column"> CSV Header </th>
+                            <th class="csv-value-column"> First CSV Value </th>
+                            <th class="mappings-column"> Map To </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let field of this.customFields">
+                            <td class="csv-header-column">{{field}}</td>
+                            <td class="csv-value-column">{{importableSpeechesData[0][field]}}</td>
+                            <td class="mappings-column">
+                                <select [(ngModel)]="currentCustomMappings[field]" [ngClass]="verifyMappings(field) ? 'valid-selection' : 'invalid-selection'">
+                                    <option ngValue=""></option>
+                                    <option ngValue="character">Character</option>
+                                    <option ngValue="line">Line</option>
+                                    <option ngValue="tag">Tag</option>
+                                </select>
+                            <td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</modal>
+
+<!-- Download speeches modal -->
+<modal *ngIf="mode == Modes.Download"
+       title="Download Speech Files"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Download'"
+       (modalSubmitted)="downloadSpeeches()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <form>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">File Name</label>
+                <span class="col-8">
+                    <input type="text" class="form-control" [(ngModel)]="zipFileName" name="zip-file-name" placeholder="MySpeechFiles">
+                </span>
+                <label class="col-form-label affix">.zip</label>
+            </div>
+            <div>
+                <label>{{downloadDescriptionText}}</label>
+            </div>
+        </form>
+    </div>
+</modal>
+
+<!-- Edit character SSML tags modal -->
+<modal *ngIf="mode == Modes.Edit"
+       title="Advanced Settings"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Save'"
+       (modalSubmitted)="saveSsmlTag()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <form>
+            <div *ngFor="let ssmlTagType of ssmlTagTypes">
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix capitalize">{{ssmlTagType}}</label>
+                    <span class="col-8">
+                        <select [name]="ssmlTagType" [(ngModel)]="currentCharacter.ssmlTagMappings[ssmlTagType]">
+                            <option *ngFor="let ssmlTagValue of prosody[ssmlTagType]" [ngValue]="ssmlTagValue">{{ssmlTagValue}}</option>
+                        </select>
+                    </span>
+                </div>
+            </div>
+        </form>
+    </div>
+</modal>

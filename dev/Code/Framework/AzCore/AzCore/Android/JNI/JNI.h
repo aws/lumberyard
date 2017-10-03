@@ -22,6 +22,13 @@
     jniEnv->ExceptionClear();
 
 
+#if defined(AZ_DEBUG_BUILD)
+    // Currently disabled so that an Activity reference can be passed through JNI
+    // See related JIRA: https://jira.agscollab.com/browse/LY-41435
+    //#define JNI_SIGNATURE_VALIDATION
+#endif
+
+
 namespace AZ
 {
     namespace Android
@@ -55,8 +62,8 @@ namespace AZ
             //! \return A copy of the converted string
             AZStd::string ConvertJstringToString(jstring stringValue);
 
-            //! Converts a AZStd::string to a jstring
-            //! \param stringValue A local or global reference to a jstring object
+            //! Converts a string to a jstring
+            //! \param stringValue The native string value to be converted
             //! \return A global reference to the converted jstring.  The caller is responsible for
             //!         deleting it when no longer needed
             jstring ConvertStringToJstring(const AZStd::string& stringValue);

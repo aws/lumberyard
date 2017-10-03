@@ -214,12 +214,10 @@ public:
     // Temp functions to update edited effects.
     inline bool IsUsed() const
     {
-        return !m_bUnused;
+        return m_bUsed;
     }
-    void SetUsed(bool b)
-    {
-        m_bUnused = !b;
-    }
+    void SetUsed(bool used);
+
     int GetHistorySteps() const
     {
         return m_nHistorySteps;
@@ -318,7 +316,7 @@ private:
     // Final bounding volume for rendering. Also separate static & dynamic volumes for sub-computation.
     AABB                                                        m_bbWorld, m_bbWorldStat, m_bbWorldDyn;
 
-    bool                                                        m_bUnused;                  // Temp var used during param editing.
+    bool                                                        m_bUsed;                    // Temp var used during param editing.
     uint8                                                       m_nNeedJobUpdate;           // Mark container as needing sprite rendering this frame.
                                                                                             // Can be set to >1 to prime for threaded update next frame.
 

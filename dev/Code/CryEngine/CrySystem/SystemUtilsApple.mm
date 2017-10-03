@@ -18,6 +18,7 @@
 #include <Foundation/Foundation.h>
 #include <mach-o/dyld.h>
 #include <pthread.h>
+#include <sys/utsname.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace SystemUtilsApplePrivate
@@ -116,4 +117,15 @@ size_t SystemUtilsApple::GetPathToUserLibraryDirectory(char* buffer, const size_
 size_t SystemUtilsApple::GetUserName(char* buffer, const size_t bufferLen)
 {
     return SystemUtilsApplePrivate::CopyNSStringToBuffer(NSUserName(), buffer, bufferLen);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::string SystemUtilsApple::GetMachineName() 
+{
+    utsname systemInfo;
+    if (uname(&systemInfo) == -1)
+    {
+        return "";
+    }
+    return systemInfo.machine;
 }

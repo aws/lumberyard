@@ -3905,7 +3905,7 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         bcatcstr(metal, "{\n");
 
         AddIndentation(psContext);
-        bformata(metal, "  %s mask = ~(0xffffffff << ", GetConstructorForTypeMETAL(SVT_UINT, numComponents));
+        bformata(metal, "  %s mask = ~(%s(0xffffffff) << ", GetConstructorForTypeMETAL(SVT_UINT, numComponents), GetConstructorForTypeMETAL(SVT_UINT, numComponents));
         TranslateOperandMETAL(psContext, &psInst->asOperands[1], TO_FLAG_UNSIGNED_INTEGER);
         bcatcstr(metal, ") << ");
         TranslateOperandMETAL(psContext, &psInst->asOperands[2], TO_FLAG_UNSIGNED_INTEGER);
@@ -4560,8 +4560,8 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         AddIndentation(psContext);
         bcatcstr(metal, "{\n");
 
-        AddIndentation(psContext);
-        bformata(metal, "  %s mask = ~(0xffffffff << ", GetConstructorForTypeMETAL(SVT_UINT, numComponents));
+        AddIndentation(psContext); 
+        bformata(metal, "  %s mask = ~(%s(0xffffffff) << ", GetConstructorForTypeMETAL(SVT_UINT, numComponents), GetConstructorForTypeMETAL(SVT_UINT, numComponents));
         TranslateOperandMETAL(psContext, &psInst->asOperands[1], TO_FLAG_UNSIGNED_INTEGER);
         bcatcstr(metal, ");\n");
 

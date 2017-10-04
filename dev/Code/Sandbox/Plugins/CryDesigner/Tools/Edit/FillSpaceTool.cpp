@@ -279,7 +279,7 @@ bool FillSpaceTool::FillHoleBasedOnSelectedElements()
 
     Matrix34 invWorldTM = GetBaseObject()->GetWorldTM().GetInverted();
 
-    const CCamera& camera = GetIEditor()->GetRenderer()->GetCamera();
+    const CCamera& camera = GetIEditor()->GetSystem()->GetViewCamera();
     BrushVec3 vLocalCameraNormal = ToBrushVec3(invWorldTM.TransformVector(camera.GetViewdir()));
     if (vLocalCameraNormal.Dot(plane.Normal()) > 0)
     {

@@ -20,6 +20,7 @@
 #include <QSize>
 
 class QWidget;
+class QRect;
 
 struct IViewPaneClass
     : public IClassDesc

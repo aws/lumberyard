@@ -73,6 +73,7 @@ private:
     void EnableRadiusInner(bool isEnable);
     void EnableHardness(bool isEnable);
     void EnableHeight(bool isEnable);
+    void EnsureActiveEditTool();
 
     // Implementation
 protected:
@@ -91,6 +92,7 @@ protected:
     QScopedPointer<Ui::TerrainModifyPanel> m_ui;
 
     CTerrainModifyTool* m_tool;
+    bool m_shouldEnsureActiveEditTool;
     bool m_inSyncCallback;
 
 protected slots:

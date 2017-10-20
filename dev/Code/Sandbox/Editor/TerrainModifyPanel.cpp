@@ -33,6 +33,7 @@ static const char* BRUSH_TYPE_PICK_HEIGHT = "Pick Height";
 CTerrainModifyPanel::CTerrainModifyPanel(QWidget* parent /* = nullptr */)
     : QWidget(parent)
     , m_ui(new Ui::TerrainModifyPanel)
+    , m_shouldEnsureActiveEditTool(parent)
 {
     OnInitDialog();
 }
@@ -129,6 +130,28 @@ void CTerrainModifyPanel::OnInitDialog()
     connect(m_ui->repositionVegetationCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnRepositionVegetation);
 }
 
+void CTerrainModifyPanel::EnsureActiveEditTool()
+{
+    // If our modify panel belongs to the Terrain Editor, we need to ensure
+    // our edit tool is set as active because there are cases where this panel
+    // can exist without the edit tool being active (e.g. when switching levels
+    // or activating a different edit tool). This isn't needed when the modify
+    // panel is in the rollupbar because the panel is removed anytime the edit
+    // tool is deactivated
+    if (!m_shouldEnsureActiveEditTool)
+    {
+        return;
+    }
+
+    CEditTool* tool = GetIEditor()->GetEditTool();
+    if (tool && qobject_cast<CTerrainModifyTool*>(tool) == m_tool)
+    {
+        return;
+    }
+
+    GetIEditor()->SetEditTool(m_tool);
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CTerrainModifyPanel::OnBrushTypeCmd(const QString& brushType)
 {
@@ -137,6 +160,7 @@ void CTerrainModifyPanel::OnBrushTypeCmd(const QString& brushType)
         return;
     }
 
+    EnsureActiveEditTool();
     m_tool->ClearCtrlPressedState();
     if (brushType == tr(BRUSH_TYPE_FLATTEN))
     {
@@ -240,6 +264,8 @@ void CTerrainModifyPanel::OnUpdateNumbers()
         return;
     }
 
+    EnsureActiveEditTool();
+
     CTerrainBrush br;
     m_tool->GetCurBrushParams(br);
     float prevRadius = br.radius;
@@ -282,6 +308,8 @@ void CTerrainModifyPanel::OnSyncRadius()
 
 void CTerrainModifyPanel::OnRepositionObjects()
 {
+    EnsureActiveEditTool();
+
     CTerrainBrush br;
     m_tool->GetCurBrushParams(br);
     br.bRepositionObjects = m_ui->repositionObjectsCheck->isChecked();
@@ -290,6 +318,8 @@ void CTerrainModifyPanel::OnRepositionObjects()
 
 void CTerrainModifyPanel::OnRepositionVegetation()
 {
+    EnsureActiveEditTool();
+
     CTerrainBrush br;
     m_tool->GetCurBrushParams(br);
     br.bRepositionVegetation = m_ui->repositionVegetationCheck->isChecked();

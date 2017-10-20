@@ -21,13 +21,11 @@ namespace ScriptCanvas
     {
         namespace Entity
         {
-            const bool k_EntityRefNodeHasProperties = false;
-
             class EntityRef
-                : public NativeDatumNode<EntityRef, Data::EntityIDType, k_EntityRefNodeHasProperties>
+                : public NativeDatumNode<EntityRef, Data::EntityIDType>
             {
             public:
-                using ParentType = NativeDatumNode<EntityRef, Data::EntityIDType, k_EntityRefNodeHasProperties>;
+                using ParentType = NativeDatumNode<EntityRef, Data::EntityIDType>;
                 AZ_COMPONENT(EntityRef, "{0EE5782F-B241-4127-AE53-E6746B00447F}", ParentType);
                 
                 static void Reflect(AZ::ReflectContext* reflection)

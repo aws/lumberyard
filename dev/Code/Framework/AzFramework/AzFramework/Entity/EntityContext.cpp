@@ -120,6 +120,7 @@ namespace AzFramework
         // Manually create an asset to hold the root slice.
         m_rootAsset.Get()->SetData(rootEntity, rootEntity->FindComponent<AZ::SliceComponent>());
         auto* rootSliceComponent = m_rootAsset.Get()->GetComponent();
+        rootSliceComponent->InitMetadata();
         rootSliceComponent->SetMyAsset(m_rootAsset.Get());
         rootSliceComponent->SetSerializeContext(m_serializeContext);
         rootSliceComponent->ListenForAssetChanges();

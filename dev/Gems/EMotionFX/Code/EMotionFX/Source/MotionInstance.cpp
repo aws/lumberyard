@@ -1792,6 +1792,11 @@ namespace EMotionFX
         permBindPoseRotDiff.y = 0.0f;
         permBindPoseRotDiff.Normalize();
 
+        if (!(mMotion->GetMotionExtractionFlags() & MOTIONEXTRACT_CAPTURE_Z))
+        {
+            permBindPosePosDiff.z = 0.0f;
+        }
+
         // If this is the first frame's motion extraction switch turn that flag off.
         MCore::Quaternion bindPoseRotDiff(0.0f, 0.0f, 0.0f, 1.0f);
         MCore::Vector3 bindPosePosDiff(0.0f, 0.0f, 0.0f);
@@ -1814,7 +1819,7 @@ namespace EMotionFX
         rotation.y = 0.0f;
         rotation.Normalize();
 
-        MCore::Vector3 rotatedPos = rotation * trajectoryDelta.mPosition;
+        MCore::Vector3 rotatedPos = rotation * (trajectoryDelta.mPosition - bindPosePosDiff);
 
         // Calculate the real trajectory delta, taking into account the actor instance rotation.
         outTrajectoryDelta.mPosition = mActorInstance->GetLocalRotation() * rotatedPos;

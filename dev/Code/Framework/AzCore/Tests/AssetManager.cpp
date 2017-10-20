@@ -417,6 +417,9 @@ namespace UnitTest
                 EXPECT_TRUE(assetStatus2.m_ready == 0 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 0 && assetStatus2.m_error == 0);
             }
 
+            // Allow asset1 and asset2 to release their data
+            AssetManager::Instance().DispatchEvents();
+
             // Try to load the assets back in
             MyAssetHolder assetHolder;
             {

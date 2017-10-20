@@ -21,13 +21,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_Matrix3x3NodeHasProperties = true;
-
             class Matrix3x3
-                : public NativeDatumNode<Matrix3x3, AZ::Matrix3x3, k_Matrix3x3NodeHasProperties>
+                : public NativeDatumNode<Matrix3x3, AZ::Matrix3x3>
             {
             public:
-                using ParentType = NativeDatumNode<Matrix3x3, AZ::Matrix3x3, k_Matrix3x3NodeHasProperties>;
+                using ParentType = NativeDatumNode<Matrix3x3, AZ::Matrix3x3>;
                 AZ_COMPONENT(Matrix3x3, "{9FDA1949-A74F-4D27-BBD0-8E6F165291FE}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

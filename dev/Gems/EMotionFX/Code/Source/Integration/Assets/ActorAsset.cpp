@@ -710,8 +710,8 @@ namespace EMotionFX
 
                             vertexBuffer.push_back(position);
                             vertexNormals.push_back(normals[meshVertIndex]);
-                            vertexTangents.push_back(tangents[meshVertIndex]);
-                            vertexUVs.push_back(uvsA ? uvsA[meshVertIndex] : AZ::Vector2(0.f, 0.f));
+                            vertexTangents.push_back(tangents ? tangents[meshVertIndex] : AZ::Vector4::CreateZero());
+                            vertexUVs.push_back(uvsA ? uvsA[meshVertIndex] : AZ::Vector2::CreateZero());
 
                             lod.m_vertexBoneMappings.emplace_back();
                             auto& boneMapping = lod.m_vertexBoneMappings.back();
@@ -864,8 +864,8 @@ namespace EMotionFX
         {
             ActorAsset* assetData = asset.GetAs<ActorAsset>();
             assetData->m_emfxActor = EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::GetImporter().LoadActor(
-                assetData->m_emfxNativeData.data(),
-                assetData->m_emfxNativeData.size()));
+                        assetData->m_emfxNativeData.data(),
+                        assetData->m_emfxNativeData.size()));
 
             if (!assetData->m_emfxActor)
             {
@@ -882,11 +882,11 @@ namespace EMotionFX
             }
 
             AZStd::function<void()> finalizeOnMainThread = [asset, this]()
-            {
-                // RenderMesh creation must be performed on the main thread,
-                // as required by the renderer.
-                FinalizeActorAssetForRendering(asset);
-            };
+                {
+                    // RenderMesh creation must be performed on the main thread,
+                    // as required by the renderer.
+                    FinalizeActorAssetForRendering(asset);
+                };
 
             AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
 
@@ -917,6 +917,5 @@ namespace EMotionFX
         {
             return "EMotionFX Actor";
         }
-
     } //namespace Integration
 } // namespace EMotionFX

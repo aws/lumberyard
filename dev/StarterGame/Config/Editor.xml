@@ -44,6 +44,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.Camera.Editor.f910686b6725452fbfc4671f95f733c6.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.EMotionFX.Editor.044a63ea67d04479aa5daf62ded9d9ca.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.AudioAnimationEvents.0549200795a94b7f902727db81d5d6d8.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">

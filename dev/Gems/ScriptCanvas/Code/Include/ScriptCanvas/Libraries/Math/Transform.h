@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_TransformNodeHasProperties = true;
-
             class Transform
-                : public NativeDatumNode<Transform, Data::TransformType, k_TransformNodeHasProperties>
+                : public NativeDatumNode<Transform, Data::TransformType>
             {
             public:
-                using ParentType = NativeDatumNode<Transform, Data::TransformType, k_TransformNodeHasProperties>;
+                using ParentType = NativeDatumNode<Transform, Data::TransformType>;
                 AZ_COMPONENT(Transform, "{B74F127B-72E0-486B-86FF-2233767C2804}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

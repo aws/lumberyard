@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_ColorNodeHasProperties = true;
-
             class Color
-                : public NativeDatumNode<Color, Data::ColorType, k_ColorNodeHasProperties>
+                : public NativeDatumNode<Color, Data::ColorType>
             {
             public:
-                using ParentType = NativeDatumNode<Color, Data::ColorType, k_ColorNodeHasProperties>;
+                using ParentType = NativeDatumNode<Color, Data::ColorType>;
                 AZ_COMPONENT(Color, "{26FBE6FF-C4B4-4D62-9474-3B2EE1B3E165}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

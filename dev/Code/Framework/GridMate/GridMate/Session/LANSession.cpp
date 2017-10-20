@@ -785,7 +785,7 @@ LANSession::CreateRemoteMember(const string& address, ReadBuffer& data, RemotePe
     MemberIDCompact id;
     data.Read(id);
     LANMemberID memberId = LANMemberID::Create(id, address);
-    AZ_Assert(GetTopology() != ST_INVALID, "Invalid sesson topology! Did session replica arrive yet?");
+    AZ_Warning("GridMate", GetTopology() != ST_INVALID, "Invalid sesson topology! Did session replica arrive yet?");
     if (GetTopology() == ST_PEER_TO_PEER && peerMode == Mode_Peer && static_cast<LANMember*>(m_myMember)->m_peerMode.Get() == Mode_Peer && connId == InvalidConnectionID)
     {
         connId = m_carrier->Connect(memberId.ToAddress());
@@ -1164,7 +1164,7 @@ void LANSessionService::OnServiceRegistered(IGridMate* gridMate)
     LANSessionServiceBus::Handler::BusConnect(gridMate);
 
     EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
-    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);    
+    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
 }
 
 void LANSessionService::OnServiceUnregistered(IGridMate* gridMate)

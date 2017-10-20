@@ -136,6 +136,7 @@ namespace EMotionFX
 
                 motionInfo.m_currentTime = newTime;
             }
+
             motionInstance->SetPause(false);
             motionInfo.m_playSpeed = (i == masterIdx) ? motionInstance->GetDuration() / blendedDuration : 1.0f;
         }
@@ -478,20 +479,8 @@ namespace EMotionFX
 
     void BlendSpaceNode::SyncMotionToNode(AnimGraphInstance* animGraphInstance, ESyncMode syncMode, MotionInfo& motionInfo, AnimGraphNode* srcNode)
     {
-        //if (syncMode == SYNCMODE_TRACKBASED)
-        //{
-        //    AnimGraphSyncTrack& srcTrack = animGraphInstance->FindUniqueNodeData(srcNode)->GetSyncTrack();
-        //    AnimGraphSyncTrack& targetTrack = motionInfo.m_syncTrack;
-
-        //    if ((srcTrack.GetNumEvents() > 0) && (targetTrack.GetNumEvents() > 0))
-        //    {
-        //        SyncUsingSyncTracks(animGraphInstance, masterNode, &syncTrackA, &syncTrackB, weight, resync, modifyMasterSpeed);
-        //        return;
-        //    }
-        //}
-
-        //// we either have no evens inside the sync tracks in both nodes, or we just want to sync based on full clips
-        //SyncFullNode(animGraphInstance, masterNode, weight, modifyMasterSpeed);
+        motionInfo.m_currentTime = srcNode->GetCurrentPlayTime(animGraphInstance);
+        motionInfo.m_playSpeed  = srcNode->GetPlaySpeed(animGraphInstance);
     }
 } // namespace EMotionFX
 

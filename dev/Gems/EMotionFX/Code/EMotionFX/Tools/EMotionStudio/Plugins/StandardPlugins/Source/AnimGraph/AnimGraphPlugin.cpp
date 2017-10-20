@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "AnimGraphPlugin.h"
 #include "BlendGraphWidget.h"
 #include "NodeGraph.h"
@@ -1918,35 +1917,114 @@ namespace EMStudio
     }
 
 
-    // do one step back in the blend graph node history
+    void AnimGraphPlugin::CleanHistory()
+    {
+        MCore::Array<HistoryItem>& history = mCurrentAnimGraphHistory->mHistory;
+
+        bool historyModified = false;
+        const int32 numHistoryItems = history.GetLength();
+        for (int32 i = numHistoryItems - 1; i >= 0; i--)
+        {
+            const HistoryItem& historyItem = history[i];
+            EMotionFX::AnimGraphNode* node = history[i].FindNode();
+            const EMotionFX::AnimGraph* animGraph = history[i].mAnimGraph;
+            bool deleteHistoryItem = false;
+
+            // Delete the history item in case we are dealing with graphs that already got deleted.
+            if (!animGraph || !node)
+            {
+                deleteHistoryItem = true;
+            }
+            else
+            {
+                // Check if the previous or the following history item is a clone of the current one.
+                const int32 prevIndex = i - 1;
+                if (!deleteHistoryItem && prevIndex >= 0)
+                {
+                    const EMotionFX::AnimGraphNode* prevNode = history[prevIndex].FindNode();
+
+                    if (prevNode && node == prevNode)
+                    {
+                        deleteHistoryItem = true;
+                    }
+                }
+
+                const uint32 nextIndex = i + 1;
+                if (!deleteHistoryItem && nextIndex < history.GetLength())
+                {
+                    const EMotionFX::AnimGraphNode* nextNode = history[nextIndex].FindNode();
+
+                    if (nextNode && node == nextNode)
+                    {
+                        deleteHistoryItem = true;
+                    }
+                }
+            }
+
+            // Remove the history item in case we are dealing with invalid graphs or duplicated history items.
+            if (deleteHistoryItem)
+            {
+                history.Remove(i);
+
+                // Decrease the current time in history in case we removed a history item before or at the current time.
+                if (i <= static_cast<int32>(mCurrentAnimGraphHistory->mHistoryIndex))
+                {
+                    mCurrentAnimGraphHistory->mHistoryIndex--;
+                }
+
+                historyModified = true;
+            }
+        }
+
+        if (historyModified)
+        {
+            // Update the step forward and backward buttons in case we modified the history. Maybe they need to be disabled as no history item is left.
+            mViewWidget->Update();
+        }
+    }
+
+
+    void AnimGraphPlugin::ShowGraphFromHistory(uint32 historyIndex)
+    {
+        EMotionFX::AnimGraphNode* node = mCurrentAnimGraphHistory->mHistory[historyIndex].FindNode();
+        EMotionFX::AnimGraph* animGraph = mCurrentAnimGraphHistory->mHistory[historyIndex].mAnimGraph;
+
+        if (!node || !animGraph)
+        {
+            return;
+        }
+        
+        ShowGraph(node, animGraph, false);
+    }
+
+
     void AnimGraphPlugin::HistoryStepBack()
     {
-        if (CanPopHistory() == false)
+        // Remove history items of not-existing nodes and update the interface accordingly.
+        CleanHistory();
+
+        if (!CanPopHistory())
         {
             return;
         }
 
         mCurrentAnimGraphHistory->mHistoryIndex--;
-
-        EMotionFX::AnimGraphNode*  node        = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].FindNode();
-        EMotionFX::AnimGraph*      animGraph  = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].mAnimGraph;
-        ShowGraph(node, animGraph, false);
+        ShowGraphFromHistory(mCurrentAnimGraphHistory->mHistoryIndex);
     }
 
 
-    // do one step forward in the blend graph node history
     void AnimGraphPlugin::HistoryStepForward()
     {
-        if (CanStepForwardInHistory() == false)
+        // Remove history items of not-existing nodes and update the interface accordingly.
+        CleanHistory();
+
+        if (!CanStepForwardInHistory())
         {
             return;
         }
 
         mCurrentAnimGraphHistory->mHistoryIndex++;
-
-        EMotionFX::AnimGraphNode*  node        = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].FindNode();
-        EMotionFX::AnimGraph*      animGraph  = mCurrentAnimGraphHistory->mHistory[mCurrentAnimGraphHistory->mHistoryIndex].mAnimGraph;
-        ShowGraph(node, animGraph, false);
+        ShowGraphFromHistory(mCurrentAnimGraphHistory->mHistoryIndex);
     }
 
 

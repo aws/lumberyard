@@ -1382,8 +1382,8 @@ bool CXConsole::OnInputEventUI(const SUnicodeEvent& event)
 #ifdef PROCESS_XCONSOLE_INPUT
     const uint32 inputChar = event.inputChar;
 
-    // Ignore tilde/accent character since it is reserved for toggling the console
-    bool isTilde = (inputChar == 96 || inputChar == 126);
+    // Ignore tilde/accent/power of two character since it is reserved for toggling the console
+    bool isTilde = (inputChar == 96 || inputChar == 126 || inputChar == 178);
     if (m_bConsoleActive && inputChar >= 32 && !isTilde)
     {
         AddInputChar(inputChar);

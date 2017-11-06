@@ -317,6 +317,8 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
                 }
             }
         }
+        
+        gEnv->pRenderer->SwitchToNativeResolutionBackbuffer();
 
         m_env.pRenderer->ForceGC(); // XXX Rename this
         m_env.pRenderer->EndFrame();
@@ -840,8 +842,6 @@ void CSystem::Render()
     }
 
     m_env.p3DEngine->WorldStreamUpdate();
-
-    gEnv->pRenderer->SwitchToNativeResolutionBackbuffer();
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -397,7 +397,7 @@ struct Array
     void destroy()
     {
         // Destroy in reverse order, to complement construction order.
-        for (iterator it = end(); it-- > begin(); )
+        for (iterator it = rbegin(); it > rend(); --it)
         {
             it->~T();
         }

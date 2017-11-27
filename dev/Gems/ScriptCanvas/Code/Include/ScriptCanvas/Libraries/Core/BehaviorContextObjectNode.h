@@ -65,6 +65,7 @@ namespace ScriptCanvas
                 void InitializeObject(const AZ::BehaviorClass& behaviorClass);
                 void InitializeProperties(const AZ::BehaviorClass& behaviorClass);
                 void OnInit() override;
+                void OnActivate() override;
                 
                 void SetInput(const Datum& input, const SlotId& id) override;
 
@@ -76,6 +77,15 @@ namespace ScriptCanvas
             private:                
                 AZStd::recursive_mutex m_mutex; // post-serialization
                 AZStd::string m_className;
+
+                template<typename t_GetterFunction, typename t_SetterFunction>
+                struct PropertyAccount
+                {
+                    AZStd::vector<t_GetterFunction> m_getters;
+                    AZStd::unordered_map<SlotId, AZ::u32> m_getterIndexByInputSlot;
+                    AZStd::vector<AZ::u32> m_getterSlotIndices;
+                    AZStd::unordered_map<SlotId, t_SetterFunction> m_settersByInputSlot;
+                };
                 PropertyAccount<AZ::BehaviorMethod*, AZ::BehaviorMethod*> m_propertyAccount;
                 bool m_configured = false;
 

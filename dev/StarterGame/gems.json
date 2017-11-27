@@ -2,6 +2,12 @@
     "GemListFormatVersion": 2,
     "Gems": [
         {
+            "Path": "Gems/EMotionFX",
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "Version": "0.1.0",
+            "_comment": "EMotionFX"
+        },
+        {
             "Path": "Gems/AudioAnimationEvents",
             "Uuid": "0549200795a94b7f902727db81d5d6d8",
             "Version": "0.1.0",

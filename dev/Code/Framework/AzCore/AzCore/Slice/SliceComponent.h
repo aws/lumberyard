@@ -624,6 +624,14 @@ namespace AZ
         */
         bool Instantiate();
         bool IsInstantiated() const;
+
+        /**
+        * Newly created slices and legacy slices won't have required metadata components. This will check to see if
+        * necessary components to the function of the metadata entities are present and
+        * \param instance Source slice instance
+        */
+        void InitMetadata();
+
     protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
         // Workaround for VS2013 - Delete the copy constructor and make it private
@@ -654,13 +662,6 @@ namespace AZ
 
         /// Populate the entity info map. This will re-populate it even if already populated.
         void BuildEntityInfoMap();
-
-        /**
-        * Newly created slices and legacy slices won't have required metadata components. This will check to see if
-        * necessary components to the function of the metadata entities are present and
-        * \param instance Source slice instance
-        */
-        void InitMetadata();
 
         /**
         * During instance instantiation, entities from root slices may be removed by data patches. We need to remove these

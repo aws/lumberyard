@@ -2693,7 +2693,7 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
                 Matrix44(su, 0, 0, 0,
                     0, sv, 0, 0,
                     0, 0, 1, 0,
-                    -du, -dv, 0, 1);
+                    du, dv, 0, 1);
         }
     }
 

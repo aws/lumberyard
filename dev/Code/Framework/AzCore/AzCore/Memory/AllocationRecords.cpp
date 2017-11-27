@@ -28,7 +28,7 @@ using namespace AZ::Debug;
 // [9/16/2009]
 //=========================================================================
 AllocationRecords::AllocationRecords(unsigned char stackRecordLevels, bool isMemoryGuard, bool isMarkUnallocatedMemory)
-    : m_mode(g_allocMgr.m_defaultTrackingRecordMode)
+    : m_mode(AllocatorManager::Instance().m_defaultTrackingRecordMode)
     , m_isAutoIntegrityCheck(false)
     , m_isMarkUnallocatedMemory(isMarkUnallocatedMemory)
     , m_saveNames(false)
@@ -52,7 +52,7 @@ AllocationRecords::AllocationRecords(unsigned char stackRecordLevels, bool isMem
 //=========================================================================
 AllocationRecords::~AllocationRecords()
 {
-    if (!g_allocMgr.m_isAllocatorLeaking)
+    if (!AllocatorManager::Instance().m_isAllocatorLeaking)
     {
         // dump all allocation (we should not have any at this point).
         bool includeNameAndFilename = (m_saveNames || m_mode == RECORD_FULL);
@@ -192,7 +192,7 @@ AllocationRecords::RegisterAllocation(void* address, size_t byteSize, size_t ali
             }
         }
     }
-    g_allocMgr.DebugBreak(address, ai);
+    AllocatorManager::Instance().DebugBreak(address, ai);
 
     // statistics
     m_requestedBytes += byteSize;
@@ -220,7 +220,7 @@ AllocationRecords::UnregisterAllocation(void* address, size_t byteSize, size_t a
 
     Debug::AllocationRecordsType::iterator iter = m_records.find(address);
     AZ_Assert(iter!=m_records.end(), "Could not find address 0x%p in the allocator!", address);
-    g_allocMgr.DebugBreak(address, iter->second);
+    AllocatorManager::Instance().DebugBreak(address, iter->second);
 
     (void)byteSize;
     (void)alignment;
@@ -298,7 +298,7 @@ AllocationRecords::ResizeAllocation(void* address, size_t newSize)
 
     Debug::AllocationRecordsType::iterator iter = m_records.find(address);
     AZ_Assert(iter!=m_records.end(), "Could not find address 0x%p in the allocator!", address);
-    g_allocMgr.DebugBreak(address, iter->second);
+    AllocatorManager::Instance().DebugBreak(address, iter->second);
 
     if (m_memoryGuardSize == sizeof(Debug::GuardValue))
     {

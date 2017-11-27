@@ -1099,8 +1099,8 @@ namespace EMotionFX
         void DrawSkeleton(Pose& pose, uint32 color);
         void ApplyMotionExtractionDelta(const Transform& trajectoryDelta);
         void ApplyMotionExtractionDelta();
-        void MotionExtractionCompensate();
-        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform);
+        void MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
+        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
 
         void SetMotionExtractionEnabled(bool enabled);
         bool GetMotionExtractionEnabled() const;

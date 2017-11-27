@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_RotationNodeHasProperties = true;
-
             class Rotation
-                : public NativeDatumNode<Rotation, Data::RotationType, k_RotationNodeHasProperties>
+                : public NativeDatumNode<Rotation, Data::RotationType>
             {
             public:
-                using ParentType = NativeDatumNode<Rotation, Data::RotationType, k_RotationNodeHasProperties>;
+                using ParentType = NativeDatumNode<Rotation, Data::RotationType>;
                 AZ_COMPONENT(Rotation, "{E17FE11D-69F2-4746-B582-778B48D0BF47}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

@@ -306,7 +306,7 @@ namespace EMotionFX
 
                 if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
                 {
-                    motionOutLocalPose.CompensateForMotionExtractionDirect();
+                    motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
                 }
 
                 outputLocalPose.Sum(&motionOutLocalPose, uniqueData->m_currentTriangle.m_weights[i]);
@@ -323,7 +323,7 @@ namespace EMotionFX
 
                 if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
                 {
-                    motionOutLocalPose.CompensateForMotionExtractionDirect();
+                    motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
                 }
 
                 const float weight = (i == 0) ? (1.0f - uniqueData->m_currentEdge.m_u) : uniqueData->m_currentEdge.m_u;
@@ -394,6 +394,7 @@ namespace EMotionFX
 
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 2D node '%s'.", GetName());
+        uniqueData->Clear();
 
         if (mDisabled)
         {
@@ -403,10 +404,26 @@ namespace EMotionFX
         uniqueData->m_currentPosition = GetCurrentSamplePosition(animGraphInstance, *uniqueData);
         uniqueData->m_normCurrentPosition = uniqueData->ConvertToNormalizedSpace(uniqueData->m_currentPosition);
 
+        // Set the duration and current play time etc to the master motion index, or otherwise just the first motion in the list if syncing is disabled.
+        const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
+        AZ::u32 motionIndex = (uniqueData->m_masterMotionIdx != MCORE_INVALIDINDEX32) ? uniqueData->m_masterMotionIdx : MCORE_INVALIDINDEX32;
+        if (syncMode == ESyncMode::SYNCMODE_DISABLED || motionIndex == MCORE_INVALIDINDEX32)
+            motionIndex = 0;
+
         UpdateBlendingInfoForCurrentPoint(*uniqueData);
 
-        const ESyncMode syncMode = (ESyncMode)((uint32)GetAttributeFloat(ATTRIB_SYNC)->GetValue());
         DoUpdate(timePassedInSeconds, uniqueData->m_blendInfos, syncMode, uniqueData->m_masterMotionIdx, uniqueData->m_motionInfos);
+
+        if (!uniqueData->m_motionInfos.empty())
+        {
+            const MotionInfo& motionInfo = uniqueData->m_motionInfos[motionIndex];
+            uniqueData->SetDuration( motionInfo.m_motionInstance ? motionInfo.m_motionInstance->GetDuration() : 0.0f );
+            uniqueData->SetCurrentPlayTime( motionInfo.m_currentTime );
+            uniqueData->SetSyncTrack( motionInfo.m_syncTrack );
+            uniqueData->SetSyncIndex( motionInfo.m_syncIndex );
+            uniqueData->SetPreSyncTime( motionInfo.m_preSyncTime);
+            uniqueData->SetPlaySpeed( motionInfo.m_playSpeed );               
+        }
     }
 
     void BlendSpace2DNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)

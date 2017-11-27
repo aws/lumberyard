@@ -51,7 +51,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 486406
+LUMBERYARD_BUILD = 498520
 
 # validate the Lumberyard version string above
 VERSION_NUMBER_PATTERN = re.compile("^(\.?\d+)*$")

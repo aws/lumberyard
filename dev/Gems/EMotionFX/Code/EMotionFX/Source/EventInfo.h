@@ -41,7 +41,7 @@ namespace EMotionFX
         MCore::String*  mTypeString;        /**< The type string. */
         ActorInstance*  mActorInstance;     /**< The actor instance that triggered this event. */
         MotionInstance* mMotionInstance;    /**< The motion instance which triggered this event, can be nullptr. */
-        AnimGraphNode* mEmitter;           /**< The animgraph node which originally did emit this event. This parameter can be nullptr. */
+        AnimGraphNode*  mEmitter;           /**< The animgraph node which originally did emit this event. This parameter can be nullptr. */
         MotionEvent*    mEvent;             /**< The event itself. */
         float           mGlobalWeight;      /**< The global weight of the event. */
         float           mLocalWeight;       /**< The local weight of the event. */

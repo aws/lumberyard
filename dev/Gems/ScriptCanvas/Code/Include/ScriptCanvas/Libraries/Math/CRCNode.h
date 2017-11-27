@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_CRCNodeHasProperties = false;
-
             class CRC
-                : public NativeDatumNode<CRC, AZ::Crc32, k_CRCNodeHasProperties>
+                : public NativeDatumNode<CRC, AZ::Crc32>
             {
             public:
-                using ParentType = NativeDatumNode<CRC, AZ::Crc32, k_CRCNodeHasProperties>;
+                using ParentType = NativeDatumNode<CRC, AZ::Crc32>;
                 AZ_COMPONENT(CRC, "{AC47D631-38C3-4B03-A987-425189D1D165}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

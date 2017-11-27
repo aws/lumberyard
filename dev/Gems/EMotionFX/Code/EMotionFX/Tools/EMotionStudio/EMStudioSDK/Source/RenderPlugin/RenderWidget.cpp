@@ -1038,37 +1038,37 @@ namespace EMStudio
 
                 switch (mCamera->GetType())
                 {
-                case MCommon::OrbitCamera::TYPE_ID:
-                {
-                    MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
-
-                    if (orbitCamera->GetIsFlightActive())
+                    case MCommon::OrbitCamera::TYPE_ID:
                     {
-                        orbitCamera->SetFlightTargetPosition(actorInstancePos);
-                    }
-                    else
-                    {
-                        orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
-                    }
+                        MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
 
-                    break;
-                }
+                        if (orbitCamera->GetIsFlightActive())
+                        {
+                            orbitCamera->SetFlightTargetPosition(actorInstancePos);
+                        }
+                        else
+                        {
+                            orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
+                        }
 
-                case MCommon::OrthographicCamera::TYPE_ID:
-                {
-                    MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
-
-                    if (orthoCamera->GetIsFlightActive())
-                    {
-                        orthoCamera->SetFlightTargetPosition(actorInstancePos);
-                    }
-                    else
-                    {
-                        orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
+                        break;
                     }
 
-                    break;
-                }
+                    case MCommon::OrthographicCamera::TYPE_ID:
+                    {
+                        MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
+
+                        if (orthoCamera->GetIsFlightActive())
+                        {
+                            orthoCamera->SetFlightTargetPosition(actorInstancePos);
+                        }
+                        else
+                        {
+                            orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
+                        }
+
+                        break;
+                    }
                 }
             }
         }
@@ -1190,7 +1190,6 @@ namespace EMStudio
         renderUtil->EnableCulling(backfaceCullingEnabled);
 
         EMotionFX::GetAnimGraphManager().SetAnimGraphVisualizationEnabled(true);
-        EMotionFX::GetEMotionFX().Update(0.0f);
 
         // render
         const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
@@ -1282,7 +1281,6 @@ namespace EMStudio
         // render the grid
         AZ::Vector2 gridStart, gridEnd;
         renderUtil->CalcVisibleGridArea(mCamera, mWidth, mHeight, unitSize, &gridStart, &gridEnd);
-
         if (mViewWidget->GetRenderFlag(RenderViewWidget::RENDER_GRID))
         {
             renderUtil->RenderGrid(gridStart, gridEnd, gridNormal, unitSize, renderOptions->mMainAxisColor, renderOptions->mGridColor, renderOptions->mSubStepColor, true);

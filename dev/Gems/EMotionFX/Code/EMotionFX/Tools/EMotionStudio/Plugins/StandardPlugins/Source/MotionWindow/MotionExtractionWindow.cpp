@@ -162,6 +162,11 @@ namespace EMStudio
         EMotionFX::Actor*   actor          = nullptr;
         EMotionFX::Node*    extractionNode = nullptr;
 
+        if (mCaptureHeight)
+        {
+            mCaptureHeight->setEnabled( isEnabled );
+        }
+
         if (actorInstance)
         {
             actor           = actorInstance->GetActor();
@@ -174,6 +179,14 @@ namespace EMStudio
             if (mWarningShowed == false)
             {
                 CreateWarningWidget();
+
+                if (mFlagsWidget)
+                {
+                    mFlagsWidget->hide();
+                    mFlagsWidget->deleteLater();
+                    mFlagsWidget = nullptr;
+                    mCaptureHeight = nullptr;
+                }
             }
 
             // Disable the link in case no actor is selected.
@@ -205,6 +218,10 @@ namespace EMStudio
                 CreateFlagsWidget();
             }
 
+            if (mCaptureHeight)
+            {
+                mCaptureHeight->setEnabled( isEnabled );
+            }
 
             // Figure out if all selected motions use the same settings.
             bool allCaptureHeightEqual = true;

@@ -283,8 +283,10 @@ namespace EMStudio
         void ReInitAllGraphs();
         void ShowGraph(EMotionFX::AnimGraphNode* node, EMotionFX::AnimGraph* animGraph, bool addToHistory = true);
 
+        void CleanHistory();
         void HistoryStepBack();
         void HistoryStepForward();
+        void ShowGraphFromHistory(uint32 historyIndex);
 
         MCORE_INLINE BlendGraphWidget* GetGraphWidget()                     { return mGraphWidget; }
         MCORE_INLINE BlendResourceWidget* GetResourceWidget()               { return mResourceWidget; }

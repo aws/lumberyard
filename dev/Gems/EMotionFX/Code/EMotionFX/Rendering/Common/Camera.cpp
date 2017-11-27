@@ -40,21 +40,21 @@ namespace MCommon
         // setup projection matrix
         switch (mProjectionMode)
         {
-        // initialize for perspective projection
-        case PROJMODE_PERSPECTIVE:
-        {
-            mProjectionMatrix.PerspectiveRH(MCore::Math::DegreesToRadians(mFOV), mAspect, mNearClipDistance, mFarClipDistance);
-            break;
-        }
+            // initialize for perspective projection
+            case PROJMODE_PERSPECTIVE:
+            {
+                mProjectionMatrix.PerspectiveRH(MCore::Math::DegreesToRadians(mFOV), mAspect, mNearClipDistance, mFarClipDistance);
+                break;
+            }
 
-        // initialize for orthographic projection
-        case PROJMODE_ORTHOGRAPHIC:
-        {
-            const float halfX = mOrthoClipDimensions.GetX() * 0.5f;
-            const float halfY = mOrthoClipDimensions.GetY() * 0.5f;
-            mProjectionMatrix.OrthoOffCenterRH(-halfX, halfX, halfY, -halfY, -mFarClipDistance, mFarClipDistance);
-            break;
-        }
+            // initialize for orthographic projection
+            case PROJMODE_ORTHOGRAPHIC:
+            {
+                const float halfX = mOrthoClipDimensions.GetX() * 0.5f;
+                const float halfY = mOrthoClipDimensions.GetY() * 0.5f;
+                mProjectionMatrix.OrthoOffCenterRH(-halfX, halfX, halfY, -halfY, -mFarClipDistance, mFarClipDistance);
+                break;
+            }
         }
 
         // calculate the viewproj matrix

@@ -23,8 +23,6 @@ namespace AZ
 {
     class IAllocator;
 
-    extern class AllocatorManager g_allocMgr;   ///< The single instance of the allocator manager.
-
     /**
     * Global allocation manager. It has access to all
     * created allocators IAllocator interface. And control
@@ -33,13 +31,10 @@ namespace AZ
     */
     class AllocatorManager
     {
-        friend class IAllocator;
+        friend IAllocator;
         friend class Debug::AllocationRecords;
     public:
         typedef AZStd::function<void (IAllocator* allocator, size_t /*byteSize*/, size_t /*alignment*/, int/* flags*/, const char* /*name*/, const char* /*fileName*/, int lineNum /*=0*/)>    OutOfMemoryCBType;
-
-        AllocatorManager();
-        ~AllocatorManager();
 
         AZ_FORCE_INLINE static AllocatorManager& Instance()         { return g_allocMgr; }
         AZ_FORCE_INLINE  int            GetNumAllocators() const    { return m_numAllocators; }
@@ -92,8 +87,8 @@ namespace AZ
         AllocatorManager& operator=(const AllocatorManager&);
 
         // Called from IAllocator
-        void RegisterAllocator(class IAllocator* alloc);
-        void UnRegisterAllocator(class IAllocator* alloc);
+        void RegisterAllocator(IAllocator* alloc);
+        void UnRegisterAllocator(IAllocator* alloc);
 
         static const int m_maxNumAllocators = 100;
         IAllocator*         m_allocators[m_maxNumAllocators];
@@ -105,6 +100,11 @@ namespace AZ
         AZStd::mutex        m_allocatorListMutex;
 
         AZ::Debug::AllocationRecords::Mode m_defaultTrackingRecordMode;
+
+        AllocatorManager();
+        ~AllocatorManager();
+
+        static AllocatorManager g_allocMgr;    ///< The single instance of the allocator manager
     };
 }
 

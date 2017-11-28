@@ -1148,7 +1148,10 @@ static int SendWindDataToGPU(GPUEmitterResources& resources, const SPhysEnviron*
             resources.bufWindAreas.Create(bufferSize, sizeof(SGPUWindArea), DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_SRV | DX11BUF_DYNAMIC, nullptr);
         }
 
-        resources.bufWindAreas.UpdateBufferContent(dataBuf, j * sizeof(SGPUWindArea));
+        if (j > 0)
+        {
+            resources.bufWindAreas.UpdateBufferContent(dataBuf, j * sizeof(SGPUWindArea));
+        }
 
         delete[] dataBuf;
 

@@ -423,7 +423,7 @@ namespace Multiplayer
             REGISTER_COMMAND("mpsearch", MPJoinLANCmd, 0, "try to find a LAN session");
             REGISTER_COMMAND("mpdisconnect", MPDisconnectCmd, 0, "disconnect from our session");
 
-            REGISTER_INT("gm_version", 1, 0, "Set the gridmate version number.");
+            REGISTER_INT("gm_version", 1, VF_CONST_CVAR, "Set the gridmate version number.");
 
 #ifdef NET_SUPPORT_SECURE_SOCKET_DRIVER
             REGISTER_CVAR2("gm_netsec_enable", &MultiplayerModule::s_NetsecEnabled, MultiplayerModule::s_NetsecEnabled, VF_NULL,
@@ -588,7 +588,7 @@ namespace Multiplayer
         carrierDesc.m_enableDisconnectDetection = !!gEnv->pConsole->GetCVar("gm_disconnectDetection")->GetIVal();
         carrierDesc.m_connectionTimeoutMS = 10000;
         carrierDesc.m_threadUpdateTimeMS = 30;
-        carrierDesc.m_version = gEnv->pConsole->GetCVar("gm_version")->GetIVal();
+
         carrierDesc.m_disconnectDetectionRttThreshold = gEnv->pConsole->GetCVar("gm_disconnectDetectionRttThreshold")->GetFVal();
         carrierDesc.m_disconnectDetectionPacketLossThreshold = gEnv->pConsole->GetCVar("gm_disconnectDetectionPacketLossThreshold")->GetFVal();
         carrierDesc.m_maxConnections = gEnv->pConsole->GetCVar("sv_maxplayers")->GetIVal();
@@ -659,6 +659,7 @@ namespace Multiplayer
         GridMate::LANSearchParams searchParams;
         searchParams.m_serverAddress = serveraddr;
         searchParams.m_serverPort = gEnv->pConsole->GetCVar("cl_serverport")->GetIVal() + 1;
+        searchParams.m_version = gEnv->pConsole->GetCVar("gm_version")->GetIVal();
         searchParams.m_listenPort = 0; // Always use ephemeral port for searches for the time being, until we change the API to allow users to customize this.
 
         s_instance->m_search = nullptr;

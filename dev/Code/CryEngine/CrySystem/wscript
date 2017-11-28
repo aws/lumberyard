@@ -38,7 +38,7 @@ def build(bld):
         includes                = [ bld.Path('Code/SDKs'),
                                     bld.Path('Code/Tools/GemRegistry/include') ],
         libpath                 = [ bld.Path('Code/SDKs') ],
-        features                = ['link_running_program'],
+        features                = ['build_version', 'link_running_program'],
 
         # Platform Specific
         win_defines             = ['EXCLUDE_CINEMIZER_SDK', 'KDAB_MAC_PORT'],

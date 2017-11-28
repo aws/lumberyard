@@ -104,12 +104,6 @@ void CSystem::QueryVersionInfo()
 
     GetModuleFileName(NULL, moduleName, _MAX_PATH);  //retrieves the PATH for the current module
 
-#ifdef AZ_MONOLITHIC_BUILD
-    GetModuleFileName(NULL, moduleName, _MAX_PATH);  //retrieves the PATH for the current module
-#else // AZ_MONOLITHIC_BUILD
-    strcpy(moduleName, "CrySystem.dll"); // we want to version from the system dll
-#endif // AZ_MONOLITHIC_BUILD
-
     int verSize = GetFileVersionInfoSize(moduleName, &dwHandle);
     if (verSize > 0)
     {

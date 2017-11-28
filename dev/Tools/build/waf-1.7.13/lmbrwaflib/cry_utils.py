@@ -259,26 +259,21 @@ def parse_json_file(conf, file_node):
 ###############################################################################
 # Function to generate the EXE_VERSION_INFO defines
 @after_method('apply_incpaths')
-@feature('c', 'cxx')
+@feature('build_version')
 def apply_version_info(self):
-
-    if getattr(self, 'is_launcher', False) or getattr(self, 'is_dedicated_server', False):
-        version = self.bld.get_game_project_version()
-    else:
-        version = self.bld.get_lumberyard_version()
+    version = self.bld.get_game_project_version()
 
     # At this point the version number format should be vetted so no need to check again, assume we have numbers
 
     parsed_version_parts = version.split('.')
     if len(parsed_version_parts) <= 1:
         Logs.warn('Invalid build version (%s), falling back to (1.0.0.1)' % version )
-        version_parts = ['1', '0', '0', '1']
 
     version_parts = [
         parsed_version_parts[0] if len(parsed_version_parts) > 0 else '1',
         parsed_version_parts[1] if len(parsed_version_parts) > 1 else '0',
         parsed_version_parts[2] if len(parsed_version_parts) > 2 else '0',
-        parsed_version_parts[3] if len(parsed_version_parts) > 3 else '0'
+        parsed_version_parts[3] if len(parsed_version_parts) > 3 else '1'
     ]
 
     for t in getattr(self, 'compiled_tasks', []):

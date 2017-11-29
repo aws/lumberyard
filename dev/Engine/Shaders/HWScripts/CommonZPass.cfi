@@ -1,0 +1,760 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+//========================================================================================
+
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+vert2geomZ Common_ZPassVS(app2vertGBuffer IN_common)
+#else
+vert2fragZ Common_ZPassVS(app2vertGBuffer IN_common)
+#endif
+{
+    vert2fragZ OUT = (vert2fragZ)0;
+
+    app2vertGBuffer IN = IN_common;
+
+#if %TEMP_TERRAIN
+    IN.vertCommon.Position.z = IN_common.vertCommon.baseTC.x;
+#endif
+
+    streamPos vertPassPos = (streamPos)0;
+    streamPos_FromGBuffer(IN, vertPassPos);
+
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+    const float3 SilPomDispl = SilPomDisplacement * TangNormal(IN.vertCommon.Tangent, IN.vertCommon.Binormal);
+    vertPassPos.Position.xyz += SilPomDispl * -HeightBias;
+#endif
+
+    streamPos vertPassPosPrev = (streamPos) vertPassPos;
+
+#if %TEMP_TERRAIN
+    float4 HPosition = Pos_VS_Terrain(0.001f, PerView_ViewProjZeroMatr, vertPassPos);
+#else  
+    float4 HPosition = Pos_VS_General(PerView_ViewProjZeroMatr, vertPassPos);
+#endif
+
+#if %_RT_MOTION_BLUR && !%_RT_ALPHABLEND
+    vertPassPosPrev.PositionCurr = vertPassPos.Position;
+    OUT.HPosCurr.xyz = HPosToScreenTC( HPosition ).xyw;
+    OUT.HPosPrev.xyz = HPosToScreenTC( GetPositionGeneralPrevious(vertPassPosPrev) ).xyw;
+#endif
+
+#if ((ENABLE_TESSELLATION && !%_RT_NO_TESSELLATION) || !%TEMP_TERRAIN)
+    // Preparing the inverse non-uniform matrix for correct vector transform
+    float3x3    instInvScaleMat = InverseScaleMatrixFast((const float3x3)vertPassPos.InstMatrix);
+#endif
+
+    float3 viewRelativePos = vertPassPos.WorldPos.xyz - PerView_WorldViewPos.xyz;
+
+#if ENABLE_TESSELLATION && !%_RT_NO_TESSELLATION
+    //relative position
+    OUT.vView.xyz = viewRelativePos;
+
+    // Compensating for non-uniform scale
+    OUT.vNormal.xyz = normalize(mul(instInvScaleMat, vertPassPos.Normal.xyz ));
+#else
+    OUT.HPosition = HPosition;
+#endif
+
+    #if !%TEMP_TERRAIN
+
+        // Tangent gets same scale as object, Normal gets inverse scale, Binormal reconstructed from the two
+        float3 worldTangent  = normalize( mul((float3x3)vertPassPos.InstMatrix, vertPassPos.ObjToTangentSpace[0]) );
+        float3 worldNormal   = normalize( mul(instInvScaleMat,                  vertPassPos.ObjToTangentSpace[2]) );
+        float3 worldBinormal = normalize(cross(worldNormal, worldTangent) * sign(vertPassPos.Tangent.w));
+
+
+        #if %SPEEDTREE_BILLBOARD
+            SpeedTreeRemoveBillboardFace(worldNormal.xyz, vertPassPos.ObjToTangentSpace[2].z > 0.5, OUT.HPosition);
+        #endif
+
+        float4 baseTC = vertPassPos.baseTC;  
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        // Output uv coordinates
+
+        #if %_RT_DECAL_TEXGEN_2D 
+            float3 DistAtten;
+            _TCModifyDecal( vertPassPos, baseTC, DistAtten );
+        #endif 
+
+        // Apply texture modifiers
+        #if %BLENDLAYER
+            // The blend map uses unmodified texture coordinates from either uv set 1 or uv set 2
+            #if %BLENDLAYER_UV_SET_2
+                float4 blendMapTC = vertPassPos.baseTC2;
+            #else
+                float4 blendMapTC = baseTC;
+            #endif
+            OUT.blendMapTCblendLayerTC.xy = blendMapTC.xy;
+
+            // The 2nd diffuse map, 2nd height map, etc. use a modified texture coordinate
+            float4 modifiedTC = _ModifyBlendLayerUV(blendMapTC, vertPassPos.Position );
+            OUT.blendMapTCblendLayerTC.zw = modifiedTC.xy;
+        #endif
+        #if %DETAIL_MAPPING
+            #if %DETAIL_MAPPING_UV_SET_2
+                OUT.detailTC = _ModifyDetailUV(vertPassPos.baseTC2, vertPassPos.Position);
+            #else
+                OUT.detailTC = _ModifyDetailUV(baseTC, vertPassPos.Position);
+            #endif
+        #endif
+
+        _ModifyUV_1(baseTC, OUT.baseTC, vertPassPos.Position );
+
+
+        #if %DECAL && !%_TT_TEXCOORD_PROJ
+            OUT.baseTC.zw = baseTC.xy;
+        #endif
+
+        #if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+            OUT.baseTC.xy *= PerMaterial_DetailTiling.xy;
+        #endif
+
+        float dissolveOut = 0.0;
+        #if %_RT_DISSOLVE
+            float4 dissolveRef = GetInstance_DissolveRef(vertPassPos);
+            OUT.baseTC.z = dissolveRef.x;
+            dissolveOut = dissolveRef.y;
+        #endif
+        #if %_RT_ALPHATEST
+            #if %LEAVES
+                OUT.baseTC.w = ParallelOpacityFalloff(vertPassPos.WorldPos.xyz, worldNormal.xyz, CapOpacityFalloff, GetMaterial_AlphaTest());
+            #else
+                OUT.baseTC.w = GetMaterial_AlphaTest();
+            #endif
+        #endif
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        // Output tangents
+
+        OUT.vNormalWS = float4(worldNormal.xyz, dissolveOut); // w= dissolve out sign
+
+        #if !%GRASS
+            OUT.vTangent = float4(worldTangent, vertPassPos.Tangent.w); 
+            OUT.vBinormal.xyz = worldBinormal;
+        #endif
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        // Output color
+        
+        #if %VERTCOLORS || %BLENDLAYER
+            OUT.Color = vertPassPos.Color;
+            
+            #if	%TEMP_VEGETATION
+                // vegetation vtx color is used for bending weights. w used for baked AO
+                OUT.Color.rgb = vertPassPos.Color.w;		
+                #if %BLENDLAYER
+                    // if blend layer used, vtx alpha overlaps with alpha on vegetation. Use blue channel instead
+                    OUT.Color.rgb = vertPassPos.Color.z;		
+                #endif
+            #endif
+        #endif
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        // Output blend with terrain color params
+
+        #if %TEMP_VEGETATION && %_RT_BLEND_WITH_TERRAIN_COLOR
+            float fCameraDistance = length(PerView_WorldViewPos.xyz - vertPassPos.WorldPos.xyz);
+            float fBlendFactor =  saturate( BlendTerrainCol + (fCameraDistance/ (BlendTerrainColInfo.w-BlendTerrainColInfo.w*BlendTerrainColDist)) );
+            fBlendFactor*=fBlendFactor;
+            OUT.terrainParams0.xyz = float3(BlendTerrainColInfo.zz*vertPassPos.WorldPos.yx+BlendTerrainColInfo.xy, fBlendFactor);
+        #endif
+    #else // %TEMP_TERRAIN
+
+        // Output terrain related data. Terrain is separated into 2 diferent passes (base and detail layers)
+        // Sector texture coordinates
+        OUT.terrainParams0.xy = float2(dot(float4(0, BaseTCMatrix[0], 0, BaseTCMatrix[1]), float4(vertPassPos.WorldPos.xyz, 1)), 
+                                       dot(float4(BaseTCMatrix[0], 0, 0, BaseTCMatrix[2]), float4(vertPassPos.WorldPos.xyz, 1)));
+
+        // Detail layers
+        #if %_RT_ALPHABLEND
+            float4 tcLayer;
+
+            float3 vDiffPos = vertPassPos.WorldPos;
+            vDiffPos.xy -= LayerTexGen[3].xy;
+
+            tcLayer.xy = mul((float2x3)LayerTexGen, vDiffPos);
+            tcLayer.z = 0;
+            tcLayer.w = vertPassPos.Position.w;
+
+            float4 baseTC;
+            _ModifyUV_1(tcLayer, baseTC, vertPassPos.Position );
+            OUT.baseTC.xy = baseTC.xy;
+
+            // get tangent space info from texgen parameters
+            float3 Tangent = normalize(LayerTexGen[0].xyz);
+            float3 Binormal = normalize(LayerTexGen[1].xyz);
+
+            // project tangent and binormal to plane perpendicular to the normal
+            Tangent-=dot(Tangent,vertPassPos.Normal)*vertPassPos.Normal;
+            Binormal-=dot(Binormal,vertPassPos.Normal)*vertPassPos.Normal;
+            Tangent=normalize(Tangent);
+            Binormal=normalize(Binormal);
+
+            float fWeight = UnpackTerrainLayerWeight(vertPassPos.Color, vertPassPos.Normal);
+            float3 NormalAbs = abs(vertPassPos.Normal.xyz); 
+            if(NormalAbs.x>=NormalAbs.y && NormalAbs.x>=NormalAbs.z)
+                fWeight *= LayerTexGen[2].x;
+            else if(NormalAbs.y>=NormalAbs.x && NormalAbs.y>=NormalAbs.z)
+                fWeight *= LayerTexGen[2].y;
+            else
+                fWeight *= LayerTexGen[2].z;
+
+            float fDist = length(viewRelativePos);
+            fDist = pow(min(fDist/max(0.001, LayerTexGen[0].w), 1), 4);
+            OUT.vTangent.w =  fWeight * (1-fDist);
+
+            OUT.vTangent.xyz = Tangent.xyz;    
+            OUT.vBinormal.xyz = Binormal;
+            OUT.vNormalWS.xyz = vertPassPos.Normal;
+
+        // base terrain
+        #else
+            OUT.baseTC = vertPassPos.baseTC;
+            OUT.vNormalWS.xyz = vertPassPos.Normal;
+        #endif
+    #endif
+
+    #if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING || %PARALLAX_OCCLUSION_MAPPING || %OFFSET_BUMP_MAPPING || %_RT_ALPHABLEND || %TEMP_EYES || %LEAVES || %GRASS
+        OUT.viewTS.xyz = viewRelativePos;
+    #endif
+
+    #if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+        vert2geomZ OUT_ext = (vert2geomZ) 0;
+        OUT_ext.IN = OUT;
+
+        {
+            streamPos vertPassPosTmp = vertPassPos;
+            vertPassPosTmp.Position.xyz += SilPomDispl;
+
+            const float3 vPosExtr = mul(vertPassPosTmp.InstMatrix, vertPassPosTmp.Position).xyz;
+
+            OUT_ext.viewExtr = mul(float3x3(worldTangent, worldBinormal, worldNormal), vPosExtr.xyz);
+            OUT_ext.hPosExtr = Pos_VS_General(PerView_ViewProjZeroMatr, vertPassPosTmp);
+
+            OUT_ext.wsDirPos = viewRelativePos;
+            OUT_ext.wsDirPosExtr = vPosExtr;
+        }
+
+        return OUT_ext;
+    #else
+        return OUT;
+    #endif
+}
+
+///////////////// geometry shaders //////////////////
+
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+[maxvertexcount(9)]
+void Common_ZPassGS(triangle vert2geomZ In[3], inout TriangleStream<geom2fragZ> OutStream)
+{
+    EmitPrismZ(In[0], In[1], In[2], OutStream);
+}
+#endif
+
+///////////////// pixel shaders //////////////////
+
+// The uv2 texture coordinates should already include any tiling scale required.
+half GetBlendedHeight(float2 uv, float2 uv2, half blendLayerFactor)
+{
+#if !%SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+    half h = GetTexture2D(heightMapSampler, uv).r;
+    #if %BLENDLAYER
+        half h2 = GetTexture2D(HeightMap2Sampler, uv2).r;
+        h += blendLayerFactor * (h2 - h);
+    #endif
+#else
+    half h = GetTexture2DLod(heightMapSampler, float4(uv, 0, 0)).r; // TODO: find way to compute lod without gradients as they cause pixel artifacts at fin / shell transition
+
+    // FL [FD-978] Illum shader second heighmap fix
+    #if %BLENDLAYER
+        half h2 = GetTexture2D(HeightMap2Sampler, float4(uv2, 0, 0)).r;
+        h += blendLayerFactor * (h2 - h);
+    #endif
+
+#endif
+    return h;
+}
+
+void ApplyBlendLayer(in float2 blendLayerTC, half blendFac, inout half3 diffCol, inout half3 specCol)
+{
+    half3 diffuseMap2 = GetTexture2D(DiffuseMap2Sampler, blendLayerTC).rgb;
+    diffuseMap2 *= BlendLayer2Diffuse;	// Separate Albedo tinting for second layer
+    diffCol = lerp(diffCol, diffuseMap2, blendFac);
+
+    half3   specularMap2 = GetTexture2D( SpecularMap2Sampler, blendLayerTC).rgb;
+    specularMap2 *= BlendLayer2Specular.rgb;
+    specCol = lerp(specCol, specularMap2, blendFac );
+}
+
+void ApplyTerrainColor(vert2fragZ IN, inout half3 diffCol, inout half3 specCol)
+{
+#if %TEMP_TERRAIN
+
+    // Terrain layers
+    #if %_RT_ALPHABLEND
+        half4 baseColor = GetTerrainTex(baseMap_FromContainerSampler, IN.terrainParams0.xy);
+        baseColor.xyz = sqrt(baseColor.xyz);		
+        diffCol = saturate( baseColor.xyz + ((diffCol - 0.5h) * DetailTextureStrength) );
+        diffCol.xyz *= diffCol.xyz;
+
+    // Terrain base
+    #else
+        diffCol = GetTerrainTex(baseMapSampler, IN.terrainParams0.xy);
+        specCol = 0.01;
+    #endif
+#endif
+}
+
+void ApplyVegetationTerrainColor(vert2fragZ IN, inout half3 diffCol, inout half3 specCol)
+{
+    #if %TEMP_VEGETATION
+        #if %_RT_BLEND_WITH_TERRAIN_COLOR
+            half4 terrainCol = GetTerrainTex(fromObjSampler0, IN.terrainParams0.xy);
+            diffCol = lerp(diffCol.xyz, terrainCol.xyz, IN.terrainParams0.z);
+        #endif
+    #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+pixout_gbuffer Common_ZPassPS(geom2fragZ IN_ext)
+#else
+pixout_gbuffer Common_ZPassPS(vert2fragZ IN)
+#endif
+{
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+    vert2fragZ IN = IN_ext.IN;
+#endif
+    pixout_gbuffer OUT = (pixout_gbuffer) 0;
+
+#if GMEM
+    #if !%_RT_ALPHABLEND
+        // Confetti Note:
+        // Might need to check for more defines if other materials aren't supposed to write to depth/stencil
+        // In GMEM, we store depth & vis area ids which match the stencil ref immediately
+        // as to not resolve the depth or stencil buffers later on since Metal does not support fetching
+        // from depth/stencil buffers in GMEM.
+        // Igor: IN.WPos.w contains camera space linear depth
+        // PerView_ProjRatio.w contain corresponding 1/z_far
+    
+        // We write into a 16bit render target
+        // For some reason, in Metal, if 32bit float is too small, memory gets corrupted.
+        // Any pass that samples for linearized depth will also get corrupted.
+	#ifdef FIXED_POINT
+        OUT.LinDepthResSten.x = max(IN.WPos.w * PerView_ProjRatio.w, 1e-4) * LIN_DEPTH_MAX_VAL;
+	#else
+        OUT.LinDepthResSten.x = max(IN.WPos.w * PerView_ProjRatio.w, 1e-4);
+	#endif
+
+        const uint BIT_STENCIL_STATIC        = 0x0000007F;
+        const uint BIT_STENCIL_INSIDE_VOLUME = 0x00000040;
+        uint nStencilVal = (uint)(GmemStencilValue.x);
+        nStencilVal &= BIT_STENCIL_STATIC;
+        nStencilVal = max(nStencilVal, BIT_STENCIL_INSIDE_VOLUME);
+        nStencilVal = max(nStencilVal - BIT_STENCIL_INSIDE_VOLUME, 1);
+        OUT.LinDepthResSten.y = nStencilVal;
+    #endif
+#endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Setup tangent to world basis
+
+    half fFlipNormal = 1.0f;
+#if !%TEMP_TERRAIN && !%SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+    fFlipNormal *= IN.bIsFrontFace? 1.0f : -1.0f;// Support for double sided lighting, invert face sign if front facing
+#endif
+
+    half3x3 mTangentToWS = half3x3(half3(1,0,0),half3(0,1,0),half3(0,0,1));
+
+#if (!%GRASS && !%TEMP_TERRAIN) || %_RT_ALPHABLEND
+        mTangentToWS = half3x3( IN.vTangent.xyz, IN.vBinormal.xyz, IN.vNormalWS.xyz * fFlipNormal);  
+#endif
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Handle POM
+
+    int mdQuality;
+    half mdDisplacement;
+    half mdHeightBias;
+    half mdSelfShadowStrength;
+    GetMicroDetailParams(mdQuality, mdDisplacement, mdHeightBias, mdSelfShadowStrength);
+
+#if %PARALLAX_OCCLUSION_MAPPING
+    const float3 pomAdjustRayForNonSquareTexres = float3(PerMaterial_TexelDensity.zw * min(PerMaterial_TexelDensity.x, PerMaterial_TexelDensity.y), 1);
+#else
+    const float3 pomAdjustRayForNonSquareTexres = 1;
+#endif
+
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING || %PARALLAX_OCCLUSION_MAPPING || %OFFSET_BUMP_MAPPING || %TEMP_EYES
+    half3 vViewTS = normalize(mul(mTangentToWS, IN.viewTS.xyz) * pomAdjustRayForNonSquareTexres);
+    #if %_RT_ALPHABLEND && %TEMP_TERRAIN 
+        mdDisplacement *= IN.vTangent.w;
+    #endif
+#endif
+
+    half blendFac = 0;
+#if %BLENDLAYER // blending factor is sampled using the blend map texture coordinates set
+    float2 blendMapTC = IN.blendMapTCblendLayerTC.xy * BlendMaskTiling;
+    float2 blendLayerTC = IN.blendMapTCblendLayerTC.zw * BlendLayer2Tiling;
+    #if %DISPLACEMENT_MAPPING
+        // Currently multiple-uv sets/independent blendlayer tiling don't support displacement mapping, so use the base texture coordinates for blendlayers if displacement mapping is enabled
+        blendLayerTC = IN.baseTC.xy * BlendLayer2Tiling;
+    #endif
+
+        blendFac = GetLayerBlendingValue(BlendMapSampler, blendMapTC, 0, IN.Color.a, BlendFactor, BlendFalloff);
+
+#endif
+
+    if (mdQuality == MICRO_DETAIL_QUALITY_OBM)
+    {
+#if %OFFSET_BUMP_MAPPING // still needed to compile as we refer to IN.viewTS
+    #if !%TEMP_TERRAIN || %_RT_ALPHABLEND
+        #if %BLENDLAYER
+        float4 texCoords = OffsetMap(IN.baseTC.xy, blendLayerTC, -vViewTS, 2, mdDisplacement, mdHeightBias, blendFac);
+            IN.baseTC.xy = texCoords.xy;
+            blendLayerTC = texCoords.zw;
+        #else
+            IN.baseTC.xy = OffsetMap(IN.baseTC.xy, -vViewTS, 2, mdDisplacement, mdHeightBias, blendFac).xy;
+        #endif
+    #endif
+#endif
+    }
+    else if(mdQuality == MICRO_DETAIL_QUALITY_POM)
+    {
+#if %PARALLAX_OCCLUSION_MAPPING // still needed to compile as we refer to IN.viewTS
+    #if !%TEMP_VEGETATION && (!%TEMP_TERRAIN || %_RT_ALPHABLEND)
+        const float lod = ComputeTextureLOD(IN.baseTC.xy, PerMaterial_TexelDensity.xy);
+
+        #if %BLENDLAYER
+            const float4 parallaxCorrectedTC = ParallaxOcclusionMap(IN.baseTC.xy, blendLayerTC.xy, lod, vViewTS, 15, mdDisplacement, mdHeightBias, blendFac);
+            blendLayerTC.xy = parallaxCorrectedTC.zw;
+        #else
+            const float4 parallaxCorrectedTC = ParallaxOcclusionMap(IN.baseTC.xy, lod, vViewTS, 15, mdDisplacement, mdHeightBias, blendFac);
+        #endif
+        IN.baseTC.xy = parallaxCorrectedTC.xy;
+    #endif
+#endif
+    }
+    else if(mdQuality == MICRO_DETAIL_QUALITY_SPM)
+    {
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING // still needed to compile as we refer to IN.viewTS
+    #if !%TEMP_VEGETATION && !%TEMP_TERRAIN
+        const float lod = ComputeTextureLOD(IN.baseTC.xy, PerMaterial_TexelDensity.xy);
+
+        const float numStepsScale = 1 - pow(abs(vViewTS.z), SilPomStepSizeViewDep);
+        const float numSteps = numStepsScale * SilPomNumSteps + 1.0;
+
+        const SilMapRes silmapRes = SilhouetteMap(IN_ext.wsTriPos, IN_ext.wsTriDispl, IN_ext.wsClipPlane, IN_ext.wsViewDir, IN_ext.texGenU, IN_ext.texGenV, lod, numSteps, mdDisplacement, blendFac); // FL [FD-978] Illum shader second heighmap fix
+        const CbcWsRes cbcRes = ComputeBarycentricCorrespondence(silmapRes.baryHitPos, IN_ext.wsTriPos, IN_ext.wsTriDispl);
+        
+        const float3 norm = cbcRes.wsNorm * -IN.vTangent.w;
+        const float3 binorm = cross(IN.vTangent.xyz, norm);
+        const float3 tang = cross(norm, binorm);
+        
+        IN.vTangent.xyz = tang;
+        IN.vBinormal.xyz = binorm;
+        IN.baseTC.xy = silmapRes.uvHitPos * PerMaterial_DetailTiling.zw;
+        
+        #if %BLENDLAYER     // blending factor is sampled using the blend map texture coordinates set
+            // Currently multiple-uv sets/independent blendlayer tiling don't support SPOM, so use the base texture coordinates for blendlayers if SPOM is enabled
+            blendLayerTC = IN.baseTC.xy * BlendLayer2Tiling;
+        #endif
+
+        //Make sure that PIXEL_DEPTH_MODIFIER must has been defined at this point!!!
+        #if !%_RT_DISSOLVE 
+            const float fDepthLinear = dot(cbcRes.wsPos, -PerView_ViewBasisZ) * PerView_NearFarClipDist.w;
+            const float fDevDepth = (fDepthLinear * PerView_ProjRatio.x + PerView_ProjRatio.y) / fDepthLinear;
+
+            OUT.fDepth = fDevDepth;
+        #endif
+    #endif
+#endif
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Alpha testing
+    half4 diffuseMap = GetDiffuseMap(diffuseMapSampler, IN.baseTC.xy);
+
+    #if %_RT_ALPHATEST
+        clip(diffuseMap.a - IN.baseTC.w);
+    #endif
+
+    #if %_RT_DISSOLVE && !%TEMP_TERRAIN
+        const int2 vPixQuadIdx= (int2)IN.WPos.xy % 2; // 4 transparency levels for a 2x2 quad. We're using dot/abs instead, since rsx doens't support array indexing. 
+        clip( IN.vNormalWS.w * (abs(dot(half4(0.0h, 0.76h, 0.5h,-1.0h), vPixQuadIdx.xxyy))-IN.baseTC.z)); // todo: try using coverage mask when in MSAA mode.
+    #endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output normals
+
+    MaterialAttribsCommon attribs;
+
+    half3 vNormalTS = half3(0,0,1);
+    #if (!%GRASS && !%TEMP_TERRAIN) || %_RT_ALPHABLEND
+        #if %NORMAL_MAP
+            vNormalTS = GetNormalMap(normalMapSampler, IN.baseTC.xy);
+        #endif
+    #else
+        attribs.NormalWorld = normalize(IN.vNormalWS.xyz);		// terrain base layer
+        #if %GRASS
+            attribs.NormalWorld = attribs.NormalWorld * fFlipNormal;
+        #endif
+    #endif
+
+    #if %BLENDLAYER     // sampling using the blend layer texture coordinates
+        half3 vNormal2 = GetNormalMap( BumpMap2Sampler, blendLayerTC.xy);        
+/* TODO: Need to test if this is supported
+        #if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+            const float3 norm = vNormalTS;
+            const float3 binorm = cross(float3(1, 0, 0), norm);
+            const float3 tang = cross(norm, binorm);
+            const float3x3 matLocal = float3x3(tang, -binorm, norm);
+            vNormal2 = mul(vNormal2, matLocal);
+        #endif
+*/	
+        vNormalTS = lerp( vNormalTS, vNormal2, blendFac );
+    #endif
+
+    half4 vDetail = 0;
+    #if %DETAIL_MAPPING
+        half3 vDetailScales = half3(DetailBumpScale, DetailDiffuseScale,DetailGlossScale);
+
+        const float2 tcDetail = IN.detailTC.xy;
+
+        vDetail = GetDetailMap(detailMapSampler, tcDetail) * vDetailScales.xxyz;
+
+        #if %ALPHAMASK_DETAILMAP
+            vDetail *= diffuseMap.a;
+        #endif
+
+        vNormalTS.xy += vDetail.xy;
+    #endif
+
+    #if (!%GRASS && !%TEMP_TERRAIN) || %_RT_ALPHABLEND
+        attribs.NormalWorld = normalize(mTangentToWS[2]);
+        #if %NORMAL_MAP || %BLENDLAYER || %DETAIL_MAPPING
+            attribs.NormalWorld = normalize(mul(vNormalTS, mTangentToWS));
+        #endif
+    #endif
+    
+    #if %LEAVES || %GRASS
+        // Orient normal of vegetation planes towards viewer to reduce Fresnel gain and mimic some forward scattering 
+        attribs.NormalWorld = normalize(attribs.NormalWorld - normalize(IN.viewTS.xyz) * NormalViewDependency);
+    #endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output smoothness
+
+    half fSmoothness = PerMaterial_SpecularColor.w;
+    fSmoothness *= GetTexture2D(smoothnessMapSampler, IN.baseTC.xy).r;
+
+    #if %BLENDLAYER
+        half layer2Smoothness = GetTexture2D(smoothnessMap2Sampler, blendLayerTC ).r;
+        const half     div128 = 1.0h / 128.0h;
+        layer2Smoothness *= (BlendLayer2Smoothness * div128);    // multiplying with layer 2 smoothness 
+        fSmoothness = lerp(fSmoothness, layer2Smoothness, blendFac);
+    #endif
+
+    #if %DETAIL_MAPPING
+        fSmoothness = fSmoothness + fSmoothness * vDetail.w;
+    #endif
+    
+    #if %TEMP_TERRAIN && !%_RT_ALPHABLEND
+        fSmoothness = 0.1;
+    #endif
+    
+    #if %SAA_FILTERING
+        fSmoothness = RoughnessToSmoothness(GetKaplanyanRoughness(mTangentToWS, IN.WPos, SmoothnessToRoughness(fSmoothness)));
+    #endif
+    attribs.Smoothness = fSmoothness;
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output occlusion
+    #if %OCCLUSION_MAP
+        attribs.Occlusion = GetTexture2D(OcclusionMapSampler, IN.baseTC.xy).r;
+    #else
+        attribs.Occlusion = 1.0; // Occlusion is multiplied in, so 1.0 = no occlusion.
+    #endif
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output albedo and reflectance
+    #if %FX_DISSOLVE
+        half dissolveThreshold = ClipDissolvedFrags(IN.baseTC.xy);
+        //Color the edges around the clipped area
+        if(dissolveThreshold < DissolveEdgeThickness && DissolvePercentage > 0.0f && DissolvePercentage < 1.0f)
+        {
+            diffuseMap = DissolveColor;  
+        }
+    #endif
+
+    half3 cAlbedo = diffuseMap.rgb;
+    half3 cReflectance = PerMaterial_SpecularColor.rgb;
+    
+    #if %DECAL && %_RT_DECAL_TEXGEN_2D
+        #if %_TT_TEXCOORD_PROJ
+            cAlbedo = tex2Dproj(diffuseMapSampler_Decal, IN.baseTC.xyzw);
+        #else
+            cAlbedo = GetTexture2D(diffuseMapSampler_Decal, IN.baseTC.xy);
+        #endif 
+    #endif
+
+    #if %SPECULAR_MAP
+        cReflectance *= GetTexture2D(specularMapSampler, IN.baseTC.xy).rgb;
+    #endif
+
+#if !%TEMP_TERRAIN || %_RT_ALPHABLEND
+    // Albedo tinting should be applied before using and not at the end, to prevent affecting possible combined result
+    cAlbedo *= PerMaterial_DiffuseColor.rgb;
+#endif
+
+#if %BLENDLAYER
+    ApplyBlendLayer(blendLayerTC, blendFac, cAlbedo, cReflectance);
+#endif
+
+    ApplyTerrainColor(IN, cAlbedo, cReflectance);
+
+    #if %VERTCOLORS
+        cAlbedo *= IN.Color.rgb;
+    #endif
+
+
+    // Order is fairly wrong, but keeps backward compatible look with previous implementation. Post C3 this should be refactored.
+    ApplyVegetationTerrainColor(IN, cAlbedo, cReflectance);
+
+#if %DETAIL_MAPPING
+    cAlbedo = cAlbedo + cAlbedo * vDetail.z;
+#endif
+
+#if %DECAL
+    cReflectance.xyz = GetLuminance(cReflectance.xyz);
+#endif
+    
+    attribs.Albedo = cAlbedo;
+    attribs.Reflectance = cReflectance;
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output SSS
+    
+    attribs.LightingModel = LIGHTINGMODEL_STANDARD;
+    attribs.Transmittance = 0;
+    attribs.ScatteringIndex = 0;
+#if %SUBSURFACE_SCATTERING && !%DECAL
+    attribs.LightingModel = SSSIndex != 0 ? LIGHTINGMODEL_TRANSMITTANCE : attribs.LightingModel;
+    attribs.ScatteringIndex = SSSIndex;
+#endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output translucency and SSS
+    
+#if (%GRASS || %LEAVES) && !%_RT_ALPHABLEND
+    half fTranslucency = BackDiffuseMultiplier;
+    #if %LEAVES
+        fTranslucency *= tex2D(opacityMapSampler, IN.baseTC.xy);
+    #endif
+    
+    attribs.LightingModel = LIGHTINGMODEL_TRANSMITTANCE;
+    attribs.Transmittance = saturate(fTranslucency) * TransmittanceColor.rgb;
+#endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output self-shadowing
+    
+    half fSelfShadowing = 0;
+    
+    attribs.SelfShadowingSun = fSelfShadowing;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Output to GBuffer
+
+    EncodeGBuffer( attribs, OUT.GBufferA, OUT.GBufferB, OUT.GBufferC );
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Velocity
+
+    #if !%_RT_ALPHABLEND && !GMEM
+        #if %_RT_MOTION_BLUR
+            OUT.VelocityRT = OutputVelocityRT(IN.HPosCurr.xy / IN.HPosCurr.z, IN.HPosPrev.xy / IN.HPosPrev.z);
+        #elif 
+            OUT.VelocityRT = float2(0.0f, 0.0f);
+        #endif
+    #endif
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Alpha
+
+#if %_RT_ALPHABLEND
+    half fAlpha;
+    #if %TEMP_TERRAIN
+        fAlpha = saturate( IN.vTangent.w );
+
+        // Compute non-linear alpha blend factor in case height map present (limited to POM/OM cases)
+        if( mdQuality )
+            fAlpha = GetLayerBlendingValue(heightMapSampler, IN.baseTC.xy, 0, fAlpha, BlendFactor, BlendFalloff, true);
+    #else
+        fAlpha = PerMaterial_DiffuseColor.w * GetTexture2D(diffuseMapSampler, IN.baseTC.xy).a;
+        #if %VERTCOLORS
+            fAlpha *= IN.Color.a;
+         #endif
+        #if %DECAL
+            #if !%_TT_TEXCOORD_PROJ
+                fAlpha *= GetTexture2D(DecalOpacityMapSampler, IN.baseTC.zw).r;
+            #else
+                fAlpha *= GetTexture2D(DecalOpacityMapSampler, IN.baseTC.xy).r;
+            #endif
+            fAlpha = saturate(pow(fAlpha * DecalAlphaMult, DecalFalloff));
+        #endif
+    #endif
+
+    fAlpha = saturate( fAlpha );
+    half fAlphaDiffuse = fAlpha;
+
+    #if %DECAL
+        fAlphaDiffuse *= DecalDiffuseOpacity;
+    #endif
+
+    SetGBufferBlending( OUT.GBufferA, OUT.GBufferB, OUT.GBufferC, fAlpha, fAlphaDiffuse, fAlpha );
+#endif
+
+    return OUT;
+}
+
+#include "CommonZPassTess.cfi"
+
+//////////////////////////////// technique ////////////////
+
+technique ZPass
+{
+    pass p0
+    {
+        VertexShader = Common_ZPassVS() ZVS;
+#if ENABLE_TESSELLATION
+        HullShader   = Common_ZPassHS() GeneralHS;
+        DomainShader = Common_ZPassDS() GeneralDS;
+#endif
+#if %SILHOUETTE_PARALLAX_OCCLUSION_MAPPING
+        GeometryShader = Common_ZPassGS() ZGS;
+#endif
+        PixelShader = Common_ZPassPS() ZPS;
+
+        ZEnable = true;
+        ZWriteEnable = true;
+        CullMode = Back;
+
+#if %GRASS || %LEAVES || %HAIR_PASS
+        CullMode = None;
+#endif
+    }
+}

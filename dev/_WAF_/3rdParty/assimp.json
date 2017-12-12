@@ -1,0 +1,17 @@
+{
+    "name": "assimp",
+    "source": "@ROOT@/Code/GFXPrefabLab/3rdParty/assimp",
+    "description": "Open Asset Import Library",
+    "includes": ["include"],
+    "defines": [],
+    "lib_required": "True",
+    "shared_required": "True",
+    "platform": {
+        "win_x64_vs2015": {
+            "sharedlibpath": ["bin"],
+            "shared": ["assimp.dll"],
+            "importlibpath": ["lib"],
+            "import": ["assimp.lib"]
+        }
+    }
+}

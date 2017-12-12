@@ -1,0 +1,18 @@
+{
+    "none":
+    {
+        "Mocks/Interfaces_h":
+        [
+            "Mocks/IAudioSystemMock.h",
+            "Mocks/IConsoleMock.h",
+            "Mocks/ICryPakMock.h",
+            "Mocks/ILogMock.h",
+            "Mocks/ISystemMock.h",
+            "Mocks/ITimerMock.h"
+        ],
+        "Mocks/Common_h":
+        [
+            "Mocks/MockCGFContent.h"
+        ]
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "description"           : "Configuration to build the Woodpecker",
+    "visual_studio_name"    : "Woodpecker",
+    "comment"               : "This is meant to only compile tools on Windows.",
+    "disable_game_projects" : true,
+    "platforms" : ["win"],
+    "configurations" : ["debug","profile"],
+
+    "modules" :
+    [
+        "AzCore",
+        "AzFramework",        
+        "AzToolsFramework",
+        "GridMate",
+        "LuaIDE",
+        "Profiler"
+    ]
+}

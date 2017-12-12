@@ -1,0 +1,37 @@
+{
+    "description"           : "Configuration to build Dedicated Servers for the enabled projects",
+    "visual_studio_name"    : "Dedicated Server",
+    "configurations"        :
+    [
+        "debug_dedicated",
+        "profile_dedicated",
+        "performance_dedicated",
+        "release_dedicated"
+    ],
+    "modules" :
+    [
+        "CryCommon",
+        "Cry3DEngine",
+        "CryAISystem",
+        "CryAnimation",
+        "CryEntitySystem",
+        "CryFont",
+        "CryInput",
+        "CryMovie",
+        "CryNetwork",
+        "CryPhysics",
+        "CryRenderNULL",
+        "CryScriptSystem",
+        "CryAudioCommon",
+        "CryAudioImplNoSound",
+        "CrySystem",
+        "CryAction",
+        "CryAction_AutoFlowNode",
+        "LmbrAWS",
+        "GridMate",
+        "CryRenderNULL",
+        "GemRegistry",
+        "LyIdentity_shared",
+        "LyIdentity_static"
+    ]
+}

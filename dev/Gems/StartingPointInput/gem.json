@@ -1,0 +1,20 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "InputManagementFramework"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "09f4bedeee614358bc36788e77f97e51",
+    "Name": "StartingPointInput",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "DisplayName": "Starting Point Input",
+    "Tags": ["Input","Starting Point"],
+    "Summary": "The Starting Point Input Gem works with the Input Management Framework Gem to interpret raw input and convert it to input events such as pressed, released, and held.",
+    "IconPath": "preview.png"
+}

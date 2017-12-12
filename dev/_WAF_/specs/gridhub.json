@@ -1,0 +1,14 @@
+{
+    "description"           : "Configuration to build GridHub",
+    "visual_studio_name"    : "GridHub",
+    "comment"               : "This is meant to only compile tools on Windows.",
+    "disable_game_projects" : true,
+    "platforms" : [
+        "win"
+    ],
+    "modules" :
+    [        
+        "GridMate",
+        "GridHub"
+    ]
+}

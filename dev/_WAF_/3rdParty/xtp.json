@@ -1,0 +1,45 @@
+{
+    "name": "xtp",
+    "source": "@ROOT@/Code/SDKs/XT_13_4",
+    "description": "CodeJock Extreme Toolkit Pro",
+    "aliases" : {
+      "xtp_name" : "ToolkitPro1340"
+    },
+    "includes": ["Include"],
+    "lib_required": "True",
+
+    "platform": {
+        "win_x64_vs2013": {
+
+            "defines": ["_XTPLIB_VISUALSTUDIO_VERSION=\"vc120\"", "_XTPLIB_NOAUTOLINK"],
+
+            "importlibpath": ["Lib/vc120x64"],
+            "sharedlibpath": ["Bin/vc120x64"],
+
+            "import_release": ["${xtp_name}vc120x64.lib"],
+            "import_debug": ["${xtp_name}vc120x64D.lib"],
+
+            "shared_release": ["${xtp_name}vc120x64.dll"],
+            "shared_debug": ["${xtp_name}vc120x64D.dll"],
+
+            "pdb_release": ["${xtp_name}vc120x64.pdb"],
+            "pdb_debug": ["${xtp_name}vc120x64D.pdb"]
+        },
+        "win_x64_vs2015": {
+
+            "defines": ["_XTPLIB_VISUALSTUDIO_VERSION=\"vc140\"", "_XTPLIB_NOAUTOLINK"],
+
+            "importlibpath": ["Lib/vc140x64"],
+            "sharedlibpath": ["Bin/vc140x64"],
+
+            "import_release": ["${xtp_name}vc140x64.lib"],
+            "import_debug": ["${xtp_name}vc140x64D.lib"],
+
+            "shared_release": ["${xtp_name}vc140x64.dll"],
+            "shared_debug": ["${xtp_name}vc140x64D.dll"],
+
+            "pdb_release": ["${xtp_name}vc140x64.pdb"],
+            "pdb_debug": ["${xtp_name}vc140x64D.pdb"]
+        }
+    }
+}

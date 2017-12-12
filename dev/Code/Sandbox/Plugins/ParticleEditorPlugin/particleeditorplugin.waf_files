@@ -1,0 +1,32 @@
+{
+	"none":
+	{
+		"Root":
+		[
+            "main.cpp",
+            "ParticleEditorPlugin.cpp",
+            "ParticleEditorPlugin.h",
+            "stdafx.cpp",
+            "stdafx.h"
+		],
+        "QT":
+        [
+            "QT/MainWindow.cpp",
+            "QT/MainWindow.h",
+            "QT/DockableLODPanel.cpp",
+            "QT/DockableLODPanel.h",
+			"QT/DockableAttributePanel.cpp",
+            "QT/DockableAttributePanel.h",
+            "QT/DockableParticleLibraryPanel.cpp",
+            "QT/DockableParticleLibraryPanel.h",
+            "QT/ParticleLibraryAutoRecovery.cpp",
+            "QT/ParticleLibraryAutoRecovery.h",
+            "QT/LODLevelWidget.cpp",
+            "QT/LODLevelWidget.h",
+            "QT/QAttributePresetWidget.cpp",
+            "QT/QAttributePresetWidget.h"		
+        ]
+	}
+}
+
+

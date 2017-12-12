@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/StartupLogoDialog">
+        <file>sandbox_dark.png</file>
+    </qresource>
+</RCC>

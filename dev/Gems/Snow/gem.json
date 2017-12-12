@@ -1,0 +1,10 @@
+{
+    "GemFormatVersion": 3,
+    "LinkType": "Dynamic",
+    "Name": "Snow",
+    "Summary": "Provides the snow entity weather effect.",
+    "Tags": ["Weather", "Weather Effects"],
+    "Uuid": "8827e54450f040dbaed1776ba4b35b43",
+    "Version": "0.1.0",
+    "IconPath": "preview.png"
+}

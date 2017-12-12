@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/InfoBar">
+	<file alias="icon_lock.ico">res/icon_lock.ico</file>
+	<file alias="icon_tcoll.ico">res/icon_tcoll.ico</file>
+    </qresource>
+</RCC>

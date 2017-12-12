@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "ATLEntityData.h",
+            "AudioAllocators.h",
+            "AudioLogger.h",
+            "IAudioSystemImplementation.h"
+        ]
+    }
+}

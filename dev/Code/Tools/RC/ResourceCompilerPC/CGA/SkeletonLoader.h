@@ -1,0 +1,41 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
+
+#ifndef CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_CGA_SKELETONLOADER_H
+#define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_CGA_SKELETONLOADER_H
+#pragma once
+
+
+#include "SkeletonInfo.h"
+
+struct IPakSystem;
+class ICryXML;
+
+class SkeletonLoader
+{
+public:
+    SkeletonLoader();
+
+    CSkeletonInfo* Load(const char* filename, IPakSystem* pakSystem, ICryXML* xml, const string& tempPath);
+
+    const char* GetTempName() const { return m_tempFileName.c_str(); }
+    const CSkeletonInfo& Skeleton() const{ return m_skeletonInfo; }
+    bool IsLoaded() const{ return m_bLoaded; }
+private:
+    CSkeletonInfo m_skeletonInfo;
+    string m_tempFileName;
+    bool m_bLoaded;
+};
+
+
+#endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_CGA_SKELETONLOADER_H

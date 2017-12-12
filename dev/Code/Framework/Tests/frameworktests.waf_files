@@ -1,0 +1,24 @@
+{
+    "none": {
+        "Root": [
+            "../AzCore/Tests/Main.cpp"
+        ],
+        "Framework" : [
+            "CommandLineTests.cpp",
+            "ComponentAddRemove.cpp",
+            "EntityContext.cpp",
+            "EntityReference.cpp",
+            "EntityTestbed.h",
+            "FileIO.cpp",
+            "GenAppDescriptors.cpp",
+            "GenericComponentWrapperTest.cpp",
+            "InstanceDataHierarchy.cpp",
+            "NetBinding.cpp",
+            "NetworkContext.cpp",
+            "Slices.cpp",
+            "Script.cpp",
+            "TestTypes.h",
+            "TransformComponent.cpp"
+        ]
+    }
+}

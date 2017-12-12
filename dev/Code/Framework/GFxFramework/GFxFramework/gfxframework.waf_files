@@ -1,0 +1,15 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+
+        ],
+        "MaterialIO":
+        [
+           "MaterialIO/IMaterial.h",
+           "MaterialIO/Material.h",
+           "MaterialIO/Material.cpp"
+        ]
+    }
+}

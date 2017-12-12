@@ -1,0 +1,17 @@
+#############################################################################
+## Crytek Source File
+## Copyright (C) 2013, Crytek Studios
+##
+## Creator: Christopher Bolte
+## Date: Oct 31, 2013
+## Description: WAF  based build system
+#############################################################################
+
+SUBFOLDERS =	[
+	'Shaders',
+	]
+	
+def build(bld):
+	# Recursive into all sub projects
+	bld.recurse(SUBFOLDERS)
+	

@@ -1,0 +1,39 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemFramework/AwsApiClientJob.h",
+            "Include/CloudGemFramework/AwsApiClientJobConfig.h",
+            "Include/CloudGemFramework/AwsApiJob.h",
+            "Include/CloudGemFramework/AwsApiJobConfig.h",
+            "Include/CloudGemFramework/AwsApiRequestJob.h",
+            "Include/CloudGemFramework/AwsApiRequestJobConfig.h",
+            "Include/CloudGemFramework/CloudGemFrameworkBus.h",
+            "Include/CloudGemFramework/Error.h",
+            "Include/CloudGemFramework/JobExecuter.h",
+            "Include/CloudGemFramework/JsonObjectHandler.h",
+            "Include/CloudGemFramework/JsonWriter.h",
+            "Include/CloudGemFramework/RequestBuilder.h",
+            "Include/CloudGemFramework/ServiceClientJob.h",
+            "Include/CloudGemFramework/ServiceClientJobConfig.h",
+            "Include/CloudGemFramework/ServiceJob.h",
+            "Include/CloudGemFramework/ServiceJobConfig.h",
+            "Include/CloudGemFramework/ServiceJobUtil.h",
+            "Include/CloudGemFramework/ServiceRequestJob.h",
+            "Include/CloudGemFramework/ServiceRequestJobConfig.h",
+            "Include/CloudGemFramework/HttpClientComponent.h",
+            "Include/CloudGemFramework/HttpRequestJob.h"
+        ],
+        "Source": [
+            "Source/CloudGemFrameworkModule.cpp",
+            "Source/CloudGemFrameworkSystemComponent.cpp",
+            "Source/CloudGemFrameworkSystemComponent.h",
+            "Source/HttpClientComponent.cpp"
+        ]
+    }
+}

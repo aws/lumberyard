@@ -1,0 +1,20 @@
+{
+    "auto": {
+        "Include": [
+            "Include/InputManagementFramework/InputEventGroup.h",
+            "Include/InputManagementFramework/InputSubComponent.h",
+            "Include/InputManagementFramework/InputEventBindings.h"
+        ],
+        "Source": [
+            "Source/InputConfigurationComponent.h",
+            "Source/InputConfigurationComponent.cpp",
+            "Source/InputManagementFrameworkGem.cpp"
+        ]
+    },
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    }
+}

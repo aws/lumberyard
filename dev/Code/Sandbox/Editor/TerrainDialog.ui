@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TerrainDialog</class>
+ <widget class="QMainWindow" name="TerrainDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>770</width>
+    <height>621</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item row="0" column="0">
+     <widget class="QTopRendererWnd" name="viewport" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>770</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionImport_Heightmap"/>
+    <addaction name="actionExport_Heightmap"/>
+    <addaction name="separator"/>
+    <addaction name="actionShow_Large_Preview"/>
+   </widget>
+   <widget class="QMenu" name="menuModify">
+    <property name="title">
+     <string>Modify</string>
+    </property>
+    <addaction name="actionMake_Isle"/>
+    <addaction name="actionRemove_Ocean"/>
+    <addaction name="actionSet_Ocean_Height"/>
+    <addaction name="separator"/>
+    <addaction name="actionSet_Terrain_Max_Height"/>
+    <addaction name="actionSet_Unit_Size"/>
+    <addaction name="separator"/>
+    <addaction name="actionFlatten"/>
+    <addaction name="separator"/>
+    <addaction name="actionSmooth"/>
+    <addaction name="actionSmooth_Slope"/>
+    <addaction name="separator"/>
+    <addaction name="actionNormalize"/>
+    <addaction name="actionReduce_Range_Light"/>
+    <addaction name="actionReduce_Range_Heavy"/>
+    <addaction name="separator"/>
+    <addaction name="actionErase_Terrain"/>
+    <addaction name="actionResize_Terrain"/>
+    <addaction name="actionInvert_Heightmap"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionGenerate_Terrain"/>
+    <addaction name="actionSun_Trajectory_Tool"/>
+    <addaction name="actionExport_Import_Megaterrain_Texture"/>
+    <addaction name="actionShow_Terrain_Texture_Layers"/>
+   </widget>
+   <widget class="QMenu" name="menuOptions">
+    <property name="title">
+     <string>Options</string>
+    </property>
+    <addaction name="actionShow_Water"/>
+    <addaction name="actionShow_Map_Objects"/>
+    <addaction name="actionShow_Grid"/>
+    <addaction name="actionAuto_Scale_Grey_Range"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuModify"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuOptions"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QToolBar" name="ToolBar1">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionImport_Heightmap"/>
+   <addaction name="actionHold"/>
+   <addaction name="actionFetch"/>
+   <addaction name="separator"/>
+   <addaction name="actionErase_Terrain"/>
+   <addaction name="actionResize_Terrain"/>
+   <addaction name="actionInvert_Heightmap"/>
+   <addaction name="separator"/>
+   <addaction name="actionSmooth_Slope"/>
+   <addaction name="separator"/>
+   <addaction name="actionGenerate_Terrain"/>
+   <addaction name="actionShow_Terrain_Texture_Layers"/>
+   <addaction name="actionSun_Trajectory_Tool"/>
+  </widget>
+  <widget class="QToolBar" name="ToolBar2">
+   <property name="windowTitle">
+    <string>toolBar_2</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionBrush_One"/>
+   <addaction name="actionBrush_Two"/>
+   <addaction name="actionBrush_Three"/>
+   <addaction name="actionBrush_Four"/>
+   <addaction name="actionBrush_Five"/>
+   <addaction name="separator"/>
+   <addaction name="actionFine_Opacity"/>
+   <addaction name="actionMedium_Opacity"/>
+   <addaction name="actionCoarse_Opacity"/>
+  </widget>
+  <widget class="QDockWidget" name="dockWidget">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Modify Terrain</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="CTerrainModifyPanel" name="terrainModifyPanel" native="true"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="actionImport_Heightmap">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_00.png</normaloff>:/bmp00005_00.png</iconset>
+   </property>
+   <property name="text">
+    <string>Import Heightmap...</string>
+   </property>
+   <property name="toolTip">
+    <string>Import</string>
+   </property>
+   <property name="statusTip">
+    <string>Import heightmap</string>
+   </property>
+  </action>
+  <action name="actionExport_Heightmap">
+   <property name="text">
+    <string>Export Heightmap...</string>
+   </property>
+   <property name="toolTip">
+    <string>Export heightmap</string>
+   </property>
+   <property name="statusTip">
+    <string>Export heightmap</string>
+   </property>
+  </action>
+  <action name="actionShow_Large_Preview">
+   <property name="text">
+    <string>Show Large Preview...</string>
+   </property>
+   <property name="toolTip">
+    <string>Show large preview</string>
+   </property>
+   <property name="statusTip">
+    <string>Generate a BMP image of the heightmap for previewing</string>
+   </property>
+  </action>
+  <action name="actionMake_Isle">
+   <property name="text">
+    <string>Make Isle</string>
+   </property>
+   <property name="toolTip">
+    <string>Make isle</string>
+   </property>
+   <property name="statusTip">
+    <string>Sinks the heightmap</string>
+   </property>
+  </action>
+  <action name="actionRemove_Ocean">
+   <property name="text">
+    <string>Remove Ocean</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove ocean</string>
+   </property>
+   <property name="statusTip">
+    <string>Sets the water level to -100000</string>
+   </property>
+  </action>
+  <action name="actionSet_Ocean_Height">
+   <property name="text">
+    <string>Set Ocean Height</string>
+   </property>
+   <property name="toolTip">
+    <string>Set ocean height</string>
+   </property>
+   <property name="statusTip">
+    <string>Set ocean surface level (Default 16m).</string>
+   </property>
+  </action>
+  <action name="actionSet_Terrain_Max_Height">
+   <property name="text">
+    <string>Set Terrain Max Height</string>
+   </property>
+   <property name="toolTip">
+    <string>Set terrain max height</string>
+   </property>
+   <property name="statusTip">
+    <string>Define how high the tallest mountain can be (default 1024)</string>
+   </property>
+  </action>
+  <action name="actionSet_Unit_Size">
+   <property name="text">
+    <string>Set Unit Size</string>
+   </property>
+   <property name="toolTip">
+    <string>Set unit size</string>
+   </property>
+   <property name="statusTip">
+    <string>Set the Meters Per Texel size of the heightmap</string>
+   </property>
+  </action>
+  <action name="actionFlatten">
+   <property name="text">
+    <string>Flatten</string>
+   </property>
+  </action>
+  <action name="actionSmooth">
+   <property name="text">
+    <string>Smooth</string>
+   </property>
+  </action>
+  <action name="actionSmooth_Slope">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_06.png</normaloff>:/bmp00005_06.png</iconset>
+   </property>
+   <property name="text">
+    <string>Smooth Slope</string>
+   </property>
+   <property name="toolTip">
+    <string>Smooth slope</string>
+   </property>
+   <property name="statusTip">
+    <string>Smooth the slope of the terrain</string>
+   </property>
+  </action>
+  <action name="actionNormalize">
+   <property name="text">
+    <string>Normalize</string>
+   </property>
+  </action>
+  <action name="actionReduce_Range_Light">
+   <property name="text">
+    <string>Reduce Range (Light)</string>
+   </property>
+   <property name="toolTip">
+    <string>Reduce range (light)</string>
+   </property>
+  </action>
+  <action name="actionReduce_Range_Heavy">
+   <property name="text">
+    <string>Reduce Range (Heavy)</string>
+   </property>
+   <property name="toolTip">
+    <string>Reduce range (heavy)</string>
+   </property>
+  </action>
+  <action name="actionErase_Terrain">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_03.png</normaloff>:/bmp00005_03.png</iconset>
+   </property>
+   <property name="text">
+    <string>Erase Terrain</string>
+   </property>
+   <property name="toolTip">
+    <string>Erase terrain</string>
+   </property>
+   <property name="statusTip">
+    <string>Clear Heightmap</string>
+   </property>
+  </action>
+  <action name="actionResize_Terrain">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_04.png</normaloff>:/bmp00005_04.png</iconset>
+   </property>
+   <property name="text">
+    <string>Resize Terrain</string>
+   </property>
+   <property name="toolTip">
+    <string>Resize terrain</string>
+   </property>
+   <property name="statusTip">
+    <string>Resize Terrain Heightmap</string>
+   </property>
+  </action>
+  <action name="actionInvert_Heightmap">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_05.png</normaloff>:/bmp00005_05.png</iconset>
+   </property>
+   <property name="text">
+    <string>Invert Heightmap</string>
+   </property>
+   <property name="toolTip">
+    <string>Invert heightmap</string>
+   </property>
+   <property name="statusTip">
+    <string>Invert heightmap</string>
+   </property>
+  </action>
+  <action name="actionGenerate_Terrain">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_07.png</normaloff>:/bmp00005_07.png</iconset>
+   </property>
+   <property name="text">
+    <string>Generate Terrain...</string>
+   </property>
+   <property name="toolTip">
+    <string>Generate terrain</string>
+   </property>
+   <property name="statusTip">
+    <string>Generate Terrain Heightmap</string>
+   </property>
+  </action>
+  <action name="actionSun_Trajectory_Tool">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_09.png</normaloff>:/bmp00005_09.png</iconset>
+   </property>
+   <property name="text">
+    <string>Sun Trajectory Tool...</string>
+   </property>
+   <property name="toolTip">
+    <string>Sun trajectory tool</string>
+   </property>
+   <property name="statusTip">
+    <string>Adjust sun location and direction</string>
+   </property>
+  </action>
+  <action name="actionExport_Import_Megaterrain_Texture">
+   <property name="text">
+    <string>Export/Import Megaterrain Texture</string>
+   </property>
+   <property name="toolTip">
+    <string>Export/import megaterrain texture</string>
+   </property>
+  </action>
+  <action name="actionShow_Terrain_Texture_Layers">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_08.png</normaloff>:/bmp00005_08.png</iconset>
+   </property>
+   <property name="text">
+    <string>Terrain Texture Layers...</string>
+   </property>
+   <property name="toolTip">
+    <string>Terrain texture layers</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Terrain Texture Layers</string>
+   </property>
+  </action>
+  <action name="actionShow_Water">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Water</string>
+   </property>
+   <property name="toolTip">
+    <string>Show water</string>
+   </property>
+  </action>
+  <action name="actionShow_Map_Objects">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Map Objects</string>
+   </property>
+   <property name="toolTip">
+    <string>Show map objects</string>
+   </property>
+  </action>
+  <action name="actionShow_Grid">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Grid</string>
+   </property>
+   <property name="toolTip">
+    <string>Show grid</string>
+   </property>
+  </action>
+  <action name="actionAuto_Scale_Grey_Range">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_02.png</normaloff>:/bmp00005_02.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto-Scale Grey Range</string>
+   </property>
+   <property name="toolTip">
+    <string>Automatically scale the grey range to match the heightmap range</string>
+   </property>
+  </action>
+  <action name="actionHold">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_01.png</normaloff>:/bmp00005_01.png</iconset>
+   </property>
+   <property name="text">
+    <string>Hold</string>
+   </property>
+   <property name="toolTip">
+    <string>Hold</string>
+   </property>
+   <property name="statusTip">
+    <string>Hold the current state</string>
+   </property>
+  </action>
+  <action name="actionFetch">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00005_02.png</normaloff>:/bmp00005_02.png</iconset>
+   </property>
+   <property name="text">
+    <string>Fetch</string>
+   </property>
+   <property name="toolTip">
+    <string>Fetch</string>
+   </property>
+   <property name="statusTip">
+    <string>Fetch a previous state</string>
+   </property>
+  </action>
+  <action name="actionBrush_One">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_00.png</normaloff>:/bmp00006_00.png</iconset>
+   </property>
+   <property name="text">
+    <string>Very Small Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Very small brush</string>
+   </property>
+   <property name="statusTip">
+    <string>Use a very small brush</string>
+   </property>
+  </action>
+  <action name="actionBrush_Two">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_01.png</normaloff>:/bmp00006_01.png</iconset>
+   </property>
+   <property name="text">
+    <string>Small Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Small brush</string>
+   </property>
+   <property name="statusTip">
+    <string>Use a small brush</string>
+   </property>
+  </action>
+  <action name="actionBrush_Three">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_02.png</normaloff>:/bmp00006_02.png</iconset>
+   </property>
+   <property name="text">
+    <string>Medium Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Medium brush</string>
+   </property>
+   <property name="statusTip">
+    <string>Use a medium brush</string>
+   </property>
+  </action>
+  <action name="actionBrush_Four">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_03.png</normaloff>:/bmp00006_03.png</iconset>
+   </property>
+   <property name="text">
+    <string>Big Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Big brush</string>
+   </property>
+   <property name="statusTip">
+    <string>Use a big brush</string>
+   </property>
+  </action>
+  <action name="actionBrush_Five">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_04.png</normaloff>:/bmp00006_04.png</iconset>
+   </property>
+   <property name="text">
+    <string>Very Big Brush</string>
+   </property>
+   <property name="toolTip">
+    <string>Very big brush</string>
+   </property>
+   <property name="statusTip">
+    <string>Use a very big brush</string>
+   </property>
+  </action>
+  <action name="actionFine_Opacity">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_05.png</normaloff>:/bmp00006_05.png</iconset>
+   </property>
+   <property name="text">
+    <string>Fine Opacity</string>
+   </property>
+   <property name="toolTip">
+    <string>Fine opacity</string>
+   </property>
+   <property name="statusTip">
+    <string>Set Terrain Brush Opacity to Fine</string>
+   </property>
+  </action>
+  <action name="actionMedium_Opacity">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_06.png</normaloff>:/bmp00006_06.png</iconset>
+   </property>
+   <property name="text">
+    <string>Medium Opacity</string>
+   </property>
+   <property name="toolTip">
+    <string>Medium opacity</string>
+   </property>
+   <property name="statusTip">
+    <string>Set Terrain Brush Opacity to Medium</string>
+   </property>
+  </action>
+  <action name="actionCoarse_Opacity">
+   <property name="icon">
+    <iconset resource="MainWindow.qrc">
+     <normaloff>:/bmp00006_07.png</normaloff>:/bmp00006_07.png</iconset>
+   </property>
+   <property name="text">
+    <string>Coarse Opacity</string>
+   </property>
+   <property name="toolTip">
+    <string>Coarse opacity</string>
+   </property>
+   <property name="statusTip">
+    <string>Set Terrain Brush Opacity to Coarse</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CTerrainModifyPanel</class>
+   <extends>QWidget</extends>
+   <header>TerrainModifyPanel.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QTopRendererWnd</class>
+   <extends>QWidget</extends>
+   <header>TopRendererWnd.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="MainWindow.qrc"/>
+ </resources>
+ <connections/>
+</ui>

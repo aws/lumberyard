@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GeneralAssetDbFilterDlg</class>
+ <widget class="QWidget" name="GeneralAssetDbFilterDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>260</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_6">
+   <item>
+    <widget class="QWidget" name="ASSET_FILTERS_GENERAL_WIDGET">
+     <layout class="QVBoxLayout" name="verticalLayout" stretch="2,2,1,2,2,2">
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_PRESET_LAYOUT" stretch="0,1">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_PRESET_LABEL">
+          <property name="text">
+           <string>Preset:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_PRESET_COMBO">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_PRESET_BTNS_LAYOUT" stretch="0,1,1,2">
+        <item>
+         <spacer name="ASSET_FILTERS_GENERAL_BTNS_SPACER_LEFT">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ASSET_FILTERS_PRESET_SAVE_BTN">
+          <property name="text">
+           <string>Save</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ASSET_FILTERS_PRESET_REMOVE_BTN">
+          <property name="text">
+           <string>Remove</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="ASSET_FILTERS_GENERAL_BTNS_SPACER_RIGHT">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+        <widget class="QFrame" name="ASSET_FILTERS_GENERAL_VISIBLE_DATABASE_OPTIONS_WIDGET" native="true">
+          <property name="frameShape">
+            <enum>QFrame::Box</enum>
+          </property>
+          <layout class="QGridLayout" name="ASSET_FILTERS_GENERAL_VISIBLE_DATABASE_OPTIONS_LAYOUT"/>
+        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_GENERAL_UPDATE_LVL_BTN_LAYOUT">
+        <item>
+         <widget class="QCheckBox" name="ASSET_FILTERS_GENERAL_USED_IN_LVL">
+          <property name="text">
+           <string>Used in level</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="ASSET_FILTERS_GENERAL_UPDATE_LVL_BTN">
+          <property name="text">
+           <string>Update level usage</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+        <layout class="QHBoxLayout" name="ASSET_FILTERS_GENERAL_MIN_FILESIZE_LAYOUT">
+          <item>
+            <widget class="QLabel" name="ASSET_FILTERS_GENERAL_MIN_FILESIZE">
+              <property name="text">
+                <string>Minimum filesize(kB):</string>
+              </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QComboBox" name="ASSET_FILTERS_GENERAL_MIN_FILESIZE_COMBO"/>
+          </item>
+        </layout>
+      </item>
+      <item>
+        <layout class="QHBoxLayout" name="ASSET_FILTERS_GENERAL_MAX_FILESIZE_LAYOUT">
+          <item>
+            <widget class="QLabel" name="ASSET_FILTERS_GENERAL_MAX_FILESIZE">
+              <property name="text">
+                <string>Maximum filesize(kB):</string>
+              </property>
+            </widget>
+          </item>
+          <item>
+            <widget class="QComboBox" name="ASSET_FILTERS_GENERAL_MAX_FILESIZE_COMBO"/>
+          </item>
+        </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

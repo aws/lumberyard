@@ -1,0 +1,16 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"AssetTaggingImpl.cpp",
+			"AssetTaggingImpl.h",
+			"AssetTaggingPlugin.cpp",
+			"AssetTaggingPlugin.h",
+			"main.cpp",
+			"QuickPluginProfiler.h",
+			"stdafx.cpp",
+			"stdafx.h"
+		]
+	}
+}

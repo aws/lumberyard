@@ -1,0 +1,70 @@
+/* Main SCSS file.  Used for vending our packaged SCSS that both us and our customers can utilize.  
+   Files expected for reuse are indicated as so by using sass partials 
+*/
+
+@import "fonts";
+@import "variables";
+@import "links";
+@import "subnavs";
+@import "tables";
+@import "text";
+@import "modals";
+@import "datetimerangepicker";
+@import "forms";
+@import "feedback";
+@import "tooltips";
+@import "util";
+
+html {
+    overflow-x: hidden;
+    // calculate right margin so nav items don't get pushed by scrollbar
+    margin-right: calc(-1 * (100vw - 100%));
+}
+html, body {
+	height: 100%;
+	margin: 0;
+}
+
+// container for all content
+.cgp-container {
+	min-height: 100%;
+	margin-bottom: -35px;
+}
+
+.footer-push {
+	height: 35px;
+}
+
+// content container padding: between nav and footer content
+.cgp-content-container {
+	margin: 25px;
+	> h1 {
+		margin: 25px 0 15px 0;
+	}
+}
+
+.cgp-login-container {
+	> h1, > h2 {
+		text-align: center;
+		margin-bottom: 15px;
+	}
+
+	> h2 + loading-spinner > div {
+		padding-top: 50px;
+	}
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+img {
+	max-width: 100%;
+}
+
+i.refresh-icon {
+    float: right;
+    padding-right: 20px;
+    cursor: pointer;
+}

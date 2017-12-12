@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="layouts-0.png">res/layouts-0.png</file>
+        <file alias="layouts-1.png">res/layouts-1.png</file>
+        <file alias="layouts-2.png">res/layouts-2.png</file>
+        <file alias="layouts-3.png">res/layouts-3.png</file>
+        <file alias="layouts-4.png">res/layouts-4.png</file>
+        <file alias="layouts-5.png">res/layouts-5.png</file>
+        <file alias="layouts-6.png">res/layouts-6.png</file>
+        <file alias="layouts-7.png">res/layouts-7.png</file>
+        <file alias="layouts-8.png">res/layouts-8.png</file>
+    </qresource>
+</RCC>

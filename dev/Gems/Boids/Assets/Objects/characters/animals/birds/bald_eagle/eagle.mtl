@@ -1,0 +1,20 @@
+<Material MtlFlags="524544">
+ <SubMaterials>
+  <Material Name="no_alpha" MtlFlags="524416" Shader="Illum" GenMask="1" StringGenMask="%ALLOW_SILHOUETTE_POM" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.57758045,0.57758045,0.57758045" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/bald_eagle/eagle_diff.tif"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="alpha" MtlFlags="524418" Shader="Illum" GenMask="1" StringGenMask="%ALLOW_SILHOUETTE_POM" SurfaceType="mat_flesh" MatTemplate="" Diffuse="0.57758045,0.57758045,0.57758045" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" AlphaTest="0.0099999998" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/birds/bald_eagle/eagle_diff.dds"/>
+   </Textures>
+   <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="proxy" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_flesh" MatTemplate="" Diffuse="1,0,0" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

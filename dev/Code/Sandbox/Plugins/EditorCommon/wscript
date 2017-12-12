@@ -1,0 +1,56 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.CryEditorCommon(
+        # Settings
+        target              = 'EditorCommon',
+        vs_filter           = 'Sandbox',
+        copyright_org       = 'Amazon-CryTek',
+        file_list           = 'editorcommon.waf_files',
+        platforms           = ['win'],
+        configurations      = ['debug', 'debug_test', 'profile', 'profile_test'],
+        features            = ['qt5'],
+        use                 = ['EditorCore', 'AzQtComponents'],
+        uselib              = ['QTMAIN',
+                               'QTANGLE',
+                               'QT5CORE',
+                               'QT5GUI',
+                               'QT5QML',
+                               'QT5QUICK',
+                               'QT5WIDGETS'],
+        export_includes     = [ "."],
+        defines             = ['FORCE_STANDARD_ASSERT',
+                               'EDITOR_COMMON_EXPORTS'],
+
+        # Platform Specific
+        win_x64_vs2013_debug_all_lib       = ['mfcs120d','msvcrtd'],
+        win_x64_vs2013_ndebug_lib          = ['mfcs120','msvcrt'],
+        win_x64_vs2015_debug_all_lib       = ['mfcs140d', 'msvcrtd'],
+        win_x64_vs2015_ndebug_lib          = ['mfcs140', 'msvcrt'],
+
+        win_x64_vs2013_debug_all_link_flags = ['/NODEFAULTLIB:mfc120d.lib','/NODEFAULTLIB:msvcrtd.lib'],
+        win_x64_vs2013_ndebug_link_flags    = ['/NODEFAULTLIB:mfc120.lib','/NODEFAULTLIB:msvcrt.lib'],
+        win_x64_vs2015_debug_all_link_flags = ['/NODEFAULTLIB:mfc140d.lib', '/NODEFAULTLIB:msvcrtd.lib'],
+        win_x64_vs2015_ndebug_link_flags    = ['/NODEFAULTLIB:mfc140.lib', '/NODEFAULTLIB:msvcrt.lib'],
+
+        win_defines     = ['KDAB_MAC_PORT'],
+        darwin_cxxflags = ['-frtti'],
+
+
+        # Testing
+        test_all_file_list = ['editorcommon_test.waf_files'],
+    )

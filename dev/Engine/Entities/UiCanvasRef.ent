@@ -1,0 +1,4 @@
+<Entity
+ 	Name="UiCanvasRefEntity"
+	Script="Scripts/Entities/UI/UiCanvasRefEntity.lua"
+/>

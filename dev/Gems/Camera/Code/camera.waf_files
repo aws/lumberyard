@@ -1,0 +1,18 @@
+{
+    "auto": {
+        "Root": [
+        ],
+        "Source": [
+            "Source/CameraGem.cpp",
+            "Source/CameraComponent.cpp",
+            "Source/CameraComponent.h",
+            "Source/CameraComponentConverter.cpp"
+        ]
+    },
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    }
+}

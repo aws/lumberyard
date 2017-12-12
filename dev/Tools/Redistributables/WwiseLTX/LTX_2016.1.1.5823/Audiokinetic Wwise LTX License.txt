@@ -1,0 +1,137 @@
+Wwise LTX 2016.1.1.5823 EULA
+
+AUDIOKINETIC End-User License Agreement (“EULA” or “Agreement”) for Wwise® LTX
+
+WHEREAS AUDIOKINETIC has developed Wwise® LTX, a proprietary audio solution, consisting of an authoring application and a sound engine that enables the development of interactive games for specified platforms; 
+
+WHEREAS you (“Licensee”) have an interest in developing interactive games with AUDIOKINETIC’s authoring application and/or incorporating AUDIOKINETIC’s technology in such games for distribution to third party users of such games; and
+
+WHEREAS, AUDIOKINETIC desires to grant a license to use Wwise® LTX to Licensee under the terms and conditions described herein.
+
+NOW THEREFORE that, in consideration of the mutual covenants provided for other good and valuable consideration, the receipt and sufficiency of which is hereby acknowledged, Licensee and AUDIOKINETIC agree as follows:
+
+1.	DEFINITIONS
+
+1.1	“AUDIOKINETIC Deployment Software” means the AUDIOKINETIC libraries and header files, in object code only, that are required to be incorporated into the Licensee Developed Game for the intended use. 
+
+1.2	“AUDIOKINETIC Wwise Technology” means Wwise LTX, a “LTX” version of AUDIOKINETIC’s proprietary audio technology entitled “Wwise”, in object code form only, developed for Amazon Lumberyard users to develop interactive games for specified platforms, and includes the AUDIOKINETIC Deployment Software and the Documentation and any updates or upgrades provided by AUDIOKINETIC.  AUDIOKINETIC Wwise Technology excludes any third party open source software included therein.
+
+1.3	“Documentation” means all technical, reference and installation manuals, user guides, published performance specifications and other written documentation provided by AUDIOKINETIC generally to its licensees with respect to the AUDIOKINETIC Wwise Technology, along with any modifications and updates thereto.
+
+1.4	“End User” shall mean the third party who is using the Licensee Developed Game.
+
+1.5	“Licensee” means you and, if different, your organization whom you represent.
+
+1.6	“Licensee Developed Game” means the interactive software game(s) developed by or on behalf of Licensee on the Licensee Platform. 
+
+1.7	”Licensee Platform” means the certified platforms for which the Licensee is approved by the platform owner, and other non-certified platforms, on which a Licensee Developed Game is released.
+
+1.8	“Wwise® LTX License” means both a Development License and Integration and Distribution License in respect of the Wwise® LTX version of the AUDIOKINETIC Wwise Technology and more specifically described herein.
+
+2.	LICENSE GRANT
+
+2.1	Wwise® LTX License.  Pursuant to this Agreement, AUDIOKINETIC hereby grants to Licensee the following licenses, it being understood that although a Wwise® LTX License may be used for commercial production, any upgrade to a non-LTX version of the AUDIOKINETIC Wwise Technology will require the purchase of additional fully commercial Development Licenses and Integration and Distribution Licenses:
+
+a)	a worldwide, paid-up, nonexclusive, non-transferable (subject to Section 11.4), non-sublicensable, non-refundable right and license pursuant to which Licensee may (a) install, use and operate the AUDIOKINETIC Wwise Technology in accordance with the Documentation, and (b) make a reasonable number of copies of the AUDIOKINETIC Wwise Technology for the purposes described above, all of the foregoing for Licensee’s internal use only (the “Development License”); and
+
+b)	a worldwide, paid-up, nonexclusive, non-transferable (subject to Section 11.4), non-sublicensable, non-refundable right and license, on the Licensee Platforms, and in object code only, to: (a) use and reproduce the AUDIOKINETIC Deployment Software for the purpose of and to the extent required to develop, test, demonstrate and support the Licensee Developed Game; and (b) make, have manufactured (by third party contractors), reproduce, promote, display, advertise, provide previews and reviews on all media, publish, distribute, license and offer to license the Licensee Developed Game to End Users either as a stand-alone game or bundled with other software or hardware (the “Integration and Distribution License”).
+
+2.2	AUDIOKINETIC Deployment Software.  The AUDIOKINETIC Deployment Software is licensed for distribution as part of the Licensee Developed Game only and Licensee is not entitled to distribute the AUDIOKINETIC Wwise Technology, or any portion thereof, in stand-alone form.
+
+3.	OWNERSHIP
+
+3.1	Ownership.  Notwithstanding anything else in this Agreement, AUDIOKINETIC and its third party licensors retain (a) all title to, and, except as expressly licensed herein, all rights to the AUDIOKINETIC Wwise Technology, all copies and derivative works thereof (by whomever developed) and all related documentation and materials, and (b) all copyrights, patent rights, trade secret rights and other proprietary rights in the AUDIOKINETIC Wwise Technology.  Except for AUDIOKINETIC’s retained rights in the underlying AUDIOKINETIC Wwise Technology (including without limitation the AUDIOKINETIC Deployment Software) as set forth and licensed to Licensee herein, Licensee shall own the copyright and all other intellectual property rights to the Licensee Developed Game(s) and any updates thereto.
+
+3.2	Open Source Components.  The AUDIOKINETIC Wwise Technology may contain certain open source components (“Open Source Components”) which are not licensed under the terms of this Agreement, but instead are licensed under the terms of their respective licenses.  Such open source components are provided “as is” without warranty of any kind. AUDIOKINETIC grants Licensee no right to receive source code to Open Source Components; however, in some cases, rights and access to source code for the Open Source Components may be available directly from their owners, licensors and/or suppliers.  Licensee’ use of each Open Source Component is subject to the terms of its applicable license. 
+
+AUDIOKINETIC informs Licensee that the Ogg, Vorbis and Tremor Open Source libraries provided by the Xiph.Org Foundation (the “Ogg Vorbis Libraries”) are included as part of the AUDIOKINETIC Wwise Technology as an option to Licensee.  If Licensee decides to use this option, it must do so in accordance with the terms of the open source license for the Ogg Vorbis Libraries:
+
+“© year, Xiph.Org Foundation”
+
+“Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer;
+
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution; and
+
+Neither the name of the Xiph.org Foundation nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. “
+
+To avoid any presence of the Vorbis code in your Licensee Developed Game, Licensee should not link to the AkVorbisDecoder.lib.  AUDIOKINETIC guarantees that this will ensure no element of the open source library is embodied in the AUDIOKINETIC Deployment Software.
+
+4.	LICENSEE OBLIGATIONS
+
+4.1	Restrictions on Use.  Except as expressly provided herein, Licensee agrees not to (a) produce hard copy printed output of data from the AUDIOKINETIC Wwise Technology for reports and notes for purposes other than solely for reference purposes in connection with its own internal business, and which may not be published or supplied to any third party; (b) expose any underlying programming interfaces of the AUDIOKINETIC Wwise Technology in the Licensee Developed Game; (c) include any documentation relating to the AUDIOKINETIC Wwise Technology and sample application elements of the AUDIOKINETIC Wwise Technology with the Licensee Developed Game; and (d) remove or alter any copyright or other proprietary notice from the AUDIOKINETIC Wwise Technology and the Documentation; (e) disassemble, decompile or otherwise reverse engineer the AUDIOKINETIC Wwise Technology or otherwise attempt to learn the source code (to the extent not provided by AUDIOKINETIC), or algorithms underlying the AUDIOKINETIC Wwise Technology, to the maximum extent allowed under applicable law; (f) rent, lease or otherwise provide temporary access to the AUDIOKINETIC Wwise Technology otherwise than as specifically authorized herein; (g) copy, alter or modify the AUDIOKINETIC Wwise Technology otherwise than as specifically authorized herein, or (h) authorize or allow others to do any of the foregoing.
+
+4.2	Notice.  Licensee agrees to promptly notify AUDIOKINETIC if the Licensee becomes aware of any unauthorized use of the whole or any part of the AUDIOKINETIC Wwise Technology by any third party. 
+
+5.	TRADEMARK LICENSE 
+
+Each of AUDIOKINETIC and Licensee owns the trademarks, logos and trade names (collectively, “Marks”) for their respective products and/or services, including, but not limited to the Licensee Developed Game and the AUDIOKINETIC Wwise Technology.  No licence to use the Marks is granted except as otherwise stated in this Agreement.  
+
+6.	CREDITS AND FINAL PRODUCT
+
+6.1	Credits.  Licensee will include the AUDIOKINETIC Marks in appropriate proprietary notices as per the below on the splash screens, in the in-game credits and in the manual of each Licensee Developed Game, if any.  For this purpose, AUDIOKINETIC hereby grants Licensee a personal, revocable, non-exclusive license to use the AUDIOKINETIC Marks only in association with the Licensee Developed Game(s).  Licensee shall not change, amend or otherwise modify the Marks of AUDIOKINETIC.
+Legal credit line: Powered by Wwise © 2006 – 2015* Audiokinetic Inc. All rights reserved.
+* Last year to appear should be year of publication of Licensee Developed Game.
+The POWERED BY WWISE logo in .eps or .png format can be obtained on the AUDIOKINETIC website and should only be used in accordance with the Basic Guidelines for Using the “Powered by Wwise” Logo and Tagline also available on the AUDIOKINETIC website.
+
+6.2	License.  Licensee hereby grants AUDIOKINETIC an irrevocable non-exclusive license to use the Licensee Marks, the final title of each Licensee Developed Game and the box art/key art or promotional art work from each Licensee Developed Game on its website for marketing purposes after the release date of the Licensee Developed Game.
+
+7.	PROPRIETARY INFORMATION
+
+7.1	Proprietary information.  Licensee acknowledges that pursuant to this Agreement it will be receiving information which is proprietary and confidential to AUDIOKINETIC and is a confidential trade secret and valuable asset of AUDIOKINETIC which may (i) be the subject of one or more patent applications, which AUDIOKINETIC wishes to protect from public disclosure (“Proprietary Information”).  “Proprietary Information” shall also include (i) any information designated as confidential by AUDIOKINETIC, (ii) the economic terms of this Agreement and (iii) any information relating to AUDIOKINETIC’s products, plans, product designs, product costs, product prices, product names, finances, marketing plans, business opportunities, business plan, personnel, research, development, or know-how.
+
+7.2	Exclusions.  Each party acknowledges that the following will not be considered “Proprietary Information” for the purposes of this Agreement: (a) information which is publicly available in the public domain at the time it is communicated to Licensee by AUDIOKINETIC; (b) information which is or becomes publicly available or public domain information through no fault of Licensee subsequent to the time it is communicated to Licensee by AUDIOKINETIC; (c) information which is in Licensee’s possession free of any obligation of confidence to AUDIOKINETIC at the time it is communicated to Licensee by AUDIOKINETIC; (d) information which is rightfully communicated to Licensee free of any obligation of confidence subsequent to the time it is communicated to Licensee by AUDIOKINETIC; (e) information which was independently developed by Licensee without use of the other party’s Proprietary Information; or (f) information which is required to be disclosed pursuant to law or to the order, requirement or request of a court of government authority.
+
+7.3	Restrictive Use Conditions.  Licensee (i) will hold such Proprietary Information in confidence and will not disclose it, except to its employees, officers or authorized representatives and those of its authorized sub-licensees with a need to know for purposes of performing their duties, who are similarly bound to hold the Proprietary Information in confidence and, with respect to the AUDIOKINETIC Wwise Technology, who have been given an individual access code by AUDIOKINETIC, (ii) shall prevent inadvertent or unauthorized disclosure or dissemination of any Proprietary Information, and (iii) agrees to take appropriate action with its employees, officers and authorized representatives and those of its authorized sub-licensees to satisfy its obligations under this Agreement with respect to the use, copying, modification, protection and security of the Proprietary Information.
+
+7.4	Notice and Return of Information.  Licensee shall notify AUDIOKINETIC immediately upon discovery of any unauthorized use or disclosure of Proprietary Information, and will cooperate with AUDIOKINETIC in every reasonable way to help AUDIOKINETIC regain possession of the Proprietary Information and prevent its further unauthorized use.  Licensee shall return all originals, copies, reproductions and summaries of Proprietary Information at AUDIOKINETIC’s request or, at AUDIOKINETIC’s option, certify destruction of the same with the sworn statement of one of its officers, except where same is required for the exercise of Licensee’s rights under this Agreement.
+
+7.5	Rights and Remedies.  Licensee acknowledges that monetary damages may not be a sufficient remedy for unauthorized disclosure of Proprietary Information and that AUDIOKINETIC shall be entitled, without waiving any other rights or remedies, to such injunctive or equitable relief as may be deemed proper by a court of competent jurisdiction.
+
+8.	DISCLAIMER
+
+8.1	THE AUDIOKINETIC WWISE TECHNOLOGY IS PROVIDED “AS IS” AND “WHERE IS” BY AUDIOKINETIC AND IS ACCEPTED AS SUCH BY LICENSEE. AUDIOKINETIC DISCLAIMS ALL EXPRESS AND IMPLIED WARRANTIES RELATING TO THE AUDIOKINETIC WWISE TECHNOLOGY AND DOCUMENTATION, INCLUDING BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE AND NON-INFRINGEMENT.  AUDIOKINETIC DOES NOT WARRANT THAT THE AUDIOKINETIC WWISE TECHNOLOGY OR DOCUMENTATION WILL MEET LICENSEE’S REQUIREMENTS, OR THAT THE OPERATION OF THE AUDIOKINETIC WWISE TECHNOLOGY AND THE DOCUMENTATION WILL BE UNINTERRUPTED OR ERROR FREE.   LICENSEE AGREES THAT AUDIOKINETIC WILL NOT BE LIABLE FOR ANY DAMAGES THAT LICENSEE OR ITS END USERS OR ITS GAME PLAYERS MAY INCUR ARISING OUT OF THE USE OR INABILITY TO USE THE AUDIOKINETIC WWISE TECHNOLOGY OR LICENSEE DEVELOPED GAME.
+
+9.	LIMITATION OF LIABILITY
+
+9.1	EXCEPT AS SPECIFICALLY PROVIDED IN THIS AGREEMENT, AND EXCEPT IN RELATION TO BREACHES OF AUDIOKINETIC’S INTELLECTUAL PROPERTY RIGHTS, IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, PUNITIVE, RELIANCE OR CONSEQUENTIAL DAMAGES, WHETHER FORESEEABLE OR NOT, INCLUDING, BUT NOT LIMITED TO, DAMAGE OR LOSS OF PROPERTY, EQUIPMENT, INFORMATION OR DATA, LOSS OF PROFITS, REVENUE OR GOODWILL OR COST OF REPLACEMENT SERVICES OCCASIONED BY ANY DEFECT IN THE AUDIOKINETIC WWISE TECHNOLOGY, THE INABILITY TO USE SERVICES PROVIDED HEREUNDER OR ANY OTHER CAUSE WHATSOEVER WITH RESPECT TO THE AUDIOKINETIC WWISE TECHNOLOGY OR THIS AGREEMENT, REGARDLESS OF THEORY OF LIABILITY.  THIS LIMITATION WILL APPLY EVEN IF THE OTHER PARTY HAS BEEN ADVISED OR IS AWARE OF THE POSSIBILITY OF SUCH DAMAGES.
+
+9.2	IN NO EVENT SHALL AUDIOKINETIC’S LIABILITY FOR ANY CLAIM ARISING OUT OF THIS AGREEMENT EXCEED THE AMOUNT OF FEES DUE FROM LICENSEE TO AUDIOKINETIC FOR THE RELEVANT LICENSEE DEVELOPED GAME, AS APPLICABLE, DURING THE TWELVE (12) MONTHS PRIOR TO THE OCCURRENCE GIVING RISE TO SUCH CLAIM.
+
+10.	TERM AND TERMINATION
+
+10.1	Term.  Unless terminated earlier as provided herein, this Agreement shall commence upon acceptance of this agreement and shall continue perpetually once such license is granted.
+
+10.2	Termination.  AUDIOKINETIC may terminate this Agreement if the Licensee materially breaches this Agreement and such material breach is not cured within thirty (30) days of written notice describing the breach.  
+
+10.3	Effect of Termination/Expiration.  Upon the expiration or termination of this Agreement or any of the licenses granted hereunder: (a) all of Licensee’s rights hereunder shall terminate; and (b) within fifteen (15) days of the expiration or termination date Licensee shall, at its own expense, and at AUDIOKINETIC’s sole option, either return all copies of the AUDIOKINETIC Wwise Technology in its possession or control, or, shall destroy all copies of the AUDIOKINETIC Wwise Technology in its possession or control.
+
+10.4	Survival.  Section 1 (Definitions), Section 3 (Ownership), Section 4.1 (Restrictions on use), 5 (Trademark License), Section 6 (Proprietary Information), Section  8 (Disclaimer), Section 9 (Limitation of Liability), Section 10.3 (Effect of Termination), this Section 10.4 (Survival) and Section 11.7 (Governing Law) shall survive the termination or expiration of this Agreement in accordance with their terms.
+
+11.	MISCELLANEOUS
+
+11.1	New EULA.  The text of this Agreement may be amended from time to time by AUDIOKINETIC. Such amendments will become effective and enforceable against Licensee upon express acceptance of same either through the execution of a written instrument to that effect or the acceptance of the new terms through AUDIOKINETIC Wwise Technology’s installation process.
+
+11.2	Waiver.  Any failure to enforce by either party of any term or condition of this Agreement or any breach thereof, in any one instance, shall not be deemed or construed to be a waiver of such term or condition or any subsequent breach thereof.
+
+11.3	Notices.  Any notice under this Agreement will be in writing and will be personally delivered, sent by a reputable overnight mail service (e.g. Federal Express) or by registered mail, or by facsimile confirmed by registered mail, to the other party.  Notices will be deemed effective (a) three (3) working days after deposit, postage prepaid, if mailed, (b) the next day if sent by overnight mail, or (c) the same day if sent by facsimile and confirmed as set forth above.  A copy of any notice will be sent to the following:
+
+Notice to AUDIOKINETIC:
+	215 St-Jacques Street
+	Suite 1000
+	Montreal, Quebec 
+	Canada H2Y 1M6
+	Fax: +1514 499-9109
+	Attention: President and Chief Executive Officer
+
+11.4	Assignment.  This Agreement or any licenses granted hereunder may not be assigned or sublicensed by Licensee in whole or in part other than as provided hereunder (by contract, merger, operation of law or otherwise) without the prior written consent of AUDIOKINETIC, such consent not to be unreasonably withheld or delayed.  AUDIOKINETIC may assign this Agreement with notice to Licensee in the event of a merger, acquisition or similar corporate activity provided that the surviving entity agrees to be bound by the terms of this Agreement.  This Agreement shall be binding upon and inure for the benefit of the successors in title of the parties hereto.
+
+11.5	Export.  Licensee agrees to comply with all export laws, restrictions, national security controls and regulations of the United States or other applicable national or foreign agency or authority, and not to export or re-export, or allow the export or re-export of any proprietary information or any copy or direct product thereof in violation of any such restrictions, laws or regulations.
+
+11.6	Independent Contractors.  Each party will act at all times as an independent contractor and will have no right or authority to act on behalf of, create any obligation for, or bind the other party in any way.  Nothing in this Agreement will be deemed to create a partnership or joint venture between the parties.
+
+11.7	Governing Law.  This Agreement shall not be modified or amended except in writing and signed by both parties.  This Agreement will be governed by and construed under the laws of the province of Quebec and the laws of Canada applicable therein and the parties hereto submit to the exclusive jurisdiction of the courts of Province of Quebec, District of Montreal.
+

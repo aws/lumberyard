@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<Params>
+	<AnimationList>
+		<Animation name="#filepath" path="Animations\animals\turtles\red_eared_slider"/>
+
+		<Animation name="walk_loop" path="turtle_walk.caf"/>
+		<Animation name="idle_loop" path="turtle_idle.caf"/>
+		<Animation name="scared" path="turtle_scared.caf"/>
+		<Animation name="pickup" path="turtle_pickup.caf"/>
+		<Animation name="throw" path="turtle_throw.caf"/>
+		<Animation name="idle3" path="turtle_idle02.caf"/>
+		<Animation name="swim_loop" path="turtle_swim_loop.caf"/>
+	</AnimationList>
+</Params>

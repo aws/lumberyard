@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Durango": [
+            "Platform_durango.cpp"
+        ]
+    }
+}

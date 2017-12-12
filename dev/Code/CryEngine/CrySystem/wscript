@@ -1,0 +1,74 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+def build(bld):
+
+    bld.CryEngineModule(
+
+        # Settings
+        target                  = 'CrySystem',
+        vs_filter               = 'CryEngine',
+        copyright_org           = 'Amazon-CryTek',
+        file_list               = 'crysystem.waf_files',
+        platforms               = ['all'],
+        configurations          = ['all'],
+        pch                     = 'StdAfx.cpp',
+        use                     = ['AzFramework',
+                                   'GridMate'],
+        uselib                  = ['LZ4',
+                                   'TIFF',
+                                   'TOMCRYPT',
+                                   'TOMMATH',
+                                   'EXPAT',
+                                   'ZLIB',
+                                   'MD5'],
+        includes                = [ bld.Path('Code/SDKs'),
+                                    bld.Path('Code/Tools/GemRegistry/include') ],
+        libpath                 = [ bld.Path('Code/SDKs') ],
+
+        # Platform Specific
+        win_defines             = ['EXCLUDE_CINEMIZER_SDK', 'KDAB_MAC_PORT'],
+        win_file_list           = 'platformos_pc.waf_files',
+        win_linkflags           = '/NODEFAULTLIB:libcmt.lib',
+        win_cxxflags            = '/EHsc',
+        win_lib                 = ['wininet', 'Shell32', 'Ole32', 'Gdi32', 'ws2_32'],
+        
+        darwin_file_list        = 'platformos_pc.waf_files',
+        darwin_lib              = ['ncurses'],
+
+        linux_file_list         = 'platformos_pc.waf_files',
+        linux_lib               = [ 'tomcrypt', 'tommath', 'm' ],
+
+       
+
+       
+       
+       
+
+        android_use             = [ 'SDL2', 'SDL2Ext' ],
+        android_file_list       = 'platformos_pc.waf_files',
+        android_includes        = [bld.Path('/Code/CryEngine/CrySystem/JobManager'),
+                                   bld.Path('/Code/CryEngine/CrySystem/XML/Expat'),
+                                   bld.Path('/Code/CryEngine/RenderDll/XRenderD3D9') ],
+
+        ios_file_list           = 'platformos_pc.waf_files',
+
+        appletv_file_list       = 'platformos_pc.waf_files',
+
+        # Testing
+        test_all_file_list      = ['crysystem_test.waf_files'],
+    )
+
+

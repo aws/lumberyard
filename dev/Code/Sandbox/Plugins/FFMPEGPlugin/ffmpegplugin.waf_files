@@ -1,0 +1,20 @@
+{
+	"none":
+	{
+		"Root":
+		[
+			"FFMPEGPlugin.rc",
+			"main.cpp",
+			"stdafx.cpp",
+			"stdafx.h"
+		]
+	},
+	"auto":
+	{
+		"Root":
+		[
+			"FFMPEGPlugin.cpp",
+			"FFMPEGPlugin.h"
+		]
+	}
+}

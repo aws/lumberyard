@@ -1,0 +1,42 @@
+
+SUBFOLDERS = [
+        'EditorPlugin'
+    ]
+
+def build(bld):
+
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemdynamiccontent.waf_files')
+        file_list.append('lmbraws_unsupported.waf_files')
+        file_list.append('cloudgemdynamiccontent_sdk.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('cloudgemdynamiccontent.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')
+
+        aws_files = ['cloudgemdynamiccontent_sdk.waf_files']
+        aws_use = []
+
+        if lumberyard_sdks.should_project_include_aws_native_sdk(bld):
+            file_list += aws_files
+
+    bld.DefineGem(
+        uselib          = ['AWS_CPP_SDK_ALL', 'OPENSSL'],
+        includes        = [bld.Path('Code/CryEngine/CryAction'),
+                           bld.Path('Code/CryEngine/CrySystem')
+        ],
+        use = ['CloudGemFrameworkStaticLibrary'],
+        file_list   = file_list,
+        pch     = '',
+        platforms = ['all'],
+
+        shared_settings = ['awsgem.json'],
+
+        win_lib    = ['gdi32'],
+    )
+
+    bld.recurse(SUBFOLDERS)

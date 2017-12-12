@@ -1,0 +1,19 @@
+{
+    "Version" : "1.0.0",
+    "Comment" : "This file for users to add any capabilities and SDKs wanted.",
+    "CodeFolderName" : "Code",
+    "ToolsFolderName" : "Tools",
+    "RememberEngineRootFolder" : false,
+    "Capabilities" :
+    [
+    ],
+    "DownloadRules" :
+    [
+    ],
+    "SDKs" :
+    [
+    ],
+    "MayaEnvironments" :
+    [
+    ]
+}

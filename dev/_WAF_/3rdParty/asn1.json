@@ -1,0 +1,15 @@
+{
+    "name": "ASN1",
+    "source": "@ROOT@/Code/SDKs/asn1",
+    "description": "Abstract Syntax Notation 1",
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "ios": {
+            "includes": ["Source"],
+            "libpath_debug": ["Lib/ios/debug"],
+            "libpath_release": ["Lib/ios/release"],
+            "lib": ["libasn1.a"]
+        }
+    }
+}

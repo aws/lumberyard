@@ -1,0 +1,9 @@
+<RCC>
+	<qresource prefix="/RollupBar/icons">
+		<file alias="rollup_0.png">icons/rollup_0.png</file>
+		<file alias="rollup_1.png">icons/rollup_1.png</file>
+		<file alias="rollup_2.png">icons/rollup_2.png</file>
+		<file alias="rollup_3.png">icons/rollup_3.png</file>
+		<file alias="rollup_4.png">icons/rollup_4.png</file>
+	</qresource>
+</RCC>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CSubObjSelectionTypePanel</class>
+ <widget class="QWidget" name="CSubObjSelectionTypePanel">
+  <property name="geometry">
+   <rect>
+	<width>50</width>
+	<height>30</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Selection Type</string>
+  </property>
+  <layout class="QHBoxLayout" name="MAIN_LAYOUT">
+   <item>
+	<widget class="QListWidget" name="SELECTION_TYPE_LIST_WIDGET"/>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

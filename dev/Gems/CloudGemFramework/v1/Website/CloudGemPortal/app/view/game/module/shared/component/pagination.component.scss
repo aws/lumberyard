@@ -1,0 +1,13 @@
+@import './styles/variables';
+
+.page-link {
+    color: $primary-color;
+    &:focus, &:hover {
+        color: $primary-color;
+    }
+}
+
+.page-active {
+    color: $white !important;
+    background-color: $border-purple;
+}

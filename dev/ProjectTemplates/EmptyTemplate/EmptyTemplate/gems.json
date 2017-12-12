@@ -1,0 +1,59 @@
+{
+    "GemListFormatVersion": 2, 
+    "Gems": [
+        {
+            "Path": "Gems/PBSreferenceMaterials",
+            "Uuid": "07375b61b1a2424bb03088bbdf28b2c8",
+            "Version": "0.1.0",
+            "_comment": "PBSreferenceMaterials"
+        },
+        {
+            "Path" : "Gems/Camera",
+            "Uuid" : "f910686b6725452fbfc4671f95f733c6",
+            "Version" : "0.1.0",
+            "_comment" : "Camera"
+        },
+        {
+            "Path" : "Gems/PhysicsEntities",
+            "Uuid" : "99ea531451fc4f64a5a9fe8f385e8a76",
+            "Version" : "0.1.0",
+            "_comment" : "PhysicsEntities"
+        },
+        {
+            "Path" : "Gems/UiBasics",
+            "Uuid" : "6bb61c9e547043f0afc5019d6d460b78",
+            "Version" : "0.1.0",
+            "_comment" : "UiBasics"
+        },
+        {
+            "Path": "Gems/UserLoginDefault",
+            "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
+            "Version": "0.1.0",
+            "_comment": "UserLoginDefault"
+        },
+        {
+            "Path": "Gems/CryLegacy",
+            "Uuid": "352fef7706634c92814c587e84d7165a",
+            "Version": "0.1.0",
+            "_comment": "CryLegacy"
+        },
+        {
+            "Path": "Gems/LmbrCentral",
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "Version": "0.1.0",
+            "_comment": "LmbrCentral"
+        },
+        {
+            "Path": "Gems/LyShine",
+            "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
+            "Version": "0.1.0",
+            "_comment": "LyShine"
+        },
+        {
+            "Path" : "{$ProjectName}/Gem",
+            "Uuid" : "${GemId}",
+            "Version" : "${GemVersion}",
+            "_comment" : "${GemName}"
+        }
+   ]
+}

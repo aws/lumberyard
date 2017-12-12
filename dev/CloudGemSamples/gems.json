@@ -1,0 +1,106 @@
+{
+    "GemListFormatVersion": 2,
+    "Gems": [
+        {
+            "Path": "Gems/AWS",
+            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+            "Version": "0.1.0",
+            "_comment": "AWS"
+        },
+        {
+            "Path": "Gems/LyShine",
+            "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
+            "Version": "0.1.0",
+            "_comment": "LyShine"
+        },
+        {
+            "Path": "Gems/CloudCanvasCommon",
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "Version": "0.1.0",
+            "_comment": "CloudCanvasCommon"
+        },
+        {
+            "Path": "Gems/CloudGemMessageOfTheDay",
+            "Uuid": "21cba308da7040439f88fc3a45c71e18",
+            "Version": "0.1.0",
+            "_comment": "CloudGemMessageOfTheDay"
+        },
+        {
+            "Path": "Gems/CryLegacy",
+            "Uuid": "352fef7706634c92814c587e84d7165a",
+            "Version": "0.1.0",
+            "_comment": "CryLegacy"
+        },
+        {
+            "Path": "Gems/CloudGemDynamicContent",
+            "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
+            "Version": "0.1.0",
+            "_comment": "CloudGemDynamicContent"
+        },
+        {
+            "Path": "Gems/StaticData",
+            "Uuid": "4a4bf593603c4f329c76c2a10779311b",
+            "Version": "1.0.0",
+            "_comment": "StaticData"
+        },
+        {
+            "Path": "Gems/UiBasics",
+            "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
+            "Version": "0.1.0",
+            "_comment": "UiBasics"
+        },
+        {
+            "Path": "Gems/CloudGemFramework/v1",
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "Version": "1.0.0",
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Path": "Gems/PhysicsEntities",
+            "Uuid": "99ea531451fc4f64a5a9fe8f385e8a76",
+            "Version": "0.1.0",
+            "_comment": "PhysicsEntities"
+        },
+        {
+            "Path": "Gems/CloudGemLeaderboard",
+            "Uuid": "a6db8cb7bfd645509f538bcb0ddc5343",
+            "Version": "0.1.0",
+            "_comment": "CloudGemLeaderboard"
+        },
+        {
+            "Path": "Gems/UserLoginDefault",
+            "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
+            "Version": "0.1.0",
+            "_comment": "UserLoginDefault"
+        },
+        {
+            "Path": "Gems/CloudGemAWSScriptBehaviors",
+            "Uuid": "eeea32a28cba4992a3aad86812a71477",
+            "Version": "0.1.0",
+            "_comment": "CloudGemAWSScriptBehaviors"
+        },
+        {
+            "Path": "Gems/Camera",
+            "Uuid": "f910686b6725452fbfc4671f95f733c6",
+            "Version": "0.1.0",
+            "_comment": "Camera"
+        },
+        {
+            "Path": "CloudGemSamples/Gem",
+            "Uuid": "fcbd8e2e64af487fb1faecd2a133a0ce",
+            "Version": "0.1.0"
+        },
+        {
+            "Path": "Gems/CloudGemPlayerAccount",
+            "Uuid": "fd4ea4ff80a64bb9a90e55b46e9539ef",
+            "Version": "0.1.0",
+            "_comment": "CloudGemPlayerAccount"
+        },
+        {
+            "Path": "Gems/LmbrCentral",
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "Version": "0.1.0",
+            "_comment": "LmbrCentral"
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Root": [
+            "AzTest.h",
+            "AzTest.cpp",
+            "Platform.h",
+            "Utils.h",
+            "Utils.cpp"
+        ]
+    }
+}

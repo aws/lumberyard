@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AssetBrowserPreviewCharacterDlg</class>
+ <widget class="QWidget" name="AssetBrowserPreviewCharacterDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>663</width>
+    <height>50</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <widget class="QCheckBox" name="m_checkWireframe">
+     <property name="text">
+      <string>Wireframe</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="m_checkPhysics">
+     <property name="text">
+      <string>Physics</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="m_checkNormals">
+     <property name="text">
+      <string>Normals</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>112</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QLabel" name="m_labelLighting">
+     <property name="text">
+      <string>Lighting:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="m_lightingCB"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_buttonSaveThumbAngle">
+     <property name="text">
+      <string>Snap thumb</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_buttonResetView">
+     <property name="text">
+      <string>Reset view</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_fullscreenBtn">
+     <property name="icon">
+      <iconset resource="../../AssetBrowser.qrc">
+       <normaloff>:/AssetBrowser/model_viewport_fullscreen.png</normaloff>:/AssetBrowser/model_viewport_fullscreen.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>24</width>
+       <height>24</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>110</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../../AssetBrowser.qrc"/>
+ </resources>
+ <connections/>
+</ui>

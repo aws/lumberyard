@@ -1,0 +1,8 @@
+<RCC>
+	<qresource prefix="/subObjSelectionType">
+		<file alias="vertex">assets/subObjSelectionTypeVertex.png</file>
+		<file alias="edge">assets/subObjSelectionTypeEdge.png</file>
+		<file alias="face">assets/subObjSelectionTypeFace.png</file>
+		<file alias="polygon">assets/subObjSelectionTypePolygon.png</file>
+	</qresource>
+</RCC>

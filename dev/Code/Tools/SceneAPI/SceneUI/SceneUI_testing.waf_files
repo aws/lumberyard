@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "Tests": 
+        [
+            "Tests/TestsMain.cpp"
+        ],
+        "Tests/RowWidgets":
+        [
+            "Tests/RowWidgets/TransformRowWidgetTests.cpp"
+        ]
+    }
+}

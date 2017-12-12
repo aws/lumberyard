@@ -1,0 +1,10 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "tests/ResourceCompilerSliceTest.cpp"
+        ]
+    }
+}
+

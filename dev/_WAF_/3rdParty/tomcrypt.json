@@ -1,0 +1,106 @@
+{
+    "name": "TomCrypt",
+    "source": "@ROOT@/Code/SDKs/LibTomCrypt",
+    "description": "LibTomCrypt open source library (http://www.libtom.org/)",
+    "includes": [
+        "src/headers"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath": [
+                "lib/x64"
+            ],
+            "lib_release": [
+                "libtomcrypt.lib"
+            ],
+            "lib_debug": [
+                "libtomcrypt_debug.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath": [
+                "lib/x64_vc14"
+            ],
+            "lib_release": [
+                "libtomcrypt.lib"
+            ],
+            "lib_debug": [
+                "libtomcrypt_debug.lib"
+            ]
+        },
+        "durango": {
+            "libpath": [
+                "lib/x64_vc14"
+            ],
+            "lib_release": [
+                "libtomcrypt.lib"
+            ],
+            "lib_debug": [
+                "libtomcrypt_debug.lib"
+            ]
+        },
+        "orbis": {
+            "libpath": [
+                "lib/orbis"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ]
+        },
+        "darwin_x64": {
+            "libpath": [
+                "lib/mac"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ],
+            "linkflags": [
+                "-force_load",
+                "%LIBPATH(libtomcrypt.a)"
+            ]
+        },
+        "ios": {
+            "libpath": [
+                "lib/ios"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ],
+            "linkflags": [
+                "-force_load",
+                "%LIBPATH(libtomcrypt.a)"
+            ]
+        },
+        "appletv": {
+            "libpath": [
+                "lib/appletv"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ],
+            "linkflags": [
+                "-force_load",
+                "%LIBPATH(libtomcrypt.a)"
+            ]
+        },
+        "android_armv7_gcc": {
+            "libpath": [
+                "lib/android-armeabi-v7a"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ]
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
+        "linux_x64": {
+            "libpath": [
+                "lib/linux"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ]
+        }
+    }
+}

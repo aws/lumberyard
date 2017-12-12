@@ -1,0 +1,39 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "resource.h",
+            "StdAfx.cpp",
+            "StdAfx.h"
+        ]
+    },
+    "auto":
+    {
+        "Audio Input":
+        [
+            "AudioInput/AudioInputFile.cpp",
+            "AudioInput/AudioInputFile.h",
+            "AudioInput/WavParser.cpp",
+            "AudioInput/WavParser.h"
+        ],
+        "Header Files":
+        [
+            "ATLEntities_wwise.h",
+            "AudioSourceManager.h",
+            "AudioSystemImpl_wwise.h",
+            "AudioSystemImplCVars.h",
+            "Common_wwise.h",
+            "FileIOHandler_wwise.h"
+        ],
+        "Source Files":
+        [
+            "AudioSourceManager.cpp",
+            "AudioSystemImpl_wwise.cpp",
+            "AudioSystemImplCVars.cpp",
+            "Common_wwise.cpp",
+            "CryAudioImplWwise.cpp",
+            "FileIOHandler_wwise.cpp"
+        ]
+    }
+}

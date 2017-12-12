@@ -1,0 +1,12 @@
+{
+    "description": "Configuration for EmptyTemplate",
+    "visual_studio_name": "EmptyTemplate",
+    "comment" : "",
+    "game_projects" : "EmptyTemplate",
+
+    "modules" : [
+        "AzCore",
+        "AzFramework",
+        "AzGameFramework"
+    ]
+}

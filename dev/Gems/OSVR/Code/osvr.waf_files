@@ -1,0 +1,16 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/OSVR/OSVRBus.h"
+        ],
+        "Source": [
+            "Source/OSVRGem.cpp"
+        ]
+    }
+}

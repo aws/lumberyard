@@ -1,0 +1,3243 @@
+<CharacterSettings>
+  <FileInfo Rev="1.0" />
+  <Characters>
+    <Character Name="Human" Active="true">
+      <Setup Name="Nanosuit" Active="true" SourcePath="GameCrysis2\_Animations_source\human\male\" GamePath="GameCrysis2\Animations\human\male\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\us\nanosuit_v2\nanosuit_v2_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="CrynetOps" Active="true" SourcePath="GameCrysis2\_Animations_source\human\male\" GamePath="GameCrysis2\Animations\human\male\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\us\crynetsoldier\crynetsoldier_rig_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+    </Character>
+    <Character Name="Story" Active="true">
+      <Setup Name="Cara" Active="true" SourcePath="GameCrysis2\_Animations_source\human\female\" GamePath="GameCrysis2\Animations\human\female\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\faraa\faraa_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Barclay" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\barclay\" GamePath="GameCrysis2\Animations\human\story\barclay\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\barclay\barclay_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Chino" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\chino\" GamePath="GameCrysis2\Animations\human\story\chino\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\chino\chino_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Gould" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\gould\" GamePath="GameCrysis2\Animations\human\story\gould\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\gould\nathangould_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="San Quentin" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\san-q\" GamePath="GameCrysis2\Animations\human\story\san-q\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\san-q\san-q_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Lockhart" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\lockhart\" GamePath="GameCrysis2\Animations\human\story\lockhart\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\lockhart\lockhart_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Hargreave" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\hargreave\" GamePath="GameCrysis2\Animations\human\story\hargreave\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\hargreave\hargreave_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Generic" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\" GamePath="GameCrysis2\Animations\human\story\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\us\nanosuit_v2\nanosuit_v2_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01" />
+          <Node Name="Bip01 Camera" />
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 L Calf" />
+          <Node Name="Bip01 L Clavicle" />
+          <Node Name="Bip01 L Finger01" />
+          <Node Name="Bip01 L Finger02" />
+          <Node Name="Bip01 L Finger0" />
+          <Node Name="Bip01 L Finger1" />
+          <Node Name="Bip01 L Finger11" />
+          <Node Name="Bip01 L Finger12" />
+          <Node Name="Bip01 L Finger21" />
+          <Node Name="Bip01 L Finger22" />
+          <Node Name="Bip01 L Finger2" />
+          <Node Name="Bip01 L Finger31" />
+          <Node Name="Bip01 L Finger32" />
+          <Node Name="Bip01 L Finger3" />
+          <Node Name="Bip01 L Finger4" />
+          <Node Name="Bip01 L Finger41" />
+          <Node Name="Bip01 L Finger42" />
+          <Node Name="Bip01 L Foot" />
+          <Node Name="Bip01 L Forearm" />
+          <Node Name="Bip01 L Hand" />
+          <Node Name="Bip01 L Thigh" />
+          <Node Name="Bip01 L Toe0" />
+          <Node Name="Bip01 L UpperArm" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Pelvis" />
+          <Node Name="Bip01 R Calf" />
+          <Node Name="Bip01 R Clavicle" />
+          <Node Name="Bip01 R Finger0" />
+          <Node Name="Bip01 R Finger01" />
+          <Node Name="Bip01 R Finger02" />
+          <Node Name="Bip01 R Finger1" />
+          <Node Name="Bip01 R Finger11" />
+          <Node Name="Bip01 R Finger12" />
+          <Node Name="Bip01 R Finger21" />
+          <Node Name="Bip01 R Finger22" />
+          <Node Name="Bip01 R Finger2" />
+          <Node Name="Bip01 R Finger31" />
+          <Node Name="Bip01 R Finger3" />
+          <Node Name="Bip01 R Finger32" />
+          <Node Name="Bip01 R Finger41" />
+          <Node Name="Bip01 R Finger42" />
+          <Node Name="Bip01 R Finger4" />
+          <Node Name="Bip01 R Foot" />
+          <Node Name="Bip01 R Forearm" />
+          <Node Name="Bip01 R Hand" />
+          <Node Name="Bip01 R Thigh" />
+          <Node Name="Bip01 R Toe0" />
+          <Node Name="Bip01 R UpperArm" />
+          <Node Name="Bip01 Spine1" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Bip01 Spine" />
+          <Node Name="Bip01 Spine2" />
+          <Node Name="Locator_Locomotion" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 L Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 R Clavicle">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="1" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="1" Value="&quot;reload&quot;" />
+          </Node>
+          <Node Name="Bip01 Spine">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="3" Value="&quot;reload&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="1" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Bip01" />
+        </GameBones>
+      </Setup>
+    </Character>
+    <Character Name="Story Facial" Active="true">
+      <Setup Name="Barclay" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\barclay\facial\" GamePath="GameCrysis2\Animations\human\story\barclay\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\barclay\barclay_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Cara" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\cara\facial\" GamePath="GameCrysis2\Animations\human\story\cara\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\faraa\faraa_FaceExport.max" AutoSync="false" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Chino" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\chino\facial\" GamePath="GameCrysis2\Animations\human\story\chino\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\chino\chino_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Gould" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\gould\facial\" GamePath="GameCrysis2\Animations\human\story\gould\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\gould\nathangould_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Hargreave" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\hargreave\facial\" GamePath="GameCrysis2\Animations\human\story\hargreave\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\hargreave\hargreave_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Lockhart" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\lockhart\facial\" GamePath="GameCrysis2\Animations\human\story\lockhart\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\lockhart\lockhart_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Lockhart_02_eyes" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Prophet" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\prophet\facial\" GamePath="GameCrysis2\Animations\human\story\prophet\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\prophet\prophet_FaceExport.max" AutoSync="false" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyeBrows_sdk_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheek_sdk_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_atMouth_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheek_sdk_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_atMouth_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+      <Setup Name="San-Q" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\san-q\facial\" GamePath="GameCrysis2\Animations\human\story\san-q\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\san-q\san-q_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="def_head" />
+        </GameBones>
+      </Setup>
+    </Character>
+    <Character Name="Story Facial Pro" Active="true">
+      <Setup Name="Barclay" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\barclay\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\barclay\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\barclay\barclay_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Cara" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\cara\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\cara\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\faraa\faraa_FaceExport.max" AutoSync="false" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Chino" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\chino\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\chino\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\chino\chino_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Look" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Gould" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\gould\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\gould\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\gould\nathangould_FaceExport.max" AutoSync="false" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="false" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Hargreave" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\hargreave\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\hargreave\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\hargreave\hargreave_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Lockhart" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\lockhart\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\lockhart\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\lockhart\lockhart_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="Lockhart_02_eyes" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_at_jaw_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_at_jaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Prophet" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\prophet\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\prophet\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\prophet\prophet_FaceExport.max" AutoSync="false" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_barnesTransform" />
+          <Node Name="pup_blendShape_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyeBrows_sdk_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheek_sdk_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_atMouth_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheek_sdk_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_atMouth_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_atJaw_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+      <Setup Name="San-Q" Active="true" SourcePath="GameCrysis2\_Animations_source\human\story\san-q\facial\Pro\" GamePath="GameCrysis2\Animations\human\story\san-q\facial\">
+        <Model ModelPath="GameCrysis2\Objects\characters\human\story\san-q\san-q_FaceExport.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="Bip01 Head" />
+          <Node Name="Bip01 Neck" />
+          <Node Name="Bip01 Spine3" />
+          <Node Name="pup_adamsApple_CTRL" />
+          <Node Name="pup_chin_CTRL" />
+          <Node Name="pup_eyesTransformParent_CTRL" />
+          <Node Name="pup_head_CTRL" />
+          <Node Name="pup_jaw_CTRL" />
+          <Node Name="pup_l_brow_A_CTRL" />
+          <Node Name="pup_l_brow_B_CTRL" />
+          <Node Name="pup_l_brow_C_CTRL" />
+          <Node Name="pup_l_cheek_CTRL" />
+          <Node Name="pup_l_cheekOutter_CTRL" />
+          <Node Name="pup_l_ear_CTRL" />
+          <Node Name="pup_l_eye_CTRL" />
+          <Node Name="pup_l_eyeBrow_CTRL" />
+          <Node Name="pup_l_innerCheek_CTRL" />
+          <Node Name="pup_l_lipCorner_b_CTRL" />
+          <Node Name="pup_l_lipCorner_CTRL" />
+          <Node Name="pup_l_lipCorner_sdk_CTRL" />
+          <Node Name="pup_l_lipCorner_t_CTRL" />
+          <Node Name="pup_l_lowerEyeLid_CTRL" />
+          <Node Name="pup_l_lowerLip_b_CTRL" />
+          <Node Name="pup_l_lowerLip_CTRL" />
+          <Node Name="pup_l_lowerLip_f_CTRL" />
+          <Node Name="pup_l_lowerLip_sdk_CTRL" />
+          <Node Name="pup_l_nasalLabialFold_CTRL" />
+          <Node Name="pup_l_nostril_CTRL" />
+          <Node Name="pup_l_temple_CTRL" />
+          <Node Name="pup_l_UpperCheek_CTRL" />
+          <Node Name="pup_l_upperEyeLid_CTRL" />
+          <Node Name="pup_l_upperLip_b_CTRL" />
+          <Node Name="pup_l_upperLip_CTRL" />
+          <Node Name="pup_l_upperLip_f_CTRL" />
+          <Node Name="pup_l_upperLip_sdk_CTRL" />
+          <Node Name="pup_lowerLip_b_CTRL" />
+          <Node Name="pup_lowerLip_CTRL" />
+          <Node Name="pup_lowerLip_f_CTRL" />
+          <Node Name="pup_lowerLip_sdk_CTRL" />
+          <Node Name="pup_midBrows_CTRL" />
+          <Node Name="pup_mouthMain_CTRL" />
+          <Node Name="pup_neck_1_CTRL" />
+          <Node Name="pup_noseMain_CTRL" />
+          <Node Name="pup_r_brow_A_CTRL" />
+          <Node Name="pup_r_brow_B_CTRL" />
+          <Node Name="pup_r_brow_C_CTRL" />
+          <Node Name="pup_r_cheek_CTRL" />
+          <Node Name="pup_r_cheekOutter_CTRL" />
+          <Node Name="pup_r_ear_CTRL" />
+          <Node Name="pup_r_eye_CTRL" />
+          <Node Name="pup_r_eyeBrow_CTRL" />
+          <Node Name="pup_r_innerCheek_CTRL" />
+          <Node Name="pup_r_lipCorner_b_CTRL" />
+          <Node Name="pup_r_lipCorner_CTRL" />
+          <Node Name="pup_r_lipCorner_sdk_CTRL" />
+          <Node Name="pup_r_lipCorner_t_CTRL" />
+          <Node Name="pup_r_lowerEyeLid_CTRL" />
+          <Node Name="pup_r_lowerLip_b_CTRL" />
+          <Node Name="pup_r_lowerLip_CTRL" />
+          <Node Name="pup_r_lowerLip_f_CTRL" />
+          <Node Name="pup_r_lowerLip_sdk_CTRL" />
+          <Node Name="pup_r_nasalLabialFold_CTRL" />
+          <Node Name="pup_r_nostril_CTRL" />
+          <Node Name="pup_r_temple_CTRL" />
+          <Node Name="pup_r_UpperCheek_CTRL" />
+          <Node Name="pup_r_upperEyeLid_CTRL" />
+          <Node Name="pup_r_upperLip_b_CTRL" />
+          <Node Name="pup_r_upperLip_CTRL" />
+          <Node Name="pup_r_upperLip_f_CTRL" />
+          <Node Name="pup_r_upperLip_sdk_CTRL" />
+          <Node Name="pup_skull_CTRL" />
+          <Node Name="pup_sternumRoot_CTRL" />
+          <Node Name="pup_tongue_1_CTRL" />
+          <Node Name="pup_tongue_2_CTRL" />
+          <Node Name="pup_tongue_3_CTRL" />
+          <Node Name="pup_underChin_CTRL" />
+          <Node Name="pup_upperLip_b_CTRL" />
+          <Node Name="pup_upperLip_CTRL" />
+          <Node Name="pup_upperLip_f_CTRL" />
+          <Node Name="pup_upperLip_sdk_CTRL" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Bip01 Spine3" />
+        </GameBones>
+      </Setup>
+    </Character>
+    <Character Name="Alien" Active="true">
+      <Setup Name="Grunt" Active="true" SourcePath="GameCrysis2\_Animations_source\alien\grunt\" GamePath="GameCrysis2\Animations\alien\grunt\">
+        <Model ModelPath="GameCrysis2\Objects\characters\alien\grunt\Grunt_Rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="true" />
+        <SourceNodes>
+          <Node Name="_CNT_L_TopHand" />
+          <Node Name="_CNT_L_TopHand01" />
+          <Node Name="_CNT_L_TopHand02" />
+          <Node Name="_CNT_L_TopHand03" />
+          <Node Name="_CNT_L_TopHand04" />
+          <Node Name="_CNT_L_TopHand05" />
+          <Node Name="_CNT_L_TopHand06" />
+          <Node Name="CNT_Ankle_Left" />
+          <Node Name="CNT_Ankle_Right" />
+          <Node Name="CNT_BezierIK_Left_01" />
+          <Node Name="CNT_BezierIK_Left_02" />
+          <Node Name="CNT_BezierIK_Left_03" />
+          <Node Name="CNT_BezierIK_Right_01" />
+          <Node Name="CNT_BezierIK_Right_02" />
+          <Node Name="CNT_BezierIK_Right_03" />
+          <Node Name="CNT_Clavicle_Left" />
+          <Node Name="CNT_Clavicle_Right" />
+          <Node Name="CNT_FKArm01_Left" />
+          <Node Name="CNT_FKArm01_Right" />
+          <Node Name="CNT_FKArm02_Left" />
+          <Node Name="CNT_FKArm02_Right" />
+          <Node Name="CNT_FKArm03_Left" />
+          <Node Name="CNT_FKArm03_Right" />
+          <Node Name="CNT_FKArm04_Left" />
+          <Node Name="CNT_FKArm04_Right" />
+          <Node Name="CNT_FKArm05_Left" />
+          <Node Name="CNT_FKArm05_Right" />
+          <Node Name="CNT_FKArm06_Left" />
+          <Node Name="CNT_FKLeg01_Left" />
+          <Node Name="CNT_FKLeg01_Right" />
+          <Node Name="CNT_FKLeg02_Left" />
+          <Node Name="CNT_FKLeg02_Right" />
+          <Node Name="CNT_FKLeg03_Left" />
+          <Node Name="CNT_FKLeg03_Right" />
+          <Node Name="CNT_FKLeg04_Left" />
+          <Node Name="CNT_FKLeg04_Right" />
+          <Node Name="CNT_FKSpine1" />
+          <Node Name="CNT_FKSpine2" />
+          <Node Name="CNT_FKSpine3" />
+          <Node Name="CNT_FKSpine4" />
+          <Node Name="CNT_FootIK_Left" />
+          <Node Name="CNT_FootIK_Right" />
+          <Node Name="CNT_Grenade_Launcher_Base" />
+          <Node Name="CNT_Grenade_Launcher_Top" />
+          <Node Name="CNT_Head" />
+          <Node Name="CNT_HipsRotate" />
+          <Node Name="CNT_IKArm_Left" />
+          <Node Name="CNT_IKArm_Right" />
+          <Node Name="CNT_IKHand_Right" />
+          <Node Name="CNT_L_ShoulderPad" />
+          <Node Name="CNT_LeftFK_Toe1_01" />
+          <Node Name="CNT_LeftFK_Toe1_02" />
+          <Node Name="CNT_LeftFK_Toe1_03" />
+          <Node Name="CNT_LeftFK_Toe2_01" />
+          <Node Name="CNT_LeftFK_Toe2_02" />
+          <Node Name="CNT_LeftFK_Toe2_03" />
+          <Node Name="CNT_LeftFK_Toe3_01" />
+          <Node Name="CNT_LeftFK_Toe3_02" />
+          <Node Name="CNT_LeftFK_Toe3_03" />
+          <Node Name="CNT_LeftFK_Toe4_01" />
+          <Node Name="CNT_LeftFK_Toe4_02" />
+          <Node Name="CNT_LeftFK_Toe4_03" />
+          <Node Name="CNT_LeftIK_Toe1" />
+          <Node Name="CNT_LeftIK_Toe2" />
+          <Node Name="CNT_LeftIK_Toe3" />
+          <Node Name="CNT_LeftIK_Toe4" />
+          <Node Name="CNT_LeftIK_UpVec_Toe1" />
+          <Node Name="CNT_LeftIK_UpVec_Toe2" />
+          <Node Name="CNT_LeftIK_UpVec_Toe3" />
+          <Node Name="CNT_LeftIK_UpVec_Toe4" />
+          <Node Name="CNT_LeftLeg_UpVector" />
+          <Node Name="CNT_LegIKTop_Left" />
+          <Node Name="CNT_LegIKTop_Right" />
+          <Node Name="CNT_Neck" />
+          <Node Name="CNT_R_ShoulderPad" />
+          <Node Name="CNT_RightFK_Toe1_01" />
+          <Node Name="CNT_RightFK_Toe1_02" />
+          <Node Name="CNT_RightFK_Toe1_03" />
+          <Node Name="CNT_RightFK_Toe2_01" />
+          <Node Name="CNT_RightFK_Toe2_02" />
+          <Node Name="CNT_RightFK_Toe2_03" />
+          <Node Name="CNT_RightFK_Toe3_01" />
+          <Node Name="CNT_RightFK_Toe3_02" />
+          <Node Name="CNT_RightFK_Toe3_03" />
+          <Node Name="CNT_RightFK_Toe4_01" />
+          <Node Name="CNT_RightFK_Toe4_02" />
+          <Node Name="CNT_RightFK_Toe4_03" />
+          <Node Name="CNT_RightIK_Toe1" />
+          <Node Name="CNT_RightIK_Toe2" />
+          <Node Name="CNT_RightIK_Toe3" />
+          <Node Name="CNT_RightIK_Toe4" />
+          <Node Name="CNT_RightIK_UpVec_Toe1" />
+          <Node Name="CNT_RightIK_UpVec_Toe2" />
+          <Node Name="CNT_RightIK_UpVec_Toe3" />
+          <Node Name="CNT_RightIK_UpVec_Toe4" />
+          <Node Name="CNT_RightLeg_UpVector" />
+          <Node Name="CNT_Stretchy01_Left" />
+          <Node Name="CNT_Stretchy01_Right" />
+          <Node Name="CNT_Stretchy02_Left" />
+          <Node Name="CNT_Stretchy02_Right" />
+          <Node Name="CNT_Stretchy03_Left" />
+          <Node Name="CNT_Stretchy03_Right" />
+          <Node Name="CNT_Stretchy04_Left" />
+          <Node Name="CNT_Stretchy04_Right" />
+          <Node Name="CNT_Stretchy05_Left" />
+          <Node Name="CNT_Tentacle01_01" />
+          <Node Name="CNT_Tentacle01_02" />
+          <Node Name="CNT_Tentacle01_03" />
+          <Node Name="CNT_Tentacle01_04" />
+          <Node Name="CNT_Tentacle01_05" />
+          <Node Name="CNT_Tentacle01_06" />
+          <Node Name="CNT_Tentacle02_01" />
+          <Node Name="CNT_Tentacle02_02" />
+          <Node Name="CNT_Tentacle02_03" />
+          <Node Name="CNT_Tentacle02_04" />
+          <Node Name="CNT_Tentacle02_05" />
+          <Node Name="CNT_Tentacle02_06" />
+          <Node Name="CNT_Tentacle03_01" />
+          <Node Name="CNT_Tentacle03_02" />
+          <Node Name="CNT_Tentacle03_03" />
+          <Node Name="CNT_Tentacle03_04" />
+          <Node Name="CNT_Torso_Move" />
+          <Node Name="Grunt_Master" />
+          <Node Name="Grunt Root" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Grunt Root" />
+          <Node Name="Spine01">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+        </GameBones>
+      </Setup>
+      <Setup Name="Stalker" Active="true" SourcePath="GameCrysis2\_Animations_source\alien\stalker\" GamePath="GameCrysis2\Animations\alien\stalker\">
+        <Model ModelPath="GameCrysis2\Objects\characters\alien\stalker\stalker_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="true" />
+        <SourceNodes>
+          <Node Name="CNT_Ankle_Left" />
+          <Node Name="CNT_Ankle_Right" />
+          <Node Name="CNT_BezierIK_Left_01" />
+          <Node Name="CNT_BezierIK_Left_02" />
+          <Node Name="CNT_BezierIK_Left_03" />
+          <Node Name="CNT_BezierIK_Right_01" />
+          <Node Name="CNT_BezierIK_Right_02" />
+          <Node Name="CNT_BezierIK_Right_03" />
+          <Node Name="CNT_Clavicle_Left" />
+          <Node Name="CNT_Clavicle_Right" />
+          <Node Name="CNT_Claw_L" />
+          <Node Name="CNT_Claw_R" />
+          <Node Name="CNT_FKArm01_Left" />
+          <Node Name="CNT_FKArm01_Right" />
+          <Node Name="CNT_FKArm02_Left" />
+          <Node Name="CNT_FKArm02_Right" />
+          <Node Name="CNT_FKArm03_Left" />
+          <Node Name="CNT_FKArm03_Right" />
+          <Node Name="CNT_FKArm04_Left" />
+          <Node Name="CNT_FKArm04_Right" />
+          <Node Name="CNT_FKArm05_Left" />
+          <Node Name="CNT_FKArm05_Right" />
+          <Node Name="CNT_FKLeg01_Left" />
+          <Node Name="CNT_FKLeg01_Right" />
+          <Node Name="CNT_FKLeg02_Left" />
+          <Node Name="CNT_FKLeg02_Right" />
+          <Node Name="CNT_FKLeg03_Left" />
+          <Node Name="CNT_FKLeg03_Right" />
+          <Node Name="CNT_FKLeg04_Left" />
+          <Node Name="CNT_FKLeg04_Right" />
+          <Node Name="CNT_FKSpine1" />
+          <Node Name="CNT_FKSpine2" />
+          <Node Name="CNT_FKSpine3" />
+          <Node Name="CNT_FKSpine4" />
+          <Node Name="CNT_FootIK_Left" />
+          <Node Name="CNT_FootIK_Right" />
+          <Node Name="CNT_Head" />
+          <Node Name="CNT_Hips" />
+          <Node Name="CNT_IK_Hand_L" />
+          <Node Name="CNT_IK_Hand_R" />
+          <Node Name="CNT_IKArm_Left" />
+          <Node Name="CNT_IKArm_Right" />
+          <Node Name="CNT_L_Finger1_01" />
+          <Node Name="CNT_L_Finger1_02" />
+          <Node Name="CNT_L_Finger1_03" />
+          <Node Name="CNT_L_Finger2_01" />
+          <Node Name="CNT_L_Finger2_02" />
+          <Node Name="CNT_L_Finger2_03" />
+          <Node Name="CNT_L_Finger3_01" />
+          <Node Name="CNT_L_Finger3_02" />
+          <Node Name="CNT_L_Finger3_03" />
+          <Node Name="CNT_L_Gun1_01" />
+          <Node Name="CNT_L_Gun1_02" />
+          <Node Name="CNT_L_Gun2_01" />
+          <Node Name="CNT_L_Gun2_02" />
+          <Node Name="CNT_L_Gun3_01" />
+          <Node Name="CNT_L_Gun3_02" />
+          <Node Name="CNT_L_ShoulderPad" />
+          <Node Name="CNT_Left_GunShield" />
+          <Node Name="CNT_LeftFK_Toe1_01" />
+          <Node Name="CNT_LeftFK_Toe1_02" />
+          <Node Name="CNT_LeftFK_Toe1_03" />
+          <Node Name="CNT_LeftFK_Toe2_01" />
+          <Node Name="CNT_LeftFK_Toe2_02" />
+          <Node Name="CNT_LeftFK_Toe2_03" />
+          <Node Name="CNT_LeftFK_Toe3_01" />
+          <Node Name="CNT_LeftFK_Toe3_02" />
+          <Node Name="CNT_LeftFK_Toe3_03" />
+          <Node Name="CNT_LeftFK_Toe4_01" />
+          <Node Name="CNT_LeftFK_Toe4_02" />
+          <Node Name="CNT_LeftFK_Toe4_03" />
+          <Node Name="CNT_LeftIK_Toe1" />
+          <Node Name="CNT_LeftIK_Toe2" />
+          <Node Name="CNT_LeftIK_Toe3" />
+          <Node Name="CNT_LeftIK_Toe4" />
+          <Node Name="CNT_LeftIK_UpVec_Toe1" />
+          <Node Name="CNT_LeftIK_UpVec_Toe2" />
+          <Node Name="CNT_LeftIK_UpVec_Toe3" />
+          <Node Name="CNT_LeftIK_UpVec_Toe4" />
+          <Node Name="CNT_LeftLeg_UpVector" />
+          <Node Name="CNT_LegIKTop_Left" />
+          <Node Name="CNT_LegIKTop_Right" />
+          <Node Name="CNT_Neck" />
+          <Node Name="CNT_R_Finger1_01" />
+          <Node Name="CNT_R_Finger1_02" />
+          <Node Name="CNT_R_Finger1_03" />
+          <Node Name="CNT_R_Finger2_01" />
+          <Node Name="CNT_R_Finger2_02" />
+          <Node Name="CNT_R_Finger2_03" />
+          <Node Name="CNT_R_Finger3_01" />
+          <Node Name="CNT_R_Finger3_02" />
+          <Node Name="CNT_R_Finger3_03" />
+          <Node Name="CNT_R_Gun1_01" />
+          <Node Name="CNT_R_Gun1_02" />
+          <Node Name="CNT_R_Gun2_01" />
+          <Node Name="CNT_R_Gun2_02" />
+          <Node Name="CNT_R_Gun3_01" />
+          <Node Name="CNT_R_Gun3_02" />
+          <Node Name="CNT_R_ShoulderPad" />
+          <Node Name="CNT_Right_GunShield" />
+          <Node Name="CNT_RightFK_Toe1_01" />
+          <Node Name="CNT_RightFK_Toe1_02" />
+          <Node Name="CNT_RightFK_Toe1_03" />
+          <Node Name="CNT_RightFK_Toe2_01" />
+          <Node Name="CNT_RightFK_Toe2_02" />
+          <Node Name="CNT_RightFK_Toe2_03" />
+          <Node Name="CNT_RightFK_Toe3_01" />
+          <Node Name="CNT_RightFK_Toe3_02" />
+          <Node Name="CNT_RightFK_Toe3_03" />
+          <Node Name="CNT_RightFK_Toe4_01" />
+          <Node Name="CNT_RightFK_Toe4_02" />
+          <Node Name="CNT_RightFK_Toe4_03" />
+          <Node Name="CNT_RightIK_Toe1" />
+          <Node Name="CNT_RightIK_Toe2" />
+          <Node Name="CNT_RightIK_Toe3" />
+          <Node Name="CNT_RightIK_Toe4" />
+          <Node Name="CNT_RightIK_UpVec_Toe1" />
+          <Node Name="CNT_RightIK_UpVec_Toe2" />
+          <Node Name="CNT_RightIK_UpVec_Toe3" />
+          <Node Name="CNT_RightIK_UpVec_Toe4" />
+          <Node Name="CNT_RightLeg_UpVector" />
+          <Node Name="CNT_Stretchy01_Left" />
+          <Node Name="CNT_Stretchy01_Right" />
+          <Node Name="CNT_Stretchy02_Left" />
+          <Node Name="CNT_Stretchy02_Right" />
+          <Node Name="CNT_Stretchy03_Left" />
+          <Node Name="CNT_Stretchy03_Right" />
+          <Node Name="CNT_Stretchy04_Left" />
+          <Node Name="CNT_Stretchy04_Right" />
+          <Node Name="CNT_Tentacle01_01" />
+          <Node Name="CNT_Tentacle01_02" />
+          <Node Name="CNT_Tentacle01_03" />
+          <Node Name="CNT_Tentacle01_04" />
+          <Node Name="CNT_Tentacle01_05" />
+          <Node Name="CNT_Tentacle02_01" />
+          <Node Name="CNT_Tentacle02_02" />
+          <Node Name="CNT_Tentacle02_03" />
+          <Node Name="CNT_Tentacle02_04" />
+          <Node Name="CNT_Tentacle02_05" />
+          <Node Name="CNT_Tentacle03_01" />
+          <Node Name="CNT_Tentacle03_02" />
+          <Node Name="CNT_Tentacle03_03" />
+          <Node Name="CNT_Tentacle03_04" />
+          <Node Name="CNT_Torso_Move" />
+          <Node Name="Stalker_Master" />
+          <Node Name="Stalker Root" />
+          <Node Name="weapon_bone" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Spine01">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+          <Node Name="Stalker Root" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Heavy" Active="true" SourcePath="GameCrysis2\_Animations_source\alien\heavy\" GamePath="GameCrysis2\Animations\alien\heavy\">
+        <Model ModelPath="GameCrysis2\Objects\characters\alien\heavy\Heavy_Rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="true" />
+        <SourceNodes>
+          <Node Name="CNT_Ankle_Left" />
+          <Node Name="CNT_Ankle_Right" />
+          <Node Name="CNT_Clavicle_L" />
+          <Node Name="CNT_Clavicle_R" />
+          <Node Name="CNT_FKLeg_Left01" />
+          <Node Name="CNT_FKLeg_Left02" />
+          <Node Name="CNT_FKLeg_Left03" />
+          <Node Name="CNT_FKLeg_Left04" />
+          <Node Name="CNT_FKLeg_Right01" />
+          <Node Name="CNT_FKLeg_Right02" />
+          <Node Name="CNT_FKLeg_Right03" />
+          <Node Name="CNT_FKLeg_Right04" />
+          <Node Name="CNT_FKSpine1" />
+          <Node Name="CNT_FKSpine2" />
+          <Node Name="CNT_FKSpine3" />
+          <Node Name="CNT_FKSpine4" />
+          <Node Name="CNT_FootIK_Left" />
+          <Node Name="CNT_FootIK_Right" />
+          <Node Name="CNT_Hand_L" />
+          <Node Name="CNT_Hand_R" />
+          <Node Name="CNT_Head" />
+          <Node Name="CNT_Hips" />
+          <Node Name="CNT_L_Arm1_Main1" />
+          <Node Name="CNT_L_Arm1_Main2" />
+          <Node Name="CNT_L_Arm2_Main1" />
+          <Node Name="CNT_L_Arm2_Main2" />
+          <Node Name="CNT_LeftFK_Toe1_01" />
+          <Node Name="CNT_LeftFK_Toe1_02" />
+          <Node Name="CNT_LeftFK_Toe1_03" />
+          <Node Name="CNT_LeftFK_Toe2_01" />
+          <Node Name="CNT_LeftFK_Toe2_02" />
+          <Node Name="CNT_LeftFK_Toe2_03" />
+          <Node Name="CNT_LeftFK_Toe3_01" />
+          <Node Name="CNT_LeftFK_Toe3_02" />
+          <Node Name="CNT_LeftFK_Toe3_03" />
+          <Node Name="CNT_LeftFK_Toe4_01" />
+          <Node Name="CNT_LeftFK_Toe4_02" />
+          <Node Name="CNT_LeftFK_Toe4_03" />
+          <Node Name="CNT_LeftIK_Toe01" />
+          <Node Name="CNT_LeftIK_Toe02" />
+          <Node Name="CNT_LeftIK_Toe03" />
+          <Node Name="CNT_LeftIK_Toe04" />
+          <Node Name="CNT_LeftIK_UpVec_Toe01" />
+          <Node Name="CNT_LeftIK_UpVec_Toe02" />
+          <Node Name="CNT_LeftIK_UpVec_Toe03" />
+          <Node Name="CNT_LeftIK_UpVec_Toe04" />
+          <Node Name="CNT_LeftLeg_UpVector" />
+          <Node Name="CNT_LegIKTop_Left" />
+          <Node Name="CNT_LegIKTop_Right" />
+          <Node Name="CNT_Neck" />
+          <Node Name="CNT_R_Arm1_Main1" />
+          <Node Name="CNT_R_Arm1_Main2" />
+          <Node Name="CNT_R_Arm1_Main3" />
+          <Node Name="CNT_R_Arm2_Main1" />
+          <Node Name="CNT_R_Arm2_Main2" />
+          <Node Name="CNT_R_Arm2_Main3" />
+          <Node Name="CNT_RightFK_Toe1_01" />
+          <Node Name="CNT_RightFK_Toe1_02" />
+          <Node Name="CNT_RightFK_Toe1_03" />
+          <Node Name="CNT_RightFK_Toe2_01" />
+          <Node Name="CNT_RightFK_Toe2_02" />
+          <Node Name="CNT_RightFK_Toe2_03" />
+          <Node Name="CNT_RightFK_Toe3_01" />
+          <Node Name="CNT_RightFK_Toe3_02" />
+          <Node Name="CNT_RightFK_Toe3_03" />
+          <Node Name="CNT_RightFK_Toe4_01" />
+          <Node Name="CNT_RightFK_Toe4_02" />
+          <Node Name="CNT_RightFK_Toe4_03" />
+          <Node Name="CNT_RightIK_Toe01" />
+          <Node Name="CNT_RightIK_Toe02" />
+          <Node Name="CNT_RightIK_Toe03" />
+          <Node Name="CNT_RightIK_Toe04" />
+          <Node Name="CNT_RightIK_UpVec_Toe01" />
+          <Node Name="CNT_RightIK_UpVec_Toe02" />
+          <Node Name="CNT_RightIK_UpVec_Toe03" />
+          <Node Name="CNT_RightIK_UpVec_Toe04" />
+          <Node Name="CNT_RightLeg_UpVector" />
+          <Node Name="CNT_Shoulder_L" />
+          <Node Name="CNT_Shoulder_R" />
+          <Node Name="CNT_Shoulder2_L" />
+          <Node Name="CNT_Shoulder2_R" />
+          <Node Name="CNT_Ten1_Seg01" />
+          <Node Name="CNT_Ten1_Seg02" />
+          <Node Name="CNT_Ten1_Seg03" />
+          <Node Name="CNT_Ten1_Seg04" />
+          <Node Name="CNT_Ten1_Seg05" />
+          <Node Name="CNT_Ten1_Seg06" />
+          <Node Name="CNT_Ten2_Seg01" />
+          <Node Name="CNT_Ten2_Seg02" />
+          <Node Name="CNT_Ten2_Seg03" />
+          <Node Name="CNT_Ten2_Seg04" />
+          <Node Name="CNT_Ten2_Seg05" />
+          <Node Name="CNT_Ten2_Seg06" />
+          <Node Name="CNT_Ten3_Seg01" />
+          <Node Name="CNT_Ten3_Seg02" />
+          <Node Name="CNT_Ten3_Seg03" />
+          <Node Name="CNT_Ten3_Seg04" />
+          <Node Name="CNT_Torso_Move" />
+          <Node Name="Heavy_Master" />
+          <Node Name="Heavy Root" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Heavy Root" />
+          <Node Name="Spine01">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+        </GameBones>
+      </Setup>
+      <Setup Name="Pinger" Active="true" SourcePath="GameCrysis2\_Animations_source\alien\pinger\" GamePath="GameCrysis2\Animations\alien\pinger\">
+        <Model ModelPath="GameCrysis2\Objects\characters\alien\pinger\pinger_rig.max" AutoSync="true" RemoveOld="true" PreferLoad="true" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="true" />
+        <SourceNodes>
+          <Node Name="CNT_Back" />
+          <Node Name="CNT_Head" />
+          <Node Name="CNT_L_Ankle" />
+          <Node Name="CNT_L_FKToe1_01" />
+          <Node Name="CNT_L_FKToe1_02" />
+          <Node Name="CNT_L_FKToe1_03" />
+          <Node Name="CNT_L_FKToe2_01" />
+          <Node Name="CNT_L_FKToe2_02" />
+          <Node Name="CNT_L_FKToe2_03" />
+          <Node Name="CNT_L_FKToe3_01" />
+          <Node Name="CNT_L_FKToe3_02" />
+          <Node Name="CNT_L_FKToe3_03" />
+          <Node Name="CNT_L_Foot" />
+          <Node Name="CNT_L_Hip" />
+          <Node Name="CNT_L_IKToe_01" />
+          <Node Name="CNT_L_IKToe_02" />
+          <Node Name="CNT_L_IKToe_03" />
+          <Node Name="CNT_L_IKToe_UpVec_01" />
+          <Node Name="CNT_L_IKToe_UpVec_02" />
+          <Node Name="CNT_L_IKToe_UpVec_03" />
+          <Node Name="CNT_L_Leg_Top" />
+          <Node Name="CNT_L_LegVector" />
+          <Node Name="CNT_Motor" />
+          <Node Name="CNT_Pelvis" />
+          <Node Name="CNT_Ping_Mechanism" />
+          <Node Name="CNT_R_Ankle" />
+          <Node Name="CNT_R_FKToe1_01" />
+          <Node Name="CNT_R_FKToe1_02" />
+          <Node Name="CNT_R_FKToe1_03" />
+          <Node Name="CNT_R_FKToe2_01" />
+          <Node Name="CNT_R_FKToe2_02" />
+          <Node Name="CNT_R_FKToe2_03" />
+          <Node Name="CNT_R_FKToe3_01" />
+          <Node Name="CNT_R_FKToe3_02" />
+          <Node Name="CNT_R_FKToe3_03" />
+          <Node Name="CNT_R_Foot" />
+          <Node Name="CNT_R_Hip" />
+          <Node Name="CNT_R_IKToe_01" />
+          <Node Name="CNT_R_IKToe_02" />
+          <Node Name="CNT_R_IKToe_03" />
+          <Node Name="CNT_R_IKToe_UpVec_01" />
+          <Node Name="CNT_R_IKToe_UpVec_02" />
+          <Node Name="CNT_R_IKToe_UpVec_03" />
+          <Node Name="CNT_R_Leg_Top" />
+          <Node Name="CNT_R_LegVector" />
+          <Node Name="CNT_Rear_Ankle" />
+          <Node Name="CNT_Rear_FKToe1_01" />
+          <Node Name="CNT_Rear_FKToe1_02" />
+          <Node Name="CNT_Rear_FKToe1_03" />
+          <Node Name="CNT_Rear_FKToe2_01" />
+          <Node Name="CNT_Rear_FKToe2_02" />
+          <Node Name="CNT_Rear_FKToe2_03" />
+          <Node Name="CNT_Rear_FKToe3_01" />
+          <Node Name="CNT_Rear_FKToe3_02" />
+          <Node Name="CNT_Rear_FKToe3_03" />
+          <Node Name="CNT_Rear_Foot" />
+          <Node Name="CNT_Rear_IKToe_01" />
+          <Node Name="CNT_Rear_IKToe_02" />
+          <Node Name="CNT_Rear_IKToe_03" />
+          <Node Name="CNT_Rear_IKToe_UpVec_01" />
+          <Node Name="CNT_Rear_IKToe_UpVec_02" />
+          <Node Name="CNT_Rear_IKToe_UpVec_03" />
+          <Node Name="CNT_Rear_Leg_Top" />
+          <Node Name="CNT_Rear_LegVector" />
+          <Node Name="CNT_Spine" />
+          <Node Name="CNT_Torso_Move" />
+          <Node Name="L_Gun_01" />
+          <Node Name="L_Gun_02" />
+          <Node Name="Pinger_Master" />
+          <Node Name="Pinger_Root" />
+          <Node Name="R_Gun_01" />
+          <Node Name="R_Gun_02" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="Pinger_Root" />
+          <Node Name="Spine1">
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="2" GroupID="2" Value="&quot;UB&quot;" />
+            <Condition Name="string_animName" Active="true" Layer="0" VarID="1" StateID="1" GroupID="2" Value="&quot;AimPoses&quot;" />
+          </Node>
+        </GameBones>
+      </Setup>
+    </Character>
+    <Character Name="----------------" Active="false">
+      <Setup Name="Base Char" Active="true" SourcePath="" GamePath="">
+        <Model ModelPath="" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes />
+        <GameBones />
+      </Setup>
+    </Character>
+    <Character Name="Props" Active="true">
+      <Setup Name="Barrel" Active="true" SourcePath="" GamePath="">
+        <Model ModelPath="GameCrysis2\Objects\library\props\storage\barrels\deformable_barrel.max" AutoSync="true" RemoveOld="false" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="" SourceNode="" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="0" SkipLast="0" CustomRig="false" />
+        <SourceNodes />
+        <GameBones />
+      </Setup>
+    </Character>
+    <Character Name="Weapons" Active="true">
+      <Setup Name="Knife (right)" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\knife\" GamePath="GameCrysis2\Animations\weapons\us\knife\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\equipment\knife\knife_anim.max" AutoSync="true" RemoveOld="false" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes />
+        <GameBones />
+      </Setup>
+      <Setup Name="Knife (left)" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\knife\" GamePath="GameCrysis2\Animations\weapons\us\knife\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\equipment\knife\knife_anim.max" AutoSync="true" RemoveOld="false" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="_Bip01 weapon_left_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes />
+        <GameBones />
+      </Setup>
+      <Setup Name="Hammer" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\hammer\" GamePath="GameCrysis2\Animations\weapons\us\hammer\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\hammer\hammer_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="bullet_CON" />
+          <Node Name="hammer_CON" />
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_chamber_CON" />
+          <Node Name="slider_front_CON" />
+          <Node Name="slider_lock_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Nova" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\nova\" GamePath="GameCrysis2\Animations\weapons\us\nova\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\nova\nova_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="hammer_CON" />
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_chamber_CON" />
+          <Node Name="slider_lock_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Feline" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\feline\" GamePath="GameCrysis2\Animations\weapons\us\feline\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\feline\feline_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="chamber_CON" />
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="safety_CON" />
+          <Node Name="slider_chamber_CON" />
+          <Node Name="slider_part1_CON" />
+          <Node Name="slider_part2_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Scar" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\scar\" GamePath="GameCrysis2\Animations\weapons\us\scar\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\scar_v2\scar_v2_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="lever_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="safety_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Scarab" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\scarab\" GamePath="GameCrysis2\Animations\weapons\us\scarab\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\scarab\scarab_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="CON_rifle_anim_MASTER" />
+          <Node Name="lever_CON" />
+          <Node Name="lever_CON_zero" />
+          <Node Name="magazine_CON" />
+          <Node Name="magazine_CON_zero" />
+          <Node Name="MASTER_CON" />
+          <Node Name="safety_CON_zero" />
+          <Node Name="safety_CON" />
+          <Node Name="weapon_CON_zero" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Grendel" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\grendel\" GamePath="GameCrysis2\Animations\weapons\us\grendel\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\grendel\grendel_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="lever_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="safety_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="DSG1" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\dsg1\" GamePath="GameCrysis2\Animations\weapons\us\dsg1\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\dsg1\dsg1_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Jackal" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\jackal\" GamePath="GameCrysis2\Animations\weapons\us\jackal\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\jackal\jackal_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="chamber_CON" />
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="safety_CON" />
+          <Node Name="shell_1_CON" />
+          <Node Name="shell_2_CON" />
+          <Node Name="shell_3_CON" />
+          <Node Name="shell_4_CON" />
+          <Node Name="shell_5_CON" />
+          <Node Name="shell_6_CON" />
+          <Node Name="shell_7_CON" />
+          <Node Name="slider_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Gauss" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\gauss\" GamePath="GameCrysis2\Animations\weapons\us\gauss\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\gauss_v2\gauss_v2_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="barrel_slider_left_CON" />
+          <Node Name="barrel_slider_part1_CON" />
+          <Node Name="barrel_slider_part2_CON" />
+          <Node Name="barrel_slider_right_CON" />
+          <Node Name="bullet_align" />
+          <Node Name="bullet_lift_CON" />
+          <Node Name="bullet_pusher_CON" />
+          <Node Name="bullet" />
+          <Node Name="chamber" />
+          <Node Name="energy_left_cell1_lower_CON" />
+          <Node Name="energy_left_cell1_middle1_CON" />
+          <Node Name="energy_left_cell1_middle2_CON" />
+          <Node Name="energy_left_cell1_plasma_CON" />
+          <Node Name="energy_left_cell1_upper1_CON" />
+          <Node Name="energy_left_cell1_upper2_CON" />
+          <Node Name="energy_left_cell2_lower_CON" />
+          <Node Name="energy_left_cell2_middle1_CON" />
+          <Node Name="energy_left_cell2_middle2_CON" />
+          <Node Name="energy_left_cell2_plasma_CON" />
+          <Node Name="energy_left_cell2_upper1_CON" />
+          <Node Name="energy_left_cell2_upper2_CON" />
+          <Node Name="energy_left_cell3_lower_CON" />
+          <Node Name="energy_left_cell3_middle1_CON" />
+          <Node Name="energy_left_cell3_middle2_CON" />
+          <Node Name="energy_left_cell3_plasma_CON" />
+          <Node Name="energy_left_cell3_upper1_CON" />
+          <Node Name="energy_left_cell3_upper2_CON" />
+          <Node Name="energy_left_cell4_lower_CON" />
+          <Node Name="energy_left_cell4_middle1_CON" />
+          <Node Name="energy_left_cell4_middle2_CON" />
+          <Node Name="energy_left_cell4_plasma_CON" />
+          <Node Name="energy_left_cell4_upper1_CON" />
+          <Node Name="energy_left_cell4_upper2_CON" />
+          <Node Name="energy_left_cell5_lower_CON" />
+          <Node Name="energy_left_cell5_middle1_CON" />
+          <Node Name="energy_left_cell5_middle2_CON" />
+          <Node Name="energy_left_cell5_upper1_CON" />
+          <Node Name="energy_left_cell5_upper2_CON" />
+          <Node Name="energy_left_cell6_lower_CON" />
+          <Node Name="energy_left_cell6_middle1_CON" />
+          <Node Name="energy_left_cell6_middle2_CON" />
+          <Node Name="energy_left_cell6_plasma_CON" />
+          <Node Name="energy_left_cell6_upper1_CON" />
+          <Node Name="energy_left_cell6_upper2_CON" />
+          <Node Name="energy_left_cell7_lower_CON" />
+          <Node Name="energy_left_cell7_middle1_CON" />
+          <Node Name="energy_left_cell7_middle2_CON" />
+          <Node Name="energy_left_cell7_plasma_CON" />
+          <Node Name="energy_left_cell7_plasma_CON02" />
+          <Node Name="energy_left_cell7_upper1_CON" />
+          <Node Name="energy_left_cell7_upper2_CON" />
+          <Node Name="energy_right_cell1_lower_CON" />
+          <Node Name="energy_right_cell1_middle1_CON" />
+          <Node Name="energy_right_cell1_middle2_CON" />
+          <Node Name="energy_right_cell1_plasma_CON" />
+          <Node Name="energy_right_cell1_upper1_CON" />
+          <Node Name="energy_right_cell1_upper2_CON" />
+          <Node Name="energy_right_cell2_lower_CON" />
+          <Node Name="energy_right_cell2_middle1_CON" />
+          <Node Name="energy_right_cell2_middle2_CON" />
+          <Node Name="energy_right_cell2_plasma_CON" />
+          <Node Name="energy_right_cell2_upper1_CON" />
+          <Node Name="energy_right_cell2_upper2_CON" />
+          <Node Name="energy_right_cell3_lower_CON" />
+          <Node Name="energy_right_cell3_middle1_CON" />
+          <Node Name="energy_right_cell3_middle2_CON" />
+          <Node Name="energy_right_cell3_plasma_CON" />
+          <Node Name="energy_right_cell3_upper1_CON" />
+          <Node Name="energy_right_cell3_upper2_CON" />
+          <Node Name="energy_right_cell4_lower_CON" />
+          <Node Name="energy_right_cell4_middle1_CON" />
+          <Node Name="energy_right_cell4_middle2_CON" />
+          <Node Name="energy_right_cell4_plasma_CON" />
+          <Node Name="energy_right_cell4_upper1_CON" />
+          <Node Name="energy_right_cell4_upper2_CON" />
+          <Node Name="energy_right_cell5_lower_CON" />
+          <Node Name="energy_right_cell5_middle1_CON" />
+          <Node Name="energy_right_cell5_middle2_CON" />
+          <Node Name="energy_right_cell5_plasma_CON" />
+          <Node Name="energy_right_cell5_upper1_CON" />
+          <Node Name="energy_right_cell5_upper2_CON" />
+          <Node Name="energy_right_cell6_lower_CON" />
+          <Node Name="energy_right_cell6_middle1_CON" />
+          <Node Name="energy_right_cell6_middle2_CON" />
+          <Node Name="energy_right_cell6_plasma_CON" />
+          <Node Name="energy_right_cell6_upper1_CON" />
+          <Node Name="energy_right_cell6_upper2_CON" />
+          <Node Name="energy_right_cell7_lower_CON" />
+          <Node Name="energy_right_cell7_middle1_CON" />
+          <Node Name="energy_right_cell7_middle2_CON" />
+          <Node Name="energy_right_cell7_plasma_CON" />
+          <Node Name="energy_right_cell7_upper1_CON" />
+          <Node Name="energy_right_cell7_upper2_CON" />
+          <Node Name="mag_release_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_CON" />
+          <Node Name="slider_upper_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="upper_slider_part1_CON" />
+          <Node Name="upper_slider_part2_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="LTag" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\ltag\" GamePath="GameCrysis2\Animations\weapons\us\ltag\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\l-tag\l-tag_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="battery_CON" />
+          <Node Name="battery_lock_left_CON" />
+          <Node Name="battery_lock_right_CON" />
+          <Node Name="battery_lock_top1_CON" />
+          <Node Name="battery_lock_top2_CON" />
+          <Node Name="connector_cable_CON" />
+          <Node Name="front_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="pad_left1_CON" />
+          <Node Name="pad_left2_CON" />
+          <Node Name="pad_left3_CON" />
+          <Node Name="pad_right1_CON" />
+          <Node Name="pad_right2_CON" />
+          <Node Name="pad_right3_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Mike" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\mike\" GamePath="GameCrysis2\Animations\weapons\us\mike\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\mike\mike_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="battery_CON" />
+          <Node Name="battery_lock_left_CON" />
+          <Node Name="battery_lock_right_CON" />
+          <Node Name="battery_lock_top1_CON" />
+          <Node Name="battery_lock_top2_CON" />
+          <Node Name="connector_cable_CON" />
+          <Node Name="front_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="pad_left1_CON" />
+          <Node Name="pad_left2_CON" />
+          <Node Name="pad_left3_CON" />
+          <Node Name="pad_right1_CON" />
+          <Node Name="pad_right2_CON" />
+          <Node Name="pad_right3_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="HMG" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\hmg\" GamePath="GameCrysis2\Animations\weapons\us\hmg\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\hmg\hmg_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="barrel_CON" />
+          <Node Name="bullet_1_CON" />
+          <Node Name="bullet_2_CON" />
+          <Node Name="bullet_3_CON" />
+          <Node Name="bullet_4_CON" />
+          <Node Name="bullet_5_CON" />
+          <Node Name="bullet_6_CON" />
+          <Node Name="bullet_7_CON" />
+          <Node Name="magazine_bullet_holder_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="magazine_cover_CON" />
+          <Node Name="magazine_cover_CON01" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_chamber_CON" />
+          <Node Name="slider_CON" />
+          <Node Name="slider_trigger_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="AGL" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\agl\" GamePath="GameCrysis2\Animations\weapons\us\agl\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\agl\agl_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="barrel_CON" />
+          <Node Name="bullet_1_CON" />
+          <Node Name="bullet_2_CON" />
+          <Node Name="bullet_3_CON" />
+          <Node Name="bullet_4_CON" />
+          <Node Name="bullet_5_CON" />
+          <Node Name="bullet_6_CON" />
+          <Node Name="magazine_bullet_holder_CON" />
+          <Node Name="magazine_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="slider_CON" />
+          <Node Name="slider_trigger_CON" />
+          <Node Name="trigger_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+      <Setup Name="Jaw" Active="true" SourcePath="GameCrysis2\_Animations_source\weapons\us\jaw\" GamePath="GameCrysis2\Animations\weapons\us\jaw\">
+        <Model ModelPath="GameCrysis2\Objects\weapons\us\jaw\jaw_wb_anim.max" AutoSync="true" RemoveOld="true" PreferLoad="false" />
+        <Biped PosePath="" AutoSync="true" RemoveOld="false" />
+        <Align TargetNode="weapon_bone" SourceNode="MASTER_CON" Rotation="(quat 0 0 0 1)" Position="[0,0,0]" />
+        <Misc SkipFirst="1" SkipLast="0" CustomRig="false" />
+        <SourceNodes>
+          <Node Name="back_lock_CON" />
+          <Node Name="back_lock_CON01" />
+          <Node Name="handle_left_CON" />
+          <Node Name="handle_right_CON" />
+          <Node Name="MASTER_CON" />
+          <Node Name="rocket_CON" />
+          <Node Name="rocket_lock_CON" />
+          <Node Name="rocket_wing_top_CON01" />
+          <Node Name="rocket_wing_top_CON" />
+          <Node Name="rocket_wing_top_CON02" />
+          <Node Name="rocket_wing_top_CON03" />
+          <Node Name="rocket_wing_top_lock_CON" />
+          <Node Name="rocket_wing_top_lock_CON01" />
+          <Node Name="rocket_wing_top_lock_CON02" />
+          <Node Name="rocket_wing_top_lock_CON03" />
+          <Node Name="trigger_CON" />
+          <Node Name="visor_CON" />
+          <Node Name="weapon_CON" />
+        </SourceNodes>
+        <GameBones>
+          <Node Name="weapon" />
+        </GameBones>
+      </Setup>
+    </Character>
+  </Characters>
+</CharacterSettings>

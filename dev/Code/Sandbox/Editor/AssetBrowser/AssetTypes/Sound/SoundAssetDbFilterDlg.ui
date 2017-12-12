@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SoundAssetDbFilterDlg</class>
+ <widget class="QWidget" name="ASSET_FILTERS_SOUNDS_MAIN_WIDGET">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>257</width>
+    <height>124</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Sounds</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QWidget" name="ASSET_FILTERS_SOUNDS_WIDGET">
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_SOUNDS_MIN_LENGTH_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_SOUNDS_MIN_LENGTH">
+          <property name="text">
+           <string>Minimum length(ms):</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_SOUNDS_MIN_LENGTH_COMBO">
+           <item>
+             <property name="text">
+               <string>0</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>100</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>3000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>5000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>20000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>30000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>50000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>100000</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_SOUNDS_MAX_LENGTH_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_SOUNDS_MAX_LENGTH">
+          <property name="text">
+           <string>Maximum length(ms):</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_SOUNDS_MAX_LENGTH_COMBO">
+           <item>
+             <property name="text">
+               <string>0</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>100</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>3000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>5000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>20000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>30000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>50000</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>100000</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="ASSET_FILTERS_SOUNDS_LOOPING">
+        <property name="text">
+         <string>Looping sounds</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

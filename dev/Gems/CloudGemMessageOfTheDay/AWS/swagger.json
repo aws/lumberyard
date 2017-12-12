@@ -1,0 +1,241 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages": {
+            "post": {
+                "description": "Add a message to the message table",
+                "parameters": [
+                    {
+                        "name": "msg",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/MessageData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unique ID for this new message",
+                        "schema": {
+                            "$ref": "#/definitions/DetailedMessageData"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the list of N messages starting at a given index and filter with all, active, expired or planned",
+                "parameters": [
+                    {
+                        "name": "index",
+                        "in": "query",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "count",
+                        "in": "query",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "filter",
+                        "in": "query",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list of detailed messages ",
+                        "schema": {
+                            "$ref": "#/definitions/DetailedMessageList"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/messages/{msg_id}": {
+            "delete": {
+                "description": "Delete an existing message",
+                "parameters": [
+                    {
+                        "name": "msg_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the deletion",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Edit an existing message",
+                "parameters": [
+                    {
+                        "name": "msg_id",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "msg",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/MessageData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status of the addition",
+                        "schema": {
+                            "format": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/player/messages": {
+            "get": {
+                "description": "Get the list of messages scheduled for a given time and language",
+                "parameters": [
+                    {
+                        "name": "time",
+                        "in": "query",
+                        "type": "string"
+                    },
+                    {
+                        "name": "lang",
+                        "in": "query",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list of messages for that time and language. If no time or lang is provided ti falls back to UTC Eng",
+                        "schema": {
+                            "$ref": "#/definitions/MessageList"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "MessageData": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "message"
+            ]
+        },
+        "DetailedMessageData": {
+            "type": "object",
+            "properties": {
+                "UniqueMsgID": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "MessageList": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/MessageData"
+                    }
+                }
+            }
+        },
+        "DetailedMessageList": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DetailedMessageData"
+                    }
+                }
+            }
+        }
+    }
+}

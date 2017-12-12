@@ -1,0 +1,58 @@
+{
+    "none": {
+        "Root": [
+            "Main.cpp"
+        ],
+        "AzCore" : [
+            "AssetManager.cpp",
+            "BehaviorContext.cpp",
+            "Components.cpp",
+            "DataStreamer.cpp",
+            "Debug.cpp",
+            "DLL.cpp",
+            "Driller.cpp",
+            "EBus.cpp",
+            "FileIOBaseTestTypes.h",
+            "IPC.cpp",
+            "Jobs.cpp",
+            "JSON.cpp",
+            "Math.cpp",
+            "Memory.cpp",
+            "Module.cpp",
+            "ModuleTestBus.h",
+            "Outcome.cpp",
+            "Performance.cpp",
+            "Rtti.cpp",
+            "Script.cpp",
+            "ScriptMath.cpp",
+            "Serialization.cpp",
+            "Slice.cpp",
+            "State.cpp",
+            "SystemFile.cpp",
+            "TestTypes.h",
+            "XML.cpp"
+        ],
+        "AZStd": [
+            "AZStd/Algorithms.cpp",
+            "AZStd/Allocators.cpp",
+            "AZStd/Any.cpp",
+            "AZStd/ConcurrentContainers.cpp",
+            "AZStd/DequeAndSimilar.cpp",
+            "AZStd/Examples.cpp",
+            "AZStd/FunctorsBind.cpp",
+            "AZStd/Hashed.cpp",
+            "AZStd/Lists.cpp",
+            "AZStd/ListsFixed.cpp",
+            "AZStd/ListsIntrusive.cpp",
+            "AZStd/LockFreeQueues.cpp",
+            "AZStd/LockFreeStacks.cpp",
+            "AZStd/Ordered.cpp",
+            "AZStd/Parallel.cpp",
+            "AZStd/SmartPtr.cpp",
+            "AZStd/String.cpp",
+            "AZStd/TypeTraits.cpp",
+            "AZStd/UserTypes.h",
+            "AZStd/VectorAndArray.cpp"
+        ]
+    }
+}

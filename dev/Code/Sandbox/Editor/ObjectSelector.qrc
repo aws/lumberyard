@@ -1,0 +1,13 @@
+<RCC>
+	<qresource prefix="/ObjectSelector/icons">
+		<file alias="tile_0.png">ObjectSelector/icons/tile_0.png</file>
+		<file alias="tile_1.png">ObjectSelector/icons/tile_1.png</file>
+		<file alias="tile_2.png">ObjectSelector/icons/tile_2.png</file>
+		<file alias="tile_3.png">ObjectSelector/icons/tile_3.png</file>
+		<file alias="tile_4.png">ObjectSelector/icons/tile_4.png</file>
+		<file alias="tile_5.png">ObjectSelector/icons/tile_5.png</file>
+		<file alias="tile_6.png">ObjectSelector/icons/tile_6.png</file>
+		<file alias="tile_7.png">ObjectSelector/icons/tile_7.png</file>
+		<file alias="tile_8.png">ObjectSelector/icons/tile_8.png</file>
+	</qresource>
+</RCC>

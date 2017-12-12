@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+        ],
+        "Source": [
+            "Source/Input.h",
+            "Source/Input.cpp",
+            "Source/LyToAzInputNameConversions.h",
+            "Source/StartingPointInputGem.cpp"
+        ]
+    }
+}

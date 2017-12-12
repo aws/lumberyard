@@ -1,0 +1,18 @@
+
+/* Main colors */
+$warning-color: #E57829;
+$success-color: #58BC61;
+$error-color: #e52929;
+
+
+.warning-overlay-color{
+    color: $warning-color;
+}
+
+.success-overlay-color{
+    color: $success-color;
+}
+
+.error-overlay-color{
+    color: $error-color;
+}

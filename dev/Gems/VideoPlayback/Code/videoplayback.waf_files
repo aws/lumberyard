@@ -1,0 +1,24 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/VideoPlayback/VideoPlaybackBus.h"
+        ],
+        "Source": [
+            "Source/VideoPlaybackModule.cpp",
+            "Source/VideoPlaybackSystemComponent.cpp",
+            "Source/VideoPlaybackSystemComponent.h",
+            "Source/VideoPlaybackGameComponent.cpp",
+            "Source/VideoPlaybackGameComponent.h",
+            "Source/Decoder.h",
+            "Source/Decoder.cpp",
+            "Source/VideoPlaybackAsset.h",
+            "Source/VideoPlaybackFlowNodes.cpp"
+        ]
+    }
+}

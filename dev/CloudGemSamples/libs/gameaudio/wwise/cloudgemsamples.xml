@@ -1,0 +1,16 @@
+<ATLConfig atl_name="cloudgemsamples">
+ <AudioTriggers>
+  <ATLTrigger atl_name="Stop_audio_input_3D">
+   <WwiseEvent wwise_name="Stop_audio_input_3D"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_audio_input_2D">
+   <WwiseEvent wwise_name="Stop_audio_input_2D"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_audio_input_3D">
+   <WwiseEvent wwise_name="Play_audio_input_3D"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_audio_input_2D">
+   <WwiseEvent wwise_name="Play_audio_input_2D"/>
+  </ATLTrigger>
+ </AudioTriggers>
+</ATLConfig>

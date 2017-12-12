@@ -1,0 +1,80 @@
+{
+    "none": {
+        "Components": [
+            "AzQtComponentsAPI.h"
+        ]
+    },
+    "auto": {
+        "Buses": [
+            "Buses/DragAndDrop.h"
+        ],
+        "Components": [
+            "Components/ButtonDivider.cpp",
+            "Components/ButtonDivider.h",
+            "Components/ButtonStripe.cpp",
+            "Components/ButtonStripe.h",
+            "Components/DockBar.cpp",
+            "Components/DockBar.h",
+            "Components/DockBarButton.cpp",
+            "Components/DockBarButton.h",
+            "Components/DockMainWindow.cpp",
+            "Components/DockMainWindow.h",
+            "Components/DockTabBar.cpp",
+            "Components/DockTabBar.h",
+            "Components/DockTabWidget.cpp",
+            "Components/DockTabWidget.h",
+            "Components/EditorProxyStyle.cpp",
+            "Components/EditorProxyStyle.h",
+            "Components/FancyDockingGhostWidget.cpp",
+            "Components/FancyDockingGhostWidget.h",
+            "Components/FancyDockingDropZoneWidget.cpp",
+            "Components/FancyDockingDropZoneWidget.h",
+            "Components/LumberyardStylesheet.cpp",
+            "Components/LumberyardStylesheet.h",
+            "Components/Titlebar.cpp",
+            "Components/Titlebar.h",
+            "Components/ToolButtonComboBox.cpp",
+            "Components/ToolButtonComboBox.h",
+            "Components/ToolButtonLineEdit.cpp",
+            "Components/ToolButtonLineEdit.h",
+            "Components/ToolButtonWithWidget.cpp",
+            "Components/ToolButtonWithWidget.h",
+            "Components/StyledDockWidget.cpp",
+            "Components/StyledDockWidget.h",
+            "Components/StyledBusyLabel.cpp",
+            "Components/StyledBusyLabel.h",
+            "Components/StyledDetailsTableModel.cpp",
+            "Components/StyledDetailsTableModel.h",
+            "Components/StyledDetailsTableView.cpp",
+            "Components/StyledDetailsTableView.h",
+            "Components/HelpButton.cpp",
+            "Components/HelpButton.h",
+            "Components/InteractiveWindowGeometryChanger.cpp",
+            "Components/InteractiveWindowGeometryChanger.h",
+            "Components/SearchLineEdit.cpp",
+            "Components/SearchLineEdit.h",
+            "Components/StyledDialog.cpp",
+            "Components/StyledDialog.h",
+            "Components/StyledLineEdit.cpp",
+            "Components/StyledLineEdit.h",
+            "Components/StyledSpinBox.cpp",
+            "Components/StyledSpinBox.h",
+            "Components/StylesheetPreprocessor.cpp",
+            "Components/StylesheetPreprocessor.h",
+            "Components/TagSelector.cpp",
+            "Components/TagSelector.h",
+            "Components/VectorEdit.cpp",
+            "Components/VectorEdit.h",
+            "Components/WindowDecorationWrapper.cpp",
+            "Components/WindowDecorationWrapper.h",
+            "Components/resources.qrc"
+        ],
+        "Utilities": [
+            "Utilities/AutoSettingsGroup.h",
+            "Utilities/QtPluginPaths.cpp",
+            "Utilities/QtPluginPaths.h",
+            "Utilities/QtWindowUtilities.cpp",
+            "Utilities/QtWindowUtilities.h"
+        ]
+    }
+}

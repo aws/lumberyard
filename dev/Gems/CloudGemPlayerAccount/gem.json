@@ -1,0 +1,32 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "fd4ea4ff80a64bb9a90e55b46e9539ef",
+    "Name": "CloudGemPlayerAccount",
+    "DisplayName": "Cloud Gem Player Account",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides user registration, password managment, and login/logout.",
+    "Tags": ["Cloud Canvas", "AWS"],
+    "Dependencies": [
+        {
+            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvas (AWS)"
+        },
+        {
+            "Uuid" : "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        }
+    ],
+    "IconPath": "preview.png"
+}

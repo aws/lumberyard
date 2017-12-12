@@ -1,0 +1,18 @@
+{
+    "auto": {
+        "Interface": [
+            "include/GemRegistry/Version.h",
+            "include/GemRegistry/IGemRegistry.h",
+            "include/GemRegistry/Dependency.h",
+            "include/GemRegistry/Dependency.inl"
+        ],
+        "Implementation": [
+            "source/GemRegistry.h",
+            "source/GemRegistry.cpp",
+            "source/ProjectSettings.h",
+            "source/ProjectSettings.cpp",
+            "source/GemDescription.h",
+            "source/GemDescription.cpp"
+        ]
+    }
+}

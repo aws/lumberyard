@@ -1,0 +1,94 @@
+{
+    "__comment" : "Available virtual types are:",
+    "__comment" : "     PhysicsMesh - Static mesh node is treated as a physics mesh.",
+    "__comment" : "     LODMesh1 - Static mesh node is treated as a mesh at level-of-detail level 1.",
+    "__comment" : "     LODMesh2 - Static mesh node is treated as a mesh at level-of-detail level 2.",
+    "__comment" : "     LODMesh3 - Static mesh node is treated as a mesh at level-of-detail level 3.",
+    "__comment" : "     LODMesh4 - Static mesh node is treated as a mesh at level-of-detail level 4.",
+    "__comment" : "     LODMesh5 - Static mesh node is treated as a mesh at level-of-detail level 5.",
+    "__comment" : "     Ignore - Node is ignored",
+    "__comment" : "Type: Type of the entry. This dictates the behavior and what arguments are accepted.",
+    "__comment" : "      The following types are available:",
+    "__comment" : "         NodeName - Transforms a node in the scene graph if it's name matches.",
+    "__comment" : "         FileName - Transforms a node if the filename matches and the node is one of the real node types.",
+    
+    "__comment" : "If the type is 'NodeName' the following arguments are required:",
+    "__comment" : "PatternMatcher: the approach to name matching",
+    "__comment" : "     prefix:   The node name needs to start with the specified pattern.",
+    "__comment" : "     postfix:  The node name needs to with with the specified pattern.",
+    "__comment" : "     regex:    The node name is passed through the regular expression specified",
+    "__comment" : "                 in pattern and accepted if it passes.",
+    "__comment" : "Pattern: the string pattern used by the pattern matcher.",
+    "__comment" : "IncludeChildren: If set to true the virtual type will be applied to all children as well. (This option is optional and will default to false.)",
+    
+    "__comment" : "If the type is 'FileName' the following arguments are required:",
+    "__comment" : "PatternMatcher: the approach to name matching",
+    "__comment" : "     prefix:   The node name needs to start with the specified pattern.",
+    "__comment" : "     postfix:  The node name needs to with with the specified pattern.",
+    "__comment" : "     regex:    The node name is passed through the regular expression specified",
+    "__comment" : "                 in pattern and accepted if it passes.",
+    "__comment" : "Pattern: the string pattern used by the pattern matcher.",
+    "__comment" : "InclusiveMatch: If true, nodes that match the given list of types are considered a virtual type, otherwise nodes that don't match are.",
+    "__comment" : "NodeTypes: List of uuids of types used for filtering. Nodes are checked to be be of the given type or derive from the type.",
+    "__comment" : "           For instance {62B0571C-6EFF-42FA-902A-85AC744E04F2} refers to IAnimationData.",
+    
+    "PhysicsMesh" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_phys",
+        "IncludeChildren" : true
+    },
+    "LODMesh1" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_lod1",
+        "IncludeChildren" : true
+    },
+    "LODMesh2" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_lod2",
+        "IncludeChildren" : true
+    },
+    "LODMesh3" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_lod3",
+        "IncludeChildren" : true
+    },
+    "LODMesh4" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_lod4",
+        "IncludeChildren" : true
+    },
+    "LODMesh5" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_lod5",
+        "IncludeChildren" : true
+    },
+    "Ignore" :
+    {
+        "Type" : "NodeName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_ignore"
+    },
+    "Ignore" :
+    {
+        "Type" : "FileName",
+        "PatternMatcher" : "postfix",
+        "Pattern" : "_anim",
+        "InclusiveMatch" : false,
+        "NodeTypes" :
+        [
+            "{62B0571C-6EFF-42FA-902A-85AC744E04F2}"
+        ]
+    }
+}

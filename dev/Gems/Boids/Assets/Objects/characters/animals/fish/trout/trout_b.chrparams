@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<Params>
+	<AnimationList>
+		<Animation name="#filepath" path="Animations\animals\fish\fresh_water"/>
+		
+		<Animation name="swim_loop" path="swim_loop.caf"/>
+
+	</AnimationList>
+</Params>

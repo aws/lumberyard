@@ -1,0 +1,16 @@
+<Material MtlFlags="524544">
+ <SubMaterials>
+  <Material Name="butterfly" MtlFlags="524418" Shader="Cloth" GenMask="200000000008" StringGenMask="%ANISO_SPECULAR%TEMP_CLOTH" SurfaceType="mat_fabric" MatTemplate="" Diffuse="0.51372552,0.51372552,0.51372552" Specular="0.031896032,0.031896032,0.031896032" Emissive="0,0,0" Shininess="50" Opacity="1" AlphaTest="0.51499999" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/characters/animals/insects/butterfly/butterfly.tif"/>
+    <Texture Map="Opacity" File="objects/characters/animals/insects/butterfly/butterfly.tif"/>
+    <Texture Map="SubSurface" File="objects/characters/animals/insects/butterfly/butterfly.tif"/>
+   </Textures>
+   <PublicParams AmbientSpecMult="1" AnisotropicShape="0.25" FresnelScale="1" FuzzynessSpread="1" FuzzynessStrength="1" FresnelBias="1" FuzzynessSmoothness="2" FuzzynessSaturation="1" DiffuseExponent="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="hitMat" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_fabric" MatTemplate="" Diffuse="1,0,0" Specular="0,0,0" Emissive="0,0,0" Shininess="10" Opacity="1" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+ <PublicParams SubsurfaceScatteringAmount="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

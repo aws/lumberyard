@@ -1,0 +1,18 @@
+@import "./styles/variables";
+
+.gems-heading-back-row > .col > * {
+    color: $primary-color;
+    font-size:11px;
+}
+.gems-heading {
+    font-size: 24px;
+    margin-bottom: 20px;
+    padding-left: 0;
+}
+.gems-back {
+    font-size: 14px;
+    color: $primary-color;
+    a {
+        cursor: pointer;      
+    }
+}

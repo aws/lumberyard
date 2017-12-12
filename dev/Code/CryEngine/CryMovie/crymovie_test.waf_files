@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/test_Main.cpp"
+        ],
+        "Nodes/Tests": 
+        [
+            "Tests/EntityNodeTest.cpp"
+        ]
+    }
+}

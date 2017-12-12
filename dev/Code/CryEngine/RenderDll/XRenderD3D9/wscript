@@ -1,0 +1,177 @@
+#######################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+from waflib import Logs
+
+SUBFOLDERS = [
+        'DXGL',
+        'DXMETAL',
+    ]
+
+
+def build(bld):
+
+    configurations_dx11 = ['debug', 'debug_test', 'profile', 'profile_test']
+    configurations_dx12 = ['debug', 'debug_test', 'profile', 'profile_test']
+    if bld.options.win_build_renderer == 'DX12':
+        if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
+            Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
+            configurations_dx11.extend(['performance', 'release'])
+        else:
+            configurations_dx12.extend(['performance', 'release'])
+    elif bld.options.win_build_renderer == 'DX11':
+        configurations_dx11.extend(['performance', 'release'])
+    else:
+        bld.fatal('unknown win_build_renderer: %s' % bld.options.win_build_renderer)
+
+    bld.CryEngineModule(
+
+        # Settings
+        target              = 'CryRenderD3D11',
+        vs_filter           = 'CryEngine',
+        copyright_org       = 'Amazon-CryTek',
+        file_list           = ['core_renderer.waf_files','d3d11.waf_files'],
+        platforms           = ['win', 'durango', 'orbis'],
+        configurations      = configurations_dx11,
+        pch                 = '../StdAfx.cpp',
+        use                 = ['AzFramework'],
+        uselib              = ['LZMA',
+                               'LZSS',
+                               'LZ4'],
+        includes            = ['..',
+                               bld.Path('Code/SDKs')],
+        defines             = ['DIRECT3D10',
+                               'XRENDERD3D10_EXPORTS',
+                               'DO_RENDERSTATS',
+                               '_RENDERER',
+                               'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
+                               'EXCLUDE_CINEMIZER_SDK'],
+        libpath             = [bld.Path('Code/SDKs/')],
+
+
+        # Platform Specific
+        win_file_list               = 'mesh_baker.waf_files',
+        win_includes                = ['.',
+                                       bld.Path('Code/CryEngine/CryCommon'),
+                                       bld.Path('Code/SDKs/squish-ccr')],
+        win_lib                     = ['winmm',
+                                       'version',
+                                       'd3d11',
+                                       'd3dcompiler',
+                                       'dxguid',
+                                       'Ole32',
+                                       'Gdi32',
+                                       'ws2_32',
+                                       'Shell32' ],
+
+        win_defines                 = ['DO_RENDERLOG' ],
+
+       
+       
+       
+       
+       
+       
+
+       
+       
+       
+       
+
+        # Testing
+        test_all_file_list = ['d3d11_test.waf_files'],
+    )
+    
+    #==============================
+    # Build CryRenderD3D12
+    #==============================
+    bld.CryEngineModule(
+
+        #==============================
+        # Settings
+        #==============================
+        target              = 'CryRenderD3D12',
+        vs_filter           = 'CryEngine',
+        file_list           = ['core_renderer.waf_files','d3d12.waf_files'],
+        platforms           = ['win_x64_vs2015'],
+        configurations      = configurations_dx12,
+
+
+        pch                 = '../StdAfx.cpp',
+        build_in_dedicated  = False, # do not build this module if making dedicated server.
+        use                 = ['AzFramework'],
+        uselib              = ['LZMA',
+                               'LZSS',
+                               'LZ4'],
+        dx12_only           = True,
+
+        #==============================
+        # Common
+        #==============================
+        includes            = ['..',
+                               bld.Path('Code/SDKs')],
+        defines             = [ 'DIRECT3D10',
+                                'CRY_USE_DX12',
+                                'XRENDERD3D10_EXPORTS',
+                                'DO_RENDERSTATS',
+                                '_RENDERER',
+                                'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
+                                'EXCLUDE_CINEMIZER_SDK'],
+        libpath             = [bld.Path('Code/SDKs/')],
+
+        #==============================
+        # Windows
+        #==============================
+        win_file_list       = ['mesh_baker.waf_files', 
+                               'dx12_renderer.waf_files'],
+        win_includes        = [ '.',
+                                bld.Path('Code/CryEngine/CryCommon'),
+                                bld.Path('Code/SDKs/boost'),
+                                bld.Path('Code/SDKs/squish-ccr'),
+                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9/DX12/Includes')],
+        win_lib             = [ 'winmm',
+                                'version',
+                                'd3dcompiler',
+                                'dxguid',
+                                'Ole32',
+                                'Gdi32',
+                                'ws2_32',
+                                'Shell32', 
+                                'd3d12',
+                                'dxgi'],
+
+        win_defines = [ 'DO_RENDERLOG' ],
+
+        #==============================
+        # Windows / x64
+        #==============================
+       
+       
+       
+       
+       
+       
+
+
+        #==============================
+        # Testing
+        #==============================
+        win_x64_test_all_file_list = ['d3d12_test.waf_files'],
+    )
+
+
+    # Recursive into all sub projects
+    bld.recurse(dirs=SUBFOLDERS,
+                mandatory=False)

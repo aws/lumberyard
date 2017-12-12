@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "DX/Tests/test_Main.cpp",
+            "../Common/Tests/RenderDLLUnitTests.cpp",
+            "../Common/Shaders/RemoteShaderCompilerUnitTests.cpp"
+        ]
+    }
+}

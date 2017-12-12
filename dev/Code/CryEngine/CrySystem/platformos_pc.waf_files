@@ -1,0 +1,10 @@
+{
+	"none":
+	{
+		"PlatformOS":
+		[
+			"PlatformOS/PlatformOS_PC.cpp",	
+			"PlatformOS/PlatformOS_PC.h"
+		]
+	}
+}

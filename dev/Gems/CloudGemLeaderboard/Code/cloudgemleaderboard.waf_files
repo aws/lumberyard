@@ -1,0 +1,19 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemLeaderboard/CloudGemLeaderboardBus.h",
+            "Include/AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
+        ],
+        "Source": [
+            "Source/CloudGemLeaderboardModule.cpp",
+            "Source/CloudGemLeaderboardSystemComponent.cpp",
+            "Source/CloudGemLeaderboardSystemComponent.h"
+        ]
+    }
+}

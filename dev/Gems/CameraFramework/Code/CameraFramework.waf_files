@@ -1,0 +1,21 @@
+{
+    "auto": {
+        "Include": [
+            "Include/CameraFramework/ICameraSubComponent.h",
+            "Include/CameraFramework/ICameraLookAtBehavior.h",
+            "Include/CameraFramework/ICameraTargetAcquirer.h",
+            "Include/CameraFramework/ICameraTransformBehavior.h"
+        ],
+        "Source": [
+            "Source/CameraFrameworkGem.cpp",
+            "Source/CameraRigComponent.h",
+            "Source/CameraRigComponent.cpp"
+        ]
+    },
+    "NoUberFile": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    }
+}

@@ -1,0 +1,2 @@
+All of the code in this folder is deprecated and not currently used by Lumberyard.
+If you are interested in using this code and would like additional support please contact the Lumberyard support team.

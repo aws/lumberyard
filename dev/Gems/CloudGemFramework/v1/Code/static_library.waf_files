@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Source": [
+            "StaticLibrary/StdAfx.cpp",
+            "StaticLibrary/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "StaticLibrary/AwsApiJob.cpp",
+            "StaticLibrary/AwsApiJobConfig.cpp",
+            "StaticLibrary/Error.cpp",
+            "StaticLibrary/JsonObjectHandler.cpp",
+            "StaticLibrary/RequestBuilder.cpp",
+            "StaticLibrary/ServiceJob.cpp",
+            "StaticLibrary/ServiceJobConfig.cpp",
+            "StaticLibrary/HttpRequestJob.cpp"
+        ]
+    }
+}

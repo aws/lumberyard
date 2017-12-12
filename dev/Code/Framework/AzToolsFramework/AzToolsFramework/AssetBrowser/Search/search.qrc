@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/AssetBrowser/Resources">
+    <file>search.png</file>
+    <file>close.png</file>
+    <file>filter.png</file>
+  </qresource>
+</RCC>

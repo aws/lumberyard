@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/GameLiftTest.cpp"
+        ]
+    }
+}

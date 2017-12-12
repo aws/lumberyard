@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CharacterAssetDbFilterDlg</class>
+ <widget class="QWidget" name="ASSERT_FILTERS_CHARACTERS_WIDGET">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>244</width>
+    <height>180</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Characters</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QWidget" name="ASSET_FILTERS_CHARACTERS_WIDGET">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_CHARACTERS_MIN_TRIANGLES_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_CHARACTERS_MIN_TRIANGLES">
+          <property name="text">
+           <string>Minimum triangles:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_CHARACTERS_MIN_TRIANGLES_COMBO">
+          <item>
+           <property name="text">
+            <string>0</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>100</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>500</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>1000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>2000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>20000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>30000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>40000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>50000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>64000</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_CHARACTERS_MAX_TRIANGLES_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_CHARACTERS_MAX_TRIANGLES">
+          <property name="text">
+           <string>Maximum triangles:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_CHARACTERS_MAX_TRIANGLES_COMBO">
+          <item>
+           <property name="text">
+            <string>0</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>100</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>500</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>1000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>2000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>20000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>30000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>40000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>50000</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>64000</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_CHARACTERS_MIN_MATERIALS_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_CHARACTERS_MIN_MATERIALS">
+          <property name="text">
+           <string>Minimum materials:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_CHARACTERS_MIN_MATERIALS_COMBO">
+          <item>
+           <property name="text">
+            <string>0</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>1</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>100</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>500</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_CHARACTERS_MAX_MATERIALS_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_CHARACTERS_MAX_MATERIALS">
+          <property name="text">
+           <string>Maximum materials:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_CHARACTERS_MAX_MATERIALS_COMBO">
+          <item>
+           <property name="text">
+            <string>0</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>1</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>100</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>500</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="ASSET_FILTERS_CHARACTERS_HIDE_LODS">
+        <property name="text">
+         <string>Hide LODs</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

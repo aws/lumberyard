@@ -1,0 +1,20 @@
+{
+    "none":
+    {
+        "tests":
+        [
+            "native/tests/AssetProcessorTest.h",
+            "native/tests/AssetProcessorTest.cpp",
+            "native/tests/BaseAssetProcessorTest.h",
+            "native/tests/resourcecompiler/RCBuilderTest.cpp",
+            "native/tests/resourcecompiler/RCBuilderTest.h",
+            "native/tests/resourcecompiler/RCControllerTest.cpp",
+            "native/tests/resourcecompiler/RCControllerTest.h",
+            "native/tests/assetBuilderSDK/assetBuilderSDKTest.h",
+            "native/tests/assetBuilderSDK/assetBuilderSDKTest.cpp",
+            "native/tests/assetmanager/AssetProcessorManagerTest.cpp",
+            "native/tests/assetmanager/AssetProcessorManagerTest.h",
+            "native/tests/utilities/assetUtilsTest.cpp"
+        ]
+    }
+}

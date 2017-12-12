@@ -1,0 +1,20 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "settings.ui",
+            "main.cpp",
+            "PasswordDlg.cpp",
+            "PasswordDlg.h",
+            "PerforcePlugin.cpp",
+            "PerforcePlugin.h",
+            "PerforcePlugin.qrc",
+            "PerforceSourceControl.cpp",
+            "PerforceSourceControl.h",
+            "resource.h",
+            "stdafx.cpp",
+            "stdafx.h"
+        ]
+    }
+}

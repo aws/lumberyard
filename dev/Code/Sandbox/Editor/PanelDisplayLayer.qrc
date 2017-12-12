@@ -1,0 +1,30 @@
+<RCC>
+    <qresource prefix="/LayerEditor/Toolbar">
+        <file alias="new.png">res/layer_editor_toolbar-0.png</file>
+        <file alias="delete.png">res/layer_editor_toolbar-1.png</file>
+        <file alias="rename.png">res/layer_editor_toolbar-2.png</file>
+        <file alias="export.png">res/layer_editor_toolbar-3.png</file>
+        <file alias="import.png">res/layer_editor_toolbar-4.png</file>
+        <file alias="save.png">res/layer_editor_toolbar-5.png</file>
+        <file alias="freeze.png">res/layer_editor_toolbar-6.png</file>
+    </qresource>
+    <qresource prefix="/LayerEditor/LayerButtons">
+        <file alias="visible.png">res/layer_editor_layer_buttons-0.png</file>
+        <file alias="usable.png">res/layer_editor_layer_buttons-1.png</file>
+        <file alias="expanded.png">res/layer_editor_layer_buttons-2.png</file>
+        <file alias="collapsed.png">res/layer_editor_layer_buttons-3.png</file>
+        <file alias="leaf.png">res/layer_editor_layer_buttons-4.png</file>
+        <file alias="not_exportable.png">res/layer_editor_layer_buttons-5.png</file>
+        <file alias="blank.png">res/layer_editor_layer_buttons-6.png</file>
+    </qresource>
+    <qresource prefix="/LayerEditor/SourceControlIcons">
+        <file alias="managed.png">res/source_control_icons-0.png</file>
+        <file alias="not_managed.png">res/source_control_icons-1.png</file>
+        <file alias="checked_out_by_me.png">res/source_control_icons-2.png</file>
+        <file alias="not_at_head.png">res/source_control_icons-3.png</file>
+        <file alias="added.png">res/source_control_icons-4.png</file>
+        <file alias="unknown.png">res/source_control_icons-5.png</file>
+        <file alias="checked_out_by_other.png">res/source_control_icons-6.png</file>
+        <file alias="locked.png">res/source_control_icons-7.png</file>
+    </qresource>
+</RCC>

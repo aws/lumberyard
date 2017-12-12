@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "AudioSystemEditor_nosound.h",
+            "main.cpp",
+            "StdAfx.cpp",
+            "StdAfx.h"
+        ]
+    }
+}

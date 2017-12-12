@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="/">
+    <file>animatio.png</file>
+    <file>animations_tree_soundevent.png</file>
+    <file>animflag_inside_pak.png</file>
+    <file>animflag_on_disk.png</file>
+    <file>bitmap5.png</file>
+    <file>bmp00002.png</file>
+    <file>bmp00003.png</file>
+    <file>bmp00024.png</file>
+    <file>bmp00026.png</file>
+    <file>bmp00028.png</file>
+    <file>bmp00029.png</file>
+    <file>bmp00030.png</file>
+    <file>bmp00031.png</file>
+    <file>ce_animations_toolbar_00.png</file>
+  </qresource>
+</RCC>

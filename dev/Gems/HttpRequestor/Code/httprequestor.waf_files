@@ -1,0 +1,25 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ],
+        "Source/HttpRequest": [
+          "Source/HttpRequestManager.cpp",
+          "Source/HttpRequestManager.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+          "Include/HttpRequestor/HttpRequestorBus.h",
+          "Include/HttpRequestor/HttpTextRequestParameters.h",
+          "Include/HttpRequestor/HttpRequestParameters.h",
+          "Include/HttpRequestor/HttpTypes.h"
+        ],
+        "Source": [
+          "Source/HttpRequestorModule.cpp",
+          "Source/HttpRequestorSystemComponent.cpp",
+          "Source/HttpRequestorSystemComponent.h"
+        ]
+    }
+}

@@ -1,0 +1,249 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Source\Core">
+      <UniqueIdentifier>{9941ea32-73a9-46f3-a0ea-5194b4640f6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server">
+      <UniqueIdentifier>{fda8b359-e35a-4599-b433-f70b6509b814}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\tinyxml">
+      <UniqueIdentifier>{83c10e6e-5979-4457-b9be-103841532dc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\zlib">
+      <UniqueIdentifier>{68f6afb2-826d-418a-a955-d26b6fb7c8e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\Jobs">
+      <UniqueIdentifier>{b54f914c-2e24-443c-a805-b874b0e3bb03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\Jobs\Compile">
+      <UniqueIdentifier>{4c946142-ea9e-412b-b701-c59d8f6cdb4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\Jobs\Cache">
+      <UniqueIdentifier>{6b5e0f44-e52f-4125-b10a-42ebc5b051ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\Jobs\Request">
+      <UniqueIdentifier>{b83f8446-f089-4d08-8367-67ad5ad3f479}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\HTTP">
+      <UniqueIdentifier>{afff0727-24fa-4c06-9fcf-8f80522f3e1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core\Server\Util">
+      <UniqueIdentifier>{462f7b47-8f65-43bd-991e-337d1674e61c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CrySCompileServer.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Mailer.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\STLHelper.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleCache.cpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleErrorLog.cpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleServer.cpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\ShaderList.cpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\tinyxml\tinystr.cpp">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\tinyxml\tinyxml.cpp">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\tinyxml\tinyxmlerror.cpp">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\tinyxml\tinyxmlparser.cpp">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\tinyxml\xmltest.cpp">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\adler32.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\compress.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\crc32.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\deflate.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\gzio.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\infback.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inffast.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inflate.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inftrees.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\trees.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\uncompr.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\zutil.c">
+      <Filter>Source\Core\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJob.cpp">
+      <Filter>Source\Core\Server\Jobs</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJobCache.cpp">
+      <Filter>Source\Core\Server\Jobs\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJobCompile.cpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJobCompile1.cpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJobCompile2.cpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleJobRequest.cpp">
+      <Filter>Source\Core\Server\Jobs\Request</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleHTTP.cpp">
+      <Filter>Source\Core\Server\HTTP</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleFileGuard.cpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleMutex.cpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Server\CrySimpleSock.cpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Error.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\Common.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Error.hpp">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Mailer.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\MD5.hpp">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\StdTypes.hpp">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\STLHelper.hpp">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleCache.hpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleErrorLog.hpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleServer.hpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\ShaderList.hpp">
+      <Filter>Source\Core\Server</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\tinyxml\tinystr.h">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\tinyxml\tinyxml.h">
+      <Filter>Source\Core\tinyxml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\crc32.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\deflate.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inffast.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inffixed.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inflate.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\inftrees.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\trees.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\zconf.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\zconf.in.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\zlib.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SDKs\zlib\1.2.3-cryscompileserver\zutil.h">
+      <Filter>Source\Core\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleJob.hpp">
+      <Filter>Source\Core\Server\Jobs</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleJobCache.hpp">
+      <Filter>Source\Core\Server\Jobs\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleJobCompile.hpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleJobCompile1.hpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleJobRequest.hpp">
+      <Filter>Source\Core\Server\Jobs\Request</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleHTTP.hpp">
+      <Filter>Source\Core\Server\HTTP</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleMutex.hpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleFileGuard.hpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Server\CrySimpleSock.hpp">
+      <Filter>Source\Core\Server\Util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuildStep Include="Core\Server\CrySimpleJobCompile2.hpp">
+      <Filter>Source\Core\Server\Jobs\Compile</Filter>
+    </CustomBuildStep>
+  </ItemGroup>
+</Project>

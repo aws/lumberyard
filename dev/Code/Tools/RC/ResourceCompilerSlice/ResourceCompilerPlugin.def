@@ -1,0 +1,3 @@
+LIBRARY	ResourceCompilerSlice
+EXPORTS
+	RegisterConvertors			@1

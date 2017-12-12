@@ -1,0 +1,60 @@
+{
+    "none":
+    {
+        "include":
+        [
+            "include/amazon_changes.h",
+            "include/hlslcc.h",
+            "include/hlslcc.hpp",
+            "include/pstdint.h",
+            "include/hlslcc_bin.hpp"
+        ],
+        "executable source":
+        [
+            "offline/hash.h",
+            "offline/serializeReflection.h",
+            "offline/timer.h",
+            "offline/compilerStandalone.cpp",
+            "offline/serializeReflection.cpp",
+            "offline/timer.cpp",
+            "offline/cjson/cJSON.h",
+            "offline/cjson/cJSON.c"
+        ],
+        "lib source":
+        [
+            "src/amazon_changes.c",
+            "src/decode.c",
+            "src/decodeDX9.c",
+            "src/reflect.c",
+            "src/toGLSL.c",
+            "src/toGLSLDeclaration.c",
+            "src/toGLSLInstruction.c",
+            "src/toGLSLOperand.c"
+        ],
+        "Internal lib source":
+        [
+            "src/internal_includes/debug.h",
+            "src/internal_includes/decode.h",
+            "src/internal_includes/hlslcc_malloc.h",
+            "src/internal_includes/hlslcc_malloc.c",
+            "src/internal_includes/languages.h",
+            "src/internal_includes/reflect.h",
+            "src/internal_includes/shaderLimits.h",
+            "src/internal_includes/structs.h",
+            "src/internal_includes/toGLSLDeclaration.h",
+            "src/internal_includes/toGLSLInstruction.h",
+            "src/internal_includes/toGLSLOperand.h",
+            "src/internal_includes/tokens.h",
+            "src/internal_includes/tokensDX9.h"
+        ],
+        "cbstring":
+        [
+            "src/cbstring/bsafe.h",
+            "src/cbstring/bstraux.h",
+            "src/cbstring/bstrlib.h",
+            "src/cbstring/bsafe.c",
+            "src/cbstring/bstraux.c",
+            "src/cbstring/bstrlib.c"
+        ]
+    }
+}

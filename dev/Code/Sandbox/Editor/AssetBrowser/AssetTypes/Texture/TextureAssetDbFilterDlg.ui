@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TextureAssetDbFilterDlg</class>
+ <widget class="QWidget" name="ASSET_FILTERS_TEXTURES_MAIN_WIDGET">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>271</width>
+    <height>269</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Textures</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QWidget" name="ASSET_FILTERS_TEXTURES_WIDGET">
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MIN_WIDTH_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MIN_WIDTH">
+          <property name="text">
+           <string>Minimum width:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MIN_WIDTH_COMBO">
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>16</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>32</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>64</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>128</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>512</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1024</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2048</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4096</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8192</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MAX_WIDTH_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MAX_WIDTH">
+          <property name="text">
+           <string>Maximum width:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MAX_WIDTH_COMBO">
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>16</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>32</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>64</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>128</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>512</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1024</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2048</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4096</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8192</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MIN_HEIGHT_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MIN_HEIGHT">
+          <property name="text">
+           <string>Minimum height:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MIN_HEIGHT_COMBO">
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>16</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>32</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>64</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>128</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>512</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1024</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2048</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4096</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8192</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MAX_HEIGHT_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MAX_HEIGHT">
+          <property name="text">
+           <string>Maximum height:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MAX_HEIGHT_COMBO">
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>16</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>32</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>64</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>128</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>512</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1024</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2048</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4096</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8192</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MIN_MIPS_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MIN_MIPS">
+          <property name="text">
+           <string>Minimum mips:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MIN_MIPS_COMBO">
+           <item>
+             <property name="text">
+               <string>0</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>3</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>5</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>6</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>7</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>9</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_MAX_MIPS_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_MAX_MIPS">
+          <property name="text">
+           <string>Maximum mips:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_MAX_MIPS_COMBO">
+           <item>
+             <property name="text">
+               <string>0</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>1</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>3</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>4</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>5</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>6</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>7</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>8</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>9</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>10</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_TYPE_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_TYPE">
+          <property name="text">
+           <string>Type: </string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_TYPE_COMBO">
+           <item>
+             <property name="text">
+               <string>Any</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Cube</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>2D</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ASSET_FILTERS_TEXTURES_USAGE_LAYOUT">
+        <item>
+         <widget class="QLabel" name="ASSET_FILTERS_TEXTURES_USAGE">
+          <property name="text">
+           <string>Usage:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="ASSET_FILTERS_TEXTURES_USAGE_COMBO">
+           <item>
+             <property name="text">
+               <string>Any</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Diffuse</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Normal</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Specular</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Displacement</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Gloss</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Detail</string>
+             </property>
+           </item>
+           <item>
+             <property name="text">
+               <string>Decal</string>
+             </property>
+           </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

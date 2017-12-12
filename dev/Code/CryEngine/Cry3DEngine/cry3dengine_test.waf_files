@@ -1,0 +1,14 @@
+{
+    "none":
+    {
+        "RenderMeshUtils/Tests":
+        [
+            "RenderMeshUtils/Tests/Test_RenderMeshUtils.cpp"
+        ],
+        "Tests":
+        [
+            "Tests/Test_Cry3DEngine.cpp",
+            "Tests/MockValidationTest.cpp"
+        ]
+    }
+}

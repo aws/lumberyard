@@ -1,0 +1,33 @@
+{
+    "none":
+    {
+        "Root": 
+        [
+            "Action.cpp",
+            "Action.h",
+            "Annotation.cpp",
+            "Annotation.h",
+            "Configuration.cpp",
+            "Configuration.h",
+            "Consumer.h",
+            "CXXVisitor.cpp",
+            "CXXVisitor.h",
+            "Declaration.h",
+            "Enum.h",
+            "Field.h",
+            "JSONWriter.h",
+            "main.cpp",
+            "Method.h",
+            "Namespace.h",
+            "Object.h",
+            "Output.cpp",
+            "Output.h",
+            "precompiled.cpp",
+            "precompiled.h",
+            "ScriptEngine.h",
+            "ScriptEnginePython.cpp",
+            "ScriptEnginePython.h",
+            "Writer.h"
+        ]
+    }
+}

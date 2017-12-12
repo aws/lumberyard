@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/NullVR/NullVRBus.h"
+        ],
+        "Source": [
+            "Source/NullVRModule.cpp",
+            "Source/NullVRDevice.cpp",
+            "Source/NullVRDevice.h"
+        ]
+    }
+}

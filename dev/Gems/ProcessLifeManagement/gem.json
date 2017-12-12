@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "698948526ada4d13bada933e2d7ee463",
+    "Name": "ProcessLifeManagement",
+    "DisplayName": "Process Life Management",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Pauses the game when it becomes constrained/minimized/backgrounded, and displays a screen overlay informing the user to provide some input before unpausing.",
+    "Tags": ["Constrain", "Minimize", "Background", "PLM"],
+    "IconPath": "preview.png"
+}

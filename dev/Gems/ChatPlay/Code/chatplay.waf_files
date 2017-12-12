@@ -1,0 +1,27 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/ChatPlay/ChatPlayBus.h",
+            "Include/ChatPlay/ChatPlayTypes.h"
+        ],
+        "Source": [
+            "Source/ChatPlayModule.cpp",
+            "Source/ChatPlaySystemComponent.cpp",
+            "Source/ChatPlaySystemComponent.h"
+        ]
+    },
+
+    "ChatPlayGem_Headers_uber.cpp": {
+        "Source/ChatPlay": [
+            "Source/ChatPlay/ChatPlay.h",
+            "Source/ChatPlay/ChatPlayCVars.cpp",
+            "Source/ChatPlay/ChatPlayCVars.h"
+        ]
+    }
+}

@@ -1,0 +1,33 @@
+{
+    "none":
+    {
+        "Source":
+        [
+            "source/StdAfx.cpp",
+            "source/StdAfx.h"
+        ]
+    },
+    "auto":
+    {
+        "Include":
+        [
+            "include/LightningArc/LightningArcBus.h"
+        ],
+        "Source":
+        [
+            "source/LightningArcGem.h",
+            "source/LightningArcGem.cpp"
+        ],
+        "Source/GameSDK":
+        [
+            "source/LightningArc.h",
+            "source/LightningArc.cpp",
+            "source/LightningNode.h",
+            "source/LightningNode.cpp",
+            "source/LightningGameEffect.h",
+            "source/LightningGameEffect.cpp",
+            "source/ScriptBind_LightningArc.h",
+            "source/ScriptBind_LightningArc.cpp"
+        ]
+    }
+}

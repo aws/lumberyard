@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{1a4c16ca-6229-469b-867d-ead2e827693a}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>ban_handler.py</StartupFile>
+    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\..\..\CloudGemFramework\v1\AWS\common-code\LambdaSettings\;..\..\..\..\CloudGemFramework\v1\AWS\common-code\LambdaService\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include=".ignore" />
+    <Content Include=".import" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="api\leaderboard.py" />
+    <Compile Include="api\player_ban.py" />
+    <Compile Include="api\player_ban_list.py" />
+    <Compile Include="api\process_records.py" />
+    <Compile Include="api\service_status.py" />
+    <Compile Include="api\stats.py" />
+    <Compile Include="api\submit_score.py" />
+    <Compile Include="api\user_scores.py" />
+    <Compile Include="api\__init__.py" />
+    <Compile Include="ban_handler.py" />
+    <Compile Include="identity_validator.py" />
+    <Compile Include="leaderboard_utils.py" />
+    <Compile Include="reservoir_sampler.py" />
+    <Compile Include="score_reader.py" />
+    <Compile Include="score_submitter.py" />
+    <Compile Include="stats_settings.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="api" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>

@@ -1,0 +1,15 @@
+{
+    "auto": {
+        "Include": [
+            "Include/AWS/ServiceAPI/CloudGemDynamicContentClientComponent.h"
+        ],
+        "Nodes": [
+            "Nodes/FlowNode_RequestManifest.h",
+            "Nodes/FlowNode_RequestManifest.cpp",
+            "Nodes/FlowNode_RequestFileStatus.h",
+            "Nodes/FlowNode_RequestFileStatus.cpp",
+            "Nodes/FlowNode_DownloadPresignedURL.h",
+            "Nodes/FlowNode_DownloadPresignedURL.cpp"
+        ]
+    }
+}

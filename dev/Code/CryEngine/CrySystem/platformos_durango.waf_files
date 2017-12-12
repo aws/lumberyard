@@ -1,0 +1,14 @@
+{
+	"none":
+	{
+		"PlatformOS":
+		[
+			"PlatformOS/PlatformOS_Durango.cpp",
+			"PlatformOS/PlatformOS_Durango.h",
+			"PlatformOS/SaveReaderWriter_Durango.cpp",
+			"PlatformOS/SaveReaderWriter_Durango.h",
+			"PlatformOS/StreamingInstall_Durango.cpp",
+			"PlatformOS/StreamingInstall_Durango.h"
+		]
+	}
+}

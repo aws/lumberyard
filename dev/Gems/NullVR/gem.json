@@ -1,0 +1,20 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "f7e6617abd7b4a83ae113ade4c641032",
+    "Name": "NullVR",
+    "DisplayName": "NullVR",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Enables the VR system without a VR device.",
+    "Tags": ["VR"],
+    "IconPath": "preview.png",
+	"Dependencies": [
+        {
+            "Uuid": "24a3427048184feba39ba2cf75d45c4c", 
+            "VersionConstraints": [
+                "~>0.1"
+            ], 
+            "_comment": "HMD Framework"
+        }
+    ]
+}

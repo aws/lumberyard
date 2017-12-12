@@ -1,0 +1,73 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    supported_plats=['ios','appletv']
+    if bld.is_monolithic_build():
+        if bld.options.mac_build_renderer == 'METAL':
+            supported_plats.append( 'darwin')
+    else:
+        supported_plats.append('darwin');
+
+    #==============================
+    # Build CryRenderMetal
+    #==============================
+    bld.CryEngineModule(
+
+        # Settings
+        target              = 'CryRenderMetal',
+        vs_filter           = 'CryEngine',
+        file_list           = [ 'metal_renderer.waf_files', 'metal_mesh_baker.waf_files' ],
+        platforms           = supported_plats,
+        configurations      = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
+        pch        	        = '../../StdAfx.cpp',
+        use                 = ['AzFramework'],
+        uselib              = ['LZMA',
+                               'LZSS'],
+        includes            = [ '../..',
+                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+                                bld.Path('Code/CryEngine/RenderDLL/Common'),
+                                bld.Path('Code/CryEngine/RenderDLL'),
+                                bld.Path('Code/Tools/HLSLCrossCompilerMETAL/include'),
+                                bld.Path('Code/SDKs')],
+        defines             = [ 'DO_RENDERLOG',
+                                'DO_RENDERSTATS',
+                                'DIRECT3D10',
+                                'XRENDERGL_EXPORTS',
+                                '_RENDERER',
+                                'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
+                                'OPENGL', 'CRY_USE_METAL'], # Defining this will get stdafx.h to include the correct header file for OpenGl/Metal
+        lib                 = [ 'HLSLcc' ],
+        libpath             = [ bld.Path('Code/SDKs/') ],
+
+
+        # Platform Specific
+        ios_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing' ],
+        ios_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/ios') ],
+        ios_framework       = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
+
+        appletv_cxxflags    = [ '-x', 'objective-c++', '-Wno-c++11-narrowing' ],
+        appletv_libpath     = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/ios') ],
+        appletv_framework   = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
+
+        #==============================
+        # DARWIN
+        #==============================
+        darwin_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
+        darwin_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
+        darwin_framework       = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
+        
+        
+        test_all_file_list      = ['metal_test.waf_files'],
+
+    )

@@ -1,0 +1,17 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/HMDFrameworkModule.cpp",
+            "Source/HMDDebuggerComponent.h",
+            "Source/HMDDebuggerComponent.cpp",
+            "Source/HMDLuaComponent.h",
+            "Source/HMDLuaComponent.cpp"
+        ]
+    }
+}

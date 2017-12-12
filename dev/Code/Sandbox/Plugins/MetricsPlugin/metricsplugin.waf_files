@@ -1,0 +1,13 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "dllmain.cpp",
+            "MetricsPlugin.cpp",
+            "MetricsPlugin.h",
+            "stdafx.cpp",
+            "stdafx.h"
+        ]
+    }
+}

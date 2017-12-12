@@ -1,0 +1,49 @@
+{
+    "name": "FFmpeg",
+    "source": "@ROOT@/Code/SDKs/FFmpeg",
+    "description": "Support library for FFmpeg",
+    "aliases": {
+        "lib_names": [
+            "avcodec",
+            "avformat",
+            "swscale",
+            "avutil",
+            "avfilter",
+            "avdevice",
+            "postproc",
+            "swresample"
+        ],
+        "dll_names": [
+            "swscale-4",
+            "avcodec-57",
+            "avdevice-57",
+            "avfilter-6",
+            "avformat-57",
+            "avutil-55",
+            "postproc-54",
+            "swresample-2"
+        ]
+    },
+    "includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "importlibpath": [
+                "lib"
+            ],
+            "sharedlibpath": [
+                "bin"
+            ],
+            "import": [
+                "${lib_names}.lib"
+            ],
+            "shared": [
+                "${dll_names}.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013"
+    }
+}

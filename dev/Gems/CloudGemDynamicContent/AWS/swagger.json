@@ -1,0 +1,334 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/portal/info/{file_name}": {
+            "get": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "describe_content"
+                },
+                "operationId": "describe_portal_content",
+                "description": "Returns information about a specific file to the portal.",
+                "parameters": [
+                    {
+                        "name": "file_name",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Information about the file",
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileInfo"
+                        }
+                    },
+                    "404": {
+                        "description": "File did not exist.",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "delete_content"
+                },
+                "operationId": "delete_content",
+                "description": "Request to delete an existing item from the bucket and table.",
+                "parameters": [
+                    {
+                        "name": "file_name",
+                        "in": "path",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File has been deleted successfully",                    
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileRequestList"
+                        }
+                    },
+                    "404": {
+                        "description": "File did not exist.",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/portal/content": {
+            "get": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "list_all_content"
+                },
+                "operationId": "list_portal_content",
+                "description": "Returns the list of content which should be displayed in the web portal.",
+                "responses": {
+                    "200": {
+                        "description": "List of files with their availability and related info.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileListResults"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "delete_all_content"
+                },
+                "operationId": "delete_all_content",
+                "description": "Deletes all content from the bucket and staging table",
+                "responses": {
+                    "200": {
+                        "description": "All data has been cleared.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileRequestList"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "module": "portal_request",
+                    "function": "set_file_statuses"
+                },
+                "operationId": "set_file_statuses",
+                "description": "Request from the portal to adjust file status",
+                "parameters": [
+                    {
+                        "name": "request_content",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileRequestList"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated file statuses.",
+                        "schema": {
+                            "$ref": "#/definitions/PortalFileListResults"
+                        }
+                    }
+                }
+            }         
+        },
+        "/client/content": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "content_request",
+                "function": "request_url_list"
+            },
+            "post": {
+                "operationId": "query",
+                "description": "Request presigned urls for a list of files",
+                "parameters": [
+                    {
+                        "name": "request_content",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/RequestData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Presigned urls or statuses for each file requested.",
+                        "schema": {
+                            "$ref": "#/definitions/FileRequestResults"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "RequestData": {
+            "type": "object",
+            "properties": {
+                "FileList": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "FileList"
+            ]
+        },
+        "FileRequestResults": {
+            "type": "object",
+            "properties": {
+                "ResultList": {
+                    "$ref": "#/definitions/FileRequestResultArray"
+                }
+            }
+        },
+        "FileRequestResultArray": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/FileRequestResult"
+            }
+        },
+        "PortalFileListResults": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PortalFileInfo"
+                    }
+                }
+            },
+            "required": [
+                "results"
+            ]
+        },
+        "FileRequestResult": {
+            "type": "object",
+            "properties": {
+                "FileName": {
+                    "type": "string"
+                },
+                "FileStatus": {
+                    "type": "string"
+                },
+                "PresignedURL": {
+                    "type": "string"
+                },
+                "Signature": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FileName",
+                "FileStatus"
+            ]
+        },
+        "PortalFileInfo": {
+            "type": "object",
+            "properties": {
+                "FileName": {
+                    "type": "string"
+                },
+                "StagingStatus": {
+                    "type": "string"
+                },
+                "StagingStart": {
+                    "type": "string"
+                },
+                "StagingEnd": {
+                    "type": "string"
+                },
+                "Parent": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FileName",
+                "StagingStatus"
+            ]
+        },
+        "PortalFileRequestList": {
+            "type": "object",
+            "properties": {
+                "FileList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PortalFileRequest"
+                    }
+                }
+            },
+            "required": [
+                "FileList"
+            ]
+        },
+        "PortalFileRequest": {
+            "type": "object",
+            "properties": {
+                "FileName": {
+                    "type": "string"
+                },
+                "StagingStatus": {
+                    "type": "string"
+                },
+                "StagingStart": {
+                    "type": "string"
+                },
+                "StagingEnd": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FileName"
+            ]
+        }
+    }
+}

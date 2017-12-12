@@ -1,0 +1,21 @@
+{
+  "Dependencies": [
+      {
+          "Uuid": "352fef7706634c92814c587e84d7165a",
+          "VersionConstraints": [
+              "~>0.1"
+          ],
+          "_comment": "CryLegacy"
+      }
+  ],
+  "GemFormatVersion": 3,
+  "Uuid": "fcbd8e2e64af487fb1faecd2a133a0ce",
+  "Name": "CloudGemSamples",
+  "DisplayName": "CloudGemSamples",
+  "Version": "0.1.0",
+  "LinkType": "Dynamic",
+  "Summary": "Sample Project to demonstrate cloud gem capabilities",
+  "Tags": [ "Game" ],
+  "IconPath": "preview.png",
+  "IsGameGem": true
+}

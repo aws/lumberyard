@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/RADTelemetry/ProfileTelemetry.h",
+            "Include/RADTelemetry/ProfileTelemetryBus.h"
+        ],
+        "Source": [
+            "Source/RADTelemetryModule.cpp",
+            "Source/ProfileTelemetryComponent.cpp",
+            "Source/ProfileTelemetryComponent.h"
+        ]
+    }
+}

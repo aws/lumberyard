@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/dialog/VisualLogControls">
+        <file alias="playerfirst.png">assets/playerfirst.png</file>
+        <file alias="playerlast.png">assets/playerlast.png</file>
+        <file alias="playernext.png">assets/playernext.png</file>
+        <file alias="playerplay.png">assets/playerplay.png</file>
+        <file alias="playerprev.png">assets/playerprev.png</file>
+        <file alias="playerstop.png">assets/playerstop.png</file>
+        <file alias="playerfirst_disabled.png">assets/playerfirst_disabled.png</file>
+        <file alias="playerlast_disabled.png">assets/playerlast_disabled.png</file>
+        <file alias="playernext_disabled.png">assets/playernext_disabled.png</file>
+        <file alias="playerplay_disabled.png">assets/playerplay_disabled.png</file>
+        <file alias="playerprev_disabled.png">assets/playerprev_disabled.png</file>
+        <file alias="playerstop_disabled.png">assets/playerstop_disabled.png</file>
+    </qresource>
+</RCC>

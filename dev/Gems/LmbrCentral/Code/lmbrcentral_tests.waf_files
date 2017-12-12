@@ -1,0 +1,15 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/AnimationMotionExtraction.cpp",
+            "Tests/LmbrCentralReflectionTest.h",
+            "Tests/LmbrCentralReflectionTest.cpp",
+            "Tests/LmbrCentralTest.cpp",
+            "Tests/RigidPhysicsComponentTest.cpp",
+            "Tests/StaticPhysicsComponentTest.cpp"
+        ]
+    }
+}
+

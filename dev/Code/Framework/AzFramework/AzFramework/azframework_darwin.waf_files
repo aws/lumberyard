@@ -1,0 +1,39 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "API": [
+            "API/ApplicationAPI_darwin.h",
+            "API/ApplicationAPI_darwin.cpp"
+        ],
+        "Input/Buses/Notifications": [
+            "Input/Buses/Notifications/RawInputNotificationBus_darwin.h"
+        ],
+        "Input/Buses/Requests": [
+            "Input/Buses/Requests/RawInputRequestBus_darwin.h"
+        ],
+        "Input/Devices/Gamepad": [
+            "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_apple.mm"
+        ],
+        "Input/Devices/Keyboard": [
+            "Input/Devices/Keyboard/InputDeviceKeyboard_pimpl_darwin.mm"
+        ],
+        "Input/Devices/Motion": [
+            "Input/Devices/Motion/InputDeviceMotion_pimpl_none.cpp"
+        ],
+        "Input/Devices/Mouse": [
+            "Input/Devices/Mouse/InputDeviceMouse_pimpl_darwin.mm"
+        ],
+        "Input/Devices/Touch": [
+            "Input/Devices/Touch/InputDeviceTouch_pimpl_none.cpp"
+        ],
+        "Input/Devices/VirtualKeyboard": [
+            "Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_pimpl_none.cpp"
+        ],
+        "Input/System": [
+            "Input/System/InputSystemComponent_pimpl_darwin.mm"
+        ]
+    }
+}

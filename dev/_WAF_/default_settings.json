@@ -1,0 +1,436 @@
+{
+    "Game Projects": [
+        {
+            "long_form": "--enabled-game-projects", 
+            "attribute": "enabled_game_projects", 
+            "default_value": "SamplesProject", 
+            "description": "Comma-separated list of game projects to enable for compiling"
+        }
+    ], 
+    "Incredibuild Options": [
+        {
+            "short_form": "-i", 
+            "long_form": "--use-incredibuild", 
+            "attribute": "use_incredibuild", 
+            "default_value": "False", 
+            "description": "Use Incredibuild"
+        }, 
+        {
+            "long_form": "--use-incredibuild-android", 
+            "attribute": "use_incredibuild_android", 
+            "default_value": "False", 
+            "description": "Use Incredibuild for Android Builds"
+        }, 
+        {
+            "long_form": "--incredibuild-max-cores", 
+            "attribute": "incredibuild_max_cores", 
+            "default_value": "128", 
+            "description": "Control number of processes spawned by Incredibuild"
+        }, 
+        {
+            "long_form": "--auto-update-incredibuild-settings", 
+            "attribute": "auto_update_incredibuild_settings", 
+            "default_value": "False", 
+            "description": "Option to automatically attempt to update the registry for incredibuild if enabled"
+        }, 
+        {
+            "long_form": "--incredibuild-profile", 
+            "attribute": "incredibuild_profile", 
+            "default_value": "Tools/build/waf-1.7.13/profile.xml", 
+            "description": "The Incredibuild configuration value to load for incredibuild builds"
+        }
+    ], 
+    "Build Options": [
+        {
+            "long_form": "--force-version", 
+            "attribute": "version", 
+            "default_value": "1.10.0.0", 
+            "description": "Version to embed in final build outputs"
+        }, 
+        {
+            "long_form": "--generate-debug-info", 
+            "attribute": "generate_debug_info", 
+            "default_value": "True", 
+            "description": "Generate a Build containing Debug Info"
+        }, 
+        {
+            "long_form": "--generate-map-file", 
+            "attribute": "generate_map_file", 
+            "default_value": "False", 
+            "description": "Generate a Map file during linking if the platform supports it"
+        }, 
+        {
+            "long_form": "--use-precompiled-header", 
+            "attribute": "use_precompiled_header", 
+            "default_value": "True", 
+            "description": "Use Precompiled Header for compilation"
+        }, 
+        {
+            "long_form": "--use-uber-files", 
+            "attribute": "use_uber_files", 
+            "default_value": "False", 
+            "description": "Use UberFiles for compilation"
+        }, 
+        {
+            "long_form": "--uber-file-size", 
+            "attribute": "uber_file_size", 
+            "default_value": "307200", 
+            "description": "Maximum content size of auto-generated uber files"
+        }, 
+        {
+            "long_form": "--enable-msvc-timings", 
+            "attribute": "enable_msvc_timings", 
+            "default_value": "False", 
+            "description": "Output timing information for msvc compile and link operations"
+        }, 
+        {
+            "long_form": "--use-recode", 
+            "attribute": "use_recode", 
+            "default_value": "False", 
+            "description": "Tweaks build settings for Recode compatibility"
+        }, 
+        {
+            "long_form": "--win-build-renderer", 
+            "attribute": "win_build_renderer", 
+            "default_value": "DX11", 
+            "description": "If building a monolithic build this option is used to select the type of renderer, options are DX11 or DX12"
+        }, 
+        {
+            "long_form": "--max-parallel-link", 
+            "attribute": "max_parallel_link", 
+            "default_value": "2", 
+            "description": "Control number of c++ linking operations that happen in parallel"
+        }, 
+        {
+            "long_form": "--gems-optional", 
+            "attribute": "gems_optional", 
+            "default_value": "False", 
+            "description": "Allows building of projects without gems.json files."
+        }, 
+        {
+            "long_form": "--use_debug_code_generator", 
+            "attribute": "use_debug_code_generator", 
+            "default_value": "False", 
+            "description": "Use the version of the code generator located in the Bin64xxxx.Debug folder instead of Bin64xxxx"
+        }, 
+        {
+            "long_form": "--use-crcfix", 
+            "attribute": "use_crcfix", 
+            "default_value": "True", 
+            "description": "Use the crcfix tool to precompute CRCs in AZ_CRC macros"
+        }, 
+        {
+            "long_form": "--enable-memory-tracking", 
+            "attribute": "enable_memory_tracking", 
+            "default_value": "False", 
+            "description": "Enable the AZCORE_ENABLE_MEMORY_TRACKING define which allows the Memory Driller to run and track all allocations. Note: Will significantly affect code execution times!"
+        }, 
+        {
+            "short_form": "-s", 
+            "long_form": "--sig-delta", 
+            "attribute": "generate_sig_debug_output", 
+            "default_value": "False", 
+            "description": "Enable debug output detailing signature differences that caused a task to rerun"
+        }, 
+        {
+            "long_form": "--external-crash-reporting", 
+            "attribute": "external_crash_reporting", 
+            "default_value": "", 
+            "description": "Zip/Upload symbols and build client with external crash reporting enabled.  Value set here will be used as an additional build tag passed through to the crash reporter system."
+        }
+    ], 
+    "Output Folder": [
+        {
+            "long_form": "--output-folder-win64-vs2015", 
+            "attribute": "out_folder_win64_vs2015", 
+            "default_value": "Bin64vc140", 
+            "description": "Absolute or relative Win64 for VS2015 build output path"
+        }, 
+        {
+            "long_form": "--output-folder-win64-vs2013", 
+            "attribute": "out_folder_win64_vs2013", 
+            "default_value": "Bin64vc120", 
+            "description": "Absolute or relative Win64 for VS2013 build output path"
+        }, 
+        {
+            "long_form": "--output-folder-durango", 
+            "attribute": "out_folder_durango", 
+            "default_value": "BinDurango", 
+            "description": "Absolute or relative Durango build output path"
+        }, 
+        {
+            "long_form": "--output-folder-mac64", 
+            "attribute": "out_folder_mac64", 
+            "default_value": "BinMac64", 
+            "description": "Absolute or relative Mac/Darwin64 build output path"
+        }, 
+        {
+            "long_form": "--output-folder-orbis", 
+            "attribute": "out_folder_orbis", 
+            "default_value": "BinOrbis", 
+            "description": "Absolute or relative Orbis build output path"
+        }, 
+        {
+            "long_form": "--output-folder-ios", 
+            "attribute": "out_folder_ios", 
+            "default_value": "BinIos", 
+            "description": "Absolute or relative iOS build output path"
+        }, 
+        {
+            "long_form": "--output-folder-appletv", 
+            "attribute": "out_folder_appletv", 
+            "default_value": "BinAppleTV", 
+            "description": "Absolute or relative AppleTV build output path"
+        }, 
+        {
+            "long_form": "--output-folder-linux64", 
+            "attribute": "out_folder_linux64", 
+            "default_value": "BinLinux64", 
+            "description": "Absolute or relative Linux64 build output path"
+        }, 
+        {
+            "long_form": "--output-folder-android-armv7-gcc", 
+            "attribute": "out_folder_android_armv7_gcc", 
+            "default_value": "BinAndroidGcc", 
+            "description": "Absolute or relative Android ARMv7 gcc build output path"
+        }, 
+        {
+            "long_form": "--output-folder-android-armv7-clang", 
+            "attribute": "out_folder_android_armv7_clang", 
+            "default_value": "BinAndroidClang", 
+            "description": "Absolute or relative Android ARMv7 clang build output path"
+        }, 
+        {
+            "long_form": "--output-folder-ext-debug", 
+            "attribute": "output_folder_ext_debug", 
+            "default_value": "Debug", 
+            "description": "The output folder name extension for debug builds"
+        }, 
+        {
+            "long_form": "--output-folder-ext-profile", 
+            "attribute": "output_folder_ext_profile", 
+            "default_value": "", 
+            "description": "The output folder name extension for profile builds"
+        }, 
+        {
+            "long_form": "--output-folder-ext-performance", 
+            "attribute": "output_folder_ext_performance", 
+            "default_value": "Performance", 
+            "description": "The output folder name extension for performance builds"
+        }, 
+        {
+            "long_form": "--output-folder-ext-release", 
+            "attribute": "output_folder_ext_release", 
+            "default_value": "Release", 
+            "description": "The output folder name extension for release builds"
+        }
+    ], 
+    "Misc Options": [
+        {
+            "long_form": "--max-cores", 
+            "attribute": "max_cores", 
+            "default_value": "0", 
+            "description": "Number of parallel processes for local builds.  Use <=0 to auto configure based on hardware"
+        }, 
+        {
+            "long_form": "--bootstrap-tool-param", 
+            "attribute": "bootstrap_tool_param", 
+            "default_value": "", 
+            "description": "Optional parameters to pass to SetupAssistantBatch.exe"
+        }, 
+        {
+            "long_form": "--3rdpartypath", 
+            "attribute": "bootstrap_third_party_override", 
+            "default_value": "", 
+            "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrip process"
+        }
+    ], 
+    "Visual Studio Project Generator": [
+        {
+            "long_form": "--generate-vs-projects-automatically", 
+            "attribute": "generate_vs_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically generate Visual Studio Projects/Solutions"
+        }, 
+        {
+            "long_form": "--visual-studio-solution-name", 
+            "attribute": "visual_studio_solution_name", 
+            "default_value": "LumberyardSDK", 
+            "description": "Name of the generated solution"
+        }, 
+        {
+            "long_form": "--visual-studio-solution-folder", 
+            "attribute": "visual_studio_solution_folder", 
+            "default_value": "Solutions", 
+            "description": "Name of the folder in which the generated solution should be stored"
+        }, 
+        {
+            "long_form": "--visual-studio-solution-default-project", 
+            "attribute": "default_project", 
+            "default_value": "Editor", 
+            "description": "msvs default project if not set in suo file"
+        }, 
+        {
+            "long_form": "--specs-to-include-in-project-generation", 
+            "attribute": "specs_to_include_in_project_generation", 
+            "default_value": "all, game, game_and_engine, resource_compiler", 
+            "description": "List of specs to include in solution generation"
+        }, 
+        {
+            "long_form": "--msvs-version", 
+            "attribute": "msvs_version", 
+            "default_value": "14", 
+            "description": "Version of the MS Visual Studio Solution to generate"
+        }
+    ], 
+    "Android Project Generator": [
+        {
+            "long_form": "--generate-android-studio-projects-automatically", 
+            "attribute": "generate_android_studio_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically generate Android Studio Projects"
+        }, 
+        {
+            "long_form": "--android-studio-project-name", 
+            "attribute": "android_studio_project_name", 
+            "default_value": "LumberyardAndroidSDK", 
+            "description": "Name of the root Android project folder and Android Studio project name"
+        }, 
+        {
+            "long_form": "--android-studio-project-folder", 
+            "attribute": "android_studio_project_folder", 
+            "default_value": "Solutions", 
+            "description": "Name of the folder in which the generate Android Studio project should be stored"
+        }
+    ], 
+    "Android Deploy": [
+        {
+            "long_form": "--deploy-android", 
+            "attribute": "deploy_android", 
+            "default_value": "True", 
+            "description": "Deploy to an android device"
+        }, 
+        {
+            "long_form": "--deploy-android-clean-device", 
+            "attribute": "deploy_android_clean_device", 
+            "default_value": "True", 
+            "description": "Removes any previous assets for the game project that were copied. If the deploy-android-executable option is specified as well then the package specified deploy-android-package-name will also be uninstalled."
+        }, 
+        {
+            "long_form": "--deploy-android-executable", 
+            "attribute": "deploy_android_executable", 
+            "default_value": "True", 
+            "description": "Install the executable, i.e. APK, on the android device"
+        }, 
+        {
+            "long_form": "--deploy-android-assets", 
+            "attribute": "deploy_android_assets", 
+            "default_value": "True", 
+            "description": "Copy the assets in the cache folder to the android device"
+        }, 
+        {
+            "long_form": "--deploy-android-replace-apk", 
+            "attribute": "deploy_android_replace_apk", 
+            "default_value": "True", 
+            "description": "When installing the APK to the device use the -r option to force the replacement of the package"
+        }, 
+        {
+            "long_form": "--deploy-android-root-dir", 
+            "attribute": "deploy_android_root_dir", 
+            "default_value": "/storage/emulated/legacy", 
+            "description": "Root directory to deploy the assets to on the android device"
+        }, 
+        {
+            "long_form": "--deploy-android-install-options", 
+            "attribute": "deploy_android_install_options", 
+            "default_value": "", 
+            "description": "Addiontal options to specify for the install command"
+        }, 
+        {
+            "long_form": "--deploy-android-paks", 
+            "attribute": "deploy_android_paks", 
+            "default_value": "False", 
+            "description": "Forces paks to be built in non-release builds"
+        }, 
+        {
+            "long_form": "--deploy-android-shader-list", 
+            "attribute": "deploy_android_shader_list_override", 
+            "default_value": "", 
+            "description": "Optional parameter to pass the location of the shader source list used for creating the shaders paks"
+        }
+    ], 
+    "iOS Project Generator": [
+        {
+            "long_form": "--generate-ios-projects-automatically", 
+            "attribute": "generate_ios_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically generate iOS Projects"
+        }, 
+        {
+            "long_form": "--ios-project-name", 
+            "attribute": "ios_project_name", 
+            "default_value": "LumberyardiOSSDK", 
+            "description": "Name of the generated project"
+        }, 
+        {
+            "long_form": "--ios-project-folder", 
+            "attribute": "ios_project_folder", 
+            "default_value": "Solutions", 
+            "description": "Name of the folder in which the generated ios projects should be stored"
+        }
+    ], 
+    "Apple TV Project Generator": [
+        {
+            "long_form": "--generate-appletv-projects-automatically", 
+            "attribute": "generate_appletv_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically generate Apple TV Projects"
+        }, 
+        {
+            "long_form": "--appletv-project-name", 
+            "attribute": "appletv_project_name", 
+            "default_value": "LumberyardAppleTVSDK", 
+            "description": "Name of the generated project"
+        }, 
+        {
+            "long_form": "--appletv-project-folder", 
+            "attribute": "appletv_project_folder", 
+            "default_value": "Solutions", 
+            "description": "Name of the folder in which the generated Apple TV projects should be stored"
+        }
+    ], 
+    "Mac Options": [
+        {
+            "long_form": "--mac-build-monolithic", 
+            "attribute": "mac_build_monolithic", 
+            "default_value": "False", 
+            "description": "Flag to generate a monolithic or a nonmonolithic build for Mac, options are True or False"
+        }, 
+        {
+            "long_form": "--mac-build-renderer", 
+            "attribute": "mac_build_renderer", 
+            "default_value": "GL", 
+            "description": "If building a monolithic build this option is used to select the type of renderer, options are GL or METAL"
+        }
+    ], 
+    "Mac Project Generator": [
+        {
+            "long_form": "--generate-mac-projects-automatically", 
+            "attribute": "generate_mac_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically generate Darwin Projects"
+        }, 
+        {
+            "long_form": "--mac-project-name", 
+            "attribute": "mac_project_name", 
+            "default_value": "LumberyardSDK", 
+            "description": "Name of the generated project"
+        }, 
+        {
+            "long_form": "--mac-project-folder", 
+            "attribute": "mac_project_folder", 
+            "default_value": "Solutions", 
+            "description": "Name of the folder in which the generated mac projects should be stored"
+        }
+    ]
+}

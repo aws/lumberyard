@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Root": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Interface": [
+            "Include/InAppPurchases/InAppPurchasesBus.h",
+            "Include/InAppPurchases/InAppPurchasesInterface.h",
+            "Include/InAppPurchases/InAppPurchasesResponseBus.h"
+        ],
+        "Implementation": [
+            "Source/InAppPurchasesModule.cpp",
+            "Source/InAppPurchasesInterface.cpp",
+            "Source/InAppPurchasesFlowNodes.cpp"
+        ]
+    }
+}

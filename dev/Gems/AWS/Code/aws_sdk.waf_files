@@ -1,0 +1,110 @@
+{
+    "none": {
+        "Include/Util/Async": [
+            "Include/Util/Async/AsyncContextWithExtra.h"
+        ],
+        "Include/Util/FlowSystem": [
+            "Include/Util/FlowSystem/AsyncFlowgraphResult.h",
+            "Include/Util/FlowSystem/AWSFlowNodePorts.h",
+            "Include/Util/FlowSystem/BaseMaglevFlowNode.h",
+            "Include/Util/FlowSystem/FlowGraphContext.h"
+        ],
+        "Source/Configuration": [
+            "Source/Configuration/FlowNode_ApplyConfiguration.cpp",
+            "Source/Configuration/FlowNode_ApplyConfiguration.h",
+            "Source/Configuration/FlowNode_ConfigureAnonymousCognito.cpp",
+            "Source/Configuration/FlowNode_ConfigureAnonymousCognito.h",
+            "Source/Configuration/FlowNode_ConfigureAuthenticatedCognito.cpp",
+            "Source/Configuration/FlowNode_ConfigureAuthenticatedCognito.h",
+            "Source/Configuration/FlowNode_ConfigureParameterValue.cpp",
+            "Source/Configuration/FlowNode_ConfigureParameterValue.h",
+            "Source/Configuration/FlowNode_ConfigureProxy.cpp",
+            "Source/Configuration/FlowNode_ConfigureProxy.h",
+            "Source/Configuration/FlowNode_ExpandConfigurationParameters.cpp",
+            "Source/Configuration/FlowNode_ExpandConfigurationParameters.h",
+            "Source/Configuration/FlowNode_SetDefaultRegion.cpp",
+            "Source/Configuration/FlowNode_SetDefaultRegion.h"
+        ],
+        "Source/DynamoDB": [
+            "Source/DynamoDB/DynamoDBUtils.cpp",
+            "Source/DynamoDB/DynamoDBUtils.h",
+            "Source/DynamoDB/FlowNode_CloudHashMapAddNumber.cpp",
+            "Source/DynamoDB/FlowNode_CloudHashMapAddNumber.h",
+            "Source/DynamoDB/FlowNode_CloudHashMapRetrieveSetMembers.cpp",
+            "Source/DynamoDB/FlowNode_CloudHashMapRetrieveSetMembers.h",
+            "Source/DynamoDB/FlowNode_DynamoDBDelete.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBDelete.h",
+            "Source/DynamoDB/FlowNode_DynamoDBGet.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBGet.h",
+            "Source/DynamoDB/FlowNode_DynamoDBPut.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBPut.h",
+            "Source/DynamoDB/FlowNode_DynamoDBQuery.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBQuery.h",
+            "Source/DynamoDB/FlowNode_DynamoDBScan.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBScan.h",
+            "Source/DynamoDB/FlowNode_DynamoDBUpdate.cpp",
+            "Source/DynamoDB/FlowNode_DynamoDBUpdate.h"
+        ],
+        "Source/Lambda": [
+            "Source/Lambda/FlowNode_LambdaInvoke.cpp",
+            "Source/Lambda/FlowNode_LambdaInvoke.h"
+        ],
+        "Source/S3": [
+            "Source/S3/FlowNode_S3FileDownloader.cpp",
+            "Source/S3/FlowNode_S3FileDownloader.h",
+            "Source/S3/FlowNode_S3FileUploader.cpp",
+            "Source/S3/FlowNode_S3FileUploader.h",
+            "Source/S3/FlowNode_S3UrlPresigner.cpp",
+            "Source/S3/FlowNode_S3UrlPresigner.h"
+        ],
+        "Source/SNS": [
+            "Source/SNS/FlowNode_SnsCheckSubscribed.cpp",
+            "Source/SNS/FlowNode_SnsCheckSubscribed.h",
+            "Source/SNS/FlowNode_SNSMessageDeserialize.cpp",
+            "Source/SNS/FlowNode_SNSMessageDeserialize.h",
+            "Source/SNS/FlowNode_SnsNotify.cpp",
+            "Source/SNS/FlowNode_SnsNotify.h",
+            "Source/SNS/FlowNode_SnsSubscribe.cpp",
+            "Source/SNS/FlowNode_SnsSubscribe.h"
+        ],
+        "Source/SQS": [
+            "Source/SQS/FlowNode_SQSPoller.cpp",
+            "Source/SQS/FlowNode_SQSPoller.h",
+            "Source/SQS/FlowNode_SQSPush.cpp",
+            "Source/SQS/FlowNode_SQSPush.h"
+        ],
+        "Source/Util/FlowSystem": [
+            "Source/Util/FlowSystem/FlowGraphContext.cpp"
+        ],
+        "Source/Util/JSON": [
+            "Source/Util/JSON/FlowNode_GetJsonValue.cpp",
+            "Source/Util/JSON/FlowNode_GetJsonValue.h",
+            "Source/Util/JSON/FlowNode_GetJsonProperty.cpp",
+            "Source/Util/JSON/FlowNode_GetJsonProperty.h",
+            "Source/Util/JSON/FlowNode_IterateJsonArray.cpp",
+            "Source/Util/JSON/FlowNode_IterateJsonArray.h",
+            "Source/Util/JSON/FlowNode_SetJsonProperty.cpp",
+            "Source/Util/JSON/FlowNode_SetJsonProperty.h",
+            "Source/Util/JSON/FlowNode_IsValueInJsonArray.cpp",
+            "Source/Util/JSON/FlowNode_IsValueInJsonArray.h",
+            "Source/Util/JSON/FlowNode_IterateJsonArrayProperty.cpp",
+            "Source/Util/JSON/FlowNode_IterateJsonArrayProperty.h"
+        ],
+        "Source/Util/ScreenCapture": [
+            "Source/Util/ScreenCapture/FlowNode_ScreenCapture.cpp",
+            "Source/Util/ScreenCapture/FlowNode_ScreenCapture.h"
+        ],
+        "Source/Util/String": [
+            "Source/Util/String/FlowNode_ReplaceString.cpp",
+            "Source/Util/String/FlowNode_ReplaceString.h",
+            "Source/Util/String/FlowNode_StringCollect.cpp",
+            "Source/Util/String/FlowNode_StringCollect.h",
+            "Source/Util/String/FlowNode_StringSplit.cpp",
+            "Source/Util/String/FlowNode_StringSplit.h"
+        ],
+        "Source/Util/URL": [
+            "Source/Util/URL/FlowNode_URLDecode.h",
+            "Source/Util/URL/FlowNode_URLDecode.cpp"
+        ]
+    }
+}

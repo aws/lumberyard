@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ObjectPanel</class>
+ <widget class="QWidget" name="ObjectPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>283</width>
+    <height>122</height>
+   </rect>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <property name="leftMargin">
+    <number>6</number>
+   </property>
+   <property name="topMargin">
+    <number>6</number>
+   </property>
+   <property name="rightMargin">
+    <number>6</number>
+   </property>
+   <property name="bottomMargin">
+    <number>6</number>
+   </property>
+   <item row="0" column="0">
+    <widget class="ColorButton" name="objectColorButton">
+     <property name="minimumSize">
+      <size>
+       <width>30</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="materialLabel">
+     <property name="text">
+      <string>Mtl:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+     <property name="buddy">
+      <cstring>materialButton</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QToolButton" name="layerButton">
+     <property name="minimumSize">
+      <size>
+       <width>30</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="areaLabel">
+     <property name="text">
+      <string>Area:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+     <property name="buddy">
+      <cstring>objectAreaSpin</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1" colspan="2">
+    <widget class="QLineEdit" name="objectNameEdit">
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1" colspan="2">
+    <widget class="QPushButton" name="materialButton">
+     <property name="text">
+      <string>No Material</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,2">
+     <item>
+      <widget class="QDoubleSpinBox" name="objectAreaSpin">
+       <property name="maximum">
+        <double>9999.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.010000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="minSpecLabel">
+       <property name="text">
+        <string>MinSpec:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="buddy">
+        <cstring>minSpecCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="minSpecCombo">
+       <item>
+        <property name="text">
+         <string>All</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Low</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Medium/Console</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PC High</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PC Very High</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="1" colspan="2">
+    <widget class="QLineEdit" name="layerNameEdit">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ColorButton</class>
+   <extends>QToolButton</extends>
+   <header>ObjectPanel.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>objectColorButton</tabstop>
+  <tabstop>objectNameEdit</tabstop>
+  <tabstop>layerButton</tabstop>
+  <tabstop>materialButton</tabstop>
+  <tabstop>objectAreaSpin</tabstop>
+  <tabstop>minSpecCombo</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

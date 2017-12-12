@@ -1,0 +1,49 @@
+﻿// Remove top border on table heading
+table.table {
+	// header row elements
+	thead tr {
+	    border-bottom: 1px solid $border-gray;
+		th {
+			font-size: 12px;
+			font-weight: normal;
+			color: $darker-gray;
+		    padding-bottom: 5px;
+		    border: none;
+			user-select: none;
+			cursor: default;
+			
+			div {
+				display: inline-block;
+			}
+			i {
+				margin-left: 3px;
+			}
+		}
+	}
+	// body row elements
+	tbody tr {
+		border: 1px solid $border-gray;
+		font-size: 14px;
+		td {
+			color: $gray;
+			padding: 20px 13px;
+			a {
+				color: $primary-color !important;
+			}
+		}
+		div.float-right {
+			i {
+				padding: 0 3px;
+				cursor: pointer;
+			}
+		}
+	}
+	&.table-hover tbody tr:hover {
+	// border: 2px solid lighten($primary-color, 10%);
+	outline: 1px solid lighten($primary-color, 20%);
+	background-color: $off-white;
+	margin-top: 1px;
+	cursor: pointer;
+	}
+}
+

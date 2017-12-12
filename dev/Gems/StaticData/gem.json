@@ -1,0 +1,24 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "4a4bf593603c4f329c76c2a10779311b",
+    "Name": "StaticData",
+    "Version": "1.0.0",
+    "LinkType": "Dynamic",
+    "EditorTargets": ["StaticDataMonitorPlugin"],
+    "IconPath": "preview.png",
+    "DisplayName": "Static Data",
+    "Summary": "System for key/value data parsed from CSVs and accessible through Flow Graph which can be live reloaded.  Used in the Don't Die demo to show how game data can be managed through the cloud.",
+    "Tags": ["Cloud Canvas", "AWS", "Flow Graph"],	
+    "Dependencies": [
+        {
+            "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",
+            "VersionConstraints": [ "~>0.1" ],
+            "_comment": "AWS"
+        },
+        {
+            "Uuid": "3a3eeef064a04c37b4513c6378f4f56a",
+            "VersionConstraints": [ "~>0.1" ],
+            "_comment": "Dynamic Content"
+        }
+    ]
+}

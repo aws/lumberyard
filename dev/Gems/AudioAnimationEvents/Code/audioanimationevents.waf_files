@@ -1,0 +1,17 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+        ],
+        "Source": [
+            "Source/AudioAnimationEventsModule.cpp",
+            "Source/AudioAnimationEventsProxyComponent.cpp",
+            "Source/AudioAnimationEventsProxyComponent.h"
+        ]
+    }
+}

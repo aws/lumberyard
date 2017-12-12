@@ -1,0 +1,202 @@
+<ExportSettings>
+  <FileInfo Rev="1.0" />
+  <Templates>
+    <Process Name="Restart" Active="false">
+      <Script Path="" Text="fn restart loops:0 minutes:10.0 memory:1000 openMaxFile:false continueProcess:true =&#xD;&#xA;(  &#xD;&#xA;  if cryMaxRestart == undefined then&#xD;&#xA;    global cryMaxRestart = 0&#xD;&#xA;  &#xD;&#xA;  cryMaxRestart += 1&#xD;&#xA;  &#xD;&#xA;  if cryMaxTimeStamp == undefined then&#xD;&#xA;    global cryMaxTimeStamp = timeStamp()&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  local restartReady = false&#xD;&#xA;&#xD;&#xA;  if loops &gt; 0 and cryMaxRestart == loops then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;  if minutes &gt; 0 and cryMaxTimeStamp != undefined then&#xD;&#xA;    if timeStamp() &gt;= cryMaxTimeStamp + (minutes * 60000) then&#xD;&#xA;      restartReady = true&#xD;&#xA;&#xD;&#xA;  if (sysinfo.getMAXMemoryInfo())[3] / (1024*1024) as Float &gt;= memory then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  if restartReady == true  then&#xD;&#xA;  (&#xD;&#xA;    local restartScript = &quot;&quot;&#xD;&#xA;&#xD;&#xA;    if cryAM.cancelContinue == false then&#xD;&#xA;    (&#xD;&#xA;        if continueProcess == true then&#xD;&#xA;        (&#xD;&#xA;	local lastSelString = (cryAM.getLastSel()) as String&#xD;&#xA;	lastSelString = &quot;(cryAM.&quot; + (subString lastSelString 2 lastSelString.count)&#xD;&#xA;	  &#xD;&#xA;               	restartScript += &quot;global cryMaxAnimContinue = true\n\n&quot;&#xD;&#xA;	restartScript += &quot;fileIn (cryMaxTools.basic.vars.toolsPath + \&quot;Animation\\AnimManager.ms\&quot;)\n\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbCharacter.selectedIndex = &quot; + cryAM._.cbCharacter.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbLoad.selectedIndex = &quot; + cryAM._.cbLoad.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbSave.selectedIndex = &quot; + cryAM._.cbSave.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByCharacter skipNodeList:true skipSetup:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.cbSetup.selectedIndex = &quot; + cryAM.cbSetup.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateLastSel custom:&quot; + lastSelString + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateBySetup skipNodeList:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByLastSel()\n\n&quot;&#xD;&#xA;	restartScript += &quot;forceCompleteRedraw()\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.callSaveAnim()\n\n&quot;&#xD;&#xA;	restartScript += &quot;messageBox \&quot;Finished Batch!\&quot; title:\&quot;Animation Manager Restart&amp;Continue Script\&quot;\n\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxRestart = undefined\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxTimeStamp = undefined\n&quot;&#xD;&#xA;        )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;      cryMaxTools.anim.functions.UI.restartAndContinue restartScript openMaxFile:openMaxFile&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;" />
+    </Process>
+    <Process Name="Run Caf Export" Active="true">
+      <Script Path="" Text="fn runCafExport addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if animManRO.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    animManRO.usedSkel = animManRO.getGameBone()&#xD;&#xA;&#xD;&#xA;    local curPathFilter = filterString animManRO.currentQue &quot;\\&quot;&#xD;&#xA;    local sourcePathFilter = filterString (animManRO.rootProjectPath + animManRO.rootSourcePath) &quot;\\&quot;&#xD;&#xA;			&#xD;&#xA;    local newPath = (animManRO.rootProjectPath + animManRO.rootGamePath)&#xD;&#xA;	&#xD;&#xA;    for i = (sourcePathFilter.count + 1) to curPathFilter.count do&#xD;&#xA;      newPath += curPathFilter[i] + (if i &lt; curPathFilter.count then &quot;\\&quot; else &quot;&quot;)&#xD;&#xA;	&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.caf&quot;&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce&#xD;&#xA;&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Run Custom Export" Active="true">
+      <Script Path="" Text="fn customExport rootNode:&quot;&quot; extension:&quot;bip&quot; addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if animManRO.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if rootNode != &quot;&quot; then&#xD;&#xA;      animManRO.usedSkel = getNodeByName rootNode&#xD;&#xA;    else&#xD;&#xA;      animManRO.usedSkel = animManRO.getSourceNodes()&#xD;&#xA;  &#xD;&#xA;    local newPath = animManRO.currentQue&#xD;&#xA;&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.&quot; + extension&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath&#xD;&#xA;&#xD;&#xA;    if addPerforce == true then&#xD;&#xA;      cryMaxTools.basic.perforceMan.add newPath&#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Run Max Export" Active="true">
+      <Script Path="" Text="function sourceExport search:&quot;_Animation_source&quot; replace:&quot;_Animation_max&quot; filename:&quot;&quot; extension:&quot;max&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+    <Process Name="Run Source Export" Active="true">
+      <Script Path="" Text="function sourceExport search:&quot;&quot; replace:&quot;&quot; filename:&quot;&quot; extension:&quot;&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+    </Process>
+  </Templates>
+  <Tasks>
+    <Task Name="Source" Default="true" Active="true">
+      <Process Name="Run Source Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;&quot; replace:&quot;&quot; filename:&quot;&quot; extension:&quot;&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;&quot;" />
+            <Property Name="replace" Value="&quot;&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Restart" Active="false">
+        <Script Path="" Text="fn restart loops:0 minutes:10.0 memory:1000 openMaxFile:false continueProcess:true =&#xD;&#xA;(  &#xD;&#xA;  if cryMaxRestart == undefined then&#xD;&#xA;    global cryMaxRestart = 0&#xD;&#xA;  &#xD;&#xA;  cryMaxRestart += 1&#xD;&#xA;  &#xD;&#xA;  if cryMaxTimeStamp == undefined then&#xD;&#xA;    global cryMaxTimeStamp = timeStamp()&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  local restartReady = false&#xD;&#xA;&#xD;&#xA;  if loops &gt; 0 and cryMaxRestart == loops then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;  if minutes &gt; 0 and cryMaxTimeStamp != undefined then&#xD;&#xA;    if timeStamp() &gt;= cryMaxTimeStamp + (minutes * 60000) then&#xD;&#xA;      restartReady = true&#xD;&#xA;&#xD;&#xA;  if (sysinfo.getMAXMemoryInfo())[3] / (1024*1024) as Float &gt;= memory then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  if restartReady == true  then&#xD;&#xA;  (&#xD;&#xA;    local restartScript = &quot;&quot;&#xD;&#xA;&#xD;&#xA;    if cryAM.cancelContinue == false then&#xD;&#xA;    (&#xD;&#xA;        if continueProcess == true then&#xD;&#xA;        (&#xD;&#xA;	local lastSelString = (cryAM.getLastSel()) as String&#xD;&#xA;	lastSelString = &quot;(cryAM.&quot; + (subString lastSelString 2 lastSelString.count)&#xD;&#xA;	  &#xD;&#xA;               	restartScript += &quot;global cryMaxAnimContinue = true\n\n&quot;&#xD;&#xA;	restartScript += &quot;fileIn (cryMaxTools.basic.vars.toolsPath + \&quot;Animation\\AnimManager.ms\&quot;)\n\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbCharacter.selectedIndex = &quot; + cryAM._.cbCharacter.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbLoad.selectedIndex = &quot; + cryAM._.cbLoad.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbSave.selectedIndex = &quot; + cryAM._.cbSave.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByCharacter skipNodeList:true skipSetup:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.cbSetup.selectedIndex = &quot; + cryAM.cbSetup.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateLastSel custom:&quot; + lastSelString + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateBySetup skipNodeList:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByLastSel()\n\n&quot;&#xD;&#xA;	restartScript += &quot;forceCompleteRedraw()\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.callSaveAnim()\n\n&quot;&#xD;&#xA;	restartScript += &quot;messageBox \&quot;Finished Batch!\&quot; title:\&quot;Animation Manager Restart&amp;Continue Script\&quot;\n\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxRestart = undefined\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxTimeStamp = undefined\n&quot;&#xD;&#xA;        )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;      cryMaxTools.anim.functions.UI.restartAndContinue restartScript openMaxFile:openMaxFile&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;" />
+        <Parameters>
+          <Function Name="restart">
+            <Property Name="loops" Value="0" />
+            <Property Name="minutes" Value="10.0" />
+            <Property Name="memory" Value="1000" />
+            <Property Name="openMaxFile" Value="false" />
+            <Property Name="continueProcess" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="CAF" Default="true" Active="true">
+      <Process Name="remove fingers for locomotions" Active="true">
+        <Script Path="" Text="fn removeFingersForLocomotions token:&quot;locomotion&quot; =&#xD;&#xA;(&#xD;&#xA;  if findString cryAM._.cbCharacter.selectedItem &quot;Human&quot; != undefined then&#xD;&#xA;  (&#xD;&#xA;  if findString cryAM.currentQue token != undefined then&#xD;&#xA;  (&#xD;&#xA;    global includeNodeArray = #( \&#xD;&#xA;      &quot;Locator_Locomotion&quot;, \&#xD;&#xA;      &quot;weapon_bone&quot;, \&#xD;&#xA;      &quot;Bip01&quot;, \&#xD;&#xA;      &quot;Bip01 Pelvis&quot;, \&#xD;&#xA;      &quot;Bip01 Spine&quot;, \&#xD;&#xA;      &quot;Bip01 Spine1&quot;, \&#xD;&#xA;      &quot;Bip01 Spine2&quot;, \&#xD;&#xA;      &quot;Bip01 Spine3&quot;, \&#xD;&#xA;      &quot;Bip01 Neck&quot;, \&#xD;&#xA;      &quot;Bip01 Head&quot;, \&#xD;&#xA;      &quot;Bip01 L Thigh&quot;, \&#xD;&#xA;      &quot;Bip01 L Calf&quot;, \&#xD;&#xA;      &quot;Bip01 L Foot&quot;, \&#xD;&#xA;      &quot;Bip01 L Toe0&quot;, \&#xD;&#xA;      &quot;Bip01 R Thigh&quot;, \&#xD;&#xA;      &quot;Bip01 R Calf&quot;, \&#xD;&#xA;      &quot;Bip01 R Foot&quot;, \&#xD;&#xA;      &quot;Bip01 R Toe0&quot;, \&#xD;&#xA;      &quot;Bip01 L Clavicle&quot;, \&#xD;&#xA;      &quot;Bip01 L UpperArm&quot;, \&#xD;&#xA;      &quot;Bip01 L Forearm&quot;, \&#xD;&#xA;      &quot;Bip01 L Hand&quot;, \&#xD;&#xA;      &quot;Bip01 R Clavicle&quot;, \&#xD;&#xA;      &quot;Bip01 R UpperArm&quot;, \&#xD;&#xA;      &quot;Bip01 R Forearm&quot;, \&#xD;&#xA;      &quot;Bip01 R Hand&quot;, \&#xD;&#xA;      &quot;Bip01 LHand2Weapon_IKTarget&quot;, \&#xD;&#xA;      &quot;Bip01 LHand2Weapon_IKBlend&quot; )&#xD;&#xA;&#xD;&#xA;    for i = 1 to objects.count do&#xD;&#xA;    (&#xD;&#xA;      local found = false&#xD;&#xA;       for d = 1 to includeNodeArray.count do&#xD;&#xA;         if objects[i].name == includeNodeArray[d] then&#xD;&#xA;           found = true&#xD;&#xA;      &#xD;&#xA;      if found == false then&#xD;&#xA;        objects[i].name = &quot;_&quot; + objects[i].name&#xD;&#xA;    )&#xD;&#xA;    )&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="removeFingersForLocomotions">
+            <Property Name="token" Value="&quot;locomotion&quot;" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Caf Export" Active="true">
+        <Script Path="" Text="fn runCafExport addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    cryAM.usedSkel = cryAM.getGameBone()&#xD;&#xA;&#xD;&#xA;    local curPathFilter = filterString cryAM.currentQue &quot;\\&quot;&#xD;&#xA;    local sourcePathFilter = filterString (cryAM.rootProjectPath + cryAM.rootSourcePath) &quot;\\&quot;&#xD;&#xA;			&#xD;&#xA;    local newPath = (cryAM.rootProjectPath + cryAM.rootGamePath)&#xD;&#xA;	&#xD;&#xA;    for i = (sourcePathFilter.count + 1) to curPathFilter.count do&#xD;&#xA;      newPath += curPathFilter[i] + (if i &lt; curPathFilter.count then &quot;\\&quot; else &quot;&quot;)&#xD;&#xA;	&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.caf&quot;&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce&#xD;&#xA;&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="runCafExport">
+            <Property Name="addPerforce" Value="false" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="rename fingers back" Active="true">
+        <Script Path="" Text="fn renameFingersBack =&#xD;&#xA;(&#xD;&#xA;  if includeNodeArray != undefined then&#xD;&#xA;  (&#xD;&#xA;     for i = 1 to objects.count do&#xD;&#xA;     (&#xD;&#xA;       local found = false&#xD;&#xA;&#xD;&#xA;       for d = 1 to includeNodeArray.count do&#xD;&#xA;         if objects[i].name == includeNodeArray[d] then&#xD;&#xA;           found = true&#xD;&#xA;&#xD;&#xA;      if found == false and objects[i].name[1] == &quot;_&quot; then&#xD;&#xA;        objects[i].name = subString objects[i].name 2 objects[i].name.count&#xD;&#xA;     )&#xD;&#xA;    &#xD;&#xA;    includeNodeArray = undefined&#xD;&#xA;&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="renameFingersBack" />
+        </Parameters>
+      </Process>
+      <Process Name="Restart" Active="false">
+        <Script Path="" Text="fn restart loops:0 minutes:10.0 memory:1000 openMaxFile:false continueProcess:true =&#xD;&#xA;(  &#xD;&#xA;  if cryMaxRestart == undefined then&#xD;&#xA;    global cryMaxRestart = 0&#xD;&#xA;  &#xD;&#xA;  cryMaxRestart += 1&#xD;&#xA;  &#xD;&#xA;  if cryMaxTimeStamp == undefined then&#xD;&#xA;    global cryMaxTimeStamp = timeStamp()&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  local restartReady = false&#xD;&#xA;&#xD;&#xA;  if loops &gt; 0 and cryMaxRestart == loops then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;  if minutes &gt; 0 and cryMaxTimeStamp != undefined then&#xD;&#xA;    if timeStamp() &gt;= cryMaxTimeStamp + (minutes * 60000) then&#xD;&#xA;      restartReady = true&#xD;&#xA;&#xD;&#xA;  if (sysinfo.getMAXMemoryInfo())[3] / (1024*1024) as Float &gt;= memory then&#xD;&#xA;    restartReady = true&#xD;&#xA;&#xD;&#xA;&#xD;&#xA;  if restartReady == true  then&#xD;&#xA;  (&#xD;&#xA;    local restartScript = &quot;&quot;&#xD;&#xA;&#xD;&#xA;    if cryAM.cancelContinue == false then&#xD;&#xA;    (&#xD;&#xA;        if continueProcess == true then&#xD;&#xA;        (&#xD;&#xA;	local lastSelString = (cryAM.getLastSel()) as String&#xD;&#xA;	lastSelString = &quot;(cryAM.&quot; + (subString lastSelString 2 lastSelString.count)&#xD;&#xA;	  &#xD;&#xA;               	restartScript += &quot;global cryMaxAnimContinue = true\n\n&quot;&#xD;&#xA;	restartScript += &quot;fileIn (cryMaxTools.basic.vars.toolsPath + \&quot;Animation\\AnimManager.ms\&quot;)\n\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbCharacter.selectedIndex = &quot; + cryAM._.cbCharacter.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbLoad.selectedIndex = &quot; + cryAM._.cbLoad.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM._.cbSave.selectedIndex = &quot; + cryAM._.cbSave.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByCharacter skipNodeList:true skipSetup:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.cbSetup.selectedIndex = &quot; + cryAM.cbSetup.selectedIndex as String + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateLastSel custom:&quot; + lastSelString + &quot;\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateBySetup skipNodeList:true\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.updateByLastSel()\n\n&quot;&#xD;&#xA;	restartScript += &quot;forceCompleteRedraw()\n&quot;&#xD;&#xA;	restartScript += &quot;cryAM.callSaveAnim()\n\n&quot;&#xD;&#xA;	restartScript += &quot;messageBox \&quot;Finished Batch!\&quot; title:\&quot;Animation Manager Restart&amp;Continue Script\&quot;\n\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxRestart = undefined\n&quot;&#xD;&#xA;                restartScript += &quot;cryMaxTimeStamp = undefined\n&quot;&#xD;&#xA;        )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;      cryMaxTools.anim.functions.UI.restartAndContinue restartScript openMaxFile:openMaxFile&#xD;&#xA;  )&#xD;&#xA;)&#xD;&#xA;&#xD;&#xA;" />
+        <Parameters>
+          <Function Name="restart">
+            <Property Name="loops" Value="0" />
+            <Property Name="minutes" Value="10.0" />
+            <Property Name="memory" Value="1000" />
+            <Property Name="openMaxFile" Value="false" />
+            <Property Name="continueProcess" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="Source &amp; CAF" Default="true" Active="true">
+      <Process Name="Run Source Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;&quot; replace:&quot;&quot; filename:&quot;&quot; extension:&quot;&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;&quot;" />
+            <Property Name="replace" Value="&quot;&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Caf Export" Active="true">
+        <Script Path="" Text="fn runCafExport addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    cryAM.usedSkel = cryAM.getGameBone()&#xD;&#xA;&#xD;&#xA;    local curPathFilter = filterString cryAM.currentQue &quot;\\&quot;&#xD;&#xA;    local sourcePathFilter = filterString (cryAM.rootProjectPath + cryAM.rootSourcePath) &quot;\\&quot;&#xD;&#xA;			&#xD;&#xA;    local newPath = (cryAM.rootProjectPath + cryAM.rootGamePath)&#xD;&#xA;	&#xD;&#xA;    for i = (sourcePathFilter.count + 1) to curPathFilter.count do&#xD;&#xA;      newPath += curPathFilter[i] + (if i &lt; curPathFilter.count then &quot;\\&quot; else &quot;&quot;)&#xD;&#xA;	&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.caf&quot;&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="runCafExport">
+            <Property Name="addPerforce" Value="false" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="Export Custom" Default="true" Active="true">
+      <Process Name="Run Custom Export" Active="true">
+        <Script Path="" Text="fn customExport rootNode:&quot;&quot; extension:&quot;bip&quot; addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if rootNode != &quot;&quot; then&#xD;&#xA;      cryAM.usedSkel = getNodeByName rootNode&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;  &#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.&quot; + extension&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath&#xD;&#xA;&#xD;&#xA;    if addPerforce == true then&#xD;&#xA;      cryMaxTools.basic.perforceMan.add newPath perforceAdd:addPerforce&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="customExport">
+            <Property Name="rootNode" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;bip&quot;" />
+            <Property Name="addPerforce" Value="false" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="Source &amp; Max" Default="true" Active="true">
+      <Process Name="Run Source Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;&quot; replace:&quot;&quot; filename:&quot;&quot; extension:&quot;&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;&quot;" />
+            <Property Name="replace" Value="&quot;&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Max Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;_Animation_source&quot; replace:&quot;_Animation_max&quot; filename:&quot;&quot; extension:&quot;max&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;_Animation_source&quot;" />
+            <Property Name="replace" Value="&quot;_Animation_max&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;max&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+    <Task Name="Source &amp; Max &amp; CAF" Default="true" Active="true">
+      <Process Name="Run Source Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;&quot; replace:&quot;&quot; filename:&quot;&quot; extension:&quot;&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;&quot;" />
+            <Property Name="replace" Value="&quot;&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Max Export" Active="true">
+        <Script Path="" Text="function sourceExport search:&quot;_Animation_source&quot; replace:&quot;_Animation_max&quot; filename:&quot;&quot; extension:&quot;max&quot; skeleton:&quot;&quot; keyPerFrame:false ticks:false clampFrames:false addPerforce:true =&#xD;&#xA;(&#xD;&#xA;  if cryAM.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    if skeleton != &quot;&quot; then&#xD;&#xA;      local skel = getNodeByName skeleton&#xD;&#xA;&#xD;&#xA;    local tempSel = getCurrentSelection()&#xD;&#xA;&#xD;&#xA;    if skel != undefined then&#xD;&#xA;      select skel&#xD;&#xA;    else&#xD;&#xA;      cryAM.usedSkel = cryAM.getSourceNodes()&#xD;&#xA;&#xD;&#xA;    local newPath = cryAM.currentQue&#xD;&#xA;&#xD;&#xA;    if search != &quot;&quot; and replace != &quot;&quot; then&#xD;&#xA;    (&#xD;&#xA;      local tempPath = cryAM.currentQue&#xD;&#xA;      if (local foundPart = findString tempPath search) != undefined then&#xD;&#xA;      (&#xD;&#xA;        newPath = (subString tempPath 1 (foundPart - 1)) + replace + (subString tempPath (foundPart + search.count) (replace.count + tempPath.count))&#xD;&#xA;      )&#xD;&#xA;    )&#xD;&#xA;&#xD;&#xA;    if filename != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilename newPath)&#xD;&#xA;		&#xD;&#xA;    if extension != &quot;&quot; then&#xD;&#xA;      newPath = (cryMaxTools.basic.str.getDirectory newPath) + (cryMaxTools.basic.str.getFilenameNoExt newPath) + &quot;.&quot; + (filterString extension &quot;.&quot;)[1]&#xD;&#xA;&#xD;&#xA;    cryMaxTools.anim.vars.keyPerFrame = keyPerFrame&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce useTicks:ticks clampFrames:clampFrames&#xD;&#xA;    &#xD;&#xA;    select tempSel    &#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="sourceExport">
+            <Property Name="search" Value="&quot;_Animation_source&quot;" />
+            <Property Name="replace" Value="&quot;_Animation_max&quot;" />
+            <Property Name="filename" Value="&quot;&quot;" />
+            <Property Name="extension" Value="&quot;max&quot;" />
+            <Property Name="skeleton" Value="&quot;&quot;" />
+            <Property Name="keyPerFrame" Value="false" />
+            <Property Name="ticks" Value="false" />
+            <Property Name="clampFrames" Value="false" />
+            <Property Name="addPerforce" Value="true" />
+          </Function>
+        </Parameters>
+      </Process>
+      <Process Name="Run Caf Export" Active="true">
+        <Script Path="" Text="fn runCafExport addPerforce:false =&#xD;&#xA;(&#xD;&#xA;  if animManRO.currentQue != undefined then&#xD;&#xA;  (&#xD;&#xA;    animManRO.usedSkel = animManRO.getGameBone()&#xD;&#xA;&#xD;&#xA;    local curPathFilter = filterString animManRO.currentQue &quot;\\&quot;&#xD;&#xA;    local sourcePathFilter = filterString (animManRO.rootProjectPath + animManRO.rootSourcePath) &quot;\\&quot;&#xD;&#xA;			&#xD;&#xA;    local newPath = (animManRO.rootProjectPath + animManRO.rootGamePath)&#xD;&#xA;	&#xD;&#xA;    for i = (sourcePathFilter.count + 1) to curPathFilter.count do&#xD;&#xA;      newPath += curPathFilter[i] + (if i &lt; curPathFilter.count then &quot;\\&quot; else &quot;&quot;)&#xD;&#xA;	&#xD;&#xA;    newPath = (filterString newPath &quot;.&quot;)[1] + &quot;.caf&quot;&#xD;&#xA;	&#xD;&#xA;    cryMaxTools.anim.functions.UI.saveAnimCheck newPath perforceAdd:addPerforce&#xD;&#xA;&#xD;&#xA;  )&#xD;&#xA;)" />
+        <Parameters>
+          <Function Name="runCafExport">
+            <Property Name="addPerforce" Value="false" />
+          </Function>
+        </Parameters>
+      </Process>
+    </Task>
+  </Tasks>
+</ExportSettings>

@@ -1,0 +1,20 @@
+{
+    "none":
+    {
+        "Root": [
+            "stdafx.cpp"
+        ],
+        "Header Files": [
+            "stdafx.h",
+            "targetver.h"
+        ],
+        "Resource Files": [
+            "resource.h",
+            "resource.rc"
+        ],
+        "Source Files": [
+            "CryD3DCompilerStub.cpp",
+            "dllmain.cpp"
+        ]
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CryLegacy/CryLegacyBus.h"
+        ],
+        "Source": [
+            "Source/CryLegacyModule.cpp",
+            "Source/CryLegacySystemComponent.cpp",
+            "Source/CryLegacySystemComponent.h"
+        ]
+    }
+}

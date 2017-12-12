@@ -106,7 +106,7 @@ protected:
     SNoiseParams* m_sLastParam;
     CHeightmap* m_pHeightmap;
 
-    CTerrainModifyTool* m_pTerrainTool;
+    _smart_ptr<CTerrainModifyTool> m_pTerrainTool;
 
     QLabel* m_terrainDimensions;
 };

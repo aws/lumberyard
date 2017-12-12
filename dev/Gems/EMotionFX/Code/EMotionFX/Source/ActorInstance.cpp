@@ -2104,7 +2104,7 @@ namespace EMotionFX
 
 
     // Remove the trajectory transform from the input transformation.
-    void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform)
+    void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags)
     {
         MCORE_ASSERT( mActor->GetMotionExtractionNodeIndex() != MCORE_INVALIDINDEX32 );
 
@@ -2116,19 +2116,20 @@ namespace EMotionFX
         else
             trajectoryTransform.mRotation.RotateFromTo( trajectoryTransform.mRotation.CalcForwardAxis(), MCore::Vector3(0.0f, 0.0f, -1.0f) );
 
-        trajectoryTransform = trajectoryTransform.ProjectedToGroundPlane();
+        trajectoryTransform.ApplyMotionExtractionFlags(motionExtractionFlags);
         
         // Get the projected bind pose transform.
-        const Transform bindTransformProjected = mTransformData->GetBindPose()->GetLocalTransform( mActor->GetMotionExtractionNodeIndex() ).ProjectedToGroundPlane();
+        Transform bindTransformProjected = mTransformData->GetBindPose()->GetLocalTransform( mActor->GetMotionExtractionNodeIndex() );
+        bindTransformProjected.ApplyMotionExtractionFlags(motionExtractionFlags);
 
         // Remove the projected rotation and translation from the transform to prevent the double transform.
         inOutMotionExtractionNodeTransform.mRotation = (bindTransformProjected.mRotation.Conjugated() * trajectoryTransform.mRotation).Conjugated() * inOutMotionExtractionNodeTransform.mRotation;
-        inOutMotionExtractionNodeTransform.mPosition -= trajectoryTransform.mPosition;
+        inOutMotionExtractionNodeTransform.mPosition = inOutMotionExtractionNodeTransform.mPosition - (trajectoryTransform.mPosition - bindTransformProjected.mPosition);
     }
 
 
     // Remove the trajectory transform from the motion extraction node to prevent double transformation.
-    void ActorInstance::MotionExtractionCompensate()
+    void ActorInstance::MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags)
     {
         const uint32 motionExtractIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractIndex == MCORE_INVALIDINDEX32)
@@ -2138,7 +2139,7 @@ namespace EMotionFX
 
         Pose* currentPose = mTransformData->GetCurrentPose();
         Transform transform = currentPose->GetLocalTransform(motionExtractIndex);
-        MotionExtractionCompensate(transform);
+        MotionExtractionCompensate(transform, motionExtractionFlags);
 
         currentPose->SetLocalTransform(motionExtractIndex, transform);
     }

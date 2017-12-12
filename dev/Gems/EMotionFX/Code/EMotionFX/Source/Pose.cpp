@@ -1144,26 +1144,26 @@ namespace EMotionFX
 
 
     // compensate for motion extraction, basically making it in-place
-    void Pose::CompensateForMotionExtractionDirect()
+    void Pose::CompensateForMotionExtractionDirect(EMotionExtractionFlags motionExtractionFlags)
     {
         const uint32 motionExtractionNodeIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
         {
             Transform motionExtractionNodeTransform = GetLocalTransformDirect(motionExtractionNodeIndex);
-            mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform);
+            mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform, motionExtractionFlags);
             SetLocalTransformDirect(motionExtractionNodeIndex, motionExtractionNodeTransform);
         }
     }
 
 
     // compensate for motion extraction, basically making it in-place
-    void Pose::CompensateForMotionExtraction()
+    void Pose::CompensateForMotionExtraction(EMotionExtractionFlags motionExtractionFlags)
     {
         const uint32 motionExtractionNodeIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
         {
             Transform motionExtractionNodeTransform = GetLocalTransform(motionExtractionNodeIndex);
-            mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform);
+            mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform, motionExtractionFlags);
             SetLocalTransform(motionExtractionNodeIndex, motionExtractionNodeTransform);
         }
     }

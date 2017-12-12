@@ -25,18 +25,13 @@ namespace AZ
 
 namespace ScriptCanvas
 {
-    template<typename t_GetterFunction, typename t_SetterFunction, bool needsProperties = true>
+    template<typename t_GetterFunction, typename t_SetterFunction>
     struct PropertyAccount
     {
-        AZStd::vector<t_GetterFunction> m_getters;
-        AZStd::unordered_map<SlotId, AZ::u32> m_getterIndexByInputSlot;
-        AZStd::vector<AZ::u32> m_getterSlotIndices;
+        AZStd::unordered_map<SlotId, t_GetterFunction> m_getters;
         AZStd::unordered_map<SlotId, t_SetterFunction> m_settersByInputSlot;
+        AZStd::vector<AZStd::pair<SlotId, SlotId>> m_getterSetterIdPairs;
     };
-
-    template<typename t_GetterFunction, typename t_SetterFunction>
-    struct PropertyAccount<t_GetterFunction, t_SetterFunction, false>
-    {};
 
     class PureData
         : public Node

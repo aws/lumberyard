@@ -40,7 +40,11 @@ namespace GraphCanvas
             Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(FocusableTextEdit, AZ::SystemAllocator, 0);
-            FocusableTextEdit() = default;
+            FocusableTextEdit()
+            {
+                setContextMenuPolicy(Qt::ContextMenuPolicy::PreventContextMenu);
+            }
+
             ~FocusableTextEdit() = default;
 
         signals:

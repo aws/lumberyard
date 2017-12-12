@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Logic
         {
-            const bool k_BooleanNodeHasProperties = false;
-
             class Boolean 
-                : public NativeDatumNode<Boolean, bool, k_BooleanNodeHasProperties>
+                : public NativeDatumNode<Boolean, bool>
             {
             public:
-                using ParentType = NativeDatumNode<Boolean, bool, k_BooleanNodeHasProperties>;
+                using ParentType = NativeDatumNode<Boolean, bool>;
                 AZ_COMPONENT(Boolean, "{263E8CAE-9F20-4198-A937-14761A46D996}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

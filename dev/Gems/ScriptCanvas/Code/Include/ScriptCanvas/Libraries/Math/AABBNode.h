@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_AABBNodeHasProperties = true;
-
             class AABB
-                : public NativeDatumNode<AABB, Data::AABBType, k_AABBNodeHasProperties>
+                : public NativeDatumNode<AABB, Data::AABBType>
             {
             public:
-                using ParentType = NativeDatumNode<AABB, Data::AABBType, k_AABBNodeHasProperties>;
+                using ParentType = NativeDatumNode<AABB, Data::AABBType>;
                 AZ_COMPONENT(AABB, "{AB0C2753-680E-47AD-8277-66B3AC01C659}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

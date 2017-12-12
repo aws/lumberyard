@@ -23,7 +23,7 @@ using namespace AZ;
 
 //////////////////////////////////////////////////////////////////////////
 // The only allocator manager instance.
-AZ::AllocatorManager AZ::g_allocMgr;
+AZ::AllocatorManager AZ::AllocatorManager::g_allocMgr;
 //////////////////////////////////////////////////////////////////////////
 
 //=========================================================================

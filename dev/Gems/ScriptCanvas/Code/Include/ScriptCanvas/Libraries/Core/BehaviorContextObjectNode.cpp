@@ -247,6 +247,18 @@ namespace ScriptCanvas
                 }
             }
 
+            void BehaviorContextObjectNode::OnActivate()
+            {
+                PureData::OnActivate();
+                for (AZ::u32 i(0), sentinel(aznumeric_caster(m_propertyAccount.m_getters.size())); i != sentinel; ++i)
+                {
+                    AZStd::array<AZ::BehaviorValueParameter, ParameterCount::Setter> params;
+
+                    Internal::InitializeGetterParams(params, m_propertyAccount.m_getters[i], *this, m_inputData[Internal::k_thisParamIndex]);
+                    Internal::CallGetter(i, m_propertyAccount.m_getterSlotIndices[i], *this, m_propertyAccount.m_getters, params);
+                }
+            }
+
             void BehaviorContextObjectNode::OnWriteEnd()
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);

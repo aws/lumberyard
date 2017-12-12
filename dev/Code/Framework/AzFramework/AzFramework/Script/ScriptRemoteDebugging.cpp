@@ -80,7 +80,7 @@ namespace AzFramework
                 }
             }
 
-            AZ_Assert(!found, "Ebus already enumerated");
+            AZ_Warning("ScriptRemoteDebugging", !found, "Ebus (%s) already enumerated", name.c_str());
 
             if (!found)
             {

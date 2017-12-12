@@ -8569,7 +8569,11 @@ bool CScriptBind_Entity::ParsePhysicsParams(IScriptTable* pTable, SEntityPhysica
         SmartScriptTable subTable;
         if (chain.GetValue("Particle", subTable))
         {
-            m_particleParams = pe_params_particle();
+            pe_params_particle tempParticleParams;
+            tempParticleParams.q0.SetIdentity(); // Initialize the orientation quaternion to prevent the assert when it's assigned at the next line
+
+            m_particleParams = tempParticleParams;
+
             params.pParticle = &m_particleParams;
 
             CScriptSetGetChain particle(subTable);

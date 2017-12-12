@@ -45,7 +45,7 @@ IAllocator::~IAllocator()
 void
 IAllocator::OnCreated()
 {
-    g_allocMgr.RegisterAllocator(this);
+    AllocatorManager::Instance().RegisterAllocator(this);
     m_isReady = true;
 }
 
@@ -56,7 +56,7 @@ IAllocator::OnCreated()
 void
 IAllocator::OnDestroy()
 {
-    g_allocMgr.UnRegisterAllocator(this);
+    AllocatorManager::Instance().UnRegisterAllocator(this);
     m_isReady = false;
 }
 
@@ -67,9 +67,9 @@ IAllocator::OnDestroy()
 bool
 IAllocator::OnOutOfMemory(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum)
 {
-    if (g_allocMgr.m_outOfMemoryListener)
+    if (AllocatorManager::Instance().m_outOfMemoryListener)
     {
-        g_allocMgr.m_outOfMemoryListener(this, byteSize, alignment, flags, name, fileName, lineNum);
+        AllocatorManager::Instance().m_outOfMemoryListener(this, byteSize, alignment, flags, name, fileName, lineNum);
         return true;
     }
     return false;

@@ -24,7 +24,6 @@
 #include <QLabel>
 #include <QPushButton>
 
-
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
 
@@ -81,7 +80,6 @@ namespace EMStudio
         // helper functions
         EMotionFX::Node* GetNode(NodeHierarchyWidget* hierarchyWidget);
         void ResetNode(const char* parameterNodeType);
-        void OpenSelectionWindow(NodeSelectionWindow* nodeSelectionWindow);
         void SetToOldExcludeNodeSelection();
 
         static void PrepareExcludedNodeSelectionList(EMotionFX::Actor* actor, CommandSystem::SelectionList* outSelectionList);
@@ -95,7 +93,6 @@ namespace EMStudio
         // motion extraction node
         QPushButton*                    mResetMotionExtractionNodeButton;
         MysticQt::LinkWidget*           mMotionExtractionNode;
-        NodeSelectionWindow*            mMotionExtractionNodeSelectionWindow;
         QPushButton*                    mFindBestMatchButton;
 
         // nodes excluded from bounding volume calculations
@@ -117,7 +114,6 @@ namespace EMStudio
         // actor name
         QLineEdit*                      mNameEdit;
 
-        MCore::String                   mTempString;
         SceneManagerPlugin*             mPlugin;
         EMotionFX::Actor*               mActor;
         EMotionFX::ActorInstance*       mActorInstance;

@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_Matrix4x4NodeHasProperties = true;
-
             class Matrix4x4
-                : public NativeDatumNode<Matrix4x4, AZ::Matrix4x4, k_Matrix4x4NodeHasProperties>
+                : public NativeDatumNode<Matrix4x4, AZ::Matrix4x4>
             {
             public:
-                using ParentType = NativeDatumNode<Matrix4x4, AZ::Matrix4x4, k_Matrix4x4NodeHasProperties>;
+                using ParentType = NativeDatumNode<Matrix4x4, AZ::Matrix4x4>;
                 AZ_COMPONENT(Matrix4x4, "{CF059648-8BE5-4CC6-B909-4D3EBD945071}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

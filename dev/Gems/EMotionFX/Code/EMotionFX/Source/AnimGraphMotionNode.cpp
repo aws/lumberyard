@@ -686,7 +686,7 @@ namespace EMotionFX
         // basically this will keep the motion in-place rather than moving it away from the origin
         if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
         {
-            outputTransformPose.CompensateForMotionExtractionDirect();
+            outputTransformPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
         }
 
         // visualize it

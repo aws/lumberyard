@@ -20,13 +20,11 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            const bool k_OBBNodeHasProperties = true;
-
             class OBB
-                : public NativeDatumNode<OBB, Data::OBBType, k_OBBNodeHasProperties>
+                : public NativeDatumNode<OBB, Data::OBBType>
             {
             public:
-                using ParentType = NativeDatumNode<OBB, Data::OBBType, k_OBBNodeHasProperties>;
+                using ParentType = NativeDatumNode<OBB, Data::OBBType>;
                 AZ_COMPONENT(OBB, "{C63E8C27-412B-4CEE-959B-3D97E1D17370}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)

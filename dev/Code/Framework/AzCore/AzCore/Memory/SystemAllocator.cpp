@@ -217,7 +217,7 @@ SystemAllocator::Allocate(size_type byteSize, size_type alignment, int flags, co
     if (address == 0)
     {
         // Free all memory we can and try again!
-        g_allocMgr.GarbageCollect();
+        AllocatorManager::Instance().GarbageCollect();
 
         address = m_allocator->Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord + 1);
     }

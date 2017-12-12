@@ -13,7 +13,7 @@ import account_utils
 import errors
 import service
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def get(request, IdentityProviderId):
     if IdentityProviderId != account_utils.IDP_COGNITO:
         raise errors.ClientError('Only the {} identity provider is supported.'.format(account_utils.IDP_COGNITO))

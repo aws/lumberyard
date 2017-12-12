@@ -336,7 +336,7 @@ int TVEventsModel::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float
                 IEventKey key;
                 keyHandle.GetKey(&key);
 
-                if (strcmp(key.event, eventName) == 0) // If it has a key with the specified event set
+                if (strcmp(key.event.c_str(), eventName) == 0) // If it has a key with the specified event set
                 {
                     ++usageCount;
                     if (key.time < firstTime)

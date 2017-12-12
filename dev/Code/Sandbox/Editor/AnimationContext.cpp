@@ -243,6 +243,9 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
 
     if (m_pSequence)
     {
+        // Set the last valid sequence that was selected.
+        m_mostRecentSequenceId = m_pSequence->GetSequenceComponentEntityId();
+
         if (m_playing)
         {
             m_pSequence->BeginCutScene(true);
@@ -314,6 +317,33 @@ void CAnimationContext::TimeChanged(float newTime)
     if (m_pSequence)
     {
         m_pSequence->TimeChanged(newTime);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimationContext::OnSequenceLoaded(AZ::EntityId entityId)
+{
+    // If nothing is selected and there is a valid most recent selected
+    // try to find that sequence by id and select it. This is useful
+    // for restoring the selected sequence during undo and redo.
+    if (m_pSequence == nullptr && m_mostRecentSequenceId.IsValid())
+    {
+        if (entityId == m_mostRecentSequenceId)
+        {
+            auto editor = GetIEditor();
+            if (editor != nullptr)
+            {
+                auto manager = editor->GetSequenceManager();
+                if (manager != nullptr)
+                {
+                    auto sequence = manager->GetSequenceByEntityId(m_mostRecentSequenceId);
+                    if (sequence != nullptr)
+                    {
+                        SetSequence(sequence, false, false);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -742,6 +772,7 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
 
     case eNotify_OnBeginLoad:
+        m_mostRecentSequenceId.SetInvalid();
         m_bSavedRecordingState = m_recording;
         SetRecordingInternal(false);
         GetIEditor()->GetAnimation()->SetSequence(nullptr, false, false);

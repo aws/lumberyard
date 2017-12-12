@@ -1044,6 +1044,129 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //get all products, there should none
     products.clear();
     UNIT_TEST_EXPECT_FALSE(stateData->GetProducts(products));
+
+    // ---- test legacy subIds table ----
+
+    // setup:
+    // SomeSource1.tif
+    //   jobkey1
+    //     someproduct1
+    //        legacy ids...
+
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
+
+    job = JobDatabaseEntry(source.m_sourceID, "jobkey1", validFingerprint1, "pc", validBuilderGuid1, statusCompleted, 6);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job));
+
+    product = ProductDatabaseEntry(job.m_jobID, 1, "SomeProduct1.dds", validAssetType1);
+    product2 = ProductDatabaseEntry(job.m_jobID, 2, "SomeProduct2.dds", validAssetType1);
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product));
+    UNIT_TEST_EXPECT_TRUE(stateData->SetProduct(product2));
+
+    // test invalid insert for non existant legacy subids.
+    LegacySubIDsEntry legacyEntry(1, product.m_productID, 3);
+    {
+        UnitTestUtils::AssertAbsorber absorb;
+        UNIT_TEST_EXPECT_FALSE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
+        UNIT_TEST_EXPECT_TRUE(absorb.m_numWarningsAbsorbed > 0);
+    }
+
+    // test invalid insert for non-existant legacy product FK constraint
+    legacyEntry = LegacySubIDsEntry(-1, 9999, 3);
+    {
+        UnitTestUtils::AssertAbsorber absorb;
+        UNIT_TEST_EXPECT_FALSE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
+        UNIT_TEST_EXPECT_TRUE(absorb.m_numWarningsAbsorbed > 0);
+    }
+
+    // test valid insert of another for same product
+    legacyEntry = LegacySubIDsEntry(-1, product.m_productID, 3);
+    UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
+    AZ::s64 newPK = legacyEntry.m_subIDsEntryID;
+    UNIT_TEST_EXPECT_TRUE(newPK != -1); // it should have also updated the PK
+    
+    legacyEntry = LegacySubIDsEntry(-1, product.m_productID, 4);
+    UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
+    UNIT_TEST_EXPECT_TRUE(legacyEntry.m_subIDsEntryID != -1); // it should have also updated the PK
+    UNIT_TEST_EXPECT_TRUE(legacyEntry.m_subIDsEntryID != newPK); // pk should be unique
+
+    // test valid insert of another for different product
+    legacyEntry = LegacySubIDsEntry(-1, product2.m_productID, 5);
+    UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
+
+    // test that the ones inserted can be retrieved.
+    AZStd::vector<LegacySubIDsEntry> entriesReturned;
+    auto handler = [&entriesReturned](LegacySubIDsEntry& entry)
+    {
+        entriesReturned.push_back(entry);
+        return true;
+    };
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 2);
+    
+    bool foundSubID3 = false;
+    bool foundSubID4 = false;
+    for (const LegacySubIDsEntry& entryFound : entriesReturned)
+    {
+        UNIT_TEST_EXPECT_TRUE(entryFound.m_subIDsEntryID != -1);
+        UNIT_TEST_EXPECT_TRUE(entryFound.m_productPK == product.m_productID);
+        if (entryFound.m_subID == 3)
+        {
+            foundSubID3 = true;
+        }
+        else if (entryFound.m_subID == 4)
+        {
+            foundSubID4 = true;
+        }
+    }
+
+    UNIT_TEST_EXPECT_TRUE(foundSubID3);
+    UNIT_TEST_EXPECT_TRUE(foundSubID4);
+
+    entriesReturned.clear();
+
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product2.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product2.m_productID);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID == 5);
+
+    // test UPDATE -> overwrite existing.
+    entriesReturned[0].m_subID = 6;
+    UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(entriesReturned[0]));
+    entriesReturned.clear();
+    
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product2.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product2.m_productID);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID == 6);
+
+    // test delete by product ID
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveLegacySubIDsByProductID(product2.m_productID));
+    entriesReturned.clear();
+    
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product2.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.empty());
+    
+    // test delete by PK.  The prior entries should be here for product1. This also makes sure the above
+    // delete statement didn't delete more than it should have.
+    
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 2);
+    
+    AZ::u64 toRemove = entriesReturned[0].m_subIDsEntryID;
+    AZ::u32 removingSubID = entriesReturned[0].m_subID;
+
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveLegacySubID(toRemove));
+    entriesReturned.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product.m_productID, handler));
+    UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != toRemove);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product.m_productID);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID != removingSubID);
 }
 
 void AssetProcessingStateDataUnitTest::ExistenceTest(AssetProcessor::AssetDatabaseConnection* stateData)

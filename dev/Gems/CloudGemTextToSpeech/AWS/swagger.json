@@ -1,0 +1,810 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/service/status": {
+            "get": {
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/voicelist": {
+            "get": {
+                "description": "Get the Ids of all the polly voices",
+                "responses":{
+                    "200": {
+                        "description": "A list of all the voice Ids",
+                        "schema": {
+                            "$ref": "#/definitions/VoiceList"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/voiceline": {
+            "post": {
+                "description": "Generate a spoken line using Polly",
+                "parameters": [
+                    {
+                        "description": "The spoken line to generate",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/VoiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object with presigned urls for voice file downloads",
+                        "schema": {
+                            "$ref": "#/definitions/VoiceUrl"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/speechmarks": {
+            "post": {
+                "description": "Generate the speechmarks for a spoken line using Polly",
+                "parameters": [
+                    {
+                        "description": "The spoken line to generate",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SpeechMarksRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object with presigned urls for voice file downloads",
+                        "schema": {
+                            "$ref": "#/definitions/VoiceUrl"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/exporter/{name}": {
+            "get": {
+                "description": "Get the presigned url of a requested zip file.",
+                "parameters": [
+                    {
+                        "description": "The name of the requested zip file. Example: test",
+                        "name": "name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object with presigned urls for zip file downloads",
+                        "schema": {
+                            "$ref": "#/definitions/VoiceUrl"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/exporter/library/{name}": {
+            "get": {
+                "description": "Get the presigned url of an existing zip file that has already been generated",
+                "parameters": [
+                    {
+                        "description": "The name of the existing zip file. Example: test",
+                        "name": "name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object with presigned urls for zip file downloads",
+                        "schema": {
+                            "$ref": "#/definitions/VoiceUrl"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/exporter": {
+            "post": {
+                "description": "Generate the zip file for a set of speech lines.",
+                "parameters": [
+                    {
+                        "description": "The download request body",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/DownloadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/PackageKey"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/generatedpackages": {
+            "get": {
+                "description": "Get already generated voice line packages",
+                "responses": {
+                    "200": {
+                        "description": "A list of already generated voice line packages",
+                        "schema": {
+                            "$ref": "#/definitions/GeneratedPackgeList"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/custommappings": {
+            "get": {
+                "description": "Get the custom mappings for import",
+                "responses": {
+                    "200": {
+                        "description": "The custom mappings for import",
+                        "schema": {
+                            "$ref": "#/definitions/CustomMappings"
+                        }
+                    }
+                }
+            },  
+            "post": {
+                "description": "Save the custom mappings for import",
+                "parameters": [
+                    {
+                        "description": "The custom mappings body",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/CustomMappings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/runtimecapabilities": {
+            "get": {
+                "description": "Get the runtime capabilities status",
+                "responses": {
+                    "200": {
+                        "description": "The runtime capabilities status",
+                        "schema": {
+                            "$ref": "#/definitions/RuntimeCapabilitiesStatus"
+                        }
+                    }
+                }
+            },  
+            "post": {
+                "description": "Enable or disable runtime capabilities",
+                "parameters": [
+                    {
+                        "description": "The runtime capabilities request body",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/RuntimeSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/tts/runtimecache": {
+            "get": {
+                "description": "Get the runtime cache status",
+                "responses": {
+                    "200": {
+                        "description": "The runtime cache status",
+                        "schema": {
+                            "$ref": "#/definitions/RuntimeCapabilitiesStatus"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Enable or disable runtime cache",
+                "parameters": [
+                    {
+                        "description": "The runtime cache request body",
+                        "name": "request_info",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/RuntimeSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/speechlib": {
+            "get": {
+                "description": "Get all the entries from the speech library",
+                "responses": {
+                    "200": {
+                        "description": "A list of speech lib entries",
+                        "schema": {
+                            "$ref": "#/definitions/SpeechLib"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new speech lib entry",
+                "parameters":[
+                    {
+                        "description": "The new speech lib entry",
+                        "name": "speech",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SpeechLibEntry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete speech lib entry",
+                "parameters":[
+                    {
+                        "description": "The speech lib entry to delete.",
+                        "name": "speech",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SpeechLibEntry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/speechlib/filter":{
+             "post": {
+                "description": "Get a subset of speech lib entries based on the tags provided",
+                "parameters":[
+                    {
+                        "description": "The tags used for filtering. Example: [\"time:morning\", \"test\"]",
+                        "name": "tags",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/TagList"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of metadata table entries",
+                        "schema": {
+                            "$ref": "#/definitions/SpeechLib"
+                        }
+                    }
+                }
+            }
+        },
+        "/speechlib/preview": {
+            "post": {
+                "description": "Get the audio preview of a speech line",
+                "parameters": [
+                    {
+                        "description": "The speech lib entry to preview",
+                        "name": "speech",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SpeechLibEntry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "An object with presigned urls for voice file downloads",
+                        "schema": {
+                            "$ref": "#/definitions/previewResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/speechlib/import": {
+            "post": {
+                "description": "Import new speech lib entries",
+                "parameters":[
+                    {
+                        "description": "The new speech lib entries to import",
+                        "name": "speeches",
+                        "in": "body",
+                        "required": true,
+                        "schema" : {
+                            "$ref" : "#/definitions/SpeechLib"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/characters": {
+            "get": {
+                "description": "Get a list of the names of all existing characters",
+                "responses": {
+                    "200": {
+                        "description": "A string list of the names of the existing characters",
+                        "schema": {
+                            "$ref": "#/definitions/CharacterList"
+                        }
+                    }
+                }
+            }
+        },
+        "/characterlib": {
+            "get": {
+                "description": "Get full charater info for all existing characters",
+                "responses": {
+                    "200": {
+                        "description": "A dictionary or data for each character",
+                        "schema": {
+                            "$ref": "#/definitions/CharacterLib"
+                        }
+                    }
+                }
+            }
+        },
+        "/character/{name}": {
+            "get": {
+                "description": "Get the full character info for provided character",
+                "parameters": [
+                    {
+                        "description": "The name of the character. Example: NewCharacter_0",
+                        "name": "name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All the info for the requested character",
+                        "schema": {
+                            "$ref": "#/definitions/CharacterData"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a character from the character list",
+                "parameters": [
+                    {
+                        "description": "The name of the character to delete. Example: NewCharacter_0",
+                        "name": "name",
+                        "in": "path",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/character": {
+            "post": {
+                "description": "Submit a new character definition",
+                "parameters": [
+                    {
+                        "description": "The new character definition",
+                        "name": "char_def",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/CharacterData"
+                        },
+                        "required": true
+                    }
+                ],
+               "responses": {
+                    "200": {
+                        "description": "The submitted character info",
+                        "schema": {
+                            "$ref": "#/definitions/CharacterData"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "PackageKey": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "key"
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "errorCode",
+                "errorMessage"
+            ]
+        },
+        "VoiceRequest": {
+            "type": "object",
+            "properties": {
+                "voice": {
+                    "description": "The voice of the speech line. Example: Joanna",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "The content of the speech line. Example: Hello world",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "voice",
+                "message"
+            ]
+        },
+        "SpeechMarksRequest": {
+            "type": "object",
+            "properties": {
+                "voice": {
+                    "description": "The voice of the speech line. Example: Joanna",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "The content of the speech line. Example: Hello world",
+                    "type": "string"
+                },
+                "speechMarks": {
+                    "description": "The speech marks of the speech line. Example: VS",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "voice",
+                "message"
+            ]
+        },
+        "VoiceUrl": {
+            "type": "object",
+            "properties":{
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "url"
+            ]
+        },
+        "SpeechLib": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "description": "The speech lib",
+                    "$ref": "#/definitions/SpeechLibEntries"
+                }
+            },
+            "required": [
+                "entries"
+            ]
+        },
+        "DownloadRequest": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "description": "The speech lib entries to download",
+                    "$ref": "#/definitions/SpeechLibEntries"
+                },
+                "name": {
+                    "description": "The name of the requested zip file. Example: test",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "entries",
+                "name"
+            ]
+        },
+        "SpeechLibEntries": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/SpeechLibEntry"
+            }
+        },
+        "SpeechLibEntry": {
+            "type": "object",
+            "properties": {
+                "character": {
+                    "description": "The character of the speech line. Example: NewCharacter_0",
+                    "type": "string"
+                },
+                "line": {
+                    "description": "The content of the speech line. Example: Hello world",
+                    "type": "string"
+                },
+                "tags": {
+                    "description": "The tags of the speech line. Example: [\"time:morning\", \"test\"]",
+                    "$ref": "#/definitions/StringList"
+                }
+            },
+            "required": [
+                "character",
+                "line"
+            ]
+        },
+        "TagList": {
+            "type": "object",
+            "properties":{
+                "tags": {
+                    "description": "The tags for filtering. Example: [\"time:morning\", \"test\"]",
+                    "$ref": "#/definitions/StringList"
+                }
+            },
+            "required": [
+                "tags"
+            ]
+        },
+        "CharacterLib": {
+            "type": "object",
+            "properties": {
+                "characters": {
+                    "$ref": "#/definitions/CharacterDataList"
+                }
+            },
+            "required": [
+                "characters"
+            ]
+        },
+        "CharacterDataList": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/CharacterData"
+            }
+        },
+        "CharacterList": {
+            "type": "object",
+            "properties": {
+                "characters": {
+                    "$ref": "#/definitions/StringList"
+                }
+            }
+        },
+        "CharacterData": {
+            "type": "object",
+            "properties": {               
+              "name": {
+                    "description": "The name of the character. Example: NewCharacter_0",
+                    "type": "string"
+                },
+                "voice": {
+                    "description": "The voice of the character. Example: Joanna",
+                    "type": "string"
+                },
+                "speechMarks": {
+                    "description": "The speech marks of the character. Example: SV",
+                    "type": "string"
+                },
+                "ssmlTags":{
+                    "description": "The SSML tags of the character. Example: [\"volume=\"soft\"\",\"rate=\"slow\"\"]",
+                    "$ref": "#/definitions/StringList"
+                },
+                "description":{
+                    "description": "The description of the character",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "voice"
+            ]
+        },
+        "VoiceList": {
+            "type": "object",
+            "properties": {
+                "voices": {
+                    "type": "object"
+                }
+            },
+            "required": [
+                "voices"
+            ]
+        },
+        "StringList": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "RuntimeCapabilitiesStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "RuntimeSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "description": "The runtime settings request. Example: true",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "enabled"
+            ]
+        },
+        "CustomMappings": {
+            "type": "object",
+            "properties": {
+                "mappings": {
+                    "description": "The custom mappings for import. Example: {\"customizedCharacter\": \"Character\", \"customizedLine\": \"Line\", \"time\": \"Tag\"}",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "mappings"
+            ]
+        },
+        "GeneratedPackgeList": {
+            "type": "object",
+            "properties": {
+                "generatedPackages": {
+                    "$ref": "#/definitions/generatedPackageEntry"
+                }
+            },
+            "required": [
+                "generatedPackages"
+            ]
+        },
+        "generatedPackageEntry": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "lastModified": {
+                    "type": "string"
+                  },
+                "size": {
+                    "type": "number"
+                }
+            },
+            "required": [
+              "name",
+              "lastModified",
+              "size"
+            ]
+        },
+        "previewResponse": {
+            "type": "object",
+            "properties": {
+                "audioUrl": {
+                    "type": "string"
+                },
+                "speechMarksUrl": {
+                    "type": "string"
+                }
+            },
+            "required": [
+              "audioUrl",
+              "speechMarksUrl"
+            ]
+        }
+    }
+}

@@ -548,8 +548,6 @@
  </widget>
  <resources>
   <include location="WelcomeScreenDialog.qrc"/>
-  <include location="WelcomeScreenDialog.qrc"/>
-  <include location="WelcomeScreenDialog.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -236,6 +236,7 @@ ScriptTableView::ScriptTableView(QWidget* parent)
     m_model->Reload();
     setSortingEnabled(true);
     horizontalHeader()->setSortIndicatorShown(false);
+    horizontalHeader()->setStretchLastSection(true);
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setSelectionMode(QAbstractItemView::ContiguousSelection); // Not very useful for this dialog, but the MFC code allowed to select many rows
 

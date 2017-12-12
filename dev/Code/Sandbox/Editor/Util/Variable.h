@@ -174,6 +174,7 @@ struct IVariable
     };
 
     typedef Functor1<IVariable*> OnSetCallback;
+    using OnSetEnumCallback = OnSetCallback;
 
     // Store IGetCustomItems into IVariable's UserData and set datatype to
     // DT_USERITEMCB
@@ -212,6 +213,8 @@ struct IVariable
     virtual QString GetDescription() const = 0;
     //! Set variable description.
     virtual void SetDescription(const char* desc) = 0;
+    //! Set variable description.
+    virtual void SetDescription(const QString& desc) = 0;
 
     //! Get parameter type.
     virtual EType   GetType() const = 0;
@@ -314,6 +317,13 @@ struct IVariable
     virtual void ClearOnSetCallbacks() {}
 
     //////////////////////////////////////////////////////////////////////////
+    // Assign callback triggered when enums change.
+    //////////////////////////////////////////////////////////////////////////
+    virtual void AddOnSetEnumCallback(OnSetEnumCallback func) = 0;
+    virtual void RemoveOnSetEnumCallback(OnSetCallback func) = 0;
+    virtual void ClearOnSetEnumCallbacks() {}
+
+    //////////////////////////////////////////////////////////////////////////
     //! Retrieve pointer to selection list used by variable.
     virtual IVarEnumList* GetEnumList() const { return 0; }
     virtual ISplineInterpolator* GetSpline() { return 0; }
@@ -368,6 +378,8 @@ public:
     void SetHumanName(const QString& name) { m_humanName = name; }
 
     void SetDescription(const char* desc) { m_description = desc; };
+    void SetDescription(const QString& desc) { m_description = desc; };
+
     //! Get name of parameter.
     QString GetDescription() const { return m_description; };
 
@@ -472,6 +484,26 @@ public:
         m_onSetFuncs.clear();
     }
 
+    void AddOnSetEnumCallback(OnSetEnumCallback func) override
+    {
+        if (!stl::find(m_onSetEnumFuncs, func))
+        {
+            m_onSetEnumFuncs.push_back(func);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    void RemoveOnSetEnumCallback(OnSetCallback func)
+    {
+        stl::find_and_erase(m_onSetEnumFuncs, func);
+    }
+
+    void ClearOnSetEnumCallbacks() override
+    {
+        m_onSetEnumFuncs.clear();
+    }
+
+
     void OnSetValue(bool bRecursive)
     {
         // If have wired variables or OnSet callback, process them.
@@ -493,7 +525,7 @@ public:
         }
 
         // Call on set callback.
-        for (OnSetCallbackList::iterator it = m_onSetFuncs.begin(); it != m_onSetFuncs.end(); ++it)
+        for (auto it = m_onSetFuncs.begin(); it != m_onSetFuncs.end(); ++it)
         {
             // Call on set callback.
             (*it)(this);
@@ -561,6 +593,7 @@ protected:
     //////////////////////////////////////////////////////////////////////////
     typedef std::vector<OnSetCallback> OnSetCallbackList;
     typedef std::vector<IVariablePtr> WiredList;
+    using OnSetEnumCallbackList = std::vector<OnSetEnumCallback>;
 
     QString m_name;
     QString m_humanName;
@@ -569,6 +602,7 @@ protected:
     //! Extended data (Extended data is never copied, it's always private to this variable).
     WiredList m_wiredVars;
     OnSetCallbackList m_onSetFuncs;
+    OnSetEnumCallbackList m_onSetEnumFuncs;
 
 
     uint16 m_flags;
@@ -1512,6 +1546,7 @@ public:
     using CVariable<T>::OnSetValue;
     using CVariable<T>::Set;
     using CVariable<T>::m_valueDef;
+    using CVariable<T>::m_onSetEnumFuncs;
     //////////////////////////////////////////////////////////////////////////
     CVariableEnum(){}
 
@@ -1535,11 +1570,13 @@ public:
             m_enum = new CVarEnumList<T>();
         }
         m_enum->AddItem(name, value);
+        OnEnumsChanged();
     };
     void SetEnumList(CVarEnumListBase<T>* enumList)
     {
         m_enum = enumList;
         OnSetValue(false);
+        OnEnumsChanged();
     }
     IVarEnumList* GetEnumList() const
     {
@@ -1577,6 +1614,16 @@ public:
     }
 
 protected:
+    void OnEnumsChanged()
+    {
+        // Call on set callback.
+        for (auto it = m_onSetEnumFuncs.begin(); it != m_onSetEnumFuncs.end(); ++it)
+        {
+            // Call on set callback.
+            (*it)(this);
+        }
+    }
+
     // Copy Constructor.
     CVariableEnum(const CVariableEnum<T>& var)
         : CVariable<T>(var)

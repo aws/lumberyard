@@ -233,7 +233,7 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
 
     // restore game state
     EnableOceanRendering(true);
-    m_pObjManager->m_bLockCGFResources = 0;
+    m_pObjManager->SetLockCGFResources(0);
 
     LoadDefaultAssets();
 
@@ -274,7 +274,7 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
 #endif
 }
 
-bool C3DEngine::LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, int nSID)
+bool C3DEngine::LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, int nSID)
 {
     LOADING_TIME_PROFILE_SECTION;
 
@@ -322,7 +322,7 @@ bool C3DEngine::LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppS
     return m_pTerrain != NULL;
 }
 
-bool C3DEngine::LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable)
+bool C3DEngine::LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable)
 {
     LOADING_TIME_PROFILE_SECTION;
 
@@ -367,7 +367,9 @@ bool C3DEngine::LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std
 void C3DEngine::UnloadLevel()
 {
     if (!m_levelLoaded)
+    {
         return;
+    }
     GetRenderer()->EnableLevelUnloading(true);
 
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_UNLOAD, 0, 0);
@@ -528,7 +530,7 @@ void C3DEngine::UnloadLevel()
         bool bDeleteAll = !m_bEditor || m_bInShutDown;
         CryComment("Deleting Static Objects");
         m_pObjManager->UnloadObjects(bDeleteAll);
-        m_pObjManager->m_CullThread.UnloadLevel();
+        m_pObjManager->GetCullThread().UnloadLevel();
         CryComment("done");
     }
 
@@ -866,7 +868,7 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     }
 
     std::vector<struct IStatObj*>* pStatObjTable = NULL;
-    std::vector<_smart_ptr<IMaterial>>* pMatTable = NULL;
+    std::vector<_smart_ptr<IMaterial> >* pMatTable = NULL;
 
     int nSID = 0;
 
@@ -955,7 +957,7 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
 
     // restore game state
     EnableOceanRendering(true);
-    m_pObjManager->m_bLockCGFResources = 0;
+    m_pObjManager->SetLockCGFResources(false);
 
     PrintMessage("===== loading occlusion mesh =====");
 
@@ -1151,8 +1153,8 @@ char* C3DEngine::GetXMLAttribText(XmlNodeRef pInputNode, const char* szLevel1, c
 
 void C3DEngine::UpdateMoonDirection()
 {
-    float moonLati(-gf_PI + gf_PI * m_moonRotationLatitude / 180.0f);
-    float moonLong(0.5f * gf_PI - gf_PI * m_moonRotationLongitude / 180.0f);
+    float moonLati(-gf_PI + gf_PI* m_moonRotationLatitude / 180.0f);
+    float moonLong(0.5f * gf_PI - gf_PI* m_moonRotationLongitude / 180.0f);
 
     float sinLon(sinf(moonLong));
     float cosLon(cosf(moonLong));
@@ -1223,8 +1225,8 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
     m_skyLowSpecMatName = GetXMLAttribText(pInputNode, "SkyBox", "MaterialLowSpec", "Materials/Sky/Sky");
 
     // Forces the engine to reload the material of the skybox in the next time it renders it.
-    m_pSkyMat = NULL;
-    m_pSkyLowSpecMat = NULL;
+    m_pSkyMat = nullptr;
+    m_pSkyLowSpecMat = nullptr;
 
     m_fSkyBoxAngle = (float)atof(GetXMLAttribText(pInputNode, "SkyBox", "Angle", "0.0"));
     m_fSkyBoxStretching = (float)atof(GetXMLAttribText(pInputNode, "SkyBox", "Stretching", "1.0"));
@@ -1232,7 +1234,7 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
     // set terrain water, sun road and bottom shaders
     char szTerrainWaterMatName[256];
     cry_strcpy(szTerrainWaterMatName, GetXMLAttribText(pInputNode, "Ocean", "Material", "EngineAssets/Materials/Water/Ocean_default"));
-    m_pTerrainWaterMat = szTerrainWaterMatName[0] ? GetMatMan()->LoadMaterial(szTerrainWaterMatName, false) : NULL;
+    m_pTerrainWaterMat = szTerrainWaterMatName[0] ? GetMatMan()->LoadMaterial(szTerrainWaterMatName, false) : nullptr;
 
     if (m_pTerrain)
     {
@@ -1275,7 +1277,7 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
         m_pBreezeGenerator->m_strength = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeStrength",  "1.f"));
         m_pBreezeGenerator->m_variance = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeVariation",  "1.f"));
         m_pBreezeGenerator->m_lifetime = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeLifeTime",  "15.f"));
-        m_pBreezeGenerator->m_count = min((uint32) max(0, atoi(GetXMLAttribText(pInputNode, "EnvState", "BreezeCount",  "4"))), MAX_ACTIVE_BREEZE_POINTS);
+        m_pBreezeGenerator->m_count = min((uint32) max(0, atoi(GetXMLAttribText(pInputNode, "EnvState", "BreezeCount", "4"))), MAX_ACTIVE_BREEZE_POINTS);
         m_pBreezeGenerator->m_radius = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeRadius",  "5.f"));
         m_pBreezeGenerator->m_spawn_radius = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeSpawnRadius",  "25.f"));
         m_pBreezeGenerator->m_spread = (float)atof(GetXMLAttribText(pInputNode, "EnvState", "BreezeSpread",  "0.f"));
@@ -1522,7 +1524,7 @@ bool C3DEngine::PrecreateDecals()
     LOADING_TIME_PROFILE_SECTION;
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "PrecreateDecals");
 
-    CObjManager::DecalsToPrecreate& decals(GetObjManager()->m_decalsToPrecreate);
+    CObjManager::DecalsToPrecreate& decals(GetObjManager()->GetDecalsToPrecreate());
     // pre-create ...
     if (GetCVars()->e_DecalsPreCreate)
     {

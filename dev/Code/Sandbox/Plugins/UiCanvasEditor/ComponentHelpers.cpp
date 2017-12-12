@@ -24,7 +24,7 @@ namespace ComponentHelpers
     AZStd::string GetComponentIconPath(const AZ::SerializeContext::ClassData* componentClass)
     {
         AZStd::string iconPath = "Editor/Icons/Components/Component_Placeholder.png";
-   
+
         auto editorElementData = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
         if (auto iconAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::Icon))
         {
@@ -55,8 +55,8 @@ namespace ComponentHelpers
     const char* GetFriendlyComponentName(const AZ::SerializeContext::ClassData& classData)
     {
         return classData.m_editData
-                ? classData.m_editData->m_name
-                : classData.m_name;
+               ? classData.m_editData->m_name
+               : classData.m_name;
     }
 
     bool AppearsInUIComponentMenu(const AZ::SerializeContext::ClassData& classData)
@@ -302,7 +302,7 @@ namespace ComponentHelpers
 
         // Gather all components that match our filter and group by category.
         serializeContext->EnumerateDerived<AZ::Component>(
-            [ &componentsList ] (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
+            [ &componentsList ](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
             {
                 (void)knownType;
 
@@ -318,20 +318,20 @@ namespace ComponentHelpers
 
                 return true;
             }
-        );
+            );
 
         // Create a component list that is in the same order that the components were registered in
         const AZStd::vector<AZ::Uuid>* componentOrderList;
         ComponentsList orderedComponentsList;
         EBUS_EVENT_RESULT(componentOrderList, UiSystemBus, GetComponentTypesForMenuOrdering);
-        for (auto& componentType : *componentOrderList)
+        for (auto& componentType : * componentOrderList)
         {
             auto iter = AZStd::find_if(componentsList.begin(), componentsList.end(),
-                [componentType](const AZ::SerializeContext::ClassData* classData) -> bool
+                    [componentType](const AZ::SerializeContext::ClassData* classData) -> bool
                     {
                         return (classData->m_typeId == componentType);
                     }
-                );
+                    );
 
             if (iter != componentsList.end())
             {
@@ -407,7 +407,7 @@ namespace ComponentHelpers
 
     QList<QAction*> CreateRemoveComponentActions(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* optionalOnlyThisComponentType)
+        const AZ::Component* componentToRemove)
     {
         if (selectedItems.empty())
         {
@@ -416,6 +416,9 @@ namespace ComponentHelpers
             return QList<QAction*>();
         }
 
+        AZ_Assert(componentToRemove, "We should have a valid component to remove!");
+
+        // Get the list of selected elements
         HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
                 selectedItems);
 
@@ -424,117 +427,69 @@ namespace ComponentHelpers
         EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(serializeContext, "We should have a valid context!");
 
-        // Get all the factories currently in-use by the selected items.
-        AZStd::vector<AZ::Uuid> componentTypesForMenu;
-        AZStd::vector<AZ::Uuid> componentTypesThatCanBeRemoved;
-        if (optionalOnlyThisComponentType)
+        const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*componentToRemove);
+
+        AZ::ComponentDescriptor* componentDescriptor = nullptr;
+        EBUS_EVENT_ID_RESULT(componentDescriptor, componentTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
+        if (!componentDescriptor)
         {
-            const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*optionalOnlyThisComponentType);
-
-            componentTypesForMenu.push_back(componentTypeId);
-
-            bool canRemove = true;
-            for (auto i : items)
-            {
-                AZ::Entity* entity = i->GetElement();
-                if (!CanRemoveComponentFromEntity(serializeContext, optionalOnlyThisComponentType, entity))
-                {
-                    canRemove = false;
-                }
-            }
-
-            if (canRemove)
-            {
-                componentTypesThatCanBeRemoved.push_back(componentTypeId);
-            }
-        }
-        else
-        {
-            // Make a list of all components on the selected entities
-            for (auto i : items)
-            {
-                for (auto c : i->GetElement()->GetComponents())
-                {
-                    const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*c);
-                    auto iter = AZStd::find(componentTypesForMenu.begin(), componentTypesForMenu.end(), componentTypeId);
-                    if (iter == componentTypesForMenu.end())
-                    {
-                        componentTypesForMenu.push_back(componentTypeId);
-                        componentTypesThatCanBeRemoved.push_back(componentTypeId);
-                    }
-                }
-            }
-
-            // remove components from the list if they cannot be romved on any of the entities
-            for (auto i : items)
-            {
-                for (auto c : i->GetElement()->GetComponents())
-                {
-                    const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*c);
-
-                    AZ::Entity* entity = i->GetElement();
-                    bool canRemove = true;
-                    if (!CanRemoveComponentFromEntity(serializeContext, optionalOnlyThisComponentType, entity))
-                    {
-                        auto iter = AZStd::find(componentTypesThatCanBeRemoved.begin(), componentTypesThatCanBeRemoved.end(), componentTypeId);
-                        if (iter != componentTypesThatCanBeRemoved.end())
-                        {
-                            componentTypesThatCanBeRemoved.erase(iter);
-                        }
-                    }
-                }
-            }
+            return QList<QAction*>();
         }
 
+        const char* typeName = componentDescriptor->GetName();
+
+        QString title = QString("Remove component %1").arg(typeName);
+
+        // Get the index of the component within its type
+        AZStd::vector<AZ::Component*> components = componentToRemove->GetEntity()->FindComponents(componentTypeId);
+        int componentIndex = AZStd::find(components.begin(), components.end(), componentToRemove) - components.begin();
+
+        // We still have to return a list of actions even though we only have one action because the HiearchyMenu
+        // widget is expecting a list
         QList<QAction*> result;
-        // Add an action for each factory.
-        for (auto componentTypeId : componentTypesForMenu)
+
+        QAction* action = new QAction(title, hierarchy);
+        QObject::connect(action,
+            &QAction::triggered,
+            [hierarchy, componentTypeId, items, componentIndex](bool checked)
         {
-            AZ::ComponentDescriptor* componentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(componentDescriptor, componentTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
-            if (!componentDescriptor)
+            hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
+
+            for (auto i : items)
             {
-                continue;
+                // We got this factory from LyShine so we know this is a UI component
+                AZ::Entity* element = i->GetElement();
+                AZ::Component* component = element->FindComponents(componentTypeId)[componentIndex];
+                // Remove the component of that type at the right index
+                element->Deactivate();
+                element->RemoveComponent(component);
+                element->Activate();
+                delete component;
             }
+            hierarchy->GetEditorWindow()->GetProperties()->AfterPropertyModified(nullptr);
 
-            const char* typeName = componentDescriptor->GetName();
+            // This is necessary to update the PropertiesWidget.
+            hierarchy->SignalUserSelectionHasChanged(hierarchy->selectedItems());
+        });
 
-            QString title = QString("Remove component %1").arg(typeName);
-
-            QAction* action = new QAction(title, hierarchy);
-            QObject::connect(action,
-                &QAction::triggered,
-                [ hierarchy, componentTypeId, items ](bool checked)
-                {
-                    hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
-
-                    for (auto i : items)
-                    {
-                        // We got this factory from LyShine so we know this is a UI component
-                        AZ::Entity* element = i->GetElement();
-                        AZ::Component* component = element->FindComponent(componentTypeId);
-                        if (component)
-                        {
-                            element->Deactivate();
-                            element->RemoveComponent(component);
-                            element->Activate();
-                            delete component;
-                        }
-                    }
-                    hierarchy->GetEditorWindow()->GetProperties()->AfterPropertyModified(nullptr);
-
-                    // This is necessary to update the PropertiesWidget.
-                    hierarchy->SignalUserSelectionHasChanged(hierarchy->selectedItems());
-                });
-
-           auto iter = AZStd::find(componentTypesThatCanBeRemoved.begin(), componentTypesThatCanBeRemoved.end(), componentTypeId);
-           if (iter == componentTypesThatCanBeRemoved.end())
-           {
-                action->setEnabled(false);
-           }
-
-            result.push_back(action);
+        // Check if we can remove the component from every selected element
+        bool canRemove = true;
+        for (auto i : items)
+        {
+            AZ::Entity* entity = i->GetElement();
+            if (!CanRemoveComponentFromEntity(serializeContext, componentToRemove, entity))
+            {
+                canRemove = false;
+            }
         }
+
+        // Disable the action if not every element can remove the component
+        if (!canRemove)
+        {
+            action->setEnabled(false);
+        }
+
+        result.push_back(action);
 
         return result;
     }
@@ -554,7 +509,7 @@ namespace ComponentHelpers
 
         // Gather all components that match our filter and group by category.
         serializeContext->EnumerateDerived<AZ::Component>(
-            [ &componentsList, lyShineComponentDescriptors ] (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
+            [ &componentsList, lyShineComponentDescriptors ](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
             {
                 (void)knownType;
 
@@ -567,7 +522,7 @@ namespace ComponentHelpers
                     }
 
                     bool isLyShineComponent = false;
-                    for (auto descriptor : *lyShineComponentDescriptors)
+                    for (auto descriptor : * lyShineComponentDescriptors)
                     {
                         if (descriptor->GetUuid() == classData->m_typeId)
                         {
@@ -583,9 +538,8 @@ namespace ComponentHelpers
 
                 return true;
             }
-        );
+            );
 
         return componentsList;
     }
-
 }   // namespace ComponentHelpers

@@ -81,10 +81,6 @@ protected:
 
     virtual void OnEditorNotifyEvent(EEditorNotifyEvent event);
 
-    void focusInEvent(QFocusEvent* event) override;
-    void mouseDoubleClickEvent(QMouseEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void OnTitle();
     void OnMaximize();
     void OnToggleHelpers();
     void OnToggleDisplayInfo();

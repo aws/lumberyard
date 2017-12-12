@@ -22,11 +22,13 @@
 #if defined(LINUX) || defined(APPLE)
   #include <platform.h>
 #endif
+#include <CryEngineAPI.h>
 
 #include "smartptr.h"
 #include <IFlares.h> // <> required for Interfuscator
 #include "VertexFormats.h"
 #include <../RenderDll/Common/Shaders/Vertex.h>
+#include <CryEngineAPI.h>
 #include <AzCore/Casting/numeric_cast.h>
 
 #include "Cry_XOptimise.h"
@@ -761,19 +763,20 @@ struct SBending
 // should only created by EF_CreateSkinningData
 _MS_ALIGN(16) struct SSkinningData
 {
-    uint32                                  nNumBones;
-    uint32                                  nHWSkinningFlags;
-    DualQuat*                           pBoneQuatsS;
-    JointIdType*                        pRemapTable;
+    uint32                  nNumBones;
+    uint32                  nHWSkinningFlags;
+    DualQuat*               pBoneQuatsS;
+    Matrix34*               pBoneMatrices;
+    JointIdType*            pRemapTable;
     JobManager::SJobState*  pAsyncJobs;
     JobManager::SJobState*  pAsyncDataJobs;
-    SSkinningData*                  pPreviousSkinningRenderData; // used for motion blur
+    SSkinningData*          pPreviousSkinningRenderData; // used for motion blur
     uint32                  remapGUID;
     void*                   pCharInstCB; // used if per char instance cbs are available in renderdll (d3d11+);
     // members below are for Software Skinning
-    void*                                       pCustomData; // client specific data, used for example for sw-skinning on animation side
-    SSkinningData**                 pMasterSkinningDataList;    // used by the SkinningData for a Character Instance, contains a list of all Skin Instances which need SW-Skinning
-    SSkinningData*                  pNextSkinningData;              // List to the next element which needs SW-Skinning
+    void*                   pCustomData; // client specific data, used for example for sw-skinning on animation side
+    SSkinningData**         pMasterSkinningDataList;    // used by the SkinningData for a Character Instance, contains a list of all Skin Instances which need SW-Skinning
+    SSkinningData*          pNextSkinningData;          // List to the next element which needs SW-Skinning
 } _ALIGN(16);
 
 struct SRenderObjData
@@ -850,7 +853,7 @@ struct SRenderObjData
         m_BendingPrev = nullptr;
         m_pShaderParams = nullptr;
 
-        // The following should be changed to be something like 0xac to indicate invalid data so that by default 
+        // The following should be changed to be something like 0xac to indicate invalid data so that by default
         // data that was not set will break render features and will be traced (otherwise, default 0 just might pass)
         memset(m_fTempVars, 0, 10 * sizeof(float));
     }
@@ -1425,19 +1428,19 @@ struct STexState
     _inline friend bool operator == (const STexState& m1, const STexState& m2)
     {
         return (*(uint64*)&m1 == *(uint64*)&m2 && m1.m_dwBorderColor == m2.m_dwBorderColor &&
-            m1.m_bActive == m2.m_bActive && m1.m_bComparison == m2.m_bComparison && m1.m_bSRGBLookup == m2.m_bSRGBLookup &&
-            m1.m_MipBias == m2.m_MipBias);
+                m1.m_bActive == m2.m_bActive && m1.m_bComparison == m2.m_bComparison && m1.m_bSRGBLookup == m2.m_bSRGBLookup &&
+                m1.m_MipBias == m2.m_MipBias);
     }
     void Release()
     {
         delete this;
     }
 
-    bool SetFilterMode(int nFilter);
-    bool SetClampMode(int nAddressU, int nAddressV, int nAddressW);
-    void SetBorderColor(DWORD dwColor);
-    void SetComparisonFilter(bool bEnable);
-    void PostCreate();
+    ENGINE_API bool SetFilterMode(int nFilter);
+    ENGINE_API bool SetClampMode(int nAddressU, int nAddressV, int nAddressW);
+    ENGINE_API void SetBorderColor(DWORD dwColor);
+    ENGINE_API void SetComparisonFilter(bool bEnable);
+    ENGINE_API void PostCreate();
 };
 
 
@@ -1980,6 +1983,7 @@ struct IRenderShaderResources
     virtual void AddRef() = 0;
     virtual void UpdateConstants(IShader* pSH) = 0;
     virtual void CloneConstants(const IRenderShaderResources* pSrc) = 0;
+    virtual bool HasLMConstants() const = 0;
 
     // properties
     virtual void ToInputLM(CInputLightMaterial& lm) = 0;
@@ -2131,8 +2135,8 @@ struct SInputShaderResources
 #define SHGD_TEX_SUBSURFACE         0x80
 #define SHGD_HW_BILINEARFP16        0x100
 #define SHGD_HW_SEPARATEFP16        0x200
-#define SHGD_HW_DURANGO             0x400
-#define SHGD_HW_ORBIS               0x800
+#define SHGD_HW_DURANGO             0x400 // ACCEPTED_USE
+#define SHGD_HW_ORBIS               0x800 // ACCEPTED_USE
 #define SHGD_TEX_CUSTOM             0x1000
 #define SHGD_TEX_CUSTOM_SECONDARY   0x2000
 #define SHGD_TEX_DECAL              0x4000
@@ -2149,9 +2153,9 @@ struct SInputShaderResources
 #define SHGD_HW_SILHOUETTE_POM      0x2000000
 // Confetti Nicholas Baldwin: adding metal shader language support
 #define SHGD_HW_METAL               0x4000000
-#define SHGD_TEX_MASK       (   SHGD_TEX_DETAIL | SHGD_TEX_NORMALS | SHGD_TEX_ENVCM | SHGD_TEX_SPECULAR | SHGD_TEX_SECOND_SMOOTHNESS | \
-                                SHGD_TEX_HEIGHT | SHGD_TEX_SUBSURFACE | SHGD_TEX_CUSTOM | SHGD_TEX_CUSTOM_SECONDARY | SHGD_TEX_DECAL | \
-                                SHGD_TEX_OCC | SHGD_TEX_SPECULAR_2 | SHGD_TEX_EMITTANCE)
+#define SHGD_TEX_MASK       (SHGD_TEX_DETAIL | SHGD_TEX_NORMALS | SHGD_TEX_ENVCM | SHGD_TEX_SPECULAR | SHGD_TEX_SECOND_SMOOTHNESS | \
+                             SHGD_TEX_HEIGHT | SHGD_TEX_SUBSURFACE | SHGD_TEX_CUSTOM | SHGD_TEX_CUSTOM_SECONDARY | SHGD_TEX_DECAL | \
+                             SHGD_TEX_OCC | SHGD_TEX_SPECULAR_2 | SHGD_TEX_EMITTANCE)
 
 
 struct SShaderTextureSlot
@@ -2303,8 +2307,7 @@ enum EShaderQuality
     eSQ_Medium = 1,
     eSQ_High = 2,
     eSQ_VeryHigh = 3,
-    eSQ_Mobile = 4,
-    eSQ_Max = 5
+    eSQ_Max = 4
 };
 
 enum ERenderQuality
@@ -2313,8 +2316,7 @@ enum ERenderQuality
     eRQ_Medium = 1,
     eRQ_High = 2,
     eRQ_VeryHigh = 3,
-    eRQ_Mobile = 4,
-    eRQ_Max = 5
+    eRQ_Max = 4
 };
 
 // Summary:
@@ -2509,6 +2511,8 @@ enum ERenderListID
 #define EF2_HW_TESSELLATION 0x40000000
 #define EF2_ALPHABLENDSHADOWS 0x80000000
 
+class CCryNameR;
+class CCryNameTSCRC;
 struct IShader
 {
 public:
@@ -2539,6 +2543,18 @@ public:
     virtual size_t GetNumberOfUVSets() = 0;
     virtual int GetTechniqueID(int nTechnique, int nRegisteredTechnique) = 0;
     virtual AZ::Vertex::Format GetVertexFormat(void) = 0;
+
+    // D3D Effects interface
+    virtual bool FXSetTechnique(const CCryNameTSCRC& Name) = 0;
+    virtual bool FXSetPSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetCSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetVSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXSetGSFloat(const CCryNameR& NameParam, const Vec4 fParams[], int nParams) = 0;
+    virtual bool FXBegin(uint32* uiPassCount, uint32 nFlags) = 0;
+    virtual bool FXBeginPass(uint32 uiPass) = 0;
+    virtual bool FXCommit(const uint32 nFlags) = 0;
+    virtual bool FXEndPass() = 0;
+    virtual bool FXEnd() = 0;
 
     virtual EShaderType GetShaderType() = 0;
     virtual uint32      GetVertexModificator() = 0;
@@ -2743,7 +2759,10 @@ protected:
 struct SOpticsInstanceParameters
 {
     SOpticsInstanceParameters(float brightness = 0.0f, float size = 0.0f, const ColorF& color = ColorF(), bool valid = false)
-        : m_brightness(brightness), m_size(size), m_color(color), m_isValid(valid) {}
+        : m_brightness(brightness)
+        , m_size(size)
+        , m_color(color)
+        , m_isValid(valid) {}
     float m_brightness;
     float m_size;
     ColorF m_color;
@@ -2829,7 +2848,7 @@ struct SRenderLight
         m_opticsParams = params;
     }
 
-    const SOpticsInstanceParameters& GetOpticsParams()
+    const SOpticsInstanceParameters& GetOpticsParams() const
     {
         return m_opticsParams;
     }
@@ -2981,7 +3000,7 @@ struct SRenderLight
     Matrix34 m_BaseObjMatrix;
     float m_fTimeScrubbed;
     Vec3 m_BaseOrigin;                              // World space position.
-    float m_fBaseRadius;                            // Base radius 
+    float m_fBaseRadius;                            // Base radius
     ColorF m_BaseColor;                             // w component unused..
     float m_BaseSpecMult;
 
@@ -3208,9 +3227,17 @@ struct SDeferredDecal
 enum EHWSkinningRuntimeFlags
 {
     eHWS_MotionBlured = 0x04,
-    eHWS_SkinnedLinear = 0x08,
+    eHWS_Skinning_DQ_Linear = 0x08,     // Convert dual-quaternions to matrices on the GPU
+    eHWS_Skinning_Matrix = 0x10,        // Pass float3x4 skinning matrices directly to the GPU
 };
 
+// Enum of data types that can be used as bones on GPU for skinning
+enum EBoneTypes
+{
+    eBoneType_DualQuat = 0,
+    eBoneType_Matrix,
+    eBoneType_Count,
+};
 
 // Summary:
 //   Shader graph support.

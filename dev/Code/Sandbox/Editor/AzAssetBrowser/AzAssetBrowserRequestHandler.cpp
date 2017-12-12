@@ -35,7 +35,6 @@
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 #include "Viewport.h"
@@ -43,151 +42,215 @@
 #include <MathConversion.h>
 #include <QMessageBox>
 
-
-void SpawnEntityAtPoint(CViewport* viewport, int ptx, int pty, void* custom)
+namespace AzAssetBrowserRequestHandlerPrivate
 {
-    // Calculate the drop location.
-    Vec3 pos = Vec3(ZERO);
-    if (viewport)
+    bool IsDragOfFBX(const QMimeData* mimeData);
+
+    void SpawnEntityAtPoint(CViewport* viewport, int ptx, int pty, void* custom)
     {
-        QPoint vp(ptx, pty);
-        HitContext hit;
-        if (viewport->HitTest(vp, hit))
+        // Calculate the drop location.
+        Vec3 pos = Vec3(ZERO);
+        if (viewport)
         {
-            pos = hit.raySrc + hit.rayDir * hit.dist;
-            pos = viewport->SnapToGrid(pos);
-        }
-        else
-        {
-            bool hitTerrain;
-            pos = viewport->ViewToWorld(vp, &hitTerrain);
-            if (hitTerrain)
+            viewport->PreWidgetRendering();
+
+            QPoint vp(ptx, pty);
+            HitContext hit;
+            if (viewport->HitTest(vp, hit))
             {
-                pos.z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
-            }
-            pos = viewport->SnapToGrid(pos);
-        }
-    }
-    const AZ::Transform worldTransform = AZ::Transform::CreateTranslation(LYVec3ToAZVec3(pos));
-
-    QMimeData* mimeData = static_cast<QMimeData*>(custom);
-
-    AZStd::vector<AssetBrowserEntry*> entries;
-    if (!AssetBrowserEntry::FromMimeData(mimeData, entries))
-    {
-        return;
-    }
-
-    bool entityCreated = false;
-
-    for (auto entry : entries)
-    {
-        AZStd::vector<const ProductAssetBrowserEntry*> products;
-        entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
-        if (products.size() == 0)
-        {
-            continue;
-        }
-
-        for (auto product : products)
-        {
-            // Handle instantiation of slices.
-            if (product->GetAssetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
-            {
-                // Instantiate the slice at the specified location.
-                AZ::Data::Asset<AZ::SliceAsset> asset =
-                    AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(product->GetAssetId(), false);
-                if (asset)
-                {
-                    EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, InstantiateEditorSlice, asset, worldTransform);
-                    entityCreated = true;
-                    break;
-                }
+                pos = hit.raySrc + hit.rayDir * hit.dist;
+                pos = viewport->SnapToGrid(pos);
             }
             else
             {
-                //  Add the component(s).
-                AZ::Uuid componentId = AZ::Uuid::CreateNull();
-                AZ::AssetTypeInfoBus::EventResult(componentId, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
-                if (!componentId.IsNull())
+                bool hitTerrain;
+                pos = viewport->ViewToWorld(vp, &hitTerrain);
+                if (hitTerrain)
                 {
-                    AzToolsFramework::ScopedUndoBatch undo("Create entity from asset");
+                    pos.z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
+                }
+                pos = viewport->SnapToGrid(pos);
+            }
 
-                    AZStd::string entityName;
+            viewport->PostWidgetRendering();
+        }
+        const AZ::Transform worldTransform = AZ::Transform::CreateTranslation(LYVec3ToAZVec3(pos));
 
-                    // If the entity is being created from an asset, name it after said asset.
-                    const AZ::Data::AssetId assetId = product->GetAssetId();
-                    AZStd::string assetPath;
-                    EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
-                    if (!assetPath.empty())
+        QMimeData* mimeData = static_cast<QMimeData*>(custom);
+
+        AZStd::vector<AssetBrowserEntry*> entries;
+        if (!AssetBrowserEntry::FromMimeData(mimeData, entries))
+        {
+            return;
+        }
+
+        bool isDraggingFBXFile = IsDragOfFBX(mimeData);
+        bool entityCreated = false;
+
+        for (auto entry : entries)
+        {
+            AZStd::vector<const ProductAssetBrowserEntry*> products;
+            entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+            if (products.size() == 0)
+            {
+                continue;
+            }
+
+            for (auto product : products)
+            {
+                // Handle instantiation of slices.
+                if (product->GetAssetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
+                {
+                    // Instantiate the slice at the specified location.
+                    AZ::Data::Asset<AZ::SliceAsset> asset =
+                        AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(product->GetAssetId(), false);
+                    if (asset)
                     {
-                        AzFramework::StringFunc::Path::GetFileName(assetPath.c_str(), entityName);
+                        AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
+
+                        AZStd::string idString;
+                        asset.GetId().ToString(idString);
+
+                        AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBusTraits::SliceInstantiated, AZ::Crc32(idString.c_str()));
+
+                        EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, InstantiateEditorSlice, asset, worldTransform);
+                        entityCreated = true;
+                        break;
                     }
+                }
+                else
+                {
+                    //  Add the component(s).
 
-                    // If not sourced from an asset, generate a generic name.
-                    if (entityName.empty())
+                    if (isDraggingFBXFile)
                     {
-                        entityName = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount());
-                    }
-
-                    AZ::Entity* newEntity = aznew AZ::Entity(entityName.c_str());
-                    EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddRequiredComponents, *newEntity);
-
-                    // Create Entity metrics event (Drag+Drop from Asset Browser to Viewport)
-                    EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntityCreated, newEntity->GetId());
-
-                    AZ::Component* newComponent = newEntity->CreateComponent(componentId);
-                    if (newComponent)
-                    {
-                        // Add Component metrics event (Drag+Drop from Asset Browser to View port to create a new entity with the component)
-                        EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, ComponentAdded, newEntity->GetId(), componentId);
-                    }
-
-                    //  Set entity position.
-                    auto* transformComponent = newEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-                    if (transformComponent)
-                    {
-                        transformComponent->SetWorldTM(worldTransform);
-                    }
-
-                    // Add the entity to the editor context, which activates it and creates the sandbox object.
-                    EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddEditorEntity, newEntity);
-
-                    // set asset after components have been activated in AddEditorEntity method
-                    if (newComponent)
-                    {
-                        AzToolsFramework::Components::EditorComponentBase* asEditorComponent =
-                            azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(newComponent);
-
-                        if (asEditorComponent)
+                        // ignore MTL files when dragging an entire fbx file.
+                        // note that the above UUID is being put directly here to avoid having to cross-link LmbrCentral with AzToolsframework
+                        static const AZ::Data::AssetType materialAssetType("{F46985B5-F7FF-4FCB-8E8C-DC240D701841}");
+                        if (product->GetAssetType() == materialAssetType)
                         {
-                            asEditorComponent->SetPrimaryAsset(assetId);
+                            continue;
                         }
+
                     }
 
-                    // Prepare undo command last so it captures the final state of the entity.
-                    AzToolsFramework::EntityCreateCommand* command = aznew AzToolsFramework::EntityCreateCommand(static_cast<AZ::u64>(newEntity->GetId()));
-                    command->Capture(newEntity);
-                    command->SetParent(undo.GetUndoBatch());
+                    AZ::Uuid componentId = AZ::Uuid::CreateNull();
+                    AZ::AssetTypeInfoBus::EventResult(componentId, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
+                    if (!componentId.IsNull())
+                    {
+                        AzToolsFramework::ScopedUndoBatch undo("Create entity from asset");
 
-                    // Select the new entity (and deselect others).
-                    AzToolsFramework::EntityIdList selection = { newEntity->GetId() };
-                    EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, SetSelectedEntities, selection);
-                    entityCreated = true;
+                        AZStd::string entityName;
+
+                        // If the entity is being created from an asset, name it after said asset.
+                        const AZ::Data::AssetId assetId = product->GetAssetId();
+                        AZStd::string assetPath;
+                        EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
+                        if (!assetPath.empty())
+                        {
+                            AzFramework::StringFunc::Path::GetFileName(assetPath.c_str(), entityName);
+                        }
+
+                        // If not sourced from an asset, generate a generic name.
+                        if (entityName.empty())
+                        {
+                            entityName = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount());
+                        }
+
+                        AZ::Entity* newEntity = aznew AZ::Entity(entityName.c_str());
+                        EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddRequiredComponents, *newEntity);
+
+                        // Create Entity metrics event (Drag+Drop from Asset Browser to Viewport)
+                        EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntityCreated, newEntity->GetId());
+
+                        AZ::Component* newComponent = newEntity->CreateComponent(componentId);
+                        if (newComponent)
+                        {
+                            // Add Component metrics event (Drag+Drop from Asset Browser to View port to create a new entity with the component)
+                            EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, ComponentAdded, newEntity->GetId(), componentId);
+                        }
+
+                        //  Set entity position.
+                        auto* transformComponent = newEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                        if (transformComponent)
+                        {
+                            transformComponent->SetWorldTM(worldTransform);
+                        }
+
+                        // Add the entity to the editor context, which activates it and creates the sandbox object.
+                        EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddEditorEntity, newEntity);
+
+                        // set asset after components have been activated in AddEditorEntity method
+                        if (newComponent)
+                        {
+                            AzToolsFramework::Components::EditorComponentBase* asEditorComponent =
+                                azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(newComponent);
+
+                            if (asEditorComponent)
+                            {
+                                asEditorComponent->SetPrimaryAsset(assetId);
+                            }
+                        }
+
+                        // Prepare undo command last so it captures the final state of the entity.
+                        AzToolsFramework::EntityCreateCommand* command = aznew AzToolsFramework::EntityCreateCommand(static_cast<AZ::u64>(newEntity->GetId()));
+                        command->Capture(newEntity);
+                        command->SetParent(undo.GetUndoBatch());
+
+                        // Select the new entity (and deselect others).
+                        AzToolsFramework::EntityIdList selection = { newEntity->GetId() };
+                        EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, SetSelectedEntities, selection);
+                        entityCreated = true;
+                        break;
+                    }
+                }
+                if (entityCreated)
+                {
                     break;
                 }
             }
-            if (entityCreated)
-            {
-                break;
-            }
+        }
+
+        //  Clear the drop callback
+        for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); i++)
+        {
+            GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(nullptr, nullptr);
         }
     }
 
-    //  Clear the drop callback
-    for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); i++)
+    // Helper utility - determines if the thing being dragged is a FBX from the scene import pipeline
+    // This is important to differentiate.
+    // when someone drags a MTL file directly into the viewport, even from a FBX, we want to spawn it as a decal
+    // but when someone drags a FBX that contains MTL files, we want only to spawn the meshes.
+    // so we have to specifically differentiate here between the mimeData type that contains the source as the root
+    // (dragging the fbx file itself)
+    // and one which contains the actual product at its root.
+
+    bool IsDragOfFBX(const QMimeData* mimeData)
     {
-        GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(nullptr, nullptr);
+        AZStd::vector<AssetBrowserEntry*> entries;
+        if (!AssetBrowserEntry::FromMimeData(mimeData, entries))
+        {
+            // if mimedata does not even contain entries, no point in proceeding.
+            return false;
+        }
+
+        for (auto entry : entries)
+        {
+            if (entry->GetEntryType() != AssetBrowserEntry::AssetEntryType::Source)
+            {
+                continue;
+            }
+            // this is a source file.  Is it the filetype we're looking for?
+            if (SourceAssetBrowserEntry* source = azrtti_cast<SourceAssetBrowserEntry*>(entry))
+            {
+                if (AzFramework::StringFunc::Equal(source->GetExtension().c_str(), ".fbx", false))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 
@@ -195,7 +258,6 @@ AzAssetBrowserRequestHandler::AzAssetBrowserRequestHandler()
 {
     BusConnect();
 }
-
 
 AzAssetBrowserRequestHandler::~AzAssetBrowserRequestHandler()
 {
@@ -206,7 +268,7 @@ void AzAssetBrowserRequestHandler::StartDrag(QMimeData* data)
 {
     for (int i = 0; i < GetIEditor()->GetViewManager()->GetViewCount(); i++)
     {
-        GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(&SpawnEntityAtPoint, data);
+        GetIEditor()->GetViewManager()->GetView(i)->SetGlobalDropCallback(&AzAssetBrowserRequestHandlerPrivate::SpawnEntityAtPoint, data);
     }
 }
 

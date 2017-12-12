@@ -1,7 +1,5 @@
-﻿import { Injectable } from '@angular/core';
-import {
-    Router    
-} from '@angular/router';
+﻿import { Injectable, Component } from '@angular/core';
+import { AwsService } from "app/aws/aws.service";
 
 @Injectable()
 export class UrlService {
@@ -27,7 +25,7 @@ export class UrlService {
         return this._encryptionPayload;
     }
 
-    constructor(private router: Router) {       
+    constructor(private aws: AwsService) {       
     }
 
     public parseLocationHref(base_url:string) {
@@ -35,5 +33,20 @@ export class UrlService {
         this._querystring = this.baseUrl.split('?')[1];
         this._fragment = this.baseUrl.split('#')[1];        
     }
-    
+
+    public signUrls(component: Component, bucket: string, expirationinseconds: number): void {
+        if (!bucket)
+            return;
+
+        if (component.templateUrl) {
+            component.templateUrl = this.aws.context.s3.getSignedUrl('getObject', { Bucket: bucket, Key: component.templateUrl, Expires: expirationinseconds })        
+        }
+
+        if (!component.styleUrls)
+            return;
+
+        for (let i = 0; i < component.styleUrls.length; i++) {
+            component.styleUrls[i] = this.aws.context.s3.getSignedUrl('getObject', { Bucket: bucket, Key: component.styleUrls[i], Expires: expirationinseconds })        
+        }       
+    }
 }

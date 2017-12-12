@@ -100,15 +100,19 @@ namespace UiSerialize
     void UiOffsetsScriptConstructor(UiTransform2dInterface::Offsets* thisPtr, AZ::ScriptDataContext& dc)
     {
         int numArgs = dc.GetNumArguments();
+
+        const int noArgsGiven = 0;
+        const int allArgsGiven = 4;
+
         switch (numArgs)
         {
-            case 0:
+            case noArgsGiven:
             {
                 *thisPtr = UiTransform2dInterface::Offsets();
             }
             break;
             
-            case 4:
+            case allArgsGiven:
             {
                 if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
                 {
@@ -141,15 +145,19 @@ namespace UiSerialize
     void UiAnchorsScriptConstructor(UiTransform2dInterface::Anchors* thisPtr, AZ::ScriptDataContext& dc)
     {
         int numArgs = dc.GetNumArguments();
+
+        const int noArgsGiven = 0;
+        const int allArgsGiven = 4;
+
         switch (numArgs)
         {
-            case 0:
+            case noArgsGiven:
             {
                 *thisPtr = UiTransform2dInterface::Anchors();
             }
             break;
 
-            case 4:
+            case allArgsGiven:
             {
                 if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
                 {
@@ -282,8 +290,10 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiTransform2dInterface::Anchors>("UiAnchors")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Constructor<>()
                     ->Constructor<float, float, float, float>()
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &UiAnchorsScriptConstructor)
                     ->Property("left", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_left))
@@ -326,8 +336,10 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiTransform2dInterface::Offsets>("UiOffsets")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Constructor<>()
                     ->Constructor<float, float, float, float>()
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &UiOffsetsScriptConstructor)
                     ->Property("left", BehaviorValueProperty(&UiTransform2dInterface::Offsets::m_left))
@@ -370,7 +382,9 @@ namespace UiSerialize
             if (behaviorContext)
             {
                 behaviorContext->Class<UiLayoutInterface::Padding>("UiPadding")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Property("left", BehaviorValueProperty(&UiLayoutInterface::Padding::m_left))
                     ->Property("right", BehaviorValueProperty(&UiLayoutInterface::Padding::m_right))
                     ->Property("top", BehaviorValueProperty(&UiLayoutInterface::Padding::m_top))
@@ -431,6 +445,7 @@ namespace UiSerialize
             UiInteractableComponent::Reflect(behaviorContext);
 
             behaviorContext->EBus<UiLayoutBus>("UiLayoutBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("GetHorizontalChildAlignment", &UiLayoutBus::Events::GetHorizontalChildAlignment)
                 ->Event("SetHorizontalChildAlignment", &UiLayoutBus::Events::SetHorizontalChildAlignment)
                 ->Event("GetVerticalChildAlignment", &UiLayoutBus::Events::GetVerticalChildAlignment)
@@ -470,8 +485,8 @@ namespace UiSerialize
         int numChildren = childrenNode.GetNumSubElements();
         for (int childIndex = 0; childIndex < numChildren; ++childIndex)
         {
-            AZ::SerializeContext::DataElementNode& elementNode = childrenNode.GetSubElement(childIndex);
-            MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, elementNode, entities);
+            AZ::SerializeContext::DataElementNode& childElementNode = childrenNode.GetSubElement(childIndex);
+            MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, childElementNode, entities);
         }       
 
         // the children list has now been processed so it will now just contain entity IDs
@@ -606,13 +621,13 @@ namespace UiSerialize
                 // we need to convert the color to an AZ::Color now.
                 // Note that indices will have changed since MoveElement was called.
                 interactableBaseClassIndex = srcClassElement.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
-                AZ::SerializeContext::DataElementNode& dstClassElement = srcClassElement.GetSubElement(interactableBaseClassIndex);
-                stateActionsIndex = dstClassElement.FindElement(AZ_CRC(stateActionsElementName));
-                AZ::SerializeContext::DataElementNode& stateActionsNode = dstClassElement.GetSubElement(stateActionsIndex);
-                colorIndex = stateActionsNode.FindElement(AZ_CRC("element"));
-                AZ::SerializeContext::DataElementNode& colorNode = stateActionsNode.GetSubElement(colorIndex);
+                AZ::SerializeContext::DataElementNode& dstBaseClassElement = srcClassElement.GetSubElement(interactableBaseClassIndex);
+                stateActionsIndex = dstBaseClassElement.FindElement(AZ_CRC(stateActionsElementName));
+                AZ::SerializeContext::DataElementNode& dstStateActionsNode = dstBaseClassElement.GetSubElement(stateActionsIndex);
+                colorIndex = dstStateActionsNode.FindElement(AZ_CRC("element"));
+                AZ::SerializeContext::DataElementNode& dstColorNode = dstStateActionsNode.GetSubElement(colorIndex);
                 
-                if (!LyShine::ConvertSubElementFromVector3ToAzColor(context, colorNode, "Color"))
+                if (!LyShine::ConvertSubElementFromVector3ToAzColor(context, dstColorNode, "Color"))
                 {
                     return false;
                 }

@@ -933,10 +933,10 @@ public:
 
     struct SAIDelayedExpAccessoryUpdate
     {
-        SAIDelayedExpAccessoryUpdate(CPuppet* pPuppet, int timeMs, bool state)
-            : pPuppet(pPuppet)
-            , timeMs(timeMs)
-            , state(state)
+        SAIDelayedExpAccessoryUpdate(CPuppet* _pPuppet, int _timeMs, bool _state)
+            : pPuppet(_pPuppet)
+            , timeMs(_timeMs)
+            , state(_state)
         {
         }
         CPuppet* pPuppet;
@@ -1083,12 +1083,12 @@ public:
 
     struct SDebugFakeTracer
     {
-        SDebugFakeTracer(const Vec3& p0, const Vec3& p1, float a, float t)
-            : p0(p0)
-            , p1(p1)
-            , a(a)
-            , t(t)
-            , tmax(t) {}
+        SDebugFakeTracer(const Vec3& _p0, const Vec3& _p1, float _a, float _t)
+            : p0(_p0)
+            , p1(_p1)
+            , a(_a)
+            , t(_t)
+            , tmax(_t) {}
         Vec3    p0, p1;
         float a;
         float t, tmax;
@@ -1098,10 +1098,10 @@ public:
     struct SDebugFakeDamageInd
     {
         SDebugFakeDamageInd() {}
-        SDebugFakeDamageInd(const Vec3& pos, float t)
-            : p(pos)
-            , t(t)
-            , tmax(t) {}
+        SDebugFakeDamageInd(const Vec3& _pos, float _t)
+            : p(_pos)
+            , t(_t)
+            , tmax(_t) {}
         std::vector<Vec3> verts;
         Vec3    p;
         float   t, tmax;
@@ -1114,13 +1114,13 @@ public:
             : r(.0f)
             , t(.0f)
             , tmax(.0f) {}
-        SDebugFakeHitEffect(const Vec3& p, const Vec3& n, float r, float t, ColorB c)
-            : p(p)
-            , n(n)
-            , r(r)
-            , t(t)
-            , tmax(t)
-            , c(c) {}
+        SDebugFakeHitEffect(const Vec3& _p, const Vec3& _n, float _r, float _t, ColorB _c)
+            : p(_p)
+            , n(_n)
+            , r(_r)
+            , t(_t)
+            , tmax(_t)
+            , c(_c) {}
         Vec3    p, n;
         float   r, t, tmax;
         ColorB c;

@@ -122,11 +122,13 @@ public:
 
     int m_nRefCounter;  // Reference count.
 
+    static const int tripleBufferSize = 3;
     struct
     {
         SSkinningData* pSkinningData;
+        int nNumBones;
         int nFrameID;
-    } arrSkinningRendererData[3];                                                      // triple buffered for motion blur
+    } arrSkinningRendererData[tripleBufferSize];                                                      // triple buffered for motion blur
 
 
     AZStd::string m_strFilePath;
@@ -186,6 +188,7 @@ public:
 
 
     virtual bool HasVertexAnimation() const { return m_bHasVertexAnimation; }
+    virtual bool UseMatrixSkinning() const { return m_bUseMatrixSkinning; }
 
     virtual const AABB& GetAABB() const;
     virtual float GetRadiusSqr() const;
@@ -242,15 +245,6 @@ public:
     virtual void Serialize(TSerialize ser);
     virtual size_t SizeOfCharInstance();
     size_t SizeOfAttachmentManager()    {   return sizeof(CAttachmentManager) + m_AttachmentManager.SizeOfAllAttachments(); }
-    size_t SizeOfSkinningTransformations()
-    {
-        size_t _size = 0;
-        for (size_t i = 0; i < sSkiningTransCnt; ++i)
-        {
-            _size += m_skinningTransformationsCount * sizeof(DualQuat);
-        }
-        return _size;
-    }
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
 
     virtual CLodValue ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo) override;
@@ -349,6 +343,7 @@ public:
     }
 
     bool m_bHasVertexAnimation;
+    bool m_bUseMatrixSkinning;
 
 protected:
     CCharInstance () { }

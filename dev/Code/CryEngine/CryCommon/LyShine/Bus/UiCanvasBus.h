@@ -14,12 +14,11 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Matrix4x4.h>
+#include <AzFramework/Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.h>
 #include <LyShine/UiBase.h>
 
 // Forward declarations
 struct IUiAnimationSystem;
-struct SInputEvent;
-struct SUnicodeEvent;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiCanvasInterface
@@ -272,14 +271,16 @@ public: // member functions
     virtual void SetIsNavigationSupported(bool isSupported) = 0;
     
     //! Handle an input event for the canvas
-    virtual bool HandleInputEvent(const SInputEvent& event) = 0;
+    virtual bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
+                                  const AZ::Vector2* viewportPos = nullptr,
+                                  AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) = 0;
 
-    //! Handle a unicode character event for the canvas
-    virtual bool HandleKeyboardEvent(const SUnicodeEvent& event) = 0;
+    //! Handle a unicode text event for the canvas
+    virtual bool HandleTextEvent(const AZStd::string& textUTF8) = 0;
 
     //! Handle a positional input event for the canvas, this could come from
     //! a ray cast intersection for example
-    virtual bool HandleInputPositionalEvent(const SInputEvent& event, AZ::Vector2 viewportPos) = 0;
+    virtual bool HandleInputPositionalEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, AZ::Vector2 viewportPos) = 0;
 
     //! Get the mouse position of the last input event
     virtual AZ::Vector2 GetMousePosition() = 0;
@@ -312,10 +313,13 @@ public: // member functions
     //! use by UI components
     virtual void ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point) = 0;
 
+    //! Get the hover interactable
+    virtual AZ::EntityId GetHoverInteractable() = 0;
+
     //! Force the hover interactable for the canvas to be the given one, this can be useful when using
     //! keyboard/gamepad navigation and the current hover interactable is deleted by a script and the script
     //! wants to specify the new hover interactable
-    virtual void SetHoverInteractable(AZ::EntityId interactableId) = 0;
+    virtual void ForceHoverInteractable(AZ::EntityId interactableId) = 0;
 
 public: // static member data
 
@@ -366,3 +370,38 @@ public: // member functions
 };
 
 typedef AZ::EBus<UiCanvasOrderNotification> UiCanvasOrderNotificationBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Interface class that listeners need to implement to be notified of canvas input.
+//! Note that interactables already get methods called on them when they themselves are interacted
+//! with. This notification bus is intended for other entities or Lua to know when some other
+//! entities are interacted with.
+class UiCanvasInputNotifications
+    : public AZ::ComponentBus
+{
+public: // member functions
+
+    virtual ~UiCanvasInputNotifications() {}
+
+    //! Called when an element is pressed. Will return an invalid entity id if no interactable was
+    //! pressed.
+    virtual void OnCanvasPrimaryPressed(AZ::EntityId entityId) {};
+
+    //! Called when an element is released. The released entity that is sent is the entity that was
+    //! active (if any).
+    virtual void OnCanvasPrimaryReleased(AZ::EntityId entityId) {};
+
+    //! Called when an element starts being hovered
+    virtual void OnCanvasHoverStart(AZ::EntityId entityId) {};
+
+    //! Called when an element ends being hovered
+    virtual void OnCanvasHoverEnd(AZ::EntityId entityId) {};
+
+    //! Called when the enter key is pressed
+    virtual void OnCanvasEnterPressed(AZ::EntityId entityId) {};
+
+    //! Called when the enter key is released
+    virtual void OnCanvasEnterReleased(AZ::EntityId entityId) {};
+};
+
+typedef AZ::EBus<UiCanvasInputNotifications> UiCanvasInputNotificationBus;

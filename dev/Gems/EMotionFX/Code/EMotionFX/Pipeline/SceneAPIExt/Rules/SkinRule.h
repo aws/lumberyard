@@ -11,43 +11,40 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/Memory/Memory.h>
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXSkinRule.h>
+#include <SceneAPIExt/Rules/ISkinRule.h>
 
 namespace AZ
 {
     class ReflectContext;
+}
 
-    namespace SceneAPI
+namespace EMotionFX
+{
+    namespace Pipeline
     {
-        namespace Containers
+        namespace Rule
         {
-            class Scene;
-        }
-        namespace SceneData
-        {
-            class EFXSkinRule
-                : public DataTypes::IEFXSkinRule
+            class SkinRule
+                : public ISkinRule
             {
             public:
-                AZ_RTTI(EFXSkinRule, "{B26E7FC9-86A1-4711-8415-8BE4861C08BA}", DataTypes::IEFXSkinRule);
+                AZ_RTTI(SkinRule, "{B26E7FC9-86A1-4711-8415-8BE4861C08BA}", ISkinRule);
                 AZ_CLASS_ALLOCATOR_DECL
 
-                EFXSkinRule();
-                ~EFXSkinRule() override = default;
+                SkinRule();
+                ~SkinRule() override = default;
 
-                uint32_t GetMaxWeightsPerVertex() const override;
+                AZ::u32 GetMaxWeightsPerVertex() const override;
                 float GetWeightThreshold() const override;
 
-                static void Reflect(ReflectContext* context);
+                static void Reflect(AZ::ReflectContext* context);
 
             protected:
-                uint32_t m_maxWeightsPerVertex;
+                AZ::u32 m_maxWeightsPerVertex;
                 float m_weightThreshold;
             };
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

@@ -1,113 +1,113 @@
-<div class="cgp-content-container">
-    <div class="row no-gutters">
-        <h1 class="col-8 gems-heading"> User Administration  </h1>
-        <div class="col-4">
-            <i (click)="updateUserList()" class="fa fa-refresh fa-2x refresh-icon"> </i>
+<div class="row no-gutters">
+    <h1 class="col-8 gems-heading"> User Administration  </h1>
+    <div class="col-4">
+        <i (click)="updateUserList()" class="fa fa-refresh fa-2x refresh-icon"> </i>
+    </div>
+</div>    
+<facet-generator [tabs]="['Users', 'Roles']"
+        (tabClicked)="updateSubNav($event)"
+        [metricIdentifier]="metricIdentifier"></facet-generator>
+<div *ngIf="currentTabIndex === 0">
+    <div class="row add-row">
+        <div class="col-6">
+            <button id="add-new-user" (click)="currentMode = userAdminModesEnum.AddUser" class="btn l-primary ignore-col-margin">
+                Add New User
+            </button>
+        </div>
+        <div class="col-6">
+            <search class="float-right"
+                [dropdownOptions]="searchDropdownOptions"
+                searchInputPlaceholder="Search for Users"
+                (searchUpdated)="searchUsers($event)">
+            </search>
         </div>
     </div>
-    <sub-nav [tabs]="['Users', 'Roles']" (tabClicked)="updateSubNav($event)"> </sub-nav>
-    <div *ngIf="currentTabIndex === 0">
-        <div class="row add-row">
-            <div class="col-6">
-                <button (click)="currentMode = userAdminModesEnum.AddUser" class="btn l-primary ignore-col-margin">
-                    Add New User
-                </button>
-            </div>
-            <div class="col-6">
-                <search class="float-right"
-                    [dropdownOptions]="searchDropdownOptions"
-                    searchInputPlaceholder="Search for Users"
-                    (searchUpdated)="searchUsers($event)">
-                </search>
-            </div>
+    <div [ngSwitch]="loadingUsers">
+        <div *ngSwitchCase="true">
+            <loading-spinner></loading-spinner>
         </div>
-        <div [ngSwitch]="loadingUsers">
-            <div *ngSwitchCase="true">
-                <loading-spinner></loading-spinner>
-            </div>
-            <div *ngSwitchCase="false">
-                <h2 class="user-count"> {{allUsers?.length}} Users </h2>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>
-                                <div (click)="changeUserSortDirection()" class="cursor-pointer">
-                                    USERNAME
-                                    <i *ngIf="userSortDescending" class="fa fa-caret-down" aria-hidden="true"></i>
-                                    <i *ngIf="!userSortDescending" class="fa fa-caret-up" aria-hidden="true"></i>
-                                </div>
-                            </th>
-                            <th> EMAIL </th>
-                            <th> ROLE </th>
-                            <th> STATE </th>
-                            <th> ADDED </th>
-                            <th> MODIFIED </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let user of userList">
-                            <td> {{user.Username}}</td>
-                            <td> {{user.Email}} </td>
-                            <td> {{user.Role}} </td>
-                            <td>
-                                <i class="fa"
-                                   [class.success-overlay-color]="containsAccountStatus(user.UserStatus, userState.CONFIRMED) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
-                                   [class.fa-check-circle]="containsAccountStatus(user.UserStatus, userState.CONFIRMED) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
-                                   [class.warning-overlay-color]="containsAccountStatus(user.UserStatus, userState.PENDING) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
-                                   [class.fa-clock-o]="containsAccountStatus(user.UserStatus, userState.PENDING) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"></i>
-                                {{user.UserStatus.split('_').join(' ')}}
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.ARCHIVED)" placement="bottom"
-                                   ngbTooltip="The account has been archived due to inactivity.  This can only be corrected at {{awsCognitoLink}}."></i>
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)" placement="bottom"
-                                   ngbTooltip="After the player creates an account, it's not usable until they confirm their email address."></i>
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.COMPROMISED)" placement="bottom"
-                                   ngbTooltip="Please investigate this account further at {{awsCognitoLink}}."></i>
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.RESET_REQUIRED)" placement="bottom"
-                                   ngbTooltip="The user was imported but has not logged in."></i>
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.FORCE_CHANGE_PASSWORD)"
-                                   ngbTooltip="After a AWS admin creates an account at {{awsCognitoLink}}, the user is forced to change their password before they can successfully sign in."></i>
-                                <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.DISABLED)" placement="bottom"
-                                   ngbTooltip="The user has been disabled on the Amazon Cognito site ({{awsCognitoLink}})."></i>
-                            </td>
-                            <td> {{user.UserCreateDate | date: 'short' }}</td>
-                            <td> {{user.UserLastModifiedDate | date: 'short' }}</td>
-                            <td>
-                            <td>
-                                <div class="float-right">
-                                    <action-stub-items class="" [model]="user" [delete]="deleteUserView" [custom]="stubActions"></action-stub-items>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <pagination [pages]="numUserPages"
-                    (pageChanged)="updateUserPage($event)"></pagination>
-            </div>
+        <div *ngSwitchCase="false">
+            <h2 class="user-count"> {{allUsers?.length}} Users </h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>
+                            <div (click)="changeUserSortDirection()" class="cursor-pointer">
+                                USERNAME
+                                <i *ngIf="userSortDescending" class="fa fa-caret-down" aria-hidden="true"></i>
+                                <i *ngIf="!userSortDescending" class="fa fa-caret-up" aria-hidden="true"></i>
+                            </div>
+                        </th>
+                        <th> EMAIL </th>
+                        <th> ROLE </th>
+                        <th> STATE </th>
+                        <th> ADDED </th>
+                        <th> MODIFIED </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let user of userList" [id]="user.Username">
+                        <td> {{user.Username}}</td>
+                        <td> {{user.Email}} </td>
+                        <td> {{user.Role}} </td>
+                        <td>
+                            <i class="fa"
+                                [class.success-overlay-color]="containsAccountStatus(user.UserStatus, userState.CONFIRMED) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
+                                [class.fa-check-circle]="containsAccountStatus(user.UserStatus, userState.CONFIRMED) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
+                                [class.warning-overlay-color]="containsAccountStatus(user.UserStatus, userState.PENDING) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"
+                                [class.fa-clock-o]="containsAccountStatus(user.UserStatus, userState.PENDING) || containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)"></i>
+                            {{user.UserStatus.split('_').join(' ')}}
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.ARCHIVED)" placement="bottom"
+                                ngbTooltip="The account has been archived due to inactivity.  This can only be corrected at {{awsCognitoLink}}."></i>
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.UNCONFIRMED)" placement="bottom"
+                                ngbTooltip="After the player creates an account, it's not usable until they confirm their email address."></i>
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.COMPROMISED)" placement="bottom"
+                                ngbTooltip="Please investigate this account further at {{awsCognitoLink}}."></i>
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.RESET_REQUIRED)" placement="bottom"
+                                ngbTooltip="The user was imported but has not logged in."></i>
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.FORCE_CHANGE_PASSWORD)"
+                                ngbTooltip="After a AWS admin creates an account at {{awsCognitoLink}}, the user is forced to change their password before they can successfully sign in." placement="bottom"></i>
+                            <i class="fa fa-question-circle-o" *ngIf="containsAccountStatus(user.UserStatus, userState.DISABLED)" placement="bottom"
+                                ngbTooltip="The user has been disabled on the Amazon Cognito site ({{awsCognitoLink}})."></i>
+                        </td>
+                        <td> {{user.UserCreateDate | date: 'short' }}</td>
+                        <td> {{user.UserLastModifiedDate | date: 'short' }}</td>
+                        <td>
+                        <td>
+                            <div class="float-right">
+                                <action-stub-items *ngIf="user.Email != missingEmailString" class="" [model]="user" [delete]="deleteUserView" [custom]="stubActions"></action-stub-items>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <pagination [pages]="numUserPages"
+                        (pageChanged)="updateUserPage($event)"></pagination>
         </div>
     </div>
-    <div *ngIf="currentTabIndex === 1">
-         <h2 class="user-count"> 2 Roles </h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>
-                        <div (click)="changeRoleSortDirection()" class="cursor-pointer">
-                            ROLE
-                            <i *ngIf="roleSortDescending" class="fa fa-caret-down" aria-hidden="true"></i>
-                            <i *ngIf="!roleSortDescending" class="fa fa-caret-up" aria-hidden="true"></i>
-                        </div>
-                    </th>
-                    <th> USERS </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let role of rolesList" (click)="editRoleModal(role)" >
-                    <td style="width: 15%"> {{ role.name }} </td>
-                    <td> {{ role.numUsers }} </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+</div>
+<div *ngIf="currentTabIndex === 1">
+        <h2 class="user-count"> 2 Roles </h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    <div (click)="changeRoleSortDirection()" class="cursor-pointer">
+                        ROLE
+                        <i *ngIf="roleSortDescending" class="fa fa-caret-down" aria-hidden="true"></i>
+                        <i *ngIf="!roleSortDescending" class="fa fa-caret-up" aria-hidden="true"></i>
+                    </div>
+                </th>
+                <th> USERS </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let role of rolesList" (click)="editRoleModal(role)" >
+                <td style="width: 15%"> {{ role.name }} </td>
+                <td> {{ role.numUsers }} </td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
  <modal *ngIf="currentMode == userAdminModesEnum.AddUser"
@@ -115,6 +115,7 @@
     [hasSubmit]="true"
     [canSubmit]="userForm.valid"
     [autoOpen]="true"
+    [metricIdentifier]="metricIdentifier"
     (modalSubmitted)="addUser(userForm.value)"
     [onDismiss]="dismissUserModal"
     [onClose]="dismissUserModal"
@@ -127,7 +128,7 @@
             <div class="form-group row" [ngClass]="{'has-danger':!userForm.controls['username'].valid && userForm.controls['username'].touched}">
                 <label class="col-4 col-form-label affix" for="userName"> Username </label>
                 <div class="col-6 no-padding">
-                    <input class="form-control" id="userName" type="text" [formControl]="userForm.controls['username']"
+                    <input class="form-control" id="username" type="text" [formControl]="userForm.controls['username']"
                     [ngClass]="{'form-control-danger': !userForm.controls['username'].valid && userForm.controls['username'].touched}" />
                     <div *ngIf="userForm.controls['username'].hasError('required') && userForm.controls['username'].touched" class="form-control-feedback">You must include a username.</div>
                     <div *ngIf="!userForm.controls['username'].valid && !userForm.controls['username'].hasError('required') && userForm.controls['username'].touched" class="form-control-feedback"> Invalid username </div>
@@ -145,7 +146,7 @@
                 <label class="col-4 col-form-label affix" for="code"> Temporary Password <i class="fa fa-question-circle-o" placement="bottom"
                     ngbTooltip="Requires a minimum of 8 characters.  Must include at least 1 number, 1 special character, 1 uppercase letter, and 1 lowercase."></i></label>
                 <div class="col-6 no-padding">
-                    <input class="form-control" id="name" type="text" [formControl]="userForm.controls['password']"
+                    <input class="form-control" id="password" type="text" [formControl]="userForm.controls['password']"
                            [ngClass]="{'form-control-danger': isNotValid(userForm, 'password')}" />
                     <div *ngIf="isRequiredEmpty(userForm, 'password')" class="form-control-feedback">You must include a password.</div>
                 </div>

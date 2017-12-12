@@ -43,7 +43,7 @@ namespace LmbrCentral
         
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+            required.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 

@@ -2241,6 +2241,11 @@ void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
 //////////////////////////////////////////////////////////////////////////
 void AbstractSplineWidget::RemoveKey(ISplineInterpolator* pSpline, int nKey)
 {
+    if (pSpline == nullptr || nKey < 0)
+    {
+        return;
+    }
+
     UiAnimUndo undo("Remove Spline Key");
     ConditionalStoreUndo();
 

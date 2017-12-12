@@ -110,6 +110,7 @@ struct SANDBOX_API DisplayContext
     void DrawWireBox(const Vec3& min, const Vec3& max);
     // Draw filled box
     void DrawSolidBox(const Vec3& min, const Vec3& max);
+    void DrawSolidOBB(const Vec3& center, const Vec3& axisX, const Vec3& axisY, const Vec3& axisZ, const Vec3& halfExtents);
     void DrawPoint(const Vec3& p, int nSize = 1);
     void DrawLine(const Vec3& p1, const Vec3& p2);
     void DrawLine(const Vec3& p1, const Vec3& p2, const ColorF& col1, const ColorF& col2);

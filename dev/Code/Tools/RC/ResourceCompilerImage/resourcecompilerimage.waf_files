@@ -112,7 +112,8 @@
             "Formats/TGA.h",
             "Formats/TIFF.cpp",
             "Formats/TIFF.h",
-            "Formats/PVRTC.cpp"
+            "Formats/PVRTC.cpp",
+            "Formats/ETC2.cpp"
         ],
         "ImageProcessing":
         [
@@ -171,8 +172,6 @@
         "Streaming":
         [
             "Streaming/TextureSplitter.cpp",
-            "Streaming/TextureSplitter_Orbis.cpp",
-            "Streaming/TextureSplitter_Durango.cpp",
             "Streaming/TextureSplitter.h"
         ],        
         "hidden":

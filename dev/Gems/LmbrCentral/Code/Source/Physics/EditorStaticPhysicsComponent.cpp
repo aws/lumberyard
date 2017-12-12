@@ -16,23 +16,23 @@
 
 namespace LmbrCentral
 {
-    void EditorStaticPhysicsConfiguration::Reflect(AZ::ReflectContext* context)
+    void EditorStaticPhysicsConfig::Reflect(AZ::ReflectContext* context)
     {
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<EditorStaticPhysicsConfiguration, StaticPhysicsConfiguration>()
-                ->Version(1)
+            serializeContext->Class<EditorStaticPhysicsConfig, StaticPhysicsConfig>()
+                ->Version(2)
             ;
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<StaticPhysicsConfiguration>(
+                editContext->Class<StaticPhysicsConfig>(
                     "Static Physics Configuration", "Configuration for Static physics object")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
-                    ->DataElement(0, &StaticPhysicsConfiguration::m_enabledInitially, "Enabled initially", "Whether the entity is initially enabled in the physics simulation.")
+                    ->DataElement(0, &StaticPhysicsConfig::m_enabledInitially, "Enabled initially", "Whether the entity is initially enabled in the physics simulation.")
                 ;
             }
         }
@@ -40,7 +40,7 @@ namespace LmbrCentral
 
     void EditorStaticPhysicsComponent::Reflect(AZ::ReflectContext* context)
     {
-        EditorStaticPhysicsConfiguration::Reflect(context);
+        EditorStaticPhysicsConfig::Reflect(context);
 
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -61,6 +61,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/StaticPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-static-physics.html")
                     ->DataElement(0, &EditorStaticPhysicsComponent::m_configuration,
                         "Configuration", "Static physics configuration")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
@@ -69,14 +70,29 @@ namespace LmbrCentral
         }
     }
 
-    EditorStaticPhysicsComponent::EditorStaticPhysicsComponent(const EditorStaticPhysicsConfiguration& configuration)
-        : m_configuration(configuration)
+    bool EditorStaticPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
+        if (auto config = azrtti_cast<const StaticPhysicsConfig*>(baseConfig))
+        {
+            static_cast<StaticPhysicsConfig&>(m_configuration) = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool EditorStaticPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<StaticPhysicsConfig*>(outBaseConfig))
+        {
+            *outConfig = m_configuration;
+            return true;
+        }
+        return false;
     }
 
     void EditorStaticPhysicsComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        gameEntity->CreateComponent<StaticPhysicsComponent>(m_configuration);
+        gameEntity->CreateComponent<StaticPhysicsComponent>()->SetConfiguration(m_configuration);
     }
 
 } // namespace LmbrCentral

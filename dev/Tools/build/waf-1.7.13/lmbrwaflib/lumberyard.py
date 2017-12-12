@@ -9,33 +9,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os
-import subprocess
 import sys
 import argparse
+import ConfigParser
 import xml.etree.ElementTree as ET
-
-from waflib.Tools import c_aliases, c
 
 from waflib import Logs, Options, Utils, Configure, ConfigSet
 from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext, CleanContext, Context
 
-from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS
+from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_VERSION
+from utils import parse_json_file
 
 UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
-CURRENT_WAF_EXECUTABLE = '{0} ./Tools/build/waf-1.7.13/lmbr_waf'.format(os.path.relpath(sys.executable))
+CURRENT_WAF_EXECUTABLE = '"{0}" ./Tools/build/waf-1.7.13/lmbr_waf'.format(sys.executable)
 
 WAF_TOOL_ROOT_DIR = 'Tools/build/waf-1.7.13'
 LMBR_WAF_TOOL_DIR = WAF_TOOL_ROOT_DIR + '/lmbrwaflib'
 GENERAL_WAF_TOOL_DIR = WAF_TOOL_ROOT_DIR + '/waflib'
 
 # some files write a corresponding .timestamp file in BinTemp/ as part of the configuration process
-TIMESTAMP_CHECK_FILES = ['SetupAssistantConfig.json']
+TIMESTAMP_CHECK_FILES = ['bootstrap.cfg','SetupAssistantConfig.json']
 # additional files for android builds
-ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json']
+ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json', '_WAF_/environment.json']
 # successful configure generates these timestamps
-CONFIGURE_TIMESTAMP_FILES = ['SetupAssistantConfig.timestamp', 'android_settings.timestamp']
+CONFIGURE_TIMESTAMP_FILES = ['bootstrap.timestamp','SetupAssistantConfig.timestamp', 'android_settings.timestamp', 'environment.timestamp']
 # if configure is run explicitly, delete these files to force them to rerun
 CONFIGURE_FORCE_TIMESTAMP_FILES = ['generate_uber_files.timestamp', 'project_gen.timestamp']
 
@@ -87,8 +86,9 @@ LMBR_WAF_TOOL_DIR : [
         'xcode:darwin',
         'eclipse:linux',
 
-        'android_studio',
         'android',
+        'android_library',
+        'android_studio',
 
         'gui_tasks:win32',
         'gui_tasks:darwin',
@@ -99,14 +99,14 @@ LMBR_WAF_TOOL_DIR : [
 
         'wwise',
 
-        'qt5:win32',
-        'qt5:darwin',
+        'qt5',
 
         'third_party',
         'cry_utils',
         'winres',
 
-        'bootstrap'
+        'bootstrap',
+        'lmbr_setup_tools'
     ]
 }
 
@@ -129,8 +129,6 @@ PLATFORM_COMPILE_SETTINGS = [
     'compile_settings_linux',
     'compile_settings_linux_x64',
     'compile_settings_darwin',
-    'compile_settings_durango',
-    'compile_settings_orbis',
     'compile_settings_dedicated',
     'compile_settings_test',
     'compile_settings_android',
@@ -141,6 +139,7 @@ PLATFORM_COMPILE_SETTINGS = [
     'compile_settings_appletv',
 ]
 
+LAST_ENGINE_BUILD_VERSION_TAG_FILE = "engine.version"
 def load_lmbr_waf_modules(conf, module_table):
     """
     Load a list of modules (with optional platform restrictions)
@@ -168,8 +167,10 @@ def load_lmbr_waf_modules(conf, module_table):
                     conf.load(module)
                 else:
                     conf.load(module, tooldir=tool_dir)
-            except:
-                conf.fatal("[Error] Unable to load required module '{}.py'".format(module))
+            except SyntaxError as syntax_err:
+                conf.fatal("[Error] Unable to load required module '{}.py: {} (Line:{}, Offset:{})'".format(module, syntax_err.msg, syntax_err.lineno, syntax_err.offset))
+            except Exception as e:
+                conf.fatal("[Error] Unable to load required module '{}.py: {}'".format(module, e.message or e.msg))
 
 
 @conf
@@ -302,6 +303,10 @@ def run_bootstrap(conf):
 
     :param conf:                Configuration context
     """
+    # Bootstrap is only ran within the engine folder
+    if not conf.is_engine_local():
+        return
+
     # Bootstrap the build environment with bootstrap tool
     bootstrap_param = getattr(conf.options, "bootstrap_tool_param", "")
     bootstrap_third_party_override = getattr(conf.options, "bootstrap_third_party_override", "")
@@ -375,15 +380,16 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
         installed_platforms.append(platform)
 
         # Keep track of uselib's that we found in the 3rd party config files
-        conf.env['THIRD_PARTY_USELIBS'] = [uselib_name for uselib_name in conf.read_and_mark_3rd_party_libs()]
+        third_party_uselib_map = conf.read_and_mark_3rd_party_libs()
+        conf.env['THIRD_PARTY_USELIBS'] = [uselib_name for uselib_name in third_party_uselib_map]
 
-        for configuration in conf.get_supported_configurations():
+        for supported_configuration in conf.get_supported_configurations():
             # if the platform isn't going to generate a build command, don't require that the configuration exists either
             if platform in platform_configuration_filter:
-                if configuration not in platform_configuration_filter[platform]:
+                if supported_configuration not in platform_configuration_filter[platform]:
                     continue
 
-            conf.setenv(platform + '_' + configuration, platform_spec_vanilla_conf.derive())
+            conf.setenv(platform + '_' + supported_configuration, platform_spec_vanilla_conf.derive())
             conf.init_compiler_settings()
 
             # add the host settings into the current env
@@ -392,7 +398,7 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
             # make a copy of the config for certain variant loading redirection (e.g. test, dedicated)
             # this way we can pass the raw configuration to the third pary reader to properly configure
             # each library
-            config_redirect = configuration
+            config_redirect = supported_configuration
 
             # Use the normal configurations as a base for dedicated server
             is_dedicated = False
@@ -425,42 +431,16 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
             if platform in conf.get_supported_platforms():
                 # If the platform is still supported (it will be removed if the load settings function fails), then
                 # continue to attempt to load the 3rd party uselib defs for the platform
-                path_alias_map = {'ROOT': conf.srcnode.abspath()}
 
-                config_3rdparty_folder_legacy = conf.root.make_node(Context.launch_dir).make_node('_WAF_/3rd_party')
-                config_3rdparty_folder_legacy_path = config_3rdparty_folder_legacy.abspath()
+                for uselib_info in third_party_uselib_map:
 
-                config_3rdparty_folder = conf.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
-                config_3rdparty_folder_path = config_3rdparty_folder.abspath()
+                    third_party_config_file = third_party_uselib_map[uselib_info][0]
+                    path_alias_map = third_party_uselib_map[uselib_info][1]
 
-                if os.path.exists(config_3rdparty_folder_legacy_path) and os.path.exists(config_3rdparty_folder_path):
+                    thirdparty_error_msgs, uselib_names = conf.read_3rd_party_config(third_party_config_file, platform, supported_configuration, path_alias_map)
 
-                    has_legacy_configs = len(os.listdir(config_3rdparty_folder_legacy_path)) > 0
-
-                    # Both legacy and current 3rd party exists.  Print a warning and use the current 3rd party
-                    if has_legacy_configs:
-                        conf.warn_once('Legacy 3rd Party configuration path ({0}) will be ignored in favor of ({1}).  '
-                                       'Merge & remove the configuration files from the legacy path ({0}) to the current path ({1})'
-                                       .format(config_3rdparty_folder_legacy_path, config_3rdparty_folder_path))
-                    thirdparty_error_msgs, uselib_names = conf.detect_all_3rd_party_libs(config_3rdparty_folder, platform, configuration, path_alias_map)
-
-                elif os.path.exists(config_3rdparty_folder_legacy_path):
-
-                    # Only the legacy 3rd party config folder exists.
-                    thirdparty_error_msgs, uselib_names = conf.detect_all_3rd_party_libs(config_3rdparty_folder_legacy, platform, configuration, path_alias_map)
-
-                elif os.path.exists(config_3rdparty_folder_path):
-
-                    # Only the current 3rd party config folder exists.
-                    thirdparty_error_msgs, uselib_names = conf.detect_all_3rd_party_libs(config_3rdparty_folder, platform, configuration, path_alias_map)
-
-                else:
-                    # Neither folder exists, report a warning
-                    thirdparty_error_msgs = ['Unable to find 3rd party configuration path ({}).  No 3rd party libraries will '
-                                             'be configured.'.format(config_3rdparty_folder_path)]
-
-                for thirdparty_error_msg in thirdparty_error_msgs:
-                    conf.warn_once(thirdparty_error_msg)
+                    for thirdparty_error_msg in thirdparty_error_msgs:
+                        conf.warn_once(thirdparty_error_msg)
 
 
 @conf
@@ -585,7 +565,7 @@ def process_custom_configure_commands(conf):
 
             outputString += _indent_text(2, "desc.m_stackRecordLevels = %s;\n", descriptor.findall("*[@field='stackRecordLevels']")[0].get("value"))
             outputString += _indent_text(2, "desc.m_enableDrilling = %s;\n", descriptor.findall("*[@field='enableDrilling']")[0].get("value"))
-            outputString += _indent_text(2, "desc.m_x360IsPhysicalMemory = %s;\n", descriptor.findall("*[@field='x360PhysicalMemory']")[0].get("value"))
+            outputString += _indent_text(2, "desc.m_x360IsPhysicalMemory = %s;\n", descriptor.findall("*[@field='x360PhysicalMemory']")[0].get("value")) # ACCEPTED_USE
 
             modulesElement = descriptor.findall("*[@field='modules']")[0]
             for moduleEntry in modulesElement.findall("*[@field='element']"):
@@ -595,7 +575,11 @@ def process_custom_configure_commands(conf):
 
         outputString += "}\n"
 
-        filePath = os.path.join(conf.path.abspath(), "Code", "Launcher", "AndroidLauncher", "android_descriptor.h")
+        if conf.is_engine_local():
+            filePath = os.path.join(conf.path.abspath(), "Code", "Launcher", "AndroidLauncher", "android_descriptor.h")
+        else:
+            filePath = os.path.join(conf.engine_path, "Code", "Launcher", "AndroidLauncher", "android_descriptor.h")
+
         fp = open(filePath, 'w')
         fp.write(outputString)
         fp.close()
@@ -790,7 +774,9 @@ def prepare_build_environment(bld):
 
         deploy_cmd = 'deploy_' + platform + '_' + configuration
         # Only deploy to specific target platforms
-        if 'build' in bld.cmd and platform in ['durango', 'orbis', 'android_armv7_gcc', 'android_armv7_clang'] and deploy_cmd not in Options.commands:
+        if 'build' in bld.cmd and platform in [
+	'android_armv7_gcc',
+	'android_armv7_clang'] and deploy_cmd not in Options.commands:
             # Only deploy if we are not trying to rebuild 3rd party libraries for the platforms above
             if '3rd_party' != getattr(bld.options, 'project_spec', ''):
                 Options.commands.append(deploy_cmd)
@@ -831,6 +817,56 @@ def setup_game_projects(bld):
 
     # restore project in case!
     bld.game_project = previous_game_project
+
+LMBR_WAF_CONFIG_FILENAME = 'lmbr_waf.json'
+
+@conf
+def calculate_engine_path(ctx):
+    """
+    Determine the engine root path from SetupAssistantUserPreferences. if it exists
+
+    :param conf     Context
+    """
+
+    ctx.engine_node = ctx.path
+    ctx.engine_path = ctx.path.abspath()
+
+    # Default the engine path, node, and version
+    ctx.engine_node = ctx.path
+    ctx.engine_path = ctx.path.abspath()
+    ctx.engine_root_version = '0.0.0.0'
+
+    engine_json_file_path = ctx.path.make_node('engine.json').abspath()
+    if os.path.exists(engine_json_file_path):
+        engine_json = parse_json_file(engine_json_file_path)
+        ctx.engine_root_version = engine_json.get('LumberyardVersion',ctx.engine_root_version)
+        if 'ExternalEnginePath' in engine_json:
+            engine_root_abs = engine_json['ExternalEnginePath']
+            if not os.path.exists(engine_root_abs):
+                ctx.fatal('[ERROR] Invalid external engine path in engine.json : {}'.format(engine_root_abs))
+            if os.path.normcase(engine_root_abs)!=os.path.normcase(ctx.engine_path):
+                ctx.engine_node = ctx.root.make_node(engine_root_abs)
+                ctx.engine_path = engine_root_abs
+
+    if ctx.engine_path != ctx.path.abspath():
+        last_build_engine_version_node = ctx.get_bintemp_folder_node().make_node(LAST_ENGINE_BUILD_VERSION_TAG_FILE)
+        if os.path.exists(last_build_engine_version_node.abspath()):
+            last_built_version = last_build_engine_version_node.read()
+            if last_built_version!= ctx.engine_root_version:
+                Logs.warn('[WARN] The current engine version ({}) does not match the last version {} that this project was built against'.format(ctx.engine_root_version,last_built_version))
+                last_build_engine_version_node.write(ctx.engine_root_version)
+
+
+@conf
+def is_engine_local(conf):
+    """
+    Determine if we are within an engine path
+    :param conf: The configuration context
+    :return: True if we are running from the engine folder, False if not
+    """
+    current_dir = os.path.normcase(os.path.abspath(os.path.curdir))
+    engine_dir = os.path.normcase(os.path.abspath(conf.engine_path))
+    return current_dir == engine_dir
 
 
 # Create Build Context Commands for multiple platforms/configurations
@@ -976,7 +1012,7 @@ def get_enabled_capabilities(ctx):
 
     if raw_capability_string:
         capability_parser = argparse.ArgumentParser()
-        capability_parser.add_argument('--enablecapability', action='append')
+        capability_parser.add_argument('--enablecapability', '-e', action='append')
         params = [token.strip() for token in raw_capability_string.split()]
         parsed_capabilities, _ = capability_parser.parse_known_args(params)
         parsed_capabilities = parsed_capabilities.enablecapability
@@ -989,8 +1025,17 @@ def get_enabled_capabilities(ctx):
 
 
 
+###############################################################################
+@conf
+def CreateRootRelativePath(self, path):
+    """
+    Generate a path relative from the root
+    """
+    result_path = self.engine_node.make_node(path)
+    return result_path.abspath()
 
-
-
-
-
+###############################################################################
+@conf
+def Path(self, path):
+    # Alias to 'CreateRootRelativePath'
+    return CreateRootRelativePath(self, path)

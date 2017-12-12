@@ -168,6 +168,7 @@ namespace Audio
         void Initialize(const char* const, const bool = true) override {}
         void Release() override {}
         void Reset() override {}
+        void ExecuteSourceTrigger(const TAudioControlID nTriggerID, const Audio::TAudioControlID& sourceId, const SAudioCallBackInfos & rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override {}
         void ExecuteTrigger(TAudioControlID const, ELipSyncMethod const, SAudioCallBackInfos const& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override {}
         void StopAllTriggers() override {}
         void StopTrigger(const TAudioControlID) override {}

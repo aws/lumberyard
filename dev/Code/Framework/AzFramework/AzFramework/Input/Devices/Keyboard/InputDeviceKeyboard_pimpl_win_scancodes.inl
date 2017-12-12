@@ -51,7 +51,7 @@ namespace
         &InputDeviceKeyboard::Key::PunctuationBracketL,     // 0x1A
         &InputDeviceKeyboard::Key::PunctuationBracketR,     // 0x1B
         &InputDeviceKeyboard::Key::EditEnter,               // 0x1C
-        &InputDeviceKeyboard::Key::ModifierControlL,        // 0x1D
+        &InputDeviceKeyboard::Key::ModifierCtrlL,           // 0x1D
         &InputDeviceKeyboard::Key::AlphanumericA,           // 0x1E
         &InputDeviceKeyboard::Key::AlphanumericS,           // 0x1F
 
@@ -192,7 +192,7 @@ namespace
         nullptr,                                            // 0x1A
         nullptr,                                            // 0x1B
         &InputDeviceKeyboard::Key::NumPadEnter,             // 0x1C
-        &InputDeviceKeyboard::Key::ModifierControlR,        // 0x1D
+        &InputDeviceKeyboard::Key::ModifierCtrlR,           // 0x1D
         nullptr,                                            // 0x1E
         nullptr,                                            // 0x1F
 
@@ -482,8 +482,8 @@ namespace
 
         &InputDeviceKeyboard::Key::ModifierShiftL,          // 0xA0 VK_LSHIFT
         &InputDeviceKeyboard::Key::ModifierShiftR,          // 0xA1 VK_RSHIFT
-        &InputDeviceKeyboard::Key::ModifierControlL,        // 0xA2 VK_LCONTROL
-        &InputDeviceKeyboard::Key::ModifierControlR,        // 0xA3 VK_RCONTROL
+        &InputDeviceKeyboard::Key::ModifierCtrlL,           // 0xA2 VK_LCONTROL
+        &InputDeviceKeyboard::Key::ModifierCtrlR,           // 0xA3 VK_RCONTROL
         &InputDeviceKeyboard::Key::ModifierAltL,            // 0xA4 VK_LMENU
         &InputDeviceKeyboard::Key::ModifierAltR,            // 0xA5 VK_RMENU
         nullptr,                                            // 0xA6 VK_BROWSER_BACK

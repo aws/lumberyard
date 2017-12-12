@@ -433,16 +433,8 @@ CUiAnimNode::CUiAnimNode(const int id)
 //////////////////////////////////////////////////////////////////////////
 // AZ::Serialization requires a default constructor
 CUiAnimNode::CUiAnimNode()
-    : m_refCount(0)
-    , m_id(0)
-    , m_parentNodeId(0)
+    : CUiAnimNode(0)
 {
-    m_pOwner = 0;
-    m_pSequence = 0;
-    m_flags = 0;
-    m_bIgnoreSetParam = false;
-    m_pParentNode = 0;
-    m_nLoadedParentNodeId = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////

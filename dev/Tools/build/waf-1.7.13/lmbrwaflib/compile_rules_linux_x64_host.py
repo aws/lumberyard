@@ -22,11 +22,20 @@ def load_linux_x64_host_settings(conf):
     """
     v = conf.env
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/linux').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/linux')
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = ['Tools/Python/2.7.12/linux_x64/lib/python2.7', 'Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload', 'Code/SDKs/markupsafe/x64', 'Code/SDKs/jinja2/x64']
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = ['Tools/Python/2.7.12/linux_x64/lib/python2.7', 'Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload', 'Code/SDKs/markupsafe/x64', 'Code/SDKs/jinja2/x64']
-    v['CODE_GENERATOR_PYTHON_HOME'] = 'Tools/Python/2.7.12/linux_x64'
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = 'Tools/Python/2.7.12/linux_x64'
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
+                                        conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
+                                        conf.Path('Code/SDKs/markupsafe/x64'),
+                                        conf.Path('Code/SDKs/jinja2/x64')]
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
+                                              conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
+                                              conf.Path('Code/SDKs/markupsafe/x64'),
+                                              conf.Path('Code/SDKs/jinja2/x64')]
+    v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/linux_x64')
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/linux_x64')
+
+    # Detect the QT binaries
+    conf.find_qt5_binaries('linux_x64')

@@ -120,6 +120,8 @@ CMatInfo::CMatInfo()
 #ifdef TRACE_MATERIAL_LEAKS
     m_sLoadingCallstack = GetSystem()->GetLoadingProfilerCallstack();
 #endif
+
+    m_isDirty = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -128,7 +130,7 @@ CMatInfo::~CMatInfo()
     ShutDown();
 }
 
-void CMatInfo::AddRef() 
+void CMatInfo::AddRef()
 {
     CryInterlockedIncrement(&m_nRefCount);
 }
@@ -154,7 +156,7 @@ void CMatInfo::ShutDown()
             delete pC;
         }
     }
-    
+
     ReleaseCurrentShaderItem();
     m_subMtls.clear();
 }
@@ -687,33 +689,180 @@ size_t CMatInfo::GetResourceMemoryUsage(ICrySizer* pSizer)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet)
+bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam /*= false*/)
 {
-    bool bEmissive = m_shaderItem.m_pShaderResources->IsEmissive();
-    bool bOk = m_shaderItem.m_pShaderResources && GetMaterialHelpers().SetGetMaterialParamFloat(*m_shaderItem.m_pShaderResources, sParamName, v, bGet);
+    IRenderShaderResources* pRendShaderRes = m_shaderItem.m_pShaderResources;
+    if (!pRendShaderRes)
+    {
+        AZ_Warning("Rendering", false, "Attempted to access params on a Material that has no Shader Resources.");
+        return false;
+    }
+
+    bool bEmissive = pRendShaderRes->IsEmissive();
+    bool bOk = GetMaterialHelpers().SetGetMaterialParamFloat(*pRendShaderRes, sParamName, v, bGet);
+
+    if (!bOk && allowShaderParam)
+    {
+        DynArrayRef<SShaderParam>& shaderParams = pRendShaderRes->GetParameters();
+
+        if (bGet)
+        {
+            for (int i = 0; i < shaderParams.size(); ++i)
+            {
+                SShaderParam& param = shaderParams[i];
+                if (_stricmp(param.m_Name, sParamName) == 0)
+                {
+                    v = 0.0f;
+
+                    switch (param.m_Type)
+                    {
+                    case eType_BOOL:
+                        v = param.m_Value.m_Bool;
+                        bOk = true;
+                        break;
+                    case eType_BYTE:
+                        v = param.m_Value.m_Byte;
+                        bOk = true;
+                        break;
+                    case eType_SHORT:
+                        v = param.m_Value.m_Short;
+                        bOk = true;
+                        break;
+                    case eType_INT:
+                        v = (float)param.m_Value.m_Int;
+                        bOk = true;
+                        break;
+                    case eType_HALF:
+                    case eType_FLOAT:
+                        v = param.m_Value.m_Float;
+                        bOk = true;
+                        break;
+                    default:
+                        AZ_Warning(nullptr, false, "Unsupported param type %d in %s", param.m_Type, AZ_FUNCTION_SIGNATURE);
+                    }
+
+                    break;
+                }
+            }
+        }
+        else
+        {
+            UParamVal val;
+            val.m_Float = v;
+            bOk = SShaderParam::SetParam(sParamName, &shaderParams, val);
+        }
+    }
+
     if (bOk && m_shaderItem.m_pShader && !bGet)
     {
         // since "glow" is a post effect it needs to be updated here
-        if (bEmissive != m_shaderItem.m_pShaderResources->IsEmissive())
+        if (bEmissive != pRendShaderRes->IsEmissive())
         {
             GetRenderer()->ForceUpdateShaderItem(&m_shaderItem);
         }
 
-        m_shaderItem.m_pShaderResources->UpdateConstants(m_shaderItem.m_pShader);
+        pRendShaderRes->UpdateConstants(m_shaderItem.m_pShader);
     }
+
+    m_isDirty |= (bOk && !bGet);
 
     return bOk;
 }
 
-bool CMatInfo::SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet)
+bool CMatInfo::SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam /*= false*/)
 {
-    bool bOk = m_shaderItem.m_pShaderResources && GetMaterialHelpers().SetGetMaterialParamVec3(*m_shaderItem.m_pShaderResources, sParamName, v, bGet);
-    if (bOk && m_shaderItem.m_pShader && !bGet)
+    static const float defaultAlpha = 1.0f;
+
+    Vec4 vec4(v, defaultAlpha);
+    const bool bOk = SetGetMaterialParamVec4(sParamName, vec4, bGet, allowShaderParam);
+
+    if(bOk && bGet)
     {
-        m_shaderItem.m_pShaderResources->UpdateConstants(m_shaderItem.m_pShader);
+        v = Vec3(vec4);
     }
 
+    m_isDirty |= (bOk && !bGet);
+
     return bOk;
+}
+
+bool CMatInfo::SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam /*= false*/)
+{
+    IRenderShaderResources* pRendShaderRes = m_shaderItem.m_pShaderResources;
+    if (!pRendShaderRes)
+    {
+        AZ_Warning("Rendering", false, "Attempted to access params on a Material that has no Shader Resources.");
+        return false;
+    }
+
+    static const float defaultAlpha = 1.0f;
+
+    // Note we are only passing XYZ to the IMaterialHelpers here because it only deals with with "diffuse", "specular", and "emissive_color", which don't use the W/alpha channel.
+    Vec3 vec3(v);
+    bool bOk = GetMaterialHelpers().SetGetMaterialParamVec3(*pRendShaderRes, sParamName, vec3, bGet);
+    if (bOk && bGet)
+    {
+        v = Vec4(vec3, defaultAlpha);
+    }
+
+    if (!bOk && allowShaderParam)
+    {
+        DynArrayRef<SShaderParam>& shaderParams = pRendShaderRes->GetParameters();
+
+        if (bGet)
+        {
+            for (int i = 0; i < shaderParams.size(); ++i)
+            {
+                SShaderParam& param = shaderParams[i];
+                if (_stricmp(param.m_Name, sParamName) == 0)
+                {
+                    if (param.m_Type == eType_VECTOR)
+                    {
+                        v = Vec4(param.m_Value.m_Vector[0], param.m_Value.m_Vector[1], param.m_Value.m_Vector[2], defaultAlpha);
+                        bOk = true;
+                    }
+                    else if (param.m_Type == eType_FCOLOR)
+                    {
+                        v = Vec4(param.m_Value.m_Color[0], param.m_Value.m_Color[1], param.m_Value.m_Color[2], param.m_Value.m_Color[3]);
+                        bOk = true;
+                    }
+                    else
+                    {
+                        AZ_Warning(nullptr, false, "Unsupported param type %d in %s", param.m_Type, AZ_FUNCTION_SIGNATURE);
+                    }
+                }
+            }
+        }
+        else
+        {
+            UParamVal val;
+            val.m_Color[0] = v.x;
+            val.m_Color[1] = v.y;
+            val.m_Color[2] = v.z;
+            val.m_Color[3] = v.w;
+
+            bOk = SShaderParam::SetParam(sParamName, &shaderParams, val);
+        }
+    }
+
+    if (bOk && m_shaderItem.m_pShader && !bGet)
+    {
+        pRendShaderRes->UpdateConstants(m_shaderItem.m_pShader);
+    }
+
+    m_isDirty |= (bOk && !bGet);
+
+    return bOk;
+}
+
+void CMatInfo::SetDirty(bool dirty /*= true*/)
+{
+    m_isDirty = dirty;
+}
+
+bool CMatInfo::IsDirty() const
+{
+    return m_isDirty;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1001,7 +1150,7 @@ void CMatInfo::PrecacheTextures(const float fMipFactor, const int nFlags, bool b
     rZone.fMinMipFactor = min(rZone.fMinMipFactor, fMipFactor);
     rZone.bHighPriority |= bHighPriority;
 
-    int nRoundId = bFullUpdate ? GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast : GetObjManager()->m_nUpdateStreamingPrioriryRoundId;
+    int nRoundId = bFullUpdate ? GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast() : GetObjManager()->GetUpdateStreamingPrioriryRoundId();
 
     // TODO: fix fast update
     if (rZone.nRoundId != nRoundId)

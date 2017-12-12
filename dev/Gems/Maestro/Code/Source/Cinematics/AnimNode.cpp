@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "AnimNode.h"
 #include "AnimTrack.h"
 #include "AnimSequence.h"
@@ -22,7 +23,6 @@
 #include "EventTrack.h"
 #include "SoundTrack.h"
 #include "ConsoleTrack.h"
-#include "MusicTrack.h"
 #include "LookAtTrack.h"
 #include "TrackEventTrack.h"
 #include "SequenceTrack.h"
@@ -35,6 +35,7 @@
 #include "TimeRangesTrack.h"
 #include "SoundTrack.h"
 
+#include <AzCore/std/sort.h>
 #include <AzCore/Math/MathUtils.h>
 #include <I3DEngine.h>
 #include <ctime>
@@ -117,7 +118,7 @@ IAnimTrack* CAnimNode::GetTrackForParameter(const CAnimParamType& paramType) con
     {
         if (m_tracks[i]->GetParameterType() == paramType)
         {
-            return m_tracks[i];
+            return m_tracks[i].get();
         }
 
         // Search the sub-tracks also if any.
@@ -147,7 +148,7 @@ IAnimTrack* CAnimNode::GetTrackForParameter(const CAnimParamType& paramType, uin
     {
         if (m_tracks[i]->GetParameterType() == paramType && count++ == index)
         {
-            return m_tracks[i];
+            return m_tracks[i].get();
         }
 
         // For this case, no subtracks are considered.
@@ -171,7 +172,7 @@ uint32 CAnimNode::GetTrackParamIndex(const IAnimTrack* pTrack) const
 
     for (int i = 0, num = (int)m_tracks.size(); i < num; i++)
     {
-        if (m_tracks[i] == pTrack)
+        if (m_tracks[i].get() == pTrack)
         {
             return index;
         }
@@ -194,7 +195,7 @@ IAnimTrack* CAnimNode::GetTrackByIndex(int nIndex) const
         assert("nIndex>=m_tracks.size()" && false);
         return NULL;
     }
-    return m_tracks[nIndex];
+    return m_tracks[nIndex].get();
 }
 
 void CAnimNode::SetTrack(const CAnimParamType& paramType, IAnimTrack* pTrack)
@@ -205,7 +206,7 @@ void CAnimNode::SetTrack(const CAnimParamType& paramType, IAnimTrack* pTrack)
         {
             if (m_tracks[i]->GetParameterType() == paramType)
             {
-                m_tracks[i] = pTrack;
+                m_tracks[i].reset(pTrack);
                 return;
             }
         }
@@ -226,7 +227,7 @@ void CAnimNode::SetTrack(const CAnimParamType& paramType, IAnimTrack* pTrack)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CAnimNode::TrackOrder(const _smart_ptr<IAnimTrack>& left, const _smart_ptr<IAnimTrack>& right)
+bool CAnimNode::TrackOrder(const AZStd::intrusive_ptr<IAnimTrack>& left, const AZStd::intrusive_ptr<IAnimTrack>& right)
 {
     return left->GetParameterType() < right->GetParameterType();
 }
@@ -234,10 +235,22 @@ bool CAnimNode::TrackOrder(const _smart_ptr<IAnimTrack>& left, const _smart_ptr<
 //////////////////////////////////////////////////////////////////////////
 void CAnimNode::AddTrack(IAnimTrack* pTrack)
 {
+    RegisterTrack(pTrack);
+    m_tracks.push_back(AZStd::intrusive_ptr<IAnimTrack>(pTrack));
+    SortTracks();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimNode::RegisterTrack(IAnimTrack* pTrack)
+{
     pTrack->SetTimeRange(GetSequence()->GetTimeRange());
     pTrack->SetNode(this);
-    m_tracks.push_back(pTrack);
-    std::stable_sort(m_tracks.begin(), m_tracks.end(), TrackOrder);
+}
+
+void CAnimNode::SortTracks()
+{
+    AZStd::allocator allocator;
+    AZStd::stable_sort(m_tracks.begin(), m_tracks.end(), TrackOrder, allocator);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -245,13 +258,33 @@ bool CAnimNode::RemoveTrack(IAnimTrack* pTrack)
 {
     for (unsigned int i = 0; i < m_tracks.size(); i++)
     {
-        if (m_tracks[i] == pTrack)
+        if (m_tracks[i].get() == pTrack)
         {
             m_tracks.erase(m_tracks.begin() + i);
             return true;
         }
     }
     return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimNode>()
+        ->Version(1)
+        ->Field("ID", &CAnimNode::m_id)
+        ->Field("Name", &CAnimNode::m_name)
+        ->Field("Flags", &CAnimNode::m_flags)
+        ->Field("Tracks", &CAnimNode::m_tracks)
+        ->Field("Parent", &CAnimNode::m_parentNodeId)
+        ->Field("Type", &CAnimNode::m_nodeType);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimNodeGroup::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimNodeGroup, CAnimNode>()
+        ->Version(1);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -276,46 +309,43 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
     {
     // Create sub-classed tracks
     case eAnimParamType_Event:
-        pTrack = new CEventTrack(m_pSequence->GetTrackEventStringTable());
+        pTrack = aznew CEventTrack(m_pSequence->GetTrackEventStringTable());
         break;
     case eAnimParamType_Sound:
-        pTrack = new CSoundTrack;
+        pTrack = aznew CSoundTrack;
         break;
     case eAnimParamType_Animation:
-        pTrack = new CCharacterTrack;
+        pTrack = aznew CCharacterTrack;
         break;
     case eAnimParamType_Mannequin:
-        pTrack = new CMannequinTrack;
+        pTrack = aznew CMannequinTrack;
         break;
     case eAnimParamType_Console:
-        pTrack = new CConsoleTrack;
-        break;
-    case eAnimParamType_Music:
-        pTrack = new CMusicTrack;
+        pTrack = aznew CConsoleTrack;
         break;
     case eAnimParamType_LookAt:
-        pTrack = new CLookAtTrack;
+        pTrack = aznew CLookAtTrack;
         break;
     case eAnimParamType_TrackEvent:
-        pTrack = new CTrackEventTrack(m_pSequence->GetTrackEventStringTable());
+        pTrack = aznew CTrackEventTrack(m_pSequence->GetTrackEventStringTable());
         break;
     case eAnimParamType_Sequence:
-        pTrack = new CSequenceTrack;
+        pTrack = aznew CSequenceTrack;
         break;
     case eAnimParamType_Capture:
-        pTrack = new CCaptureTrack;
+        pTrack = aznew CCaptureTrack;
         break;
     case eAnimParamType_CommentText:
-        pTrack = new CCommentTrack;
+        pTrack = aznew CCommentTrack;
         break;
     case eAnimParamType_ScreenFader:
-        pTrack = new CScreenFaderTrack;
+        pTrack = aznew CScreenFaderTrack;
         break;
     case eAnimParamType_Goto:
-        pTrack = new CGotoTrack;
+        pTrack = aznew CGotoTrack;
         break;
     case eAnimParamType_TimeRanges:
-        pTrack = new CTimeRangesTrack;
+        pTrack = aznew CTimeRangesTrack;
         break;
     case eAnimParamType_Float:
         pTrack = CreateTrackInternalFloat(trackType);
@@ -336,16 +366,16 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
             pTrack = CreateTrackInternalQuat(trackType, paramType);
             break;
         case eAnimValue_Bool:
-            pTrack = new CBoolTrack;
+            pTrack = aznew CBoolTrack;
             break;
         case eAnimValue_Select:
-            pTrack = new CSelectTrack;
+            pTrack = aznew CSelectTrack;
             break;
         case eAnimValue_Vector4:
             pTrack = CreateTrackInternalVector4(paramType);
             break;
         case eAnimValue_CharacterAnim:
-            pTrack = new CCharacterTrack;
+            pTrack = aznew CCharacterTrack;
             break;
         }
     }
@@ -389,6 +419,12 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
             paramType.Serialize(trackNode, bLoading, paramTypeVersion);
 
             MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Animation, 0, CMovieSystem::GetParamTypeName(paramType));
+
+            if (paramType.GetType() == eAnimParamType_Music)
+            {
+                // skip loading eAnimParamType_Music - it's deprecated
+                continue;
+            }
 
             if (paramTypeVersion == 0) // for old version with sound and animation param ids swapped
             {
@@ -536,7 +572,7 @@ void CAnimNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmp
         xmlNode->setAttr("paramIdVersion", CAnimParamType::kParamTypeVersion);
         for (unsigned int i = 0; i < m_tracks.size(); i++)
         {
-            IAnimTrack* pTrack = m_tracks[i];
+            IAnimTrack* pTrack = m_tracks[i].get();
             if (pTrack)
             {
                 CAnimParamType paramType = m_tracks[i]->GetParameterType();
@@ -565,8 +601,35 @@ void CAnimNode::SetTimeRange(Range timeRange)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CAnimNode::CAnimNode(const int id)
-    : m_id(id)
+// AZ::Serialization requires a default constructor
+CAnimNode::CAnimNode()
+    : CAnimNode(0, eAnimNodeType_Invalid)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+// explicit copy constructor is required to prevent compiler's generated copy constructor
+// from calling AZStd::mutex's private copy constructor
+CAnimNode::CAnimNode(const CAnimNode& other)
+    : m_refCount(0)
+    , m_id(0)                                   // don't copy id - these should be unique
+    , m_parentNodeId(other.m_parentNodeId)
+    , m_nodeType(other.m_nodeType)
+    , m_pOwner(other.m_pOwner)
+    , m_pSequence(other.m_pSequence)
+    , m_flags(other.m_flags)
+    , m_pParentNode(other.m_pParentNode)
+    , m_nLoadedParentNodeId(other.m_nLoadedParentNodeId)
+{
+    // m_bIgnoreSetParam not copied
+}
+
+//////////////////////////////////////////////////////////////////////////
+CAnimNode::CAnimNode(const int id, EAnimNodeType nodeType)
+    : m_refCount(0)
+    , m_id(id)
+    , m_parentNodeId(0)
+    , m_nodeType(nodeType)
 {
     m_pOwner = 0;
     m_pSequence = 0;
@@ -579,6 +642,21 @@ CAnimNode::CAnimNode(const int id)
 //////////////////////////////////////////////////////////////////////////
 CAnimNode::~CAnimNode()
 {
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimNode::add_ref()
+{
+    ++m_refCount;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimNode::release()
+{
+    if (--m_refCount <= 0)
+    {
+        delete this;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -721,6 +799,7 @@ bool CAnimNode::GetParamValue(float time, CAnimParamType param, Vec4& value)
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     if (bLoading)
@@ -764,6 +843,21 @@ void CAnimNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTra
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CAnimNode::InitPostLoad(IAnimSequence* sequence)
+{
+    m_pSequence = sequence;
+    m_pParentNode = ((CAnimSequence*)m_pSequence)->FindNodeById(m_parentNodeId);
+
+    // fix up animNode pointers and time ranges on tracks, then sort them
+    for (unsigned int i = 0; i < m_tracks.size(); i++)
+    {
+        RegisterTrack(m_tracks[i].get());
+        m_tracks[i].get()->InitPostLoad(sequence);
+    }
+    SortTracks();
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CAnimNode::SetNodeOwner(IAnimNodeOwner* pOwner)
 {
     m_pOwner = pOwner;
@@ -781,6 +875,7 @@ void CAnimNode::PostLoad()
     {
         IAnimNode* pParentNode = ((CAnimSequence*)m_pSequence)->FindNodeById(m_nLoadedParentNodeId);
         m_pParentNode = pParentNode;
+        m_parentNodeId = m_nLoadedParentNodeId; // adding as a temporary fix while we support both serialization methods
         m_nLoadedParentNodeId = 0;
     }
 }
@@ -794,23 +889,11 @@ Matrix34 CAnimNode::GetReferenceMatrix() const
 
 IAnimTrack* CAnimNode::CreateTrackInternalFloat(int trackType) const
 {
-    // Backward compatibility
-    if (trackType == eAnimCurveType_TCBFloat)
-    {
-        return new CTcbFloatTrack;
-    }
-
-    return new C2DSplineTrack;
+    return aznew C2DSplineTrack;
 }
 
 IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const CAnimParamType& paramType, const EAnimValue animValue) const
 {
-    // Backward compatibility
-    if (trackType == eAnimCurveType_TCBVector)
-    {
-        return new CTcbVectorTrack;
-    }
-
     CAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
     {
@@ -834,7 +917,7 @@ IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const
         subTrackParamTypes[0] = eAnimParamType_RotationX;
         subTrackParamTypes[1] = eAnimParamType_RotationY;
         subTrackParamTypes[2] = eAnimParamType_RotationZ;
-        IAnimTrack* pTrack = new CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
         return pTrack;
     }
     else if (paramType == eAnimParamType_DepthOfField)
@@ -842,7 +925,7 @@ IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const
         subTrackParamTypes[0] = eAnimParamType_FocusDistance;
         subTrackParamTypes[1] = eAnimParamType_FocusRange;
         subTrackParamTypes[2] = eAnimParamType_BlurAmount;
-        IAnimTrack* pTrack = new CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
         pTrack->SetSubTrackName(0, "FocusDist");
         pTrack->SetSubTrackName(1, "FocusRange");
         pTrack->SetSubTrackName(2, "BlurAmount");
@@ -855,24 +938,18 @@ IAnimTrack* CAnimNode::CreateTrackInternalVector(EAnimCurveType trackType, const
         subTrackParamTypes[0] = eAnimParamType_ColorR;
         subTrackParamTypes[1] = eAnimParamType_ColorG;
         subTrackParamTypes[2] = eAnimParamType_ColorB;
-        IAnimTrack* pTrack = new CCompoundSplineTrack(3, eAnimValue_RGB, subTrackParamTypes);
+        IAnimTrack* pTrack = aznew CCompoundSplineTrack(3, eAnimValue_RGB, subTrackParamTypes);
         pTrack->SetSubTrackName(0, "Red");
         pTrack->SetSubTrackName(1, "Green");
         pTrack->SetSubTrackName(2, "Blue");
         return pTrack;
     }
 
-    return new CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
+    return aznew CCompoundSplineTrack(3, eAnimValue_Vector, subTrackParamTypes);
 }
 
 IAnimTrack* CAnimNode::CreateTrackInternalQuat(EAnimCurveType trackType, const CAnimParamType& paramType) const
 {
-    // Backward compatibility
-    if (trackType == eAnimCurveType_TCBQuat)
-    {
-        return new CTcbQuatTrack;
-    }
-
     CAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     if (paramType == eAnimParamType_Rotation)
     {
@@ -886,7 +963,7 @@ IAnimTrack* CAnimNode::CreateTrackInternalQuat(EAnimCurveType trackType, const C
         assert(0);
     }
 
-    return new CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
+    return aznew CCompoundSplineTrack(3, eAnimValue_Quat, subTrackParamTypes);
 }
 
 IAnimTrack* CAnimNode::CreateTrackInternalVector4(const CAnimParamType& paramType) const
@@ -914,7 +991,7 @@ IAnimTrack* CAnimNode::CreateTrackInternalVector4(const CAnimParamType& paramTyp
     }
 
     // create track
-    pTrack = new CCompoundSplineTrack(4, eAnimValue_Vector4, subTrackParamTypes);
+    pTrack = aznew CCompoundSplineTrack(4, eAnimValue_Vector4, subTrackParamTypes);
 
     // label subtypes
     if (paramType == eAnimParamType_TransformNoise)
@@ -953,7 +1030,7 @@ bool CAnimNode::IsTimeOnSoundKey(float queryTime) const
     for (int trackIndex = 0; trackIndex < trackCount; trackIndex++)
     {
         CAnimParamType paramType = m_tracks[trackIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[trackIndex];
+        IAnimTrack* pTrack = m_tracks[trackIndex].get();
         if ((paramType.GetType() != eAnimParamType_Sound)
             || (pTrack->HasKeys() == false && pTrack->GetParameterType() != eAnimParamType_Visibility)
             || (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled))
@@ -994,7 +1071,7 @@ void CAnimNode::AnimateSound(std::vector<SSoundInfo>& nodeSoundInfo, SAnimContex
 
             if (rSoundInfo.nSoundKeyStart < nSoundKey && fSoundKeyTime < oSoundKey.fDuration)
             {
-                ApplyAudioKey(oSoundKey.sStartTrigger);
+                ApplyAudioKey(oSoundKey.sStartTrigger.c_str());
             }
 
             if (rSoundInfo.nSoundKeyStart > nSoundKey)
@@ -1010,13 +1087,13 @@ void CAnimNode::AnimateSound(std::vector<SSoundInfo>& nodeSoundInfo, SAnimContex
                 {
                     rSoundInfo.nSoundKeyStop = nSoundKey;
 
-                    if (oSoundKey.sStopTrigger != NULL && oSoundKey.sStopTrigger[0] != '\0')
+                    if (oSoundKey.sStopTrigger.empty())
                     {
-                        ApplyAudioKey(oSoundKey.sStopTrigger);
+                        ApplyAudioKey(oSoundKey.sStartTrigger.c_str(), false);
                     }
                     else
                     {
-                        ApplyAudioKey(oSoundKey.sStartTrigger, false);
+                        ApplyAudioKey(oSoundKey.sStopTrigger.c_str());
                     }
                 }
             }
@@ -1032,7 +1109,18 @@ void CAnimNode::AnimateSound(std::vector<SSoundInfo>& nodeSoundInfo, SAnimContex
     }
 }
 
-
+void CAnimNode::SetParent(IAnimNode* parent)
+{ 
+    m_pParentNode = parent; 
+    if (parent)
+    {
+        m_parentNodeId = static_cast<CAnimNode*>(m_pParentNode)->GetId();
+    }
+    else
+    {
+        m_parentNodeId = 0;
+    }
+}
 //////////////////////////////////////////////////////////////////////////
 IAnimNode* CAnimNode::HasDirectorAsParent() const
 {

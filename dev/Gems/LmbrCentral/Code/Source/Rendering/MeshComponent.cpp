@@ -10,7 +10,8 @@
 *
 */
 #include "StdAfx.h"
-#include "StaticMeshComponent.h"
+#include "MeshComponent.h"
+#include "MaterialOwnerRequestBusHandlerImpl.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -28,17 +29,32 @@ namespace LmbrCentral
 {
     //////////////////////////////////////////////////////////////////////////
 
-    void StaticMeshComponent::Reflect(AZ::ReflectContext* context)
+    //! Handler/binding code that is required for Behavior Context reflection of EBus Notifications.
+    class MaterialOwnerNotificationBusBehaviorHandler : public MaterialOwnerNotificationBus::Handler, public AZ::BehaviorEBusHandler
     {
-        StaticMeshComponentRenderNode::Reflect(context);
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(MaterialOwnerNotificationBusBehaviorHandler, "{77705C0E-5ADE-496C-85FF-9278565E278E}", AZ::SystemAllocator
+            , OnMaterialOwnerReady);
+
+        void OnMaterialOwnerReady() override
+        {
+            Call(FN_OnMaterialOwnerReady);
+        }
+    };
+
+    //////////////////////////////////////////////////////////////////////////
+
+    void MeshComponent::Reflect(AZ::ReflectContext* context)
+    {
+        MeshComponentRenderNode::Reflect(context);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 
         if (serializeContext)
         {
-            serializeContext->Class<StaticMeshComponent, AZ::Component>()
+            serializeContext->Class<MeshComponent, AZ::Component>()
                 ->Version(1)
-                ->Field("Static Mesh Render Node", &StaticMeshComponent::m_staticMeshRenderNode);
+                ->Field("Static Mesh Render Node", &MeshComponent::m_meshRenderNode);
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -49,39 +65,75 @@ namespace LmbrCentral
                 ->Event("SetVisibility", &MeshComponentRequestBus::Events::SetVisibility)
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
+            
+            const char* setMaterialParamTooltip = "Sets a Material parameter for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
+            const char* getMaterialParamTooltip = "Returns a Material parameter value for the given Entity.";
+            AZ::BehaviorParameterOverrides setParamNameDetails = { "Param Name", "The name of the Material parameter to set" };
+            AZ::BehaviorParameterOverrides getParamNameDetails = { "Param Name", "The name of the Material parameter to return" };
+            const AZStd::array<AZ::BehaviorParameterOverrides, 1> getMaterialParamArgs = { { getParamNameDetails } };
+            const char* newValueTooltip = "The new value to apply";
 
-            behaviorContext->Class<StaticMeshComponent>()->RequestBus("MeshComponentRequestBus");
+            behaviorContext->EBus<MaterialOwnerRequestBus>("MaterialOwnerRequestBus", nullptr, "This bus is handled by Components that have a Material such as Mesh Component, Decal Component, etc.")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                    ->Attribute(AZ::Script::Attributes::Category, "Rendering")
+                ->Event("IsMaterialOwnerReady", &MaterialOwnerRequestBus::Events::IsMaterialOwnerReady)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Indicates whether the Material Owner is fully initialized, and MaterialOwnerRequestBus can be used on the Material")
+                ->Event("SetMaterial", &MaterialOwnerRequestBus::Events::SetMaterialHandle)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets an Entity's material")
+                ->Event("GetMaterial", &MaterialOwnerRequestBus::Events::GetMaterialHandle)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Returns an Entity's current material")
+                ->Event("SetParamVector4", &MaterialOwnerRequestBus::Events::SetMaterialParamVector4, { { setParamNameDetails,{ "Vector4", newValueTooltip } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
+                ->Event("SetParamColor", &MaterialOwnerRequestBus::Events::SetMaterialParamColor, { { setParamNameDetails,{ "Color", newValueTooltip } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
+                ->Event("SetParamNumber", &MaterialOwnerRequestBus::Events::SetMaterialParamFloat, { { setParamNameDetails,{ "Number", newValueTooltip } } }) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                    ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
+                ->Event("GetParamVector4", &MaterialOwnerRequestBus::Events::GetMaterialParamVector4, getMaterialParamArgs)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
+                ->Event("GetParamColor", &MaterialOwnerRequestBus::Events::GetMaterialParamColor, getMaterialParamArgs)
+                    ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
+                ->Event("GetParamNumber", &MaterialOwnerRequestBus::Events::GetMaterialParamFloat, getMaterialParamArgs) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                    ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip);
+
+            behaviorContext->EBus<MaterialOwnerNotificationBus>("MaterialOwnerNotificationBus", nullptr, "Provides notifications from Components that have a Material such as Mesh Component, Decal Component, etc.")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Category, "Rendering")
+                ->Handler<MaterialOwnerNotificationBusBehaviorHandler>()
+                ;
+
+            behaviorContext->Class<MeshComponent>()->RequestBus("MeshComponentRequestBus");
         }
     }
 
+
     //////////////////////////////////////////////////////////////////////////
 
-    void StaticMeshComponentRenderNode::StaticMeshRenderOptions::Reflect(AZ::ReflectContext* context)
+    void MeshComponentRenderNode::MeshRenderOptions::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 
         if (serializeContext)
         {
-            serializeContext->Class<StaticMeshComponentRenderNode::StaticMeshRenderOptions>()
-                ->Version(3, &VersionConverter)
-                ->Field("Opacity", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_opacity)
-                ->Field("MaxViewDistance", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_maxViewDist)
-                ->Field("ViewDistanceMultiplier", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_viewDistMultiplier)
-                ->Field("LODRatio", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_lodRatio)
-                ->Field("CastDynamicShadows", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_castShadows)
-                ->Field("CastLightmapShadows", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_castLightmap)
-                ->Field("UseVisAreas", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_useVisAreas)
-                ->Field("RainOccluder", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_rainOccluder)
-                ->Field("AffectDynamicWater", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_affectDynamicWater)
-                ->Field("ReceiveWind", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_receiveWind)
-                ->Field("AcceptDecals", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_acceptDecals)
-                ->Field("AffectNavmesh", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_affectNavmesh)
-                ->Field("VisibilityOccluder", &StaticMeshComponentRenderNode::StaticMeshRenderOptions::m_visibilityOccluder)
+            serializeContext->Class<MeshComponentRenderNode::MeshRenderOptions>()
+                ->Version(4, &VersionConverter)
+                ->Field("Opacity", &MeshComponentRenderNode::MeshRenderOptions::m_opacity)
+                ->Field("MaxViewDistance", &MeshComponentRenderNode::MeshRenderOptions::m_maxViewDist)
+                ->Field("ViewDistanceMultiplier", &MeshComponentRenderNode::MeshRenderOptions::m_viewDistMultiplier)
+                ->Field("LODRatio", &MeshComponentRenderNode::MeshRenderOptions::m_lodRatio)
+                ->Field("CastShadows", &MeshComponentRenderNode::MeshRenderOptions::m_castShadows)
+                ->Field("UseVisAreas", &MeshComponentRenderNode::MeshRenderOptions::m_useVisAreas)
+                ->Field("RainOccluder", &MeshComponentRenderNode::MeshRenderOptions::m_rainOccluder)
+                ->Field("AffectDynamicWater", &MeshComponentRenderNode::MeshRenderOptions::m_affectDynamicWater)
+                ->Field("ReceiveWind", &MeshComponentRenderNode::MeshRenderOptions::m_receiveWind)
+                ->Field("AcceptDecals", &MeshComponentRenderNode::MeshRenderOptions::m_acceptDecals)
+                ->Field("AffectNavmesh", &MeshComponentRenderNode::MeshRenderOptions::m_affectNavmesh)
+                ->Field("VisibilityOccluder", &MeshComponentRenderNode::MeshRenderOptions::m_visibilityOccluder)
+                ->Field("DynamicMesh", &MeshComponentRenderNode::MeshRenderOptions::m_dynamicMesh)
                 ;
         }
     }
 
-    bool StaticMeshComponentRenderNode::StaticMeshRenderOptions::VersionConverter(AZ::SerializeContext& context,
+    bool MeshComponentRenderNode::MeshRenderOptions::VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement)
     {
         // conversion from version 1:
@@ -102,28 +154,46 @@ namespace LmbrCentral
             classElement.RemoveElementByName(AZ_CRC("IndoorOnly", 0xc8ab6ddb));
         }
 
+        if (classElement.GetVersion() <= 3)
+        {
+            classElement.RemoveElementByName(AZ_CRC("CastLightmapShadows", 0x10ce0bf8));
+            int index = classElement.FindElement(AZ_CRC("CastDynamicShadows", 0x55c75b43));
+            AZ::SerializeContext::DataElementNode& shadowNode = classElement.GetSubElement(index);
+            shadowNode.SetName("CastShadows");
+        }
+
         return true;
     }
 
-    void StaticMeshComponentRenderNode::Reflect(AZ::ReflectContext* context)
+    bool MeshComponentRenderNode::MeshRenderOptions::IsStatic() const
     {
-        StaticMeshRenderOptions::Reflect(context);
+        return (m_hasStaticTransform && !m_dynamicMesh &&!m_receiveWind);
+    }
+
+    AZ::Crc32 MeshComponentRenderNode::MeshRenderOptions::StaticPropertyVisibility() const
+    {
+        return IsStatic() ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
+    void MeshComponentRenderNode::Reflect(AZ::ReflectContext* context)
+    {
+        MeshRenderOptions::Reflect(context);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 
         if (serializeContext)
         {
-            serializeContext->Class<StaticMeshComponentRenderNode>()
+            serializeContext->Class<MeshComponentRenderNode>()
                 ->Version(1)
-                ->Field("Visible", &StaticMeshComponentRenderNode::m_visible)
-                ->Field("Static Mesh", &StaticMeshComponentRenderNode::m_staticMeshAsset)
-                ->Field("Material Override", &StaticMeshComponentRenderNode::m_material)
-                ->Field("Render Options", &StaticMeshComponentRenderNode::m_renderOptions)
+                ->Field("Visible", &MeshComponentRenderNode::m_visible)
+                ->Field("Static Mesh", &MeshComponentRenderNode::m_meshAsset)
+                ->Field("Material Override", &MeshComponentRenderNode::m_material)
+                ->Field("Render Options", &MeshComponentRenderNode::m_renderOptions)
                 ;
         }
     }
 
-    float StaticMeshComponentRenderNode::GetDefaultMaxViewDist()
+    float MeshComponentRenderNode::GetDefaultMaxViewDist()
     {
         if (gEnv && gEnv->p3DEngine)
         {
@@ -135,24 +205,25 @@ namespace LmbrCentral
         return FLT_MAX;
     }
 
-    StaticMeshComponentRenderNode::StaticMeshRenderOptions::StaticMeshRenderOptions()
+    MeshComponentRenderNode::MeshRenderOptions::MeshRenderOptions()
         : m_opacity(1.f)
         , m_viewDistMultiplier(1.f)
         , m_lodRatio(100)
         , m_useVisAreas(true)
         , m_castShadows(true)
-        , m_castLightmap(true)
         , m_rainOccluder(true)
         , m_affectNavmesh(true)
         , m_affectDynamicWater(false)
         , m_acceptDecals(true)
         , m_receiveWind(false)
         , m_visibilityOccluder(false)
+        , m_dynamicMesh(false)
+        , m_hasStaticTransform(false)
     {
         m_maxViewDist = GetDefaultMaxViewDist();
     }
 
-    StaticMeshComponentRenderNode::StaticMeshComponentRenderNode()
+    MeshComponentRenderNode::MeshComponentRenderNode()
         : m_statObj(nullptr)
         , m_materialOverride(nullptr)
         , m_auxiliaryRenderFlags(0)
@@ -160,7 +231,7 @@ namespace LmbrCentral
         , m_lodDistance(0.f)
         , m_isRegisteredWithRenderer(false)
         , m_objectMoved(false)
-        , m_staticMeshAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD))
+        , m_meshAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD))
         , m_visible(true)
     {
         m_localBoundingBox.Reset();
@@ -171,27 +242,27 @@ namespace LmbrCentral
         AzFramework::LegacyAssetEventBus::Handler::BusConnect(AZ_CRC("mtl", 0xb01910e0));
     }
 
-    StaticMeshComponentRenderNode::~StaticMeshComponentRenderNode()
+    MeshComponentRenderNode::~MeshComponentRenderNode()
     {
         DestroyMesh();
         // Disconnect for LegacyAssetEventBus::Handler
         AzFramework::LegacyAssetEventBus::Handler::BusDisconnect();
     }
 
-    void StaticMeshComponentRenderNode::CopyPropertiesTo(StaticMeshComponentRenderNode& rhs) const
+    void MeshComponentRenderNode::CopyPropertiesTo(MeshComponentRenderNode& rhs) const
     {
         rhs.m_visible = m_visible;
         rhs.m_materialOverride = m_materialOverride;
-        rhs.m_staticMeshAsset = m_staticMeshAsset;
+        rhs.m_meshAsset = m_meshAsset;
         rhs.m_material = m_material;
         rhs.m_renderOptions = m_renderOptions;
     }
 
-    void StaticMeshComponentRenderNode::AttachToEntity(AZ::EntityId id)
+    void MeshComponentRenderNode::AttachToEntity(AZ::EntityId id)
     {
-        if (AZ::TransformNotificationBus::Handler::BusIsConnectedId(m_attachedToEntityId))
+        if (AZ::TransformNotificationBus::Handler::BusIsConnectedId(m_renderOptions.m_attachedToEntityId))
         {
-            AZ::TransformNotificationBus::Handler::BusDisconnect(m_attachedToEntityId);
+            AZ::TransformNotificationBus::Handler::BusDisconnect(m_renderOptions.m_attachedToEntityId);
         }
 
         if (id.IsValid())
@@ -206,10 +277,10 @@ namespace LmbrCentral
             UpdateWorldTransform(entityTransform);
         }
 
-        m_attachedToEntityId = id;
+        m_renderOptions.m_attachedToEntityId = id;
     }
 
-    void StaticMeshComponentRenderNode::OnAssetPropertyChanged()
+    void MeshComponentRenderNode::OnAssetPropertyChanged()
     {
         if (HasMesh())
         {
@@ -221,14 +292,14 @@ namespace LmbrCentral
         CreateMesh();
     }
 
-    void StaticMeshComponentRenderNode::RefreshRenderState()
+    void MeshComponentRenderNode::RefreshRenderState()
     {
         if (gEnv->IsEditor())
         {
             UpdateLocalBoundingBox();
 
             AZ::Transform parentTransform = AZ::Transform::CreateIdentity();
-            EBUS_EVENT_ID_RESULT(parentTransform, m_attachedToEntityId, AZ::TransformBus, GetWorldTM);
+            EBUS_EVENT_ID_RESULT(parentTransform, m_renderOptions.m_attachedToEntityId, AZ::TransformBus, GetWorldTM);
             OnTransformChanged(AZ::Transform::CreateIdentity(), parentTransform);
 
             m_renderOptions.OnChanged();
@@ -246,13 +317,18 @@ namespace LmbrCentral
         }
     }
 
-    void StaticMeshComponentRenderNode::SetAuxiliaryRenderFlags(uint32 flags)
+    void MeshComponentRenderNode::SetTransformStaticState( bool isStatic)
+    {
+        m_renderOptions.m_hasStaticTransform = isStatic;
+    }
+
+    void MeshComponentRenderNode::SetAuxiliaryRenderFlags(uint32 flags)
     {
         m_auxiliaryRenderFlags = flags;
         m_auxiliaryRenderFlagsHistory |= flags;
     }
 
-    void StaticMeshComponentRenderNode::UpdateAuxiliaryRenderFlags(bool on, uint32 mask)
+    void MeshComponentRenderNode::UpdateAuxiliaryRenderFlags(bool on, uint32 mask)
     {
         if (on)
         {
@@ -266,59 +342,93 @@ namespace LmbrCentral
         m_auxiliaryRenderFlagsHistory |= mask;
     }
 
-    void StaticMeshComponentRenderNode::CreateMesh()
+    bool MeshComponentRenderNode::IsReady() const
     {
-        if (m_staticMeshAsset.GetId().IsValid())
+        return HasMesh();
+    }
+
+    void MeshComponentRenderNode::CreateMesh()
+    {
+        if (m_meshAsset.GetId().IsValid())
         {
             if (!AZ::Data::AssetBus::Handler::BusIsConnected())
             {
-                AZ::Data::AssetBus::Handler::BusConnect(m_staticMeshAsset.GetId());
+                AZ::Data::AssetBus::Handler::BusConnect(m_meshAsset.GetId());
             }
 
-            m_staticMeshAsset.QueueLoad();
+            m_meshAsset.QueueLoad();
         }
     }
 
-    void StaticMeshComponentRenderNode::DestroyMesh()
+    void MeshComponentRenderNode::DestroyMesh()
     {
         AZ::Data::AssetBus::Handler::BusDisconnect();
 
         RegisterWithRenderer(false);
         m_statObj = nullptr;
 
-        EBUS_EVENT_ID(m_attachedToEntityId, MeshComponentNotificationBus, OnMeshDestroyed);
+        EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshDestroyed);
 
-        m_staticMeshAsset.Release();
+        m_meshAsset.Release();
     }
 
-    bool StaticMeshComponentRenderNode::HasMesh() const
+    bool MeshComponentRenderNode::HasMesh() const
     {
         return m_statObj != nullptr;
     }
 
-    void StaticMeshComponentRenderNode::SetMeshAsset(const AZ::Data::AssetId& id)
+    void MeshComponentRenderNode::SetMeshAsset(const AZ::Data::AssetId& id)
     {
-        m_staticMeshAsset.Create(id);
+        m_meshAsset.Create(id);
         OnAssetPropertyChanged();
     }
 
-    void StaticMeshComponentRenderNode::GetMemoryUsage(class ICrySizer* pSizer) const
+    void MeshComponentRenderNode::GetMemoryUsage(class ICrySizer* pSizer) const
     {
         pSizer->AddObjectSize(this);
     }
 
-    void StaticMeshComponentRenderNode::OnTransformChanged(const AZ::Transform&, const AZ::Transform& parentWorld)
+    float MeshComponentRenderNode::GetUniformScale()
+    {
+        AZ::Vector3 scales = m_worldTransform.RetrieveScale();
+        AZ_Assert((scales.GetX() == scales.GetY()) && (scales.GetY() == scales.GetZ()), "Scales are not uniform");
+        return scales.GetX();
+    }
+
+    float MeshComponentRenderNode::GetColumnScale(int column) 
+    {
+        AZ::Vector3 scales = m_worldTransform.RetrieveScale();
+        switch (column) 
+        {
+            case 0:
+                return scales.GetX();
+                break;
+            case 1:
+                return scales.GetY();
+                break;
+            case 2:
+                return scales.GetZ();
+                break;
+            default:
+                AZ_Assert(false, "Column out of range");
+                return 1.0f;
+                break;
+        }
+        return 1.0f;
+    }
+
+    void MeshComponentRenderNode::OnTransformChanged(const AZ::Transform&, const AZ::Transform& parentWorld)
     {
         // The entity to which we're attached has moved.
         UpdateWorldTransform(parentWorld);
     }
 
-    void StaticMeshComponentRenderNode::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void MeshComponentRenderNode::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (asset == m_staticMeshAsset)
+        if (asset == m_meshAsset)
         {
-            m_staticMeshAsset = asset;
-            m_statObj = m_staticMeshAsset.Get()->m_statObj;
+            m_meshAsset = asset;
+            m_statObj = m_meshAsset.Get()->m_statObj;
 
             if (HasMesh())
             {
@@ -342,12 +452,12 @@ namespace LmbrCentral
                 RegisterWithRenderer(true);
 
                 // Inform listeners that the mesh has been changed
-                EBUS_EVENT_ID(m_attachedToEntityId, MeshComponentNotificationBus, OnMeshCreated, asset);
+                EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshCreated, asset);
             }
         }
     }
 
-    void StaticMeshComponentRenderNode::UpdateWorldTransform(const AZ::Transform& entityTransform)
+    void MeshComponentRenderNode::UpdateWorldTransform(const AZ::Transform& entityTransform)
     {
         m_worldTransform = entityTransform;
 
@@ -358,7 +468,7 @@ namespace LmbrCentral
         m_objectMoved = true;
     }
 
-    void StaticMeshComponentRenderNode::UpdateLocalBoundingBox()
+    void MeshComponentRenderNode::UpdateLocalBoundingBox()
     {
         m_localBoundingBox.Reset();
 
@@ -370,7 +480,7 @@ namespace LmbrCentral
         UpdateWorldBoundingBox();
     }
 
-    void StaticMeshComponentRenderNode::UpdateWorldBoundingBox()
+    void MeshComponentRenderNode::UpdateWorldBoundingBox()
     {
         m_worldBoundingBox.SetTransformedAABB(m_renderTransform, m_localBoundingBox);
 
@@ -381,7 +491,7 @@ namespace LmbrCentral
         }
     }
 
-    void StaticMeshComponentRenderNode::SetVisible(bool isVisible)
+    void MeshComponentRenderNode::SetVisible(bool isVisible)
     {
         if (m_visible != isVisible)
         {
@@ -391,12 +501,12 @@ namespace LmbrCentral
         }
     }
 
-    bool StaticMeshComponentRenderNode::GetVisible()
+    bool MeshComponentRenderNode::GetVisible()
     {
         return m_visible;
     }
 
-    void StaticMeshComponentRenderNode::RegisterWithRenderer(bool registerWithRenderer)
+    void MeshComponentRenderNode::RegisterWithRenderer(bool registerWithRenderer)
     {
         if (gEnv && gEnv->p3DEngine)
         {
@@ -422,7 +532,7 @@ namespace LmbrCentral
         }
     }
 
-    namespace StaticMeshInternal
+    namespace MeshInternal
     {
         void UpdateRenderFlag(bool enable, int mask, unsigned int& flags)
         {
@@ -437,9 +547,9 @@ namespace LmbrCentral
         }
     }
 
-    void StaticMeshComponentRenderNode::ApplyRenderOptions()
+    void MeshComponentRenderNode::ApplyRenderOptions()
     {
-        using StaticMeshInternal::UpdateRenderFlag;
+        using MeshInternal::UpdateRenderFlag;
         unsigned int flags = GetRndFlags();
 
         // Turn off any flag which has ever been set via auxiliary render flags
@@ -448,14 +558,13 @@ namespace LmbrCentral
         // Update flags according to current render settings
         UpdateRenderFlag(m_renderOptions.m_useVisAreas == false, ERF_OUTDOORONLY, flags);
         UpdateRenderFlag(m_renderOptions.m_castShadows, ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS, flags);
-        UpdateRenderFlag(m_renderOptions.m_castLightmap, ERF_DYNAMIC_DISTANCESHADOWS, flags);
-        UpdateRenderFlag(m_renderOptions.m_rainOccluder, ERF_RAIN_OCCLUDER, flags);
+        UpdateRenderFlag(m_renderOptions.m_rainOccluder && m_renderOptions.IsStatic(), ERF_RAIN_OCCLUDER, flags);
         UpdateRenderFlag(m_visible == false, ERF_HIDDEN, flags);
         UpdateRenderFlag(m_renderOptions.m_receiveWind, ERF_RECVWIND, flags);
-        UpdateRenderFlag(m_renderOptions.m_visibilityOccluder, ERF_GOOD_OCCLUDER, flags);
+        UpdateRenderFlag(m_renderOptions.m_visibilityOccluder  && m_renderOptions.IsStatic(), ERF_GOOD_OCCLUDER, flags);
 
-        UpdateRenderFlag(false == m_renderOptions.m_affectNavmesh, ERF_EXCLUDE_FROM_TRIANGULATION, flags);
-        UpdateRenderFlag(false == m_renderOptions.m_affectDynamicWater, ERF_NODYNWATER, flags);
+        UpdateRenderFlag(!(false == m_renderOptions.m_affectNavmesh  && m_renderOptions.IsStatic()), ERF_EXCLUDE_FROM_TRIANGULATION, flags);
+        UpdateRenderFlag(false == m_renderOptions.m_affectDynamicWater && m_renderOptions.IsStatic(), ERF_NODYNWATER, flags);
         UpdateRenderFlag(false == m_renderOptions.m_acceptDecals, ERF_NO_DECALNODE_DECALS, flags);
 
         // Apply current auxiliary render flags
@@ -470,12 +579,12 @@ namespace LmbrCentral
         SetRndFlags(flags);
     }
 
-    CLodValue StaticMeshComponentRenderNode::ComputeLOD(int wantedLod, const SRenderingPassInfo& passInfo)
+    CLodValue MeshComponentRenderNode::ComputeLOD(int wantedLod, const SRenderingPassInfo& passInfo)
     {
         return CLodValue(wantedLod);
     }
 
-    AZ::Aabb StaticMeshComponentRenderNode::CalculateWorldAABB() const
+    AZ::Aabb MeshComponentRenderNode::CalculateWorldAABB() const
     {
         AZ::Aabb aabb = AZ::Aabb::CreateNull();
         if (!m_worldBoundingBox.IsReset())
@@ -486,7 +595,7 @@ namespace LmbrCentral
         return aabb;
     }
 
-    AZ::Aabb StaticMeshComponentRenderNode::CalculateLocalAABB() const
+    AZ::Aabb MeshComponentRenderNode::CalculateLocalAABB() const
     {
         AZ::Aabb aabb = AZ::Aabb::CreateNull();
         if (!m_localBoundingBox.IsReset())
@@ -497,7 +606,7 @@ namespace LmbrCentral
         return aabb;
     }
 
-    /*IRenderNode*/ void StaticMeshComponentRenderNode::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
+    /*IRenderNode*/ void MeshComponentRenderNode::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
     {
         if (!HasMesh())
         {
@@ -536,7 +645,7 @@ namespace LmbrCentral
         rParams.dwFObjFlags = previousObjectFlags;
     }
 
-    /*IRenderNode*/ bool StaticMeshComponentRenderNode::GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const
+    /*IRenderNode*/ bool MeshComponentRenderNode::GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const
     {
         const float lodRatio = GetLodRatioNormalized();
         if (lodRatio > 0.0f)
@@ -559,7 +668,7 @@ namespace LmbrCentral
         return true;
     }
 
-    void StaticMeshComponentRenderNode::UpdateLodDistance(const SFrameLodInfo& frameLodInfo)
+    void MeshComponentRenderNode::UpdateLodDistance(const SFrameLodInfo& frameLodInfo)
     {
         SMeshLodInfo lodInfo;
 
@@ -571,58 +680,58 @@ namespace LmbrCentral
         m_lodDistance = sqrt(lodInfo.fGeometricMean);
     }
 
-    /*IRenderNode*/ EERType StaticMeshComponentRenderNode::GetRenderNodeType()
+    /*IRenderNode*/ EERType MeshComponentRenderNode::GetRenderNodeType()
     {
-        return eERType_StaticMeshRenderComponent;
+        return m_renderOptions.IsStatic() ? eERType_StaticMeshRenderComponent : eERType_DynamicMeshRenderComponent;
     }
 
-    /*IRenderNode*/ const char* StaticMeshComponentRenderNode::GetName() const
+    /*IRenderNode*/ const char* MeshComponentRenderNode::GetName() const
     {
-        return "StaticMeshComponentRenderNode";
+        return "MeshComponentRenderNode";
     }
 
-    /*IRenderNode*/ const char* StaticMeshComponentRenderNode::GetEntityClassName() const
+    /*IRenderNode*/ const char* MeshComponentRenderNode::GetEntityClassName() const
     {
-        return "StaticMeshComponentRenderNode";
+        return "MeshComponentRenderNode";
     }
 
-    /*IRenderNode*/ Vec3 StaticMeshComponentRenderNode::GetPos(bool bWorldOnly /*= true*/) const
+    /*IRenderNode*/ Vec3 MeshComponentRenderNode::GetPos(bool bWorldOnly /*= true*/) const
     {
         return m_renderTransform.GetTranslation();
     }
 
-    /*IRenderNode*/ const AABB StaticMeshComponentRenderNode::GetBBox() const
+    /*IRenderNode*/ const AABB MeshComponentRenderNode::GetBBox() const
     {
         return m_worldBoundingBox;
     }
 
-    /*IRenderNode*/ void StaticMeshComponentRenderNode::SetBBox(const AABB& WSBBox)
+    /*IRenderNode*/ void MeshComponentRenderNode::SetBBox(const AABB& WSBBox)
     {
         m_worldBoundingBox = WSBBox;
     }
 
-    /*IRenderNode*/ void StaticMeshComponentRenderNode::OffsetPosition(const Vec3& delta)
+    /*IRenderNode*/ void MeshComponentRenderNode::OffsetPosition(const Vec3& delta)
     {
         // Recalculate local transform
         AZ::Transform localTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(localTransform, m_attachedToEntityId, AZ::TransformBus, GetLocalTM);
+        EBUS_EVENT_ID_RESULT(localTransform, m_renderOptions.m_attachedToEntityId, AZ::TransformBus, GetLocalTM);
 
         localTransform.SetTranslation(localTransform.GetTranslation() + LYVec3ToAZVec3(delta));
-        EBUS_EVENT_ID(m_attachedToEntityId, AZ::TransformBus, SetLocalTM, localTransform);
+        EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, AZ::TransformBus, SetLocalTM, localTransform);
 
         m_objectMoved = true;
     }
 
-    /*IRenderNode*/ struct IPhysicalEntity* StaticMeshComponentRenderNode::GetPhysics() const
+    /*IRenderNode*/ struct IPhysicalEntity* MeshComponentRenderNode::GetPhysics() const
     {
         return nullptr;
     }
 
-    /*IRenderNode*/ void StaticMeshComponentRenderNode::SetPhysics(IPhysicalEntity* pPhys)
+    /*IRenderNode*/ void MeshComponentRenderNode::SetPhysics(IPhysicalEntity* pPhys)
     {
     }
 
-    /*IRenderNode*/ void StaticMeshComponentRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
+    /*IRenderNode*/ void MeshComponentRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
     {
         m_materialOverride = pMat;
 
@@ -639,7 +748,7 @@ namespace LmbrCentral
         }
     }
 
-    /*IRenderNode*/ _smart_ptr<IMaterial> StaticMeshComponentRenderNode::GetMaterial(Vec3* pHitPos /*= nullptr*/)
+    /*IRenderNode*/ _smart_ptr<IMaterial> MeshComponentRenderNode::GetMaterial(Vec3* pHitPos /*= nullptr*/)
     {
         if (m_materialOverride)
         {
@@ -654,17 +763,17 @@ namespace LmbrCentral
         return nullptr;
     }
 
-    /*IRenderNode*/ _smart_ptr<IMaterial> StaticMeshComponentRenderNode::GetMaterialOverride()
+    /*IRenderNode*/ _smart_ptr<IMaterial> MeshComponentRenderNode::GetMaterialOverride()
     {
         return m_materialOverride;
     }
 
-    /*IRenderNode*/ float StaticMeshComponentRenderNode::GetMaxViewDist()
+    /*IRenderNode*/ float MeshComponentRenderNode::GetMaxViewDist()
     {
         return(m_renderOptions.m_maxViewDist * 0.75f * GetViewDistanceMultiplier());
     }
 
-    /*IRenderNode*/ IStatObj* StaticMeshComponentRenderNode::GetEntityStatObj(unsigned int nPartId, unsigned int nSubPartId, Matrix34A* pMatrix, bool bReturnOnlyVisible)
+    /*IRenderNode*/ IStatObj* MeshComponentRenderNode::GetEntityStatObj(unsigned int nPartId, unsigned int nSubPartId, Matrix34A* pMatrix, bool bReturnOnlyVisible)
     {
         if (0 == nPartId)
         {
@@ -679,7 +788,7 @@ namespace LmbrCentral
         return nullptr;
     }
 
-    /*IRenderNode*/ _smart_ptr<IMaterial> StaticMeshComponentRenderNode::GetEntitySlotMaterial(unsigned int nPartId, bool bReturnOnlyVisible, bool* pbDrawNear)
+    /*IRenderNode*/ _smart_ptr<IMaterial> MeshComponentRenderNode::GetEntitySlotMaterial(unsigned int nPartId, bool bReturnOnlyVisible, bool* pbDrawNear)
     {
         if (0 == nPartId)
         {
@@ -689,7 +798,7 @@ namespace LmbrCentral
         return nullptr;
     }
 
-    /*IRenderNode*/ ICharacterInstance* StaticMeshComponentRenderNode::GetEntityCharacter(unsigned int nSlot, Matrix34A* pMatrix, bool bReturnOnlyVisible)
+    /*IRenderNode*/ ICharacterInstance* MeshComponentRenderNode::GetEntityCharacter(unsigned int nSlot, Matrix34A* pMatrix, bool bReturnOnlyVisible)
     {
         return nullptr;
     }
@@ -700,7 +809,7 @@ namespace LmbrCentral
     // Notifies listeners that a file changed
     // Handle material Overrides
 
-    void StaticMeshComponentRenderNode::OnFileChanged(AZStd::string assetPath)
+    void MeshComponentRenderNode::OnFileChanged(AZStd::string assetPath)
     {
         if (m_materialOverride == nullptr)
         {
@@ -713,7 +822,7 @@ namespace LmbrCentral
         }
     }
 
-    void StaticMeshComponentRenderNode::OnFileRemoved(AZStd::string assetPath)
+    void MeshComponentRenderNode::OnFileRemoved(AZStd::string assetPath)
     {
         if (m_materialOverride == nullptr)
         {
@@ -725,83 +834,152 @@ namespace LmbrCentral
             OnAssetPropertyChanged();
         }
     }
-
 
     //////////////////////////////////////////////////////////////////////////
-    // StaticMeshComponent
-    const float StaticMeshComponent::s_renderNodeRequestBusOrder = 100.f;
+    // MeshComponent
+    const float MeshComponent::s_renderNodeRequestBusOrder = 100.f;
 
-    void StaticMeshComponent::Activate()
+    MeshComponent::MeshComponent()
     {
-        m_staticMeshRenderNode.AttachToEntity(m_entity->GetId());
+        m_materialBusHandler = aznew MaterialOwnerRequestBusHandlerImpl(); 
+        
+    }
 
+    MeshComponent::~MeshComponent()
+    {
+        delete m_materialBusHandler;
+    }
+
+    void MeshComponent::Activate()
+    {
+        m_meshRenderNode.AttachToEntity(m_entity->GetId());
+        m_materialBusHandler->Activate(&m_meshRenderNode, m_entity->GetId());
+        bool isStatic = false;
+        AZ::TransformBus::EventResult(isStatic, m_entity->GetId(), &AZ::TransformBus::Events::IsStaticTransform);
+        m_meshRenderNode.SetTransformStaticState(isStatic);
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
-        MaterialRequestBus::Handler::BusConnect(m_entity->GetId());
+        MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
-        m_staticMeshRenderNode.CreateMesh();
-        StaticMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
+        m_meshRenderNode.CreateMesh();
+        LegacyMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
-    void StaticMeshComponent::Deactivate()
+    void MeshComponent::Deactivate()
     {
-        StaticMeshComponentRequestBus::Handler::BusDisconnect();
-        MaterialRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
+        MaterialOwnerRequestBus::Handler::BusDisconnect();
+        LegacyMeshComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
 
-        m_staticMeshRenderNode.DestroyMesh();
-        m_staticMeshRenderNode.AttachToEntity(AZ::EntityId());
+        m_meshRenderNode.DestroyMesh();
+        m_meshRenderNode.AttachToEntity(AZ::EntityId());
+        m_materialBusHandler->Deactivate();
     }
 
-    AZ::Aabb StaticMeshComponent::GetWorldBounds()
+    AZ::Aabb MeshComponent::GetWorldBounds()
     {
-        return m_staticMeshRenderNode.CalculateWorldAABB();
+        return m_meshRenderNode.CalculateWorldAABB();
     }
 
-    AZ::Aabb StaticMeshComponent::GetLocalBounds()
+    AZ::Aabb MeshComponent::GetLocalBounds()
     {
-        return m_staticMeshRenderNode.CalculateLocalAABB();
+        return m_meshRenderNode.CalculateLocalAABB();
     }
 
-    void StaticMeshComponent::SetMeshAsset(const AZ::Data::AssetId& id)
+    void MeshComponent::SetMeshAsset(const AZ::Data::AssetId& id)
     {
-        m_staticMeshRenderNode.SetMeshAsset(id);
+        m_meshRenderNode.SetMeshAsset(id);
     }
-
-    void StaticMeshComponent::SetMaterial(_smart_ptr<IMaterial> material)
+    
+    bool MeshComponent::IsMaterialOwnerReady()
     {
-        m_staticMeshRenderNode.SetMaterial(material);
+        return m_materialBusHandler->IsMaterialOwnerReady();
     }
 
-    _smart_ptr<IMaterial> StaticMeshComponent::GetMaterial()
+    void MeshComponent::SetMaterial(_smart_ptr<IMaterial> material)
     {
-        return m_staticMeshRenderNode.GetMaterial();
+        m_materialBusHandler->SetMaterial(material);
     }
 
-    IRenderNode* StaticMeshComponent::GetRenderNode()
+    _smart_ptr<IMaterial> MeshComponent::GetMaterial()
     {
-        return &m_staticMeshRenderNode;
+        return m_materialBusHandler->GetMaterial();
     }
 
-    float StaticMeshComponent::GetRenderNodeRequestBusOrder() const
+    void MeshComponent::SetMaterialHandle(MaterialHandle m)
+    {
+        m_materialBusHandler->SetMaterialHandle(m);
+    }
+
+    MaterialHandle MeshComponent::GetMaterialHandle()
+    {
+        return m_materialBusHandler->GetMaterialHandle();
+    }
+
+    void MeshComponent::SetMaterialParamVector4(const AZStd::string& name, const AZ::Vector4& value)
+    {
+        m_materialBusHandler->SetMaterialParamVector4(name, value);
+    }
+
+    void MeshComponent::SetMaterialParamVector3(const AZStd::string& name, const AZ::Vector3& value)
+    {
+        m_materialBusHandler->SetMaterialParamVector3(name, value);
+    }
+
+    void MeshComponent::SetMaterialParamColor(const AZStd::string& name, const AZ::Color& value)
+    {
+        m_materialBusHandler->SetMaterialParamColor(name, value);
+    }
+
+    void MeshComponent::SetMaterialParamFloat(const AZStd::string& name, float value)
+    {
+        m_materialBusHandler->SetMaterialParamFloat(name, value);
+    }
+
+    AZ::Vector4 MeshComponent::GetMaterialParamVector4(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamVector4(name);
+    }
+
+    AZ::Vector3 MeshComponent::GetMaterialParamVector3(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamVector3(name);
+    }
+
+    AZ::Color MeshComponent::GetMaterialParamColor(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamColor(name);
+    }
+
+    float MeshComponent::GetMaterialParamFloat(const AZStd::string& name)
+    {
+        return m_materialBusHandler->GetMaterialParamFloat(name);
+    }
+
+    IRenderNode* MeshComponent::GetRenderNode()
+    {
+        return &m_meshRenderNode;
+    }
+
+    float MeshComponent::GetRenderNodeRequestBusOrder() const
     {
         return s_renderNodeRequestBusOrder;
     }
 
-    IStatObj* StaticMeshComponent::GetStatObj()
+    IStatObj* MeshComponent::GetStatObj()
     {
-        return m_staticMeshRenderNode.GetEntityStatObj();
+        return m_meshRenderNode.GetEntityStatObj();
     }
 
-    bool StaticMeshComponent::GetVisibility()
+    bool MeshComponent::GetVisibility()
     {
-        return m_staticMeshRenderNode.GetVisible();
+        return m_meshRenderNode.GetVisible();
     }
 
-    void StaticMeshComponent::SetVisibility(bool isVisible)
+    void MeshComponent::SetVisibility(bool isVisible)
     {
-        m_staticMeshRenderNode.SetVisible(isVisible);
+        m_meshRenderNode.SetVisible(isVisible);
     }
 } // namespace LmbrCentral

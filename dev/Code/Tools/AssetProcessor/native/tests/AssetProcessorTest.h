@@ -14,6 +14,7 @@
 #include <AzTest/AzTest.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include "native/unittests/UnitTestRunner.h" // for the assert absorber.
 
 namespace AssetProcessor
 {
@@ -24,15 +25,30 @@ namespace AssetProcessor
         : public ::testing::Test
     {
     protected:
+        UnitTestUtils::AssertAbsorber* m_errorAbsorber;
+
         void SetUp() override
         {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+            if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+            {
+                m_ownsAllocator = true;
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+            }
+            m_errorAbsorber = new UnitTestUtils::AssertAbsorber();
         }
 
         void TearDown() override
         {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+            delete m_errorAbsorber;
+            m_errorAbsorber = nullptr;
+            if (m_ownsAllocator)
+            {
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+                m_ownsAllocator = false;
+            }
         }
+        bool m_ownsAllocator = false;
+        
     };
 }
 

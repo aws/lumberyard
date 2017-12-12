@@ -36,10 +36,11 @@ class CMatEditPreviewDlg
     Q_OBJECT
     // Construction
 public:
-    CMatEditPreviewDlg();   // standard constructor
+    CMatEditPreviewDlg(QWidget* parent);   // standard constructor
     ~CMatEditPreviewDlg();
 
     QSize sizeHint() const override;
+    void showEvent(QShowEvent*) override;
 
     //Functions
 

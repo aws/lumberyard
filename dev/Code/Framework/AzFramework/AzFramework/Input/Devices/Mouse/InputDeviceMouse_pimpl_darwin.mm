@@ -12,7 +12,6 @@
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_darwin.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/std/parallel/thread.h>
@@ -277,8 +276,8 @@ namespace AzFramework
         }
 
         // Normalize the cursor position and flip the y component so it is relative to the top
-        const float cursorPostionNormalizedX = cursorPosition.x / cursorBounds.size.width;
-        const float cursorPostionNormalizedY = 1.0f - (cursorPosition.y / cursorBounds.size.height);
+        const float cursorPostionNormalizedX = cursorBounds.size.width != 0.0f ? cursorPosition.x / cursorBounds.size.width : 0.0f;
+        const float cursorPostionNormalizedY = cursorBounds.size.height != 0.0f ? 1.0f - (cursorPosition.y / cursorBounds.size.height) : 0.0f;
 
         return AZ::Vector2(cursorPostionNormalizedX, cursorPostionNormalizedY);
     }
@@ -286,12 +285,8 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMouseOsx::TickInputDevice()
     {
-        // Pump the osx event loop to ensure that it has dispatched all input events. Other systems
-        // (or other input devices) may also do this so some (or all) input events may have already
-        // been dispatched, but they are queued until ProcessRawEventQueues is called below so that
-        // all raw input events are processed at the same time every frame.
-        RawInputRequestBusOsx::Broadcast(&RawInputRequestsOsx::PumpRawEventLoop);
-
+        // The osx event loop has just been pumped in InputSystemComponentOsx::PreTickInputDevices,
+        // so we now just need to process any raw events that have been queued since the last frame
         const bool hadFocus = m_hasFocus;
         m_hasFocus = NSApplication.sharedApplication.mainWindow.keyWindow;
         if (m_hasFocus)
@@ -426,7 +421,10 @@ namespace AzFramework
         // increment an application specific 'cursor hidden' counter that must be balanced by a call
         // to CGDisplayShowCursor, however this doesn't seem to work if the cursor is shown again by
         // the system (or another application), which can happen when this application loses focus.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         const bool isCursorVisible = CGCursorIsVisible();
+#pragma clang diagnostic pop
         if (isCursorVisible && !shouldCursorBeVisible)
         {
             CGDisplayHideCursor(kCGNullDirectDisplay);

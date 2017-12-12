@@ -185,7 +185,7 @@ void ToolbarCustomizationDialog::FillCommandsListWidget()
 
     for (QAction* action : menu->actions())
     {
-        if (!action->isSeparator())
+        if (!action->isSeparator() && !action->menu())
         {
             auto item = new QListWidgetItem(action->text().remove(QLatin1Char('&')));
             auto icon = action->icon();
@@ -280,6 +280,7 @@ void ToolbarCustomizationDialog::DeleteToolbar()
         const int index = SelectedToolbarIndex().row();
         if (m_toolbarManager->Delete(index))
         {
+            ui->toolbarsListWidget->selectionModel()->clear();
             delete ui->toolbarsListWidget->item(index);
         }
     }

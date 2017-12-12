@@ -127,7 +127,6 @@ enum ERenderCommand
     eRC_DrawImageWithUV,
 
     eRC_PreprGenerateFarTrees,
-    eRC_PreprGenerateCloud,
     eRC_DynTexUpdate,
     eRC_PushFog,
     eRC_PopFog,
@@ -250,7 +249,7 @@ struct SRenderThread
     SDXGLContextThreadLocalHandle m_kDXGLContextHandle;
     SDXGLDeviceContextThreadLocalHandle m_kDXGLDeviceContextHandle;
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-       //  Confetti End: Igor Lobanchikov
+    //  Confetti End: Igor Lobanchikov
     float m_fTimeIdleDuringLoading;
     float m_fTimeBusyDuringLoading;
     TArray<byte> m_Commands[RT_COMMAND_BUF_COUNT]; // m_nCurThreadFill shows which commands are filled by main thread
@@ -378,7 +377,7 @@ struct SRenderThread
     _inline byte* AddCommandTo(ERenderCommand eRC, size_t nParamBytes, TArray<byte>& queue)
     {
         AZ_Assert(nParamBytes == Align4(nParamBytes), "Input nParamBytes is %" PRISIZE_T " bytes, which not aligned to 4 bytes.", nParamBytes);
-        
+
         m_CommandsMutex.lock();
 
         assert(m_pThread != NULL);
@@ -573,7 +572,7 @@ struct SRenderThread
     void        RC_PrecacheDefaultShaders();
     void    RC_UnbindResources();
     void    RC_UnbindTMUs();
-    void    RC_FreeObject(CRenderObject *pObj);
+    void    RC_FreeObject(CRenderObject* pObj);
     void    RC_CreateRenderResources();
     void    RC_CreateSystemTargets();
     void    RC_ReleaseBaseResource(CBaseResource* pRes);
@@ -651,7 +650,6 @@ struct SRenderThread
 
     bool    RC_OC_ReadResult_Try(uint32 nDefaultNumSamples, CREOcclusionQuery* pRE);
 
-    void    RC_PreprGenerateCloud(CRendElementBase* pRE, CShader* pShader, CShaderResources* pRes, CRenderObject* pObject);
     void    RC_SetViewport(int x, int y, int width, int height, int id = 0);
 
     void    RC_ReleaseVBStream(void* pVB, int nStream);
@@ -717,7 +715,7 @@ _inline bool SRenderThread::IsRenderLoadingThread(bool bAlwaysCheck)
     return false;
 #else
     threadID threadId = this->GetCurrentThreadId(bAlwaysCheck);
-    
+
     return threadId == m_nRenderThreadLoading;
 #endif
 }

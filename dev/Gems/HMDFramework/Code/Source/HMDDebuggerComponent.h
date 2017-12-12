@@ -31,11 +31,7 @@
 
 class HMDDebuggerComponent
     : public AZ::VR::HMDDebuggerRequestBus::Handler
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     , public AzFramework::InputChannelEventListener
-#else
-    , public AZ::InputNotificationBus::Handler
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
     , public AZ::TickBus::Handler
     , public AZ::Component
 {
@@ -68,15 +64,9 @@ public:
     void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
     ////////////////////////////////////////////////////////////////////////////
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     /// AzFramework::InputChannelEventListener ////////////////////////////////
     bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
     ///////////////////////////////////////////////////////////////////////////
-#else
-    /// InputNotificationBus ///////////////////////////////////////////////////
-    void OnNotifyInputEvent(const SInputEvent& completeInputEvent) override;
-    ////////////////////////////////////////////////////////////////////////////
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     /// HMDDebuggerBus /////////////////////////////////////////////////////////
     void EnableInfo(bool enable) override;

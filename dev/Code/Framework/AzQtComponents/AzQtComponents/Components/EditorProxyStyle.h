@@ -19,6 +19,7 @@ class QPainter;
 class QMainWindow;
 class QToolBar;
 class QIcon;
+class QPushButton;
 
 namespace AzQtComponents
 {
@@ -56,6 +57,14 @@ namespace AzQtComponents
         static QColor dropZoneColorOnHover();
 
         static void addTitleBarOverdrawWidget(QWidget* widget);
+
+        // The QPushButtons set with the "Primary" property in the QStackedwidget in the AssetImporterManager
+        // do not work with the stylesheet.
+        // These buttons are painted in EditorProxyStyle.cpp, but for some reasons they cannot
+        // be set up using the css settings in NewEditorStylesheet. 
+        // This function is used as a fix to allow these buttons to have the same settings as
+        // the other "Primary" buttons in the Asset Importer.
+        static void UpdatePrimaryButtonStyle(QPushButton* button);
 
     protected:
         void polish(QWidget* widget) override;

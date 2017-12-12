@@ -17,6 +17,7 @@
 #include <GridMate/Containers/vector.h>
 #include <GridMate/Containers/unordered_set.h>
 #include <GridMate/Containers/unordered_map.h>
+#include <AzCore/std/sort.h>
 
 namespace GridMate
 {
@@ -31,13 +32,35 @@ namespace GridMate
     using RuleNetworkId = AZ::u64;
     ///////////////////////////////////////////////////////////////////////////
 
+    using InterestPeerSet = unordered_set<PeerId>;
 
     /**
-    *  InterestQueryResult: a structure to gather new matches from handlers. Passed to handler within matching context when handler's Match method is invoked.
-    *  User must fill the structure with changes that handler recalculated.
-    */
-    using InterestPeerSet = unordered_set<PeerId>;
-    using InterestMatchResult = unordered_map<ReplicaId, InterestPeerSet>;
+     * InterestMatchResult: a structure to gather new matches from handlers.
+     * Passed to handler within matching context when handler's Match method is invoked.
+     * User must fill the structure with changes that handler recalculated.
+     *
+     * Specifically, the changes should have all the replicas that had their list of associated peers modified.
+     * Each entry replica - new full list of associated peers.
+     */
+    class InterestMatchResult : public unordered_map<ReplicaId, InterestPeerSet>
+    {
+    public:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+        // VS 2013 doesn't support inheriting constructors :(
+        template <typename... Args>
+        explicit InterestMatchResult(Args&&... args)
+            : unordered_map(std::forward<Args>(args)...)
+        { }
+#else
+        // VS 2015 does support inheriting constructors :)
+        using unordered_map::unordered_map;
+#endif
+
+        /*
+        * An expensive debug trace helper, prints sorted mapping between replica id's and associated peers.
+        */
+        void PrintMatchResult(const char* name) const;
+    };
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -50,9 +73,9 @@ namespace GridMate
             : m_peerId(peerId)
             , m_netId(netId)
         {}
-            
+
         PeerId GetPeerId() const { return m_peerId; }
-        RuleNetworkId GetNetworkId() { return m_netId; }
+        RuleNetworkId GetNetworkId() const { return m_netId; }
 
     protected:
         PeerId m_peerId; ///< the peer this rule is bound to
@@ -77,6 +100,46 @@ namespace GridMate
         ReplicaId m_replicaId; ///< Replica id this attribute is bound to
     };
     ///////////////////////////////////////////////////////////////////////////
+
+#if !defined(AZ_DEBUG_BUILD)
+    AZ_INLINE void InterestMatchResult::PrintMatchResult(const char*) const {}
+#else
+    AZ_INLINE void InterestMatchResult::PrintMatchResult(const char* name) const
+    {
+        if (size() == 0)
+        {
+            AZ_TracePrintf("GridMate", "InterestMatchResult %s empty \n", name);
+            return;
+        }
+
+        AZStd::vector<value_type> sorted;
+        for (auto& r : *this)
+        {
+            sorted.push_back(r);
+        }
+
+        auto sortByReplicaId = [](const value_type& one, const value_type& another)
+        {
+            return one.first < another.first;
+        };
+        AZStd::sort(sorted.begin(), sorted.end(), sortByReplicaId);
+
+        AZ_TracePrintf("GridMate", "InterestMatchResult %s \n", name);
+        for (auto& match : sorted)
+        {
+            auto repId = match.first;
+            AZ_TracePrintf("GridMate", "\t\t\t for repId %d ", repId);
+
+            // unsorted list of peers
+            for (auto& peerId : match.second)
+            {
+                AZ_TracePrintf("", "peer %d", peerId);
+            }
+
+            AZ_TracePrintf("", "\n");
+        }
+    }
+#endif
 } // GridMate
 
 #endif // GM_REPLICA_INTERESTDEFS_H

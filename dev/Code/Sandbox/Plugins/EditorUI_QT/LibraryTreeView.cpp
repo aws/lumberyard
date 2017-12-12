@@ -1572,11 +1572,48 @@ void CLibraryTreeView::DropMetaData(QDropEvent* event, bool dropToLocation /*= t
         item->GetLibrary()->GetManager()->DeleteItem(item);
     }
     
+    //The order in which items are saved is based on the order they appear in IParticleEffect, not their order in the Library. 
+    //So anytime the Item tree structure changes in the library, we have to make sure the IParticleEffect stays in sync.
+    for (auto libItr = modifiedLibs.begin(); libItr != modifiedLibs.end(); libItr++, i++)
+    {
+        FixParticleEffectOrder(libItr->second);
+    }
+
     EBUS_EVENT(EditorLibraryUndoRequestsBus, Suspend, false);
     delete [] libUndoArray;
 
     emit SignalDragOperationFinished();
 }
+
+void CLibraryTreeView::FixParticleEffectOrder(IDataBaseLibrary* lib)
+{
+    int count = lib->GetItemCount();
+    std::unordered_map<CParticleItem*, std::vector<IParticleEffect*>> effectChildrens;
+
+    //build orderred children list from library for each particle item
+    for (int index = 0; index < count; index++)
+    {
+        CParticleItem* pParticle = static_cast<CParticleItem*> (lib->GetItem(index));
+        if (pParticle)
+        {
+            if (pParticle->GetParent())
+            {
+                effectChildrens[pParticle->GetParent()].push_back(pParticle->GetEffect());
+            }
+        }
+    }   
+
+    //for each particle item's particle effect, reorder their children
+    for (int index = 0; index < count; index++)
+    {
+        CParticleItem* pParticle = static_cast<CParticleItem*> (lib->GetItem(index));
+        if (pParticle && pParticle->IsParticleItem && pParticle->GetEffect())
+        {
+            pParticle->GetEffect()->ReorderChildren(effectChildrens[pParticle]);
+        }
+    }
+}
+
 // This function could only used to reorder item with the same parent. Hierachy issue must
 // be taken care before this function get called.
 void CLibraryTreeView::ReorderItem(CBaseLibraryItem* neighbour, CBaseLibraryItem* item, DropIndicatorPosition position)

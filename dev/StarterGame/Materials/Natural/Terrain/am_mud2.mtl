@@ -1,0 +1,14 @@
+<Material MtlFlags="524288" Shader="Terrain.Layer" GenMask="20B000000" StringGenMask="%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%TEMP_TERRAIN" SurfaceType="mat_soil" Diffuse="1,1,1" Specular="0.021219011,0.021219011,0.021219011" Opacity="1" Shininess="100" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="Textures/natural/terrain/am_mud2_diff.dds">
+   <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.5" TileV="0.5"/>
+  </Texture>
+  <Texture Map="Bumpmap" File="Textures/natural/terrain/am_mud2_ddna.dds">
+   <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.5" TileV="0.5"/>
+  </Texture>
+  <Texture Map="Heightmap" File="Textures/natural/terrain/am_mud2_displ.dds">
+   <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.5" TileV="0.5"/>
+  </Texture>
+ </Textures>
+ <PublicParams BlendFalloff="15" DetailTextureStrength="0.94400001" PomDisplacement="0.016000001" SelfShadowStrength="2.658" ObmDisplacement="0.014" HeightBias="0.74299997" BlendFactor="5" IndirectColor="0.23455061,0.23455061,0.23455061"/>
+</Material>

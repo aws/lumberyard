@@ -147,6 +147,10 @@ private:
     virtual QStringList mimeTypes() const override;
 
     virtual void dragEnterEvent(QDragEnterEvent* e) override;
+    
+    //After drag/drop operation. The order of particle item in this view may change and same as the items in particle's baseDataLibrary.
+    //But the order of children in IParticleEffect won't match the new order. We are using this patch function to sync the order in IParticleEffect with particle library.
+    void FixParticleEffectOrder(IDataBaseLibrary* lib);
 
 private:
     QMap<QString, QTreeWidgetItem*> m_nameToNode;

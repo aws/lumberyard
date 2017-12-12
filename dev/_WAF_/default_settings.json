@@ -3,7 +3,7 @@
         {
             "long_form": "--enabled-game-projects", 
             "attribute": "enabled_game_projects", 
-            "default_value": "SamplesProject", 
+            "default_value": "StarterGame, CloudGemSamples", 
             "description": "Comma-separated list of game projects to enable for compiling"
         }
     ], 
@@ -14,12 +14,6 @@
             "attribute": "use_incredibuild", 
             "default_value": "False", 
             "description": "Use Incredibuild"
-        }, 
-        {
-            "long_form": "--use-incredibuild-android", 
-            "attribute": "use_incredibuild_android", 
-            "default_value": "False", 
-            "description": "Use Incredibuild for Android Builds"
         }, 
         {
             "long_form": "--incredibuild-max-cores", 
@@ -44,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.10.0.0", 
+            "default_value": "1.11.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -137,6 +131,12 @@
             "attribute": "external_crash_reporting", 
             "default_value": "", 
             "description": "Zip/Upload symbols and build client with external crash reporting enabled.  Value set here will be used as an additional build tag passed through to the crash reporter system."
+        }, 
+        {
+            "long_form": "--always-build-engine-and-tools", 
+            "attribute": "always_build_engine_and_tools", 
+            "default_value": "False", 
+            "description": "If set to true, then always build the engine and tools from source even if the project folder is external to the engine folder"
         }
     ], 
     "Output Folder": [
@@ -242,7 +242,7 @@
             "long_form": "--3rdpartypath", 
             "attribute": "bootstrap_third_party_override", 
             "default_value": "", 
-            "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrip process"
+            "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrap process"
         }
     ], 
     "Visual Studio Project Generator": [
@@ -281,6 +281,14 @@
             "attribute": "msvs_version", 
             "default_value": "14", 
             "description": "Version of the MS Visual Studio Solution to generate"
+        }
+    ], 
+    "Windows Options": [
+        {
+            "long_form": "--win-vs2015-winkit", 
+            "attribute": "win_vs2015_winkit", 
+            "default_value": "", 
+            "description": "The windows kit that vs2015 builds windows targets against"
         }
     ], 
     "Android Project Generator": [
@@ -323,40 +331,22 @@
             "description": "Install the executable, i.e. APK, on the android device"
         }, 
         {
-            "long_form": "--deploy-android-assets", 
-            "attribute": "deploy_android_assets", 
-            "default_value": "True", 
-            "description": "Copy the assets in the cache folder to the android device"
-        }, 
-        {
             "long_form": "--deploy-android-replace-apk", 
             "attribute": "deploy_android_replace_apk", 
             "default_value": "True", 
             "description": "When installing the APK to the device use the -r option to force the replacement of the package"
         }, 
         {
-            "long_form": "--deploy-android-root-dir", 
-            "attribute": "deploy_android_root_dir", 
-            "default_value": "/storage/emulated/legacy", 
-            "description": "Root directory to deploy the assets to on the android device"
-        }, 
-        {
             "long_form": "--deploy-android-install-options", 
             "attribute": "deploy_android_install_options", 
             "default_value": "", 
-            "description": "Addiontal options to specify for the install command"
+            "description": "Additional options to specify for the install command"
         }, 
         {
-            "long_form": "--deploy-android-paks", 
-            "attribute": "deploy_android_paks", 
-            "default_value": "False", 
-            "description": "Forces paks to be built in non-release builds"
-        }, 
-        {
-            "long_form": "--deploy-android-shader-list", 
-            "attribute": "deploy_android_shader_list_override", 
-            "default_value": "", 
-            "description": "Optional parameter to pass the location of the shader source list used for creating the shaders paks"
+            "long_form": "--deploy-android-asset-mode", 
+            "attribute": "deploy_android_asset_mode", 
+            "default_value": "Loose", 
+            "description": "Specify the asset deployment mode.  loose: Pushes the compiled loose assets to device or runs under VFS mode if set in the bootstrap.  paks: Generates and pushes the Pak files to device.  project_settings: Uses the options specified in your game's project.json file, release forces this mode."
         }
     ], 
     "iOS Project Generator": [
@@ -409,7 +399,7 @@
         {
             "long_form": "--mac-build-renderer", 
             "attribute": "mac_build_renderer", 
-            "default_value": "GL", 
+            "default_value": "METAL", 
             "description": "If building a monolithic build this option is used to select the type of renderer, options are GL or METAL"
         }
     ], 

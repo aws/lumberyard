@@ -256,6 +256,7 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
     s_pendingLines.clear();
     s_consoleSCB = this;
     ui->setupUi(this);
+    setMinimumHeight(120);
 
     // Setup the color table for the default (light) theme
     m_colorTable << QColor(0, 0, 0)

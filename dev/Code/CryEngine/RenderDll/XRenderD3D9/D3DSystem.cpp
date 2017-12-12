@@ -22,7 +22,6 @@
 #include "D3DPostProcess.h"
 #include "D3DREBreakableGlassBuffer.h"
 #include "NullD3D11Device.h"
-#include <IHardwareMouse.h>
 
 #if defined(WIN32)
 
@@ -499,13 +498,6 @@ bool CD3D9Renderer::ChangeResolution(int nNewWidth, int nNewHeight, int nNewColD
         m_devInfo.ResizeDXGIBuffers();
 
         OnD3D11PostCreateDevice(m_devInfo.Device());
-
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->GetSystemEventListener()->OnSystemEvent(ESYSTEM_EVENT_TOGGLE_FULLSCREEN, bFullScreen ? 1 : 0, 0);
-        }
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 #endif
         m_FullResRect.right = m_width;
         m_FullResRect.bottom = m_height;
@@ -748,7 +740,8 @@ void CD3D9Renderer::UnSetRes()
 
 void CD3D9Renderer::DestroyWindow(void)
 {
-#if !defined(ORBIS) && !defined(OPENGL)
+#if   defined(OPENGL) // Scrubber safe exclusion
+#else
     SAFE_RELEASE(m_DeviceContext);
 #endif
 
@@ -1015,16 +1008,19 @@ void CD3D9Renderer::RT_ShutDown(uint32 nFlags)
 
     m_PerInstanceConstantBufferPool.Shutdown();
 
-    for (size_t i = 0; i < 3; ++i)
+    for (size_t bt = 0; bt < eBoneType_Count; ++bt)
     {
-        while (m_CharCBActiveList[i].next != &m_CharCBActiveList[i])
+        for (size_t i = 0; i < 3; ++i)
         {
-            delete m_CharCBActiveList[i].next->item<&SCharInstCB::list>();
+            while (m_CharCBActiveList[bt][i].next != &m_CharCBActiveList[bt][i])
+            {
+                delete m_CharCBActiveList[bt][i].next->item<&SCharInstCB::list>();
+            }
         }
-    }
-    while (m_CharCBFreeList.next != &m_CharCBFreeList)
-    {
-        delete m_CharCBFreeList.next->item<&SCharInstCB::list>();
+        while (m_CharCBFreeList[bt].next != &m_CharCBFreeList[bt])
+        {
+            delete m_CharCBFreeList[bt].next->item<&SCharInstCB::list>();
+        }
     }
 
     CHWShader::mfFlushPendedShadersWait(-1);
@@ -1415,7 +1411,7 @@ static void Command_Quality(IConsoleCmdArgs* Cmd)
 
     if (Cmd->GetArgCount() == 2)
     {
-        iQuality = CLAMP(atoi(Cmd->GetArg(1)), 0, eSQ_Mobile);
+        iQuality = CLAMP(atoi(Cmd->GetArg(1)), eSQ_Low, eSQ_VeryHigh);
         bSet = true;
     }
     else
@@ -1429,7 +1425,7 @@ static void Command_Quality(IConsoleCmdArgs* Cmd)
     }
     if (bLog)
     {
-        iLog->LogWithType(IMiniLog::eInputResponse, "Current quality settings (0=low/1=med/2=high/3=very high/4=mobile):");
+        iLog->LogWithType(IMiniLog::eInputResponse, "Current quality settings (0=low/1=med/2=high/3=very high):");
     }
 
 #define QUALITY_VAR(name) if (bLog) {iLog->LogWithType(IMiniLog::eInputResponse, "  $3q_"#name " = $6%d", gEnv->pConsole->GetCVar("q_"#name)->GetIVal()); } \
@@ -1476,8 +1472,6 @@ const char* sGetSQuality(const char* szName)
         return "High";
     case eSQ_VeryHigh:
         return "VeryHigh";
-    case eSQ_Mobile:
-        return "Mobile";
     default:
         return "Unknown";
     }
@@ -1548,7 +1542,11 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
     m_CVColorBits = iConsole->GetCVar("r_ColorBits");
 
     bool bNativeResolution;
-#if defined(DURANGO) || defined(ORBIS) || defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#if   defined(IOS)
+    bNativeResolution = true;
+#elif defined(APPLETV)
+    bNativeResolution = true;
+#elif defined(ANDROID)
     bNativeResolution = true;
 #elif defined(WIN32) || defined(WIN64)
     CV_r_FullscreenWindow = iConsole->GetCVar("r_FullscreenWindow");
@@ -1800,11 +1798,6 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
         "To reset a previously loaded chart call r_ColorGradingChartImage 0.\n"
         "Usage: r_ColorGradingChartImage [path of color chart image/reset]");
 
-#if defined(DURANGO_VSGD_CAP)
-    REGISTER_COMMAND("GPUCapture", &GPUCapture, VF_NULL,
-        "Usage: GPUCapture name"
-        "Takes a PIX GPU capture with the specified name\n");
-#endif
 
     //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
@@ -2433,7 +2426,7 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
 #else
     rd->m_MaxTextureMemory = 256 * 1024 * 1024;
 
-#if defined(DURANGO) || defined(ORBIS) || defined(IOS)
+#if   defined(IOS)
     rd->m_MaxTextureMemory = 1024 * 1024 * 1024;
 #endif
 #endif
@@ -2762,6 +2755,38 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         hr = rd->GetDevice().CreateShaderResourceView(pDepthStencil, &SRVDesc, &rd->m_pZBufferStencilReadOnlySRV);
         assert(SUCCEEDED(hr));
     }
+
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+    if (rd->m_pZTexture)
+    {
+        AZStd::string dsvName("$MainDepthStencil");
+        rd->m_pZTexture->SetPrivateData(WKPDID_D3DDebugObjectName, dsvName.length(), dsvName.c_str());
+    }
+
+    if (rd->m_pZBuffer)
+    {
+        AZStd::string srvName("[DSV] $MainDepthStencil");
+        rd->m_pZBuffer->SetPrivateData(WKPDID_D3DDebugObjectName, srvName.length(), srvName.c_str());
+    }
+
+    if (rd->m_pZBufferReadOnlyDSV)
+    {
+        AZStd::string srvName("[DSV] $MainDepthStencil - Read Only");
+        rd->m_pZBufferReadOnlyDSV->SetPrivateData(WKPDID_D3DDebugObjectName, srvName.length(), srvName.c_str());
+    }
+
+    if (rd->m_pZBufferDepthReadOnlySRV)
+    {
+        AZStd::string srvName("[SRV] $MainDepthStencil - Depth Read Only");
+        rd->m_pZBufferDepthReadOnlySRV->SetPrivateData(WKPDID_D3DDebugObjectName, srvName.length(), srvName.c_str());
+    }
+
+    if (rd->m_pZBufferStencilReadOnlySRV)
+    {
+        AZStd::string srvName("[SRV] $MainDepthStencil - Stencil Read Only");
+        rd->m_pZBufferStencilReadOnlySRV->SetPrivateData(WKPDID_D3DDebugObjectName, srvName.length(), srvName.c_str());
+    }
+#endif
 
     rd->ReleaseAuxiliaryMeshes();
     rd->CreateAuxiliaryMeshes();

@@ -79,12 +79,14 @@ void UiSpawnerComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiSpawnerBus>("UiSpawnerBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("Spawn", &UiSpawnerBus::Events::Spawn)
             ->Event("SpawnRelative", &UiSpawnerBus::Events::SpawnRelative)
             ->Event("SpawnAbsolute", &UiSpawnerBus::Events::SpawnViewport)
             ;
 
         behaviorContext->EBus<UiSpawnerNotificationBus>("UiSpawnerNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiSpawnerNotificationBusHandler>()
             ;
     }

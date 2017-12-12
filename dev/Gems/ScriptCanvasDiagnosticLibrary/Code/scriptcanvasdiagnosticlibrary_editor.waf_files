@@ -1,0 +1,23 @@
+{
+    "none": {
+        "Source": [
+            "Source/precompiled.cpp",
+            "Source/precompiled.h"
+        ]
+    },
+    "auto": {
+        "Editor": [
+        ],
+        "Include": [
+            "Include/ScriptCanvasDiagnosticLibrary/DebugDrawBus.h"
+        ],
+        "Source": [
+            "Source/ScriptCanvasDiagnosticSystemComponentEditor.h",
+            "Source/ScriptCanvasDiagnosticSystemComponent.cpp"
+        ],
+        "Source/DebugDraw": [
+            "Source/DrawText.h",
+            "Source/DrawText.cpp"
+        ]
+    }
+}

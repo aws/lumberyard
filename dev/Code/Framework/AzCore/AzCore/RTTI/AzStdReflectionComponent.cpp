@@ -151,7 +151,7 @@ namespace AZ
                     else
                     {
                         // If not a value type, just move the pointer around
-                        type.m_handler = [sourceClass](AZStd::any::Action action, AZStd::any* dest, const AZStd::any* source)
+                        type.m_handler = [](AZStd::any::Action action, AZStd::any* dest, const AZStd::any* source)
                         {
                             switch (action)
                             {
@@ -175,7 +175,7 @@ namespace AZ
                         };
                     }
 
-                    value.Set(new(anyPtr) AZStd::any(userData, type, AZStd::allocator("AZStd::any (BehaviorClass)")));
+                    value.Set(new(anyPtr) AZStd::any(userData, type));
                 }
                 break;
 
@@ -197,6 +197,7 @@ namespace AZ
         if (BehaviorContext* behavior = azrtti_cast<BehaviorContext*>(context))
         {
             behavior->Class<AZStd::any>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(Script::Attributes::Ignore, true)   // Don't reflect any type to script (there should never be an any instance in script)
                 ->Attribute(Script::Attributes::ReaderWriterOverride, ScriptContext::CustomReaderWriter(&Internal::AnyToLua, &Internal::AnyFromLua))
                 ;

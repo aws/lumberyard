@@ -771,14 +771,6 @@ void ResourceParticleParams::ComputeEnvironmentFlags()
 
     // Construct config spec mask for allowed consoles.
     mConfigSpecMask = ((BIT(eConfigMax) * 2 - 1) & ~(BIT(eConfigMin) - 1)) << CONFIG_LOW_SPEC;
-    mConfigSpecMask |=
-        Platforms.PS4 * BIT(CONFIG_ORBIS)
-        + Platforms.XBoxOne * BIT(CONFIG_DURANGO)
-        + Platforms.hasIOS * BIT(CONFIG_IOS)
-        + Platforms.hasAndroid * BIT(CONFIG_ANDROID)
-        + Platforms.hasMacOSGL * BIT(CONFIG_MACOS_GL)
-        + Platforms.hasMacOSMetal * BIT(CONFIG_MACOS_METAL)
-    ;
 }
 
 bool ResourceParticleParams::IsActive() const
@@ -2052,6 +2044,46 @@ void CParticleEffect::InsertChild(int slot, IParticleEffect* pEffect)
     pEff->m_parent = this;
     m_children.insert(m_children.begin() + slot, pEff);
     CParticleManager::Instance()->UpdateEmitters(this);
+}
+
+void CParticleEffect::ReorderChildren(const std::vector<IParticleEffect*> & children)
+{
+    bool modified = false;
+    if (children.size() != m_children.size())
+    {
+        AZ_Assert(false, "Wrong usage of function CParticleEffect::ReorderChildren: input children count different than effect children count");
+        return;
+    }
+
+    //check if the new order is different than previous order
+    for (int i = 0; i < m_children.size(); i++)
+    {
+        if (&m_children[i] != children[i])
+        {
+            modified = true;
+            break;
+        }
+    }
+
+    if (modified)
+    {
+        //validate all children from input are the children of this particle effect
+        for (int i = 0; i < children.size(); i++)
+        {
+            if (children[i]->GetParent() != this)
+            {
+                AZ_Assert(false, "Wrong usage of function CParticleEffect::ReorderChildren: all children in the input need to be children of this particle effect");
+                return;
+            }
+        }
+
+        m_children.clear();
+        for (int i = 0; i < children.size(); i++)
+        {
+            m_children.push_back(static_cast<CParticleEffect*>(children[i]));
+        }
+        CParticleManager::Instance()->UpdateEmitters(this, true);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

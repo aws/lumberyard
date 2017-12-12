@@ -35,19 +35,6 @@ namespace AZ
             __m128i si;
             AZ::u32 u[4];
         };
-#elif defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3)
-#   if defined(AZ_PLATFORM_X360)
-        typedef __vector4 vectorType;
-        typedef __declspec (align(16)) UCHAR vectorCharType[16];
-#else
-        typedef vector unsigned int vectorType;
-        typedef vector unsigned char vectorCharType;
-#endif
-        union W128_T
-        {
-            vectorType s;
-            AZ::u32 u[4];
-        };
 #else
         struct W128_T
         {

@@ -546,16 +546,10 @@ namespace
             sData[0].f[0] = pData[2];
             sData[0].f[1] = pData[0];
             sData[0].f[2] = pData[1];
-
-            // always set this. Vegetation needs it to calculate correct terrain colour.
-            sData[0].f[3] = pData[3];
         }
         else
         {
             sZeroLine(sData);
-
-            // always set this. Vegetation needs it to calculate correct terrain colour.
-            sData[0].f[3] = gEnv->p3DEngine->GetTerrainTextureMultiplier();
         }
     }
 
@@ -2021,8 +2015,8 @@ void CHWShader_D3D::UpdatePerInstanceConstants(
         // For now ECGP_Matr_PI_Composite is not used in 3D object rendering shaders.
         case ECGP_Matr_PI_Composite:
         {
-            const Matrix44A r = rRP.m_TI[rRP.m_nProcessThreadID].m_matView * rRP.m_TI[rRP.m_nProcessThreadID].m_matProj;
-            TransposeAndStore(result, r);
+            const Matrix44A viewProj = rRP.m_TI[rRP.m_nProcessThreadID].m_matView * rRP.m_TI[rRP.m_nProcessThreadID].m_matProj;
+            TransposeAndStore(result, viewProj);
         }
         break;
         case ECGP_PI_MotionBlurData:
@@ -2484,8 +2478,8 @@ bool CHWShader_D3D::mfSetSamplers(const std::vector<SCGSampler>& Samplers, EHWSh
                 TS.SetFilterMode(FILTER_POINT);
             }
 
-            const int nTState = CTexture::GetTexState(TS);
-            CTexture::SetSamplerState(nTState, nSUnit, eSHClass);
+            const int texState = CTexture::GetTexState(TS);
+            CTexture::SetSamplerState(texState, nSUnit, eSHClass);
         }
         break;
 
@@ -3960,12 +3954,12 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
         strName += AddStr.Format("(%I64x)", nMaskGen);
 #endif
     }
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
         strName += AddStr.Format("(O)");
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
         strName += AddStr.Format("(D)");
     }
@@ -4193,8 +4187,46 @@ void CHWShader_D3D::mfConstructFX_Mask_RT(FXShaderToken* Table, TArray<uint32>* 
         return;
     }
     SShaderGen* pGen = gRenDev->m_cEF.m_pGlobalExt;
-
-    assert(!pSHData->empty());
+    
+    // Construct mask of all mask bits that are usable for this shader from precache entries. This mask is then ANDed with the property defines used in the shader
+    // See Runtime.ext file
+    uint64 allowedBits = 0;
+    if (m_dwShaderType)
+    {
+        for (uint32 i = 0; i < pGen->m_BitMask.Num(); i++)
+        {
+            SShaderGenBit* bit = pGen->m_BitMask[i];
+            if (!bit)
+            {
+                continue;
+            }
+            if (bit->m_Flags & SHGF_RUNTIME)
+            {
+                allowedBits |= bit->m_Mask;
+                continue;
+            }
+            
+            uint32 j;
+            if (bit->m_PrecacheNames.size())
+            {
+                for (j = 0; j < bit->m_PrecacheNames.size(); j++)
+                {
+                    if (m_dwShaderType == bit->m_PrecacheNames[j])
+                    {                    
+                        AZ_Error("Shaders", ((allowedBits & bit->m_Mask) == 0), "Two shader properties in this shader technique have the same mask which is bad. Look for mask 0x%x in Runtime.ext", bit->m_Mask);
+                        allowedBits |= bit->m_Mask;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        allowedBits = 0x7FFFFFFFFFFFFFFF;
+    }
+    
+    AZ_Assert(!pSHData->empty(), "Shader data is empty");
     uint32* pTokens = &(*pSHData)[0];
     uint32 nSize = pSHData->size();
     uint32 nCur = 0;
@@ -4207,7 +4239,7 @@ void CHWShader_D3D::mfConstructFX_Mask_RT(FXShaderToken* Table, TArray<uint32>* 
         }
         if (nTok >= eT_if && nTok <= eT_elif)
         {
-            m_nMaskAnd_RT |= CheckIfExpr_r(pTokens, nCur, nSize);
+            m_nMaskAnd_RT |= CheckIfExpr_r(pTokens, nCur, nSize) & allowedBits;
         }
         else
         {
@@ -4215,43 +4247,6 @@ void CHWShader_D3D::mfConstructFX_Mask_RT(FXShaderToken* Table, TArray<uint32>* 
         }
     }
 
-    // Reset any RT bits for this shader if this shader type is not existing for specific bit
-    // See Runtime.ext file
-    if (m_dwShaderType)
-    {
-        for (uint32 i = 0; i < pGen->m_BitMask.Num(); i++)
-        {
-            SShaderGenBit* bit = pGen->m_BitMask[i];
-            if (!bit)
-            {
-                continue;
-            }
-            if (bit->m_Flags & SHGF_RUNTIME)
-            {
-                continue;
-            }
-
-            uint32 j;
-            if (bit->m_PrecacheNames.size())
-            {
-                for (j = 0; j < bit->m_PrecacheNames.size(); j++)
-                {
-                    if (m_dwShaderType == bit->m_PrecacheNames[j])
-                    {
-                        break;
-                    }
-                }
-                if (j == bit->m_PrecacheNames.size())
-                {
-                    m_nMaskAnd_RT &= ~bit->m_Mask;
-                }
-            }
-            else
-            {
-                m_nMaskAnd_RT &= ~bit->m_Mask;
-            }
-        }
-    }
     mfSetDefaultRT(m_nMaskAnd_RT, m_nMaskOr_RT);
 }
 
@@ -4375,7 +4370,7 @@ ED3DShError CHWShader_D3D::mfFallBack(SHWSInstance*& pInst, int nStatus)
     //  - ShadowGen pass
     //  - Z-prepass
     //  - Shadow-pass
-    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3))
+    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3)) // ACCEPTED_USE
     {
         //assert(gRenDev->m_cEF.m_nCombinationsProcess >= 0);
         return ED3DShError_CompilingError;
@@ -4682,6 +4677,8 @@ CHWShader_D3D::SHWSInstance* CHWShader_D3D::mfGetInstance(CShader* pSH, SShaderC
     m_pCurInst = cgi;
     return cgi;
 }
+
+//=================================================================================
 
 void CHWShader_D3D::mfSetForOverdraw(SHWSInstance* pInst, uint32 nFlags, uint64& RTMask)
 {

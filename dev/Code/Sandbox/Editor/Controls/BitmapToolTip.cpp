@@ -28,7 +28,7 @@ static const int HISTOGRAM_C_HEIGHT = 130;
 /////////////////////////////////////////////////////////////////////////////
 // CBitmapToolTip
 CBitmapToolTip::CBitmapToolTip(QWidget* parent)
-    : QWidget(parent)
+    : QWidget(parent, Qt::ToolTip)
     , m_staticBitmap(this)
     , m_staticText(this)
     , m_rgbaHistogram(this)
@@ -219,7 +219,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
     if (!CImageUtil::LoadImage(imageFilename, image))
     {
         //Failed to load the requested asset,  let's try loading the source asset if available.
-        loadedRequestedAsset = false;      
+        loadedRequestedAsset = false;
         if (!CImageUtil::LoadImage(convertedFileName, image))
         {
             m_staticBitmap.clear();
@@ -335,8 +335,9 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
 
     update();
 
-    m_previewBitmap = QPixmap::fromImage(QImage(reinterpret_cast<uchar*>(scaledImage.GetData()), scaledImage.GetWidth(), scaledImage.GetHeight(), QImage::Format_RGB32));
-    m_staticBitmap.setPixmap(m_previewBitmap);
+    QImage qImage(scaledImage.GetWidth(), scaledImage.GetHeight(), QImage::Format_RGB32);
+    memcpy(qImage.bits(), scaledImage.GetData(), qImage.byteCount());
+    m_staticBitmap.setPixmap(QPixmap::fromImage(qImage));
 
     if (m_bShowHistogram && scaledImage.GetData())
     {
@@ -363,8 +364,10 @@ void CBitmapToolTip::OnTimer()
     if (m_hToolWnd)
     {
         QRect toolRc(m_toolRect);
+        QRect rc = geometry();
+        QPoint cursorPos = QCursor::pos();
         toolRc.moveTopLeft(m_hToolWnd->mapToGlobal(toolRc.topLeft()));
-        if (!toolRc.contains(QCursor::pos()))
+        if (!toolRc.contains(cursorPos) && !rc.contains(cursorPos))
         {
             setVisible(false);
         }
@@ -378,6 +381,8 @@ void CBitmapToolTip::OnTimer()
 //////////////////////////////////////////////////////////////////////////
 void CBitmapToolTip::showEvent(QShowEvent* event)
 {
+    QPoint cursorPos = QCursor::pos();
+    move(cursorPos);
     m_timer.start(500);
 }
 
@@ -438,10 +443,11 @@ void CBitmapToolTip::CorrectPosition()
     bool bOffset = false;
     int dx, dy;
     QRect go = rc;
+    QPoint cursorPos = QCursor::pos();
 
     // move to the default position
-    go.setRight(toolRc.right() + rc.width());
-    go.setLeft(toolRc.right());
+    go.setRight(cursorPos.x() + rc.width());
+    go.setLeft(cursorPos.x());
     go.setBottom(toolRc.top() + rc.height() + m_toolRect.height());
     go.setTop(toolRc.top() + m_toolRect.height());
 

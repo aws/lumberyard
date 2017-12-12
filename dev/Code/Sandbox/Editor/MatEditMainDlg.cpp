@@ -24,8 +24,8 @@
 #include "UserMessageDefines.h"
 
 #include <QTimer>
+#include <QVBoxLayout>
 #include <QAbstractEventDispatcher>
-#include <QEventLoop>
 #include <QVBoxLayout>
 
 
@@ -46,9 +46,9 @@ CMatEditMainDlg::CMatEditMainDlg(const QString& title, QWidget* pParent /*=NULL*
 
 #ifdef Q_OS_WIN
     if (auto aed = QAbstractEventDispatcher::instance())
-    {
+{
         aed->installNativeEventFilter(this);
-    }
+}
 #endif
 }
 
@@ -68,7 +68,7 @@ CMatEditMainDlg::~CMatEditMainDlg()
 void CMatEditMainDlg::showEvent(QShowEvent*)
 {
     if (QWindow *win = window()->windowHandle())
-    {
+{
         // Make sure our top-level window decorator wrapper set this exact title
         // 3ds Max Exporter will use ::FindWindow with this name
         win->setTitle("Material Editor");
@@ -92,7 +92,7 @@ bool CMatEditMainDlg::nativeEventFilter(const QByteArray&, void* message, long*)
 void CMatEditMainDlg::closeEvent(QCloseEvent* event)
 {
     QWidget::closeEvent(event);
-    qApp->exit();
+    qApp->quit();
 }
 
 void CMatEditMainDlg::OnKickIdle()

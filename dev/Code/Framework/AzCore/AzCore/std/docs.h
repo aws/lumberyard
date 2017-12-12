@@ -51,13 +51,9 @@ namespace AZStd
      * \anchor ADL
      * We write our code to be readable and consistent as possible. AZStd is ADL (Argument dependent lookup / Koenig lookup) safe, this allows mixing AZStd with other
      * STD implementations (which can be somewhat challenging with some implementations - \ref ADLHelperMacros), we do offer solutions for most issues that will arise.
-     * All code is compiled without any warnings on the highest warning level for each compiler. At the moment AZStd is tested and supported on the following platforms
-     * and compilers:
-     * \li Visual Studio 2005 and 2008 (with TR1 installed too) for PC and X360.
-     * \li GCC 4.1.1 for PS3.
-     * \li CodeWarrior 4.2 for Wii (?).
+     * All code is compiled without any warnings on the highest warning level for each compiler.
      *
-     * Based on those platforms we do some platform dependent optimizations.
+     * We do some platform dependent optimizations.
      *
      * Here is the different AZStd components:
      *

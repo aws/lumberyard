@@ -577,11 +577,11 @@ void CStars::Render(bool bUseMoon)
         const float size = 5.0f * min(1.f, min(vpWidth / 1280.f, vpHeight / 720.f));
         float flickerTime(gEnv->pTimer->GetCurrTime());
         static CCryNameR vspnStarSize("StarSize");
-        Vec4 paramStarSize(size / (float) vpWidth, size / (float) vpHeight, 0, flickerTime * 0.5f);
+        Vec4 paramStarSize(size / (float)vpWidth, size / (float)vpHeight, 0, flickerTime * 0.5f);
         m_pShader->FXSetVSFloat(vspnStarSize, &paramStarSize, 1);
 
         static CCryNameR pspnStarIntensity("StarIntensity");
-        Vec4 paramStarIntensity(starIntensity * min(1.f, size), 0, 0, 0);
+        Vec4 paramStarIntensity(starIntensity* min(1.f, size), 0, 0, 0);
         m_pShader->FXSetPSFloat(pspnStarIntensity, &paramStarIntensity, 1);
 
         CREHDRSky::SetCommonMoonParams(m_pShader, bUseMoon);
@@ -753,12 +753,12 @@ bool CREFogVolume::mfDraw(CShader* ef, SShaderPass* sfm)
         float rampDist = m_rampParams.y - m_rampParams.x;
         rampDist = rampDist < 0.1f ? 0.1f : rampDist;
         float invRampDist = 1.0f / rampDist;
-        const Vec4 cRampParams(invRampDist, -m_rampParams.x * invRampDist, m_rampParams.z, -m_rampParams.z + 1.0f);
+        const Vec4 cRampParams(invRampDist, -m_rampParams.x* invRampDist, m_rampParams.z, -m_rampParams.z + 1.0f);
         static CCryNameR rampParamsName("rampParams");
         ef->FXSetPSFloat(rampParamsName, &cRampParams, 1);
 
         const float normalizeFactor = (1.0f / (1.0f + 0.5f));
-        const Vec4 cWindOffset(m_windOffset.x, m_windOffset.y, m_windOffset.z, m_noiseScale * normalizeFactor);
+        const Vec4 cWindOffset(m_windOffset.x, m_windOffset.y, m_windOffset.z, m_noiseScale* normalizeFactor);
         static CCryNameR windOffsetName("windOffset");
         ef->FXSetPSFloat(windOffsetName, &cWindOffset, 1);
 
@@ -1201,13 +1201,13 @@ bool CREWaterVolume::mfDraw(CShader* ef, SShaderPass* sfm)
         mathMatrixOrthoOffCenterLH(m, -1, 1, -1, 1, -1, 1);
         if (SRendItem::m_RecurseLevel[rd->m_RP.m_nProcessThreadID] <= 0)
         {
-            const SRenderTileInfo& rti = rd->GetRenderTileInfo();
-            if (rti.nGridSizeX > 1.f || rti.nGridSizeY > 1.f)
+            const SRenderTileInfo* rti = rd->GetRenderTileInfo();
+            if (rti->nGridSizeX > 1.f || rti->nGridSizeY > 1.f)
             { // shift and scale viewport
-                m->m00 *= rti.nGridSizeX;
-                m->m11 *= rti.nGridSizeY;
-                m->m30 = -((rti.nGridSizeX - 1.f) - rti.nPosX * 2.0f);
-                m->m31 =  ((rti.nGridSizeY - 1.f) - rti.nPosY * 2.0f);
+                m->m00 *= rti->nGridSizeX;
+                m->m11 *= rti->nGridSizeY;
+                m->m30 = -((rti->nGridSizeX - 1.f) - rti->nPosX * 2.0f);
+                m->m31 =  ((rti->nGridSizeY - 1.f) - rti->nPosY * 2.0f);
             }
         }
 
@@ -1390,7 +1390,7 @@ bool CREWaterVolume::mfDraw(CShader* ef, SShaderPass* sfm)
     else
     {
         // copy vertices into dynamic VB
-        TempDynVB<SVF_P3F_T3F> vb;
+        TempDynVB<SVF_P3F_T3F> vb(gcpRendD3D);
         vb.Allocate(4);
         SVF_P3F_T3F* pVB = vb.Lock();
 
@@ -1562,10 +1562,10 @@ void CREWaterOcean::FrameUpdate()
         STALL_PROFILER("update subresource")
         CDeviceTexture * pDevTex = pTexture->GetDevTexture();
         pDevTex->UploadFromStagingResource(0, [=](void* pData, uint32 rowPitch, uint32 slicePitch)
-        {
-            cryMemcpy(pData, pDispGrid, 4 * width * height * sizeof(f32));
-            return true;
-        });
+            {
+                cryMemcpy(pData, pDispGrid, 4 * width * height * sizeof(f32));
+                return true;
+            });
     }
 }
 
@@ -2332,7 +2332,7 @@ bool CREBeam::mfDraw(CShader* ef, SShaderPass* sl)
             rd->FX_ClearTarget(pLowResRT, Clr_Transparent);
             rd->FX_ClearTarget(pCurrDepthSurf, CLEAR_ZBUFFER);
             rd->FX_PushRenderTarget(0, pLowResRT, pCurrDepthSurf, -1, false, 1);
-            rd->FX_SetColorDontCareActions(0, false, false); //Check gmem path for performance when using this pass.  
+            rd->FX_SetColorDontCareActions(0, false, false); //Check gmem path for performance when using this pass.
         }
 
         uint32 nState = (nCurPass == FinalPass) ? (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA) : 0;
@@ -2527,7 +2527,7 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
                     const bool bUseInstancing = false;
 #endif
 
-                    TempDynInstVB instVB;
+                    TempDynInstVB instVB(gcpRendD3D);
                     uint numInstancesToDraw = 0;
                     byte* __restrict pInstanceMatricesVB = NULL;
 
@@ -2535,7 +2535,7 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
                     // FX_DrawInstances which supports both constant based and attribute based instancing
                     // and all platforms.
                     //
-                    // This only sets up the data structures for D3D11 PC & Durango attribute based
+                    // This only sets up the data structures for D3D11 attribute based
                     // instancing. Need to clean this up later and ideally use constant based instancing.
 
                     const uint64 lastFlagsShader_RT = rRP.m_FlagsShader_RT;
@@ -2593,10 +2593,10 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
 
                         if (!bUseInstancing)
                         {
-                            pRenderer->GetPerInstanceConstantBufferPool().UpdateConstantBuffer([&] (void* mappedData)
-                            {
-                                *reinterpret_cast<Matrix34A*>(mappedData) = pieceMatrix;
-                            }, threadInfo.m_RealTime);
+                            pRenderer->GetPerInstanceConstantBufferPool().UpdateConstantBuffer([&](void* mappedData)
+                                {
+                                    *reinterpret_cast<Matrix34A*>(mappedData) = pieceMatrix;
+                                }, threadInfo.m_RealTime);
 
                             pRenderObject->m_II.m_Matrix = pieceMatrix;
                             pCurVS->UpdatePerInstanceConstantBuffer();

@@ -255,7 +255,7 @@ void CMainWindow::OnEditorNotifyEvent(EEditorNotifyEvent e)
     // Do this before the early return because the libraries need to be refreshed regardless of whether
     // the editor is visible at the time. If it's not visible, the actual refresh will happen when
     // the editor is shown.
-    if (eNotify_OnBeginNewScene == e || eNotify_OnEndSceneOpen == e || eNotify_OnDataBaseUpdate == e)
+    if (eNotify_OnBeginNewScene == e || eNotify_OnEndSceneOpen == e || eNotify_OnDataBaseUpdate == e || eNotify_OnSceneClosed == e)
     {
         m_needLibraryRefresh = true;
     }
@@ -331,6 +331,9 @@ void CMainWindow::OnEditorNotifyEvent(EEditorNotifyEvent e)
 
             break;
         }
+    case eNotify_OnSceneClosed:
+        RefreshLibraries();
+        break;
     case eNotify_OnBeginLoad:
         //disable input during level loading
         setEnabled(false);

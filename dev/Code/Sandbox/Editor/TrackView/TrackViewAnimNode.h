@@ -281,12 +281,17 @@ public:
     // Depth-first search for TrackViewAnimNode associated with the given animNode. Returns the first match found or nullptr if not found
     CTrackViewAnimNode* FindNodeByAnimNode(const IAnimNode* animNode);
 
+    ICharacterInstance* GetCharacterInstance()
+    {
+        return m_pAnimNode ? m_pAnimNode->GetCharacterInstance() : nullptr;
+    }
+
 protected:
     // IAnimNodeOwner
     void OnNodeAnimated(IAnimNode* pNode) override;
     // ~IAnimNodeOwner
 
-    IAnimNode* GetAnimNode() { return m_pAnimNode; }
+    IAnimNode* GetAnimNode() { return m_pAnimNode.get(); }
     EAnimNodeType GetAnimNodeTypeFromObject(const CBaseObject* object) const;
 
 private:
@@ -336,10 +341,13 @@ private:
     virtual void OnDone() override;
     // ~IEntityObjectListener
 
+    // Helper functions
+    static void RemoveChildNode(CTrackViewAnimNode* child);
+
     IAnimSequence* m_pAnimSequence;
-    _smart_ptr<IAnimNode> m_pAnimNode;
+    AZStd::intrusive_ptr<IAnimNode> m_pAnimNode;
     CEntityObject* m_pNodeEntity;
-    std::unique_ptr<IAnimNodeAnimator> m_pNodeAnimator;
+    AZStd::unique_ptr<IAnimNodeAnimator> m_pNodeAnimator;
     _smart_ptr<CGizmo> m_trackGizmo;
 
     // used to stash the Editor sequence and node entity Ids when we switch to game mode from the editor

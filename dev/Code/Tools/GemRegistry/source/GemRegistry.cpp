@@ -25,8 +25,18 @@ namespace Gems
 {
     AZ_CLASS_ALLOCATOR_IMPL(GemRegistry, AZ::SystemAllocator, 0)
 
-    AZ::Outcome<void, AZStd::string> GemRegistry::AddSearchPath(const SearchPath& searchPath, bool loadGemsNow)
+    AZ::Outcome<void, AZStd::string> GemRegistry::AddSearchPath(const SearchPath& searchPathIn, bool loadGemsNow)
     {
+        SearchPath searchPath = searchPathIn;
+
+        // Remove trailing slash if present
+        char lastChar = *(searchPath.m_path.end() - 1);
+        if (lastChar == '/' ||
+            lastChar == '\\')
+        {
+            AzFramework::StringFunc::RChop(searchPath.m_path, 1);
+        }
+
         if (AZStd::find(m_searchPaths.begin(), m_searchPaths.end(), searchPath) == m_searchPaths.end())
         {
             m_searchPaths.emplace_back(searchPath);
@@ -266,9 +276,9 @@ namespace Gems
         return AZ::Success(AZStd::static_pointer_cast<IGemDescriptionConstPtr::element_type>(desc));
     }
 
-    AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> GemRegistry::ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath)
+    AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> GemRegistry::ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath)
     {
-        auto descOutcome = ParseToGemDescription(gemFolderRelPath, nullptr);
+        auto descOutcome = ParseToGemDescription(gemFolderRelPath, absoluteFilePath);
         if (!descOutcome)
         {
             return AZ::Failure(AZStd::string::format("An error occurred while parsing %s: %s", gemFolderRelPath.c_str(), descOutcome.GetError().c_str()));

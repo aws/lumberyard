@@ -412,7 +412,7 @@ struct ExplosionInfo
         impact_targetId = targetId;
     }
 
-    void SetEffect(const char* effectName, float scale, float maxblurdistance, float blindAmount = 0.0f, float flashbangScale = 1.0f)
+    void SetEffect(const char* effectName, float scale, float maxBlurDistance, float blindingAmount = 0.0f, float flashBangScale = 1.0f)
     {
         effect_name = effectName;
         effect_scale = scale;
@@ -420,9 +420,9 @@ struct ExplosionInfo
         {
             pParticleEffect = gEnv->pParticleManager->FindEffect(effect_name.c_str());
         }
-        this->maxblurdistance = maxblurdistance;
-        this->blindAmount = blindAmount;
-        this->flashbangScale = flashbangScale;
+        this->maxblurdistance = maxBlurDistance;
+        this->blindAmount = blindingAmount;
+        this->flashbangScale = flashBangScale;
     }
 
     void SetEffectName(const char* effectName)

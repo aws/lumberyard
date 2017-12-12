@@ -24,26 +24,7 @@ namespace primitives
 namespace LmbrCentral
 {
     /**
-     * Configuration data for the PrimitiveColliderComponent.
-     */
-    struct PrimitiveColliderConfiguration
-    {
-        AZ_CLASS_ALLOCATOR(PrimitiveColliderConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(PrimitiveColliderConfiguration, "{85AA27D6-E019-469F-8472-89862323DBF7}");
-        static void Reflect(AZ::ReflectContext* context);
-
-        PrimitiveColliderConfiguration();
-
-        /// Get all available surface types.
-        AZStd::vector<AZStd::string> GetSurfaceTypeNames() const;
-
-        /// Physical surface type (\ref ISurfaceType) to use on this collider.
-        AZStd::string m_surfaceTypeName;
-    };
-
-    /**
-     * Base class for components that provide collision
-     * in the form of primitive shapes.
+     * A component that provides primitive shape collision.
      */
     class PrimitiveColliderComponent
         : public AZ::Component
@@ -52,7 +33,7 @@ namespace LmbrCentral
         , public AZ::EntityBus::MultiHandler
     {
     public:
-        AZ_COMPONENT(PrimitiveColliderComponent, "{9CB3707A-73B3-4EE5-84EA-3CF86E0E3722}");
+        AZ_COMPONENT(PrimitiveColliderComponent, PrimitiveColliderComponentTypeId);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -71,13 +52,14 @@ namespace LmbrCentral
         }
 
         PrimitiveColliderComponent() = default;
-        explicit PrimitiveColliderComponent(const PrimitiveColliderConfiguration& configuration);
         ~PrimitiveColliderComponent() override = default;
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -109,7 +91,7 @@ namespace LmbrCentral
             const primitives::primitive& primitive);
 
         /// Serialized configuration.
-        PrimitiveColliderConfiguration m_configuration;
+        PrimitiveColliderConfig m_configuration;
 
         /// If connecting to an active entity while harvesting colliders
         /// for a compound shape, add the colliders to this entity.

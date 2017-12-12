@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 from errors import HandledError
 import util
@@ -41,9 +41,6 @@ def create_stack(context, args):
     # Does deployment-template.json include resource group from a gem which isn't enabled for the project?
     for resource_group_name in context.resource_groups.keys():
          __check_resource_group_gem_status(context, resource_group_name)
-
-    # Is the project settings file writable?
-    context.config.validate_writable(context.config.local_project_settings_path)
 
     # Is the deployment name valid?
     util.validate_stack_name(args.deployment)
@@ -356,10 +353,17 @@ def upload_resources(context, args):
 
         stack_id = context.config.get_resource_group_stack_id(args.deployment, args.resource_group, optional=True)
         if args.resource_group in context.resource_groups:
+            group = context.resource_groups.get(args.resource_group)
             if stack_id is None:
-                resource_group.create_stack(context, args)
+                if group.is_enabled:
+                    resource_group.create_stack(context, args)
+                else:
+                    raise HandledError('The {} resource group is disabled and no stack exists.'.format(group.name))
             else:
-                resource_group.update_stack(context, args)
+                if group.is_enabled:
+                    resource_group.update_stack(context, args)
+                else:
+                    resource_group.delete_stack(context, args)
         else:
             if stack_id is None:
                 raise HandledError('There is no {} resource group.'.format(args.resource_group))
@@ -524,11 +528,12 @@ def _update_access_stack(context, args, deployment_name):
 
 def before_update(context, deployment_uploader):
 
-    for resource_group_name in context.resource_groups.keys():
-        resource_group.before_update(
-            deployment_uploader, 
-            resource_group_name
-        )
+    for group in context.resource_groups.values():
+        if group.is_enabled:
+            resource_group.before_update(
+                deployment_uploader, 
+                group.name
+            )
 
     context.view.processing_template('{} deployment'.format(deployment_uploader.deployment_name))
 
@@ -545,8 +550,12 @@ def before_update(context, deployment_uploader):
 
 def after_update(context, deployment_uploader):
 
-    for resource_group_name in context.resource_groups.keys():
-        resource_group.after_update(deployment_uploader, resource_group_name)
+    for group in context.resource_groups.values():
+        if group .is_enabled:
+            resource_group.after_update(
+                deployment_uploader, 
+                group.name
+            )
 
     # Deprecated in 1.9 - TODO: remove
     deployment_uploader.execute_uploader_post_hooks()

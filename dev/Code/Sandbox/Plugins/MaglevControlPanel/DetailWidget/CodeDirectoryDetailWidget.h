@@ -70,15 +70,6 @@ public:
         menu->addSeparator(); 
         
         //Add right click menu option to code directory node in tree
-        if (m_codeDirectoryModel->DoNotDelete())
-        {
-            auto uploadCode = menu->addAction("Upload Lambda function code");
-            uploadCode->setToolTip("Upload the Lambda function code without a full feature stack update.");
-            connectUntilDeleted(uploadCode, &QAction::triggered, this, &CodeDirectoryDetailWidget::OnUploadCode);
-        }
-
-        menu->addSeparator();
-
         auto openPathInExplorer = menu->addAction("View in Explorer");
         openPathInExplorer->setToolTip(tr("View the directory in Windows Explorer."));
         connectUntilDeleted(openPathInExplorer, &QAction::triggered, this, &CodeDirectoryDetailWidget::OnOpenPathInExplorer);

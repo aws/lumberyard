@@ -14,13 +14,16 @@
 #include "StdAfx.h"
 #include "TimeDemoRecorder.h"
 #include <CryFile.h>
+#include <CryTypeInfo.h>
 #include <IActorSystem.h>
 #include <IAgent.h>
+#include <IAnimatedCharacter.h>
 #include <ILevelSystem.h>
+#include <IGameFramework.h>
 #include <ITestSystem.h>
 #include <IMovieSystem.h>
-#include "IMovementController.h"
-#include "IStatoscope.h"
+#include <IMovementController.h>
+#include <IStatoscope.h>
 #include <ITimeOfDay.h>
 #include <ITimeDemoRecorder.h>
 #include <AzFramework/IO/FileOperations.h>
@@ -204,13 +207,24 @@ struct SRecordedGameEvent
     {
         SwapEndian(extra);
         SwapEndian(value);
-        //      SwapEndian(id);
     }
+};
+
+
+STimeDemoGameEvent::STimeDemoGameEvent(IEntity* pEntity, const GameplayEvent& event)
+{
+    if (pEntity)
+    {
+        entityName = pEntity->GetName();
+    }
+    gameEventType = event.event;
+    value = event.value;
+    description = event.description;
+    description2 = (const char*)(event.extra);
 };
 
 STimeDemoGameEvent::STimeDemoGameEvent(const SRecordedGameEvent& event)
 {
-    //  id = event.id;
     entityName = event.entityName;
     gameEventType = event.gameEventType;
     value = event.value;
@@ -236,7 +250,6 @@ struct STimeDemoFrame_3
 
     char reserved[32];
 
-    //char data[]; // Special frame data.
     //////////////////////////////////////////////////////////////////////////
     void SwapEndianThis()
     {
@@ -454,9 +467,6 @@ CTimeDemoRecorder::CTimeDemoRecorder()
 {
     s_pTimeDemoRecorder = this;
 
-    //gEnv->pGame->GetIGameFramework()->GetIGameplayRecorder()->EnableGameStateRecorder(false, this, false);
-
-
     CRY_ASSERT(GetISystem());
 
     m_numLoops = 0;
@@ -595,15 +605,6 @@ const char* CTimeDemoRecorder::GetCurrentLevelPath()
     const char* sLevelName = gEnv->pGame->GetIGameFramework()->GetAbsLevelPath(buf, _MAX_PATH);
 
     return sLevelName;
-    /*
-        ILevel *pLevel = gEnv->pGame->GetIGameFramework()->GetILevelSystem()->GetCurrentLevel();
-        if (!pLevel)
-            return "";
-        ILevelInfo *pLevelInfo = pLevel->GetLevelInfo();
-        if (!pLevelInfo)
-            return "";
-        return pLevelInfo->GetPath();
-    */
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1964,8 +1965,12 @@ void CTimeDemoRecorder::StartSession()
     if (m_demo_restart_level == 1 && bCurrentlyRecording)
     {
         //QS does not work when playing/recording a timedemo, so pretend we're not...
-        // Quick save at the begining of the recording, so we restore initial state as good as possible.
-        CCryAction::GetCryAction()->SaveGame(GetInitSaveFileName(), true, true, eSGR_QuickSave, true);
+        // Quick save at the beginning of the recording, so we restore initial state as good as possible.
+        IGameFramework* pGameFramework = gEnv->pGame->GetIGameFramework();
+        if (pGameFramework)
+        {
+            pGameFramework->SaveGame(GetInitSaveFileName(), true, true, eSGR_QuickSave, true);
+        }
     }
 
     ResetSessionLoop();
@@ -2127,20 +2132,24 @@ void CTimeDemoRecorder::ResetSessionLoop()
 {
     if (m_demo_restart_level != 0 && m_bPlaying)
     {
+        IGameFramework* pGameFramework = gEnv->pGame->GetIGameFramework();
         switch (m_demo_restart_level)
         {
         case 1:
-            // Quick load at the begining of the playback, so we restore initial state as good as possible.
-            if (gEnv->pGame->GetIGameFramework())
+            // Quick load at the beginning of the playback, so we restore initial state as good as possible.
+            if (pGameFramework)
             {
-                gEnv->pGame->GetIGameFramework()->LoadGame(GetInitSaveFileName());//, true, true);
+                pGameFramework->LoadGame(GetInitSaveFileName());
             }
             break;
 
         case 2:
         default:
             //load save made at start of level
-            CCryAction::GetCryAction()->LoadGame(CCryAction::GetCryAction()->GetStartLevelSaveGameName());//, true);
+            if (pGameFramework)
+            {
+                pGameFramework->LoadGame(pGameFramework->GetStartLevelSaveGameName());
+            }
             break;
         }
     }
@@ -2691,9 +2700,10 @@ void CTimeDemoRecorder::EndDemo()
     m_bDemoFinished = true;
     m_demoEnded = true;
 
-    if (!gEnv->IsEditor())
+    IGameFramework* pGameFramework = gEnv->pGame->GetIGameFramework();
+    if (!gEnv->IsEditor() && pGameFramework)
     {
-        CCryAction::GetCryAction()->EndGameContext(false);
+        pGameFramework->EndGameContext(false);
     }
 
 #if CAPTURE_REPLAY_LOG

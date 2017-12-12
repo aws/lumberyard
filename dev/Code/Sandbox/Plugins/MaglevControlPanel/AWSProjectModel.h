@@ -79,6 +79,7 @@ public:
     // Helpers to grab file names for check out
     QString GetProjectSettingsFile() const override;
     QString GetDeploymentTemplateFile() const override;
+    QString GetGemsFile() const override;
 
     QVector<QString> GetWritableFilesforUploadResources() const override;
     QJsonValue GetResourceGroupSetting(const QString& resourceGroupName, const QString& settingName, IAWSProjectModel::ResourceGroupSettingPriority settingPriority) const override;
@@ -109,6 +110,8 @@ private:
 
     ProjectSettingsNode* GetProjectSettingsNode() const;
     DeploymentTemplateNode* GetDeploymentTemplateNode() const;
+
+    QString m_gemsFilePath;
 
     friend class Node;
 

@@ -434,7 +434,7 @@ void CColorGradingControllerD3D::DrawLayer(float x, float y, float w, float h, C
         pChart->Apply(0, texStateID);
     }
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(4);
     SVF_P3F_C4B_T2F* pVerts = vb.Lock();
 

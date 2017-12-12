@@ -19,12 +19,14 @@ namespace LmbrCentral
     /**
      * Configuration data for EditorRigidPhysicsComponent.
      */
-    struct EditorRigidPhysicsConfiguration
-        : public RigidPhysicsConfiguration
+    struct EditorRigidPhysicsConfig
+        : public RigidPhysicsConfig
     {
-        AZ_CLASS_ALLOCATOR(EditorRigidPhysicsConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(EditorRigidPhysicsConfiguration, "{AC3B7279-6A22-4764-9F58-329CB0198CE9}", RigidPhysicsConfiguration);
+        AZ_CLASS_ALLOCATOR(EditorRigidPhysicsConfig, AZ::SystemAllocator, 0);
+        AZ_RTTI(EditorRigidPhysicsConfig, "{B2FA5441-9B99-5EFA-A606-82752CA23EE8}", RigidPhysicsConfig);
         static void Reflect(AZ::ReflectContext* context);
+
+        // currently, there's no difference between EditorRigidPhysicsConfig and its base class.
     };
 
     /**
@@ -34,23 +36,22 @@ namespace LmbrCentral
         : public EditorPhysicsComponent
     {
     public:
-        AZ_EDITOR_COMPONENT(EditorRigidPhysicsComponent, "{BD17E257-BADB-45D7-A8BA-16D6B0BE0881}", EditorPhysicsComponent);
+        AZ_EDITOR_COMPONENT(EditorRigidPhysicsComponent, EditorRigidPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorRigidPhysicsComponent() = default;
-        explicit EditorRigidPhysicsComponent(const EditorRigidPhysicsConfiguration& configuration);
         ~EditorRigidPhysicsComponent() override = default;
 
         ////////////////////////////////////////////////////////////////////////
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
         ////////////////////////////////////////////////////////////////////////
-
-        const EditorRigidPhysicsConfiguration& GetConfiguration() const { return m_configuration; }
 
     private:
 
-        EditorRigidPhysicsConfiguration m_configuration;
+        EditorRigidPhysicsConfig m_configuration;
     };
 
 } // namespace LmbrCentral

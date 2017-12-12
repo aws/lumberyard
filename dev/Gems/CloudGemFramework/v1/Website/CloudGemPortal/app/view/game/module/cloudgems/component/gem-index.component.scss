@@ -1,9 +1,10 @@
-@import "./styles/variables";
+@import "../../../../../../styles/variables";
 
 .gems-heading-back-row > .col > * {
     color: $primary-color;
     font-size:11px;
 }
+
 .gems-heading {
     font-size: 24px;
     margin-bottom: 20px;

@@ -107,6 +107,19 @@ namespace AssetProcessor
             "    FOREIGN KEY (JobPK) REFERENCES "
             "       Jobs(JobID) ON DELETE CASCADE);";
 
+        static const char* CREATE_LEGACYSUBIDS_TABLE = "AssetProcessor::CreateLegacySubIDsTable";
+        static const char* CREATE_LEGACYSUBIDS_TABLE_STATEMENT =
+            "CREATE TABLE IF NOT EXISTS LegacySubIDs( "
+            "   LegacySubID             INTEGER PRIMARY KEY, "
+            "   ProductPK               INTEGER NOT NULL, "
+            "   SubID                   INTEGER NOT NULL, "
+            "   FOREIGN KEY(ProductPK) REFERENCES "
+            "      Products(ProductID) ON DELETE CASCADE);";
+
+        static const char* CREATEINDEX_LEGACYSUBIDS_PRODUCTPK = "AssetProcesser::CreateIndexLegacySubIDs_ProductPK";
+        static const char* CREATEINDEX_LEGACYSUBIDS_PRODUCTPK_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS LegacySubIDs_ProductPK ON LegacySubIDs (ProductPK);";
+
         static const char* CREATE_SOURCE_DEPENDENCY_TABLE = "AssetProcessor::CreateSourceDependencyTable";
         static const char* CREATE_SOURCE_DEPENDENCY_TABLE_STATEMENT =
             "CREATE TABLE IF NOT EXISTS SourceDependency("
@@ -302,6 +315,31 @@ namespace AssetProcessor
         static const char* DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID_STATEMENT =
             "DELETE FROM SourceDependency WHERE "
             "SourceDependencyID = :sourceDependencyId;";
+
+        static const char* INSERT_NEW_LEGACYSUBID = "AssetProcessor::InsertLegacySubID";
+        static const char* INSERT_NEW_LEGACYSUBID_STATEMENT =
+            "INSERT INTO LegacySubIDs (ProductPK, SubID) "
+            "VALUES (:productPK, :subID);";
+
+        static const char* OVERWRITE_EXISTING_LEGACYSUBID = "AssetProcessor::OverwriteLegacySubID";
+        static const char* OVERWRITE_EXISTING_LEGACYSUBID_STATEMENT =
+            "UPDATE LegacySubIDs "
+            "  SET "
+            "     ProductPK = :productPK, "
+            "     SubID = :subID "
+            "  WHERE "
+            "     LegacySubID = :legacySubID;";
+        
+        static const char* DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY = "AssetProcessor::DeleteLegacySubIDsByPrimaryKey";
+        static const char* DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY_STATEMENT =
+            "DELETE FROM LegacySubIDs WHERE "
+            "LegacySubID = :legacySubID;";
+
+        static const char* DELETE_LEGACYSUBIDS_BY_PRODUCTID = "AssetProcessor::DeleteLegacySubIDsByProductID";
+        static const char* DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT =
+            "DELETE FROM LegacySubIDs WHERE "
+            "ProductPK = :productPK;";
+
     }
 
     AssetDatabaseConnection::AssetDatabaseConnection()
@@ -383,6 +421,18 @@ namespace AssetProcessor
                 )
             {
                 foundVersion = DatabaseVersion::AddedSourceDependencyTable;
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedSourceDependencyTable)
+        {
+            // add the missing tables - nothing will have generated data for this before this point, so its okay to just make empty ones.
+            if (
+                (m_databaseConnection->ExecuteOneOffStatement(CREATE_LEGACYSUBIDS_TABLE)) &&
+                (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_LEGACYSUBIDS_PRODUCTPK))
+                )
+            {
+                foundVersion = DatabaseVersion::AddedLegacySubIDsTable;
             }
         }
         
@@ -524,6 +574,19 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(INSERT_SOURCE_DEPENDENCY, INSERT_SOURCE_DEPENDENCY_STATEMENT);
         m_databaseConnection->AddStatement(UPDATE_SOURCE_DEPENDENCY, UPDATE_SOURCE_DEPENDENCY_STATEMENT);
         m_databaseConnection->AddStatement(DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID, DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID_STATEMENT);
+
+        // ---------------------------------------------------------------------------------------------
+        //                    Legacy SubIDs table
+        // ---------------------------------------------------------------------------------------------
+        m_databaseConnection->AddStatement(CREATE_LEGACYSUBIDS_TABLE, CREATE_LEGACYSUBIDS_TABLE_STATEMENT);
+        m_databaseConnection->AddStatement(CREATEINDEX_LEGACYSUBIDS_PRODUCTPK, CREATEINDEX_LEGACYSUBIDS_PRODUCTPK_STATEMENT);
+        m_createStatements.push_back(CREATE_LEGACYSUBIDS_TABLE);
+        m_createStatements.push_back(CREATEINDEX_LEGACYSUBIDS_PRODUCTPK);
+
+        m_databaseConnection->AddStatement(INSERT_NEW_LEGACYSUBID, INSERT_NEW_LEGACYSUBID_STATEMENT);
+        m_databaseConnection->AddStatement(OVERWRITE_EXISTING_LEGACYSUBID, OVERWRITE_EXISTING_LEGACYSUBID_STATEMENT);
+        m_databaseConnection->AddStatement(DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY, DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY_STATEMENT);
+        m_databaseConnection->AddStatement(DELETE_LEGACYSUBIDS_BY_PRODUCTID, DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT);
 
         // ---------------------------------------------------------------------------------------------
         //                   Indices
@@ -1157,7 +1220,7 @@ namespace AssetProcessor
 
         if(statement->Step() == Statement::SqlError)
         {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveSource form the database");
+            AZ_Warning(LOG_NAME, false, "Failed to RemoveSource from the database");
             return false;
         }
 
@@ -1712,7 +1775,7 @@ namespace AssetProcessor
 
         if(statement->Step() == Statement::SqlError)
         {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveSource form the database");
+            AZ_Warning(LOG_NAME, false, "Failed to RemoveJob from the database");
             return false;
         }
 
@@ -2483,7 +2546,7 @@ namespace AssetProcessor
 
             if (statement->Step() == Statement::SqlError)
             {
-                AZ_Warning(LOG_NAME, false, "Failed to RemoveSourceDependency form the database");
+                AZ_Warning(LOG_NAME, false, "Failed to RemoveSourceDependency from the database");
                 return false;
             }
 
@@ -2520,10 +2583,24 @@ namespace AssetProcessor
         return found && succeeded;
     }
 
-    bool AssetDatabaseConnection::GetSourceFileDependenciesByDependsOnSource(QString dependsOnSource, SourceFileDependencyEntryContainer& container)
+    bool AssetDatabaseConnection::GetSourceFileDependenciesByDependsOnSource(const QString& dependsOnSource, SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
         bool succeeded = QuerySourceDependencyByDependsOnSource(dependsOnSource.toUtf8().constData(),
+            [&](SourceFileDependencyEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true;//all
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetDependsOnSourceBySource(const QString& source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryDependsOnSourceBySourceDependency(source.toUtf8().constData(),
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2545,6 +2622,156 @@ namespace AssetProcessor
             return false; //one
         });
         return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::CreateOrUpdateLegacySubID(AzToolsFramework::AssetDatabase::LegacySubIDsEntry& entry)
+    {
+        ScopedTransaction transaction(m_databaseConnection);
+
+        const char* statementName = INSERT_NEW_LEGACYSUBID;
+
+        bool creatingNew = entry.m_subIDsEntryID == -1;
+
+        if (!creatingNew)
+        {
+            statementName = OVERWRITE_EXISTING_LEGACYSUBID;
+        }
+
+        StatementAutoFinalizer autoFinal(*m_databaseConnection, statementName);
+        Statement* statement = autoFinal.Get();
+        if (!statement)
+        {
+            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", statementName);
+            return false;
+        }
+
+        int subIDIndex = statement->GetNamedParamIdx(":subID");
+        if (!subIDIndex)
+        {
+            AZ_Error(LOG_NAME, false, "could not find subIDIndex in statement %s", statementName);
+            return false;
+        }
+        statement->BindValueInt64(subIDIndex, entry.m_subID);
+
+        int productPKIdx = statement->GetNamedParamIdx(":productPK");
+        if (!productPKIdx)
+        {
+            AZ_Error(LOG_NAME, false, "could not find productPK in statement %s", statementName);
+            return false;
+        }
+        statement->BindValueInt64(productPKIdx, entry.m_productPK);
+
+        if (!creatingNew)
+        {
+            // ovewrite existing row.  Need to supply the id
+            int legacySubIDIdx = statement->GetNamedParamIdx(":legacySubID");
+            if (!legacySubIDIdx)
+            {
+                AZ_Error(LOG_NAME, false, "could not find legacySubID");
+                return false;
+            }
+            statement->BindValueInt64(legacySubIDIdx, entry.m_subIDsEntryID);
+        }
+        
+        if (statement->Step() == Statement::SqlError)
+        {
+            AZ_Warning(LOG_NAME, false, "Failed to CreateOrUpdateLegacySubID in the database");
+            return false;
+        }
+
+        AZ::s64 rowID = m_databaseConnection->GetLastRowID();
+        if (creatingNew)
+        {
+            entry.m_subIDsEntryID = rowID;
+        }
+        else
+        {
+            if (rowID != entry.m_subIDsEntryID)
+            {
+                // you specified an invalid key.
+                AZ_Warning(LOG_NAME, false, "Failed to CreateOrUpdateLegacySubID in the database - invalid key specified.");
+                return false;
+            }
+        }
+
+        transaction.Commit();
+        return true;
+    }
+
+    bool AssetDatabaseConnection::RemoveLegacySubID(AZ::s64 legacySubIDsEntryID)
+    {
+        if (!ValidateDatabaseTable("RemoveLegacySubID", "LegacySubIDs"))
+        {
+            AZ_Error(LOG_NAME, false, "Could not find LegacySubIDs table");
+            return false;
+        }
+
+        ScopedTransaction transaction(m_databaseConnection);
+
+        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
+        Statement* statement = autoFinal.Get();
+        if (!statement)
+        {
+            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
+            return false;
+        }
+
+        int productPKIdx = statement->GetNamedParamIdx(":legacySubID");
+        if (!productPKIdx)
+        {
+            AZ_Error(LOG_NAME, false, "could not find legacySubID in statement %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
+            return false;
+        }
+
+        statement->BindValueInt64(productPKIdx, legacySubIDsEntryID);
+
+        if (statement->Step() == Statement::SqlError)
+        {
+            AZ_Warning(LOG_NAME, false, "Failed to RemoveLegacySubID from the database");
+            return false;
+        }
+
+        transaction.Commit();
+
+        return true;
+    }
+
+    bool AssetDatabaseConnection::RemoveLegacySubIDsByProductID(AZ::s64 productID)
+    {
+        if (!ValidateDatabaseTable("RemoveLegacySubIDsByProductID", "LegacySubIDs"))
+        {
+            AZ_Error(LOG_NAME, false, "Could not find LegacySubIDs table");
+            return false;
+        }
+
+        ScopedTransaction transaction(m_databaseConnection);
+
+        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_LEGACYSUBIDS_BY_PRODUCTID);
+        Statement* statement = autoFinal.Get();
+        if (!statement)
+        {
+            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
+            return false;
+        }
+
+        int productPKIdx = statement->GetNamedParamIdx(":productPK");
+        if (!productPKIdx)
+        {
+            AZ_Error(LOG_NAME, false, "could not find productPK in statement %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
+            return false;
+        }
+
+        statement->BindValueInt64(productPKIdx,productID);
+
+        if (statement->Step() == Statement::SqlError)
+        {
+            AZ_Warning(LOG_NAME, false, "Failed to RemoveLegacySubIDsByProductID from the database");
+            return false;
+        }
+
+        transaction.Commit();
+
+        return true;
     }
 
 

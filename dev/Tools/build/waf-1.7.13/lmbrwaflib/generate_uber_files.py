@@ -65,6 +65,8 @@ class uber_file_generator(BuildContext):
 @extension('.qml')
 @extension('.jpg')
 @extension('.ttf')
+@extension('.tpl')
+@extension('.py')
 def header_dummy(tgen,node):
     pass
 
@@ -152,7 +154,7 @@ def gen_create_uber_file_task(tgen):
 
     uber_file_folder = tgen.bld.bldnode.make_node('uber_files').make_node(tgen.target)
     uber_file_folder.mkdir()
-    
+
     # Iterate over all uber files, to collect files per Uber file
     uber_file_list = getattr(tgen, 'uber_file_list')
     for (uber_file,project_filter) in uber_file_list.items():
@@ -171,14 +173,32 @@ def gen_create_uber_file_task(tgen):
         tsk.pch = getattr(tgen, 'pch')
                     
 class gen_uber_file(Task):
-    color =  'BLUE' 
-        
+    color =  'BLUE'
+
+    def __str__(self):
+        """
+        string to display to the user
+        """
+        tgt_str = ' '.join([a.nice_path() for a in self.outputs])
+        message = "Generating Uber Files ({} source files) -> {}\n".format(len(self.inputs),tgt_str)
+        return message
+
     def compute_uber_file(self):
+
         lst = ['{}\n'.format(UBER_HEADER_COMMENT)]
         uber_file_folder = self.UBER_FILE_FOLDER
+
         if not self.pch == '':
             lst += ['#include "%s"\n' % self.pch.replace('.cpp','.h')]
-        lst += ['#include "%s"\n' % node.path_from(uber_file_folder) for node in self.inputs]
+        module_path_base = os.path.normcase(self.generator.path.abspath())
+        for node in self.inputs:
+            node_path = os.path.normcase(node.abspath())
+            if node_path.startswith(module_path_base):
+                module_relative_path = node.abspath()[len(module_path_base):].lstrip("\\/")
+                lst += ['#include <{}>\n'.format(module_relative_path)]
+            else:
+                lst += ['#include <{}>\n'.format(node.abspath())]
+
         uber_file_content = ''.join(lst)        
         return uber_file_content
         

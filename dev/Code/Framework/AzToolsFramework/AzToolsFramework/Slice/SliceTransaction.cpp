@@ -641,7 +641,7 @@ namespace AzToolsFramework
                         if (!owningContextId.IsNull())
                         {
                             AZ::SliceComponent* rootSlice = nullptr;
-                            EntityContextRequestBus::EventResult(rootSlice, owningContextId, &EntityContextRequests::GetRootSlice);
+                            EntityContextRequestBus::EventResult(rootSlice, owningContextId, &EntityContextRequestBus::Events::GetRootSlice);
                             if (rootSlice)
                             {
                                 rootSlice->AddSliceInstance(instanceToPush.m_instanceAddress.first, instanceToPush.m_instanceAddress.second);
@@ -663,8 +663,8 @@ namespace AzToolsFramework
             // Remap live Ids back to those of the asset.
             AZ::EntityUtils::SerializableEntityContainer assetEntities;
             asset.Get()->GetComponent()->GetEntities(assetEntities.m_entities);
-            AZ::EntityUtils::ReplaceEntityIdsAndEntityRefs(&assetEntities,
-                [this](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
+            AZ::IdUtils::Remapper<AZ::EntityId>::ReplaceIdsAndIdRefs(&assetEntities,
+                [this](const AZ::EntityId& originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>& /*idGenerator*/) -> AZ::EntityId
                     {
                         auto findIter = m_liveToAssetIdMap.find(originalId);
                         if (findIter != m_liveToAssetIdMap.end())
@@ -714,8 +714,13 @@ namespace AzToolsFramework
             // Entity is live entity, and we need to resolve the appropriate ancestor target.
             AZ::SliceComponent::SliceInstanceAddress instanceAddr(nullptr, nullptr);
             AzFramework::EntityIdContextQueryBus::EventResult(instanceAddr, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+            if (!instanceAddr.first) // entityId here could be a newly added loose entity, hence doesn't belong to any slice instance.
+            {   
+                return AZ::EntityId();
+            }
+
             const bool entityIsFromIgnoredSliceInstance = ignoreSliceInstance && ignoreSliceInstance->first && ignoreSliceInstance->first->GetSliceAsset().GetId() == instanceAddr.first->GetSliceAsset().GetId();
-            if (instanceAddr.first && !entityIsFromIgnoredSliceInstance)
+            if (!entityIsFromIgnoredSliceInstance)
             {
                 bool foundTargetAncestor = false;
 
@@ -935,21 +940,32 @@ namespace AzToolsFramework
 
                             // Copy scratch file to target location.
                             const bool targetFileExists = fileIO->Exists(targetPath);
-                            const bool removedTargetFile = fileIO->Remove(targetPath);
+
+                            bool removedTargetFile;
+                            {
+                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RemoveTarget");
+                                removedTargetFile = fileIO->Remove(targetPath);
+                            }
 
                             if (targetFileExists && !removedTargetFile)
                             {
                                 return AZ::Failure(AZStd::string::format("Unable to modify existing target slice file. Please make the slice writeable and try again."));
                             }
 
-                            AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), targetPath);
-                            if (!renameResult)
                             {
-                                return AZ::Failure(AZStd::string::format("Unable to move temporary slice file \"%s\" to target location.", tempFilePath.c_str()));
+                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RenameTempFile");
+                                AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), targetPath);
+                                if (!renameResult)
+                                {
+                                    return AZ::Failure(AZStd::string::format("Unable to move temporary slice file \"%s\" to target location.", tempFilePath.c_str()));
+                                }
                             }
 
                             // Bump the slice asset up in the asset processor's queue.
-                            EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, targetPath);
+                            {
+                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:GetAssetStatus");
+                                EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, targetPath);
+                            }
                             return AZ::Success();
                         }
                         else

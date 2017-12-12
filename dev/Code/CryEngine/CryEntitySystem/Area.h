@@ -62,9 +62,9 @@ public:
             : x(0.0f)
             , y(0.0f) { }
         a2DPoint(const Vec3& pos3D) { x = pos3D.x; y = pos3D.y; }
-        a2DPoint(float x, float y)
-            : x(x)
-            , y(y){}
+        a2DPoint(float _x, float _y)
+            : x(_x)
+            , y(_y){}
         float   DistSqr(const struct a2DPoint& point) const
         {
             float xx = x - point.x;

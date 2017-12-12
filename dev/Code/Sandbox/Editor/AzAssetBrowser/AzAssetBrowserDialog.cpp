@@ -40,15 +40,16 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
 
     m_ui->m_searchWidget->GetFilter()->AddFilter(m_selection.GetDisplayFilter());
     
+    using namespace AzToolsFramework::AssetBrowser;
     AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
-    AZ_Assert(m_assetBrowserModel, "Failed to get filebrowser model");
+    AZ_Assert(m_assetBrowserModel, "Failed to get asset browser model");
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_filterModel->SetFilter(m_ui->m_searchWidget->GetFilter());
 
     QString name = m_selection.GetDisplayFilter()->GetName();
 
     m_ui->m_assetBrowserTreeViewWidget->setModel(m_filterModel.data());
-    
+    m_ui->m_assetBrowserTreeViewWidget->SetThumbnailContext("AssetBrowser");
     m_ui->m_assetBrowserTreeViewWidget->setSelectionMode(selection.GetMultiselect() ?
         QAbstractItemView::SelectionMode::ExtendedSelection : QAbstractItemView::SelectionMode::SingleSelection);
 
@@ -59,7 +60,8 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
 
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserDialog::DoubleClickedSlot);
-    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal, this, [this](const QItemSelection&, const QItemSelection&){ AzAssetBrowserDialog::SelectionChangedSlot(); });
+    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
+        [this](const QItemSelection&, const QItemSelection&){ AzAssetBrowserDialog::SelectionChangedSlot(); });
     connect(m_ui->m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(m_ui->m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
@@ -84,11 +86,6 @@ void AzAssetBrowserDialog::RestoreState()
     {
         auto widget = parentWidget() ? parentWidget() : this;
         m_persistentState->RestoreGeometry(widget);
-
-        // shift dialog up because it gets offset by title bar
-        QRect geom = widget->geometry();
-        geom.setTop(geom.top() - AzQtComponents::DockBar::Height);
-        widget->setGeometry(geom);
     }
 }
 

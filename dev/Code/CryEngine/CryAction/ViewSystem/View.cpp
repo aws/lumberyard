@@ -120,9 +120,16 @@ void CView::Update(float frameTime, bool isActive)
         }
         else
         {
-            AZ::Transform transform = m_azEntity->GetTransform()->GetWorldTM();
-            m_viewParams.position = AZVec3ToLYVec3(transform.GetPosition());
-            m_viewParams.rotation = AZQuaternionToLYQuaternion(AZ::Quaternion::CreateFromTransform(transform));
+            if (m_azEntity != nullptr)
+            {
+                auto entityTransform = m_azEntity->GetTransform();
+                if (entityTransform != nullptr)
+                {
+                    AZ::Transform transform = entityTransform->GetWorldTM();
+                    m_viewParams.position = AZVec3ToLYVec3(transform.GetPosition());
+                    m_viewParams.rotation = AZQuaternionToLYQuaternion(AZ::Quaternion::CreateFromTransform(transform));
+                }
+            }
         }
 
         ApplyFrameAdditiveAngles(m_viewParams.rotation);
@@ -216,12 +223,12 @@ void CView::Update(float frameTime, bool isActive)
 
         // Uses the recorded tracking if time demo is on playback
         // Otherwise uses real tracking from device
-        ITimeDemoRecorder* pTimeDemoRecorder = gEnv->pGame->GetIGameFramework()->GetITimeDemoRecorder();
-
-        if (pTimeDemoRecorder && pTimeDemoRecorder->IsPlaying())
+        bool isRecorderPlaying = false;
+        TimeDemoRecorderBus::BroadcastResult(isRecorderPlaying, &TimeDemoRecorderBus::Events::IsPlaying);
+        if (isRecorderPlaying)
         {
             STimeDemoFrameRecord record;
-            pTimeDemoRecorder->GetCurrentFrameRecord(record);
+            TimeDemoRecorderBus::Broadcast(&TimeDemoRecorderBus::Events::GetCurrentFrameRecord, record);
 
             p = q * record.hmdPositionOffset;
             q = q * record.hmdViewRotation;
@@ -231,9 +238,9 @@ void CView::Update(float frameTime, bool isActive)
             if (pHmdReferencePoint && pHmdReferencePoint->GetIVal() == 1) // actor-centered HMD offset
             {
                 const IEntity* pEnt = GetLinkedEntity();
-                if (const IActor* pActor = gEnv->pGame->GetIGameFramework()->GetClientActor())
+                if (const IActor* clientActor = gEnv->pGame->GetIGameFramework()->GetClientActor())
                 {
-                    if (pEnt && pActor->GetEntity() == pEnt)
+                    if (pEnt && clientActor->GetEntity() == pEnt)
                     {
                         q = pEnt->GetWorldRotation();
                         pos = pEnt->GetWorldPos();
@@ -742,6 +749,14 @@ void CView::LinkTo(IEntity* follow)
     CRY_ASSERT(follow);
     m_linkedTo = AZ::EntityId(follow->GetId());
     m_viewParams.targetPos = follow->GetWorldPos();
+}
+
+//------------------------------------------------------------------------
+void CView::Unlink()
+{
+    m_azEntity = nullptr;
+    m_linkedTo.SetInvalid();
+    m_viewParams.targetPos = Vec3();
 }
 
 //------------------------------------------------------------------------

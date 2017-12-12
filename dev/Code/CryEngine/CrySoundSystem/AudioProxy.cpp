@@ -107,6 +107,41 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioProxy::ExecuteSourceTrigger(const TAudioControlID nTriggerID,
+        const Audio::TAudioControlID& sourceId,
+        const SAudioCallBackInfos & rCallbackInfos  /* = SAudioCallBackInfos::GetEmptyObject() */)
+    {
+        if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
+        {
+            AZ_Assert(m_nAudioObjectID != INVALID_AUDIO_OBJECT_ID, "Invalid AudioObjectID found when an audio proxy is executing a source trigger!");
+
+            SAudioRequest oRequest;
+            oRequest.nAudioObjectID = m_nAudioObjectID;
+            oRequest.nFlags = rCallbackInfos.nRequestFlags;
+
+            SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER> oRequestData(nTriggerID, sourceId);
+
+            oRequest.pOwner = (rCallbackInfos.pObjectToNotify != nullptr) ? rCallbackInfos.pObjectToNotify : this;
+            oRequest.pUserData = rCallbackInfos.pUserData;
+            oRequest.pUserDataOwner = rCallbackInfos.pUserDataOwner;
+            oRequest.pData = &oRequestData;
+
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, oRequest);
+        }
+        else
+        {
+            SQueuedAudioCommand oQueuedCommand = SQueuedAudioCommand(eQACT_EXECUTE_SOURCE_TRIGGER);
+            oQueuedCommand.nTriggerID = nTriggerID;
+            oQueuedCommand.pOwnerOverride = rCallbackInfos.pObjectToNotify;
+            oQueuedCommand.pUserData = rCallbackInfos.pUserData;
+            oQueuedCommand.pUserDataOwner = rCallbackInfos.pUserDataOwner;
+            oQueuedCommand.nRequestFlags = rCallbackInfos.nRequestFlags;
+            oQueuedCommand.nSourceID = sourceId;
+            TryAddQueuedCommand(oQueuedCommand);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioProxy::ExecuteTrigger(
         const TAudioControlID nTriggerID,
         const ELipSyncMethod eLipSyncMethod,
@@ -512,6 +547,12 @@ namespace Audio
                         ExecuteTrigger(refCommand.nTriggerID, refCommand.eLipSyncMethod, callbackInfos);
                         break;
                     }
+                    case eQACT_EXECUTE_SOURCE_TRIGGER:
+                    {
+                        const SAudioCallBackInfos callbackInfos(refCommand.pOwnerOverride, refCommand.pUserData, refCommand.pUserDataOwner, refCommand.nRequestFlags);
+                        ExecuteSourceTrigger(refCommand.nTriggerID, refCommand.nSourceID, callbackInfos);
+                        break;
+                    }
                     case eQACT_STOP_TRIGGER:
                     {
                         StopTrigger(refCommand.nTriggerID);
@@ -622,6 +663,7 @@ namespace Audio
         switch (refCommand.eType)
         {
             case eQACT_EXECUTE_TRIGGER:
+            case eQACT_EXECUTE_SOURCE_TRIGGER:
             case eQACT_STOP_TRIGGER:
             case eQACT_STOP_ALL_TRIGGERS:
             {

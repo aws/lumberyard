@@ -1435,8 +1435,8 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
             Audio::AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelNameOnly.c_str());
             if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
             {
-                Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> oAMData2(nPreloadRequestID, true);
-                oAudioRequestData.pData = &oAMData2;
+                Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(nPreloadRequestID, true);
+                oAudioRequestData.pData = &requestData;
                 Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
             }
         }

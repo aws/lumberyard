@@ -102,16 +102,15 @@ namespace AzFramework
 
     AZ::Quaternion ConvertEulerRadiansToQuaternion(const AZ::Vector3& eulerRadians)
     {
-        float rotx = eulerRadians.GetX() * 0.5f;
-        float roty = eulerRadians.GetY() * 0.5f;
-        float rotz = eulerRadians.GetZ() * 0.5f;
+        AZ::VectorFloat half(0.5f);
+        AZ::VectorFloat rotx = eulerRadians.GetX() * half;
+        AZ::VectorFloat roty = eulerRadians.GetY() * half;
+        AZ::VectorFloat rotz = eulerRadians.GetZ() * half;
 
-        auto sx = sinf(rotx);
-        auto cx = cosf(rotx);
-        auto sy = sinf(roty);
-        auto cy = cosf(roty);
-        auto sz = sinf(rotz);
-        auto cz = cosf(rotz);
+        AZ::VectorFloat sx, cx, sy, cy, sz, cz;
+        rotx.GetSinCos(sx, cx);
+        roty.GetSinCos(sy, cy);
+        rotz.GetSinCos(sz, cz);
 
         // rot = rotx * roty * rotz
         auto w = cx * cy * cz - sx * sy * sz;
@@ -119,15 +118,13 @@ namespace AzFramework
         auto y = cx * sy * cz - sx * cy * sz;
         auto z = cx * cy * sz + sx * sy * cz;
 
-        const float f4[4] = { x, y, z, w };
-        AZ::Quaternion q = AZ::Quaternion::CreateFromFloat4(f4);
+        AZ::Quaternion q(x, y, z, w);
         return q;
     }
 
     AZ::Quaternion ConvertEulerDegreesToQuaternion(const AZ::Vector3& eulerDegrees)
     {
-        AZ::Vector3 eulerRadians(AZ::DegToRad(eulerDegrees.GetX()), AZ::DegToRad(eulerDegrees.GetY()), AZ::DegToRad(eulerDegrees.GetZ()));
-        return ConvertEulerRadiansToQuaternion(eulerRadians);
+        return ConvertEulerRadiansToQuaternion(DegToRad(eulerDegrees));
     }
 
     void ConvertQuaternionToAxisAngle(const AZ::Quaternion& quat, AZ::Vector3& outAxis, float& outAngle)

@@ -58,8 +58,8 @@ function Styles:OnButtonClick()
 	-- button changes hover states. Force the tooltip of the newly pressed
 	-- button to show so the new tooltip display can be seen right away
 	local invalidEntityId = EntityId()
-	UiCanvasBus.Event.SetHoverInteractable(self.canvas, invalidEntityId)
-	UiCanvasBus.Event.SetHoverInteractable(self.canvas, UiButtonNotificationBus.GetCurrentBusId()) 
+	UiCanvasBus.Event.ForceHoverInteractable(self.canvas, invalidEntityId)
+	UiCanvasBus.Event.ForceHoverInteractable(self.canvas, UiButtonNotificationBus.GetCurrentBusId()) 
 end
 
 function Styles:GetButtonIndex(entityId)	

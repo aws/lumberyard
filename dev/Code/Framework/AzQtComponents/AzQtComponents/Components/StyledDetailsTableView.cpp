@@ -26,6 +26,7 @@
 #include <QMimeData>
 #include <QClipboard>
 #include <QMenu>
+#include <QTimer>
 
 namespace AzQtComponents
 {
@@ -52,6 +53,7 @@ namespace AzQtComponents
                     option.features = QStyleOptionViewItem::HasDisplay | QStyleOptionViewItem::WrapText;
                     option.state &= ~(QStyle::State_Selected);
                     option.icon = {};
+                    option.displayAlignment = Qt::Alignment(Qt::AlignVCenter | Qt::AlignLeft);
                     sizeHint = view->style()->sizeFromContents(QStyle::CT_ItemViewItem, &option, {}, view);
                     sizeHint.rheight() += StyledTreeDetailsPadding * 2;
                     option.rect.setTop(option.rect.bottom() - sizeHint.height());
@@ -139,8 +141,9 @@ namespace AzQtComponents
     class StyledDetailsTableDelegate : public QStyledItemDelegate
     {
     public:
-        StyledDetailsTableDelegate(QObject *parent)
-            : QStyledItemDelegate(parent)
+        StyledDetailsTableDelegate(StyledDetailsTableView* table)
+            : QStyledItemDelegate(table)
+            , m_table(table)
         {
         }
 
@@ -148,7 +151,39 @@ namespace AzQtComponents
         {
             auto copy = opt;
             initStyleOption(&copy, index);
-            DrawItemViewItem(painter, copy);
+
+            PrecalculateHeights(opt, index);
+
+            QVariant decorationData = index.data(Qt::DecorationRole);
+            if (decorationData.isNull())
+            {
+                // draw the item once, without text, so that we get the proper background rendering of everything
+                auto noTextOptions = copy;
+                noTextOptions.text = "";
+                DrawItemViewItem(painter, noTextOptions);
+
+                // draw the item again, with the text this time, but with the adjusted height;
+                // we need to specify the height here because it was mucked with earlier for
+                // the Details and we want the text centered vertically within the original box
+                auto textOptions = copy;
+                textOptions.state &= ~(QStyle::State_Selected);
+                textOptions.rect.setHeight(m_maximumTextHeights[index.row()]);
+                textOptions.displayAlignment = Qt::Alignment(Qt::AlignVCenter | Qt::AlignLeft);
+                DrawItemViewItem(painter, textOptions);
+            }
+            else
+            {
+                // draw the cell without the pixmap so that the background draws properly
+                auto pixmapOptions = copy;
+                pixmapOptions.icon = {};
+                DrawItemViewItem(painter, pixmapOptions);
+
+                // draw the pixmap, centered according to the maximum text height precalculated for this row
+                QPixmap pix = qvariant_cast<QPixmap>(decorationData);
+                int maxTextHeight = m_maximumTextHeights[index.row()];
+                QPoint pos = { pixmapOptions.rect.center().x(), pixmapOptions.rect.top() + (maxTextHeight  / 2) - (pix.height() / 2) };
+                painter->drawPixmap(pos, pix);
+            }
 
             if (!m_detailsOptions.contains(index.row()) &&
                     (opt.state.testFlag(QStyle::State_Selected) ||
@@ -166,6 +201,9 @@ namespace AzQtComponents
                 DrawItemViewItem(&painter, opt);
             }
             m_detailsOptions.clear();
+
+            m_precalculatedHeights.clear();
+            m_maximumTextHeights.clear();
         }
 
         void DrawItemViewItem(QPainter* painter, const QStyleOptionViewItem& option) const
@@ -210,16 +248,65 @@ namespace AzQtComponents
         void initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const override
         {
             QStyledItemDelegate::initStyleOption(option, index);
+            option->decorationAlignment = Qt::Alignment(Qt::AlignTop | Qt::AlignHCenter);
+            option->decorationPosition = QStyleOptionViewItem::Left;
             // Don't show focused state
             option->state &= ~(QStyle::State_HasFocus);
         }
 
+        void PrecalculateHeights(const QStyleOptionViewItem& opt, const QModelIndex& index) const
+        {
+            // check if we've already calculated the text heights for this row
+            if (m_precalculatedHeights.contains(index.row()))
+            {
+                return;
+            }
+            const auto widget = opt.widget;
+            const auto style = widget ? widget->style() : qApp->style();
+
+            // need to calculate it now; do some work for every row, even the invisible ones
+            int columnCount = m_table->model()->columnCount(QModelIndex());
+            for (int i = 0; i < columnCount; i++)
+            {
+                QModelIndex tempIndex = index.sibling(index.row(), i);
+
+                QVariant decorationData = tempIndex.data(Qt::DecorationRole);
+                if (!decorationData.isNull())
+                {
+                    continue;
+                }
+
+                QString textData = tempIndex.data(Qt::DisplayRole).toString();
+
+                // figure out what the original height of the cell should be
+                // pretending it's not selected so we won't get any special details heights added
+                auto textOptions = opt;
+                textOptions.state &= ~(QStyle::State_Selected);
+                textOptions.features |= QStyleOptionViewItem::WrapText;
+                textOptions.features |= QStyleOptionViewItem::HasDisplay;
+                textOptions.text = textData;
+                textOptions.rect.setWidth(m_table->columnWidth(i));
+                QSize originalContentsSize = style->sizeFromContents(QStyle::CT_ItemViewItem, &textOptions, {}, widget);
+
+                m_precalculatedHeights[tempIndex.row()][i] = originalContentsSize.height();
+
+                if (m_maximumTextHeights[tempIndex.row()] < originalContentsSize.height())
+                {
+                    m_maximumTextHeights[tempIndex.row()] = originalContentsSize.height();
+                }
+            }
+        }
+
     private:
+        StyledDetailsTableView* m_table;
         mutable QHash<int, QStyleOptionViewItem> m_detailsOptions;
+        mutable QHash<int, QHash<int, int>> m_precalculatedHeights;
+        mutable QHash<int, int> m_maximumTextHeights;
     };
 
     StyledDetailsTableView::StyledDetailsTableView(QWidget* parent)
         : QTableView(parent)
+        , m_resizeTimer(new QTimer(this))
     {
         setStyle(new StyledTableStyle(qApp));
         setAlternatingRowColors(true);
@@ -238,15 +325,30 @@ namespace AzQtComponents
         horizontalHeader()->setStyle(qApp->style());
         horizontalHeader()->setHighlightSections(false);
         horizontalHeader()->setStretchLastSection(true);
-        connect(horizontalHeader(), &QHeaderView::geometriesChanged, this, &StyledDetailsTableView::resizeRowsToContents);
-        connect(horizontalHeader(), &QHeaderView::sectionResized, this, &StyledDetailsTableView::resizeRowsToContents);
-
+        horizontalHeader()->setDefaultAlignment(Qt::Alignment(Qt::AlignLeft | Qt::AlignVCenter));
         setContextMenuPolicy(Qt::ActionsContextMenu);
 
         QAction* copyAction = new QAction(tr("Copy"), this);
         copyAction->setShortcut(QKeySequence::Copy);
         connect(copyAction, &QAction::triggered, this, &StyledDetailsTableView::copySelectionToClipboard);
         addAction(copyAction);
+
+        m_resizeTimer->setSingleShot(true);
+        m_resizeTimer->setInterval(0);
+        connect(m_resizeTimer, &QTimer::timeout, this, [this]()
+        {
+            resizeRowsToContents();
+            if (m_scrollOnInsert)
+            {
+                m_scrollOnInsert = false;
+                scrollToBottom();
+            }
+        });
+
+        auto startResizeTimer = static_cast<void(QTimer::*)(void)>(&QTimer::start);
+        connect(horizontalHeader(), &QHeaderView::geometriesChanged, m_resizeTimer, startResizeTimer);
+        connect(horizontalHeader(), &QHeaderView::sectionResized, m_resizeTimer, startResizeTimer);
+
     }
 
     void StyledDetailsTableView::setModel(QAbstractItemModel* model)
@@ -265,19 +367,14 @@ namespace AzQtComponents
 
         if (model)
         {
-            connect(model, &QAbstractItemModel::layoutChanged, this, &StyledDetailsTableView::resizeRowsToContents);
+            auto startResizeTimer = static_cast<void(QTimer::*)(void)>(&QTimer::start);
+            connect(model, &QAbstractItemModel::layoutChanged, m_resizeTimer, startResizeTimer);
+            connect(model, &QAbstractItemModel::rowsInserted, m_resizeTimer, startResizeTimer);
+
             connect(model, &QAbstractItemModel::rowsAboutToBeInserted, this, [this]
             {
                 m_scrollOnInsert = !selectionModel()->hasSelection()
                     && (verticalScrollBar()->value() == verticalScrollBar()->maximum());
-            });
-            connect(model, &QAbstractItemModel::rowsInserted, this, [this]
-            {
-                if (m_scrollOnInsert)
-                {
-                    m_scrollOnInsert = false;
-                    scrollToBottom();
-                }
             });
             connect(model, &QAbstractItemModel::dataChanged, this,
                 [this](const QModelIndex&, const QModelIndex&, const QVector<int>& roles)

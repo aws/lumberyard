@@ -11,7 +11,6 @@
 */
 
 #include <AzFramework/Input/System/InputSystemComponent.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_ios.h>
 
 #include <UIKit/UIKit.h>
 
@@ -21,7 +20,6 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Platform specific implementation for the input system component on ios
     class InputSystemComponentIos : public InputSystemComponent::Implementation
-                                  , public RawInputRequestBusIos::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,8 +36,8 @@ namespace AzFramework
         ~InputSystemComponentIos() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputRequestBusIos::PumpRawEventLoop
-        void PumpRawEventLoop() override;
+        //! \ref AzFramework::InputSystemComponent::Implementation::PreTickInputDevices
+        void PreTickInputDevices() override;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,22 +51,24 @@ namespace AzFramework
     InputSystemComponentIos::InputSystemComponentIos(InputSystemComponent& inputSystem)
         : InputSystemComponent::Implementation(inputSystem)
     {
-        RawInputRequestBusIos::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputSystemComponentIos::~InputSystemComponentIos()
     {
-        RawInputRequestBusIos::Handler::BusDisconnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputSystemComponentIos::PumpRawEventLoop()
+    void InputSystemComponentIos::PreTickInputDevices()
     {
+        // Pump the ios event loop to ensure that it has dispatched all input events. Other systems
+        // may also do this, so some or all input events may have already been dispatched, but each
+        // input device implementation should handle this (by queueing all input events until their
+        // TickInputDevice function is called) so events are processed at the same time every frame.
         SInt32 result;
         do
         {
-            result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE);
+            result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, DBL_EPSILON, TRUE);
         }
         while (result == kCFRunLoopRunHandledSource);
     }

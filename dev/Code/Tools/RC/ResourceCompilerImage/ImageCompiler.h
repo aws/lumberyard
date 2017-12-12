@@ -22,6 +22,7 @@
 #include "GenerationProgress.h"
 
 #include <AzCore/Memory/MemoryComponent.h>
+#include <AzCore/Jobs/JobManagerComponent.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
 
@@ -55,6 +56,7 @@ public:
 
             components.insert(components.end(), {
                 azrtti_typeid<AZ::MemoryComponent>(),
+                azrtti_typeid<AZ::JobManagerComponent>(),
                 azrtti_typeid<AzToolsFramework::PerforceComponent>(),
             });
 

@@ -1,0 +1,8 @@
+<Material MtlFlags="524288" Shader="Terrain.Layer" GenMask="208400000" StringGenMask="%NORMAL_MAP%PARALLAX_OCCLUSION_MAPPING%TEMP_TERRAIN" SurfaceType="mat_soil" Diffuse="0.53947961,0.49693301,0.38132605" Specular="0.10946172,0.10946172,0.10946172" Opacity="1" Shininess="7" CloakAmount="0" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="textures/terrain/am_mud_hm_diff.dds"/>
+  <Texture Map="Bumpmap" File="textures/terrain/am_mud_hm_ddn.dds"/>
+  <Texture Map="Heightmap" File="textures/terrain/am_mud_hm_displ.dds"/>
+ </Textures>
+ <PublicParams BlendFalloff="2.3" DetailTextureStrength="1" PomDisplacement="0.035500001" SelfShadowStrength="3.085" HeightBias="0.93599999" BlendFactor="4.79" IndirectColor="0.26225069,0.26225069,0.26225069"/>
+</Material>

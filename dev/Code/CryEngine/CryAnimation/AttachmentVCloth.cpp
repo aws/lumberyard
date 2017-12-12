@@ -43,6 +43,24 @@ uint32 CAttachmentVCLOTH::AddBinding(IAttachmentObject* pIAttachmentObject, _sma
         CryFatalError("CryAnimation: if you create the binding for a Skin-Attachment, then you have to pass the pointer to an ISkin as well");
     }
 
+    //On reload we need to clear out the motion blur pose array of old data
+    //we need to wait for async jobs to be done using the data before clearing
+
+    for (uint32 i = 0; i < tripleBufferSize; i++)
+    {
+        SSkinningData* pSkinningData = m_arrSkinningRendererData[i].pSkinningData;
+        int expectedNumBones = m_arrSkinningRendererData[i].nNumBones;
+        if (pSkinningData
+            && pSkinningData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData
+            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
+            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+        {
+            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+        }
+    }
+    memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
+
     uint32 nLogWarnings = (nLoadingFlags & CA_DisableLogWarnings) == 0;
     _smart_ptr<CSkin> pCSkinRenderModel = _smart_ptr<CSkin>((CSkin*)pISkinRender.get());
 
@@ -1116,8 +1134,9 @@ SSkinningData* CAttachmentVCLOTH::GetVertexTransformationData(bool bVertexAnimat
 
     // get data to fill
     int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
-    int nList = nFrameID % 3;
-    int nPrevList = (nFrameID - 1) % 3;
+    int nList = nFrameID % tripleBufferSize;
+    int nPrevList = (nFrameID - 1) % tripleBufferSize;
+    
     // before allocating new skinning date, check if we already have for this frame
     if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
     {
@@ -1158,7 +1177,16 @@ SSkinningData* CAttachmentVCLOTH::GetVertexTransformationData(bool bVertexAnimat
         pVertexAnimation->commandBufferLength = commandBufferLength;
     }
     m_arrSkinningRendererData[nList].pSkinningData = pSkinningData;
+    m_arrSkinningRendererData[nList].nNumBones = nNumBones;
     m_arrSkinningRendererData[nList].nFrameID = nFrameID;
+
+    //clear obsolete data
+    int nPrevPrevList = (nFrameID - 2) % tripleBufferSize;
+    if (nPrevPrevList >= 0 && m_arrSkinningRendererData[nPrevPrevList].pSkinningData)
+    {
+        m_arrSkinningRendererData[nPrevPrevList].pSkinningData->pPreviousSkinningRenderData = nullptr;
+    }
+
     PREFAST_ASSUME(pSkinningData);
 
     // set data for motion blur

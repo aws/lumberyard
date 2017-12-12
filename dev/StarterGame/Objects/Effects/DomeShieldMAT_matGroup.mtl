@@ -1,0 +1,16 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="DomeShieldMAT" MtlFlags="526502" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Emittance="0.2269659,0.043735035,0.0056053922,30" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_domeshield_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="16" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.0099999998" TexMod_UOscillatorAmplitude="1" TileV="10"/>
+    </Texture>
+    <Texture Map="Decal" File="objects/effects/particleassets/fx_gradientcenter_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileV="2" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="0.30000001" TexMod_VOscillatorAmplitude="1"/>
+    </Texture>
+   </Textures>
+   <PublicParams GrainAmount="0" DeformAmount="0" DeformTillingY="1" GrainTilling="1" ResolutionX="512" ResolutionY="512" InterlacingTilling="0" Contrast="1" Saturation="1" DeformTillingX="1" GrainSaturation="1" FresnelScale="0" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0" FresnelBias="0" ChromaShift="0" ViewAngle="180" DeformFreq="0"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

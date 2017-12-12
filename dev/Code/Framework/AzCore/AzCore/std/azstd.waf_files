@@ -150,13 +150,13 @@
         [
             "string/alphanum.cpp",
             "string/alphanum.h",
-            "string/const_string.h",
             "string/conversions.h",
             "string/conversions_winrt.h",
             "string/regex.h",
             "string/regex.cpp",
             "string/string.cpp",
             "string/string.h",
+            "string/string_view.h",
             "string/osstring.h",
             "string/tokenize.h",
             "string/utf8/core.h",
@@ -235,6 +235,7 @@
             "typetraits/same_traits.h",
             "typetraits/size_t_trait_def.h",
             "typetraits/transform_traits.h",
+            "typetraits/tuple_traits.h",
             "typetraits/typetraits.h",
             "typetraits/type_id.h",
             "typetraits/type_trait_def.h",
@@ -256,6 +257,7 @@
             "typetraits/internal/is_function_ptr_tester.h",
             "typetraits/internal/is_mem_fun_pointer_impl.h",
             "typetraits/internal/is_mem_fun_pointer_tester.h",
+            "typetraits/internal/type_sequence_traits.h",
             "typetraits/internal/wrap.h",
             "typetraits/internal/yes_no_type.h"
         ]

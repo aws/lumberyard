@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "MaterialNode.h"
 #include "AnimTrack.h"
 
@@ -62,8 +63,14 @@ void CAnimMaterialNode::InitializeTrack(IAnimTrack* pTrack, const CAnimParamType
 }
 
 //////////////////////////////////////////////////////////////////////////
+CAnimMaterialNode::CAnimMaterialNode()
+    : CAnimMaterialNode(0)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
 CAnimMaterialNode::CAnimMaterialNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Material)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
 
@@ -265,7 +272,7 @@ void CAnimMaterialNode::Animate(SAnimContext& ec)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType paramId = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled)
         {
@@ -396,6 +403,13 @@ _smart_ptr<IMaterial> CAnimMaterialNode::GetMaterialByName(const char* pName)
     {
         return gEnv->p3DEngine->GetMaterialManager()->FindMaterial(GetName());
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimMaterialNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimMaterialNode, CAnimNode>()
+        ->Version(1);
 }
 
 #undef s_nodeParamsInitialized

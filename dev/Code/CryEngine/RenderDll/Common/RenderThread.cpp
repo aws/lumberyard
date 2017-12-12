@@ -24,6 +24,10 @@
 #include <DriverD3D.h>
 #endif
 
+#if defined(AZ_PLATFORM_APPLE_OSX)
+#include <CoreFoundation/CFRunLoop.h>
+#endif
+
 #include "MainThreadRenderRequestBus.h"
 #include "Common/RenderView.h"
 
@@ -324,18 +328,18 @@ void SRenderThread::RC_ParseShader (CShader* pSH, uint64 nMaskGen, uint32 flags,
         {
             pRes->AddRef();
         }
- 
+
         AZStd::function<void()> runOnMainThread = [this, pSH, nMaskGen, flags, pRes]()
-        {
-            RC_ParseShader(pSH, nMaskGen, flags, pRes);
- 
-            pSH->Release();
-            if (pRes)
             {
-                pRes->Release();
-            }
-        };
- 
+                RC_ParseShader(pSH, nMaskGen, flags, pRes);
+
+                pSH->Release();
+                if (pRes)
+                {
+                    pRes->Release();
+                }
+            };
+
         EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
         return;
     }
@@ -364,12 +368,11 @@ void SRenderThread::RC_UpdateShaderItem (SShaderItem* pShaderItem)
 
     if (!IsMainThread(true))
     {
- 
         AZStd::function<void()> runOnMainThread = [this, pShaderItem]()
-        {
-            RC_UpdateShaderItem(pShaderItem);
-        };
- 
+            {
+                RC_UpdateShaderItem(pShaderItem);
+            };
+
         EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
         return;
     }
@@ -945,12 +948,11 @@ void SRenderThread::RC_RelinkTexture(CTexture* pTex)
 
     if (!IsMainThread(true))
     {
- 
         AZStd::function<void()> runOnMainThread = [this, pTex]()
-        {
-            RC_RelinkTexture(pTex);
-        };
- 
+            {
+                RC_RelinkTexture(pTex);
+            };
+
         EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
         return;
     }
@@ -1949,32 +1951,13 @@ void SRenderThread::RC_SetTexture(int nTex, int nUnit)
         CTexture::ApplyForID(nUnit, nTex, -1, -1);
         return;
     }
-    
-    LOADINGLOCK_COMMANDQUEUE      
+
+    LOADINGLOCK_COMMANDQUEUE
     int nState = CTexture::GetByID(nTex)->GetDefState();
     byte* p = AddCommand(eRC_SetTexture, 12);
     AddDWORD(p, nTex);
     AddDWORD(p, nUnit);
     AddDWORD(p, nState);
-    EndCommand(p);
-}
-
-void SRenderThread::RC_PreprGenerateCloud(CRendElementBase* pRE, CShader* pShader, CShaderResources* pRes, CRenderObject* pObject)
-{
-    AZ_TRACE_METHOD();
-    if (IsRenderThread())
-    {
-        CRECloud* pREC = (CRECloud*)pRE;
-        pREC->GenerateCloudImposter(pShader, pRes, pObject);
-        return;
-    }
-
-    LOADINGLOCK_COMMANDQUEUE
-    byte* p = AddCommand(eRC_PreprGenerateCloud, 4 * sizeof(void*));
-    AddPointer(p, pRE);
-    AddPointer(p, pShader);
-    AddPointer(p, pRes);
-    AddPointer(p, pObject);
     EndCommand(p);
 }
 
@@ -2168,7 +2151,7 @@ void SRenderThread::ProcessCommands()
         m_kDXGLDeviceContextHandle.Set(&gcpRendD3D->GetDeviceContext(), !CRenderer::CV_r_multithreaded);
     }
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-       //  Confetti End: Igor Lobanchikov
+    //  Confetti End: Igor Lobanchikov
 
 
 #ifdef DO_RENDERSTATS
@@ -2316,18 +2299,34 @@ void SRenderThread::ProcessCommands()
                 nFlags &= ~FRT_CLEAR_IMMEDIATE;
                 switch (nType)
                 {
-                case 0: gRenDev->EF_ClearTargetsLater(nFlags); break;
-                case 1: gRenDev->EF_ClearTargetsLater(nFlags, vColor, fDepth, 0); break;
-                case 2: gRenDev->EF_ClearTargetsLater(nFlags, vColor); break;
-                case 3: gRenDev->EF_ClearTargetsLater(nFlags, fDepth, 0); break;
+                case 0:
+                    gRenDev->EF_ClearTargetsLater(nFlags);
+                    break;
+                case 1:
+                    gRenDev->EF_ClearTargetsLater(nFlags, vColor, fDepth, 0);
+                    break;
+                case 2:
+                    gRenDev->EF_ClearTargetsLater(nFlags, vColor);
+                    break;
+                case 3:
+                    gRenDev->EF_ClearTargetsLater(nFlags, fDepth, 0);
+                    break;
                 }
             }
             switch (nType)
             {
-            case 0: gRenDev->EF_ClearTargetsImmediately(nFlags); break;
-            case 1: gRenDev->EF_ClearTargetsImmediately(nFlags, vColor, fDepth, 0); break;
-            case 2: gRenDev->EF_ClearTargetsImmediately(nFlags, vColor); break;
-            case 3: gRenDev->EF_ClearTargetsImmediately(nFlags, fDepth, 0); break;
+            case 0:
+                gRenDev->EF_ClearTargetsImmediately(nFlags);
+                break;
+            case 1:
+                gRenDev->EF_ClearTargetsImmediately(nFlags, vColor, fDepth, 0);
+                break;
+            case 2:
+                gRenDev->EF_ClearTargetsImmediately(nFlags, vColor);
+                break;
+            case 3:
+                gRenDev->EF_ClearTargetsImmediately(nFlags, fDepth, 0);
+                break;
             }
         }
         break;
@@ -2712,7 +2711,7 @@ void SRenderThread::ProcessCommands()
             {
                 gRenDev->SetMatrices(ProjMat.GetData(), ViewMat.GetData());
                 gRenDev->m_CameraZeroMatrix[threadId] = CameraZeroMat;
-                gRenDev->SetViewParameters(viewParameters);   
+                gRenDev->SetViewParameters(viewParameters);
 
                 gRenDev->RT_SetCameraInfo();
             }
@@ -2808,16 +2807,6 @@ void SRenderThread::ProcessCommands()
             gRenDev->m_CurRenderEye = eye;
         }
         break;
-        case eRC_PreprGenerateCloud:
-            assert (m_eVideoThreadMode == eVTM_Disabled);
-            {
-                CRECloud* pRE = ReadCommand<CRECloud*>(n);
-                CShader* pShader = ReadCommand<CShader*>(n);
-                CShaderResources* pRes = ReadCommand<CShaderResources*>(n);
-                CRenderObject* pObject = ReadCommand<CRenderObject*>(n);
-                pRE->GenerateCloudImposter(pShader, pRes, pObject);
-            }
-            break;
         case eRC_DynTexUpdate:
             assert (m_eVideoThreadMode == eVTM_Disabled);
             {
@@ -3134,7 +3123,7 @@ void SRenderThread::Process()
 
         WaitFlushCond();
 
-        // Clear stale SRV bindings before processing graphic commands in case there have been textures deleted in previous frames, 
+        // Clear stale SRV bindings before processing graphic commands in case there have been textures deleted in previous frames,
         // because simply clearing them during BeginFrame/EndFrame is not sufficient as the graphic commands can be executed without calling BeginFrame/EndFrame
 #if !defined (NULL_RENDERER)
         if (gcpRendD3D->IsDeviceContextValid())
@@ -3263,7 +3252,7 @@ void SRenderThread::Process()
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-       //  Confetti End: Igor Lobanchikov
+    //  Confetti End: Igor Lobanchikov
 }
 
 void SRenderThread::ProcessLoading()
@@ -3303,7 +3292,7 @@ void SRenderThread::ProcessLoading()
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-       //  Confetti End: Igor Lobanchikov
+    //  Confetti End: Igor Lobanchikov
 }
 
 #ifndef STRIP_RENDER_THREAD
@@ -3528,6 +3517,19 @@ void SRenderThread::WaitFlushFinishedCond()
             gEnv->pSystem->PumpWindowMessage(true, hWnd);
         }
         Sleep(0);
+#elif defined(AZ_PLATFORM_APPLE_OSX) && !defined(_RELEASE)
+        // On MacOS, we display blocking alerts(dialogs) to provide notifications to users(eg: assert failed).
+        // These alerts(NSAlert) can be triggered only from the main thread. If we run into an assert on the render thread,
+        // this block of code ensures that the alert is displayed on the main thread and we're not deadlocked with render thread.
+        if (!gEnv->IsEditor())
+        {
+            SInt32 result;
+            do
+            {
+                result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, TRUE);
+            }
+            while (result == kCFRunLoopRunHandledSource);
+        }
 #endif
         READ_WRITE_BARRIER
     }

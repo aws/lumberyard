@@ -89,9 +89,9 @@ struct IAsyncIOFileCallback
 
 struct SStreamPageHdr
 {
-    explicit SStreamPageHdr(int nSize)
+    explicit SStreamPageHdr(int size)
         : nRefs()
-        , nSize(nSize)
+        , nSize(size)
     {}
 
     volatile int nRefs;

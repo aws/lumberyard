@@ -17,7 +17,7 @@ import os
 
 def build(bld):
 
-    defines     = [ ]
+    defines     = [ 'ENGINE_EXPORTS' ]
     libpath     = [ bld.Path('Code/SDKs') ]
     includes    = [ ]
     win_lib     = [ 'dinput8', 'dxguid' ]
@@ -37,24 +37,6 @@ def build(bld):
         use                = ['AzFramework'],
         includes           = includes,
 
-        # Platform Specific
-        win_lib            = win_lib,
-
-       
-       
-
-        darwin_uselib      = ['SDL2'],
-
-        ios_cxxflags       = ['-x', 'objective-c++' ],
-        ios_file_list      = ['crymobileinput.waf_files', 'cryiosinput.waf_files' ],
-        ios_framework      = ['CoreMotion' ],
-
-        appletv_file_list  = ['cryappletvinput.waf_files' ],
-
-        android_file_list  = ['crymobileinput.waf_files', 'cryandroidinput.waf_files' ],
-
-
         # Testing
         test_all_file_list = ['cryinput_test.waf_files'],
-
     )

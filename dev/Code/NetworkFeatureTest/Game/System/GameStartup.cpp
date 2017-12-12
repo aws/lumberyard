@@ -4,7 +4,6 @@
 #include "Core/NetworkFeatureTestGame.h"
 #include "Core/EditorGame.h"
 #include "platform_impl.h"
-#include "IHardwareMouse.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
 #include <IPlatformOS.h>
@@ -304,23 +303,6 @@ bool GameStartup::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_KILLFOCUS:
         // 3.8.1 - set a hasWindowFocus CVar to false
         break;
-
-    case WM_SETCURSOR:
-    {
-        // This is sample code to change the displayed cursor for Windows applications.
-        // Note that this sample loads a texture (ie, .TIF or .DDS), not a .ICO or .CUR resource.
-        const char* const cDefaultCursor = "EngineAssets/Textures/Cursor_Green.tif";
-        IHardwareMouse* const pMouse = gEnv ? gEnv->pHardwareMouse : nullptr;
-        assert(pMouse && "HWMouse should be initialized before window is shown, check engine initialization order");
-        const bool bResult = pMouse ? pMouse->SetCursor(cDefaultCursor) : false;
-        if (!bResult)
-        {
-            GameWarning("Unable to load cursor %s, does this file exist?", cDefaultCursor);
-        }
-        *pResult = bResult ? TRUE : FALSE;
-        return bResult;
-    }
-    break;
     }
     return false;
 }

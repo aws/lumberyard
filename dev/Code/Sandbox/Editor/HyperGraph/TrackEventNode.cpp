@@ -38,7 +38,7 @@ CTrackEventNode::~CTrackEventNode()
     if (NULL != m_pSequence)
     {
         m_pSequence->RemoveTrackEventListener(this);
-        m_pSequence->Release();
+        m_pSequence->release();
         m_pSequence = NULL;
     }
 }
@@ -56,7 +56,7 @@ void CTrackEventNode::Done()
     if (NULL != m_pSequence)
     {
         m_pSequence->RemoveTrackEventListener(this);
-        m_pSequence->Release();
+        m_pSequence->release();
         m_pSequence = NULL;
     }
 
@@ -186,7 +186,7 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
     if (NULL != m_pSequence)
     {
         m_pSequence->RemoveTrackEventListener(this);
-        m_pSequence->Release();
+        m_pSequence->release();
         m_pSequence = NULL;
     }
 
@@ -209,7 +209,7 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
     else
     {
         // Add listener
-        m_pSequence->AddRef();
+        m_pSequence->add_ref();
         m_pSequence->AddTrackEventListener(this);
     }
 

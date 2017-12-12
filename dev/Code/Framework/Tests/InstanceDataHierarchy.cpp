@@ -24,6 +24,121 @@ using namespace AZ::Debug;
 
 namespace UnitTest
 {
+    class TestComponent
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TestComponent, "{94D5C952-FD65-4997-B517-F36003F8018A}");
+
+        struct SubData
+        {
+            AZ_TYPE_INFO(SubData, "{A0165FCA-A311-4FED-B36A-DC5FD2AF2857}");
+            AZ_CLASS_ALLOCATOR(SubData, AZ::SystemAllocator, 0);
+
+            SubData() {}
+            SubData(int v) : m_int(v) {}
+            ~SubData() = default;
+
+            int m_int = 0;
+        };
+
+        class SerializationEvents
+            : public AZ::SerializeContext::IEventHandler
+        {
+            void OnReadBegin(void* classPtr) override
+            {
+                TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
+                component->m_serializeOnReadBegin++;
+            }
+            void OnReadEnd(void* classPtr) override
+            {
+                TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
+                component->m_serializeOnReadEnd++;
+            }
+            void OnWriteBegin(void* classPtr) override
+            {
+                TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
+                component->m_serializeOnWriteBegin++;
+            }
+            void OnWriteEnd(void* classPtr) override
+            {
+                TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
+                component->m_serializeOnWriteEnd++;
+            }
+        };
+
+        TestComponent() = default;
+        ~TestComponent() override
+        {
+            for (SubData* data : m_pointerContainer)
+            {
+                delete data;
+            }
+        }
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<SubData>()
+                    ->Version(1)
+                    ->Field("Int", &SubData::m_int)
+                    ;
+
+                serializeContext->Class<TestComponent, AZ::Component>()
+                    ->EventHandler<SerializationEvents>()
+                    ->Version(1)
+                    ->Field("Float", &TestComponent::m_float)
+                    ->Field("String", &TestComponent::m_string)
+                    ->Field("NormalContainer", &TestComponent::m_normalContainer)
+                    ->Field("PointerContainer", &TestComponent::m_pointerContainer)
+                    ->Field("SubData", &TestComponent::m_subData)
+                    ;
+
+                if (AZ::EditContext* edit = serializeContext->GetEditContext())
+                {
+                    edit->Class<TestComponent>("Test Component", "A test component")
+                        ->DataElement(0, &TestComponent::m_float, "Float Field", "A float field")
+                        ->DataElement(0, &TestComponent::m_string, "String Field", "A string field")
+                        ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container")
+                        ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container")
+                        ->DataElement(0, &TestComponent::m_subData, "Struct Field", "A sub data type")
+                        ;
+
+                    edit->Class<SubData>("Test Component", "A test component")
+                        ->DataElement(0, &SubData::m_int, "Int Field", "An int")
+                        ;
+                }
+            }
+        }
+
+        void Activate() override
+        {
+        }
+
+        void Deactivate() override
+        {
+        }
+
+        float m_float = 0.f;
+        AZStd::string m_string;
+
+        AZStd::vector<SubData> m_normalContainer;
+        AZStd::vector<SubData*> m_pointerContainer;
+
+        SubData m_subData;
+
+        size_t m_serializeOnReadBegin = 0;
+        size_t m_serializeOnReadEnd = 0;
+        size_t m_serializeOnWriteBegin = 0;
+        size_t m_serializeOnWriteEnd = 0;
+    };
+    
+    bool operator==(const TestComponent::SubData& lhs, const TestComponent::SubData& rhs)
+    {
+        return lhs.m_int == rhs.m_int;
+    }
+
     /**
     * InstanceDataHierarchyBasicTest
     */
@@ -31,113 +146,6 @@ namespace UnitTest
         : public AllocatorsFixture
     {
     public:
-
-        class TestComponent
-            : public AZ::Component
-        {
-        public:
-            AZ_COMPONENT(TestComponent, "{94D5C952-FD65-4997-B517-F36003F8018A}");
-
-            struct SubData
-            {
-                AZ_TYPE_INFO(SubData, "{A0165FCA-A311-4FED-B36A-DC5FD2AF2857}");
-                AZ_CLASS_ALLOCATOR(SubData, AZ::SystemAllocator, 0);
-
-                SubData(int v = 0)
-                    : m_int(v) {}
-                ~SubData() = default;
-
-                int m_int;
-            };
-
-            class SerializationEvents
-                : public AZ::SerializeContext::IEventHandler
-            {
-                void OnReadBegin(void* classPtr) override
-                {
-                    TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
-                    component->m_serializeOnReadBegin++;
-                }
-                void OnReadEnd(void* classPtr) override
-                {
-                    TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
-                    component->m_serializeOnReadEnd++;
-                }
-                void OnWriteBegin(void* classPtr) override
-                {
-                    TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
-                    component->m_serializeOnWriteBegin++;
-                }
-                void OnWriteEnd(void* classPtr) override
-                {
-                    TestComponent* component = reinterpret_cast<TestComponent*>(classPtr);
-                    component->m_serializeOnWriteEnd++;
-                }
-            };
-
-            TestComponent() = default;
-            ~TestComponent() override
-            {
-                for (SubData* data : m_pointerContainer)
-                {
-                    delete data;
-                }
-            }
-
-            static void Reflect(AZ::ReflectContext* context)
-            {
-                if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-                {
-                    serializeContext->Class<SubData>()
-                        ->Version(1)
-                        ->Field("Int", &SubData::m_int)
-                    ;
-
-                    serializeContext->Class<TestComponent, AZ::Component>()
-                        ->EventHandler<SerializationEvents>()
-                        ->Version(1)
-                        ->Field("Float", &TestComponent::m_float)
-                        ->Field("String", &TestComponent::m_string)
-                        ->Field("NormalContainer", &TestComponent::m_normalContainer)
-                        ->Field("PointerContainer", &TestComponent::m_pointerContainer)
-                    ;
-
-                    if (AZ::EditContext* edit = serializeContext->GetEditContext())
-                    {
-                        edit->Class<TestComponent>("Test Component", "A test component")
-                            ->DataElement(0, &TestComponent::m_float, "Float Field", "A float field")
-                            ->DataElement(0, &TestComponent::m_string, "String Field", "A string field")
-                            ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container")
-                            ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container")
-                        ;
-
-                        edit->Class<SubData>("Test Component", "A test component")
-                            ->DataElement(0, &SubData::m_int, "Int Field", "An int")
-                        ;
-                    }
-                }
-            }
-
-            void Activate() override
-            {
-            }
-
-            void Deactivate() override
-            {
-            }
-
-            float m_float = 0.f;
-            AZStd::string m_string;
-
-            AZStd::vector<SubData> m_normalContainer;
-            AZStd::vector<SubData*> m_pointerContainer;
-
-            size_t m_serializeOnReadBegin = 0;
-            size_t m_serializeOnReadEnd = 0;
-            size_t m_serializeOnWriteBegin = 0;
-            size_t m_serializeOnWriteEnd = 0;
-        };
-
         InstanceDataHierarchyBasicTest()
         {
         }
@@ -349,6 +357,109 @@ namespace UnitTest
 
                 AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_normalContainer.size() == 2);
                 AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_pointerContainer.size() == 1);
+            }
+
+            // Test FindNodeByPartialAddress functionality and Read/Write of InstanceDataNode
+            {
+                const AZStd::string testString = "this is a test";
+                const float testFloat = 123.0f;
+                const int testInt = 7;
+                const TestComponent::SubData testSubData(testInt);
+                const AZStd::vector<TestComponent::SubData> testNormalContainer{ TestComponent::SubData(1), TestComponent::SubData(2), TestComponent::SubData(3) };
+
+                // create a test component with some initial values
+                AZStd::unique_ptr<TestComponent> testComponent(new TestComponent);
+                testComponent.get()->m_float = testFloat;
+                testComponent.get()->m_string = testString;
+                testComponent.get()->m_normalContainer = testNormalContainer;
+                testComponent.get()->m_subData.m_int = testInt;
+
+                // create an InstanceDataHierarchy for the test component
+                InstanceDataHierarchy idhTestComponent;
+                idhTestComponent.AddRootInstance(testComponent.get());
+                idhTestComponent.Build(&serializeContext, 0);
+
+                // create some partial addresses to search for fields in InstanceDataHierarchy
+                // note: reflection serialization context values are used for lookup (crcs stored)
+                //       if a more specific address is required, start from field and work up to structures/components etc
+                //       (see addrSubDataInt below as an example)
+                InstanceDataNode::Address addrFloat = { AZ_CRC("Float") };
+                InstanceDataNode::Address addrString = { AZ_CRC("String") };
+                InstanceDataNode::Address addrNormalContainer = { AZ_CRC("NormalContainer") };
+                InstanceDataNode::Address addrSubData = { AZ_CRC("SubData") };
+                InstanceDataNode::Address addrSubDataInt = { AZ_CRC("Int"), AZ_CRC("SubData") };
+
+                // find InstanceDataNodes using partial address
+                InstanceDataNode* foundFloat = idhTestComponent.FindNodeByPartialAddress(addrFloat);
+                InstanceDataNode* foundString = idhTestComponent.FindNodeByPartialAddress(addrString);
+                InstanceDataNode* foundNormalContainer = idhTestComponent.FindNodeByPartialAddress(addrNormalContainer);
+                InstanceDataNode* foundSubData = idhTestComponent.FindNodeByPartialAddress(addrSubData);
+                InstanceDataNode* foundSubDataInt = idhTestComponent.FindNodeByPartialAddress(addrSubDataInt);
+
+                // ensure each has been returned successfully
+                AZ_TEST_ASSERT(foundFloat);
+                AZ_TEST_ASSERT(foundString);
+                AZ_TEST_ASSERT(foundNormalContainer);
+                AZ_TEST_ASSERT(foundSubData);
+                AZ_TEST_ASSERT(foundSubDataInt);
+
+                // check a case where we know the address is incorrect and we will not find an InstanceDataNode
+                InstanceDataNode::Address addrInvalid = { AZ_CRC("INVALID") };
+                InstanceDataNode* foundInvalid = idhTestComponent.FindNodeByPartialAddress(addrInvalid);
+                AZ_TEST_ASSERT(foundInvalid == nullptr);
+
+                ///////////////////////////////////////////////////////////////////////////////
+
+                // test the values read from the InstanceDataNodes are the same as the ones our TestComponent were constructed with
+                float readTestFloat;
+                foundFloat->Read(readTestFloat);
+                AZ_TEST_ASSERT(readTestFloat == testFloat);
+
+                AZStd::string readTestString;
+                foundString->Read(readTestString);
+                AZ_TEST_ASSERT(readTestString == testString);
+
+                int readTestInt;
+                foundSubDataInt->Read(readTestInt);
+                AZ_TEST_ASSERT(readTestInt == testInt);
+
+                TestComponent::SubData readTestSubData;
+                foundSubData->Read(readTestSubData);
+                AZ_TEST_ASSERT(readTestSubData == testSubData);
+
+                AZStd::vector<TestComponent::SubData> readTestNormalContainer;
+                foundNormalContainer->Read(readTestNormalContainer);
+                AZ_TEST_ASSERT(readTestNormalContainer == testNormalContainer);
+
+                // create some new test values to write to the InstanceDataNode
+                const AZStd::string newTestString = "this string has been updated!";
+                const float newTestFloat = 456.0f;
+                const int newTestInt = 94;
+                const TestComponent::SubData newTestSubData(newTestInt);
+                const AZStd::vector<TestComponent::SubData> newTestNormalContainer{ TestComponent::SubData(20), TestComponent::SubData(40), TestComponent::SubData(60) };
+
+                // actually write the values to each InstanceDataNode
+                foundFloat->Write(newTestFloat);
+                foundString->Write(newTestString);
+                foundSubData->Write(newTestSubData);
+                foundNormalContainer->Write(newTestNormalContainer);
+
+                // read the values back to make sure the are the same as the newly set values
+                AZStd::string updatedTestString;
+                foundString->Read(updatedTestString);
+                AZ_TEST_ASSERT(updatedTestString == newTestString);
+
+                float updatedTestFloat;
+                foundFloat->Read(updatedTestFloat);
+                AZ_TEST_ASSERT(updatedTestFloat == newTestFloat);
+
+                TestComponent::SubData updatedTestSubData;
+                foundSubData->Read(updatedTestSubData);
+                AZ_TEST_ASSERT(updatedTestSubData == newTestSubData);
+
+                AZStd::vector<TestComponent::SubData> updatedNormalContainer;
+                foundNormalContainer->Read(updatedNormalContainer);
+                AZ_TEST_ASSERT(updatedNormalContainer == newTestNormalContainer);
             }
         }
     };

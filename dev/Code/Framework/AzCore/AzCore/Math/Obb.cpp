@@ -62,7 +62,7 @@ bool Obb::IsFinite() const
     return m_position.IsFinite();
 }
 
-bool Obb::operator==(const Obb& rhs)
+bool Obb::operator==(const Obb& rhs) const
 {
     for (int i = 0; i < 3; ++i)
     {
@@ -74,6 +74,11 @@ bool Obb::operator==(const Obb& rhs)
     }
 
     return m_position.IsClose(rhs.m_position);
+}
+
+bool Obb::operator!=(const Obb& rhs) const
+{
+    return !(*this == rhs);
 }
 
 #endif // #ifndef AZ_UNITY_BUILD

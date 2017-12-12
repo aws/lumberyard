@@ -42,14 +42,14 @@ namespace AZ {
     Trace Debug::g_tracer;
     void* g_exceptionInfo = NULL;
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-    #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+    #if defined(AZ_PLATFORM_WINDOWS)
     LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo);
     LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionHandler = NULL;
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+    #endif
 #endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
     /**
-     * If any listener returns true, store the result so we do not outputs detailed information.
+     * If any listener returns true, store the result so we don't outputs detailed information.
      */
     struct TraceMessageResult
     {
@@ -67,10 +67,8 @@ namespace AZ {
     Trace::IsDebuggerPresent()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#   if defined(AZ_PLATFORM_WINDOWS)
         return ::IsDebuggerPresent() ? true : false;
-#   elif defined(AZ_PLATFORM_X360)
-        // Redacted
 #   elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
         return IsDebuggerAttached();
 #   elif defined(AZ_PLATFORM_APPLE)
@@ -97,7 +95,7 @@ namespace AZ {
         }
 
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         if (isEnabled)
         {
             g_previousExceptionHandler = ::SetUnhandledExceptionFilter(&ExceptionHandler);
@@ -125,10 +123,8 @@ namespace AZ {
             return; // Do not break when tests are running unless debugger is present
         }
 #   endif
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
         __debugbreak();
-#   elif defined(AZ_PLATFORM_X360)
-        // Redacted
 #   elif defined(AZ_PLATFORM_LINUX)
         DEBUG_BREAK;
 #   elif defined(AZ_PLATFORM_ANDROID)
@@ -318,7 +314,7 @@ namespace AZ {
             window = g_dbgSystemWnd;
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)  /// Output to the debugger!
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)  /// Output to the debugger! // ACCEPTED_USE
 
 #   ifdef _UNICODE
         wchar_t messageW[g_maxMessageLength];
@@ -330,7 +326,7 @@ namespace AZ {
 #   else // !_UNICODE
         OutputDebugString(message);
 #   endif // !_UNICODE
-#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_XBONE
+#endif
 
 #if defined(AZ_PLATFORM_ANDROID) && !RELEASE
         __android_log_print(ANDROID_LOG_INFO, window, message);
@@ -364,7 +360,7 @@ namespace AZ {
 
         if (nativeContext == NULL)
         {
-            suppressCount += 1; /// If we do not provide a context we will capture in the RecordFunction, so skip us (Trace::PrinCallstack).
+            suppressCount += 1; /// If we don't provide a context we will capture in the RecordFunction, so skip us (Trace::PrinCallstack).
         }
         unsigned int numFrames = StackRecorder::Record(frames, AZ_ARRAY_SIZE(frames), suppressCount, nativeContext);
         if (numFrames)
@@ -394,7 +390,7 @@ namespace AZ {
     }
 
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
     //=========================================================================
     // GetExeptionName
     // [8/3/2011]
@@ -494,7 +490,7 @@ namespace AZ {
         g_exceptionInfo = NULL;
         return lReturn;
     }
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #endif // defined(AZ_ENABLE_TRACING)
 } // namspace AZ
 

@@ -43,8 +43,8 @@
 
 CDeferredShading* CDeferredShading::m_pInstance = NULL;
 
-#define RT_LIGHTSMASK g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_LIGHT_TEX_PROJ] | g_HWSR_MaskBit[HWSR_CUBEMAP0]
-#define RT_LIGHTPASS_RESETMASK g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_LIGHT_TEX_PROJ] | g_HWSR_MaskBit[HWSR_CUBEMAP0]
+#define RT_LIGHTSMASK g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_LIGHT_TEX_PROJ] | g_HWSR_MaskBit[HWSR_CUBEMAP0] | g_HWSR_MaskBit[HWSR_APPLY_SSDO]
+#define RT_LIGHTPASS_RESETMASK g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_LIGHT_TEX_PROJ] | g_HWSR_MaskBit[HWSR_CUBEMAP0] | g_HWSR_MaskBit[HWSR_APPLY_SSDO]
 #define RT_DEBUGMASK g_HWSR_MaskBit[HWSR_DEBUG0] | g_HWSR_MaskBit[HWSR_DEBUG1] | g_HWSR_MaskBit[HWSR_DEBUG2] | g_HWSR_MaskBit[HWSR_DEBUG3]
 #define RT_TEX_PROJECT g_HWSR_MaskBit[HWSR_SAMPLE0]
 #define RT_GLOBAL_CUBEMAP g_HWSR_MaskBit[HWSR_SAMPLE0]
@@ -870,8 +870,92 @@ void CDeferredShading::DrawDecalVolume(const SDeferredDecal& rDecal, Matrix44A& 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Calculates matrix that projects WS position into decal volume for texture coordinates
+Matrix44A GetDecalLightProjMatrix(const SDeferredDecal& rDecal)
+{
+    static const float fZNear = -0.3f;
+    static const float fZFar = 0.5f;
+
+    static const Matrix44A mTextureAndDepth(
+        0.5f, 0.0f, 0.0f, 0.5f,
+        0.0f, -0.5f, 0.0f, 0.5f,
+        0.0f, 0.0f, 1.0f / (fZNear - fZFar), fZNear / (fZNear - fZFar),
+        0.0f, 0.0f, 0.0f, 1.0f);
+
+    // transform world coords to decal texture coords
+    Matrix44A mDecalLightProj = mTextureAndDepth * rDecal.projMatrix.GetInverted();
+    return mDecalLightProj;
+}
+
+// Calculates tangent space to world matrix
+Matrix44A CalculateTSMatrix(const Vec3 vBasisX, const Vec3 vBasisY, const Vec3 vBasisZ)
+{
+    const Vec3 vNormX = vBasisX.GetNormalized();
+    const Vec3 vNormY = vBasisY.GetNormalized();
+    const Vec3 vNormZ = vBasisZ.GetNormalized();
+
+    // decal normal map to world transform
+    Matrix44A mDecalTS(
+        vNormX.x, vNormX.y, vNormX.z, 0,
+        -vNormY.x, -vNormY.y, -vNormY.z, 0,
+        vNormZ.x, vNormZ.y, vNormZ.z, 0,
+        0, 0, 0, 1);
+
+    return mDecalTS;
+}
+
+// Shared function to get dynamic parameters for deferred decals
+void GetDynamicDecalParams(DynArrayRef<SShaderParam>& shaderParams, float& decalAlphaMult, float& decalFalloff, float& decalDiffuseOpacity, float& emittanceMapGamma)
+{
+    decalAlphaMult = 1.0f;
+    decalFalloff = 1.0f;
+    emittanceMapGamma = 1.0f;
+    decalDiffuseOpacity = 1.0f;
+
+    for (uint32 i = 0, si = shaderParams.size(); i < si; ++i)
+    {
+        const char* name = shaderParams[i].m_Name;
+        if (azstricmp(name, "DecalAlphaMult") == 0)
+        {
+            decalAlphaMult = shaderParams[i].m_Value.m_Float;
+        }
+        else if (azstricmp(name, "DecalFalloff") == 0)
+        {
+            decalFalloff = shaderParams[i].m_Value.m_Float;
+        }
+        else if (azstricmp(name, "EmittanceMapGamma") == 0)
+        {
+            emittanceMapGamma = shaderParams[i].m_Value.m_Float;
+        }
+        else if (azstricmp(name, "DecalDiffuseOpacity") == 0)
+        {
+            decalDiffuseOpacity = shaderParams[i].m_Value.m_Float;
+        }
+    }
+}
+
 bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 indDecal)
 {
+    // __________________________________________________________________________________________
+    // Early out if no emissive material
+
+    _smart_ptr<IMaterial> pDecalMaterial = rDecal.pMaterial;
+    if (pDecalMaterial == NULL)
+    {
+        assert(0);
+        return false;
+    }
+
+    SShaderItem& sItem = pDecalMaterial->GetShaderItem(0);
+    if (sItem.m_pShaderResources == NULL)
+    {
+        assert(0);
+        return false;
+    }
+
+    // __________________________________________________________________________________________
+    // Begin
+
     PROFILE_FRAME(CDeferredShading_DecalPass);
     PROFILE_SHADER_SCOPE;
 
@@ -889,69 +973,43 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     rd->EF_Scissor(false, 0, 0, 1, 1);
     rd->SetDepthBoundTest(0.0f, 1.0f, false); // stencil pre-passes are rop bound, using depth bounds increases even more rop cost
 
-    _smart_ptr<IMaterial> pDecalMaterial = rDecal.pMaterial;
-    if (pDecalMaterial == NULL)
-    {
-        assert(0);
-        return false;
-    }
+    // coord systems conversion (from orientation to shader matrix)
+    const Vec3 vBasisX = rDecal.projMatrix.GetColumn0();
+    const Vec3 vBasisY = rDecal.projMatrix.GetColumn1();
+    const Vec3 vBasisZ = rDecal.projMatrix.GetColumn2();
 
-    SShaderItem& sItem = pDecalMaterial->GetShaderItem(0);
-    if (sItem.m_pShaderResources == NULL)
-    {
-        assert(0);
-        return false;
-    }
+    // __________________________________________________________________________________________
+    // Textures
 
     CTexture* pCurTarget = CTexture::s_ptexSceneNormalsMap;
+    m_nCurTargetWidth = pCurTarget->GetWidth();
+    m_nCurTargetHeight = pCurTarget->GetHeight();
 
-    int nStates = m_nRenderState;
+    const float decalSize = max(vBasisX.GetLength() * 2.0f, vBasisY.GetLength() * 2.0f);
 
-    nStates  &= ~GS_BLEND_MASK;
-    nStates  &= ~GS_COLMASK_NONE;
-    nStates |= GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA;
+    // We will use mipLevelFactor from diffuse texture for other textures
+    float mipLevelFactor = 0.0;
 
-    ITexture* pNormalMap = TextureHelpers::LookupTexDefault(EFTT_NORMALS);
-    if (SEfResTexture* pNormalRes = sItem.m_pShaderResources->GetTexture(EFTT_NORMALS))
+    ITexture* pDiffuseTex = SetTexture(sItem, EFTT_DIFFUSE, 2, rDecal.rectTexture, decalSize, mipLevelFactor, ESetTexture_Transform | ESetTexture_bSRGBLookup);
+    assert(pDiffuseTex != nullptr);
+
+    int setTextureFlags = ESetTexture_HWSR | ESetTexture_AllowDefault | ESetTexture_MipFactorProvided;
+    SetTexture(sItem, EFTT_NORMALS,    3, rDecal.rectTexture, decalSize, mipLevelFactor, setTextureFlags);
+    SetTexture(sItem, EFTT_SMOOTHNESS, 4, rDecal.rectTexture, decalSize, mipLevelFactor, setTextureFlags);
+    SetTexture(sItem, EFTT_OPACITY,    5, rDecal.rectTexture, decalSize, mipLevelFactor, setTextureFlags);
+
+    SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexBackBuffer, 6, FILTER_POINT, 0);   //contains copy of normals buffer
+
+    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))    // We have our own depth and stencil buffer in GMEM path
     {
-        if (pNormalRes->m_Sampler.m_pITex)
-        {
-            pNormalMap = pNormalRes->m_Sampler.m_pITex;
-            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE1];
-        }
+        m_pDepthRT->Apply(0, m_nTexStatePoint);
     }
 
-    ITexture* pSmoothnessMap = TextureHelpers::LookupTexDefault(EFTT_SMOOTHNESS);
-    if (SEfResTexture* pSmoothnessRes = sItem.m_pShaderResources->GetTexture(EFTT_SMOOTHNESS))
-    {
-        if (pSmoothnessRes->m_Sampler.m_pITex)
-        {
-            pSmoothnessMap = pSmoothnessRes->m_Sampler.m_pITex;
-            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
-        }
-    }
-
-    ITexture* pOpacityMap = TextureHelpers::LookupTexDefault(EFTT_OPACITY);
-    if (SEfResTexture* pOpacityRes = sItem.m_pShaderResources->GetTexture(EFTT_OPACITY))
-    {
-        if (pOpacityRes->m_Sampler.m_pITex)
-        {
-            pOpacityMap = pOpacityRes->m_Sampler.m_pITex;
-            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
-        }
-    }
-
-    if (rDecal.fGrowAlphaRef > 0.0f)
-    {
-        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
-    }
-
-    nStates &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);
-    nStates |= GS_DEPTHFUNC_LEQUAL | GS_COLMASK_RGB;
+    // __________________________________________________________________________________________
+    // Stencil
 
     rd->m_RP.m_PersFlags2 |= RBPF2_READMASK_RESERVED_STENCIL_BIT;
 
-    //////////////////////////////////////////////////////////////////////////
     //apply stencil dynamic masking
     rd->FX_SetStencilState(
         STENC_FUNC(FSS_STENCFUNC_EQUAL) |
@@ -959,35 +1017,30 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
         STENCOP_ZFAIL(FSS_STENCOP_KEEP) |
         STENCOP_PASS(FSS_STENCOP_KEEP),
         BIT_STENCIL_RESERVED, BIT_STENCIL_RESERVED, 0xFFFFFFFF
-        );
+    );
 
     rd->m_RP.m_PersFlags2 &= ~RBPF2_READMASK_RESERVED_STENCIL_BIT;
-
-    nStates |= GS_STENCIL;
-    //////////////////////////////////////////////////////////////////////////
 
     if (bStencilMask)
     {
         rd->FX_StencilTestCurRef(true, false);
     }
 
-    if (CRenderer::CV_r_deferredDecalsDebug == 2)
+    // __________________________________________________________________________________________
+    // Shader technique
+
+    if (rDecal.fGrowAlphaRef > 0.0f)
     {
-        nStates &= ~GS_COLMASK_NONE;
-        nStates &= ~GS_NODEPTHTEST;
-        //newState |= GS_NODEPTHTEST;
-        nStates |= GS_DEPTHWRITE;
-        nStates |= (0xFFFFFFF0 << GS_COLMASK_SHIFT) & GS_COLMASK_MASK;
-        nStates |= GS_WIREFRAME;
-    }
-    else if (CRenderer::CV_r_deferredDecalsDebug == 1)
-    {
-        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE2];
-        rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE0];
-        rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE1];
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
 
-    //////////////////////////////////////////////////////////////////////////
+    if (CRenderer::CV_r_deferredDecalsDebug == 1)
+    {
+        rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE0]; // disable alpha grow feature
+        rd->m_RP.m_FlagsShader_RT |=  g_HWSR_MaskBit[HWSR_SAMPLE2]; // debug output
+        rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE3]; // disable normals
+    }
+
     if (bUseLightVolumes)
     {
         //enable light volumes rendering
@@ -999,160 +1052,73 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     {
         SD3DPostEffectsUtils::ShBeginPass(m_pShader, m_pDeferredDecalTechName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     }
-    //////////////////////////////////////////////////////////////////////////
 
-    m_nCurTargetWidth = pCurTarget->GetWidth();
-    m_nCurTargetHeight = pCurTarget->GetHeight();
+    // __________________________________________________________________________________________
+    // Shader Params
 
-    ITexture* pDiffuseTex = NULL;
-    Matrix44  texMatrix;
-    STexState texState;
+    // Texture transforms
+    m_pShader->FXSetPSFloat(m_pParamTexTransforms, m_vTextureTransforms[0], 2 * EMaxTextureSlots);
 
-    texMatrix.SetIdentity();
+    // decal normal map to world transform
+    Matrix44A mDecalTS = CalculateTSMatrix(vBasisX, vBasisY, vBasisZ);
+    m_pShader->FXSetPSFloat(m_pParamDecalTS, (Vec4*)mDecalTS.GetData(), 4);
 
-    texState.SetFilterMode(FILTER_TRILINEAR);
+    // transform world coords to decal texture coords
+    Matrix44A mDecalLightProj = GetDecalLightProjMatrix(rDecal);
+    m_pShader->FXSetPSFloat(m_pParamLightProjMatrix, (Vec4*)mDecalLightProj.GetData(), 4);
 
-    if (SEfResTexture* pDiffuseRes = sItem.m_pShaderResources->GetTexture(EFTT_DIFFUSE))
-    {
-        if (pDiffuseRes->m_Sampler.m_pITex)
-        {
-            pDiffuseTex = pDiffuseRes->m_Sampler.m_pITex;
-
-            if (pDiffuseRes->IsHasModificators())
-            {
-                pDiffuseRes->UpdateWithModifier(EFTT_MAX);
-                SEfTexModificator* mod = pDiffuseRes->m_Ext.m_pTexModifier;
-                texMatrix = pDiffuseRes->m_Ext.m_pTexModifier->m_TexMatrix;
-            }
-
-            int mode = pDiffuseRes->m_bUTile ? TADDR_WRAP : TADDR_CLAMP;
-
-            texState.SetClampMode(mode, pDiffuseRes->m_bVTile ? TADDR_WRAP : TADDR_CLAMP, mode);
-        }
-    }
-
-    {
-        static CCryNameR paramTextureRect("g_TextureRect");
-        assert(rDecal.rectTexture.w * rDecal.rectTexture.h > 0.f);
-        Vec4 data[2];
-        data[0] = Vec4(rDecal.rectTexture.w * texMatrix.m00, rDecal.rectTexture.h * texMatrix.m10, rDecal.rectTexture.x * texMatrix.m00 + rDecal.rectTexture.y * texMatrix.m10 + texMatrix.m30, 0);
-        data[1] = Vec4(rDecal.rectTexture.w * texMatrix.m01, rDecal.rectTexture.h * texMatrix.m11, rDecal.rectTexture.x * texMatrix.m01 + rDecal.rectTexture.y * texMatrix.m11 + texMatrix.m31, 0);
-        m_pShader->FXSetPSFloat(paramTextureRect, data, 2);
-    }
-
-    assert(pDiffuseTex != NULL);
-    if (pDiffuseTex)
-    {
-        texState.m_bSRGBLookup = true;
-        ((CTexture*)pDiffuseTex)->Apply(2, CTexture::GetTexState(texState));
-    }
-
-
+    // Diffuse
     Vec4 vDiff = sItem.m_pShaderResources->GetColorValue(EFTT_DIFFUSE).toVec4();
     vDiff.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_OPACITY) * rDecal.fAlpha;
     m_pShader->FXSetPSFloat(m_pParamDecalDiffuse, &vDiff, 1);
 
+    // Specular
     Vec4 vSpec = sItem.m_pShaderResources->GetColorValue(EFTT_SPECULAR).toVec4();
     vSpec.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_SMOOTHNESS);
     m_pShader->FXSetPSFloat(m_pParamDecalSpecular, &vSpec, 1);
 
-    float decalAlphaMult = 1;
-    float decalFalloff = 1;
-    float decalDiffuseOpacity = 1;
-
+    // Dynamic params
+    float decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma;
     DynArrayRef<SShaderParam>& shaderParams = sItem.m_pShaderResources->GetParameters();
-    for (uint32 i = 0, si = shaderParams.size(); i < si; ++i)
+    GetDynamicDecalParams(shaderParams, decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma);
+
+    float fGrowAlphaRef = rDecal.fGrowAlphaRef;
+
+    // Debug shader params
+    if (pDiffuseTex && CRenderer::CV_r_deferredDecalsDebug == 1)
     {
-        const char* name = shaderParams[i].m_Name;
-        if (strcmp(name, "DecalAlphaMult") == 0)
-        {
-            decalAlphaMult = shaderParams[i].m_Value.m_Float;
-        }
-        else if (strcmp(name, "DecalFalloff") == 0)
-        {
-            decalFalloff = shaderParams[i].m_Value.m_Float;
-        }
-        else if (strcmp(name, "DecalDiffuseOpacity") == 0)
-        {
-            decalDiffuseOpacity = shaderParams[i].m_Value.m_Float;
-        }
+        indDecal = pDiffuseTex->GetTextureID() % 3;
+
+        decalAlphaMult      = indDecal == 0 ? 1.0f : 0.0;
+        decalFalloff        = indDecal == 1 ? 1.0f : 0.0;
+        decalDiffuseOpacity = indDecal == 2 ? 1.0f : 0.0;
+        fGrowAlphaRef       = 0.94f;   // Crytek magic value
     }
 
     Vec4 decalParams(decalAlphaMult, decalFalloff, decalDiffuseOpacity, rDecal.fGrowAlphaRef);
     m_pShader->FXSetPSFloat(m_pGeneralParams, &decalParams, 1);
 
-    if (pDiffuseTex && CRenderer::CV_r_deferredDecalsDebug == 1)
+
+    // __________________________________________________________________________________________
+    // State
+
+    int nStates = m_nRenderState;
+
+    int disableFlags = GS_BLEND_MASK | GS_COLMASK_NONE | GS_NODEPTHTEST | GS_DEPTHFUNC_MASK;
+    int enableFlags = GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_DEPTHFUNC_LEQUAL | GS_COLMASK_RGB | GS_STENCIL;
+
+    if (CRenderer::CV_r_deferredDecalsDebug == 2)
     {
-        Vec4 decalParams;
-        indDecal = pDiffuseTex->GetTextureID() % 3;
-        //indDecal%=3;
-        decalParams.x = indDecal == 0 ? 1.0f : 0.0;
-        decalParams.y = indDecal == 1 ? 1.0f : 0.0;
-        decalParams.z = indDecal == 2 ? 1.0f : 0.0;
-        decalParams.w = 0.94f;
-        m_pShader->FXSetPSFloat(m_pGeneralParams, &decalParams, 1);
+        enableFlags |= GS_DEPTHWRITE | GS_WIREFRAME;
     }
 
-    SD3DPostEffectsUtils::SetTexture((CTexture*)pNormalMap, 3, FILTER_TRILINEAR, 0);
-    SD3DPostEffectsUtils::SetTexture((CTexture*)pSmoothnessMap, 4, FILTER_TRILINEAR, 0);
-    SD3DPostEffectsUtils::SetTexture((CTexture*)pOpacityMap, 5, FILTER_TRILINEAR, 0);
-    SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexBackBuffer, 6, FILTER_POINT, 0);   //contains copy of normals buffer
+    nStates &= ~disableFlags;
+    nStates |= enableFlags;
 
-    //////////////////////////////////////////////////////////////////////////
-    // texture and depth transformation matrix
-    // fading distance is longer under the decal and shorter in front of the decal
-
-    static const float fZNear = -0.3f;
-    static const float fZFar = 0.5f;
-
-    static const Matrix44A mTextureAndDepth(
-        0.5f,     0.0f,     0.0f,    0.5f,
-        0.0f,    -0.5f,     0.0f,    0.5f,
-        0.0f,     0.0f,     1.0f / (fZNear - fZFar), fZNear / (fZNear - fZFar),
-        0.0f,     0.0f,     0.0f,    1.0f);
-
-    // transform world coords to decal texture coords
-    Matrix44A mDecalLightProj = mTextureAndDepth * rDecal.projMatrix.GetInverted();
-
-    // coord systems conversion (from orientation to shader matrix)
-    const Vec3 vBasisX = rDecal.projMatrix.GetColumn0();
-    const Vec3 vBasisY = rDecal.projMatrix.GetColumn1();
-    const Vec3 vBasisZ = rDecal.projMatrix.GetColumn2();
-
-    const Vec3 vNormX = vBasisX.GetNormalized();
-    const Vec3 vNormY = vBasisY.GetNormalized();
-    const Vec3 vNormZ = vBasisZ.GetNormalized();
-
-    // decal normal map to world transform
-    Matrix44A mDecalTS(
-        vNormX.x, vNormX.y, vNormX.z, 0,
-        -vNormY.x, -vNormY.y, -vNormY.z, 0,
-        vNormZ.x, vNormZ.y, vNormZ.z, 0,
-        0, 0, 0, 1);
-
-    // Manual mip level computation
-    //
-    //                 tan(fov) * (textureSize * tiling / decalSize) * distance
-    // MipLevel = log2 --------------------------------------------------------
-    //                 screenResolution * dot(viewVector, decalNormal)
-
-    const float screenRes = (float)rd->GetWidth() * 0.5f + (float)rd->GetHeight() * 0.5f;
-    const float decalSize = max(vBasisX.GetLength() * 2.0f, vBasisY.GetLength() * 2.0f);
-    const float texScale = max(
-            texMatrix.GetColumn(0).GetLength() * rDecal.rectTexture.w,
-            texMatrix.GetColumn(1).GetLength() * rDecal.rectTexture.h);
-    const float mipLevelFactor = (tan(rd->GetCamera().GetFov()) * texScale / decalSize) / screenRes;
-
-    Vec4 vMipLevels;
-    vMipLevels.x = pDiffuseTex ? mipLevelFactor * (float)max(pDiffuseTex->GetWidth(), pDiffuseTex->GetHeight()) : 0.f;
-    vMipLevels.y = pNormalMap ? mipLevelFactor * (float)max(pNormalMap->GetWidth(), pNormalMap->GetHeight()) : 0.f;
-    vMipLevels.z = pSmoothnessMap ? mipLevelFactor * (float)max(pSmoothnessMap->GetWidth(), pSmoothnessMap->GetHeight()) : 0.f;
-    vMipLevels.w = pOpacityMap ? mipLevelFactor * (float)max(pOpacityMap->GetWidth(), pOpacityMap->GetHeight()) : 0.f;
-    m_pShader->FXSetPSFloat(m_pParamDecalMipLevels, &vMipLevels, 1);
+    // __________________________________________________________________________________________
+    // Culling
 
     ECull volumeCull = eCULL_Back;
-    nStates &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);
-    nStates |= GS_DEPTHFUNC_LEQUAL;
 
     rd->EF_Scissor(false, 0, 0, 1, 1);
 
@@ -1170,15 +1136,10 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
         volumeCull = eCULL_Back;
     }
 
+    // __________________________________________________________________________________________
+    // Render
+
     rd->FX_SetState(nStates);
-
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))// We have our own depth and stencil buffer in GMEM path
-    {
-        m_pDepthRT->Apply(0, m_nTexStatePoint);
-    }
-
-    m_pShader->FXSetPSFloat(m_pParamDecalTS, (Vec4*) mDecalTS.GetData(), 4);
-    m_pShader->FXSetPSFloat(m_pParamLightProjMatrix, (Vec4*) mDecalLightProj.GetData(), 4);
 
     if (bUseLightVolumes)
     {
@@ -1197,6 +1158,186 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     }
 
     return true;
+}
+
+// This renders the emissive part of a single deferred decal.
+// Only the emissive part of the light is output as the rest of the lighting has been calculated in the deferred resolve.
+// Blends using SRC_ONE and DST_ONE
+// Called by CD3D9Renderer::FX_DeferredDecalsEmissive
+// Uses pixel shader DecalEmissivePassPS in DeferredShading.cfx
+void CDeferredShading::DeferredDecalEmissivePass(const SDeferredDecal& rDecal, uint32 indDecal)
+{
+    // __________________________________________________________________________________________
+    // Early out if no emissive material
+
+    _smart_ptr<IMaterial> pDecalMaterial = rDecal.pMaterial;
+    if (pDecalMaterial == NULL)
+    {
+        assert(0);
+        return;
+    }
+
+    SShaderItem& sItem = pDecalMaterial->GetShaderItem(0);
+    if (sItem.m_pShaderResources == NULL)
+    {
+        assert(0);
+        return;
+    }
+
+    if (!sItem.m_pShaderResources->IsEmissive())
+    {
+        return;
+    }
+
+    // __________________________________________________________________________________________
+    // Begin
+
+    PROFILE_FRAME(CDeferredShading_DecalEmissivePass);
+    PROFILE_SHADER_SCOPE;
+
+    gcpRendD3D->m_RP.m_FlagsShader_RT &= ~(RT_LIGHTSMASK | g_HWSR_MaskBit[HWSR_SAMPLE4]);
+
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
+    int nThreadID = rd->m_RP.m_nProcessThreadID;
+
+    rd->m_RP.m_nDeferredPrimitiveID = SHAPE_PROJECTOR;
+
+    bool bProj2D = true;
+    bool bUseLightVolumes = true;
+
+    rd->EF_Scissor(false, 0, 0, 1, 1);
+    rd->SetDepthBoundTest(0.0f, 1.0f, false);
+
+    // coord systems conversion (from orientation to shader matrix)
+    const Vec3 vBasisX = rDecal.projMatrix.GetColumn0();
+    const Vec3 vBasisY = rDecal.projMatrix.GetColumn1();
+    const Vec3 vBasisZ = rDecal.projMatrix.GetColumn2();
+
+    // __________________________________________________________________________________________
+    // Textures
+
+    CTexture* pCurTarget = CTexture::s_ptexHDRTarget;
+    m_nCurTargetWidth = pCurTarget->GetWidth();
+    m_nCurTargetHeight = pCurTarget->GetHeight();
+
+    // Particles use the $Detail slot for emittance
+    EEfResTextures emittanceTextureIdx = EFTT_EMITTANCE;
+    const char* shaderName = sItem.m_pShader->GetName();
+    if (strcmp(shaderName, "Particles") == 0)
+        emittanceTextureIdx = EFTT_DETAIL_OVERLAY;
+
+    // Each texture will calculate it's own mip level factor
+    float dummyMipLevelFactor = 0;
+    const float decalSize = max(vBasisX.GetLength() * 2.0f, vBasisY.GetLength() * 2.0f);
+
+    int setTextureFlags = ESetTexture_HWSR | ESetTexture_AllowDefault | ESetTexture_Transform;
+    SetTexture(sItem, emittanceTextureIdx,  3, rDecal.rectTexture, decalSize, dummyMipLevelFactor, setTextureFlags);
+    SetTexture(sItem, EFTT_DECAL_OVERLAY,   4, rDecal.rectTexture, decalSize, dummyMipLevelFactor, setTextureFlags);
+    SetTexture(sItem, EFTT_OPACITY,         5, rDecal.rectTexture, decalSize, dummyMipLevelFactor, setTextureFlags);
+
+    SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexZTarget,    0, FILTER_POINT, 0);    // depth
+    SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexBackBuffer, 6, FILTER_POINT, 0);    // copy of normals
+
+    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))// We have our own depth and stencil buffer in GMEM path
+    {
+        m_pDepthRT->Apply(0, m_nTexStatePoint);
+    }
+
+    // __________________________________________________________________________________________
+    // Shader technique
+
+    if (rDecal.fGrowAlphaRef > 0.0f)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
+    }
+
+    if (bUseLightVolumes)
+    {
+        //enable light volumes rendering
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_CUBEMAP0];
+        static CCryNameTSCRC techName("DeferredDecalEmissiveVolume");
+        SD3DPostEffectsUtils::ShBeginPass(m_pShader, techName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
+    }
+    else
+    {
+        static CCryNameTSCRC techName("DeferredDecalEmissive");
+        SD3DPostEffectsUtils::ShBeginPass(m_pShader, techName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
+    }
+
+    // __________________________________________________________________________________________
+    // Shader Params
+
+    // Dynamic Params
+    float decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma;
+    DynArrayRef<SShaderParam>& shaderParams = sItem.m_pShaderResources->GetParameters();
+    GetDynamicDecalParams(shaderParams, decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma);
+
+    Vec4 decalParams(decalAlphaMult, decalFalloff, emittanceMapGamma, rDecal.fGrowAlphaRef);
+    m_pShader->FXSetPSFloat(m_pGeneralParams, &decalParams, 1);
+
+    // Texture transforms
+    m_pShader->FXSetPSFloat(m_pParamTexTransforms, m_vTextureTransforms[0], 2 * EMaxTextureSlots);
+
+    // transform world coords to decal texture coords
+    Matrix44A mDecalLightProj = GetDecalLightProjMatrix(rDecal);
+    m_pShader->FXSetPSFloat(m_pParamLightProjMatrix, (Vec4*)mDecalLightProj.GetData(), 4);
+
+    // decal normal map to world transform
+    Matrix44A mDecalTS = CalculateTSMatrix(vBasisX, vBasisY, vBasisZ);
+    m_pShader->FXSetPSFloat(m_pParamDecalTS, (Vec4*)mDecalTS.GetData(), 4);
+
+    // Emissive color + intensity
+    Vec4 vEmissive = sItem.m_pShaderResources->GetColorValue(EFTT_EMITTANCE).toVec4();
+    vEmissive.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_EMITTANCE);
+    m_pShader->FXSetPSFloat(m_pParamDecalEmissive, &vEmissive, 1);
+
+    // __________________________________________________________________________________________
+    // State
+
+    int nStates = m_nRenderState;
+
+    int disableFlags = GS_NODEPTHTEST | GS_STENCIL | GS_DEPTHFUNC_MASK | GS_BLEND_MASK | GS_COLMASK_NONE;
+    int enableFlags = GS_DEPTHFUNC_LEQUAL | GS_COLMASK_RGB | GS_BLSRC_ONE | GS_BLDST_ONE;
+
+    nStates &= ~disableFlags;
+    nStates |= enableFlags;
+
+    // __________________________________________________________________________________________
+    // Culling
+
+    ECull volumeCull = eCULL_Back;
+
+    rd->EF_Scissor(false, 0, 0, 1, 1);
+
+    const float r = fabs(vBasisX.dot(m_pCamFront)) + fabs(vBasisY.dot(m_pCamFront)) + fabs(vBasisZ.dot(m_pCamFront));
+    const float s = m_pCamFront.dot(rDecal.projMatrix.GetTranslation() - m_pCamPos);
+    if (fabs(s) - m_fCamNear <= r) // OBB-Plane via separating axis test, to check if camera near plane intersects decal volume
+    {
+        nStates &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);
+        nStates |= GS_DEPTHFUNC_GREAT;
+        volumeCull = eCULL_Front;
+    }
+
+    if (CRenderer::CV_r_deferredDecalsDebug == 2)
+    {
+        volumeCull = eCULL_Back;
+    }
+
+    // __________________________________________________________________________________________
+    // Render
+
+    rd->FX_SetState(nStates);
+
+    if (bUseLightVolumes)
+    {
+        DrawDecalVolume(rDecal, mDecalLightProj, volumeCull);
+    }
+    else
+    {
+        SD3DPostEffectsUtils::DrawFullScreenTriWPOS(m_nCurTargetWidth, m_nCurTargetHeight);
+    }
+
+    SD3DPostEffectsUtils::ShEndPass();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1459,6 +1600,12 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     {
         rRP.m_FlagsShader_RT |= RT_CLIPVOLUME_ID;
     }
+    
+    // Directional occlusion
+    if (CRenderer::CV_r_ssdo)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
+    }
 
     if (bUseLightVolumes)
     {
@@ -1554,11 +1701,9 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     m_pShader->FXSetPSFloat(m_pAttenParams, &vAttenParams, 1);
 
     // Directional occlusion
-    Vec4 ssdoParams(CRenderer::CV_r_ssdoAmountDirect, CRenderer::CV_r_ssdoAmountAmbient, CRenderer::CV_r_ssdoAmountReflection, 0);
-    Vec4 ssdoParamsNull(0, 0, 0, 0);
-    static CCryNameR ssdoParamsName("SSDOParams");
-    m_pShader->FXSetPSFloat(ssdoParamsName, CRenderer::CV_r_ssdo ? &ssdoParams : &ssdoParamsNull, 1);
-
+    const int ssdoTexSlot = 8;
+    SetSSDOParameters(ssdoTexSlot);
+    
     if (pDL->m_Flags & DLF_CASTSHADOW_MAPS)
     {
         static ICVar* pVar = iConsole->GetCVar("e_ShadowsPoolSize");
@@ -1589,7 +1734,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
 
     CTexture* pTexLightImage = (CTexture*)pLightTex;
 
-    CTexture::s_ptexSceneNormalsBent->Apply(8, m_nTexStatePoint);
+    
 
     if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
@@ -1850,17 +1995,17 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
             if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
             {
                 //  Confetti BEGIN: Igor Lobanchikov
-#if defined(OPENGL_ES)
-                if (glVersion == DXGLES_VERSION_30)
+                if (!RenderCapabilities::SupportsStencilTextures())
                 {
-	                rd->FX_PushRenderTarget(0, m_pResolvedStencilRT, &rd->m_DepthBufferOrigMSAA);
-	                const ColorF clearColor((1.0f / 255.0f), 0.0f, 0.0f, 0.0f);
-	                rd->EF_ClearTargetsImmediately(FRT_CLEAR_COLOR, clearColor);
+                    // Because there's no support for stencil textures we can't resolve the stencil to a texture.
+                    // So we draw the ClipVolumes directly to the texture in the "resolve" during the PS.
+                    rd->FX_PushRenderTarget(0, m_pResolvedStencilRT, &rd->m_DepthBufferOrigMSAA);
+                    const ColorF clearColor((1.0f / 255.0f), 0.0f, 0.0f, 0.0f);
+                    rd->EF_ClearTargetsImmediately(FRT_CLEAR_COLOR, clearColor);
                 }
                 else
-#endif // defined(OPENGL_ES)
                 {
-	                rd->FX_PushRenderTarget(0, (CTexture*)NULL, &rd->m_DepthBufferOrigMSAA);
+                    rd->FX_PushRenderTarget(0, (CTexture*)NULL, &rd->m_DepthBufferOrigMSAA);
                 }
                 //  Confetti End: Igor Lobanchikov
 
@@ -1916,18 +2061,11 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
         return; // can't resolve buffers... need to keep them in GMEM
     }
 
-    //  Need to resolve stencil because light volumes and shadow mask overwrite stencil
+    // Need to resolve stencil because light volumes and shadow mask overwrite stencil
+    // If there's no support for stencil textures, then we already clipped the stencil volumes straight
+    // to the resolved target during the 'CLIPVOLUMES TO STENCIL' pass.
+    if (RenderCapabilities::SupportsStencilTextures())
     {
-        //  Confetti BEGIN: Igor Lobanchikov
-#if defined(OPENGL_ES)
-        // We already clipped the stencil volumes straight to the resolved target up above for es3.0.
-        // We return since there is no further work to be done.
-        if (glVersion == DXGLES_VERSION_30)
-        {
-            return;
-        }
-#endif
-        //  Confetti End: Igor Lobanchikov
         PROFILE_LABEL_SCOPE("RESOLVE STENCIL");
         //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
@@ -2071,7 +2209,12 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
 
     Vec4 cAmbHeightParams = Vec4(gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_AMBIENT_MIN_HEIGHT), gEnv->p3DEngine->GetGlobalParameter(E3DPARAM_AMBIENT_MAX_HEIGHT), 0, 0);
     cAmbHeightParams.z = 1.0 / max(0.0001f, cAmbHeightParams.y);
-
+    
+    if (pGlobalCubemap && CRenderer::CV_r_ssdo)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
+    }
+        
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, m_pAmbientOutdoorTechName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     rd->FX_SetState(GS_NODEPTHTEST);
 
@@ -2103,13 +2246,10 @@ bool CDeferredShading::AmbientPass(SRenderLight* pGlobalCubemap, bool& bOutdoorV
         SD3DPostEffectsUtils::ShSetParamPS(m_pParamLightDiffuse, pLightDiffuse);
         const Vec4 vCubemapParams(IntegerLog2((uint32)texSpecular->GetWidthNonVirtual()) - 2, 0, 0, 0);     // Use 4x4 mip for lowest gloss values
         m_pShader->FXSetPSFloat(m_pGeneralParams, &vCubemapParams, 1);
-
+        
         // Directional occlusion
-        Vec4 ssdoParams(CRenderer::CV_r_ssdoAmountDirect, CRenderer::CV_r_ssdoAmountAmbient, CRenderer::CV_r_ssdoAmountReflection, 0);
-        Vec4 ssdoParamsNull(0, 0, 0, 0);
-        static CCryNameR ssdoParamsName("SSDOParams");
-        m_pShader->FXSetPSFloat(ssdoParamsName, CRenderer::CV_r_ssdo ? &ssdoParams : &ssdoParamsNull, 1);
-        CTexture::s_ptexSceneNormalsBent->Apply(8, m_nTexStatePoint);
+        const int ssdoTexSlot = 8;
+        SetSSDOParameters(ssdoTexSlot);
     }
 
     if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -2379,7 +2519,13 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
 
     MultplyState &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);      // Ensure zcull used.
     MultplyState |= GS_DEPTHFUNC_LEQUAL;
-
+    
+    // Directional occlusion
+    if (CRenderer::CV_r_ssdo)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
+    }
+    
     // Render..
     if (bUseLightVolumes)
     {
@@ -2445,14 +2591,11 @@ void CDeferredShading::DeferredCubemapPass(const SRenderLight* const __restrict 
     {
         m_pMSAAMaskRT->Apply(7, m_nTexStatePoint);
     }
-
+    
     // Directional occlusion
-    Vec4 ssdoParams(CRenderer::CV_r_ssdoAmountDirect, CRenderer::CV_r_ssdoAmountAmbient, CRenderer::CV_r_ssdoAmountReflection, 0);
-    Vec4 ssdoParamsNull(0, 0, 0, 0);
-    static CCryNameR ssdoParamsName("SSDOParams");
-    m_pShader->FXSetPSFloat(ssdoParamsName, CRenderer::CV_r_ssdo ? &ssdoParams : &ssdoParamsNull, 1);
-    CTexture::s_ptexSceneNormalsBent->Apply(8, m_nTexStatePoint);
-
+    const int ssdoTexSlot = 8;
+    SetSSDOParameters(ssdoTexSlot);
+    
     if (nNumClipVolumes > 0)
     {
         if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -3055,7 +3198,7 @@ void CDeferredShading::DirectionalOcclusionPass()
         CTexture::s_ptexZTarget->Apply(1, m_nTexStatePoint);
 
         rd->D3DSetCull(eCULL_Back);
-        rd->FX_SetState(0);
+        rd->FX_SetState(GS_NODEPTHTEST);
 
         Vec4 v(0, 0, nSrcSizeX, nSrcSizeY);
         static CCryNameR Param1Name("PixelOffset");
@@ -3212,7 +3355,7 @@ void CDeferredShading::DeferredShadingPass()
     }
 
     const uint64 nFlagsShaderRT = rd->m_RP.m_FlagsShader_RT;
-    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | RT_CLIPVOLUME_ID);
+    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_APPLY_SSDO] | RT_CLIPVOLUME_ID);
 
     if (CRenderer::CV_r_DeferredShadingDepthBoundsTest)
     {
@@ -3267,6 +3410,13 @@ void CDeferredShading::DeferredShadingPass()
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
     }
 
+    // Directional occlusion
+    if (CRenderer::CV_r_ssdo)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
+    }
+    
+    
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, techComposition, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
 
     rd->FX_SetState(GS_NODEPTHTEST);
@@ -3284,14 +3434,11 @@ void CDeferredShading::DeferredShadingPass()
         m_pLBufferSpecularRT->Apply(1, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1);
         m_pResolvedStencilRT->Apply(6, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1);
     }
-
+    
     // Directional occlusion
-    Vec4 ssdoParams(CRenderer::CV_r_ssdoAmountDirect, CRenderer::CV_r_ssdoAmountAmbient, CRenderer::CV_r_ssdoAmountReflection, 0);
-    Vec4 ssdoParamsNull(0, 0, 0, 0);
-    static CCryNameR ssdoParamsName("SSDOParams");
-    m_pShader->FXSetPSFloat(ssdoParamsName, CRenderer::CV_r_ssdo ? &ssdoParams : &ssdoParamsNull, 1);
-    CTexture::s_ptexSceneNormalsBent->Apply(7, m_nTexStatePoint);     // todo: should this be msaaed or upscaled ?
-
+    const int ssdoTexSlot = 7;
+    SetSSDOParameters(ssdoTexSlot);
+    
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))     // Following are already in GMEM
     {
         CTexture::s_ptexShadowMask->Apply(8, m_nTexStatePoint);
@@ -4507,7 +4654,7 @@ void CDeferredShading::Render()
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
-        // Commit any potential render target changes - required for x360 resolves, do not remove this plz.
+        // Commit any potential render target changes - required for x360 resolves, do not remove this plz. // ACCEPTED_USE
         rd->FX_SetActiveRenderTargets(false);
 
         rd->FX_PopRenderTarget(0);
@@ -4707,6 +4854,9 @@ void CDeferredShading::Debug()
     gcpRendD3D->m_RP.m_FlagsShader_RT = nFlagsShaderRT;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void CDeferredShading::DebugGBuffer()
 {
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
@@ -4730,6 +4880,118 @@ void CDeferredShading::DebugGBuffer()
     SD3DPostEffectsUtils::DrawFullScreenTri(dstTex->GetWidth(), dstTex->GetHeight());
     SD3DPostEffectsUtils::ShEndPass();
     rd->FX_PopRenderTarget(0);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CDeferredShading::SetSSDOParameters(const int texSlot)
+{
+    if (CRenderer::CV_r_ssdo)
+    {
+        Vec4 ssdoParams(CRenderer::CV_r_ssdoAmountDirect, CRenderer::CV_r_ssdoAmountAmbient, CRenderer::CV_r_ssdoAmountReflection, 0);
+        static CCryNameR ssdoParamsName("SSDOParams");
+        m_pShader->FXSetPSFloat(ssdoParamsName, &ssdoParams, 1);
+        CTexture::s_ptexSceneNormalsBent->Apply(texSlot, m_nTexStatePoint);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Utility function for setting up and binding textures.
+// Calculates and sets texture transforms as well as mipLevel
+// If the ESetTexture_MipFactorProvided flag is set, the passed in mipLevelFactor will be used
+// If it isn't set, mipLevelFactor will be calculated and output for possible reuse with other textures
+ITexture* CDeferredShading::SetTexture(const SShaderItem& sItem, EEfResTextures tex, int slot, const RectF texRect, float surfaceSize, float& mipLevelFactor, int flags)
+{
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
+
+    AZ_Assert(0 <= slot, "Texture slot index must be positive");
+    AZ_Assert(slot < EMaxTextureSlots, "Only %d texture slots available", int(EMaxTextureSlots));
+    AZ_Assert(texRect.w * texRect.h > 0.f, "Texture rect has invalid dimensions");
+
+    ITexture* pTexture = nullptr;
+
+    if (SEfResTexture* pResTexture = sItem.m_pShaderResources->GetTexture(tex))
+    {
+        if (pResTexture->m_Sampler.m_pITex)
+        {
+            pTexture = pResTexture->m_Sampler.m_pITex;
+
+            // Shader HWSR_SAMPLE flag
+            if (flags & ESetTexture_HWSR)
+            {
+                // Asserts
+                const static int maxHWSRSample = HWSR_SAMPLE5;
+                static_assert((maxHWSRSample + 1) == HWSR_DEBUG0, "HWSR_SAMPLE5 is no longer the last HWSR_SAMPLE"); // If this assert triggers please ensure HWSR_SAMPLE5 is the last HWSR_SAMPLE
+                AZ_Assert(slot <= (maxHWSRSample - HWSR_SAMPLE0), "Slot index too big to set HWSR_SAMPLE");
+
+                // Set HWSR slot
+                rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0 + slot];
+            }
+
+            // Texture transform
+            if (flags & ESetTexture_Transform)
+            {
+                // Texture matrix
+                Matrix44 texMatrix;
+                if (pResTexture->IsHasModificators())
+                {
+                    pResTexture->UpdateWithModifier(tex);
+                    texMatrix = pResTexture->m_Ext.m_pTexModifier->m_TexMatrix;
+                }
+                else
+                {
+                    texMatrix.SetIdentity();
+                }
+
+                // If mip level factor not provided, calculate it
+                if (!(flags & ESetTexture_MipFactorProvided))
+                {
+                    //                 tan(fov) * (textureSize * tiling / decalSize) * distance
+                    // MipLevel = log2 --------------------------------------------------------
+                    //                 screenResolution * dot(viewVector, decalNormal)
+
+                    const float screenRes = (float)rd->GetWidth() * 0.5f + (float)rd->GetHeight() * 0.5f;
+                    const float texScale = max(texMatrix.GetColumn(0).GetLength() * texRect.w, texMatrix.GetColumn(1).GetLength() * texRect.h);
+                    mipLevelFactor = (tan(rd->GetCamera().GetFov()) * texScale) / (surfaceSize * screenRes);
+                }
+                float fMipLevel = mipLevelFactor * (float)max(pTexture->GetWidth(), pTexture->GetHeight());
+
+                // Set transform (don't forget to bind m_vTextureTransforms after calls to this function)
+                m_vTextureTransforms[slot][0] = Vec4(texRect.w * texMatrix.m00, texRect.h * texMatrix.m10, texRect.x * texMatrix.m00 + texRect.y * texMatrix.m10 + texMatrix.m30, fMipLevel);
+                m_vTextureTransforms[slot][1] = Vec4(texRect.w * texMatrix.m01, texRect.h * texMatrix.m11, texRect.x * texMatrix.m01 + texRect.y * texMatrix.m11 + texMatrix.m31, 0.0f);
+            }
+            else if (flags & ESetTexture_MipFactorProvided)
+            {
+                // Mip level
+                float fMipLevel = mipLevelFactor * (float)max(pTexture->GetWidth(), pTexture->GetHeight());
+                m_vTextureTransforms[slot][0].w = fMipLevel;
+            }
+             
+            // Texture state
+            STexState texState;
+            texState.SetFilterMode(FILTER_TRILINEAR);
+            texState.m_bSRGBLookup = (flags & ESetTexture_bSRGBLookup) != 0;
+            texState.SetClampMode( pResTexture->m_bUTile ? TADDR_WRAP : TADDR_CLAMP,
+                                   pResTexture->m_bVTile ? TADDR_WRAP : TADDR_CLAMP,
+                                   TADDR_CLAMP);
+
+            // Set Texture
+            ((CTexture*)pTexture)->Apply(slot, CTexture::GetTexState(texState));
+        }
+    }
+
+    // Default texture
+    if ((flags & ESetTexture_AllowDefault) && (pTexture == nullptr))
+    {
+        ITexture* pTex = TextureHelpers::LookupTexDefault(tex);
+        SD3DPostEffectsUtils::SetTexture((CTexture*)pTex, slot, FILTER_TRILINEAR, 0);
+    }
+
+    return pTexture;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4954,6 +5216,54 @@ bool CD3D9Renderer::FX_DeferredDecals()
         return true;
     }
     return false;
+}
+
+// Renders emissive part of all deferred decals
+// This is called after the deferred lighting resolve since emissive
+// lighting is additive in relation to diffuse and specular 
+// Called by CD3D9Renderer::FX_RenderForwardOpaque
+bool CD3D9Renderer::FX_DeferredDecalsEmissive()
+{
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
+
+    if (!CV_r_deferredDecals)
+        return false;
+
+    // See FX_DeferredDecals
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsFrameBufferFetches())
+    {
+        return false;
+    }
+
+    uint32 nThreadID = rd->m_RP.m_nProcessThreadID;
+    int32 nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
+    assert(nRecurseLevel >= 0);
+
+    DynArray<SDeferredDecal>& deferredDecals = rd->m_RP.m_DeferredDecals[nThreadID][nRecurseLevel];
+
+    // Want the buffer cleared or we'll just get black out
+    if (deferredDecals.empty())
+    {
+        return false;
+    }
+
+    PROFILE_LABEL_SCOPE("DEFERRED_DECALS");
+
+    CDeferredShading& rDS = CDeferredShading::Instance();
+
+    const uint32 nNumDecals = deferredDecals.size();
+    for (uint32 d = 0; d < nNumDecals; ++d)
+    {
+        rDS.DeferredDecalEmissivePass(deferredDecals[d], d);
+    }
+
+    rd->SetCullMode(R_CULL_BACK);
+
+    // Commit any potential render target changes - required for when shadows disabled
+    rd->FX_SetActiveRenderTargets(false);
+    rd->FX_ResetPipe();
+
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

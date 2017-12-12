@@ -8,6 +8,10 @@ import { AwsProject } from './project.class'
 import { ResourceGroup, ResourceOutput } from './resource-group.class'
 import { DefinitionService } from 'app/shared/service/index'
 import { Router } from '@angular/router';
+import { Http } from '@angular/http';
+import { LyMetricService } from 'app/shared/service/index'
+
+declare var AWS
 
 export interface ProjectDeploymentSettings {
     DeploymentAccessStackId?: string;
@@ -78,37 +82,58 @@ export class AwsService {
         return this._context;
     }
 
-    constructor(        
-        private router: Router
+    constructor(
+        private router: Router,
+        private http: Http, 
+        private metric: LyMetricService
     ) {
         this._isInitialized = false;
         this._context = new AwsContext();
-        this._context.authentication = new Authentication(this.context);
+        this._context.authentication = new Authentication(this.context, this.metric);
         this._context.userManagement = new UserManagement(this.context, this.router);
+    }
+
+    public init(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string, definitions: DefinitionService): void {
+        //init the aws context                
+        this._isInitialized = this.isValidBootstrap(userPoolId, clientId, identityPoolId, bucketid, region)
+        if (!this._isInitialized)
+            return;       
+
+        this._context.init(userPoolId, clientId, identityPoolId, bucketid, region);
+        
+        this.initializeSubscriptions();
+
         this.context.authentication.change.subscribe(context => {
-            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
-                //TODO:  wrap the client to check the access token prior to calling the client.
-                this.context.s3 = this.context.awsClient("S3", "2006-03-01");
-                this.context.cloudFormation = this.context.awsClient("CloudFormation", "2010-05-15");
-                this.context.cognitoIdentityService = this.context.awsClient("CognitoIdentityServiceProvider", "2016-04-18");
-                this.context.cognitoIdentity = this.context.awsClient("CognitoIdentity", "2014-06-30");
-                
-                this.router.navigate(['/game/cloudgems']);
-            } else if (context.state === EnumAuthState.LOGGED_OUT) {
+            if (context.state === EnumAuthState.LOGGED_OUT) {
+                this.initializeSubscriptions();
                 this.router.navigate(['/login']);
             }
         });
-        this._context.project = new AwsProject(this.context);
+
     }
 
-    public init(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string): void {
-        //init the aws context                
-        this._isInitialized = true;
-        this._context.init(userPoolId, clientId, identityPoolId, bucketid, region);
-        this.context.project.init(bucketid);
+    public parseAPIId(serviceurl: string) {
+        if (!serviceurl)
+            return undefined
+        let schema_parts = serviceurl.split('//');
+        let url_parts = schema_parts[1].split('.');
+        return url_parts[0];
+
     }
 
+    private initializeSubscriptions(): void {
+        let initializationSubscription = this.context.authentication.change.subscribe(context => {
+            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
+                initializationSubscription.unsubscribe();
+                this.context.initializeServices();
+                this.context.project = new AwsProject(this.context, this.http);             
+                this.router.navigate(['game/cloudgems']);
+            }
+        });
+    }
 
-
+    private isValidBootstrap(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string): boolean {
+        return userPoolId && clientId && identityPoolId && bucketid && region ? true : false
+    }
 }
 

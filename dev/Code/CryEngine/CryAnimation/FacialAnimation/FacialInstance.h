@@ -189,10 +189,10 @@ private:
             : sequence(0)
             , bExclusive(false)
             , bLooping(false) {}
-        LayerInfo(IFacialAnimSequence* sequence, bool bExclusive, bool bLooping)
-            : sequence(sequence)
-            , bExclusive(bExclusive)
-            , bLooping(bLooping) {}
+        LayerInfo(IFacialAnimSequence* _sequence, bool _bExclusive, bool _bLooping)
+            : sequence(_sequence)
+            , bExclusive(_bExclusive)
+            , bLooping(_bLooping) {}
 
         _smart_ptr<IFacialAnimSequence> sequence;
         bool bExclusive;

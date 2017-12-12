@@ -11,6 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// In Mac, including ISystem without including platform.h first fails because platform.h 
+// includes CryThread.h which includes CryThread_pthreads.h which uses ISystem (gEnv). 
+// So plaform.h needs the contents of ISystem.h.
+// By including platform.h outside of the guard, we give platform.h the right include order
+#include <platform.h> // Needed for LARGE_INTEGER (for consoles).
+
 #ifndef CRYINCLUDE_CRYCOMMON_ISYSTEM_H
 #define CRYINCLUDE_CRYCOMMON_ISYSTEM_H
 #pragma once
@@ -20,8 +26,6 @@
 #else
     #define CRYSYSTEM_API DLL_IMPORT
 #endif
-
-#include <platform.h> // Needed for LARGE_INTEGER (for consoles).
 
 #include "CryAssert.h"
 #include "CompileTimeAssert.h"
@@ -40,6 +44,7 @@
 #include <ISystemScheduler.h> // <> required for Interfuscator
 #include <memory> // shared_ptr
 #include <IFilePathManager.h>
+#include <CrySystemBus.h>
 
 struct ISystem;
 struct ILog;
@@ -194,21 +199,30 @@ enum ESystemUpdateFlags
 //   Configuration specification, depends on user selected machine specification.
 enum ESystemConfigSpec
 {
-    CONFIG_CUSTOM        = 0, // should always be first
+    CONFIG_AUTO_SPEC     = 0,
     CONFIG_LOW_SPEC      = 1,
     CONFIG_MEDIUM_SPEC   = 2,
     CONFIG_HIGH_SPEC     = 3,
     CONFIG_VERYHIGH_SPEC = 4,
 
-    CONFIG_DURANGO = 5,
-    CONFIG_ORBIS = 6,
-    CONFIG_ANDROID = 7,
-    CONFIG_IOS = 8,
-    CONFIG_APPLETV = 9,
-    CONFIG_MACOS_GL = 10,
-    CONFIG_MACOS_METAL = 11,
-
     END_CONFIG_SPEC_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
+};
+
+// Description:
+//   Configuration platform. Autodetected at start, can be modified through the editor.
+enum ESystemConfigPlatform
+{
+    CONFIG_INVALID_PLATFORM   = 0,
+    CONFIG_PC                 = 1,
+    CONFIG_OSX_GL             = 2,
+    CONFIG_OSX_METAL          = 3,
+    CONFIG_ANDROID            = 4,
+    CONFIG_IOS                = 5,
+    CONFIG_XBONE              = 6,
+    CONFIG_PS4                = 7,
+    CONFIG_APPLETV            = 8,
+
+    END_CONFIG_PLATFORM_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
 };
 
 enum ESubsystem
@@ -632,7 +646,7 @@ struct SSystemInitParams
     bool remoteResourceCompiler;
     bool connectToRemote;
     bool waitForConnection; // if true, wait for the remote connection to be established before proceeding to system init.
-    char assetsPlatform[64]; // what flavor of assets to load.  ("pc" / "es3" / "ps4" / "ios" / "xboxone").  Corresponds to those in rc.ini and asset processor ini
+    char assetsPlatform[64]; // what flavor of assets to load.  ("pc" / "es3" / "ps4" / "ios" / "xboxone").  Corresponds to those in rc.ini and asset processor ini // ACCEPTED_USE
     char gameFolderName[256]; // just the name.  Not the full path.
     char gameDLLName[256]; // just the name.  Not the full path.  ("ExampleGame") - does not include extension
     char branchToken[12]; // information written by the assetprocessor which help determine whether the game/editor are running from the same branch or not
@@ -644,7 +658,7 @@ struct SSystemInitParams
     bool autoBackupLogs;                            // if true, logs will be automatically backed up each startup
     IValidator* pValidator;                         // You can specify different validator object to use by System.
     IOutputPrintSink* pPrintSync;               // Print Sync which can be used to catch all output from engine
-    char szSystemCmdLine[AZ_COMMAND_LINE_LEN];                     // Command line.
+    char szSystemCmdLine[2048];                     // Command line.
 
 
     // set some paths before you create the system.
@@ -777,7 +791,7 @@ struct SSystemInitParams
         // create websocket server by default. bear in mind that USE_HTTP_WEBSOCKETS is not defined in release.
         bSkipWebsocketServer = false;
 #else
-        // CTCPStreamSocket does not support XBOX ONE and PS4 at all, and some of its functionality only seems to support Win32 and 64
+        // CTCPStreamSocket only seems to fully support Win32 and 64
         bSkipWebsocketServer = true;
 #endif
         bMinimal = false;
@@ -802,7 +816,7 @@ struct SSystemInitParams
 
     bool UseAssetCache() const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engineroot.txt", rootPathCache);
         return AZ::IO::SystemFile::Exists(checkPath);
@@ -925,7 +939,6 @@ struct SSystemGlobalEnvironment
     IResourceCompilerHelper*      pResourceCompilerHelper;
     DRS::IDynamicResponseSystem*  pDynamicResponseSystem;
     SharedEnvironmentInstance*      pSharedEnvironment;
-    ILmbrAWS* pLmbrAWS;
     IFilePathManager* pFilePathManager;
     IThreadManager*               pThreadManager;
 
@@ -1270,11 +1283,11 @@ struct ISystem
     //! based on the platform you're on - so for example, android on ES3 will be 'es3' but android on opengl might load PC assets or others...
     //! This is defined in bootstrap.cfg and is read-only during runtime.
     virtual const char* GetAssetsPlatform() const = 0;
- 
+
     // Summary:
     //   Return the rendering driver name. GL or Metal
     virtual const char* GetRenderingDriverName() const = 0;
-    
+
     // Summary:
     //   Dumps the memory usage statistics to the logging default MB. (can be KB)
     virtual void DumpMemoryUsageStatistics(bool bUseKB = false) = 0;
@@ -1562,7 +1575,16 @@ struct ISystem
     // Arguments:
     //   bClient - If true changes client config spec (sys_spec variable changed),
     //             if false changes only server config spec (as known on the client).
-    virtual void SetConfigSpec(ESystemConfigSpec spec, bool bClient) = 0;
+    virtual void SetConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient) = 0;
+    //////////////////////////////////////////////////////////////////////////
+
+    // Summary:
+    //   Retrieves current configuration platform
+    virtual ESystemConfigPlatform GetConfigPlatform() const = 0;
+
+    // Summary:
+    //   Changes current configuration platform.
+    virtual void SetConfigPlatform(const ESystemConfigPlatform platform) = 0;
     //////////////////////////////////////////////////////////////////////////
 
     // Summary:
@@ -1623,7 +1645,7 @@ struct ISystem
     virtual bool UnregisterErrorObserver(IErrorObserver* errorObserver) = 0;
 
     // Summary:
-    //  Called after the processing of the assert message box(Windows or Xbox).
+    //  Called after the processing of the assert message box(Windows or Xbox). // ACCEPTED_USE
     //  It will be called even when asserts are disabled by the console variables.
     virtual void OnAssert(const char* condition, const char* message, const char* fileName, unsigned int fileLineNumber) = 0;
 
@@ -1770,6 +1792,10 @@ struct ISystem
     // Create an instance of a Local File IO object (which reads directly off the local filesystem, instead of,
     // for example, reading from the network or a pack or USB or such.
     virtual std::shared_ptr<AZ::IO::FileIOBase> CreateLocalFileIO() = 0;
+
+    // Summary:
+    //      Forces an FPS cap, for the Editor to use. Only has an impact if sys_MaxFps is defaulted. Var overrides always apply.
+    virtual void ForceMaxFps(bool enable, int maxFps) = 0;
 };
 
 //JAT - this is a very important function for the dedicated server - it lets us run >1000 players per piece of server hardware
@@ -1866,10 +1892,10 @@ public:
     }
 };
 
-#define LOADING_TIME_PROFILE_SECTION CSYSBootProfileBlock _profileBlockLine(gEnv->pSystem, __FUNCTION__);
-#define LOADING_TIME_PROFILE_SECTION_ARGS(args) CSYSBootProfileBlock _profileBlockLine(gEnv->pSystem, __FUNCTION__, args);
-#define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) CSYSBootProfileBlock _profileBlockLine(gEnv->pSystem, sectionName);
-#define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) CSYSBootProfileBlock _profileBlockLine(gEnv->pSystem, sectionName, args);
+#define LOADING_TIME_PROFILE_SECTION CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__);
+#define LOADING_TIME_PROFILE_SECTION_ARGS(args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__, args);
+#define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName);
+#define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName, args);
 
 #else
 
@@ -1899,7 +1925,12 @@ extern SC_API SSystemGlobalEnvironment* gEnv;
 //   Gets the system interface.
 inline ISystem* GetISystem()
 {
-    return gEnv->pSystem;
+    static ISystem* s_system = gEnv ? gEnv->pSystem : nullptr;
+    if (!s_system)
+    {
+        CrySystemRequestBus::BroadcastResult(s_system, &CrySystemRequests::GetCrySystem);
+    }
+    return s_system;
 };
 
 inline ISystemScheduler* GetISystemScheduler(void)
@@ -1982,6 +2013,7 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
 
 
     # define DeclareConstIntCVar(name, defaultValue) int name
+    # define DeclareAndExportStaticConstIntCVar(name, defaultValue) ENGINE_API static int name
     # define DeclareStaticConstIntCVar(name, defaultValue) static int name
     # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(strname, &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help)))

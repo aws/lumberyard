@@ -68,12 +68,16 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStopped
-        void TextEntryStopped() override;
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStart
+        void TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TextEntryStop
+        void TextEntryStop() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::TickInputDevice
@@ -156,11 +160,18 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     bool InputDeviceVirtualKeyboardAndroid::IsConnected() const
     {
+        // Virtual keyboard input is always available
+        return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceVirtualKeyboardAndroid::HasTextEntryStarted() const
+    {
         return m_keyboardHandler ? m_keyboardHandler->InvokeBooleanMethod("IsShowing") == JNI_TRUE : false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardAndroid::TextEntryStarted(float /*activeTextFieldNormalizedBottomY*/)
+    void InputDeviceVirtualKeyboardAndroid::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
     {
         if (m_keyboardHandler && !m_keyboardHandler->InvokeBooleanMethod("IsShowing"))
         {
@@ -169,7 +180,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardAndroid::TextEntryStopped()
+    void InputDeviceVirtualKeyboardAndroid::TextEntryStop()
     {
         if (m_keyboardHandler && m_keyboardHandler->InvokeBooleanMethod("IsShowing"))
         {

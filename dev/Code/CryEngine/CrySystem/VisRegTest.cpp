@@ -22,7 +22,6 @@
 #include "IRenderer.h"
 #include "IConsole.h"
 #include "ITimer.h"
-#include "IInput.h"
 #include "IEntitySystem.h"
 #include "IStreamEngine.h"
 
@@ -265,11 +264,6 @@ void CVisRegTest::LoadMap(const char* mapName)
     gEnv->pConsole->ExecuteString("t_FixedStep 0");
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_RANDOM_SEED, 0, 0);
     srand(0);
-
-    // Disable user input
-    gEnv->pInput->EnableDevice(eIDT_Keyboard, false);
-    gEnv->pInput->EnableDevice(eIDT_Mouse, false);
-    gEnv->pInput->EnableDevice(eIDT_Gamepad, false);
 }
 
 
@@ -323,10 +317,6 @@ void CVisRegTest::CaptureSample(const SCmd& cmd)
 void CVisRegTest::Finish()
 {
     WriteResults();
-
-    gEnv->pInput->EnableDevice(eIDT_Keyboard, true);
-    gEnv->pInput->EnableDevice(eIDT_Mouse, true);
-    gEnv->pInput->EnableDevice(eIDT_Gamepad, true);
 
     gEnv->pConsole->ExecuteString("t_FixedStep 0");
     gEnv->pTimer->SetTimeScale(1);

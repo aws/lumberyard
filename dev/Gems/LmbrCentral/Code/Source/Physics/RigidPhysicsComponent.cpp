@@ -11,32 +11,57 @@
 */
 #include "StdAfx.h"
 #include "RigidPhysicsComponent.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace LmbrCentral
 {
-    void RigidPhysicsConfiguration::Reflect(AZ::ReflectContext* context)
+    void RigidPhysicsConfig::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<RigidPhysicsConfiguration>()
+            serializeContext->Class<RigidPhysicsConfig>()
                 ->Version(1)
-                ->Field("EnabledInitially", &RigidPhysicsConfiguration::m_enabledInitially)
-                ->Field("SpecifyMassOrDensity", &RigidPhysicsConfiguration::m_specifyMassOrDensity)
-                ->Field("Mass", &RigidPhysicsConfiguration::m_mass)
-                ->Field("Density", &RigidPhysicsConfiguration::m_density)
-                ->Field("AtRestInitially", &RigidPhysicsConfiguration::m_atRestInitially)
-                ->Field("EnableCollisionResponse", &RigidPhysicsConfiguration::m_enableCollisionResponse)
-                ->Field("InteractsWithTriggers", &RigidPhysicsConfiguration::m_interactsWithTriggers)
-                ->Field("RecordCollisions", &RigidPhysicsConfiguration::m_recordCollisions)
-                ->Field("MaxRecordedCollisions", &RigidPhysicsConfiguration::m_maxRecordedCollisions)
-                ->Field("SimulationDamping", &RigidPhysicsConfiguration::m_simulationDamping)
-                ->Field("SimulationMinEnergy", &RigidPhysicsConfiguration::m_simulationMinEnergy)
-                ->Field("BuoyancyDamping", &RigidPhysicsConfiguration::m_buoyancyDamping)
-                ->Field("BuoyancyDensity", &RigidPhysicsConfiguration::m_buoyancyDensity)
-                ->Field("BuoyancyResistance", &RigidPhysicsConfiguration::m_buoyancyResistance)
+                ->Field("EnabledInitially", &RigidPhysicsConfig::m_enabledInitially)
+                ->Field("SpecifyMassOrDensity", &RigidPhysicsConfig::m_specifyMassOrDensity)
+                ->Field("Mass", &RigidPhysicsConfig::m_mass)
+                ->Field("Density", &RigidPhysicsConfig::m_density)
+                ->Field("AtRestInitially", &RigidPhysicsConfig::m_atRestInitially)
+                ->Field("EnableCollisionResponse", &RigidPhysicsConfig::m_enableCollisionResponse)
+                ->Field("InteractsWithTriggers", &RigidPhysicsConfig::m_interactsWithTriggers)
+                ->Field("RecordCollisions", &RigidPhysicsConfig::m_recordCollisions)
+                ->Field("MaxRecordedCollisions", &RigidPhysicsConfig::m_maxRecordedCollisions)
+                ->Field("SimulationDamping", &RigidPhysicsConfig::m_simulationDamping)
+                ->Field("SimulationMinEnergy", &RigidPhysicsConfig::m_simulationMinEnergy)
+                ->Field("BuoyancyDamping", &RigidPhysicsConfig::m_buoyancyDamping)
+                ->Field("BuoyancyDensity", &RigidPhysicsConfig::m_buoyancyDensity)
+                ->Field("BuoyancyResistance", &RigidPhysicsConfig::m_buoyancyResistance)
             ;
+        }
+        
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<RigidPhysicsConfig>()
+                ->Enum<(int)RigidPhysicsConfig::MassOrDensity::Mass>("MassOrDensity_Mass")
+                ->Enum<(int)RigidPhysicsConfig::MassOrDensity::Density>("MassOrDensity_Density")
+                ->Property("EnabledInitially", BehaviorValueProperty(&RigidPhysicsConfig::m_enabledInitially))
+                ->Property("SpecifyMassOrDensity",
+                    [](RigidPhysicsConfig* config) { return (int&)(config->m_specifyMassOrDensity); },
+                    [](RigidPhysicsConfig* config, const int& i) { config->m_specifyMassOrDensity = (RigidPhysicsConfig::MassOrDensity)i; })
+                ->Property("Mass", BehaviorValueProperty(&RigidPhysicsConfig::m_mass))
+                ->Property("Density", BehaviorValueProperty(&RigidPhysicsConfig::m_density))
+                ->Property("AtRestInitially", BehaviorValueProperty(&RigidPhysicsConfig::m_atRestInitially))
+                ->Property("EnableCollisionResponse", BehaviorValueProperty(&RigidPhysicsConfig::m_enableCollisionResponse))
+                ->Property("InteractsWithTriggers", BehaviorValueProperty(&RigidPhysicsConfig::m_interactsWithTriggers))
+                ->Property("BuoyancyDamping", BehaviorValueProperty(&RigidPhysicsConfig::m_buoyancyDamping))
+                ->Property("BuoyancyDensity", BehaviorValueProperty(&RigidPhysicsConfig::m_buoyancyDensity))
+                ->Property("BuoyancyResistance", BehaviorValueProperty(&RigidPhysicsConfig::m_buoyancyResistance))
+                ->Property("SimulationDamping", BehaviorValueProperty(&RigidPhysicsConfig::m_simulationDamping))
+                ->Property("SimulationMinEnergy", BehaviorValueProperty(&RigidPhysicsConfig::m_simulationMinEnergy))
+                ->Property("RecordCollisions", BehaviorValueProperty(&RigidPhysicsConfig::m_recordCollisions))
+                ->Property("MaxRecordedCollisions", BehaviorValueProperty(&RigidPhysicsConfig::m_maxRecordedCollisions))
+                ;
         }
     }
 
@@ -44,21 +69,40 @@ namespace LmbrCentral
     {
         PhysicsComponent::Reflect(context);
 
-        RigidPhysicsConfiguration::Reflect(context);
+        RigidPhysicsConfig::Reflect(context);
 
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<RigidPhysicsComponent, PhysicsComponent>()
                 ->Version(1)
                 ->Field("Configuration", &RigidPhysicsComponent::m_configuration)
             ;
         }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Constant("RigidPhysicsComponentTypeId", BehaviorConstant(RigidPhysicsComponentTypeId));
+        }
     }
 
-    RigidPhysicsComponent::RigidPhysicsComponent(const RigidPhysicsConfiguration& configuration)
-        : m_configuration(configuration)
+    bool RigidPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
+        if (auto config = azrtti_cast<const RigidPhysicsConfig*>(baseConfig))
+        {
+            m_configuration = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool RigidPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto config = azrtti_cast<RigidPhysicsConfig*>(outBaseConfig))
+        {
+            *config = m_configuration;
+            return true;
+        }
+        return false;
     }
 
     void RigidPhysicsComponent::Activate()

@@ -13,7 +13,34 @@ REM Original file Copyright Crytek GMBH or its affiliates, used under license.
 REM
 
 SETLOCAL
-SET CMD_DIR=%~dp0
+
+REM search for the engine root from the engine.json if possible
+IF NOT EXIST engine.json GOTO noSetupConfig
+
+FOR /F "tokens=1,2*" %%A in ('findstr /I /N "ExternalEnginePath" engine.json') do SET ENGINE_ROOT=%%C
+
+REM Clear the trailing comma if any
+SET ENGINE_ROOT=%ENGINE_ROOT:,=%
+
+REM Trim the double quotes
+SET ENGINE_ROOT=%ENGINE_ROOT:"=%
+
+IF "%ENGINE_ROOT%"=="" GOTO noSetupConfig
+
+IF NOT EXIST "%ENGINE_ROOT%" GOTO noSetupConfig
+
+REM Set the base path to the value
+SET BASE_PATH=%ENGINE_ROOT%\
+ECHO [WAF] Engine Root: %BASE_PATH%
+GOTO pythonPathSet
+
+:noSetupConfig
+SET BASE_PATH=%~dp0
+ECHO [WAF] Engine Root: %BASE_PATH%
+
+:pythonPathSet
+
+SET CMD_DIR=%BASE_PATH%
 SET CMD_DIR=%CMD_DIR:~0,-1%
 
 SET TOOLS_DIR=%CMD_DIR%\Tools

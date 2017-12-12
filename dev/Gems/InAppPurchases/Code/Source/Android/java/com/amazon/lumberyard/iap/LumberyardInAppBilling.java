@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
 import android.content.res.Resources;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -454,6 +455,15 @@ public class LumberyardInAppBilling extends ActivityResultsListener
     }
 
 
+    public boolean IsKindleDevice()
+    {
+        if (Build.MANUFACTURER.equals("Amazon") && Build.MODEL.contains("KF"))
+        {
+            Log.e(s_tag, "Kindle devices not currently supported");
+            return true;
+        }
+        return false;
+    }
     private class Request
     {
         public String m_operation;

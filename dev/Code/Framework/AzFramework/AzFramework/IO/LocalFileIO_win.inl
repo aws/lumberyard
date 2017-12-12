@@ -170,6 +170,15 @@ namespace AZ
                 {
                     absolutePath[len - 1] = 0;
                 }
+
+                // For some reason, at least on windows, _fullpath returns a lowercase drive letter even though other systems like Qt, use upper case.
+                if (len > 2)
+                {
+                    if (absolutePath[1] == ':')
+                    {
+                        absolutePath[0] = (char)toupper(absolutePath[0]);
+                    }
+                }
             }
             return result != nullptr;
         }

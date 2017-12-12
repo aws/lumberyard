@@ -1107,7 +1107,7 @@ void CSystem::AutoDetectSpec(const bool detectResolution)
     int finalSpecValue(GetFinalSpecValue(cpuRating, totSysMem >> 20, gpuRating, totVidMem >> 20, CONFIG_VERYHIGH_SPEC));
     CryLogAlways("- Final rating: Machine class %d", finalSpecValue);
 
-    m_sys_spec->Set(finalSpecValue);
+    m_sys_GraphicsQuality->Set(finalSpecValue);
 
     if (detectResolution)
     {

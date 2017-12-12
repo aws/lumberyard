@@ -18,7 +18,7 @@ from random import randint
 import service
 import uuid
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def get(request, AccountId):
     response = account_utils.get_account_table().get_item(Key = { 'AccountId': AccountId }, ConsistentRead = False)
 
@@ -30,11 +30,11 @@ def get(request, AccountId):
 
     return account
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def put(request, AccountId, AccountRequest):
     return put_account(AccountId, AccountRequest, create_account=False)
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def post(request, AccountRequest):
     account_id = str(uuid.uuid4())
     return put_account(account_id, AccountRequest, create_account=True)

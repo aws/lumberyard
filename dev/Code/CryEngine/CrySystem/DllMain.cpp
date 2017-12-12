@@ -42,7 +42,7 @@ DummyInitializer& initDummy()
 static int warmAllocator = initDummy().dummyValue;
 
 
-#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_ANDROID)
+#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
 #pragma warning( push )
 #pragma warning( disable : 4447 )
 BOOL APIENTRY DllMain(HANDLE hModule,

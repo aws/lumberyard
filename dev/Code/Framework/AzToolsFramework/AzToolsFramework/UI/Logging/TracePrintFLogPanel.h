@@ -19,7 +19,8 @@
 
 #include "LogPanel_Panel.h" // for the BaseLogPanel
 #include "LogControl.h" // for BaseLogView
-#include <AZCore/std/parallel/mutex.h>
+#include <AzCore/std/parallel/mutex.h>
+#include <AzCore/Component/TickBus.h>
 
 namespace AzToolsFramework
 {
@@ -50,6 +51,7 @@ namespace AzToolsFramework
         class AZTracePrintFLogTab
             : public BaseLogView
             , protected AZ::Debug::TraceMessageBus::Handler
+            , protected AZ::SystemTickBus::Handler
         {
             Q_OBJECT;
         public:
@@ -69,6 +71,8 @@ namespace AzToolsFramework
         protected:
             /// Log a message received from the TraceMessageBus
             void LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message);
+
+            void OnSystemTick() override;
 
             TabSettings m_settings;
 

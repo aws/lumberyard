@@ -13,10 +13,10 @@
 
 #include "FlowBaseNode.h"
 
-// 360 keys enum
+// 360 keys enum // ACCEPTED_USE
 enum EXBoxKey
 {
-    // Invalid - Not an XBox key
+    // Invalid - Not an XBox key // ACCEPTED_USE
     eXBK_Invalid = -1,
 
     // Keep in same order as EKeyID (KI_XINPUT_BASE+value)
@@ -53,27 +53,27 @@ enum EXBoxKey
 };
 
 
-#define XBoxKeyEnum "enum_int:DPadUp=0,DPadDown=1,DPadLeft=2,DPadRight=3,Start=4,Back=5,ThumbL=6,ThumbR=7,ShoulderL=8,ShoulderR=9,A=10,B=11,X=12,Y=13,TriggerL=28,TriggerR=29"
-#define XBoxAnalogEnum "enum_int:ThumbL=6,ThumbR=7,TriggerL=14,TriggerR=15"
+#define XBoxKeyEnum "enum_int:DPadUp=0,DPadDown=1,DPadLeft=2,DPadRight=3,Start=4,Back=5,ThumbL=6,ThumbR=7,ShoulderL=8,ShoulderR=9,A=10,B=11,X=12,Y=13,TriggerL=28,TriggerR=29" // ACCEPTED_USE
+#define XBoxAnalogEnum "enum_int:ThumbL=6,ThumbR=7,TriggerL=14,TriggerR=15" // ACCEPTED_USE
 
 //////////////////////////////////////////////////////////////////////////
-class CFlowNode_DebugXBoxKey
+class CFlowNode_DebugXBoxKey // ACCEPTED_USE
     : public CFlowBaseNode<eNCT_Instanced>
     , public IInputEventListener
 {
 public:
-    CFlowNode_DebugXBoxKey(SActivationInfo* pActInfo)
+    CFlowNode_DebugXBoxKey(SActivationInfo* pActInfo) // ACCEPTED_USE
     {
     }
 
-    ~CFlowNode_DebugXBoxKey()
+    ~CFlowNode_DebugXBoxKey() // ACCEPTED_USE
     {
         Register(false);
     }
 
     IFlowNodePtr Clone(SActivationInfo* pActInfo)
     {
-        return new CFlowNode_DebugXBoxKey(pActInfo);
+        return new CFlowNode_DebugXBoxKey(pActInfo); // ACCEPTED_USE
     }
 
     virtual void GetMemoryUsage(ICrySizer* s) const
@@ -110,7 +110,7 @@ public:
         static const SInputPortConfig inputs[] = {
             InputPortConfig_Void("Enable", _HELP("Enable reporting")),
             InputPortConfig_Void("Disable", _HELP("Disable reporting")),
-            InputPortConfig<int>("Key", 0, _HELP("XBoxOne controller key"), NULL, _UICONFIG(XBoxKeyEnum)),
+            InputPortConfig<int>("Key", 0, _HELP("XBoxOne controller key"), NULL, _UICONFIG(XBoxKeyEnum)), // ACCEPTED_USE
             InputPortConfig<bool>("NonDevMode", false, _HELP("If set to true, can be used in Non-Devmode as well [Debugging backdoor]")),
             { 0 }
         };
@@ -122,7 +122,7 @@ public:
         config.nFlags |= EFLN_TARGET_ENTITY;
         config.pInputPorts = inputs;
         config.pOutputPorts = outputs;
-        config.sDescription = _HELP("Get input from XBox 360 controller. EntityInput is used in multiplayer");
+        config.sDescription = _HELP("Get input from XBox 360 controller. EntityInput is used in multiplayer"); // ACCEPTED_USE
         config.SetCategory(EFLN_DEBUG);
     }
 
@@ -222,23 +222,23 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
-class CFlowNode_DebugXBoxAnalog
+class CFlowNode_DebugXBoxAnalog // ACCEPTED_USE
     : public CFlowBaseNode<eNCT_Instanced>
     , public IInputEventListener
 {
 public:
-    CFlowNode_DebugXBoxAnalog(SActivationInfo* pActInfo)
+    CFlowNode_DebugXBoxAnalog(SActivationInfo* pActInfo) // ACCEPTED_USE
     {
     }
 
-    ~CFlowNode_DebugXBoxAnalog()
+    ~CFlowNode_DebugXBoxAnalog() // ACCEPTED_USE
     {
         Register(false);
     }
 
     IFlowNodePtr Clone(SActivationInfo* pActInfo)
     {
-        return new CFlowNode_DebugXBoxAnalog(pActInfo);
+        return new CFlowNode_DebugXBoxAnalog(pActInfo); // ACCEPTED_USE
     }
 
     virtual void GetMemoryUsage(ICrySizer* s) const
@@ -275,7 +275,7 @@ public:
         static const SInputPortConfig inputs[] = {
             InputPortConfig_Void("Enable", _HELP("Enable reporting")),
             InputPortConfig_Void("Disable", _HELP("Disable reporting")),
-            InputPortConfig<int>("Key", 0, _HELP("XBoxOne controller key"), NULL, _UICONFIG(XBoxAnalogEnum)),
+            InputPortConfig<int>("Key", 0, _HELP("XBoxOne controller key"), NULL, _UICONFIG(XBoxAnalogEnum)), // ACCEPTED_USE
             InputPortConfig<bool>("NonDevMode", false, _HELP("If set to true, can be used in Non-Devmode as well [Debugging backdoor]")),
             { 0 }
         };
@@ -287,7 +287,7 @@ public:
         config.nFlags |= EFLN_TARGET_ENTITY;
         config.pInputPorts = inputs;
         config.pOutputPorts = outputs;
-        config.sDescription = _HELP("Get analog input from XBox 360 controller. Note: Expensive!  Note2: entity input is used in multiplayer");
+        config.sDescription = _HELP("Get analog input from XBox 360 controller. Note: Expensive!  Note2: entity input is used in multiplayer"); // ACCEPTED_USE
         config.SetCategory(EFLN_DEBUG);
     }
 
@@ -405,5 +405,5 @@ private:
 };
 
 
-REGISTER_FLOW_NODE("Debug:XBoxKey", CFlowNode_DebugXBoxKey);
-REGISTER_FLOW_NODE("Debug:XBoxAnalog", CFlowNode_DebugXBoxAnalog);
+REGISTER_FLOW_NODE("Debug:XBoxKey", CFlowNode_DebugXBoxKey); // ACCEPTED_USE
+REGISTER_FLOW_NODE("Debug:XBoxAnalog", CFlowNode_DebugXBoxAnalog); // ACCEPTED_USE

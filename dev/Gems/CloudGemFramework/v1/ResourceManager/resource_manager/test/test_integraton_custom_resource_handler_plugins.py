@@ -45,11 +45,12 @@ class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lm
         )
 
 
-    def __180_add_resource_group(self):     
+    def __180_create_test_gem(self):     
         self.lmbr_aws(
-            'resource-group', 'add',
-            '--resource-group', self.TEST_RESOURCE_GROUP_NAME
-        )
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME,
+            '--initial-content', 'no-resources',
+            '--enable')
 
 
     def __440_add_custom_resource_handler_in_resource_group(self):
@@ -147,6 +148,7 @@ def handler(event, context):
 
     CUSTOM_RESOURCE_NAME = 'Test'
 
+
     def add_custom_resource_handler_to_resource_group(self):
 
         resource_group_project_code_path = self.get_resource_group_project_code_path()
@@ -157,39 +159,27 @@ def handler(event, context):
         with open(resource_group_custom_resource_file_path, 'w') as f:
             f.write(self.CUSTOM_RESOURCE_HANDLER)
 
+
     def remove_custom_resource_handler_from_resource_group(self):
         resource_group_project_code_path = self.get_resource_group_project_code_path()
         shutil.rmtree(resource_group_project_code_path)
 
+
     def add_custom_resource_to_resource_group(self):
 
-        resource_group_template_path = self.get_resource_group_template_path()
+        with self.edit_gem_aws_json(self.TEST_RESOURCE_GROUP_NAME, 'resource-template.json') as resource_group_template:
 
-        with open(resource_group_template_path, 'r') as f:
-            resource_group_template = json.load(f)
+            resource_group_resources = resource_group_template['Resources'] = {}
 
-        resource_group_resources = resource_group_template['Resources'] = {}
-
-        resource_group_resources['Custom'] = {
-            "Type": "Custom::" + self.CUSTOM_RESOURCE_NAME,
-            "Properties": {
-                "ServiceToken": { "Ref": "ProjectResourceHandler" },
-                "ConfigurationKey": { "Ref": "ConfigurationKey" }
+            resource_group_resources['Custom'] = {
+                "Type": "Custom::" + self.CUSTOM_RESOURCE_NAME,
+                "Properties": {
+                    "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                    "ConfigurationKey": { "Ref": "ConfigurationKey" }
+                }
             }
-        }
-
-        with open(resource_group_template_path, 'w') as f:
-            json.dump(resource_group_template, f)
 
 
     def get_resource_group_project_code_path(self):
-        resource_group_path = os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME)
-        resource_group_project_code_path = os.path.join(resource_group_path, 'project-code')
-        return resource_group_project_code_path
-
-
-    def get_resource_group_template_path(self):
-        resource_group_path = os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME)
-        resource_group_template_path = os.path.join(resource_group_path, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
-        return resource_group_template_path
+        return self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'project-code')
 

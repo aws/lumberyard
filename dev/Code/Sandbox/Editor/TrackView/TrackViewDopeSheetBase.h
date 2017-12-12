@@ -181,6 +181,8 @@ private:
     void MouseMoveOver(const QPoint& point);
     void MouseMoveDragEndMarker(const QPoint& point, Qt::KeyboardModifiers modifiers);
 
+    void CancelDrag();
+
     float SnapTime(Qt::KeyboardModifiers modifiers, const QPoint& p);
 
     void MouseMoveDragStartMarker(const QPoint& point, Qt::KeyboardModifiers modifiers);

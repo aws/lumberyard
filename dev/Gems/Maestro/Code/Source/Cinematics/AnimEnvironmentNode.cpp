@@ -15,6 +15,7 @@
 
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "AnimEnvironmentNode.h"
 #include "AnimLightNode.h"
 #include "AnimSplineTrack.h"
@@ -35,8 +36,13 @@ namespace AnimEnvironmentNode
     }
 }
 
+CAnimEnvironmentNode::CAnimEnvironmentNode()
+    : CAnimEnvironmentNode(0)
+{
+}
+
 CAnimEnvironmentNode::CAnimEnvironmentNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Environment)
     , m_oldSunLongitude(0.0f)
     , m_oldSunLatitude(0.0f)
 {
@@ -55,6 +61,12 @@ void CAnimEnvironmentNode::Initialize()
         AnimEnvironmentNode::AddSupportedParam("Moon Longitude", eAnimParamType_MoonLongitude, eAnimValue_Float);
         AnimEnvironmentNode::AddSupportedParam("Moon Latitude", eAnimParamType_MoonLatitude, eAnimValue_Float);
     }
+}
+//////////////////////////////////////////////////////////////////////////
+void CAnimEnvironmentNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimEnvironmentNode, CAnimNode>()
+        ->Version(1);
 }
 
 void CAnimEnvironmentNode::Animate(SAnimContext& ac)

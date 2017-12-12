@@ -142,7 +142,7 @@ namespace GridMate
         //AZ_PROFILE_TIMER("GridMate");
 
         PrepareDataResult pdr(false, false, false, false);
-        bool forceDatasetsReliable = false;
+        bool forceDatasetsReliable = !!(marshalFlags & ReplicaMarshalFlags::ForceReliable);
 
         m_nDownstreamReliableRPCs = m_nDownstreamUnreliableRPCs = m_nUpstreamReliableRPCs = m_nUpstreamUnreliableRPCs = 0;
 
@@ -405,7 +405,7 @@ namespace GridMate
                 continue;
             }
 
-            if (rpc->m_reliable != isReliable && (mc.m_marshalFlags & ReplicaMarshalFlags::FullSync) != ReplicaMarshalFlags::FullSync)
+            if (rpc->m_reliable != isReliable && (mc.m_marshalFlags & ReplicaMarshalFlags::ForceReliable) != ReplicaMarshalFlags::ForceReliable)
             {
                 continue;
             }
@@ -414,7 +414,7 @@ namespace GridMate
 
             auto bufferSize = mc.m_outBuffer->Size();
 
-            SafeGuardWrite(mc.m_outBuffer, [rpc, rpcIndex, this, &mc]()
+            SafeGuardWrite(mc.m_outBuffer, [rpc, rpcIndex, &mc]()
             {
                 mc.m_outBuffer->Write(rpcIndex);
                 rpc->m_rpc->Marshal(*mc.m_outBuffer, rpc);

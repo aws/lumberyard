@@ -61,9 +61,6 @@ namespace LmbrAWS
             EOP_NewValue = EOP_StartIndex
         };
 
-        LmbrAWS::DynamoDB::TableClientInputPort m_tableClientPort {
-            EIP_TableClient
-        };
     };
 } // namespace Amazon
 

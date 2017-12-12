@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PlasticMAT" MtlFlags="526466" Shader="Glass" GenMask="180040000000" StringGenMask="%SPECULAR_MAP%TINT_COLOR_MAP%TINT_MAP" SurfaceType="mat_glass" Diffuse="0,0,0" Specular="0,0,0" Emittance="0,0,0,0" Opacity="1" Shininess="194" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Bumpmap" File="objects/effects/fx_plastic_01_ddn.dds"/>
+    <Texture Map="Specular" File="objects/effects/fx_plastic_01_diff.dds"/>
+    <Texture Map="Custom" File="objects/effects/fx_plastic_01_diff.dds"/>
+   </Textures>
+   <PublicParams BumpMapTile="1" TintColor="0.43415368,0.43415368,0.43415368" CloudinessReducesGloss="0.38100001" TintCloudiness="1" BackLightScale="1" BumpScale="2" IndirectColor="0.24620135,0.24620135,0.24620135"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -21,6 +21,7 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 extern "C" {
 #	include	<Lua/lualib.h>
@@ -861,6 +862,33 @@ namespace AzToolsFramework
             AZ_Error("Lua Script", false, "Failed to load asset for ScriptComponent: id=%s, type %s", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
         }
 
+        void ScriptEditorComponent::SetScript(const AZ::Data::Asset<AZ::ScriptAsset>& script) 
+        {
+            m_scriptAsset = script; 
+            m_scriptComponent.SetScript(script);
+
+            m_customName = "Lua Script";
+
+            if (script)
+            {
+                AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
+                AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, m_scriptAsset.GetId(), false);
+
+                if (jobOutcome.IsSuccess())
+                {
+                    AssetSystem::JobInfoContainer& jobs = jobOutcome.GetValue();
+
+                    // Get the asset relative path
+                    if (!jobs.empty())
+                    {
+                        AZStd::string name;
+                        AzFramework::StringFunc::Path::GetFileName(jobs[0].m_sourceFile.c_str(), name);
+                        m_customName += AZStd::string::format(" - %s", name.c_str());
+                    }
+                }
+            }
+        }
+
         const AZ::Edit::ElementData* ScriptEditorComponent::GetScriptPropertyEditData(const void* handlerPtr, const void* elementPtr, const AZ::Uuid& elementType)
         {
             const ScriptEditorComponent* owner = reinterpret_cast<const ScriptEditorComponent*>(handlerPtr);
@@ -886,13 +914,15 @@ namespace AzToolsFramework
                 {
                     ec->Class<ScriptEditorComponent>("Lua Script", "The Lua Script component allows you to add arbitrary Lua logic to an entity in the form of a Lua script")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
-                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                            ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
-                            ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LuaScript")
-                            ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid())
-                            ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Script.png")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &ScriptEditorComponent::m_customName)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LuaScript.png")
+                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid())
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Script.png")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-lua-script.html")
                         ->DataElement("AssetRef", &ScriptEditorComponent::m_scriptAsset, "Script", "Which script to use")
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ScriptEditorComponent::ScriptHasChanged)
                             ->Attribute("EditButton", "Editor/Icons/Assets/Lua")

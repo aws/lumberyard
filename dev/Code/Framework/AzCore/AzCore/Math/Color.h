@@ -40,7 +40,7 @@ namespace AZ
 
         explicit Color(float r, float g, float b, float a) { SetR(static_cast<const VectorFloat&>(r)); SetG(static_cast<const VectorFloat&>(g)); SetB(static_cast<const VectorFloat&>(b)); SetA(static_cast<const VectorFloat&>(a)); }
 
-        explicit Color(u8 r, u8 g, u8 b, u8 a) { SetR(r); SetG(g); SetB(b); SetA(a); }
+        explicit Color(u8 r, u8 g, u8 b, u8 a) { SetR8(r); SetG8(g); SetB8(b); SetA8(a); }
 
         ///Creates a vector with all components set to zero, more efficient than calling Color(0.0f)
         static const Color CreateZero();
@@ -132,16 +132,16 @@ namespace AZ
             return *this;
         }
 
-        // Color to u32 => 0xAAGGBBRR
+        // Color to u32 => 0xAABBGGRR
         u32 ToU32() const;
 
-        // Color to u32 => 0xAAGGBBRR, RGB convert from Linear to Gamma corrected values.
+        // Color to u32 => 0xAABBGGRR, RGB convert from Linear to Gamma corrected values.
         u32 ToU32LinearToGamma() const;
 
-        // Color from u32 => 0xAAGGBBRR
+        // Color from u32 => 0xAABBGGRR
         void FromU32(u32 c);
 
-        // Color from u32 => 0xAAGGBBRR, RGB convert from Gamma corrected to Linear values.
+        // Color from u32 => 0xAABBGGRR, RGB convert from Gamma corrected to Linear values.
         void FromU32GammaToLinear(u32 c);
 
         // Convert color from linear to gamma corrected space.
@@ -169,7 +169,7 @@ namespace AZ
         const VectorFloat Dot(const Color& rhs) const;
 
         //Dot product of two colors, using only the r,g,b components.
-        const VectorFloat Dot3(const Vector3& rhs) const;
+        const VectorFloat Dot3(const Color& rhs) const;
 
         //===============================================================
         // Standard operators

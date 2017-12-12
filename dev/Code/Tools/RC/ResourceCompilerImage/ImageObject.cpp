@@ -222,8 +222,8 @@ ImageObject* ImageObject::CopyImage() const
         uint32 dwLines = dwLocalHeight;
 
         if (CPixelFormats::GetPixelFormatInfo(srcPixelformat)->bCompressed)
-        {
-            dwLines = (dwLocalHeight + 3) / 4;
+        {           
+            dwLines = m_mips[dwMip]->m_rowCount;
         }
 
         char* pMem;
@@ -695,10 +695,10 @@ void ImageToProcess::ConvertFormatWithSpecifiedCompressor(const CImageProperties
         }
     }
 
-    // convert to CTX1 Xbox 360 specific format
+    // convert to CTX1 format
     if (fmtDst == ePixelFormat_CTX1)
     {
-        RCLogError("Failed to convert image to CTX1 format because this version of RC doesn't support Xbox 360 platform");
+        RCLogError("Failed to convert image to CTX1 format because this version of RC doesn't support Xbox 360 platform"); // ACCEPTED_USE
         set(0);
         return;
     }
@@ -812,7 +812,19 @@ void ImageToProcess::ConvertFormatWithSpecifiedCompressor(const CImageProperties
         break;
     }
 
+#if defined(TOOLS_SUPPORT_ETC2COMP)    
+    //Run etc2Comp for etc2 compressions
+    if (fmtDst >= ePixelFormat_EAC_R11 && fmtDst <= ePixelFormat_ETC2a)
+    {
+        const EResult res = ConvertFormatWithETC2Compressor(pProps, fmtDst, quality);
 
+        if (res == eResult_Success)
+        {
+            return;
+        }       
+    }
+#endif
+    
     // try PVRTC (PVRTC can covert to/from a POWERVR PVRT format)
 #if defined(TOOLS_SUPPORT_POWERVR)
     {
@@ -826,6 +838,8 @@ void ImageToProcess::ConvertFormatWithSpecifiedCompressor(const CImageProperties
         assert(res == eResult_UnsupportedFormat);
     }
 #endif
+
+
 
 
     // None of the following compressors can convert to/from floating point images, so we must

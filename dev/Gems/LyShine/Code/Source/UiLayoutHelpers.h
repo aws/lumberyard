@@ -84,4 +84,18 @@ namespace UiLayoutHelpers
     //! Called when a property that is used to calculate default layout cell values has changed.
     //! Marks the element's parent as needing to recompute its layout
     void InvalidateParentLayout(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Check whether the element's width is being controlled by a layout fitter
+    bool IsControlledByHorizontalFit(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Check whether the element's height is being controlled by a layout fitter
+    bool IsControlledByVerticalFit(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Called on a property change in the UI editor that has caused an element's layout to be invalid.
+    //! Sets up a refresh of the UI editor's transform properties in the properties pane if
+    //! the transform is controlled by a layout fitter
+    void CheckFitterAndRefreshEditorTransformProperties(AZ::EntityId elementId);
 } // namespace UiLayoutHelpers

@@ -237,13 +237,10 @@ namespace Path
     //! Replace extension for given file.
     inline QString ReplaceExtension(const QString& filepath, const QString& ext)
     {
-        char path_buffer[_MAX_PATH];
-        char drive[_MAX_DRIVE];
-        char dir[_MAX_DIR];
-        char fname[_MAX_FNAME];
-        _splitpath(filepath.toLatin1().data(), drive, dir, fname, 0);
-        _makepath(path_buffer, drive, dir, fname, ext.toLatin1().data());
-        return CaselessPaths(path_buffer);
+        AZStd::string newPath = filepath.toUtf8().data();
+        AzFramework::StringFunc::Path::ReplaceExtension(newPath, ext.toUtf8().data());
+        QString returnString(newPath.c_str());
+        return CaselessPaths(returnString);
     }
 
     //! Replace extension for given file.

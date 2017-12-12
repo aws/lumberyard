@@ -36,7 +36,7 @@ namespace LmbrAWS
             EIP_OutputFile
         };
 
-        virtual void GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString) override;
+        virtual void GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile) override;
     protected:
         const char* GetFlowNodeDescription() const override { return _HELP("S3 File Downloader"); }
         Aws::Vector<SInputPortConfig> GetInputPorts() const override;

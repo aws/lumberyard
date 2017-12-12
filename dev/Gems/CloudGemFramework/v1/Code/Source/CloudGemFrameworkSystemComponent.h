@@ -8,12 +8,14 @@
 #include <AzCore/Jobs/JobCancelGroup.h>
 
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemFramework
 {
     class CloudGemFrameworkSystemComponent
         : public AZ::Component
         , protected CloudGemFrameworkRequestBus::Handler
+        , public CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler
     {
     public:
 
@@ -38,8 +40,7 @@ namespace CloudGemFramework
         // CloudGemFrameworkRequestBus interface implementation
         AZStd::string GetServiceUrl(const AZStd::string& serviceName) override;
         AZ::JobContext* GetDefaultJobContext() override;
-        std::shared_ptr<Aws::Auth::AWSCredentialsProvider> GetPlayerCredentialsProvider() override;
-        virtual LmbrAWS::RequestRootCAFileResult GetRootCAFile(AZStd::string& resultPath) override;
+        virtual CloudCanvas::RequestRootCAFileResult GetRootCAFile(AZStd::string& resultPath) override;
 #ifdef _DEBUG
         virtual void IncrementJobCount() override;
         virtual void DecrementJobCount() override;
@@ -53,6 +54,10 @@ namespace CloudGemFramework
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
+        // CloudCanvasCommonBus Event Handlers
+        virtual void RootCAFileSet(const AZStd::string& caPath) override;
+
+        virtual AwsApiJobConfig* GetDefaultConfig() override;
     private:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
         // Workaround for VS2013 - Delete the copy constructor and make it private

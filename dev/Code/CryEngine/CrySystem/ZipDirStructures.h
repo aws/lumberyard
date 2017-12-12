@@ -42,7 +42,7 @@
 #define SUPPORT_UNBUFFERED_IO
 #endif
 
-// this was enabled for last gen consoles, could be useful for durango & orbis
+// this was enabled for last gen consoles, could be useful for new generation
 //#define OPTIMIZED_READONLY_ZIP_ENTRY
 
 

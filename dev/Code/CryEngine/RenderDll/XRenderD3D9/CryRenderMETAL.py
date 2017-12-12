@@ -35,7 +35,8 @@ TARGET.flags.compile[BuildConfigs.Common].add_includes('%LIB%INC%opengles%')
 
 REMOVE_SOURCES_C = ['DXMETAL/Specification%']
 REMOVE_SOURCES_H = ['DXMETAL/Specification%']
-REMOVE_SOURCES_CPP = ['DXCAFE%','DXPS%','DXOrbis%', 'DXMETAL/Specification%']
+REMOVE_SOURCES_CPP = ['DXPS%',
+'DXMETAL/Specification%']
 
 
 VCXPROJ = 'CryRenderMETAL.vcxproj'

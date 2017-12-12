@@ -80,6 +80,7 @@ namespace AzFramework
             m_requestSerial = 1;
             m_unitTesting = false;
             m_shouldQueueHandlerChanges = false;
+            m_retryAfterDisconnect = false;
 
             m_sendThread.m_desc.m_name = "APConn::SendThread";
             m_sendThread.m_main = AZStd::bind(&AssetProcessorConnection::SendThread, this);
@@ -88,13 +89,21 @@ namespace AzFramework
             m_recvThread.m_main = AZStd::bind(&AssetProcessorConnection::RecvThread, this);
 
             m_disconnectThread.m_desc.m_name = "APConn::DisconnectThread";
-            m_disconnectThread.m_main = AZStd::bind(&AssetProcessorConnection::DisconnectThread, this);
+            m_disconnectThread.m_skipStartingIfRunning = true;
+            m_disconnectThread.m_main = [this]()
+            {
+                DisconnectThread();
+            };
 
             m_listenThread.m_desc.m_name = "APConn::ListenThread";
             m_listenThread.m_main = AZStd::bind(&AssetProcessorConnection::ListenThread, this);
 
             m_connectThread.m_desc.m_name = "APConn::ConnectThread";
-            m_connectThread.m_main = AZStd::bind(&AssetProcessorConnection::ConnectThread, this);
+            m_connectThread.m_main = [this]()
+            {
+                ConnectThread();
+                m_connectThread.m_running = false;
+            };
 
             int result = AZ::AzSock::Startup();
             if (AZ::AzSock::SocketErrorOccured(result))
@@ -184,6 +193,11 @@ namespace AzFramework
                 return;
             }
 
+            if (!m_retryAfterDisconnect)
+            {
+                return;
+            }
+
             DebugMessage("AssetProcessorConnection::ConnectThread - Start to connect to %s:%u...", m_connectAddr.c_str(), m_port);
             AZ_Assert(m_connectionState != EConnectionState::Listening, "");
 
@@ -265,14 +279,21 @@ namespace AzFramework
 
             //we failed start the disconnect thread and try again if retry is set
             DebugMessage("AssetProcessorConnection::ConnectThread - Negotiation with %s:%u, Failed.", m_connectAddr.c_str(), m_port);
-            StartThread(m_disconnectThread);
+            Disconnect();
         }
 
         //disconnect is public and can be pounded on by an app, so protect out threads
         bool AssetProcessorConnection::Disconnect()
         {
             //kill any current connection and stop retrying
-            m_retryAfterDisconnect = false;
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
+                m_retryAfterDisconnect = false;
+                if (m_disconnectThread.m_running)
+                {
+                    return true;
+                }
+            }
             StartThread(m_disconnectThread);
             return true;
         }
@@ -281,7 +302,6 @@ namespace AzFramework
         //and if retry is set, restart the connect or listen thread, before dying itself
         void AssetProcessorConnection::DisconnectThread()
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
 
             DebugMessage("AssetProcessorConnection::DisconnectThread - Disconnecting %d", m_socket);
 
@@ -295,14 +315,13 @@ namespace AzFramework
             m_connectionState = EConnectionState::Disconnecting;
             EBUS_EVENT(EngineConnectionEvents::Bus, Disconnecting, this);
 
+            while (m_connectThread.m_running)
+            {
+                FlushResponseHandlers();
+            }
+
             //call all response handlers and clear them out
             DebugMessage("AssetProcessorConnection::DisconnectThread - notifying all response handlers of disconnection.");
-            for (auto callback : m_responseHandlers)
-            {
-                // send a 0, nullptr to each callback, which is the signal for "the request failed"
-                callback.second(0, nullptr, 0);
-            }
-            m_responseHandlers.clear();
 
             //clean up the socket if it is valid
             if (AZ::AzSock::IsAzSocketValid(m_socket))
@@ -338,12 +357,13 @@ namespace AzFramework
             JoinThread(m_connectThread);
             JoinThread(m_listenThread);
 
-            for (auto callback : m_responseHandlers)
+            FlushResponseHandlers();
+
+            // clear the send queue so there is no stale data!
             {
-                // send a 0, nullptr to each callback, which is the signal for "the request failed"
-                callback.second(0, nullptr, 0);
+                SendQueueType emptyQueue;
+                m_sendQueue.swap(emptyQueue);
             }
-            m_responseHandlers.clear();
 
             //set disconnected state
             DebugMessage("AssetProcessorConnection::DisconnectThread - All threads joined, Setting Disconnected state.");
@@ -357,24 +377,29 @@ namespace AzFramework
             //or a call to Disconnect by the app. It is not set to false due to a socket error.
 
             //start the listening or connect thread
-            DebugMessage("AssetProcessorConnection::DisconnectThread - m_retryAfterDisconnect = %s", m_retryAfterDisconnect ? "True" : "False");
-            if (m_retryAfterDisconnect)
             {
-                // wait for a short while so we don't make 1000s of connects per second
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
-                if ((m_retryAfterDisconnect)&&(!m_disconnectThread.m_join))
+                AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
+                DebugMessage("AssetProcessorConnection::DisconnectThread - m_retryAfterDisconnect = %s", m_retryAfterDisconnect ? "True" : "False");
+                if (m_retryAfterDisconnect)
                 {
-                    if (m_listening)
+                    // wait for a short while so we don't make 1000s of connects per second
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
+                    if ((m_retryAfterDisconnect) && (!m_disconnectThread.m_join))
                     {
-                        DebugMessage("AssetProcessorConnection::DisconnectThread - Start Listen Thread");
-                        StartThread(m_listenThread);
-                    }
-                    else
-                    {
-                        DebugMessage("AssetProcessorConnection::DisconnectThread - Start Connect Thread");
-                        StartThread(m_connectThread);
+                        if (m_listening)
+                        {
+                            DebugMessage("AssetProcessorConnection::DisconnectThread - Start Listen Thread");
+                            StartThread(m_listenThread);
+                        }
+                        else
+                        {
+                            DebugMessage("AssetProcessorConnection::DisconnectThread - Start Connect Thread");
+                            StartThread(m_connectThread);
+                        }
                     }
                 }
+
+                m_disconnectThread.m_running = false;
             }
         }
 
@@ -391,9 +416,14 @@ namespace AzFramework
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_ProcessId, AZ::OSString(processID)));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_Platform, AZ::OSString(m_assetPlatform.c_str())));
             engineInfo.m_negotiationInfoMap.insert(AZStd::make_pair(NegotiationInfo_BranchIndentifier, AZ::OSString(m_branchToken.c_str())));
+            
+            if (m_connectThread.m_join)
+            {
+                return false;
+            }
 
             NegotiationMessage apInfo;
-            if (!AssetSystem::SendRequest(engineInfo, apInfo))
+            if (!AssetSystem::SendRequestToConnection(engineInfo, apInfo, this))
             {
                 return false;
             }
@@ -494,7 +524,7 @@ namespace AzFramework
 
             if (!isBranchIdentifierMatch)
             {
-                AssetSystem::SendRequest(engineInfo); // we are sending the request so that assetprocessor can show the dialog for branch mismatch
+                AssetSystem::SendRequestToConnection(engineInfo, this); // we are sending the request so that assetprocessor can show the dialog for branch mismatch
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));    //Sleeping to make sure that the message get delivered to AP before socket get disconnected
                 m_negotiationFailed = true;
                 DebugMessage("AssetProcessorConnection::NegotiationWithClient - negotiation invalid");
@@ -506,7 +536,7 @@ namespace AzFramework
             if (isIdentifierMatch || (m_unitTesting && apInfo.m_identifier == "GAME"))
             {
                 DebugMessage("AssetProcessorConnection::NegotiationWithClient - negotiation successful with %s", apInfo.m_identifier.c_str());
-                AssetSystem::SendRequest(engineInfo);
+                AssetSystem::SendRequestToConnection(engineInfo, this);
             }
             else
             {
@@ -536,14 +566,21 @@ namespace AzFramework
 
         void AssetProcessorConnection::StartThread(ThreadState& thread, AZStd::semaphore* event /* = nullptr */)
         {
+            AZStd::lock_guard<AZStd::recursive_mutex> locker(thread.m_mutex);
+            if (thread.m_running && thread.m_skipStartingIfRunning)
+            {
+                return;
+            }
             JoinThread(thread, event);
             thread.m_join = false;
             DebugMessage("StartWorker: Starting %s", thread.m_desc.m_name);
+            thread.m_running = true;
             thread.m_thread = AZStd::thread(thread.m_main, &thread.m_desc);
         }
 
         void AssetProcessorConnection::JoinThread(ThreadState& thread, AZStd::semaphore* event /* = nullptr */)
         {
+            AZStd::lock_guard<AZStd::recursive_mutex> locker(thread.m_mutex);
             // If we are in one of the worker threads, we can safely assume that the thread will exit
             // when control returns from the error handler.
             if (thread.m_thread.joinable())
@@ -553,7 +590,7 @@ namespace AzFramework
                 if (event)
                 {
                     event->release(); // this will wake up the thread and it should exit immediately
-                    thread.m_thread.detach();
+                    thread.m_thread.join();
                 }
                 else
                 {
@@ -806,7 +843,10 @@ namespace AzFramework
                     {
                         // Error sending, abort
                         DebugMessage("AssetProcessorConnection::SendThread - AZ::AzSock::send returned an error %d, skipping this message", sendResult);
-                        StartThread(m_disconnectThread);
+                        if (!m_disconnectThread.m_running)
+                        {
+                            StartThread(m_disconnectThread);
+                        }
                         return;
                     }
                     bytesSent += sendResult;
@@ -844,8 +884,10 @@ namespace AzFramework
                     {
                         return;
                     }
-
-                    StartThread(m_disconnectThread);
+                    if (!m_disconnectThread.m_running)
+                    {
+                        StartThread(m_disconnectThread);
+                    }
                     return;
                 }
 
@@ -1162,6 +1204,17 @@ namespace AzFramework
                 AddResponseHandler(keyPair.first, keyPair.second, callbackPair.second);
             }
             m_responseHandlersToAdd.clear();
+        }
+
+        void AssetProcessorConnection::FlushResponseHandlers()
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            for (auto callback : m_responseHandlers)
+            {
+                // send a 0, nullptr to each callback, which is the signal for "the request failed"
+                callback.second(0, nullptr, 0);
+            }
+            m_responseHandlers.clear();
         }
 
         SocketConnection::TMessageCallbackHandle AssetProcessorConnection::GetNewCallbackHandle()

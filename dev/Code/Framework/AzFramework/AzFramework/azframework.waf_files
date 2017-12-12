@@ -36,6 +36,8 @@
             "CommandLine/CommandLine.h"
         ],
         "Entity": [
+            "Entity/BehaviorEntity.cpp",
+            "Entity/BehaviorEntity.h",
             "Entity/GameEntityContextComponent.cpp",
             "Entity/GameEntityContextComponent.h",
             "Entity/GameEntityContextBus.h",
@@ -48,7 +50,10 @@
         ],
         "Driller": [
             "Driller/RemoteDrillerInterface.cpp",
-            "Driller/RemoteDrillerInterface.h"
+            "Driller/RemoteDrillerInterface.h",
+            "Driller/DrillerConsoleAPI.h",
+            "Driller/DrillToFileComponent.h",
+            "Driller/DrillToFileComponent.cpp"
         ],
         "Components": [
             "Components/EditorEntityEvents.h",
@@ -56,7 +61,9 @@
             "Components/TransformComponent.h",
             "Components/BootstrapReaderComponent.h",
             "Components/BootstrapReaderComponent.cpp",
-            "Components/CameraBus.h"
+            "Components/CameraBus.h",
+            "Components/ConsoleBus.h",
+            "Components/ConsoleBus.cpp"
         ],
         "StringFunc": [
             "StringFunc/StringFunc.h",
@@ -97,6 +104,8 @@
             "Input/Channels/InputChannelDigital.h",
             "Input/Channels/InputChannelDigitalWithPosition2D.cpp",
             "Input/Channels/InputChannelDigitalWithPosition2D.h",
+            "Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.cpp",
+            "Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.h",
             "Input/Channels/InputChannelDigitalWithSharedPosition2D.cpp",
             "Input/Channels/InputChannelDigitalWithSharedPosition2D.h",
             "Input/Channels/InputChannelId.cpp",
@@ -135,8 +144,12 @@
             "Input/Devices/Touch/InputDeviceTouch.h"
         ],
         "Input/Events": [
+            "Input/Events/InputChannelEventFilter.cpp",
+            "Input/Events/InputChannelEventFilter.h",
             "Input/Events/InputChannelEventListener.cpp",
             "Input/Events/InputChannelEventListener.h",
+            "Input/Events/InputChannelEventSink.cpp",
+            "Input/Events/InputChannelEventSink.h",
             "Input/Events/InputTextEventListener.cpp",
             "Input/Events/InputTextEventListener.h"
         ],
@@ -158,6 +171,7 @@
             "IO/FileOperations.cpp"
         ],
         "Math": [
+            "Math/InterpolationSample.h",
             "Math/MathUtils.cpp",
             "Math/MathUtils.h"
         ],
@@ -168,7 +182,9 @@
             "Network/AssetProcessorConnection.cpp",
             "Network/AssetProcessorConnection.h",
             "Network/DynamicSerializableFieldMarshaler.h",
-            "Network/EntityIdMarshaler.h",            
+            "Network/EntityIdMarshaler.h",
+            "Network/InterestManagerComponent.h",
+            "Network/InterestManagerComponent.cpp",
             "Network/NetBindable.h",
             "Network/NetBindable.cpp",
             "Network/NetBindingHandlerBus.h",
@@ -215,7 +231,7 @@
             "TargetManagement/TargetManagementAPI.h",
             "TargetManagement/TargetManagementComponent.cpp",
             "TargetManagement/TargetManagementComponent.h"
-           
+
         ]
     }
 }

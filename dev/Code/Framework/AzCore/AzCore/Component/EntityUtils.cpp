@@ -22,11 +22,14 @@ namespace AZ
         //=========================================================================
         // Reflect
         //=========================================================================
-        void Reflect(AZ::SerializeContext& serializeContext)
+        void Reflect(ReflectContext* context)
         {
-            serializeContext.Class<SerializableEntityContainer>()->
-                Version(1)->
-                Field("Entities", &SerializableEntityContainer::m_entities);
+            if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<SerializableEntityContainer>()->
+                    Version(1)->
+                    Field("Entities", &SerializableEntityContainer::m_entities);
+            }
         }
         // Type IDs of types of special interest (we copy the string as it should never change)
         static const AZ::Uuid s_pairID = AZ::Uuid::CreateString("{9F3F5302-3390-407a-A6F7-2E011E3BB686}"); // AZStd::pair 

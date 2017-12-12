@@ -1,6 +1,8 @@
 ﻿import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs/Observable';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { Subscription } from 'rxjs/Subscription';
+import { Subscriber } from 'rxjs/Subscriber';
+import { Subject } from 'rxjs/Subject';
 import { AwsContext } from 'app/aws/context.class'
 import { LoginAction } from './action/login.class'
 import { LogoutAction } from './action/logout.class'
@@ -10,6 +12,10 @@ import { UpdatePasswordAction } from './action/update-password.class'
 import { ForgotPasswordAction } from './action/forgot-password.class'
 import { ForgotPasswordConfirmNewPasswordAction } from './action/forgot-password-confirm-password.class'
 import { EnumGroupName } from 'app/aws/user/user-management.class';
+import { LyMetricService } from 'app/shared/service/index';
+import { DateTimeUtil } from 'app/shared/class/index';
+
+declare var AWS;
  
 export enum EnumAuthState {
     INITIALIZED,
@@ -56,12 +62,12 @@ export interface AuthStateActionContext {
 }
  
 export interface AuthStateAction {
-    handle(subject: BehaviorSubject<AuthStateActionContext>, ...args: any[]): void
+    handle(subject: Subject<AuthStateActionContext>, ...args: any[]): void
 }
 
 export class Authentication {
  
-    private _actionObservable: BehaviorSubject<AuthStateActionContext>;
+    private _actionObservable: Subject<AuthStateActionContext>;
     // store the URL so we can redirect after logging in
     private _isInitialized: boolean;
     private _isSessionExpired: boolean;
@@ -72,11 +78,7 @@ export class Authentication {
     get change(): Observable<AuthStateActionContext> {
         return this._actionObservable.asObservable();
     }
- 
-    get isSessionExpired() {
-        return this._isSessionExpired;
-    }
- 
+
     get user(): any {
         return this.context.cognitoUserPool.getCurrentUser();
     }
@@ -87,22 +89,24 @@ export class Authentication {
         return this._session.getAccessToken().getJwtToken();
     }
  
-    get refreshToken(): string {
-        if (this._session === undefined)
-            return;
-        return this._session.getRefreshToken();
-    }
- 
     get idToken(): string {
         if (this._session === undefined)
             return;
         return this._session.getIdToken().getJwtToken();
     }
- 
-    set isSessionExpired(value: boolean) {
-        this._isSessionExpired = value;
+
+    get refreshToken(): string {
+        if (this._session === undefined)
+            return;
+        return this._session.getRefreshToken().getJwtToken();
     }
- 
+
+    get refreshCognitoToken(): string {
+        if (this._session === undefined)
+            return;
+        return this._session.getRefreshToken();
+    }
+
     get isLoggedIn(): boolean {
         return this.idToken ? true : false;
     }
@@ -115,9 +119,14 @@ export class Authentication {
         this._session = value;
     }
 
+    get isSessionValid(): boolean {
+        return this._session != null && this._session.isValid()
+    }
+
     get identityId(): string {
         return this._identityId;
     }
+    
 
     get isAdministrator(): boolean {        
         let obj = this.parseJwt(this.idToken)        
@@ -125,7 +134,7 @@ export class Authentication {
         return admin_group.length > 0
     }
         
-    public constructor(private context: AwsContext) {
+    public constructor(private context: AwsContext, private metric: LyMetricService) {
         this._actions[EnumAuthStateAction.LOGIN] = new LoginAction(this.context)
         this._actions[EnumAuthStateAction.LOGOUT] = new LogoutAction(this.context)
         this._actions[EnumAuthStateAction.UPDATE_CREDENTIAL] = new UpdateCredentialAction(this.context)        
@@ -134,11 +143,11 @@ export class Authentication {
         this._actions[EnumAuthStateAction.FORGOT_PASSWORD] = new ForgotPasswordAction(this.context)
         this._actions[EnumAuthStateAction.FORGOT_PASSWORD_CONFIRM_NEW_PASSWORD] = new ForgotPasswordConfirmNewPasswordAction(this.context)        
 
-        this._actionObservable = new BehaviorSubject<AuthStateActionContext>(<AuthStateActionContext>{});
+        this._actionObservable = new Subject<AuthStateActionContext>();
         this.change.subscribe(context => {            
             if (context.state === EnumAuthState.LOGGED_IN
                 || context.state === EnumAuthState.PASSWORD_CHANGED               
-                ) {
+            ) {                
                 this._session = context.output[0];                
                 this.updateCredentials()
             } else if (context.state === EnumAuthState.LOGGED_OUT) {
@@ -165,7 +174,11 @@ export class Authentication {
         this.execute(EnumAuthStateAction.FORGOT_PASSWORD_CONFIRM_NEW_PASSWORD, username, password, code);
     }
 
-    public logout(): void {
+    public logout(isforced: boolean = false): void {
+        this.metric.recordEvent("LoggedOut", {
+            "ForcedLogout": isforced.toString(),
+            "Class": this.constructor["name"]
+        }, null);        
         this.execute(EnumAuthStateAction.LOGOUT, this.user);
     }
  
@@ -176,7 +189,64 @@ export class Authentication {
     public updatePassword(user: any, password: string): void {
         this.execute(EnumAuthStateAction.UPDATE_PASSWORD, user, password);
     }
- 
+
+    public refreshSessionOrLogout(observable: Observable<any> = null): Observable<any> {        
+        return new Observable<any>(observer => {
+            //no current user is present
+            if (!this.user) {
+                this.logout(true);                
+            } else {
+                // validate the session                           
+                if (this.isSessionValid) {
+                    this.executeObservableOrLogout(this, observer, observable)                    
+                } else {
+                    //this will cause the session to generate new tokens for expired ones
+                    let context = this.context;
+                    let auth = this;                                        
+                    this.user.refreshSession(this.refreshCognitoToken, function(err, session) {
+                        if (err) {
+                            console.error(err)
+                            auth.logout(true);  
+                            return;
+                        }
+                        auth.session = session;                        
+                        
+                            auth.hookUpdateCredentials(auth, (response) => {                                                                
+                                auth.context.initializeServices();
+                                auth.executeObservableOrLogout(auth, observer, observable)        
+                            }, (error) => {
+                                console.error(error)
+                                auth.logout(true);
+                                })
+                            auth.updateCredentials();                                        
+                    })
+                }
+            }
+        })
+    }
+
+    private hookUpdateCredentials(auth, success, failure): void {
+        let subscription = auth.change.subscribe(context => {
+            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED || 
+                context.state === EnumAuthState.USER_CREDENTIAL_UPDATE_FAILED)
+                subscription.unsubscribe();
+
+            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
+                success(context.output)
+            } else if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATE_FAILED) {
+                failure(context.output)
+            }
+        });
+    }
+
+    private executeObservableOrLogout(auth: Authentication, observer: Subscriber<any>, observable: Observable<any>): void {
+        if (auth.isSessionValid && observer && observable) {
+            observer.next(observable)            
+        } else {
+            auth.logout(true);
+        }   
+    }
+
     private execute(transition: EnumAuthStateAction, ...args: any[]): void {
         this._actions[transition].handle(this._actionObservable, ...args);
     }

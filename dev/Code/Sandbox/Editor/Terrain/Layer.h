@@ -92,7 +92,7 @@ public:
     void FillWithColor(const QColor& col, int width, int height);
     bool LoadTexture(const QString& lpBitmapName, UINT iWidth, UINT iHeight);
     bool LoadTexture(DWORD* pBitmapData, UINT iWidth, UINT iHeight);
-    void ExportTexture(QString strFileName);
+    bool ExportTexture(QString strFileName);
     // represents the editor feature
     bool HasTexture() { return ((GetTextureWidth() != 0) && (m_texture.GetData() != NULL)); }
 
@@ -141,11 +141,6 @@ public:
 
     QImage& GetTexturePreviewBitmap();
     CImageEx& GetTexturePreviewImage();
-
-protected: // -----------------------------------------------------------------------
-
-    // Convert the layer from BGR to RGB
-    void BGRToQColor();
 
 private: // -----------------------------------------------------------------------
 

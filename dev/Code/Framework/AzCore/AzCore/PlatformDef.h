@@ -19,12 +19,7 @@
 #define ENABLE_TYPE_INFO_NAMES 1
 #endif
 
-#if   defined(_DURANGO) || defined(_XBOX_ONE)
-
-#define AZ_PLATFORM_XBONE
-#define AZ_COMPILER_MSVC        _MSC_VER
-
-#elif defined(_WIN32)
+#if   defined(_WIN32)
 
 #define AZ_PLATFORM_WINDOWS
 #define AZ_COMPILER_MSVC        _MSC_VER
@@ -69,34 +64,6 @@
 #else
     #error This plaform is not supported
 #endif
-
-#elif defined(SN_TARGET_PS3)
-
-#define AZ_PLATFORM_PS3
-#define AZ_BIG_ENDIAN
-
-#if defined(__SNC__)
-    #define AZ_COMPILER_SNC __SNC__
-
-// Limitations when Compiling with -Od
-// Making it appear that there is a use of local variables at the point where it goes out of scope can cause incorrect warnings about references to potentially uninitialized variables.
-//  For example, the variable 'loc3' in the example is declared at line 16, and goes out of scope at line 21. With -Od the internal representation is as though there is a use of 'loc3' at line 21.
-//  If the declaration is moved from line 16 to line 9 (where 'loc1' and 'loc2' are declared), then 'loc3' will go out of scope at the end of the function, and so it will appear that there is a use of 'loc3' at the very end, at line 25.
-//  When 'glb2' is at least 0, 'loc3' will not be initialized, and the new use of 'loc3' at the end of the function will appear to be possibly from an uninitialized value. Therefore compiling a modified version with 'loc3' declared at the outer scope of main() at -Od will produce the following incorrect warning:
-// main.c(25): warning 1669: Potential uninitialized reference to "loc3" in function "main"
-#   if defined(AZ_DEBUG_BUILD) && !defined(_DEBUG)
-#       pragma diag_suppress=1669
-#   endif
-
-#elif defined(__GNUC__)
-    #define AZ_COMPILER_GCC __GNUC__
-#else
-    #error This compiler is not supported
-#endif //
-
-#elif defined(SN_TARGET_PS3_SPU)
-
-#error This platform has been depricated
 
 #elif defined(__MWERKS__)
 
@@ -238,7 +205,7 @@
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
 
 /// Deprecated macro
-#   define AZ_DEPRECATED(_decl, _message)(_decl, _message)_decl __attribute__((deprecated))
+#   define AZ_DEPRECATED(_decl, _message) __attribute__((deprecated)) _decl
 /// DLL import/export macros
 #   define AZ_DLL_EXPORT __attribute__ ((visibility ("default")))
 #   define AZ_DLL_IMPORT __attribute__ ((visibility ("default")))
@@ -261,7 +228,7 @@
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
 /// Deprecated macro
-#   define AZ_DEPRECATED(_decl, _message)    _decl __attribute__((deprecated(_message)))
+#   define AZ_DEPRECATED(_decl, _message) __attribute__((deprecated(_message))) _decl
 /// RValue ref, move constructors
 #   define AZ_HAS_RVALUE_REFS
 /// Variadic templates
@@ -310,23 +277,20 @@
     #error Compiler not supported
 #endif
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #   define AZ_THREAD_LOCAL  __declspec(thread)
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX) // ACCEPTED_USE
 #   define AZ_THREAD_LOCAL  __thread
 #endif
 
-#if defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX_X64) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX_X64) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
 #   define AZ_OS64
 #else
 #   define AZ_OS32
 #endif
 
-#if defined(AZ_PLATFORM_WII)
-#   include <revolution/os.h>
-#endif
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined (AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined (AZ_PLATFORM_APPLE_OSX) // ACCEPTED_USE
 #   define AZ_HAS_DLL_SUPPORT
 #endif
 

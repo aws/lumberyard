@@ -23,8 +23,8 @@ namespace AZ
 template<>
     void BehaviorContext::DefaultDestruct<GridMate::GridSession>(void* object, void* userData)
 {
-    (void)userData; 
-    (void)object;    
+    (void)userData;
+    (void)object;
 }
 }
 
@@ -38,39 +38,39 @@ namespace Multiplayer
     {
         Call(FN_OnSessionServiceReady);
     }
-    void SessionEventBusBehaviorHandler::OnSessionCreated(GridMate::GridSession* gs) 
+    void SessionEventBusBehaviorHandler::OnSessionCreated(GridMate::GridSession* gs)
     {
         Call(FN_OnSessionCreated, gs);
     }
-    void SessionEventBusBehaviorHandler::OnSessionDelete(GridMate::GridSession* gs) 
+    void SessionEventBusBehaviorHandler::OnSessionDelete(GridMate::GridSession* gs)
     {
         Call(FN_OnSessionDelete, gs);
     }
-    void SessionEventBusBehaviorHandler::OnMemberJoined(GridMate::GridSession* gs, GridMate::GridMember* member) 
+    void SessionEventBusBehaviorHandler::OnMemberJoined(GridMate::GridSession* gs, GridMate::GridMember* member)
     {
         Call(FN_OnMemberJoined, gs, member);
     }
-    void SessionEventBusBehaviorHandler::OnMemberLeaving(GridMate::GridSession* gs, GridMate::GridMember* member) 
+    void SessionEventBusBehaviorHandler::OnMemberLeaving(GridMate::GridSession* gs, GridMate::GridMember* member)
     {
         Call(FN_OnMemberLeaving, gs, member);
     }
-    void SessionEventBusBehaviorHandler::OnMemberKicked(GridMate::GridSession* gs, GridMate::GridMember* member) 
+    void SessionEventBusBehaviorHandler::OnMemberKicked(GridMate::GridSession* gs, GridMate::GridMember* member, AZ::u8 kickreason)
     {
-        Call(FN_OnMemberKicked, gs, member);
+        Call(FN_OnMemberKicked, gs, member, kickreason);
     }
-    void SessionEventBusBehaviorHandler::OnSessionJoined(GridMate::GridSession* gs) 
+    void SessionEventBusBehaviorHandler::OnSessionJoined(GridMate::GridSession* gs)
     {
         Call(FN_OnSessionJoined, gs);
     }
-    void SessionEventBusBehaviorHandler::OnSessionStart(GridMate::GridSession* gs) 
+    void SessionEventBusBehaviorHandler::OnSessionStart(GridMate::GridSession* gs)
     {
         Call(FN_OnSessionStart, gs);
     }
-    void SessionEventBusBehaviorHandler::OnSessionEnd(GridMate::GridSession* gs) 
+    void SessionEventBusBehaviorHandler::OnSessionEnd(GridMate::GridSession* gs)
     {
         Call(FN_OnSessionEnd, gs);
     }
-    void SessionEventBusBehaviorHandler::OnSessionError(GridMate::GridSession* gs, const GridMate::string& msg) 
+    void SessionEventBusBehaviorHandler::OnSessionError(GridMate::GridSession* gs, const GridMate::string& msg)
     {
         Call(FN_OnSessionError, gs, msg);
     }
@@ -83,17 +83,17 @@ namespace Multiplayer
     {
     }
 
-    void MultiplayerEventsComponent::Activate() 
+    void MultiplayerEventsComponent::Activate()
     {
     }
-    void MultiplayerEventsComponent::Deactivate() 
+    void MultiplayerEventsComponent::Deactivate()
     {
     }
 
-    /** 
+    /**
      * helper class to allow a constructor and destructor for MultiplayerEventsComponent
      */
-    struct InternalMultiplayerEvents 
+    struct InternalMultiplayerEvents
         : public SessionEventBusBehaviorHandler
     {
         InternalMultiplayerEvents()
@@ -106,7 +106,7 @@ namespace Multiplayer
         {
             GridMate::SessionEventBus::Handler::BusDisconnect();
         }
-        bool Connect(AZ::BehaviorValueParameter* id) override 
+        bool Connect(AZ::BehaviorValueParameter* id) override
         {
             if (id == nullptr || id->m_value == nullptr)
             {
@@ -177,7 +177,7 @@ namespace Multiplayer
                 ->Method("IsTalking", &GridMate::GridMember::IsTalking)
                 ->Method("GetPlayerId", &GridMate::GridMember::GetPlayerId)
                 ;
-        
+
             behaviorContext->Class<GridMate::PlayerId>()
                 ->Property("playerId", &GridMatePlayerId::ToString, nullptr)
                 ->Property("type", &GridMatePlayerId::GetType, nullptr)
@@ -186,8 +186,6 @@ namespace Multiplayer
             // GridMate::ServiceType
             behaviorContext
                 ->Enum<GridMate::ST_LAN>("ST_LAN")
-                ->Enum<GridMate::ST_XLIVE>("ST_XLIVE")
-                ->Enum<GridMate::ST_PSN>("ST_PSN")
                 ->Enum<GridMate::ST_STEAM>("ST_STEAM")
                 ;
 

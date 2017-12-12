@@ -36,8 +36,8 @@ namespace AzToolsFramework
         ~ToolsApplication();
 
         void Stop();
-
-        void ReflectSerialize() override;
+        void CreateSerializeContext() override;
+        void Reflect(AZ::ReflectContext* context) override;
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
@@ -66,6 +66,7 @@ namespace AzToolsFramework
         bool IsDuringUndoRedo() override { return m_isDuringUndoRedo; }
         void UndoPressed() override;
         void RedoPressed() override;
+        void FlushUndo() override;
         UndoSystem::URSequencePoint* BeginUndoBatch(const char* label) override;
         UndoSystem::URSequencePoint* ResumeUndoBatch(UndoSystem::URSequencePoint* token, const char* label) override;
         void EndUndoBatch() override;

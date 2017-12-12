@@ -10,6 +10,8 @@
 #include "EditorCoreAPI.h"
 #include <Controls/QToolTipWidget.h>
 
+#include <Controls/BitmapToolTip.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
@@ -139,72 +141,6 @@ private:
     }
 };
 
-class AssetBrowserButton
-    : public BrowseButton
-{
-public:
-    AZ_CLASS_ALLOCATOR(AssetBrowserButton, AZ::SystemAllocator, 0);
-    AssetBrowserButton(PropertyType type, QWidget* pParent = nullptr)
-        : BrowseButton(type, pParent)
-    {
-        if (type == ePropertyTexture)
-        {
-            setIcon(QIcon(":/reflectedPropertyCtrl/img/texture_browse.png"));
-        }
-    }
-
-private:
-    void OnClicked() override
-    {
-        switch (m_propertyType)
-        {
-        case ePropertyTexture:
-        {
-            QString strInputString = Path::GetRelativePath(m_path);
-            CAssetBrowserDialog::Open(strInputString.toLatin1().data(), "Textures");
-            break;
-        }
-        case ePropertyMaterial:
-        {
-            CAssetBrowserDialog::Open(m_path.toStdString().c_str(), "Materials");
-            return;
-            break;
-        }
-        default:
-            break;
-        }
-    }
-};
-
-class AssetBrowserApplyButton
-    : public BrowseButton
-{
-public:
-    AZ_CLASS_ALLOCATOR(AssetBrowserApplyButton, AZ::SystemAllocator, 0);
-    AssetBrowserApplyButton(PropertyType type, QWidget* pParent = nullptr)
-        : BrowseButton(type, pParent)
-    {
-        setIcon(QIcon(":/reflectedPropertyCtrl/img/apply.png"));
-    }
-
-private:
-    void OnClicked() override
-    {
-        switch (m_propertyType)
-        {
-        case ePropertyTexture:
-        case ePropertyMaterial:
-            if (GetIEditor()->GetAssetBrowser()->isAvailable())
-            {
-                SetPathAndEmit(QString(GetIEditor()->GetAssetBrowser()->GetFirstSelectedFilename()));
-            }
-            break;
-        default:
-            break;
-        }
-    }
-};
-
 class TextureEditButton
     : public BrowseButton
 {
@@ -226,6 +162,7 @@ private:
 FileResourceSelectorWidget::FileResourceSelectorWidget(QWidget* pParent /*= nullptr*/)
     : QWidget(pParent)
     , m_propertyType(ePropertyInvalid)
+    , m_tooltip(nullptr)
 {
     m_pathEdit = new QLineEdit;
     m_mainLayout = new QHBoxLayout(this);
@@ -233,10 +170,13 @@ FileResourceSelectorWidget::FileResourceSelectorWidget(QWidget* pParent /*= null
 
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
 
+// KDAB just ported the MFC texture preview tooltip, but looks like Amazon added their own. Not sure which to use.
+// To switch to Amazon QToolTipWidget, remove FileResourceSelectorWidget::event and m_previewTooltip 
+#ifdef USE_QTOOLTIPWIDGET
     m_tooltip = new QToolTipWidget(this);
 
     installEventFilter(this);
-
+#endif
     connect(m_pathEdit, &QLineEdit::editingFinished, [this]() { OnPathChanged(m_pathEdit->text()); });
 }
 
@@ -277,15 +217,15 @@ void FileResourceSelectorWidget::SetPropertyType(PropertyType type)
         m_buttons.clear();
     }
 
+    m_previewToolTip.reset();
     m_propertyType = type;
 
     switch (type)
     {
     case ePropertyTexture:
         AddButton(new FileBrowseButton(type));
-        AddButton(new AssetBrowserButton(type));
-        AddButton(new AssetBrowserApplyButton(type));
         AddButton(new TextureEditButton);
+        m_previewToolTip.reset(new CBitmapToolTip);
         break;
     case ePropertyModel:
     case ePropertyGeomCache:
@@ -344,6 +284,11 @@ void FileResourceSelectorWidget::UpdateWidgets()
     {
         button->SetPath(m_path);
     }
+
+    if (m_previewToolTip)
+    {
+        m_previewToolTip->SetTool(this, rect());
+    }
 }
 
 QString FileResourceSelectorWidget::GetPath() const
@@ -372,6 +317,27 @@ void FileResourceSelectorWidget::UpdateTabOrder()
             setTabOrder(m_buttons[i], m_buttons[i + 1]);
         }
     }
+}
+
+bool FileResourceSelectorWidget::event(QEvent* event)
+{
+    if (event->type() == QEvent::ToolTip && m_previewToolTip && !m_previewToolTip->isVisible())
+    {
+        if (!m_path.isEmpty())
+        {
+            m_previewToolTip->LoadImage(m_path);
+            m_previewToolTip->setVisible(true);
+        }
+        event->accept();
+        return true;
+    }
+
+    if (event->type() == QEvent::Resize && m_previewToolTip)
+    {
+        m_previewToolTip->SetTool(this, rect());
+    }
+
+    return QWidget::event(event);
 }
 
 QWidget* FileResourceSelectorWidgetHandler::CreateGUI(QWidget* pParent)
@@ -413,4 +379,3 @@ bool FileResourceSelectorWidgetHandler::ReadValuesIntoGUI(size_t index, FileReso
 }
 
 #include <Controls/ReflectedPropertyControl/PropertyResourceCtrl.moc>
-

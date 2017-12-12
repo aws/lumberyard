@@ -46,7 +46,7 @@ namespace LmbrCentral
     // Static Mesh Asset Handler
     //////////////////////////////////////////////////////////////////////////
 
-    void AsyncStatObjLoadCallback(const AZ::Data::Asset<StaticMeshAsset>& asset, AZStd::condition_variable* loadVariable, _smart_ptr<IStatObj> statObj)
+    void AsyncStatObjLoadCallback(const AZ::Data::Asset<MeshAsset>& asset, AZStd::condition_variable* loadVariable, _smart_ptr<IStatObj> statObj)
     {
         if (statObj)
         {
@@ -64,34 +64,34 @@ namespace LmbrCentral
         loadVariable->notify_one();
     }
 
-    StaticMeshAssetHandler::~StaticMeshAssetHandler()
+    MeshAssetHandler::~MeshAssetHandler()
     {
         Unregister();
     }
 
-    AZ::Data::AssetPtr StaticMeshAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
+    AZ::Data::AssetPtr MeshAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
     {
         (void)type;
 
-        AZ_Assert(type == AZ::AzTypeInfo<StaticMeshAsset>::Uuid(), "Invalid asset type! We handle only 'StaticMeshAsset'");
+        AZ_Assert(type == AZ::AzTypeInfo<MeshAsset>::Uuid(), "Invalid asset type! We handle only 'MeshAsset'");
 
         AZStd::string assetPath;
         EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, id);
 
-        return aznew StaticMeshAsset();
+        return aznew MeshAsset();
     }
 
-    bool StaticMeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& /*asset*/, AZ::IO::GenericStream* /*stream*/, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
+    bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& /*asset*/, AZ::IO::GenericStream* /*stream*/, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
     {
         // Load from preloaded stream.
         AZ_Assert(false, "Favor loading through custom stream override of LoadAssetData, in order to load through CryPak.");
         return false;
     }
 
-    bool StaticMeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
+    bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
     {
-        AZ_Assert(asset.GetType() == AZ::AzTypeInfo<StaticMeshAsset>::Uuid(), "Invalid asset type! We only load 'StaticMeshAsset'");
-        if (StaticMeshAsset* meshAsset = asset.GetAs<StaticMeshAsset>())
+        AZ_Assert(asset.GetType() == AZ::AzTypeInfo<MeshAsset>::Uuid(), "Invalid asset type! We only load 'MeshAsset'");
+        if (MeshAsset* meshAsset = asset.GetAs<MeshAsset>())
         {
             AZ_Assert(!meshAsset->m_statObj.get(), "Attempting to create static mesh without cleaning up the old one.");
 
@@ -145,27 +145,27 @@ namespace LmbrCentral
         return false;
     }
 
-    void StaticMeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
+    void MeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
     {
         delete ptr;
     }
 
-    void StaticMeshAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
+    void MeshAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
     {
-        assetTypes.push_back(AZ::AzTypeInfo<StaticMeshAsset>::Uuid());
+        assetTypes.push_back(AZ::AzTypeInfo<MeshAsset>::Uuid());
     }
 
-    void StaticMeshAssetHandler::Register()
+    void MeshAssetHandler::Register()
     {
         AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset manager isn't ready!");
-        AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<StaticMeshAsset>::Uuid());
+        AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<MeshAsset>::Uuid());
 
-        AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<StaticMeshAsset>::Uuid());
+        AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<MeshAsset>::Uuid());
     }
 
-    void StaticMeshAssetHandler::Unregister()
+    void MeshAssetHandler::Unregister()
     {
-        AZ::AssetTypeInfoBus::Handler::BusDisconnect(AZ::AzTypeInfo<StaticMeshAsset>::Uuid());
+        AZ::AssetTypeInfoBus::Handler::BusDisconnect(AZ::AzTypeInfo<MeshAsset>::Uuid());
 
         if (AZ::Data::AssetManager::IsReady())
         {
@@ -173,32 +173,32 @@ namespace LmbrCentral
         }
     }
 
-    AZ::Data::AssetType StaticMeshAssetHandler::GetAssetType() const
+    AZ::Data::AssetType MeshAssetHandler::GetAssetType() const
     {
-        return AZ::AzTypeInfo<StaticMeshAsset>::Uuid();
+        return AZ::AzTypeInfo<MeshAsset>::Uuid();
     }
 
-    const char* StaticMeshAssetHandler::GetAssetTypeDisplayName() const
+    const char* MeshAssetHandler::GetAssetTypeDisplayName() const
     {
         return "Static Mesh";
     }
 
-    const char* StaticMeshAssetHandler::GetGroup() const
+    const char* MeshAssetHandler::GetGroup() const
     {
         return "Geometry";
     }
 
-    const char* StaticMeshAssetHandler::GetBrowserIcon() const
+    const char* MeshAssetHandler::GetBrowserIcon() const
     {
         return "Editor/Icons/Components/StaticMesh.png";
     }
 
-    AZ::Uuid StaticMeshAssetHandler::GetComponentTypeId() const
+    AZ::Uuid MeshAssetHandler::GetComponentTypeId() const
     {
         return AZ::Uuid("{FC315B86-3280-4D03-B4F0-5553D7D08432}");
     }
 
-    void StaticMeshAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
+    void MeshAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
     {
         extensions.push_back(CRY_GEOMETRY_FILE_EXT);
     }

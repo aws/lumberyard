@@ -1,0 +1,14 @@
+<Environment>
+ <Fog ViewDistance="8000" ViewDistanceLowSpec="1000" LDRGlobalDensMult="1"/>
+ <Terrain DetailLayersViewDistRatio="1" HeightMapAO="0"/>
+ <EnvState WindVector="1.5,0,0" BreezeGeneration="1" BreezeStrength="5" BreezeMovementSpeed="8" BreezeVariation="0.1" BreezeLifeTime="5" BreezeCount="4" BreezeSpawnRadius="25" BreezeSpread="1" BreezeRadius="5" ConsoleMergedMeshesPool="2750" ShowTerrainSurface="1" SunShadowsMinSpec="1" SunShadowsAdditionalCascadeMinSpec="0" SunShadowsClipPlaneRange="256" SunShadowsClipPlaneRangeShift="0.0f" UseLayersActivation="0" SunLinkedToTOD="1"/>
+ <VolFogShadows Enable="0" EnableForClouds="0"/>
+ <CloudShadows CloudShadowTexture="" CloudShadowSpeed="0,0,0" CloudShadowTiling="1" CloudShadowBrightness="1" CloudShadowInvert="0"/>
+ <ParticleLighting AmbientMul="1" LightsMul="1"/>
+ <SkyBox Material="EngineAssets/Materials/Sky/Sky" MaterialLowSpec="EngineAssets/Materials/Sky/Sky" Angle="0" Stretching="0.5"/>
+ <Ocean Material="EngineAssets/Materials/Water/Ocean_default" CausticDepth="8" CausticIntensity="1" CausticsTilling="1"/>
+ <OceanAnimation WindDirection="1" WindSpeed="4" WavesAmount="1.5" WavesSize="0.4"/>
+ <Moon Latitude="195" Longitude="17" Size="0.983" Texture="objects/effects/fx_gasgiant_01.dds"/>
+ <DynTexSource Width="256" Height="256"/>
+ <Total_Illumination_v2 Active="1" IntegrationMode="0" InjectionMultiplier="1" SkyColorMultiplier="2" UseTODSkyColor="0.5" PortalsDeform="0" PortalsInject="0" DiffuseAmplifier="1.0" SpecularAmplifier="0" NumberOfBounces="1" Saturation="0.8" PropagationBooster="1.5" DiffuseBias="2" DiffuseConeWidth="24" ConeMaxLength="12" UpdateLighting="0" UpdateGeometry="0" MinNodeSize="8.0" SkipNonGILights="0" LowSpecMode="0" HalfresKernel="0" UseLightProbes="1" VoxelizaionLODRatio="1.8" VoxelPoolResolution="128" SSAOAmount="0.7" ObjectsMaxViewDistance="64" SunRSMInject="0" SSDepthTrace="0"/>
+</Environment>

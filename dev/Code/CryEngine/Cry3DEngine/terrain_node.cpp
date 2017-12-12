@@ -256,7 +256,7 @@ void CTerrainNode::Init(int x1, int y1, int nNodeSize, CTerrainNode* pParent, bo
     m_ZErrorFromBaseLOD = new float[lodCount]; // TODO: fix duplicated reallocation
     memset(m_ZErrorFromBaseLOD, 0, sizeof(float) * GetTerrain()->m_UnitToSectorBitShift);
 
-    uint8 m_QueuedLOD = m_CurrentLOD = m_TextureLOD = 0;
+    m_CurrentLOD = 0;
 
     m_pLeafData = 0;
     m_nTreeLevel = 0;
@@ -585,12 +585,12 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
             if (m_DetailLayers[nLayer].surfaceType->lstnVegetationGroups[g] >= 0)
             {
                 int nGroupId = m_DetailLayers[nLayer].surfaceType->lstnVegetationGroups[g];
-                assert(DEFAULT_SID < GetObjManager()->m_lstStaticTypes.Count() && nGroupId >= 0 && nGroupId < GetObjManager()->m_lstStaticTypes[DEFAULT_SID].Count());
-                if (DEFAULT_SID >= GetObjManager()->m_lstStaticTypes.Count() || nGroupId < 0 || nGroupId >= GetObjManager()->m_lstStaticTypes[DEFAULT_SID].Count())
+                assert(DEFAULT_SID < GetObjManager()->GetListStaticTypes().Count() && nGroupId >= 0 && nGroupId < GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Count());
+                if (DEFAULT_SID >= GetObjManager()->GetListStaticTypes().Count() || nGroupId < 0 || nGroupId >= GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Count())
                 {
                     continue;
                 }
-                StatInstGroup* pGroup = &GetObjManager()->m_lstStaticTypes[DEFAULT_SID][nGroupId];
+                StatInstGroup* pGroup = &GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nGroupId];
                 if (!pGroup || !pGroup->GetStatObj() || pGroup->fSize <= 0 || !pGroup->GetStatObj())
                 {
                     continue;

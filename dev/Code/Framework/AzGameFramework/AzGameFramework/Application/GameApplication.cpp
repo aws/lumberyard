@@ -12,6 +12,7 @@
 
 #include "GameApplication.h"
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
+#include <AzFramework/Driller/DrillToFileComponent.h>
 #include <GridMate/Drillers/CarrierDriller.h>
 #include <GridMate/Drillers/ReplicaDriller.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
@@ -43,6 +44,7 @@ namespace AzGameFramework
         AzFramework::Application::RegisterCoreComponents();
 
         RegisterComponentDescriptor(AzFramework::DrillerNetworkAgentComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::DrillToFileComponent::CreateDescriptor());
 
         // have to let the metrics system know that it's ok to send back the name of the DrillerNetworkAgentComponent to Amazon as plain text, without hashing
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, AZStd::vector<AZ::Uuid>{ azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>() });
@@ -55,6 +57,7 @@ namespace AzGameFramework
         components.insert(components.end(), std::initializer_list<AZ::Uuid>{
             azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
             azrtti_typeid<AzFramework::TargetManagementComponent>(),
+            azrtti_typeid<AzFramework::DrillToFileComponent>(),
         });
 
         return components;

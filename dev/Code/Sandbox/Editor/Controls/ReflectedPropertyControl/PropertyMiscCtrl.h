@@ -14,8 +14,8 @@
 #define CRYINCLUDE_EDITOR_UTILS_PROPERTYMISCCTRL_H
 #pragma once
 
-#include <AZCore/base.h>
-#include <AZCore/memory/systemallocator.h>
+#include <AzCore/base.h>
+#include <AzCore/memory/systemallocator.h>
 #include <AzToolsFramework/Ui/PropertyEditor/PropertyEditorAPI.h>
 #include "ReflectedVar.h"
 #include "Util/VariablePropertyType.h"

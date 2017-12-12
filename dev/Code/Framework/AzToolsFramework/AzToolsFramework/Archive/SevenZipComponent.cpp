@@ -132,7 +132,7 @@ namespace AzToolsFramework
     void SevenZipComponent::ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback)
     {
         // Extract archive path to destionationPath\<archiveFileName> and skipping extracting of existing files (aos)
-        AZStd::string commandLineArgs("x " + archivePath + " -o" + destinationPath + "\\*" + " -aos");
+        AZStd::string commandLineArgs = AZStd::string::format(R"(x "%s" -o"%s\*" -aos)", archivePath.c_str(), destinationPath.c_str());
         Launch7zAsync(commandLineArgs, taskHandle, respCallback);
     }
 

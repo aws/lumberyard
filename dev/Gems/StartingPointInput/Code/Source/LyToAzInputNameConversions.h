@@ -21,16 +21,16 @@ namespace Input
     using namespace AzFramework;
 
     //////////////////////////////////////////////////////////////////////////
-    AZStd::string ConvertInputDeviceName(AZStd::string inputDeviceName)
+    inline AZStd::string ConvertInputDeviceName(AZStd::string inputDeviceName)
     {
         // Using std::unordered_map instead of AZStd to avoid allocator issues
         static const std::unordered_map<std::string, std::string> map =
         {
             { "mouse", InputDeviceMouse::Id.GetName() },
             { "keyboard", InputDeviceKeyboard::Id.GetName() },
-            { "xbox 360 controller", InputDeviceGamepad::Name },
-            { "xbox one controller", InputDeviceGamepad::Name },
-            { "playstation 4 controller", InputDeviceGamepad::Name },
+            { "xbox 360 controller", InputDeviceGamepad::Name }, // ACCEPTED_USE
+            { "xbox one controller", InputDeviceGamepad::Name }, // ACCEPTED_USE
+            { "playstation 4 controller", InputDeviceGamepad::Name }, // ACCEPTED_USE
             { "Oculus Touch Controller", "oculus_controllers" },
             { "OpenVR Controller", "openvr_controllers" }
         };
@@ -40,7 +40,7 @@ namespace Input
     }
 
     //////////////////////////////////////////////////////////////////////////
-    AZStd::string ConvertInputEventName(AZStd::string inputEventName)
+    inline AZStd::string ConvertInputEventName(AZStd::string inputEventName)
     {
         // Using std::unordered_map instead of AZStd to avoid allocator issues
         static const std::unordered_map<std::string, std::string> map =
@@ -85,7 +85,7 @@ namespace Input
             { "lbracket", InputDeviceKeyboard::Key::PunctuationBracketL.GetName() },
             { "rbracket", InputDeviceKeyboard::Key::PunctuationBracketR.GetName() },
             { "enter", InputDeviceKeyboard::Key::EditEnter.GetName() },
-            { "lctrl", InputDeviceKeyboard::Key::ModifierControlL.GetName() },
+            { "lctrl", InputDeviceKeyboard::Key::ModifierCtrlL.GetName() },
             { "a", InputDeviceKeyboard::Key::AlphanumericA.GetName() },
             { "s", InputDeviceKeyboard::Key::AlphanumericS.GetName() },
             { "d", InputDeviceKeyboard::Key::AlphanumericD.GetName() },
@@ -146,7 +146,7 @@ namespace Input
             { "f14", InputDeviceKeyboard::Key::Function14.GetName() },
             { "f15", InputDeviceKeyboard::Key::Function15.GetName() },
             { "np_enter", InputDeviceKeyboard::Key::NumPadEnter.GetName() },
-            { "rctrl", InputDeviceKeyboard::Key::ModifierControlR.GetName() },
+            { "rctrl", InputDeviceKeyboard::Key::ModifierCtrlR.GetName() },
             { "np_divide", InputDeviceKeyboard::Key::NumPadDivide.GetName() },
             { "print", InputDeviceKeyboard::Key::WindowsSystemPrint.GetName() },
             { "ralt", InputDeviceKeyboard::Key::ModifierAltR.GetName() },

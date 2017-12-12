@@ -148,7 +148,7 @@ namespace Audio
         const char* const GetImplementationNameString() const override;
         void GetMemoryInfo(SAudioImplMemoryInfo& oMemoryInfo) const override;
 
-        TAudioSourceId CreateAudioSource(const SAudioInputConfig& sourceConfig) override;
+        bool CreateAudioSource(const SAudioInputConfig& sourceConfig) override;
         void DestroyAudioSource(TAudioSourceId sourceId) override;
         // ~AudioSystemImplementationRequestBus
 

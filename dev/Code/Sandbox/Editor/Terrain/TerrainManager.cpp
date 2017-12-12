@@ -23,6 +23,7 @@
 #include "TerrainTexGen.h"
 #include "Util/AutoLogTime.h"
 #include "ITerrain.h"
+#include "Terrain/TerrainConverter.h"
 
 namespace {
     const char* kHeightmapFile = "Heightmap.dat";
@@ -640,6 +641,13 @@ bool CTerrainManager::Load()
             return false;
         }
     }
+
+    // Check terrain files and convert if necessary
+    TerrainConverter::Config config;
+    config.macroTextureXMLFilename = kTerrainTextureFile;
+    config.macroTexturePakFilename = "TerrainTexture.pak";
+    config.macroTextureQuadtreeFilename = COMPILED_TERRAIN_TEXTURE_FILE_NAME;
+    TerrainConverter::ConvertTerrain(config);
 
     SerializeTerrain(xmlAr);
     return true;

@@ -16,19 +16,20 @@
 #include <LmbrCentral/Scripting/TagComponentBus.h>
 #include <AzCore/std/string/string.h>
 #include "TagComponent.h"
-
+#include <LmbrCentral/Scripting/EditorTagComponentBus.h>
 
 namespace LmbrCentral
 {
-
     /**
-     * Tag Component
-     *
-     * Simple component that tags an entity with a list of filters or descriptors
-     *
-     */
+    * Tag Component
+    *
+    * Simple component that tags an entity with a list of filters or descriptors
+    *
+    */
     class EditorTagComponent
         : public AzToolsFramework::Components::EditorComponentBase
+        , private LmbrCentral::EditorTagComponentRequestBus::Handler
+        , private LmbrCentral::TagGlobalRequestBus::MultiHandler
     {
     public:
         AZ_COMPONENT(EditorTagComponent,
@@ -55,15 +56,30 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("TagService"));
+            provided.push_back(AZ_CRC("TagService", 0xf1ef347d));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("TagService"));
+            incompatible.push_back(AZ_CRC("TagService", 0xf1ef347d));
         }
 
         //////////////////////////////////////////////////////////////////////////
+
+
+        //////////////////////////////////////////////////////////////////////////
+        // TagGlobalRequestBus::MultiHandler
+        const AZ::EntityId RequestTaggedEntities() override { return GetEntityId(); }
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // EditorTagComponentRequestBus::Handler
+        bool HasTag(const char* tag) override;
+        void AddTag(const char* tag) override;
+        void RemoveTag(const  char* tag) override;
+        const EditorTags& GetTags() override { return m_tags; }
+        //////////////////////////////////////////////////////////////////////////
+
         // Reflected Data
         EditorTags m_tags;
     };

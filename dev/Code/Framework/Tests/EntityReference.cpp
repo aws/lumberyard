@@ -202,4 +202,28 @@ namespace UnitTest
             EXPECT_EQ(nullptr, entityRefForLoad.GetEntity());
         }
     }
+
+    TEST_F(EntityReferenceTest, RemapIdTest)
+    {
+        AZ::Entity remapEntity;
+        AzFramework::EntityReference entityRef(&remapEntity);
+        EXPECT_EQ(&remapEntity, entityRef.GetEntity());
+        EXPECT_EQ(entityRef.GetEntityId(), entityRef.GetEntity()->GetId());
+
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> entityIdMap;
+        AZ::EntityUtils::GenerateNewIdsAndFixRefs(&remapEntity, entityIdMap, &m_serializeContext);
+        
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_NE(entityRef.GetEntityId(), entityRef.GetEntity()->GetId());
+        AZ_TEST_STOP_ASSERTTEST(1);
+
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(&remapEntity, entityRef.GetEntity());
+        AZ_TEST_STOP_ASSERTTEST(1);
+
+        AzFramework::EntityReference clonedRef;
+        m_serializeContext.CloneObjectInplace(clonedRef, &entityRef);
+        EXPECT_EQ(nullptr, clonedRef.GetEntity());
+        EXPECT_EQ(clonedRef.GetEntityId(), entityRef.GetEntityId());
+    }
 }

@@ -119,7 +119,7 @@ void CD3D9Renderer::RT_Draw2dImageInternal(C2dImage* images, uint32 numImages, b
     m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView.SetIdentity();
 
     // Create dynamic geometry
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
     vb.Allocate(numImages * 4);
     SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -296,7 +296,7 @@ void CD3D9Renderer::RT_DrawLines(Vec3 v[], int nump, ColorF& col, int flags, flo
 
     if (fGround >= 0)
     {
-        TempDynVB<SVF_P3F_C4B_T2F> vb;
+        TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
         vb.Allocate(nump * 2);
         SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -324,7 +324,7 @@ void CD3D9Renderer::RT_DrawLines(Vec3 v[], int nump, ColorF& col, int flags, flo
     }
     else
     {
-        TempDynVB<SVF_P3F_C4B_T2F> vb;
+        TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
         vb.Allocate(nump);
         SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 

@@ -38,228 +38,232 @@ namespace UnitTest
     class SmartPtr
         : public AllocatorsFixture
     {
-    };
+    public:
+        void SetUp() override;
 
-#if defined(AZ_COMPILER_MSVC)
+        void TearDown() override;
 
-    //#pragma warning(disable: 4786)  // identifier truncated in debug info
-    //#pragma warning(disable: 4710)  // function not inlined
-    //#pragma warning(disable: 4711)  // function selected for automatic inline expansion
-    //#pragma warning(disable: 4514)  // unreferenced inline removed
-#pragma warning(disable: 4355)  // 'this' : used in base member initializer list
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        // Shared pointer
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
-    //#if (BOOST_MSVC >= 1310)
-    //#pragma warning(disable: 4675)  // resolved overload found with Koenig lookup
-    //#endif
-
-#endif
-
-    //////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    // Shared pointer
-    //////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-
-    namespace SharedPtr
-    {
-
-        namespace n_element_type
+        class SharedPtr
         {
-            void f(int&)
+        public:
+            class n_element_type
             {
-            }
-
-            void test()
-            {
-                typedef AZStd::shared_ptr<int>::element_type T;
-                T t;
-                f(t);
-            }
-        } // namespace n_element_type
-
-        class incomplete;
-
-        namespace test
-        {
-            int m = 0;
-
-            struct A
-            {
-                int dummy;
-            };
-
-            struct B
-            {
-                int dummy2;
-            };
-
-            struct C
-                : public A
-                , public virtual B
-            {
-            };
-
-            struct X
-            {
-                static long instances;
-
-                X()
+            public:
+                static void f(int&)
                 {
-                    ++instances;
                 }
 
-                virtual ~X()
+                static void test()
                 {
-                    --instances;
+                    typedef AZStd::shared_ptr<int>::element_type T;
+                    T t;
+                    f(t);
                 }
+            }; // namespace n_element_type
 
-                bool operator==(const X&) const
+            class incomplete;
+
+            class test
+            {
+            public:
+                struct A
                 {
-                    return true;
-                }
+                    int dummy;
+                };
 
-            private:
-
-                X(X const&) = delete;
-                X& operator= (X const&) = delete;
-            };
-
-            long X::instances = 0;
-
-            // virtual inheritance stresses the implementation
-
-            struct Y
-                : public A
-                , public virtual X
-            {
-                static long instances;
-
-                Y()
+                struct B
                 {
-                    ++instances;
-                }
+                    int dummy2;
+                };
 
-                ~Y() override
+                struct C
+                    : public A
+                    , public virtual B
                 {
-                    --instances;
-                }
+                };
 
-            private:
+                struct X
+                {
+                    X(test& instanceOwner)
+                        : instanceRef(instanceOwner)
+                    {
+                        ++instanceRef.m_xInstances;
+                    }
 
-                Y(Y const&) = delete;
-                Y& operator= (Y const&) = delete;
-            };
+                    virtual ~X()
+                    {
+                        --instanceRef.m_xInstances;
+                    }
 
-            long Y::instances = 0;
+                    bool operator==(const X&) const
+                    {
+                        return true;
+                    }
 
-            void deleter(int* p)
-            {
-                EXPECT_TRUE(p == 0);
-            }
+                private:
+                    test& instanceRef;
+                    X(X const&) = delete;
+                    X& operator= (X const&) = delete;
+                };
 
-            void deleter2(int* p)
-            {
-                EXPECT_TRUE(p == &m);
-                ++*p;
-            }
+                // virtual inheritance stresses the implementation
 
-            struct deleter3
-            {
-                void operator()(incomplete* p)
+                struct Y
+                    : public A
+                    , public virtual X
+                {
+
+                    Y(test& instanceOwner)
+                        : X(instanceOwner)
+                        , instanceRef(instanceOwner)
+                    {
+                        ++instanceRef.m_yInstances;
+                    }
+
+                    ~Y() override
+                    {
+                        --instanceRef.m_yInstances;
+                    }
+
+                private:
+                    test& instanceRef;
+                    Y(Y const&) = delete;
+                    Y& operator= (Y const&) = delete;
+                };
+
+
+                static void deleter(int* p)
                 {
                     EXPECT_TRUE(p == 0);
                 }
+
+                struct deleter2
+                {
+                    deleter2(const deleter2&) = default;
+                    deleter2& operator=(const deleter2&) = default;
+                    deleter2(int* basePtr) : memberPtr(basePtr) {}
+                    void operator()(int* p)
+                    {
+                        EXPECT_TRUE(p == memberPtr);
+                        ++*p;
+                    }
+
+                    int* memberPtr = nullptr;
+                };
+
+                struct deleter3
+                {
+                    void operator()(incomplete* p)
+                    {
+                        EXPECT_TRUE(p == 0);
+                    }
+                };
+
+
+                struct deleter_void
+                {
+                    deleter_void(const deleter_void&) = default;
+                    deleter_void& operator=(const deleter_void& other) = default;
+                    deleter_void(void*& deletedPtr) : d(&deletedPtr) {}
+
+                    void operator()(void* p)
+                    {
+                        *d = p;
+                    }
+                    void** d;
+                };
+
+                int m = 0;
+                void* deleted = nullptr;
+                AZ::u32 m_xInstances = 0;
+                AZ::u32 m_yInstances = 0;
             };
 
-            void* deleted = 0;
-
-            void deleter_void(void* p)
+            template <class P, class T>
+            void TestPtr(AZStd::shared_ptr<P>& pt, T* p)
             {
-                deleted = p;
+                if (p)
+                {
+                    EXPECT_TRUE(pt);
+                    EXPECT_FALSE(!pt);
+                }
+                else
+                {
+                    EXPECT_FALSE(pt);
+                    EXPECT_TRUE(!pt);
+                }
+
+                EXPECT_EQ(p, pt.get());
+                EXPECT_EQ(1, pt.use_count());
+                EXPECT_TRUE(pt.unique());
             }
-        }
 
-        template <class ...Types>
-        struct TestInstanceCount;
+            template <class P, class T>
+            void TestAddr(T* p)
+            {
+                AZStd::shared_ptr<P> pt(p);
+                TestPtr(pt, p);
+            }
 
-        template <>
-        struct TestInstanceCount<>
-        {
-            static void AssertCount(long) {}
+            template <class P, class T>
+            void TestNull(T* p)
+            {
+                EXPECT_EQ(nullptr, p);
+                TestAddr<P, T>(p);
+            }
+
+            template <class T>
+            void TestType(T* p)
+            {
+                TestNull<T>(p);
+            }
+
+            template <class P, class T>
+            void TestValue(T* p, const T& val)
+            {
+                AZStd::shared_ptr<P> pi(p);
+                EXPECT_TRUE(pi);
+                EXPECT_FALSE(!pi);
+                EXPECT_EQ(p, pi.get());
+                EXPECT_EQ(1, pi.use_count());
+                EXPECT_TRUE(pi.unique());
+                EXPECT_EQ(val, *reinterpret_cast<const T*>(pi.get()));
+            }
+
+            template <class P, class T>
+            void TestPolymorphic(T* p)
+            {
+                AZStd::shared_ptr<P> pi(p);
+                EXPECT_TRUE(pi);
+                EXPECT_FALSE(!pi);
+                EXPECT_EQ(p, pi.get());
+                EXPECT_EQ(1, pi.use_count());
+                EXPECT_TRUE(pi.unique());
+                EXPECT_EQ(1, m_test.m_xInstances);
+                EXPECT_EQ(1, m_test.m_yInstances);
+            }
+
+            test m_test;
         };
 
-        template <class T, class ...Rest>
-        struct TestInstanceCount<T, Rest...>
-        {
-            static void AssertCount(long count)
-            {
-                EXPECT_EQ(count, T::instances);
-                TestInstanceCount<Rest...>::AssertCount(count);
-            }
-        };
+        SharedPtr* m_sharedPtr = nullptr;
+    };
 
-        template <class P, class T>
-        void TestPtr(AZStd::shared_ptr<P>& pt, T* p)
-        {
-            if (p)
-            {
-                EXPECT_TRUE(pt);
-                EXPECT_FALSE(!pt);
-            }
-            else
-            {
-                EXPECT_FALSE(pt);
-                EXPECT_TRUE(!pt);
-            }
+    void SmartPtr::SetUp()
+    {
+        AllocatorsFixture::SetUp();
+        m_sharedPtr = new SharedPtr;
+    }
 
-            EXPECT_EQ(p, pt.get());
-            EXPECT_EQ(1, pt.use_count());
-            EXPECT_TRUE(pt.unique());
-        }
-
-        template <class P, class T>
-        void TestAddr(T* p)
-        {
-            AZStd::shared_ptr<P> pt(p);
-            TestPtr(pt, p);
-        }
-
-        template <class P, class T>
-        void TestNull(T* p)
-        {
-            EXPECT_EQ(nullptr, p);
-            TestAddr<P, T>(p);
-        }
-
-        template <class T>
-        void TestType(T* p)
-        {
-            TestNull<T>(p);
-        }
-
-        template <class P, class T>
-        void TestValue(T* p, const T& val)
-        {
-            AZStd::shared_ptr<P> pi(p);
-            EXPECT_TRUE(pi);
-            EXPECT_FALSE(!pi);
-            EXPECT_EQ(p, pi.get());
-            EXPECT_EQ(1, pi.use_count());
-            EXPECT_TRUE(pi.unique());
-            EXPECT_EQ(val, *reinterpret_cast<const T*>(pi.get()));
-        }
-
-        template <class P, class T, class ...Args>
-        void TestPolymorphic(T* p)
-        {
-            AZStd::shared_ptr<P> pi(p);
-            EXPECT_TRUE(pi);
-            EXPECT_FALSE(!pi);
-            EXPECT_EQ(p, pi.get());
-            EXPECT_EQ(1, pi.use_count());
-            EXPECT_TRUE(pi.unique());
-            TestInstanceCount<Args...>::AssertCount(1);
-        }
+    void SmartPtr::TearDown()
+    {
+        delete m_sharedPtr;
     }
 
     TEST_F(SmartPtr, SharedPtrCtorInt)
@@ -300,97 +304,83 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCtorIntPtr)
     {
-        using SharedPtr::TestType;
-        TestType(static_cast<int*>(0));
-        TestType(static_cast<int const*>(0));
-        TestType(static_cast<int volatile*>(0));
-        TestType(static_cast<int const volatile*>(0));
+        m_sharedPtr->TestType(static_cast<int*>(0));
+        m_sharedPtr->TestType(static_cast<int const*>(0));
+        m_sharedPtr->TestType(static_cast<int volatile*>(0));
+        m_sharedPtr->TestType(static_cast<int const volatile*>(0));
     }
 
     TEST_F(SmartPtr, SharedPtrCtorConstIntPtr)
     {
-        using SharedPtr::TestNull;
-        TestNull<int const>(static_cast<int*>(0));
-        TestNull<int volatile>(static_cast<int*>(0));
-        TestNull<void>(static_cast<int*>(0));
-        TestNull<void const>(static_cast<int*>(0));
+        m_sharedPtr->TestNull<int const>(static_cast<int*>(0));
+        m_sharedPtr->TestNull<int volatile>(static_cast<int*>(0));
+        m_sharedPtr->TestNull<void>(static_cast<int*>(0));
+        m_sharedPtr->TestNull<void const>(static_cast<int*>(0));
     }
 
     TEST_F(SmartPtr, SharedPtrCtorX)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::TestType;
-        TestType(static_cast<X*>(0));
-        TestType(static_cast<X const*>(0));
-        TestType(static_cast<X volatile*>(0));
-        TestType(static_cast<X const volatile*>(0));
+        m_sharedPtr->TestType(static_cast<SharedPtr::test::X*>(0));
+        m_sharedPtr->TestType(static_cast<SharedPtr::test::X const*>(0));
+        m_sharedPtr->TestType(static_cast<SharedPtr::test::X volatile*>(0));
+        m_sharedPtr->TestType(static_cast<SharedPtr::test::X const volatile*>(0));
     }
 
     TEST_F(SmartPtr, SharedPtrCtorXConvert)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        using SharedPtr::TestNull;
-        TestNull<X const>(static_cast<X*>(0));
-        TestNull<X>(static_cast<Y*>(0));
-        TestNull<X const>(static_cast<Y*>(0));
-        TestNull<void>(static_cast<X*>(0));
-        TestNull<void const>(static_cast<X*>(0));
+        m_sharedPtr->TestNull<SharedPtr::test::X const>(static_cast<SharedPtr::test::X*>(0));
+        m_sharedPtr->TestNull<SharedPtr::test::X>(static_cast<SharedPtr::test::Y*>(0));
+        m_sharedPtr->TestNull<SharedPtr::test::X const>(static_cast<SharedPtr::test::Y*>(0));
+        m_sharedPtr->TestNull<void>(static_cast<SharedPtr::test::X*>(0));
+        m_sharedPtr->TestNull<void const>(static_cast<SharedPtr::test::X*>(0));
     }
 
     TEST_F(SmartPtr, SharedPtrCtorIntValue)
     {
-        using SharedPtr::TestValue;
-        TestValue<int>(new int(7), 7);
-        TestValue<int const>(new int(7), 7);
-        TestValue<void>(new int(7), 7);
-        TestValue<void const>(new int(7), 7);
+        m_sharedPtr->TestValue<int>(new int(7), 7);
+        m_sharedPtr->TestValue<int const>(new int(7), 7);
+        m_sharedPtr->TestValue<void>(new int(7), 7);
+        m_sharedPtr->TestValue<void const>(new int(7), 7);
     }
 
     TEST_F(SmartPtr, SharedPtrTestXValue)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        using SharedPtr::TestValue;
-
-        EXPECT_EQ(0, X::instances);
-        TestValue<X>(new X(), X());
+        using X = SharedPtr::test::X;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        m_sharedPtr->TestValue<X>(new X(m_sharedPtr->m_test), X(m_sharedPtr->m_test));
         
-        EXPECT_EQ(0, X::instances);
-        TestValue<X const>(new X(), X());
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        m_sharedPtr->TestValue<X const>(new X(m_sharedPtr->m_test), X(m_sharedPtr->m_test));
         
-        EXPECT_EQ(0, X::instances);
-        TestValue<void>(new X(), X());
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        m_sharedPtr->TestValue<void>(new X(m_sharedPtr->m_test), X(m_sharedPtr->m_test));
         
-        EXPECT_EQ(0, X::instances);
-        TestValue<void const>(new X(), X());
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        m_sharedPtr->TestValue<void const>(new X(m_sharedPtr->m_test), X(m_sharedPtr->m_test));
     }
 
     TEST_F(SmartPtr, SharedPtrTestXValuePoly)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        using SharedPtr::TestPolymorphic;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
+        m_sharedPtr->TestPolymorphic< X, Y>(new Y(m_sharedPtr->m_test));
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
-        TestPolymorphic<X, Y, X, Y>(new Y());
-
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
-        TestPolymorphic<X const, Y, X, Y>(new Y());
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
+        m_sharedPtr->TestPolymorphic< X const, Y>(new Y(m_sharedPtr->m_test));
     }
 
     TEST_F(SmartPtr, SharedPtrFromUniquePtr)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
         {
-            X* p = new X;
+            X* p = new X(m_sharedPtr->m_test);
             AZStd::unique_ptr<X> pu(p);
             AZStd::shared_ptr<X> px(AZStd::move(pu));
             EXPECT_TRUE(px);
@@ -398,13 +388,13 @@ namespace UnitTest
             EXPECT_EQ(p, px.get());
             EXPECT_EQ(1, px.use_count());
             EXPECT_TRUE(px.unique());
-            EXPECT_EQ(1, X::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
         }
 
-        EXPECT_EQ(0, X::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
 
         {
-            X* p = new X;
+            X* p = new X(m_sharedPtr->m_test);
             AZStd::unique_ptr<X> pu(p);
             AZStd::shared_ptr<X> px(nullptr);
             px = AZStd::move(pu);
@@ -413,13 +403,13 @@ namespace UnitTest
             EXPECT_EQ(p, px.get());
             EXPECT_EQ(1, px.use_count());
             EXPECT_TRUE(px.unique());
-            EXPECT_EQ(1, X::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
         }
 
-        EXPECT_EQ(0, X::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
 
         {
-            Y* p = new Y;
+            Y* p = new Y(m_sharedPtr->m_test);
             AZStd::unique_ptr<Y> pu(p);
             AZStd::shared_ptr<X> px(AZStd::move(pu));
             EXPECT_TRUE(px);
@@ -427,15 +417,15 @@ namespace UnitTest
             EXPECT_EQ(p, px.get());
             EXPECT_EQ(1, px.use_count());
             EXPECT_TRUE(px.unique());
-            EXPECT_EQ(1, X::instances);
-            EXPECT_EQ(1, Y::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
         }
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
         {
-            Y* p = new Y;
+            Y* p = new Y(m_sharedPtr->m_test);
             AZStd::unique_ptr<Y> pu(p);
             AZStd::shared_ptr<X> px(nullptr);
             px = AZStd::move(pu);
@@ -444,110 +434,100 @@ namespace UnitTest
             EXPECT_EQ(p, px.get());
             EXPECT_EQ(1, px.use_count());
             EXPECT_TRUE(px.unique());
-            EXPECT_EQ(1, X::instances);
-            EXPECT_EQ(1, Y::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
         }
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, UniquePtrToUniquePtrPoly)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
         {
             // Test moving unique_ptr of child type to unique_ptr of base type
-            Y * p = new Y;
+            Y * p = new Y(m_sharedPtr->m_test);
             AZStd::unique_ptr<Y> pu(p);
             AZStd::unique_ptr<X> px(AZStd::move(pu));
             EXPECT_TRUE(!!px);
             EXPECT_FALSE(!px);
             EXPECT_EQ(p, px.get());
-            EXPECT_EQ(1, X::instances);
-            EXPECT_EQ(1, Y::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
         }
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrCtorNullDeleter)
     {
-        using SharedPtr::test::deleter;
-        using SharedPtr::TestPtr;
-        
         {
-            AZStd::shared_ptr<int> pi(static_cast<int*>(0), deleter);
-            TestPtr<int, int>(pi, nullptr);
+            AZStd::shared_ptr<int> pi(static_cast<int*>(0), &SharedPtr::test::deleter);
+            m_sharedPtr->TestPtr<int, int>(pi, nullptr);
         }
         {
-            AZStd::shared_ptr<void> pv(static_cast<int*>(0), &deleter);
-            TestPtr<void, int>(pv, nullptr);
+            AZStd::shared_ptr<void> pv(static_cast<int*>(0), &SharedPtr::test::deleter);
+            m_sharedPtr->TestPtr<void, int>(pv, nullptr);
         }
         {
-            AZStd::shared_ptr<void const> pv(static_cast<int*>(0), deleter);
-            TestPtr<void const, int>(pv, nullptr);
+            AZStd::shared_ptr<void const> pv(static_cast<int*>(0), &SharedPtr::test::deleter);
+            m_sharedPtr->TestPtr<void const, int>(pv, nullptr);
         }
     }
 
     TEST_F(SmartPtr, SharedPtrCtorIncompleteDeleter)
     {
-        using SharedPtr::test::deleter3;
-        using SharedPtr::TestPtr;
-        using SharedPtr::incomplete;
-
-        incomplete* p0 = nullptr;
+        SharedPtr::incomplete* p0 = nullptr;
         {
-            AZStd::shared_ptr<incomplete> px(p0, deleter3());
-            TestPtr(px, p0);
+            AZStd::shared_ptr<SharedPtr::incomplete> px(p0, SharedPtr::test::deleter3());
+            m_sharedPtr->TestPtr(px, p0);
         }
         {
-            AZStd::shared_ptr<void> pv(p0, deleter3());
-            TestPtr(pv, p0);
+            AZStd::shared_ptr<void> pv(p0, SharedPtr::test::deleter3());
+            m_sharedPtr->TestPtr(pv, p0);
         }
         {
-            AZStd::shared_ptr<void const> pv(p0, deleter3());
-            TestPtr(pv, p0);
+            AZStd::shared_ptr<void const> pv(p0, SharedPtr::test::deleter3());
+            m_sharedPtr->TestPtr(pv, p0);
         }
     }
 
     TEST_F(SmartPtr, SharedPtrCtorIntDeleter)
     {
-        using SharedPtr::test::deleter2;
-        using SharedPtr::TestPtr;
-        using SharedPtr::test::m;
-        EXPECT_EQ(0, m);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m);
 
         {
-            AZStd::shared_ptr<int> pi(&m, deleter2);
-            TestPtr(pi, &m);
+            AZStd::shared_ptr<int> pi(&m_sharedPtr->m_test.m, SharedPtr::test::deleter2(&m_sharedPtr->m_test.m));
+            m_sharedPtr->TestPtr(pi, &m_sharedPtr->m_test.m);
         }
 
-        EXPECT_EQ(1, m);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m);
 
         {
-            AZStd::shared_ptr<int const> pi(&m, &deleter2);
-            TestPtr(pi, &m);
+            AZStd::shared_ptr<int const> pi(&m_sharedPtr->m_test.m, SharedPtr::test::deleter2(&m_sharedPtr->m_test.m));
+            m_sharedPtr->TestPtr(pi, &m_sharedPtr->m_test.m);
         }
 
-        EXPECT_EQ(2, m);
+        EXPECT_EQ(2, m_sharedPtr->m_test.m);
 
         {
-            AZStd::shared_ptr<void> pv(&m, deleter2);
-            TestPtr(pv, &m);
+            AZStd::shared_ptr<void> pv(&m_sharedPtr->m_test.m, SharedPtr::test::deleter2(&m_sharedPtr->m_test.m));
+            m_sharedPtr->TestPtr(pv, &m_sharedPtr->m_test.m);
         }
 
-        EXPECT_EQ(3, m);
+        EXPECT_EQ(3, m_sharedPtr->m_test.m);
 
         {
-            AZStd::shared_ptr<void const> pv(&m, &deleter2);
-            TestPtr(pv, &m);
+            AZStd::shared_ptr<void const> pv(&m_sharedPtr->m_test.m, SharedPtr::test::deleter2(&m_sharedPtr->m_test.m));
+            m_sharedPtr->TestPtr(pv, &m_sharedPtr->m_test.m);
         }
 
-        EXPECT_EQ(4, m);
+        EXPECT_EQ(4, m_sharedPtr->m_test.m);
     }
 
     TEST_F(SmartPtr, SharedPtrCopyCtorEmptyRhs)
@@ -590,8 +570,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCopyCtorVoidFromIncomplete)
     {
-        using SharedPtr::incomplete;
-
+        using incomplete = SharedPtr::incomplete;
         AZStd::shared_ptr<incomplete> px;
 
         AZStd::shared_ptr<incomplete> px2(px);
@@ -649,7 +628,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCopyCtorClassSharedOwnershipTest)
     {
-        using SharedPtr::test::X;
+        using X = SharedPtr::test::X;
         AZStd::shared_ptr<X> px(static_cast<X*>(0));
 
         AZStd::shared_ptr<X> px2(px);
@@ -722,11 +701,11 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCopyCtorSharedInstanceCount)
     {
-        using SharedPtr::test::X;
-        EXPECT_EQ(0, X::instances);
+        using X = SharedPtr::test::X;
+        EXPECT_EQ(0 ,m_sharedPtr->m_test.m_xInstances);
 
         {
-            X* p = new X;
+            X* p = new X(m_sharedPtr->m_test);
             AZStd::shared_ptr<X> px(p);
             EXPECT_EQ(p, px.get());
 
@@ -738,7 +717,7 @@ namespace UnitTest
             EXPECT_EQ(2, px2.use_count());
             EXPECT_TRUE(!px2.unique());
 
-            EXPECT_EQ(1, X::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
             EXPECT_EQ(px.use_count(), px2.use_count());
             EXPECT_TRUE(!(px < px2 || px2 < px)); // shared ownership test
@@ -767,18 +746,18 @@ namespace UnitTest
             EXPECT_TRUE(!(px3 < px4 || px4 < px3)); // shared ownership test
         }
 
-        EXPECT_EQ(0, X::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrCopyCtorSharedPolyInstanceCount)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
         {
-            Y* p = new Y;
+            Y* p = new Y(m_sharedPtr->m_test);
             AZStd::shared_ptr<Y> py(p);
             EXPECT_EQ(p, py.get());
 
@@ -792,8 +771,8 @@ namespace UnitTest
             EXPECT_EQ(py.use_count(), px.use_count());
             EXPECT_TRUE(!(px < py || py < px)); // shared ownership test
 
-            EXPECT_EQ(1, X::instances);
-            EXPECT_EQ(1, Y::instances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+            EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
 
             AZStd::shared_ptr<void const> pv(px);
             EXPECT_EQ(px, pv);
@@ -819,21 +798,21 @@ namespace UnitTest
             EXPECT_TRUE(!(pv < pv2 || pv2 < pv)); // shared ownership test
         }
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrWeakPtrCtor)
     {
-        using SharedPtr::test::Y;
+        using Y = SharedPtr::test::Y;
         AZStd::weak_ptr<Y> wp;
         EXPECT_EQ(0, wp.use_count());
     }
 
     TEST_F(SmartPtr, SharedPtrWeakPtrCtorSharedOwnership)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<Y> p;
         AZStd::weak_ptr<Y> wp(p);
 
@@ -852,9 +831,9 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrWeakPtrSharedOwnershipReset)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        AZStd::shared_ptr<Y> p(new Y);
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
+        AZStd::shared_ptr<Y> p(new Y(m_sharedPtr->m_test));
         AZStd::weak_ptr<Y> wp(p);
 
         {
@@ -886,7 +865,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCopyAssignIncomplete)
     {
-        using SharedPtr::incomplete;
+        using incomplete = SharedPtr::incomplete;
 
         AZStd::shared_ptr<incomplete> p1;
 
@@ -963,7 +942,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCopyAssignClass)
     {
-        using SharedPtr::test::X;
+        using X = SharedPtr::test::X;
         AZStd::shared_ptr<X> p1;
 
         p1 = p1;
@@ -991,15 +970,15 @@ namespace UnitTest
         EXPECT_TRUE(!p1);
         EXPECT_EQ(0, p1.get());
 
-        EXPECT_EQ(0, X::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
 
-        AZStd::shared_ptr<X> p4(new X);
+        AZStd::shared_ptr<X> p4(new X(m_sharedPtr->m_test));
 
-        EXPECT_EQ(1, X::instances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
         p1 = p4;
 
-        EXPECT_EQ(1, X::instances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
         EXPECT_EQ(p4, p1);
         EXPECT_TRUE(!(p1 < p4 || p4 < p1));
@@ -1009,17 +988,17 @@ namespace UnitTest
         p1 = p2;
 
         EXPECT_EQ(p2, p1);
-        EXPECT_EQ(1, X::instances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
         p4 = p3;
 
         EXPECT_EQ(p3, p4);
-        EXPECT_EQ(0, X::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrConvertAssignIntVoidIncomplete)
     {
-        using SharedPtr::incomplete;
+        using incomplete = SharedPtr::incomplete;
         AZStd::shared_ptr<void> p1;
 
         AZStd::shared_ptr<incomplete> p2;
@@ -1052,8 +1031,8 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrConvertAssignPolymorphic)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<X> p1;
         AZStd::shared_ptr<Y> p2;
 
@@ -1064,13 +1043,13 @@ namespace UnitTest
         EXPECT_TRUE(!p1);
         EXPECT_EQ(0, p1.get());
 
-        EXPECT_EQ(0, X::instances);
-        EXPECT_EQ(0, Y::instances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
-        AZStd::shared_ptr<Y> p4(new Y);
+        AZStd::shared_ptr<Y> p4(new Y(m_sharedPtr->m_test));
 
-        EXPECT_EQ(1, X::instances);
-        EXPECT_TRUE(Y::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(m_sharedPtr->m_test.m_yInstances, 1);
         EXPECT_TRUE(p4.use_count() == 1);
 
         AZStd::shared_ptr<X> p5(p4);
@@ -1078,8 +1057,8 @@ namespace UnitTest
 
         p1 = p4;
 
-        EXPECT_TRUE(X::instances == 1);
-        EXPECT_TRUE(Y::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
 
         EXPECT_TRUE(p1 == p4);
         EXPECT_TRUE(!(p1 < p5 || p5 < p1));
@@ -1090,16 +1069,16 @@ namespace UnitTest
         p1 = p2;
 
         EXPECT_TRUE(p1 == p2);
-        EXPECT_TRUE(X::instances == 1);
-        EXPECT_TRUE(Y::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
         EXPECT_TRUE(p4.use_count() == 2);
 
         p4 = p2;
         p5 = p2;
 
         EXPECT_TRUE(p4 == p2);
-        EXPECT_TRUE(X::instances == 0);
-        EXPECT_TRUE(Y::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrResetEmptyInt)
@@ -1134,7 +1113,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetIncomplete)
     {
-        using SharedPtr::incomplete;
+        using incomplete = SharedPtr::incomplete;
         AZStd::shared_ptr<incomplete> px;
         px.reset();
         EXPECT_FALSE(px);
@@ -1145,10 +1124,9 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetIncompleteWithDeleter)
     {
-        using SharedPtr::incomplete;
-        using SharedPtr::test::deleter_void;
+        using incomplete = SharedPtr::incomplete;
         incomplete* p0 = nullptr;
-        AZStd::shared_ptr<incomplete> px(p0, deleter_void);
+        AZStd::shared_ptr<incomplete> px(p0, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
         px.reset();
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
@@ -1158,7 +1136,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetEmptyClass)
     {
-        using SharedPtr::test::X;
+        using X = SharedPtr::test::X;
         AZStd::shared_ptr<X> px;
         px.reset();
         EXPECT_FALSE(px);
@@ -1169,16 +1147,16 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetNewClass)
     {
-        using SharedPtr::test::X;
-        EXPECT_TRUE(X::instances == 0);
-        AZStd::shared_ptr<X> px(new X);
-        EXPECT_TRUE(X::instances == 1);
+        using X = SharedPtr::test::X;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        AZStd::shared_ptr<X> px(new X(m_sharedPtr->m_test));
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
         px.reset();
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 0);
-        EXPECT_TRUE(X::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrResetEmptyVoid)
@@ -1193,16 +1171,16 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetNewVoid)
     {
-        using SharedPtr::test::X;
-        EXPECT_TRUE(X::instances == 0);
-        AZStd::shared_ptr<void> pv(new X);
-        EXPECT_TRUE(X::instances == 1);
+        using X = SharedPtr::test::X;
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        AZStd::shared_ptr<void> pv(new X(m_sharedPtr->m_test));
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
         pv.reset();
         EXPECT_FALSE(pv);
         EXPECT_TRUE(!pv);
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 0);
-        EXPECT_TRUE(X::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrResetEmptyToNewInt)
@@ -1234,8 +1212,8 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrResetEmptyClassToNewClass)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<X> px;
 
         px.reset(static_cast<X*>(0));
@@ -1244,16 +1222,16 @@ namespace UnitTest
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
-        EXPECT_TRUE(X::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
 
-        X* p = new X;
+        X* p = new X(m_sharedPtr->m_test);
         px.reset(p);
         EXPECT_TRUE(px ? true : false);
         EXPECT_TRUE(!!px);
         EXPECT_TRUE(px.get() == p);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
-        EXPECT_TRUE(X::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
         px.reset(static_cast<X*>(0));
         EXPECT_FALSE(px);
@@ -1261,18 +1239,18 @@ namespace UnitTest
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
-        EXPECT_TRUE(X::instances == 0);
-        EXPECT_TRUE(Y::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
-        Y* q = new Y;
+        Y* q = new Y(m_sharedPtr->m_test);
         px.reset(q);
         EXPECT_TRUE(px ? true : false);
         EXPECT_TRUE(!!px);
         EXPECT_TRUE(px.get() == q);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
-        EXPECT_TRUE(X::instances == 1);
-        EXPECT_TRUE(Y::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
 
         px.reset(static_cast<Y*>(0));
         EXPECT_FALSE(px);
@@ -1280,14 +1258,14 @@ namespace UnitTest
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
-        EXPECT_TRUE(X::instances == 0);
-        EXPECT_TRUE(Y::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrResetEmptyVoidToNewClass)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<void> pv;
 
         pv.reset(static_cast<X*>(0));
@@ -1296,16 +1274,16 @@ namespace UnitTest
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
-        EXPECT_TRUE(X::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
 
-        X* p = new X;
+        X* p = new X(m_sharedPtr->m_test);
         pv.reset(p);
         EXPECT_TRUE(pv ? true : false);
         EXPECT_TRUE(!!pv);
         EXPECT_TRUE(pv.get() == p);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
-        EXPECT_TRUE(X::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
 
         pv.reset(static_cast<X*>(0));
         EXPECT_FALSE(pv);
@@ -1313,18 +1291,18 @@ namespace UnitTest
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
-        EXPECT_TRUE(X::instances == 0);
-        EXPECT_TRUE(Y::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
 
-        Y* q = new Y;
+        Y* q = new Y(m_sharedPtr->m_test);
         pv.reset(q);
         EXPECT_TRUE(pv ? true : false);
         EXPECT_TRUE(!!pv);
         EXPECT_TRUE(pv.get() == q);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
-        EXPECT_TRUE(X::instances == 1);
-        EXPECT_TRUE(Y::instances == 1);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(1, m_sharedPtr->m_test.m_yInstances);
 
         pv.reset(static_cast<Y*>(0));
         EXPECT_FALSE(pv);
@@ -1332,36 +1310,34 @@ namespace UnitTest
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
-        EXPECT_TRUE(X::instances == 0);
-        EXPECT_TRUE(Y::instances == 0);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_xInstances);
+        EXPECT_EQ(0, m_sharedPtr->m_test.m_yInstances);
     }
 
     TEST_F(SmartPtr, SharedPtrResetIntWithDeleter)
     {
-        using SharedPtr::test::deleter_void;
-        using SharedPtr::test::deleted;
         AZStd::shared_ptr<int> pi;
 
-        pi.reset(static_cast<int*>(0), deleter_void);
+        pi.reset(static_cast<int*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
         EXPECT_FALSE(pi);
         EXPECT_TRUE(!pi);
         EXPECT_TRUE(pi.get() == 0);
         EXPECT_TRUE(pi.use_count() == 1);
         EXPECT_TRUE(pi.unique());
 
-        deleted = &pi;
+        m_sharedPtr->m_test.deleted = &pi;
 
         int m = 0;
-        pi.reset(&m, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        pi.reset(&m, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
         EXPECT_TRUE(pi ? true : false);
         EXPECT_TRUE(!!pi);
         EXPECT_TRUE(pi.get() == &m);
         EXPECT_TRUE(pi.use_count() == 1);
         EXPECT_TRUE(pi.unique());
 
-        pi.reset(static_cast<int*>(0), deleter_void);
-        EXPECT_TRUE(deleted == &m);
+        pi.reset(static_cast<int*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == &m);
         EXPECT_FALSE(pi);
         EXPECT_TRUE(!pi);
         EXPECT_TRUE(pi.get() == 0);
@@ -1369,54 +1345,52 @@ namespace UnitTest
         EXPECT_TRUE(pi.unique());
 
         pi.reset();
-        EXPECT_TRUE(deleted == 0);
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
     }
 
     TEST_F(SmartPtr, SharedPtrResetClassWithDeleter)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        using SharedPtr::test::deleter_void;
-        using SharedPtr::test::deleted;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<X> px;
 
-        px.reset(static_cast<X*>(0), deleter_void);
+        px.reset(static_cast<X*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
 
-        deleted = &px;
+        m_sharedPtr->m_test.deleted = &px;
 
-        X x;
-        px.reset(&x, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        X x(m_sharedPtr->m_test);
+        px.reset(&x, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
         EXPECT_TRUE(px ? true : false);
         EXPECT_TRUE(!!px);
         EXPECT_TRUE(px.get() == &x);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
 
-        px.reset(static_cast<X*>(0), deleter_void);
-        EXPECT_TRUE(deleted == &x);
+        px.reset(static_cast<X*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == &x);
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
 
-        Y y;
-        px.reset(&y, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        Y y(m_sharedPtr->m_test);
+        px.reset(&y, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
         EXPECT_TRUE(px ? true : false);
         EXPECT_TRUE(!!px);
         EXPECT_TRUE(px.get() == &y);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
 
-        px.reset(static_cast<Y*>(0), deleter_void);
-        EXPECT_TRUE(deleted == &y);
+        px.reset(static_cast<Y*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == &y);
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
         EXPECT_TRUE(px.get() == 0);
@@ -1424,54 +1398,52 @@ namespace UnitTest
         EXPECT_TRUE(px.unique());
 
         px.reset();
-        EXPECT_TRUE(deleted == 0);
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
     }
 
     TEST_F(SmartPtr, SharedPtrResetVoidClassWithDeleter)
     {
-        using SharedPtr::test::X;
-        using SharedPtr::test::Y;
-        using SharedPtr::test::deleter_void;
-        using SharedPtr::test::deleted;
+        using X = SharedPtr::test::X;
+        using Y = SharedPtr::test::Y;
         AZStd::shared_ptr<void> pv;
 
-        pv.reset(static_cast<X*>(0), deleter_void);
+        pv.reset(static_cast<X*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
         EXPECT_FALSE(pv);
         EXPECT_TRUE(!pv);
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
 
-        deleted = &pv;
+        m_sharedPtr->m_test.deleted = &pv;
 
-        X x;
-        pv.reset(&x, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        X x(m_sharedPtr->m_test);
+        pv.reset(&x, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
         EXPECT_TRUE(pv ? true : false);
         EXPECT_TRUE(!!pv);
         EXPECT_TRUE(pv.get() == &x);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
 
-        pv.reset(static_cast<X*>(0), deleter_void);
-        EXPECT_TRUE(deleted == &x);
+        pv.reset(static_cast<X*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == &x);
         EXPECT_FALSE(pv);
         EXPECT_TRUE(!pv);
         EXPECT_TRUE(pv.get() == 0);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
 
-        Y y;
-        pv.reset(&y, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        Y y(m_sharedPtr->m_test);
+        pv.reset(&y, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
         EXPECT_TRUE(pv ? true : false);
         EXPECT_TRUE(!!pv);
         EXPECT_TRUE(pv.get() == &y);
         EXPECT_TRUE(pv.use_count() == 1);
         EXPECT_TRUE(pv.unique());
 
-        pv.reset(static_cast<Y*>(0), deleter_void);
-        EXPECT_TRUE(deleted == &y);
+        pv.reset(static_cast<Y*>(0), SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == &y);
         EXPECT_FALSE(pv);
         EXPECT_TRUE(!pv);
         EXPECT_TRUE(pv.get() == 0);
@@ -1479,28 +1451,26 @@ namespace UnitTest
         EXPECT_TRUE(pv.unique());
 
         pv.reset();
-        EXPECT_TRUE(deleted == 0);
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
     }
 
     TEST_F(SmartPtr, SharedPtrResetIncompleteNullWithDeleter)
     {
-        using SharedPtr::incomplete;
-        using SharedPtr::test::deleter_void;
-        using SharedPtr::test::deleted;
+        using incomplete = SharedPtr::incomplete;
         AZStd::shared_ptr<incomplete> px;
 
         incomplete* p0 = nullptr;
 
-        px.reset(p0, deleter_void);
+        px.reset(p0, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
         EXPECT_FALSE(px);
         EXPECT_TRUE(!px);
         EXPECT_TRUE(px.get() == 0);
         EXPECT_TRUE(px.use_count() == 1);
         EXPECT_TRUE(px.unique());
 
-        deleted = &px;
-        px.reset(p0, deleter_void);
-        EXPECT_TRUE(deleted == 0);
+        m_sharedPtr->m_test.deleted = &px;
+        px.reset(p0, SharedPtr::test::deleter_void(m_sharedPtr->m_test.deleted));
+        EXPECT_TRUE(m_sharedPtr->m_test.deleted == 0);
     }
 
     TEST_F(SmartPtr, SharedPtrGetPointerEmpty)
@@ -1681,7 +1651,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCompareEmptyClass)
     {
-        using SharedPtr::test::A;
+        using A = SharedPtr::test::A;
         AZStd::shared_ptr<A> px;
         EXPECT_TRUE(px == px);
         EXPECT_TRUE(!(px != px));
@@ -1697,7 +1667,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCompareCopyOfEmptyClass)
     {
-        using SharedPtr::test::A;
+        using A = SharedPtr::test::A;
         AZStd::shared_ptr<A> px;
         AZStd::shared_ptr<A> px2(px);
 
@@ -1713,7 +1683,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCompareNewClass)
     {
-        using SharedPtr::test::A;
+        using A = SharedPtr::test::A;
         AZStd::shared_ptr<A> px;
         AZStd::shared_ptr<A> px2(new A);
 
@@ -1730,7 +1700,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCompareNewClasses)
     {
-        using SharedPtr::test::A;
+        using A = SharedPtr::test::A;
         AZStd::shared_ptr<A> px(new A);
         AZStd::shared_ptr<A> px2(new A);
 
@@ -1743,7 +1713,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrCompareCopiedNewClass)
     {
-        using SharedPtr::test::A;
+        using A = SharedPtr::test::A;
         AZStd::shared_ptr<A> px(new A);
         AZStd::shared_ptr<A> px2(px);
 
@@ -1759,9 +1729,9 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrComparePolymorphicClasses)
     {
-        using SharedPtr::test::A;
-        using SharedPtr::test::B;
-        using SharedPtr::test::C;
+        using A = SharedPtr::test::A;
+        using B = SharedPtr::test::B;
+        using C = SharedPtr::test::C;
         AZStd::shared_ptr<A> px(new A);
         AZStd::shared_ptr<B> py(new B);
         AZStd::shared_ptr<C> pz(new C);
@@ -1802,9 +1772,9 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrComparePolymorphicWithEmpty)
     {
-        using SharedPtr::test::A;
-        using SharedPtr::test::B;
-        using SharedPtr::test::C;
+        using A = SharedPtr::test::A;
+        using B = SharedPtr::test::B;
+        using C = SharedPtr::test::C;
         AZStd::shared_ptr<C> pz(new C);
         AZStd::shared_ptr<A> px(pz);
 
@@ -1932,7 +1902,7 @@ namespace UnitTest
 
     TEST_F(SmartPtr, SharedPtrClassConstPointerCastClass)
     {
-        using SharedPtr::test::X;
+        using X = SharedPtr::test::X;
         AZStd::shared_ptr<X const volatile> px;
 
         AZStd::shared_ptr<X> px2 = AZStd::const_pointer_cast<X>(px);
@@ -2868,16 +2838,10 @@ namespace SharedPtr
     // Shared ptr multithread test
     class SharedPointerMultiThreadTest
     {
-#if defined(AZ_PLATFORM_WII)
-        static int const n = 128 * 1024;
-        static const int numThreads = 2;
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_ANDROID)
+#if   defined(AZ_PLATFORM_ANDROID)
         static int const n = 256 * 1024;
         static const int numThreads = 4;
-#elif defined(AZ_PLATFORM_X360)
-        static int const n = 1024 * 1024;
-        static const int numThreads = 8;
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
         static int const n = 1024 * 1024;
         static const int numThreads = 16;
 #endif
@@ -2897,11 +2861,9 @@ namespace SharedPtr
         {
             AZ::SystemAllocator::Descriptor desc;
             desc.m_heap.m_numMemoryBlocks = 1;
-#ifdef AZ_PLATFORM_WII
-            desc.m_heap.m_memoryBlocksByteSize[0] = 10 * 1024 * 1024;
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#if   defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
             desc.m_heap.m_memoryBlocksByteSize[0] = 800 * 1024 * 1024;
-#elif defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_ANDROID)
+#elif defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
             desc.m_heap.m_memoryBlocksByteSize[0] = 400 * 1024 * 1024;
 #endif
             m_memBlock = UnitTest::DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);

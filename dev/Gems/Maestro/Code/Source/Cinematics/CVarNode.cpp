@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "CVarNode.h"
 #include "AnimTrack.h"
 
@@ -20,10 +22,15 @@
 
 //////////////////////////////////////////////////////////////////////////
 CAnimCVarNode::CAnimCVarNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_CVar)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
     m_value = -1e-20f; //-1e-28;
+}
+
+CAnimCVarNode::CAnimCVarNode()
+    : CAnimCVarNode(0)
+{
 }
 
 void CAnimCVarNode::CreateDefaultTracks()
@@ -137,4 +144,11 @@ void CAnimCVarNode::Animate(SAnimContext& ec)
             pVar->Set(m_value);
         }
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimCVarNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimCVarNode,CAnimNode>()
+        ->Version(1);
 }

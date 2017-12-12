@@ -99,6 +99,8 @@ namespace AzToolsFramework
         void AssetSystemComponent::Reflect(AZ::ReflectContext* context)
         {
             //source file
+            SourceFileInfoRequest::Reflect(context);
+            SourceFileInfoResponse::Reflect(context);
             SourceFileNotificationMessage::Reflect(context);
 
             // Requests
@@ -111,6 +113,7 @@ namespace AzToolsFramework
 
             //JobInfo
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
+            AzToolsFramework::AssetSystem::SourceFileInfo::Reflect(context);
 
             //AssetSystemComponent
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
@@ -209,6 +212,34 @@ namespace AzToolsFramework
         {
             AZ_Assert(false, "Not implemented yet");
             return {};
+        }
+
+        bool AssetSystemComponent::GetSourceFileInfoByPath(SourceFileInfo& result, const char* sourcePath)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                AZ_Error("Editor", false, "Failed to establish a SocketConnection or it hasn't been connected yet.");
+                return false;
+            }
+
+            SourceFileInfoRequest request(sourcePath);
+            SourceFileInfoResponse response;
+            
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetSourceFileInfoByPath request for search term: %s", sourcePath);
+                return false;
+            }
+
+            if (response.m_infoFound)
+            {
+                result.m_watchFolder = AZStd::move(response.m_watchFolder);
+                result.m_relativePath = AZStd::move(response.m_relativePath);
+                result.m_sourceGuid = response.m_sourceGuid;
+            }
+
+            return response.m_infoFound;
         }
 
         AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfo(const AZStd::string& path, const bool escalateJobs)

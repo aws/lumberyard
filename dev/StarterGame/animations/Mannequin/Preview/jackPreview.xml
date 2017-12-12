@@ -1,0 +1,7 @@
+<MannequinPreview>
+ <controllerDef filename="animations/mannequin/adb/jackcontrollerdefs.xml"/>
+ <contexts>
+  <contextData name="Jack" enabled="1" database="Animations/Mannequin/ADB/jackDatabase.adb" slaveDatabase="Animations/Mannequin/ADB/jackDatabase.adb" context="MainCharacter" model="objects/characters/jack/jack.cdf"/>
+ </contexts>
+ <History StartTime="0" EndTime="0"/>
+</MannequinPreview>

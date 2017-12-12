@@ -19,7 +19,7 @@ export class ResetPasswordAction implements UserManagementAction {
 
         var params = {
             UserPoolId: this.context.userPoolId,
-            Username: username 
+            Username: username.trim()
         };
 
         // get these details and call

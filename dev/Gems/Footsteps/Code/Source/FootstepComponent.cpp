@@ -69,7 +69,7 @@ namespace Footsteps
             if (character)
             {
                 const float speedScaleFactor = 0.142f;
-                const float relativeSpeed = character->GetISkeletonAnim()->GetCurrentVelocity().GetLength() * speedScaleFactor;
+                relativeSpeed = character->GetISkeletonAnim()->GetCurrentVelocity().GetLength() * speedScaleFactor;
                 if (event.m_boneName1[0])
                 {
                     uint32 boneID = character->GetIDefaultSkeleton().GetJointIDByName(event.m_boneName1);

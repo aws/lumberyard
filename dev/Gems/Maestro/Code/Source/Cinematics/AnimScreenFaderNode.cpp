@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "AnimScreenFaderNode.h"
 #include "ScreenFaderTrack.h"
 #include <IRenderer.h>
@@ -45,7 +47,7 @@ bool CalculateIsolatedKeyColor(const IScreenFaderKey& key, float fTime, Vec4& co
 
     if (key.m_fadeTime == 0.f)
     {
-        colorOut = key.m_fadeColor;
+        colorOut(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB(), key.m_fadeColor.GetA());
         if (key.m_fadeType == IScreenFaderKey::eFT_FadeIn)
         {
             colorOut.w = 0.f;
@@ -57,7 +59,7 @@ bool CalculateIsolatedKeyColor(const IScreenFaderKey& key, float fTime, Vec4& co
     }
     else
     {
-        colorOut = key.m_fadeColor;
+        colorOut(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB(), key.m_fadeColor.GetA());
         ratio = ratio / key.m_fadeTime;
         if (key.m_fadeType == IScreenFaderKey::eFT_FadeIn)
         {
@@ -74,7 +76,7 @@ bool CalculateIsolatedKeyColor(const IScreenFaderKey& key, float fTime, Vec4& co
 
 //-----------------------------------------------------------------------------
 CAnimScreenFaderNode::CAnimScreenFaderNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_ScreenFader)
     , m_bActive(false)
     , m_screenWidth(800.f)
     , m_screenHeight(600.f)
@@ -84,6 +86,11 @@ CAnimScreenFaderNode::CAnimScreenFaderNode(const int id)
     m_startColor = Vec4(1, 1, 1, 1);
     CAnimScreenFaderNode::Initialize();
     PrecacheTexData();
+}
+
+CAnimScreenFaderNode::CAnimScreenFaderNode()
+    : CAnimScreenFaderNode(0)
+{
 }
 
 CAnimScreenFaderNode::~CAnimScreenFaderNode()
@@ -145,7 +152,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
                 m_lastActivatedKey = nActiveKeyIndex;
                 m_bActive = true;
 
-                if (key.m_strTexture[0])
+                if (!key.m_strTexture.empty())
                 {
                     if (pTrack->SetActiveTexture(nActiveKeyIndex))
                     {
@@ -192,7 +199,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
 
                 if (!key.m_bUseCurColor || nActiveKeyIndex == 0)
                 {
-                    m_startColor = key.m_fadeColor;
+                    m_startColor(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB(), key.m_fadeColor.GetA());
                 }
                 else
                 {
@@ -207,7 +214,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
                     {
                         m_startColor.w = 1.f;
                     }
-                    key.m_fadeColor.w = 0.f;
+                    key.m_fadeColor.SetA(0.f);
                 }
                 else
                 {
@@ -215,10 +222,11 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
                     {
                         m_startColor.w = 0.f;
                     }
-                    key.m_fadeColor.w = 1.f;
+                    key.m_fadeColor.SetA(1.f);
                 }
 
-                pTrack->SetDrawColor(m_startColor + (key.m_fadeColor - m_startColor) * ratio);
+                Vec4 fadeColorAsVec4(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB(), key.m_fadeColor.GetA());
+                pTrack->SetDrawColor(m_startColor + (fadeColorAsVec4 - m_startColor) * ratio);
 
                 if (pTrack->GetDrawColor().w < 0.01f)
                 {
@@ -266,6 +274,7 @@ void CAnimScreenFaderNode::Activate(bool bActivate)
 }
 
 //-----------------------------------------------------------------------------
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimScreenFaderNode::Serialize
     (XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
@@ -275,6 +284,13 @@ void CAnimScreenFaderNode::Serialize
     {
         PrecacheTexData();
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimScreenFaderNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimScreenFaderNode, CAnimNode>()
+        ->Version(1);
 }
 
 //-----------------------------------------------------------------------------
@@ -381,7 +397,7 @@ void CAnimScreenFaderNode::PrecacheTexData()
     size_t const paramCount = m_tracks.size();
     for (size_t paramIndex = 0; paramIndex < paramCount; ++paramIndex)
     {
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (!pTrack)
         {

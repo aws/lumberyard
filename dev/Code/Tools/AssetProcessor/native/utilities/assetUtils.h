@@ -49,19 +49,26 @@ namespace AssetUtilities
     //! This token will be used during negotiation with the game/editor to ensure that we are communicating with the assetprocessor in the correct branch
     QString GetBranchToken();
 
-    //! Compute the root folder by scanning for marker files such as root.ini
+    //! Compute the root asset folder by scanning for marker files such as root.ini
     //! By Default, this searches the applications root and walks upwards, but you are allowed to instead
     //! supply a different starting root.  in that case, it will start from there instead, and walk upwards.
+    bool ComputeAssetRoot(QDir& root, const QDir* optionalStartingRoot = nullptr);
+
+    //! Get the engine root folder if the engine is external to the current root folder.  
+    //! If the current root folder is also the engine folder, then this behaves the same as ComputeAssetRoot
     bool ComputeEngineRoot(QDir& root, const QDir* optionalStartingRoot = nullptr);
 
-    //! Reset the engine root to not be cached anymore.  Generally only useful for tests
-    void ResetEngineRoot();
+    //! Reset the asset root to not be cached anymore.  Generally only useful for tests
+    void ResetAssetRoot();
 
     //! Copy all files from  the source directory to the destination directory, returns true if successfull, else return false
     bool CopyDirectory(QDir source, QDir destination);
 
     //! Computes and returns the application directory and filename
     void ComputeApplicationInformation(QString& dir, QString& filename);
+
+    //! Computes and returns the root directory, binfolder, and filename from an application running from a BinXX folder
+    void ComputeAppRootAndBinFolderFromApplication(QString& appRoot, QString& filename, QString& binFolder);
 
     //! makes the file writable
     //! return true if operation is successful, otherwise return false
@@ -79,7 +86,7 @@ namespace AssetUtilities
     bool UpdateBranchToken();
 
     //! Determine the name of the current game - for example, SamplesProject
-    QString ComputeGameName(QString initialFolder = QString("."), bool force = false);
+    QString ComputeGameName(QString initialFolder = QString(), bool force = false);
 
     //! Computes the platformname from the platform flag, returns an empty qstring if an invalid flag is inputted
     QString ComputePlatformName(int platform);
@@ -88,20 +95,20 @@ namespace AssetUtilities
     int ComputePlatformFlag(QString platform);
 
     //! Reads the white list directly from the bootstrap file
-    QString ReadWhitelistFromBootstrap(QString initialFolder = QString( "." ));
+    QString ReadWhitelistFromBootstrap(QString initialFolder = QString());
 
     //! Writes the white list directly to the bootstrap file
     bool WriteWhitelistToBootstrap(QStringList whiteList);
 
     //! Reads the game name directly from the bootstrap file
-    QString ReadGameNameFromBootstrap(QString initialFolder = QString("."));
+    QString ReadGameNameFromBootstrap(QString initialFolder = QString());
 
     //! Reads a pattern from the bootstrap file
     QString ReadPatternFromBootstrap(QRegExp regExp, QString initialFolder);
 
     //! Reads the listening port from the bootstrap file
     //! By default the listening port is 45643
-    quint16 ReadListeningPortFromBootstrap(QString initialFolder = QString("."));
+    quint16 ReadListeningPortFromBootstrap(QString initialFolder = QString());
 
     //! Reads platforms from command line
     QStringList ReadPlatformsFromCommandLine();
@@ -255,24 +262,6 @@ namespace AssetUtilities
 
     private:
         AZStd::atomic<bool> m_requestedQuit;
-    };
-
-    // AssetRegistryListener is a utility class that listens for asset registry notifications
-    class AssetRegistryListener
-        : public AssetProcessor::AssetRegistryNotificationBus::Handler
-    {
-    public:
-        AssetRegistryListener();
-        ~AssetRegistryListener();
-
-        /// AssetRegistryNotficationBus::Handler
-        void OnRegistrySaveComplete(int assetCatalogVersion) override;
-
-        // Requests a save of the asset registry, and blocks until the save is complete
-        void WaitForSync() const;
-
-    private:
-        int m_currentVersion;
     };
 
     //! JobLogTraceListener listens for job messages

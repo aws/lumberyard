@@ -271,7 +271,7 @@ NormalizePath(const char* path, const char* defaultRoot, AZStd::string& oFullPat
     if (defaultRoot)
     {
         bool isFullPath = false;
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
         if (strncmp(path, "\\\\", 2) == 0)
         {

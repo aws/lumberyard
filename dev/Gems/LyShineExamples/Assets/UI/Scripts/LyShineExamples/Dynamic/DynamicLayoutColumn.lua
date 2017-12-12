@@ -16,6 +16,7 @@ local DynamicLayoutColumn =
 {
 	Properties = 
 	{
+		ScrollBox = {default = EntityId()},
 		DynamicLayout = {default = EntityId()},
 		AddColorsButton = {default = EntityId()},
 		ColorImage = {default = EntityId()},
@@ -84,6 +85,17 @@ function DynamicLayoutColumn:InitContent(jsonFilepath)
 		local name = UiDynamicContentDatabaseBus.Broadcast.GetColorName(eUiDynamicContentDBColorType_Free, i)
 		UiTextBus.Event.SetText(text, name)
 	end
+	
+	-- Force the hover interactable to be the scroll box.
+	-- The scroll box is set to auto-activate, but it could still have the hover
+	-- since it starts out having no children. Now that it may contain children,
+	-- force it to be the hover in order to auto-activate it and pass the hover to its child.
+	-- Ensure that the layouts of the newly added children are up to date by forcing an
+	-- immediate recompute. This is necessary for the scroll box to correctly determine
+	-- which of its children should get the hover
+	local canvas = UiElementBus.Event.GetCanvas(self.entityId)
+	UiCanvasBus.Event.RecomputeChangedLayouts(canvas)
+	UiCanvasBus.Event.ForceHoverInteractable(canvas, self.Properties.ScrollBox)
 end
 
 return DynamicLayoutColumn

@@ -17,7 +17,6 @@
 #include <IRenderer.h>
 
 #include "CryLegacySystemComponent.h"
-#include "IHardwareMouse.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
 #include <IPlatformOS.h>

@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "resources":
+        [
+            "Woodpecker/Editor/ProfilerEditor.rc"
+        ]
+    }
+}

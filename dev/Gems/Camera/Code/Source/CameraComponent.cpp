@@ -65,15 +65,21 @@ namespace Camera
         CameraRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         CameraBus::Handler::BusConnect();
+        CameraNotificationBus::Broadcast(&CameraNotificationBus::Events::OnCameraAdded, GetEntityId());
     }
 
     void CameraComponent::Deactivate()
     {
+        CameraNotificationBus::Broadcast(&CameraNotificationBus::Events::OnCameraRemoved, GetEntityId());
         CameraBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         CameraRequestBus::Handler::BusDisconnect(GetEntityId());
         if (m_viewSystem)
         {
+            if (m_view != nullptr && m_viewSystem->GetViewId(m_view) != 0)
+            {
+                m_view->Unlink();
+            }
             if (m_viewSystem->GetActiveView() == m_view)
             {
                 m_viewSystem->SetActiveView(m_prevViewId);
@@ -130,7 +136,7 @@ namespace Camera
 
     void CameraComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("CameraService"));
+        incompatible.push_back(AZ_CRC("CameraService", 0x1dd1caa4));
     }
 
     void CameraComponent::UpdateCamera()

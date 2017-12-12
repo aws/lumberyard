@@ -155,12 +155,16 @@ namespace AzFramework
         : public AZ::ReflectContext
     {
     public:
-        class ClassInfo;
+        /// @cond EXCLUDE_DOCS
+        class ClassBuilder;
         class ClassDesc;
         using ClassDescPtr = AZStd::intrusive_ptr<ClassDesc>;
-        using ClassInfoPtr = AZStd::intrusive_ptr<ClassInfo>;
+        using ClassBuilderPtr = AZStd::intrusive_ptr<ClassBuilder>;
         using ClassBindings = AZStd::unordered_map<AZ::Uuid, ClassDescPtr>;
         using ChunkBindings = AZStd::unordered_map<ReplicaChunkClassId, ClassDescPtr>;
+        using ClassInfo = ClassBuilder; ///< @deprecated Use NetworkContext::ClassBuilder
+        using ClassInfoPtr = ClassBuilderPtr; ///< @deprecated Use NetworkContext::ClassBuilderPtr
+        /// @endcond
 
         class IntrusiveRefCounted
         {
@@ -186,31 +190,31 @@ namespace AzFramework
          * Interface for recording classes, chunks, and datasets
          * When destructed at the end of reflection, it will register/unregister the ChunkDescriptor
          */
-        class ClassInfo
+        class ClassBuilder
             : public IntrusiveRefCounted
         {
             friend class NetworkContext;
 
         protected:
-            AZ_CLASS_ALLOCATOR(ClassInfo, AZ::SystemAllocator, 0);
-            ClassInfo(NetworkContext* context, ClassDescPtr binding);
+            AZ_CLASS_ALLOCATOR(ClassBuilder, AZ::SystemAllocator, 0);
+            ClassBuilder(NetworkContext* context, ClassDescPtr binding);
 
         public:
-            ~ClassInfo();
-            ClassInfoPtr operator->() { return this; }
+            ~ClassBuilder();
+            ClassBuilderPtr operator->() { return this; }
 
             /// Bind a ReplicaChunk type to this class for network serialization
             template <class ChunkType, typename DescriptorType = ExternalChunkDescriptor<ChunkType> >
-            ClassInfoPtr Chunk();
+            ClassBuilderPtr Chunk();
 
             /// Bind a NetBindable's Field
             template <class ClassType, typename FieldType>
-            typename AZStd::enable_if<AZStd::is_base_of<NetBindableFieldBase, FieldType>::value, ClassInfoPtr>::type
+            typename AZStd::enable_if<AZStd::is_base_of<NetBindableFieldBase, FieldType>::value, ClassBuilderPtr>::type
             Field(const char* name, FieldType ClassType::* address);
 
             /// Declare an external chunk's DataSet
             template <class ClassType, typename DataSetType>
-            typename AZStd::enable_if<AZStd::is_base_of<DataSetBase, DataSetType>::value, ClassInfoPtr>::type
+            typename AZStd::enable_if<AZStd::is_base_of<DataSetBase, DataSetType>::value, ClassBuilderPtr>::type
             Field(const char* name, DataSetType ClassType::* address);
 
             /// Bind an Rpc::BindInterface for this chunk
@@ -219,7 +223,7 @@ namespace AzFramework
                 typename ... Args,
                 class Traits = RpcDefaultTraits,
                 typename RpcBindType = typename Rpc<Args...>::template BindInterface<InterfaceType, bool (InterfaceType::*)(typename Args::Type..., const RpcContext&), Traits> >
-            typename AZStd::enable_if<AZStd::is_base_of<RpcBase, RpcBindType>::value, ClassInfoPtr>::type
+            typename AZStd::enable_if<AZStd::is_base_of<RpcBase, RpcBindType>::value, ClassBuilderPtr>::type
             RPC(const char* name, RpcBindType ClassType::* rpc);
 
             /// Bind a NetBindable::Rpc for this NetBindable
@@ -228,12 +232,12 @@ namespace AzFramework
                 typename ... Args,
                 class Traits = RpcDefaultTraits,
                 typename RpcBindType = typename NetBindable::Rpc<Args...>::template Bind<InterfaceType, bool (InterfaceType::*)(Args..., const RpcContext&), Traits> >
-            typename AZStd::enable_if<AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value, ClassInfoPtr>::type
+            typename AZStd::enable_if<AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value, ClassBuilderPtr>::type
             RPC(const char* name, RpcBindType ClassType::* rpc);
 
 #define CTOR_DATA_OVERLOAD(_getsig, _setsig)                                                                   \
     template <class ClassType, class DataType, typename MarshalerType = Marshaler<DataType> >                  \
-    ClassInfoPtr CtorData(const char* name, _getsig, _setsig, const MarshalerType&marshaler = MarshalerType()) \
+    ClassBuilderPtr CtorData(const char* name, _getsig, _setsig, const MarshalerType&marshaler = MarshalerType()) \
     {                                                                                                          \
         return CtorDataImpl<ClassType, DataType>(name, getter, setter, marshaler);                             \
     }
@@ -261,7 +265,7 @@ namespace AzFramework
                 class GetterFunction,
                 class SetterFunction,
                 typename MarshalerType = Marshaler<DataType> >
-            ClassInfoPtr CtorDataImpl(const char* name, GetterFunction getter, SetterFunction setter, const MarshalerType& marshaler = MarshalerType());
+            ClassBuilderPtr CtorDataImpl(const char* name, GetterFunction getter, SetterFunction setter, const MarshalerType& marshaler = MarshalerType());
 
         private:
             ClassDescPtr m_binding;
@@ -475,7 +479,7 @@ namespace AzFramework
 
         /// Register a class with the NetworkContext for replication
         template <class ClassType>
-        ClassInfoPtr Class();
+        ClassBuilderPtr Class();
 
         /// Create a replica chunk for a given class
         ReplicaChunkBase* CreateReplicaChunk(const AZ::Uuid& typeId);
@@ -525,7 +529,7 @@ namespace AzFramework
 
     ///////////////////////////////////////////////////////////////////////////
     template <class ClassType>
-    NetworkContext::ClassInfoPtr NetworkContext::Class()
+    NetworkContext::ClassBuilderPtr NetworkContext::Class()
     {
         AZ_STATIC_ASSERT((AZStd::is_base_of<NetBindable, ClassType>::value), "Classes reflected through NetworkContext must be derived from NetBindable");
         const AZ::Uuid& typeId = AZ::AzTypeInfo<ClassType>::Uuid();
@@ -547,13 +551,13 @@ namespace AzFramework
             binding = ret.first->second = aznew ClassDesc(AZ::AzTypeInfo<ClassType>::Name(), AZ::AzTypeInfo<ClassType>::Uuid());
         }
 
-        return aznew ClassInfo(this, binding);
+        return aznew ClassBuilder(this, binding);
     }
 
     template <class ClassType>
     void NetworkContext::InitReflectedChunkBinding(ClassDescPtr binding)
     {
-        if (binding->RegisterChunkType.empty())
+        if (!binding->RegisterChunkType)
         {
             binding->m_chunkDesc.m_name = ReflectedReplicaChunk<ClassType>::GetChunkName();
             ReplicaChunkClassId chunkClassId = ReplicaChunkClassId(binding->m_chunkDesc.m_name);
@@ -667,7 +671,7 @@ namespace AzFramework
     template <class ChunkType, typename DescriptorType>
     void NetworkContext::InitExternalChunkBinding(ClassDescPtr binding)
     {
-        if (binding->RegisterChunkType.empty())
+        if (!binding->RegisterChunkType)
         {
             binding->m_chunkDesc.m_name = ChunkType::GetChunkName();
             ReplicaChunkClassId chunkClassId = ReplicaChunkClassId(binding->m_chunkDesc.m_name);
@@ -763,7 +767,7 @@ namespace AzFramework
 
     ///////////////////////////////////////////////////////////////////////////
     template <class ChunkType, typename DescriptorType>
-    NetworkContext::ClassInfoPtr NetworkContext::ClassInfo::Chunk()
+    NetworkContext::ClassBuilderPtr NetworkContext::ClassBuilder::Chunk()
     {
         if (!m_context->IsRemovingReflection())
         {
@@ -779,8 +783,8 @@ namespace AzFramework
     }
 
     template <class ClassType, typename FieldType>
-    typename AZStd::enable_if<AZStd::is_base_of<NetBindableFieldBase, FieldType>::value, NetworkContext::ClassInfoPtr>::type
-    NetworkContext::ClassInfo::Field(const char* name, FieldType ClassType::* address)
+    typename AZStd::enable_if<AZStd::is_base_of<NetBindableFieldBase, FieldType>::value, NetworkContext::ClassBuilderPtr>::type
+    NetworkContext::ClassBuilder::Field(const char* name, FieldType ClassType::* address)
     {
         if (!m_context->IsRemovingReflection())
         {
@@ -796,8 +800,8 @@ namespace AzFramework
     }
 
     template <class ClassType, typename DataSetType>
-    typename AZStd::enable_if<AZStd::is_base_of<DataSetBase, DataSetType>::value, NetworkContext::ClassInfoPtr>::type
-    NetworkContext::ClassInfo::Field(const char* name, DataSetType ClassType::* address)
+    typename AZStd::enable_if<AZStd::is_base_of<DataSetBase, DataSetType>::value, NetworkContext::ClassBuilderPtr>::type
+    NetworkContext::ClassBuilder::Field(const char* name, DataSetType ClassType::* address)
     {
         if (!m_context->IsRemovingReflection())
         {
@@ -811,8 +815,8 @@ namespace AzFramework
     }
 
     template <class ClassType, class InterfaceType, typename ... Args, class Traits, typename RpcBindType>
-    typename AZStd::enable_if<AZStd::is_base_of<RpcBase, RpcBindType>::value, NetworkContext::ClassInfoPtr>::type
-    NetworkContext::ClassInfo::RPC(const char* name, RpcBindType ClassType::* rpc)
+    typename AZStd::enable_if<AZStd::is_base_of<RpcBase, RpcBindType>::value, NetworkContext::ClassBuilderPtr>::type
+    NetworkContext::ClassBuilder::RPC(const char* name, RpcBindType ClassType::* rpc)
     {
         if (!m_context->IsRemovingReflection())
         {
@@ -827,8 +831,8 @@ namespace AzFramework
     }
 
     template <class ClassType, class InterfaceType, typename ... Args, class Traits, typename RpcBindType>
-    typename AZStd::enable_if<AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value, NetworkContext::ClassInfoPtr>::type
-    NetworkContext::ClassInfo::RPC(const char* name, RpcBindType ClassType::* rpc)
+    typename AZStd::enable_if<AZStd::is_base_of<NetBindableRpcBase, RpcBindType>::value, NetworkContext::ClassBuilderPtr>::type
+    NetworkContext::ClassBuilder::RPC(const char* name, RpcBindType ClassType::* rpc)
     {
         if (!m_context->IsRemovingReflection())
         {
@@ -843,7 +847,7 @@ namespace AzFramework
     }
 
     template <class ClassType, class DataType, typename GetterFunction, typename SetterFunction, typename MarshalerType>
-    NetworkContext::ClassInfoPtr NetworkContext::ClassInfo::CtorDataImpl(const char* name, GetterFunction getter, SetterFunction setter, const MarshalerType&)
+    NetworkContext::ClassBuilderPtr NetworkContext::ClassBuilder::CtorDataImpl(const char* name, GetterFunction getter, SetterFunction setter, const MarshalerType&)
     {
         if (!m_context->IsRemovingReflection())
         {

@@ -32,16 +32,9 @@ namespace AzFramework
 
         static void Reflect(AZ::ReflectContext* context);
 
-        explicit EntityReference(const AZ::EntityId& id = AZ::EntityId())
+        explicit EntityReference(AZ::EntityId id = AZ::EntityId())
             : m_entityId(id)
         { 
-            AZ::ComponentApplicationEventBus::Handler::BusConnect();
-            AZ::ComponentApplicationBus::BroadcastResult(m_entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
-        }
-
-        explicit EntityReference(AZ::EntityId&& id)
-            : m_entityId(AZStd::move(id))
-        {
             AZ::ComponentApplicationEventBus::Handler::BusConnect();
             AZ::ComponentApplicationBus::BroadcastResult(m_entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
         }
@@ -53,13 +46,12 @@ namespace AzFramework
             AZ::ComponentApplicationEventBus::Handler::BusConnect();
         }
 
-
         ~EntityReference()
         {
             AZ::ComponentApplicationEventBus::Handler::BusDisconnect();
         }
 
-        EntityReference& operator=(const AZ::EntityId& entityId)
+        EntityReference& operator=(AZ::EntityId entityId)
         {
             m_entityId = entityId;
             AZ::ComponentApplicationBus::BroadcastResult(m_entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
@@ -76,16 +68,21 @@ namespace AzFramework
             return *this;
         }
 
-        operator const AZ::EntityId&() const { return m_entityId; }
+        operator AZ::EntityId() const { return m_entityId; }
 
         bool operator==(const EntityReference& other) const { return m_entityId == other.m_entityId; }
-        bool operator==(const AZ::EntityId& entityId) const { return m_entityId == entityId; }
-        bool operator!=(const AZ::EntityId& entityId) const { return m_entityId != entityId; }
-        friend bool operator==(const AZ::EntityId& entityId, const EntityReference& ref) { return ref.m_entityId == entityId; }
-        friend bool operator!=(const AZ::EntityId& entityId, const EntityReference& ref) { return ref.m_entityId != entityId; }
+        bool operator==(AZ::EntityId entityId) const { return m_entityId == entityId; }
+        bool operator!=(AZ::EntityId entityId) const { return m_entityId != entityId; }
+        friend bool operator==(AZ::EntityId entityId, const EntityReference& ref) { return ref.m_entityId == entityId; }
+        friend bool operator!=(AZ::EntityId entityId, const EntityReference& ref) { return ref.m_entityId != entityId; }
 
-        const AZ::EntityId& GetEntityId() const { return m_entityId; }
-        AZ::Entity* GetEntity() const { return m_entity; }
+        AZ::EntityId GetEntityId() const { return m_entityId; }
+        AZ::Entity* GetEntity() const
+        {
+            AZ_Assert(!m_entity || m_entity->GetId() == m_entityId, "EntityReference m_entityId member differs from m_entity::m_id member."
+                " This normally occurs when the Entity object has been remapped without this EntityReference being part of the remapping structure");
+            return m_entity;
+        }
 
         //! ComponentApplicationEventBus
         /// Notifies listeners that an entity has been added to the application.
@@ -108,7 +105,7 @@ namespace AzFramework
 
     private:
         AZ::EntityId m_entityId;
-        AZ::Entity* m_entity;
+        AZ::Entity* m_entity = nullptr;
         friend class EntityReferenceEventHandler;
     };
 

@@ -9,65 +9,65 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <SceneAPI/SceneData/Rules/EFXSkinRule.h>
+#include <SceneAPIExt/Rules/SkinRule.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
-            AZ_CLASS_ALLOCATOR_IMPL(EFXSkinRule, SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(SkinRule, AZ::SystemAllocator, 0)
 
-            EFXSkinRule::EFXSkinRule()
+            SkinRule::SkinRule()
                 : m_maxWeightsPerVertex(4)
                 , m_weightThreshold(0.001f)
             {
             }
-            uint32_t EFXSkinRule::GetMaxWeightsPerVertex() const
+            AZ::u32 SkinRule::GetMaxWeightsPerVertex() const
             {
                 return m_maxWeightsPerVertex;
             }
 
-            float EFXSkinRule::GetWeightThreshold() const
+            float SkinRule::GetWeightThreshold() const
             {
                 return m_weightThreshold;
             }
 
-            void EFXSkinRule::Reflect(ReflectContext* context)
+            void SkinRule::Reflect(AZ::ReflectContext* context)
             {
-                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(EFXSkinRule::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (!serializeContext)
                 {
                     return;
                 }
 
-                serializeContext->Class<EFXSkinRule, DataTypes::IEFXSkinRule>()->Version(2)
-                    ->Field("maxWeightsPerVertex", &EFXSkinRule::m_maxWeightsPerVertex)
-                    ->Field("weightThreshold", &EFXSkinRule::m_weightThreshold);
+                serializeContext->Class<ISkinRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
 
-                EditContext* editContext = serializeContext->GetEditContext();
+                serializeContext->Class<SkinRule, ISkinRule>()->Version(2)
+                    ->Field("maxWeightsPerVertex", &SkinRule::m_maxWeightsPerVertex)
+                    ->Field("weightThreshold", &SkinRule::m_weightThreshold);
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<EFXSkinRule>("Skin", "")
-                        ->ClassElement(Edit::ClassElements::EditorData, "")
+                    editContext->Class<SkinRule>("Skin", "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute("AutoExpand", true)
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
-                        ->DataElement(Edit::UIHandlers::Default, &EFXSkinRule::m_maxWeightsPerVertex, "Max weights per vertex", "")
-                        ->Attribute(Edit::Attributes::Min, 1)
-                        ->Attribute(Edit::Attributes::Max, 4)
-                        ->DataElement(Edit::UIHandlers::Default, &EFXSkinRule::m_weightThreshold, "Weight threshold", "Weight value less than this will be ignored during import.")
-                        ->Attribute(Edit::Attributes::Min, 0.0f)
-                        ->Attribute(Edit::Attributes::Max, 1.0f);
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_maxWeightsPerVertex, "Max weights per vertex", "")
+                        ->Attribute(AZ::Edit::Attributes::Min, 1)
+                        ->Attribute(AZ::Edit::Attributes::Max, 4)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &SkinRule::m_weightThreshold, "Weight threshold", "Weight value less than this will be ignored during import.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 1.0f);
                 }
             }
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

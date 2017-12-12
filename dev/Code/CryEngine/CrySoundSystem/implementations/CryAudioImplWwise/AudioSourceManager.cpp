@@ -14,6 +14,7 @@
 
 #include "AudioSourceManager.h"
 #include "AudioInput/AudioInputFile.h"
+#include "AudioInput/AudioInputMicrophone.h"
 
 #include <AzCore/std/parallel/lock.h>
 
@@ -148,8 +149,6 @@ namespace Audio
     // Audio Input Source Manager
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    TAudioSourceId AudioSourceManager::s_nextSourceId = INVALID_AUDIO_SOURCE_ID;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     AudioSourceManager::AudioSourceManager()
     {
@@ -187,7 +186,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioSourceId AudioSourceManager::CreateSource(const SAudioInputConfig& sourceConfig)
+    bool AudioSourceManager::CreateSource(const SAudioInputConfig& sourceConfig)
     {
         AZStd::unique_ptr<AudioInputSource> ptr = nullptr;
         switch (sourceConfig.m_sourceType)
@@ -203,6 +202,11 @@ namespace Audio
                 }
                 break;
             }
+            case AudioInputSourceType::Microphone:
+            {
+                ptr.reset(aznew AudioInputMicrophone(sourceConfig));
+                break;
+            }
             case AudioInputSourceType::Synthesis:       // Will need to allow setting a user-defined Generate callback.
             case AudioInputSourceType::ExternalStream:
             default:
@@ -212,18 +216,17 @@ namespace Audio
             }
         }
 
-        if (!ptr->IsOk())
+        if (!ptr || !ptr->IsOk())
         {   // this check could change in the future as we add asynch loading.
-            return INVALID_AUDIO_SOURCE_ID;
+            return false;
         }
 
         AZStd::lock_guard<AZStd::mutex> lock(m_inputMutex);
 
-        TAudioSourceId sourceId = AudioSourceManager::NextSourceId();
-        ptr->SetSourceId(sourceId);
-        m_inactiveAudioInputs.emplace(sourceId, AZStd::move(ptr));
+        ptr->SetSourceId(sourceConfig.m_sourceId);
+        m_inactiveAudioInputs.emplace(sourceConfig.m_sourceId, AZStd::move(ptr));
 
-        return sourceId;
+        return true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,13 +316,6 @@ namespace Audio
         }
 
         return AK_INVALID_PLAYING_ID;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // static
-    TAudioSourceId AudioSourceManager::NextSourceId()
-    {
-        return ++s_nextSourceId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

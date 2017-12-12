@@ -75,20 +75,6 @@ public:
 #endif
     //! free the canvas data
     void    Free();
-#ifdef KDAB_TEMPORARILY_REMOVED
-    //! this will blit/copy a bitmap with alpha channel, using the given blend mode
-    //! \param rBmp the bitmap to blit
-    //! \param aDestX destination X on the canvas
-    //! \param aDestY destination Y on the canvas
-    //! \param aDestWidth destination width on the canvas, if -1 then the bitmap width will be used
-    //! \param aDestHeight destination height on the canvas, if -1 then the bitmap height will be used
-    //! \param pBlendFunc the blending function, if NULL then the normal alpha blend will be used
-    bool    BitBltWithAlpha(CDC& rBmpDC, int aDestX, int aDestY, int aDestWidth = -1, int aDestHeight = -1, int aSrcX = 0, int aSrcY = 0, int aSrcWidth = -1, int aSrcHeight = -1, BLENDFUNCTION* pBlendFunc = NULL);
-    //! this function breaks a text enclosed in a rectangle, on a character basis, because GDI is not capable of such feature, only on a word-break basis
-    //! it will insert \r chars in the text
-    //! \remark it will use the current font selected in the canvas' DC
-    void    BreakTextByChars(const char* pText, CString& rOutStr, const CRect& rRect);
-#endif
     //! function used to compute thumbs per row and spacing, used in asset browser and other tools where thumb layout is needed and maybe GDI canvas used
     //! \param aContainerWidth the thumbs' container width
     //! \param aThumbWidth the thumb image width
@@ -147,7 +133,5 @@ protected:
 //! \param checkDiameter the diameter of the check squares
 //! \param aColor1 the color that starts in the top left corner check square
 //! \param aColor2 the second color used for check squares
-#ifdef KDAB_MAC_PORT
-void CheckerboardFillRect(Gdiplus::Graphics* pGraphics, Gdiplus::Rect& rRect, int checkDiameter, COLORREF aColor1, COLORREF aColor2);
-#endif
+void CheckerboardFillRect(QPainter* pGraphics, const QRect& rRect, int checkDiameter, const QColor& aColor1, const QColor& aColor2);
 #endif // CRYINCLUDE_EDITOR_UTIL_GDIUTIL_H

@@ -12,6 +12,7 @@
 #include "hlslcc_bin.hpp"
 
 #include <algorithm>
+#include <cctype>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -316,7 +317,7 @@ typedef struct
 	char cacheKey[MAX_PATH_CHARS];
 
 	int bUseFxc;
-	char fxcCmdLine[MAX_FXC_CMD_CHARS];
+	std::string fxcCmdLine;
 } Options;
 
 void InitOptions(Options* psOptions)
@@ -451,8 +452,7 @@ int GetOptions(int argc, char** argv, Options* psOptions)
 			size_t cmdLineLen = strlen(cmdLine);
 			if (cmdLineLen == 0 || cmdLineLen + 1 >= MAX_FXC_CMD_CHARS)
 				return 0;
-			memcpy(psOptions->fxcCmdLine, cmdLine, cmdLineLen);
-			psOptions->fxcCmdLine[cmdLineLen] = '\0';
+			psOptions->fxcCmdLine = std::string(cmdLine, cmdLineLen);
 			psOptions->bUseFxc = 1;
 		}
 	}
@@ -694,8 +694,30 @@ int main(int argc, char** argv)
 			sprintf_s(dxbcFileName, sizeof(glslFileName), "%s.dxbc", options.shaderFile);
 			sprintf_s(glslFileName, sizeof(glslFileName), "%s.patched", options.shaderFile);
 
+			// Need to extract the path to the executable so we can enclose it in quotes
+			// in case it contains spaces.
+			const std::string fxcExeName = "fxc.exe";
+
+			// Case insensitive search
+			std::string::iterator fxcPos = std::search(
+			    options.fxcCmdLine.begin(), options.fxcCmdLine.end(),
+			    fxcExeName.begin(), fxcExeName.end(),
+			    [](char ch1, char ch2) { return std::tolower(ch1) == std::tolower(ch2); }
+			);
+
+			if (fxcPos == options.fxcCmdLine.end())
+			{
+			    fprintf(stderr, "Could not find fxc.exe in command line");
+			    return 1;
+			}
+
+			// Add the fxcExeName so it gets copied to the fxcExe path.
+			fxcPos += fxcExeName.length();
+			std::string fxcExe(options.fxcCmdLine.begin(), fxcPos);
+			std::string fxcArguments(fxcPos, options.fxcCmdLine.end());
+
 			// Need an extra set of quotes around the full command line because the way "system" executes it using cmd.
-			sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"%s \"%s\" \"%s\"\"", options.fxcCmdLine, dxbcFileName, options.shaderFile);
+			sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"\"%s\" %s \"%s\" \"%s\"\"", fxcExe.c_str(), fxcArguments.c_str(), dxbcFileName, options.shaderFile);
 			retValue = system(fullFxcCmdLine);
 
 			if (retValue == 0)

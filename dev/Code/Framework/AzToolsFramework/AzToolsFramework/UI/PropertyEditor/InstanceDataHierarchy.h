@@ -18,8 +18,12 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/PoolAllocator.h>
 
+#include <algorithm>
+
 namespace AzToolsFramework
 {
+    using DynamicEditDataProvider = AZStd::function<const AZ::Edit::ElementData*(const void* /*objectPtr*/, const AZ::SerializeContext::ClassData* /*classData*/)>;
+
     class InstanceDataHierarchy;
 
     /*
@@ -148,7 +152,51 @@ namespace AzToolsFramework
         bool                                        m_matched;          // true if this node was matched across all instances, used internally when the hierarchy is built.
         Identifier                                  m_identifier;       // Local identifier for this node (name crc, or persistent Id / index among siblings in container case).
         const AZ::Edit::ElementData*                m_groupElementData; // Group data for this item
+
+    private:
+        template<class T>
+        void CheckCast(const T* castType);
     };
+
+    template<typename T>
+    AZ_FORCE_INLINE void InstanceDataNode::CheckCast(const T* castType)
+    {
+#if defined(AZ_COMPILER_MSVC)
+        AZ_Assert(castType, "Could not cast from the existing typeid %s to the actual typeid %s required.", GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str(), AZ::SerializeTypeInfo<T>::GetUuid().ToString<AZStd::string>().c_str());
+#else
+        AZ_Assert(castType, "Could not cast from the existing typeid %s to the actual typeid %s required.", GetClassMetadata()->m_typeId.template ToString<AZStd::string>().c_str(), AZ::SerializeTypeInfo<T>::GetUuid().template ToString<AZStd::string>().c_str());
+#endif // defined(AZ_COMPILER_MSVC)
+    }
+
+    template<class T>
+    bool InstanceDataNode::Read(T& value)
+    {
+        const T* firstInstanceCast = static_cast<T*>(GetSerializeContext()->DownCast(FirstInstance(), GetClassMetadata()->m_typeId, AZ::SerializeTypeInfo<T>::GetUuid()));
+        CheckCast(firstInstanceCast);
+
+        value = *firstInstanceCast;
+
+        // check all instance values are the same
+        return std::all_of(m_instances.begin(), m_instances.end(), [this, firstInstanceCast](void* instance)
+        {
+            T* instanceCast = static_cast<T*>(GetSerializeContext()->DownCast(instance, GetClassMetadata()->m_typeId, AZ::SerializeTypeInfo<T>::GetUuid()));
+            CheckCast(instanceCast);
+
+            return *instanceCast == *firstInstanceCast;
+        });
+    }
+
+    template<class T>
+    void InstanceDataNode::Write(const T& value)
+    {
+        for (void* instance : m_instances)
+        {
+            T* instanceCast = static_cast<T*>(GetSerializeContext()->DownCast(instance, GetClassMetadata()->m_typeId, AZ::SerializeTypeInfo<T>::GetUuid()));
+            CheckCast(instanceCast);
+
+            *instanceCast = value;
+        }
+    }
 
     /*
      * InstanceDataHierarchy contains a hierarchy of InstanceDataNodes.
@@ -189,11 +237,11 @@ namespace AzToolsFramework
 
         /// Builds the intersecting hierarchy using all the root instances added.
         /// If a comparison instance is set, nodes will also be flagged based on detected deltas (\ref ComparisonFlags).
-        void Build(AZ::SerializeContext* sc, unsigned int accessFlags);
+        void Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider = DynamicEditDataProvider());
 
         /// Re-compares root instance against specified Compare instance and updates node flags accordingly.
         /// \return true if all instances match the comparison instance.
-        bool RefreshComparisonData(unsigned int accessFlags);
+        bool RefreshComparisonData(unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider);
 
         /// Callback to receive notification of nodes found in the target hierarchy, but not the source hierarchy.
         typedef AZStd::function<void(InstanceDataNode* /*targetNode*/, AZStd::vector<AZ::u8>& /*data*/)> NewNodeCB;
@@ -218,6 +266,9 @@ namespace AzToolsFramework
 
         /// Locate a node by full address.
         InstanceDataNode* FindNodeByAddress(const InstanceDataNode::Address& address) const;
+
+        /// Locate a node by partial address (bfs to find closest match)
+        InstanceDataNode* FindNodeByPartialAddress(const InstanceDataNode::Address& address) const;
 
         /// Utility to compare two instance hierarchies.
         /// When SetComparisonInstance() is used, this utility is internally invoked in order to mark nodes
@@ -257,7 +308,7 @@ namespace AzToolsFramework
         struct SupplementalEditData
         {
             AZ::Edit::ElementData               m_editElementData;
-            char                                m_displayLabel[8];
+            AZStd::string                       m_displayLabel;
         };
         typedef AZStd::list<SupplementalEditData>   SupplementalEditDataContainer;
 
@@ -289,7 +340,7 @@ namespace AzToolsFramework
 
         void FixupEditData(InstanceDataNode* node, int siblingIdx);
 
-        bool BeginNode(void* instance, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement);
+        bool BeginNode(void* instance, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement, DynamicEditDataProvider dynamicEditDataProvider);
         bool EndNode();
 
         static void CompareHierarchies(const InstanceDataNode* sourceNode, InstanceDataNode* targetNode,

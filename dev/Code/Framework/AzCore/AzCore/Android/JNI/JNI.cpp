@@ -9,10 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "JNI.h"
-
-#include <AzCore/Android/AndroidEnv.h>
-#include <AzCore/Debug/Trace.h>
+#include <AzCore/Android/JNI/JNI.h>
+#include <AzCore/Android/JNI/Internal/JStringUtils.h>
+#include <AzCore/Android/JNI/Internal/ClassName.h>
 
 
 namespace AZ
@@ -36,69 +35,25 @@ namespace AZ
             ////////////////////////////////////////////////////////////////
             AZStd::string GetClassName(jclass classRef)
             {
-                return AndroidEnv::Get()->GetClassName(classRef);
+                return Internal::ClassName<AZStd::string>::GetName(classRef);
             }
 
             ////////////////////////////////////////////////////////////////
             AZStd::string GetSimpleClassName(jclass classRef)
             {
-                return AndroidEnv::Get()->GetSimpleClassName(classRef);
+                return Internal::ClassName<AZStd::string>::GetSimpleName(classRef);
             }
 
             ////////////////////////////////////////////////////////////////
             AZStd::string ConvertJstringToString(jstring stringValue)
             {
-                JNIEnv* jniEnv = GetEnv();
-                if (!jniEnv)
-                {
-                    AZ_Error("AZ::Android::JNI", false, "Failed to get JNIEnv* on thread for jstring conversion");
-                    return AZStd::string();
-                }
-
-                const char* convertedStringValue = jniEnv->GetStringUTFChars(stringValue, nullptr);
-                if (!convertedStringValue || jniEnv->ExceptionCheck())
-                {
-                    AZ_Error("AZ::Android::JNI", false, "Failed to convert a jstring to cstring");
-                    HANDLE_JNI_EXCEPTION(jniEnv);
-                    return AZStd::string();
-                }
-
-                AZStd::string localCopy(convertedStringValue);
-                jniEnv->ReleaseStringUTFChars(stringValue, convertedStringValue);
-
-                return localCopy;
+                return Internal::ConvertJstringToStringImpl<AZStd::string>(stringValue);
             }
 
             ////////////////////////////////////////////////////////////////
             jstring ConvertStringToJstring(const AZStd::string& stringValue)
             {
-                JNIEnv* jniEnv = GetEnv();
-                if (!jniEnv)
-                {
-                    AZ_Error("AZ::Android::JNI", false, "Failed to get JNIEnv* on thread for jstring conversion");
-                    return nullptr;
-                }
-
-                jstring localRef = jniEnv->NewStringUTF(stringValue.c_str());
-                if (!localRef || jniEnv->ExceptionCheck())
-                {
-                    AZ_Error("AZ::Android::JNI", false, "Failed to convert the cstring to jstring");
-                    HANDLE_JNI_EXCEPTION(jniEnv);
-                    return nullptr;
-                }
-
-                jstring globalRef = static_cast<jstring>(jniEnv->NewGlobalRef(localRef));
-                if (!globalRef || jniEnv->ExceptionCheck())
-                {
-                    AZ_Error("AZ::Android::JNI", false, "Failed to create a global reference to the return jstring");
-                    HANDLE_JNI_EXCEPTION(jniEnv);
-                    jniEnv->DeleteLocalRef(localRef);
-                    return nullptr;
-                }
-
-                jniEnv->DeleteLocalRef(localRef);
-
-                return globalRef;
+                return Internal::ConvertStringToJstringImpl(stringValue);
             }
 
             ////////////////////////////////////////////////////////////////
@@ -145,28 +100,6 @@ namespace AZ
                             default:
                                 AZ_Error("AZ::Android::JNI", false, "Unknown or invalid reference type detected.");
                                 break;
-                        }
-                    }
-                }
-            }
-
-            ////////////////////////////////////////////////////////////////
-            void DeleteGlobalRef(jobject globalRef)
-            {
-                if (globalRef)
-                {
-                    JNIEnv* jniEnv = GetEnv();
-                    AZ_Assert(jniEnv, "Unable to get JNIEnv pointer to free JNI reference.");
-
-                    if (jniEnv)
-                    {
-                        jobjectRefType refType = jniEnv->GetObjectRefType(globalRef);
-                        AZ_Assert(refType == JNIGlobalRefType,
-                                "Call to DeleteGlobalRef with a non-global ref.  JNI reference will not be released properly and may leak.");
-
-                        if (refType == JNIGlobalRefType)
-                        {
-                            jniEnv->DeleteGlobalRef(globalRef);
                         }
                     }
                 }

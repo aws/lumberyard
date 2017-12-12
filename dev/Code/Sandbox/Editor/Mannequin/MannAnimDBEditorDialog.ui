@@ -60,7 +60,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QTreeView" name="m_adbTree">
+    <widget class="MannDeselectableTreeView" name="m_adbTree">
      <attribute name="headerVisible">
       <bool>false</bool>
      </attribute>
@@ -106,6 +106,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MannDeselectableTreeView</class>
+   <extends>QTreeView</extends>
+   <header>MannDeselectableTreeView.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

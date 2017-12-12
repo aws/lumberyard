@@ -189,11 +189,11 @@ void CCharacterTrackAnimator::ResetLastAnimKeys()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCharacterTrackAnimator::OnReset(IEntity* entity)
+void CCharacterTrackAnimator::OnReset(IAnimNode* animNode)
 {
     ResetLastAnimKeys();
 
-    ReleaseAllAnimations(entity);
+    ReleaseAllAnimations(animNode);
 
     m_baseAnimState.m_layerPlaysAnimation[0] = m_baseAnimState.m_layerPlaysAnimation[1] = m_baseAnimState.m_layerPlaysAnimation[2] = false;
 }
@@ -308,14 +308,14 @@ ILINE bool CCharacterTrackAnimator::IsAnimationPlaying(const SAnimState& animSta
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCharacterTrackAnimator::ReleaseAllAnimations(IEntity* pEntity)
+void CCharacterTrackAnimator::ReleaseAllAnimations(IAnimNode* animNode)
 {
-    if (!pEntity)
+    if (!animNode)
     {
         return;
     }
 
-    ICharacterInstance* pCharacter = pEntity->GetCharacter(0);
+    ICharacterInstance* pCharacter = animNode->GetCharacterInstance();
     if (!pCharacter)
     {
         return;
@@ -339,13 +339,30 @@ void CCharacterTrackAnimator::ReleaseAllAnimations(IEntity* pEntity)
         pCharacter->GetISkeletonAnim()->SetAnimationDrivenMotion(m_characterWasTransRot);
         m_baseAnimState.m_layerPlaysAnimation[0] = m_baseAnimState.m_layerPlaysAnimation[1] = m_baseAnimState.m_layerPlaysAnimation[2] = false;
 
-        NotifyEntityScript(pEntity, "OnSequenceAnimationStop");
+        IEntity* entity = animNode->GetEntity();
+        if (entity)
+        {
+            NotifyEntityScript(entity, "OnSequenceAnimationStop");
+        }
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimContext& ec, int layer, int trackIndex, ICharacterInstance* pCharacter, IEntity* pEntity )
+void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimContext& ec, int layer, int trackIndex)
 {
+    IAnimNode* animNode = pTrack->GetNode();
+    if (!animNode)
+    {
+        return;
+    }
+
+    ICharacterInstance* character = animNode->GetCharacterInstance();
+    if (!character)
+    {
+        return;
+    }
+
+    IEntity* entity = pTrack->GetNode()->GetEntity();
     ISystem* pISystem = GetISystem();
     IRenderer* pIRenderer = gEnv->pRenderer;
     IRenderAuxGeom* pAuxGeom = pIRenderer->GetIRenderAuxGeom();
@@ -362,14 +379,14 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
         blendGap = GetNearestKeys(activeKeys, ec.time, pTrack, numActiveKeys);
     }
 
-    bool bAnyChange = CheckTimeJumpingOrOtherChanges(ec, activeKeys, numActiveKeys, pCharacter, layer, trackIndex, m_baseAnimState);
+    bool bAnyChange = CheckTimeJumpingOrOtherChanges(ec, activeKeys, numActiveKeys, character, layer, trackIndex, m_baseAnimState);
 
     // the used keys have changed - be it overlapping, single, nearest or none at all
     if (bAnyChange)
     {
         if (m_baseAnimState.m_bTimeJumped[trackIndex] == false)   // In case of the time-jumped, the existing animation must not be cleared.
         {
-            pCharacter->GetISkeletonAnim()->ClearFIFOLayer(layer);
+            character->GetISkeletonAnim()->ClearFIFOLayer(layer);
         }
 
         m_baseAnimState.m_layerPlaysAnimation[trackIndex] = false;
@@ -389,24 +406,24 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
             float t = ec.time - key.time;
             t = key.m_startTime + t * key.m_speed;
 
-            if (key.m_animation[0])
+            if (!key.m_animation.empty())
             {
                 // retrieve the animation collection for the model
-                IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
+                IAnimationSet* pAnimations = character->GetIAnimationSet();
                 assert(pAnimations);
 
                 if (key.m_bUnload)
                 {
-                    m_setAnimationSinks.insert(TStringSetIt::value_type(key.m_animation));
+                    m_setAnimationSinks.insert(TStringSetIt::value_type(key.m_animation.c_str()));
                 }
 
-                if (pCharacter->GetISkeletonAnim()->GetAnimationDrivenMotion() && (!IsAnimationPlaying(m_baseAnimState)))
+                if (character->GetISkeletonAnim()->GetAnimationDrivenMotion() && (!IsAnimationPlaying(m_baseAnimState)))
                 {
                     m_characterWasTransRot = true;
                 }
 
-                pCharacter->GetISkeletonAnim()->SetAnimationDrivenMotion(key.m_bInPlace ? 1 : 0);
-                pCharacter->GetISkeletonAnim()->SetTrackViewExclusive(1);
+                character->GetISkeletonAnim()->SetAnimationDrivenMotion(key.m_bInPlace ? 1 : 0);
+                character->GetISkeletonAnim()->SetTrackViewExclusive(1);
 
                 // Start playing animation.
                 CryCharAnimationParams aparams;
@@ -418,17 +435,17 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
                 aparams.m_nLayerID = layer;
                 aparams.m_fTransTime = -1.0f;
 
-                pCharacter->GetISkeletonAnim()->StartAnimation(key.m_animation, aparams);
+                character->GetISkeletonAnim()->StartAnimation(key.m_animation.c_str(), aparams);
 
-                if (pEntity)
+                if (entity)
                 {
-                    NotifyEntityScript(pEntity, "OnSequenceAnimationStart", key.m_animation);
+                    NotifyEntityScript(entity, "OnSequenceAnimationStart", key.m_animation.c_str());
                 }
 
                 m_baseAnimState.m_layerPlaysAnimation[trackIndex] = true;
 
                 // fix duration?
-                int animId = pAnimations->GetAnimIDByName(key.m_animation);
+                int animId = pAnimations->GetAnimIDByName(key.m_animation.c_str());
                 if (animId >= 0)
                 {
                     float duration = pAnimations->GetDuration_sec(animId);
@@ -447,13 +464,13 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
         if (!IsAnimationPlaying(m_baseAnimState))
         {
             // There is no animation left playing - exit TrackViewExclusive mode
-            pCharacter->GetISkeletonAnim()->SetTrackViewExclusive(0);
-            pCharacter->GetISkeletonAnim()->StopAnimationsAllLayers();
-            pCharacter->SetPlaybackScale(1.0000f);
-            pCharacter->GetISkeletonAnim()->SetAnimationDrivenMotion(m_characterWasTransRot);
-            if (pEntity)
+            character->GetISkeletonAnim()->SetTrackViewExclusive(0);
+            character->GetISkeletonAnim()->StopAnimationsAllLayers();
+            character->SetPlaybackScale(1.0000f);
+            character->GetISkeletonAnim()->SetAnimationDrivenMotion(m_characterWasTransRot);
+            if (entity)
             {
-                NotifyEntityScript(pEntity, "OnSequenceAnimationStop");
+                NotifyEntityScript(entity, "OnSequenceAnimationStop");
             }
             return;
         }
@@ -463,18 +480,18 @@ void CCharacterTrackAnimator::AnimateTrack(class CCharacterTrack* pTrack, SAnimC
     {
         if (m_baseAnimState.m_bTimeJumped[trackIndex])
         {
-            assert(numActiveKeys == 1 && activeKeys[0] >= 0 && pCharacter->GetISkeletonAnim()->GetNumAnimsInFIFO(layer) == 2);
-            UpdateAnimTimeJumped(activeKeys[0], pTrack, ec.time, pCharacter, layer, !bAnyChange, trackIndex, m_baseAnimState);
+            assert(numActiveKeys == 1 && activeKeys[0] >= 0 && character->GetISkeletonAnim()->GetNumAnimsInFIFO(layer) == 2);
+            UpdateAnimTimeJumped(activeKeys[0], pTrack, ec.time, character, layer, !bAnyChange, trackIndex, m_baseAnimState);
         }
         // regular one- or two-animation(s) case
         else if (numActiveKeys > 0)
         {
-            UpdateAnimRegular(numActiveKeys, activeKeys, pTrack, ec.time, pCharacter, layer, !bAnyChange);
+            UpdateAnimRegular(numActiveKeys, activeKeys, pTrack, ec.time, character, layer, !bAnyChange);
         }
         // blend gap
         else if (blendGap)
         {
-            UpdateAnimBlendGap(activeKeys, pTrack, ec.time, pCharacter, layer);
+            UpdateAnimBlendGap(activeKeys, pTrack, ec.time, character, layer);
         }
     }
 }

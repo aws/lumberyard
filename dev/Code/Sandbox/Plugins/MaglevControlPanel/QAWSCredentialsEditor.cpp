@@ -122,13 +122,14 @@ void ProfileSelector::AddScrollHeadings(QVBoxLayout* scrollLayout)
 
 void ProfileSelector::CreateNewProfile()
 {
-    OpenAddProfileDialog(this);
+    m_addedProfile = OpenAddProfileDialog(this);
 }
 
-void ProfileSelector::OpenAddProfileDialog(QWidget* parentWidget)
+QString ProfileSelector::OpenAddProfileDialog(QWidget* parentWidget)
 {
-    QDialog* profileDialg = new AddProfileDialog(parentWidget, {});
+    AddProfileDialog* profileDialg = new AddProfileDialog(parentWidget, {});
     profileDialg->exec();
+    return profileDialg->AddedProfile();
 }
 
 void ProfileSelector::EditProfile()
@@ -201,13 +202,14 @@ void AddProfileDialog::SaveNewProfile()
     }
     else
     {
-        m_model->AddProfile(m_profileNameEdit.text(), m_secretKeyEdit.text().simplified(), m_accessKeyEdit.text().simplified(), true);
+        m_model->AddProfile(m_profileNameEdit.text(), m_secretKeyEdit.text().simplified(), m_accessKeyEdit.text().simplified(), false);
     }
 }
 
 void AddProfileDialog::OnAddProfileSucceeded()
 {
     GetIEditor()->Notify(eNotify_OnAddAWSProfile);
+    m_addedProfile = m_profileNameEdit.text();
     ReturnToProfile();
 }
 
@@ -315,7 +317,17 @@ void ProfileSelector::OnDeleteProfileFailed(const QString& message)
 
 void ProfileSelector::OnModelReset()
 {
+    if (m_addedProfile.isEmpty())
+    {
+        m_selectedButtonText = GetSelectedButtonText();
+    }
+    else
+    {
+        m_selectedButtonText = m_addedProfile;
+        m_addedProfile.clear();
+    }
     BindData();
+
 }
 
 void ProfileSelector::HideConfirmDeleteDialog()
@@ -358,9 +370,19 @@ void ProfileSelector::AddRow(int rowNum, QVBoxLayout* scrollLayout)
 
     QRadioButton* newButton = new QRadioButton(profileName);
     qDebug() << "default" << m_model->data(rowNum, AWSProfileColumn::Default);
-    if (m_model->data(rowNum, AWSProfileColumn::Default).value<bool>())
+    if (m_selectedButtonText.isEmpty())
     {
-        newButton->setChecked(true);
+        if (m_model->data(rowNum, AWSProfileColumn::Default).value<bool>())
+        {
+            newButton->setChecked(true);
+        }
+    }
+    else
+    {
+        if (m_selectedButtonText == profileName)
+        {
+            newButton->setChecked(true);
+        }
     }
 
     QHBoxLayout* buttonRowLayout = new QHBoxLayout();

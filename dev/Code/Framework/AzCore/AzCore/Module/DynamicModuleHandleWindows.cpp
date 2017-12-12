@@ -13,7 +13,7 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/PlatformIncl.h>
 
@@ -125,6 +125,6 @@ namespace AZ
     }
 } // namespace AZ
 
-#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_XBONE
+#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_XBONE // ACCEPTED_USE
 
 #endif // #ifndef AZ_UNITY_BUILD

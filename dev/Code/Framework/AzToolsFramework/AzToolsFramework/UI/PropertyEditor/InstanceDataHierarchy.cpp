@@ -21,6 +21,41 @@
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Script/ScriptProperty.h>
+
+#include <AzCore/Serialization/EditContextConstants.inl>
+
+#include "PropertyEditorApi.h"
+
+namespace
+{
+    AZStd::string GetLabel(AzToolsFramework::InstanceDataNode* node)
+    {
+        const AZ::Edit::ElementData* elementEditData = node->GetElementEditMetadata();
+        if(!elementEditData)
+        {
+            return "";
+        }
+
+        AZ::Edit::Attribute* attr = elementEditData->FindAttribute(AZ::Edit::Attributes::NameLabelOverride);
+        if(!attr)
+        {
+            return "";
+        }
+
+        AZStd::string label;
+        for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
+        {
+            AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attr);
+            if (reader.Read<AZStd::string>(label))
+            {
+                return label;
+            }
+        }
+
+        return "";
+    }
+}
+
 namespace AzToolsFramework
 {
     //-----------------------------------------------------------------------------
@@ -256,11 +291,6 @@ namespace AzToolsFramework
 
     bool InstanceDataNode::HasChangesVersusComparison(bool includeChildren) const
     {
-        if (!m_comparisonNode)
-        {
-            return false;
-        }
-        
         if (m_comparisonFlags)
         {
             return true;
@@ -336,7 +366,7 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
-    void InstanceDataHierarchy::Build(AZ::SerializeContext* sc, unsigned int accessFlags)
+    void InstanceDataHierarchy::Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -355,7 +385,7 @@ namespace AzToolsFramework
         sc->EnumerateInstanceConst(
             m_rootInstances[0].m_instance
             , m_rootInstances[0].m_classId
-            , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3)
+            , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider)
             , AZStd::bind(&InstanceDataHierarchy::EndNode, this)
             , accessFlags
             , nullptr
@@ -370,7 +400,7 @@ namespace AzToolsFramework
             sc->EnumerateInstanceConst(
                 m_rootInstances[i].m_instance
                 , m_rootInstances[i].m_classId
-                , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3)
+                , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider)
                 , AZStd::bind(&InstanceDataHierarchy::EndNode, this)
                 , accessFlags
                 , nullptr
@@ -378,7 +408,7 @@ namespace AzToolsFramework
                 );
         }
 
-        RefreshComparisonData(accessFlags);
+        RefreshComparisonData(accessFlags, dynamicEditDataProvider);
 
         // if we ended up with anything to display, we need to do another pass to fix up container element nodes.
         if (m_matched)
@@ -424,10 +454,11 @@ namespace AzToolsFramework
             }
             if (mergeContainerEditData)
             {
-                InstanceDataNode* container = node->m_parent;
-                azsnprintf(m_supplementalEditData.back().m_displayLabel, sizeof(m_supplementalEditData.back().m_displayLabel), "[%d]", siblingIdx);
+                AZStd::string label = GetLabel(node);
+                m_supplementalEditData.back().m_displayLabel = label.empty() ? AZStd::string::format("[%d]", siblingIdx) : label;
                 editData->m_description = nullptr;
-                editData->m_name = m_supplementalEditData.back().m_displayLabel;
+                editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();
+                InstanceDataNode* container = node->m_parent;
                 for (AZ::Edit::AttributeArray::const_iterator containerAttrIter = container->GetElementEditMetadata()->m_attributes.begin(); containerAttrIter != container->GetElementEditMetadata()->m_attributes.end(); ++containerAttrIter)
                 {
                     if (!containerAttrIter->second->m_describesChildren)
@@ -459,7 +490,7 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
-    bool InstanceDataHierarchy::BeginNode(void* ptr, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement)
+    bool InstanceDataHierarchy::BeginNode(void* ptr, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement, DynamicEditDataProvider dynamicEditDataProvider)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -470,7 +501,16 @@ namespace AzToolsFramework
         {
             // Find the correct element edit data to use
             elementEditData = classElement->m_editData;
-            if (!m_editDataOverrides.empty())
+            if (dynamicEditDataProvider)
+            {
+                void* objectPtr = ResolvePointer(ptr, *classElement, *m_context);
+                const AZ::Edit::ElementData* labelData = dynamicEditDataProvider(objectPtr, classData);
+                if (labelData)
+                {
+                    elementEditData = labelData;
+                }
+            }
+            else if (!m_editDataOverrides.empty())
             {
                 const EditDataOverride& editDataOverride = m_editDataOverrides.back();
 
@@ -576,7 +616,7 @@ namespace AzToolsFramework
             {
                 if (m_curParentNode->GetClassMetadata()->m_container)
                 {
-                    // Within a container, use persistentId if available, otherwise use the container index.
+                    // Within a container, use persistentId if available, otherwise use a CRC of name and container index.
                     AZ::SerializeContext::ClassPersistentId persistentId = classData->GetPersistentId(*m_context);
                     if (persistentId)
                     {
@@ -584,7 +624,8 @@ namespace AzToolsFramework
                     }
                     else
                     {
-                        node->m_identifier = static_cast<Identifier>(m_curParentNode->m_children.size() - 1);
+                        AZStd::string indexedName = AZStd::string::format("%s_%d", classData->m_name, m_curParentNode->m_children.size() - 1);
+                        node->m_identifier = static_cast<Identifier>(AZ::Crc32(indexedName.c_str()));
                     }
                 }
                 else
@@ -683,7 +724,7 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
-    bool InstanceDataHierarchy::RefreshComparisonData(unsigned int accessFlags)
+    bool InstanceDataHierarchy::RefreshComparisonData(unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -720,7 +761,7 @@ namespace AzToolsFramework
             m_comparisonHierarchies.emplace_back(aznew InstanceDataHierarchy());
             auto& comparisonHierarchy = m_comparisonHierarchies.back();
             comparisonHierarchy->AddRootInstance(comparisonInstance.m_instance, comparisonInstance.m_classId);
-            comparisonHierarchy->Build(m_root->GetSerializeContext(), accessFlags);
+            comparisonHierarchy->Build(m_root->GetSerializeContext(), accessFlags, dynamicEditDataProvider);
 
             // Compare the two hierarchies...
             if (comparisonHierarchy->m_root)
@@ -826,6 +867,54 @@ namespace AzToolsFramework
                             return currentNode;
                         }
                     }
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    /// Locate a node by partial address (bfs to find closest match)
+    InstanceDataNode* InstanceDataHierarchy::FindNodeByPartialAddress(const InstanceDataNode::Address& address) const
+    {
+        // ensure we have atleast a root and a valid address to search
+        if (m_root && !address.empty())
+        {
+            AZStd::queue<InstanceDataNode*> children;
+            children.push(m_root);
+
+            // work our way down the hierarchy in a bfs search
+            size_t addressIndex = address.size() - 1;
+            while (children.size() > 0)
+            {
+                InstanceDataNode* curr = children.front();
+                children.pop();
+
+                // if we find property - move down the hierarchy
+                if (curr->m_identifier == address[addressIndex])
+                {
+                    if (addressIndex > 0)
+                    {
+                        // clear existing list as we don't care about
+                        // these elements anymore
+                        while (!children.empty())
+                        {
+                            children.pop();
+                        }
+
+                        children.push(curr);
+                        --addressIndex;
+                    }
+                    else
+                    {
+                        return curr;
+                    }
+                }
+
+                // build fifo list of children to search
+                for (InstanceDataNode& child : curr->m_children)
+                {
+                    children.push(&child);
                 }
             }
         }

@@ -20,6 +20,45 @@ namespace AZ
         namespace Containers
         {
             //
+            // NodeIndex
+            //
+            SceneGraph::NodeIndex::NodeIndex()
+                : m_value(NodeIndex::INVALID_INDEX)
+            {
+            }
+            
+            bool SceneGraph::NodeIndex::IsValid() const
+            {
+                return m_value != NodeIndex::INVALID_INDEX;
+            }
+
+            bool SceneGraph::NodeIndex::operator==(NodeIndex rhs) const
+            {
+                return m_value == rhs.m_value;
+            }
+
+            bool SceneGraph::NodeIndex::operator!=(NodeIndex rhs) const
+            {
+                return m_value != rhs.m_value;
+            }
+
+            SceneGraph::NodeIndex::IndexType SceneGraph::NodeIndex::AsNumber() const
+            {
+                return m_value;
+            }
+
+            s32 SceneGraph::NodeIndex::Distance(NodeIndex rhs) const
+            {
+                return static_cast<s32>(rhs.m_value) - static_cast<s32>(m_value);
+            }
+
+
+            SceneGraph::NodeIndex::NodeIndex(IndexType value)
+                : m_value(value)
+            {
+            }
+            
+            //
             // SceneGraph NodeHeader
             //
             SceneGraph::NodeHeader::NodeHeader()
@@ -50,37 +89,19 @@ namespace AZ
                 return m_isEndPoint;
             }
 
-            //
-            // NodeIndex
-            //
-            bool SceneGraph::NodeIndex::IsValid() const
+            SceneGraph::NodeIndex SceneGraph::NodeHeader::GetParentIndex() const
             {
-                return m_value != NodeIndex::INVALID_INDEX;
+                return NodeIndex(m_parentIndex);
             }
 
-            bool SceneGraph::NodeIndex::operator==(NodeIndex rhs) const
+            SceneGraph::NodeIndex SceneGraph::NodeHeader::GetSiblingIndex() const
             {
-                return m_value == rhs.m_value;
+                return NodeIndex(m_siblingIndex);
             }
 
-            bool SceneGraph::NodeIndex::operator!=(NodeIndex rhs) const
+            SceneGraph::NodeIndex SceneGraph::NodeHeader::GetChildIndex() const
             {
-                return m_value != rhs.m_value;
-            }
-
-            SceneGraph::NodeIndex::IndexType SceneGraph::NodeIndex::AsNumber() const
-            {
-                return m_value;
-            }
-
-            SceneGraph::NodeIndex::NodeIndex()
-                : m_value(NodeIndex::INVALID_INDEX)
-            {
-            }
-
-            SceneGraph::NodeIndex::NodeIndex(IndexType value)
-                : m_value(value)
-            {
+                return NodeIndex(m_childIndex);
             }
 
             //
@@ -247,6 +268,23 @@ namespace AZ
             SceneGraph::HierarchyStorageConstData::iterator SceneGraph::ConvertToHierarchyIterator(NodeIndex node) const
             {
                 return node.m_value < m_hierarchy.size() ? m_hierarchy.cbegin() + node.m_value : m_hierarchy.cend();
+            }
+
+            SceneGraph::NameStorageConstData::iterator SceneGraph::ConvertToNameIterator(NodeIndex node) const
+            {
+                return node.m_value < m_names.size() ? m_names.cbegin() + node.m_value : m_names.cend();
+            }
+
+            SceneGraph::ContentStorageData::iterator SceneGraph::ConvertToStorageIterator(NodeIndex node)
+            {
+                return node.m_value < m_content.size() ? m_content.cbegin() + node.m_value : m_content.cend();
+            }
+
+            SceneGraph::ContentStorageConstData::iterator SceneGraph::ConvertToStorageIterator(NodeIndex node) const
+            {
+                return node.m_value < m_content.size() ? 
+                    Views::MakeConvertIterator(m_content.cbegin() + node.m_value, ConstDataConverter) :
+                    Views::MakeConvertIterator(m_content.cend(), ConstDataConverter);
             }
 
             SceneGraph::NodeIndex SceneGraph::ConvertToNodeIndex(HierarchyStorageConstData::iterator iterator) const

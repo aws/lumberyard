@@ -15,6 +15,7 @@
 #include <NetPromoterScore/ui_NetPromoterScoreDialog.h>
 #include <QtWidgets>
 #include <LyMetricsProducer/LyMetricsAPI.h>
+#include <AzQtComponents/Utilities/AutoSettingsGroup.h>
 
 static const char* ratingButton = "RatingButton";
 static const char* ratingButtonLeave = "RatingButtonLeave";
@@ -32,19 +33,6 @@ NetPromoterScoreDialog::NetPromoterScoreDialog(QWidget* pParent /*= nullptr*/)
 
     // make sure at the initial stage the comment text box hides the cursor
     UpdateCommentBoxState(false);
-
-    // set the version number into the message
-    QVersionNumber version = QVersionNumber::fromString(METRICS_VERSION);
-    QString versionNumber = QString::number(version.majorVersion()) + "." + QString::number(version.minorVersion());
-
-    if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
-    {
-        m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard to a friend or colleague?"));
-    }
-    else
-    {
-        m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard v%1 to a friend or colleague?").arg(versionNumber));
-    }
 
     m_ui->CommentBox->installEventFilter(this);
 
@@ -67,14 +55,14 @@ NetPromoterScoreDialog::NetPromoterScoreDialog(QWidget* pParent /*= nullptr*/)
         signalMapper->setMapping(m_buttonGroup.at(i), i);
 
         // The use of signal and slot Macros used to be the only way to make connections, before Qt 5.
-        // The signal and slot mechanism is part of the C++ extensions that are provided by Qt 
+        // The signal and slot mechanism is part of the C++ extensions that are provided by Qt
         // and make use of the Meta Object Compiler(moc).
         // This way of connecting the signal and slot will be checked in the runtime, but
-        // using the address of a function can be checked at the time of compilation, which is safer. 
+        // using the address of a function can be checked at the time of compilation, which is safer.
         // So we should always consider using function pointer syntax instead of macros.
-        // In addition, by using the address of a function, you can refer to any class function, 
+        // In addition, by using the address of a function, you can refer to any class function,
         // not just those in the section marked slots.
-        // This case we connect the QPushButton's signal to the QSignalMapper's map() signal, and this is an exception     
+        // This case we connect the QPushButton's signal to the QSignalMapper's map() signal, and this is an exception
         connect(m_buttonGroup.at(i), SIGNAL(clicked()), signalMapper, SLOT(map()));
 
         m_buttonGroup.at(i)->installEventFilter(this);
@@ -136,11 +124,16 @@ bool NetPromoterScoreDialog::eventFilter(QObject* obj, QEvent* ev)
     return false;
 }
 
+void NetPromoterScoreDialog::SetRatingInterval(int ratingInterval)
+{
+    m_ratingInterval = ratingInterval;
+    SetMessage();
+}
+
 void NetPromoterScoreDialog::accept()
 {
     if (m_ui->ButtonSubmit->isEnabled())
     {
-
         QString comment = m_ui->CommentBox->toPlainText();
         int textLength = comment.length();
 
@@ -151,7 +144,7 @@ void NetPromoterScoreDialog::accept()
         }
 
         // Send MetricsEvent
-        LyMetrics_SendRating(m_ratingScore, comment.toUtf8());
+        LyMetrics_SendRating(m_ratingScore, m_ratingInterval, comment.toUtf8());
 
         Q_EMIT UserInteractionCompleted();
         QDialog::accept();
@@ -162,10 +155,41 @@ void NetPromoterScoreDialog::reject()
 {
     // Send Metrics Event
     m_ratingScore = -1;
-    LyMetrics_SendRating(m_ratingScore, nullptr);
+   
+    LyMetrics_SendRating(m_ratingScore, m_ratingInterval, nullptr);
 
     Q_EMIT UserInteractionCompleted();
     QDialog::reject();
+}
+
+void NetPromoterScoreDialog::SetMessage()
+{
+    // set the version number into the message
+    QVersionNumber version = QVersionNumber::fromString(METRICS_VERSION);
+    QString versionNumber = QString::number(version.majorVersion()) + "." + QString::number(version.minorVersion());
+
+    if (m_ratingInterval <= 5)
+    {
+        if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
+        {
+            m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard to a friend or colleague?"));
+        }
+        else
+        {
+            m_ui->Message->setText(tr("Before you go, tell us how likely is it that you would recommend Lumberyard v%1 to a friend or colleague?").arg(versionNumber));
+        }
+    }
+    else
+    {
+        if (strcmp(METRICS_VERSION, "0.0.0.0") == 0)
+        {
+            m_ui->Message->setText(tr("Now that you've used Lumberyard a while longer, how likely is it that you would recommend Lumberyard to a friend or colleague?"));
+        }
+        else
+        {
+            m_ui->Message->setText(tr("Now that you've used Lumberyard a while longer, how likely is it that you would recommend Lumberyard v%1 to a friend or colleague?").arg(versionNumber));
+        }
+    }
 }
 
 void NetPromoterScoreDialog::UpdateRatingState(int start, int end, const char* state)
@@ -211,7 +235,6 @@ void NetPromoterScoreDialog::UpdateCommentBoxState(bool isFocused)
 
     if (m_isConfirmed || isFocused || textLength > 0)
     {
-
         m_ui->CommentBox->setProperty("class", commentBoxAfter);
         m_ui->CommentBox->setCursorWidth(1);
     }

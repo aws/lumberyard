@@ -13,13 +13,16 @@
 #include <GridMate/Replica/Interest/ProximityInterestHandler.h>
 
 #include <GridMate/Replica/ReplicaChunk.h>
-#include <GridMate/Replica/Interpolators.h>
 #include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <GridMate/Replica/ReplicaMgr.h>
 #include <GridMate/Replica/RemoteProcedureCall.h>
 
 #include <GridMate/Replica/Interest/InterestManager.h>
+#include <GridMate/Replica/Interest/BvDynamicTree.h>
+
+// for highly verbose internal debugging
+//#define INTERNAL_DEBUG_PROXIMITY
 
 namespace GridMate
 {
@@ -33,18 +36,17 @@ namespace GridMate
         typedef AZStd::intrusive_ptr<ProximityInterestChunk> Ptr;
         bool IsReplicaMigratable() override { return false; }
         static const char* GetChunkName() { return "ProximityInterestChunk"; }
-        bool IsBroadcast() { return true; }
+        bool IsBroadcast() override { return true; }
         ///////////////////////////////////////////////////////////////////////////
 
 
         ProximityInterestChunk()
             : AddRuleRpc("AddRule")
-            , RemoveRuleRpc("RemoveRule")
-            , UpdateRuleRpc("UpdateRule")
-            , AddRuleForPeerRpc("AddRuleForPeerRpc")
-            , m_interestHandler(nullptr)
+              , RemoveRuleRpc("RemoveRule")
+              , UpdateRuleRpc("UpdateRule")
+              , AddRuleForPeerRpc("AddRuleForPeerRpc")
+              , m_interestHandler(nullptr)
         {
-
         }
 
         void OnReplicaActivate(const ReplicaContext& rc) override
@@ -135,7 +137,7 @@ namespace GridMate
     */
     ProximityInterest::ProximityInterest(ProximityInterestHandler* handler)
         : m_handler(handler)
-        , m_bbox(AZ::Aabb::CreateNull())
+          , m_bbox(AZ::Aabb::CreateNull())
     {
         AZ_Assert(m_handler, "Invalid interest handler");
     }
@@ -187,18 +189,32 @@ namespace GridMate
         {
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<ProximityInterestChunk>();
         }
+
+        m_attributeWorld = AZStd::make_unique<SpatialIndex>();
+        AZ_Assert(m_attributeWorld, "Out of memory");
     }
 
     ProximityInterestRule::Ptr ProximityInterestHandler::CreateRule(PeerId peerId)
     {
         ProximityInterestRule* rulePtr = aznew ProximityInterestRule(this, peerId, GetNewRuleNetId());
-        if (peerId == m_rm->GetLocalPeerId())
+        if (m_rm && peerId == m_rm->GetLocalPeerId())
         {
             m_rulesReplica->AddRuleRpc(rulePtr->GetNetworkId(), rulePtr->Get());
-            m_localRules.insert(rulePtr);
         }
 
+        CreateAndInsertIntoSpatialStructure(rulePtr);
+
         return rulePtr;
+    }
+
+    ProximityInterestAttribute::Ptr ProximityInterestHandler::CreateAttribute(ReplicaId replicaId)
+    {
+        auto newAttribute = aznew ProximityInterestAttribute(this, replicaId);
+        AZ_Assert(newAttribute, "Out of memory");
+
+        CreateAndInsertIntoSpatialStructure(newAttribute);
+
+        return newAttribute;
     }
 
     void ProximityInterestHandler::FreeRule(ProximityInterestRule* rule)
@@ -214,41 +230,51 @@ namespace GridMate
             m_rulesReplica->RemoveRuleRpc(rule->GetNetworkId());
         }
 
+        MarkAttributesDirtyInRule(rule);
+
         rule->m_bbox = AZ::Aabb::CreateNull();
-        m_rules.insert(rule);
+        m_removedRules.insert(rule);
         m_localRules.erase(rule);
     }
 
     void ProximityInterestHandler::UpdateRule(ProximityInterestRule* rule)
     {
-        if (rule->GetPeerId() == m_rm->GetLocalPeerId())
+        if (m_rm && rule->GetPeerId() == m_rm->GetLocalPeerId())
         {
             m_rulesReplica->UpdateRuleRpc(rule->GetNetworkId(), rule->Get());
         }
 
-        m_rules.insert(rule);
-    }
-
-    ProximityInterestAttribute::Ptr ProximityInterestHandler::CreateAttribute(ReplicaId replicaId)
-    {
-        return aznew ProximityInterestAttribute(this, replicaId);
+        m_dirtyRules.insert(rule);
     }
 
     void ProximityInterestHandler::FreeAttribute(ProximityInterestAttribute* attrib)
     {
-        //TODO: should be pool-allocated
         delete attrib;
     }
 
     void ProximityInterestHandler::DestroyAttribute(ProximityInterestAttribute* attrib)
     {
-        attrib->m_bbox = AZ::Aabb::CreateNull();
-        m_attributes.insert(attrib);
+        RemoveFromSpatialStructure(attrib);
+
+        m_attributes.erase(attrib);
+        m_removedAttributes.insert(attrib);
+    }
+
+    void ProximityInterestHandler::RemoveFromSpatialStructure(ProximityInterestAttribute* attribute)
+    {
+        attribute->m_bbox = AZ::Aabb::CreateNull();
+        m_attributeWorld->Remove(attribute->GetNode());
+        attribute->SetNode(nullptr);
     }
 
     void ProximityInterestHandler::UpdateAttribute(ProximityInterestAttribute* attrib)
     {
-        m_attributes.insert(attrib);
+        auto node = attrib->GetNode();
+        AZ_Assert(node, "Attribute wasn't created correctly");
+        node->m_volume = attrib->Get();
+        m_attributeWorld->Update(node);
+
+        m_dirtyAttributes.insert(attrib);
     }
 
     void ProximityInterestHandler::OnNewRulesChunk(ProximityInterestChunk* chunk, ReplicaPeer* peer)
@@ -273,7 +299,13 @@ namespace GridMate
     RuleNetworkId ProximityInterestHandler::GetNewRuleNetId()
     {
         ++m_lastRuleNetId;
-        return m_rulesReplica->GetReplicaId() | (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
+
+        if (m_rulesReplica)
+        {
+            return m_rulesReplica->GetReplicaId() | (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
+        }
+
+        return (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
     }
 
     ProximityInterestChunk* ProximityInterestHandler::FindRulesChunkByPeerId(PeerId peerId)
@@ -283,10 +315,8 @@ namespace GridMate
         {
             return nullptr;
         }
-        else
-        {
-            return it->second;
-        }
+
+        return it->second;
     }
 
     const InterestMatchResult& ProximityInterestHandler::GetLastResult()
@@ -294,52 +324,195 @@ namespace GridMate
         return m_resultCache;
     }
 
-    void ProximityInterestHandler::Update()
+    ProximityInterestHandler::RuleSet& ProximityInterestHandler::GetAffectedRules()
+    {
+        /*
+         * The expectation that lots of attributes will change frequently,
+         * so there is no point in trying to optimize cases
+         * where only a few attributes have changed.
+         */
+        if (m_dirtyAttributes.size() == 0)
+        {
+            return m_dirtyRules;
+        }
+
+        /*
+         * Assuming all rules might have been affected.
+         *
+         * There is an optimization chance here if the number of rules is large, as in 1,000+ rules.
+         * To handle such scale we would need another spatial structure for rules.
+         */
+        return m_localRules;
+    }
+
+    void ProximityInterestHandler::GetAttributesWithinRule(ProximityInterestRule* rule, SpatialIndex::NodeCollector& nodes)
+    {
+        m_attributeWorld->Query(rule->Get(), nodes);
+    }
+
+    void ProximityInterestHandler::ClearDirtyState()
+    {
+        m_dirtyAttributes.clear();
+        m_dirtyRules.clear();
+    }
+
+    void ProximityInterestHandler::CreateAndInsertIntoSpatialStructure(ProximityInterestAttribute* attribute)
+    {
+        m_attributes.insert(attribute);
+        SpatialIndex::Node* node = m_attributeWorld->Insert(attribute->Get(), attribute);
+        attribute->SetNode(node);
+    }
+
+    void ProximityInterestHandler::CreateAndInsertIntoSpatialStructure(ProximityInterestRule* rule)
+    {
+        m_localRules.insert(rule);
+    }
+
+    void ProximityInterestHandler::UpdateInternal(InterestMatchResult& result)
+    {
+        /*
+         * The goal is to return all dirty attributes that were either dirty because:
+         * 1) they changed which rules have apply to
+         * 2) rules have changed and no longer apply to those attributes
+         * and thus resulted in different peer(s) associated with a given replica.
+         */
+
+        const RuleSet& rules = GetAffectedRules();
+
+        for (auto& dirtyAttribute : m_dirtyAttributes)
+        {
+            result.insert(dirtyAttribute->GetReplicaId());
+        }
+
+        /*
+        * The exectation is to have a lot more attributes than rules.
+        * The amount of rules should grow linear with amount of peers,
+        * so it should be OK to iterate through all rules each update.
+        */
+        for (auto& rule : rules)
+        {
+            CheckChangesForRule(rule, result);
+        }
+
+        for (auto& removedRule : m_removedRules)
+        {
+            FreeRule(removedRule);
+        }
+        m_removedRules.clear();
+
+        // mark removed attribute as having no peers
+        for (auto& removedAttribute : m_removedAttributes)
+        {
+            result.insert(removedAttribute->GetReplicaId());
+            FreeAttribute(removedAttribute);
+        }
+        m_removedAttributes.clear();
+    }
+
+    void ProximityInterestHandler::CheckChangesForRule(ProximityInterestRule* rule, InterestMatchResult& result)
+    {
+        SpatialIndex::NodeCollector collector;
+        GetAttributesWithinRule(rule, collector);
+
+        auto peerId = rule->GetPeerId();
+        for (ProximityInterestAttribute* attr : collector.GetNodes())
+        {
+            AZ_Assert(attr, "bad node?");
+
+            auto findIt = result.find(attr->GetReplicaId());
+            if (findIt != result.end())
+            {
+                findIt->second.insert(peerId);
+            }
+            else
+            {
+                auto resultIt = result.insert(attr->GetReplicaId());
+                AZ_Assert(resultIt.second, "Successfully inserted");
+                resultIt.first->second.insert(peerId);
+            }
+        }
+    }
+
+    void ProximityInterestHandler::MarkAttributesDirtyInRule(ProximityInterestRule* rule)
+    {
+        SpatialIndex::NodeCollector collector;
+        GetAttributesWithinRule(rule, collector);
+
+        for (ProximityInterestAttribute* attr : collector.GetNodes())
+        {
+            AZ_Assert(attr, "bad node?");
+
+            UpdateAttribute(attr);
+        }
+    }
+
+    void ProximityInterestHandler::ProduceChanges(const InterestMatchResult& before, const InterestMatchResult& after)
     {
         m_resultCache.clear();
 
-        //////////////////////////////////////////////
-        // just recalculating the whole state for now
-        for (auto attrIt = m_attributes.begin(); attrIt != m_attributes.end(); )
-        {
-            ProximityInterestAttribute* attr = *attrIt;
+#if defined(INTERNAL_DEBUG_PROXIMITY)
+        before.PrintMatchResult("before");
+        after.PrintMatchResult("after");
+#endif
 
-            auto resultIt = m_resultCache.insert(attr->GetReplicaId());
-            for (auto ruleIt = m_rules.begin(); ruleIt != m_rules.end(); ++ruleIt)
+        /*
+         * 'after' contains only the stuff that might have changed
+         */
+        for (auto& possiblyDirty : after)
+        {
+            ReplicaId repId = possiblyDirty.first;
+            const InterestPeerSet& peerSet = possiblyDirty.second;
+
+            auto foundInBefore = before.find(repId);
+            if (foundInBefore != before.end())
             {
-                ProximityInterestRule* rule = *ruleIt;
-                if (rule->m_bbox.Overlaps(attr->m_bbox))
+                if (!HasSamePeers(foundInBefore->second, peerSet))
                 {
-                    resultIt.first->second.insert(rule->GetPeerId());
+                    // was in the last calculation but has a different peer set now
+                    m_resultCache.insert(AZStd::make_pair(repId, peerSet));
                 }
             }
-
-            if ((*attrIt)->IsDeleted())
-            {
-                attrIt = m_attributes.erase(attrIt);
-                delete attr;
-            }
             else
             {
-                ++attrIt;
+                // since it wasn't present during last calculation
+                m_resultCache.insert(AZStd::make_pair(repId, peerSet));
             }
         }
 
-        for (auto ruleIt = m_rules.begin(); ruleIt != m_rules.end(); )
+#if defined(INTERNAL_DEBUG_PROXIMITY)
+        m_resultCache.PrintMatchResult("changes");
+#endif
+
+    }
+
+    bool ProximityInterestHandler::HasSamePeers(const InterestPeerSet& one, const InterestPeerSet& another)
+    {
+        if (one.size() != another.size())
         {
-            ProximityInterestRule* rule = *ruleIt;
+            return false;
+        }
 
-            if (rule->IsDeleted())
+        for (auto& peerFromOne : one)
+        {
+            if (another.find(peerFromOne) == another.end())
             {
-                ruleIt = m_rules.erase(ruleIt);
-                delete rule;
-            }
-            else
-            {
-                ++ruleIt;
+                return false;
             }
         }
-        //////////////////////////////////////////////
+
+        // Safe to assume it's the same sets since all entries are unique in a peer sets
+        return true;
+    }
+
+    void ProximityInterestHandler::Update()
+    {
+        InterestMatchResult newResult;
+
+        UpdateInternal(newResult);
+        ProduceChanges(m_lastResult, newResult);
+
+        m_lastResult = std::move(newResult);
+        ClearDirtyState();
     }
 
     void ProximityInterestHandler::OnRulesHandlerRegistered(InterestManager* manager)
@@ -371,22 +544,72 @@ namespace GridMate
             chunk.second->m_interestHandler = nullptr;
         }
         m_peerChunks.clear();
-        m_localRules.clear();
 
-        for (ProximityInterestRule* rule : m_rules)
-        {
-            delete rule;
-        }
-
-        for (ProximityInterestAttribute* attr : m_attributes)
-        {
-            delete attr;
-        }
-
-        m_attributes.clear();
-        m_rules.clear();
+        ClearDirtyState();
+        DestroyAll();
 
         m_resultCache.clear();
     }
+
+    void ProximityInterestHandler::DestroyAll()
+    {
+        for (ProximityInterestRule* rule : m_localRules)
+        {
+            FreeRule(rule);
+        }
+        m_localRules.clear();
+
+        for (ProximityInterestAttribute* attr : m_attributes)
+        {
+            FreeAttribute(attr);
+        }
+        m_attributes.clear();
+
+        for (auto& removedRule : m_removedRules)
+        {
+            FreeRule(removedRule);
+        }
+        m_removedRules.clear();
+
+        for (auto& removedAttribute : m_removedAttributes)
+        {
+            FreeAttribute(removedAttribute);
+        }
+        m_removedAttributes.clear();
+    }
+
     ///////////////////////////////////////////////////////////////////////////
+    ProximityInterestHandler::~ProximityInterestHandler()
+    {
+        /*
+         * If a handler was registered with a InterestManager, then InterestManager ought to have called OnRulesHandlerUnregistered
+         * but this is a safety pre-caution.
+         */
+        DestroyAll();
+    }
+
+    SpatialIndex::SpatialIndex()
+    {
+        m_tree.reset(aznew GridMate::BvDynamicTree());
+    }
+
+    void SpatialIndex::Remove(Node* node)
+    {
+        m_tree->Remove(node);
+    }
+
+    void SpatialIndex::Update(Node* node)
+    {
+        m_tree->Update(node);
+    }
+
+    SpatialIndex::Node* SpatialIndex::Insert(const AZ::Aabb& get, ProximityInterestAttribute* attribute)
+    {
+        return m_tree->Insert(get, attribute);
+    }
+
+    void SpatialIndex::Query(const AZ::Aabb& shape, NodeCollector& nodes)
+    {
+        m_tree->collideTV(m_tree->GetRoot(), shape, nodes);
+    }
 }

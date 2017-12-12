@@ -31,11 +31,13 @@
     <Compile Include="HelperResourceHandler.py" />
     <Compile Include="identity_pool.py" />
     <Compile Include="LambdaConfigurationResourceHandler.py" />
+    <Compile Include="patch.py" />
     <Compile Include="plugin\__init__.py" />
     <Compile Include="properties.py" />
     <Compile Include="ResourceGroupConfigurationResourceHandler.py" />
     <Compile Include="ResourceHandler.py" />
     <Compile Include="role_utils.py" />
+    <Compile Include="ServiceApiResourceHandler.py" />
     <Compile Include="test\mock_properties.py" />
     <Compile Include="test\test_AccessControlResourceHandler.py" />
     <Compile Include="test\test_case.py" />
@@ -47,6 +49,8 @@
     <Compile Include="test\test_properties.py" />
     <Compile Include="test\test_ResourceGroupConfigurationResourceHandler.py" />
     <Compile Include="test\test_role_utils.py" />
+    <Compile Include="test\test_unit_patch.py" />
+    <Compile Include="test\test_unit_ServiceApiResourceHandler.py" />
     <Compile Include="test\__init__.py" />
     <Compile Include="user_pool.py" />
     <Compile Include="__init__.py" />

@@ -1526,11 +1526,15 @@ namespace
             , UINT_PTR size
             , IDefragAllocatorCopyNotification* pNotification)
         {
-#if defined(WIN64) // Workaround for Win64, using a C-cast here breaks Orbis
+#if defined(WIN64) // Workaround for Win64
             #pragma warning( push )
             #pragma warning( disable : 4244)
 #endif
-#if defined(ORBIS) || defined(APPLE) || defined(LINUX)
+#if   defined(APPLE)
+	    // using a C-cast here breaks
+            item_handle_t handle = reinterpret_cast<TRUNCATE_PTR>(pContext);
+#elif defined(LINUX)
+	    // using a C-cast here breaks
             item_handle_t handle = reinterpret_cast<TRUNCATE_PTR>(pContext);
 #else
             item_handle_t handle = static_cast<item_handle_t>(reinterpret_cast<uintptr_t>(pContext));

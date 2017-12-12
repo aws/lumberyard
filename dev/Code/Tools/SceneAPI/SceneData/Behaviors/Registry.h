@@ -16,13 +16,6 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <SceneAPI/SceneData/Behaviors/SoftNameTypes.h>
 
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-#include <SceneAPI/SceneData/Behaviors/ActorGroup.h>
-#include <SceneAPI/SceneData/Behaviors/EFXMeshRuleBehavior.h>
-#include <SceneAPI/SceneData/Behaviors/EFXSkinRuleBehavior.h>
-#include <SceneAPI/SceneData/Behaviors/EFXMotionGroupBehavior.h>
-#endif
-
 namespace AZ
 {
     class ReflectContext;
@@ -43,13 +36,6 @@ namespace AZ
 
             private:
                 SoftNameTypes m_softNameTypes;
-
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-                EFXMeshRuleBehavior m_EFXMeshRuleBehaviors;
-                EFXSkinRuleBehavior m_EFXSkinRuleBehavior;
-                Behaviors::ActorGroup m_actorGroupBehaviors;
-                Behaviors::EFXMotionGroupBehavior   m_motionGroupBehavior;
-#endif
             };
         } // namespace SceneData
     } // namespace SceneAPI

@@ -607,7 +607,7 @@ namespace AZ
                         cacheLine.m_cacheLookaheadBuffer.resize(response.m_data.size());
                         memcpy(cacheLine.m_cacheLookaheadBuffer.data(), response.m_data.data(), response.m_data.size());
                         cacheLine.m_cacheLookaheadPos = 0;
-                        size_t bytesReadFromCache = ReadFromCache(fileHandle, buffer, remainingBytesToRead);
+                        bytesReadFromCache = ReadFromCache(fileHandle, buffer, remainingBytesToRead);
                         remainingBytesToRead -= bytesReadFromCache;
                         if (bytesRead)
                         {

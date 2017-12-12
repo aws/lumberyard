@@ -33,8 +33,6 @@
 #include <set>
 #include <deque>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_AISystem
 #define RWI_NAME_TAG "RayWorldIntersection(AI)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(AI)"
 

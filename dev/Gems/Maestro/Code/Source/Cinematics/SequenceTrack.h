@@ -23,13 +23,13 @@ class CSequenceTrack
     : public TAnimTrack<ISequenceKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CSequenceTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CSequenceTrack, "{5801883A-5289-4FA1-BECE-9EF02C1D62F5}", IAnimTrack);
+
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_SEQUENCETRACK_H

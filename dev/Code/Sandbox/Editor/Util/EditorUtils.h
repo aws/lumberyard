@@ -31,6 +31,8 @@
 #include <QGuiApplication>
 #include <QSet>
 
+#include <AzCore/Debug/TraceMessageBus.h>
+
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -160,6 +162,19 @@ namespace EditorUtils
     {
         return TScopedVariableValue<TType>(tVariable, tConstructValue, tDestructValue);
     }
+
+    class AzWarningAbsorber
+        : public AZ::Debug::TraceMessageBus::Handler
+    {
+    public:
+        AzWarningAbsorber(const char* window);
+        ~AzWarningAbsorber() = default;
+
+        bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override;
+
+        AZStd::string m_window;
+    };
+
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -556,54 +571,125 @@ private:
     Mode m_mode;
 };
 
-static inline int readStringLength(CArchive& ar)
+static inline quint64 readStringLength(CArchive& ar, int& charSize)
 {
+    // This is legacy MFC converted code. It used to use AfxReadStringLength() which has a complicated
+    // decoding pattern.
+    // The basic algorithm is that it reads in an 8 bit int, and if the length is less than 2^8,
+    // then that's the length. Next it reads in a 16 bit int, and if the length is less than 2^16,
+    // then that's the length. It does the same thing for 32 bit values and finally for 64 bit values.
+    // The 16 bit length also indicates whether or not it's a UCS2 / wide-char Windows string, if it's
+    // 0xfffe, but that comes after the first byte marker indicating there's a 16 bit length value.
+    // So, if the first 3 bytes are: 0xFF, 0xFF, 0xFE, it's a 2 byte string being read in, and the real
+    // length follows those 3 bytes (which may still be an 8, 16, or 32 bit length).
+
+    // default to one byte strings
+    charSize = 1;
+
     quint8 len8;
     ar >> len8;
     if (len8 < 0xff)
+    {
         return len8;
+    }
 
     quint16 len16;
     ar >> len16;
     if (len16 == 0xfffe)
     {
-        return -1;
+        charSize = 2;
+
+        ar >> len8;
+        if (len8 < 0xff)
+        {
+            return len8;
+        }
+
+        ar >> len16;
     }
-    else if (len16 == 0xffff)
+
+    if (len16 < 0xffff)
     {
-        quint32 len32;
-        ar >> len32;
+        return len16;
+    }
+
+    quint32 len32;
+    ar >> len32;
+
+    if (len32 < 0xffffffff)
+    {
         return len32;
     }
-    return len16;
+
+    quint64 len64;
+    ar >> len64;
+
+    return len64;
 }
 
 static inline CArchive& operator>>(CArchive& ar, QString& str)
 {
-    auto length = readStringLength(ar);
-    QByteArray data = ar.device()->read(length);
-    str = QString::fromLatin1(data);
+    int charSize = 1;
+    auto length = readStringLength(ar, charSize);
+    QByteArray data = ar.device()->read(length * charSize);
+
+    if (charSize == 1)
+    {
+        str = QString::fromUtf8(data);
+    }
+    else
+    {
+        char* raw = data.data();
+
+        // check if it's short aligned; if it isn't, we need to copy to a temp buffer
+        if ((reinterpret_cast<uintptr_t>(raw) & 1) != 0)
+        {
+            ushort* shortAlignedData = new ushort[length];
+            memcpy(shortAlignedData, raw, length * 2);
+            str = QString::fromUtf16(shortAlignedData, length);
+            delete[] shortAlignedData;
+        }
+        else
+        {
+            str = QString::fromUtf16(reinterpret_cast<ushort*>(raw), length);
+        }
+    }
+    
     return ar;
 }
 
 static inline CArchive& operator<<(CArchive& ar, const QString& str)
 {
-    const QByteArray data = str.toLatin1();
-    if (data.length() < 255)
+    // This is written to mimic how MFC archiving worked, which was to
+    // write markers to indicate the size of the length - 
+    // so a length that will fit into 8 bits takes 8 bits.
+    // A length that requires more than 8 bits, puts an 8 bit marker (0xff)
+    // to indicate that the length is greater, then 16 bits for the length.
+    // If the length requires 32 bits, there's an 8 bit marker (0xff), a
+    // 16 bit marker (0xffff) and then the 32 bit length.
+    // Note that the legacy code could also encode to 16 bit Windows wide character
+    // streams; that isn't necessary though, given that Qt supports Utf-8 out of the
+    // box and is much less ambiguous on other platforms.
+
+    QByteArray data = str.toUtf8();
+    int length = data.length();
+
+    if (length < 255)
     {
-        ar << static_cast<quint8>(data.length());
+        ar << static_cast<quint8>(length);
     }
-    else if (data.length() < 0xfffe)
+    else if (length < 0xfffe) // 0xfffe instead of 0xffff because 0xfffe indicated Windows wide character strings, which we aren't bothering with anymore
     {
         ar << static_cast<quint8>(0xff);
-        ar << static_cast<quint16>(data.length());
+        ar << static_cast<quint16>(length);
     }
     else
     {
         ar << static_cast<quint8>(0xff);
-        ar << static_cast<quint16>(0xff);
-        ar << static_cast<quint32>(data.length());
+        ar << static_cast<quint16>(0xffff);
+        ar << static_cast<quint32>(length);
     }
+   
     ar.device()->write(data);
 
     return ar;

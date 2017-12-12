@@ -16,10 +16,10 @@
 #include "I3DEngine.h"
 #include "CryCrc32.h"
 #include "UnalignedBlit.h"
-#if !defined(ORBIS) && !defined(OPENGL)
-        #include <D3D11Shader.h>
-        #include <D3DCompiler.h>
-#endif
+    #if !defined(OPENGL)
+            #include <D3D11Shader.h>
+            #include <D3DCompiler.h>
+    #endif
 
 //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
@@ -1038,14 +1038,14 @@ void CHWShader_D3D::mfSetDefaultRT(uint64& nAndMask, uint64& nOrMask)
     SShaderGen* pGen = gRenDev->m_cEF.m_pGlobalExt;
 
     uint32 nBitsPlatform = 0;
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
-        nBitsPlatform |= SHGD_HW_ORBIS;
+        nBitsPlatform |= SHGD_HW_ORBIS; // ACCEPTED_USE
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
-        nBitsPlatform |= SHGD_HW_DURANGO;
+        nBitsPlatform |= SHGD_HW_DURANGO; // ACCEPTED_USE
     }
     else
     if (CParserBin::m_nPlatform == SF_D3D11)
@@ -1606,7 +1606,7 @@ bool CHWShader_D3D::mfGenerateScript(CShader* pSH, SHWSInstance*& pInst, std::ve
                 CParserBin::AddDefineToken(eT__FT_SKIN_STREAM, NewTokens);
             }
 #if ENABLE_NORMALSTREAM_SUPPORT
-            if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 ||  CParserBin::m_nPlatform == SF_GLES3)
+            if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 ||  CParserBin::m_nPlatform == SF_GLES3) // ACCEPTED_USE
             {
                 if (nStreams & VSM_NORMALS)
                 {
@@ -1957,7 +1957,7 @@ bool CHWShader_D3D::ConvertBinScriptToASCII(CParserBin& Parser, SHWSInstance* pI
         }
         else
         {
-#if defined (_DEBUG) && !defined(ORBIS)
+#if   defined (_DEBUG)
             int n = 0;
             while (szStr[n])
             {
@@ -3179,6 +3179,7 @@ bool CHWShader_D3D::mfUploadHW(SHWSInstance* pInst, byte* pBuf, uint32 nSize, CS
         assert(0);
     }
 
+
     // Assign name to Shader for enhanced debugging
 #if !defined(RELEASE) && defined(WIN64)
     if (pInst->m_Handle.m_pShader->m_pHandle)
@@ -3961,7 +3962,7 @@ bool CHWShader_D3D::mfCompileHLSL_Int(CShader* pSH, char* prog_text, LPD3D10BLOB
         static bool s_logOnce_WrongPlatform = false;
 #   if !defined(OPENGL)
 #       if !defined(_RELEASE)
-        if (!s_logOnce_WrongPlatform && !(CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO))
+        if (!s_logOnce_WrongPlatform && !(CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO)) // ACCEPTED_USE
         {
             s_logOnce_WrongPlatform = true;
             iLog->LogError("Trying to build non DX11 shader via internal compiler which is not supported. Please use remote compiler instead!");
@@ -4066,7 +4067,7 @@ void CHWShader_D3D::mfPrepareShaderDebugInfo(SHWSInstance* pInst, CHWShader_D3D*
         }
     }
     // Confetti Nicholas Baldwin: adding metal shader language support
-    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 ||  CParserBin::m_nPlatform == SF_METAL)
+    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 ||  CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
     {
         ID3D11ShaderReflection* pShaderReflection = (ID3D11ShaderReflection*) pConstantTable;
 
@@ -4817,7 +4818,7 @@ bool CAsyncShaderTask::CompileAsyncShader(SShaderAsyncInfo* pAsync)
     {
         static bool s_logOnce_WrongPlatform = false;
 #       if !defined(_RELEASE)
-        if (!s_logOnce_WrongPlatform && !(CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO))
+        if (!s_logOnce_WrongPlatform && !(CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO)) // ACCEPTED_USE
         {
             s_logOnce_WrongPlatform = true;
             iLog->LogError("Trying to build non DX11 shader via internal compiler which is not supported. Please use remote compiler instead!");

@@ -26,6 +26,7 @@
 
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/conditional.h>
+#include <AzCore/std/typetraits/function_traits.h>
 
 namespace AZ
 {
@@ -62,6 +63,18 @@ namespace AZ
      * EBusTraits::BusIdOrderCompare.
      */
     struct NullBusIdCompare;
+
+    namespace Internal
+    {
+        // Lock guard used when there is a NullMutex on a bus, or during dispatch
+        // on a bus which supports LocklessDispatch.
+        template <class Lock>
+        struct NullLockGuard
+        {
+            explicit NullLockGuard(Lock&) {}
+            NullLockGuard(Lock&, AZStd::adopt_lock_t) {}
+        };
+    }
 
     namespace BusInternal
     {
@@ -135,16 +148,12 @@ namespace AZ
             /**
              * An address on the EBus.
              */
-            using EBNode = typename AZStd::Utils::if_c<Traits::HandlerPolicy == EBusHandlerPolicy::Single, typename AZ::EBECSingle<Interface, Traits>,
-                typename AZStd::Utils::if_c<Traits::HandlerPolicy == EBusHandlerPolicy::MultipleAndOrdered, typename AZ::EBECMultiOrdered<Interface, Traits>,
-                typename AZ::EBECMulti<Interface, Traits> >::type>::type;
+            using EBNode = AZ::Internal::HandlerContainer<Interface, Traits>;
 
             /**
              * Contains all of the addresses on the EBus.
              */
-            using BusesContainer = typename AZStd::Utils::if_c<Traits::AddressPolicy == EBusAddressPolicy::Single, typename AZ::EBBusSingle<EBNode>,
-                typename AZStd::Utils::if_c<Traits::AddressPolicy == EBusAddressPolicy::ById, typename AZ::EBBusMulti<EBNode>,
-                typename AZ::EBBusMultiOrdered<EBNode> >::type>::type;
+            using BusesContainer = AZ::Internal::EBusContainer<EBNode, Traits::AddressPolicy>;
 
             /**
              * Locking primitive that is used when executing events in the event queue.
@@ -170,6 +179,8 @@ namespace AZ
              * By default, the event queue is disabled.
              */
             static const bool EnableEventQueue = Traits::EnableEventQueue;
+
+            static const bool EnableQueuedReferences = Traits::EnableQueuedReferences;
 
             /**
              * True if the EBus supports more than one address. Otherwise, false.
@@ -650,27 +661,24 @@ namespace AZ
         inline void EBusEventer<Bus, Traits>::Event(const BusIdType& id, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
-
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
                 if (ebIter != context.m_buses.end())
                 {
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
                     {
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
                         while (ebCurrentEvent.m_iterator != ebEnd)
                         {
@@ -678,7 +686,6 @@ namespace AZ
                         }
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -687,27 +694,24 @@ namespace AZ
         inline void EBusEventer<Bus, Traits>::EventResult(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
-
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
                 if (ebIter != context.m_buses.end())
                 {
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
                     {
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
                         while (ebCurrentEvent.m_iterator != ebEnd)
                         {
@@ -715,7 +719,6 @@ namespace AZ
                         }
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -727,25 +730,23 @@ namespace AZ
             {
                 auto& ebBus = *ptr;
                 auto& context = Bus::GetContext();
-                if (ebBus.size() || context.m_routing.m_routers.size())
+                if (context.m_routing.m_routers.size())
                 {
-                    context.m_mutex.lock();
-                    if (context.m_routing.m_routers.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
                     {
-                        // Route the event and skip processing if RouteEvent returns true.
-                        if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
-                        {
-                            context.m_mutex.unlock();
-                            return;
-                        }
+                        return;
                     }
-                    typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                }
+                if (ebBus.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
                     {
                         ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                     }
-                    context.m_mutex.unlock();
                 }
             }
         }
@@ -758,25 +759,23 @@ namespace AZ
             {
                 auto& ebBus = *ptr;
                 auto& context = Bus::GetContext();
-                if (ebBus.size() || context.m_routing.m_routers.size())
+                if (context.m_routing.m_routers.size())
                 {
-                    context.m_mutex.lock();
-                    if (context.m_routing.m_routers.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
                     {
-                        // Route the event and skip processing if RouteEvent returns true.
-                        if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
-                        {
-                            context.m_mutex.unlock();
-                            return;
-                        }
+                        return;
                     }
-                    typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                }
+                if (ebBus.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
                     {
                         results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                     }
-                    context.m_mutex.unlock();
                 }
             }
         }
@@ -786,32 +785,30 @@ namespace AZ
         inline void EBusEventer<Bus, Traits>::EventReverse(const BusIdType& id, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
                 if (ebIter != context.m_buses.end())
                 {
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
                     {
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                         while (ebCurrentEvent.m_iterator != ebBus.rend())
                         {
                             ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                         }
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -820,32 +817,30 @@ namespace AZ
         inline void EBusEventer<Bus, Traits>::EventResultReverse(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 typename Traits::BusesContainer::iterator ebIter = context.m_buses.find(id);
                 if (ebIter != context.m_buses.end())
                 {
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
                     {
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                         while (ebCurrentEvent.m_iterator != ebBus.rend())
                         {
                             results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                         }
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -857,24 +852,22 @@ namespace AZ
             {
                 auto& ebBus = *ptr;
                 auto& context = Bus::GetContext();
-                if (ebBus.size() || context.m_routing.m_routers.size())
+                if (context.m_routing.m_routers.size())
                 {
-                    context.m_mutex.lock();
-                    if (context.m_routing.m_routers.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
                     {
-                        // Route the event and skip processing if RouteEvent returns true.
-                        if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
-                        {
-                            context.m_mutex.unlock();
-                            return;
-                        }
+                        return;
                     }
-                    typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                }
+                if (ebBus.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
                         ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                     }
-                    context.m_mutex.unlock();
                 }
             }
         }
@@ -887,24 +880,22 @@ namespace AZ
             {
                 auto& ebBus = *ptr;
                 auto& context = Bus::GetContext();
-                if (ebBus.size() || context.m_routing.m_routers.size())
+                if (context.m_routing.m_routers.size())
                 {
-                    context.m_mutex.lock();
-                    if (context.m_routing.m_routers.size())
+                    // Route the event and skip processing if RouteEvent returns true.
+                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
                     {
-                        // Route the event and skip processing if RouteEvent returns true.
-                        if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
-                        {
-                            context.m_mutex.unlock();
-                            return;
-                        }
+                        return;
                     }
-                    typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus);
+                }
+                if (ebBus.size())
+                {
+                    typename Bus::DispatchLockGuard lock(context.m_mutex);
+                    typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
                         results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
                     }
-                    context.m_mutex.unlock();
                 }
             }
         }
@@ -926,7 +917,7 @@ namespace AZ
                     if (ebBus.size())
                     {
                         ebBus.add_ref();
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
 
                         while (ebCurrentEvent.m_iterator != ebEnd)
@@ -963,7 +954,7 @@ namespace AZ
                     auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
                     if (ebBus.size())
                     {
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
                         while (ebCurrentEvent.m_iterator != ebEnd)
                         {
@@ -989,7 +980,7 @@ namespace AZ
                 {
                     auto& context = Bus::GetContext();
                     context.m_mutex.lock();
-                    typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
                     {
@@ -1177,18 +1168,17 @@ namespace AZ
         inline void EBusBroadcaster<Bus, Traits>::Broadcast(Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 auto ebFirstBus = context.m_buses.begin();
                 auto ebLastBus = context.m_buses.end();
                 for (; ebFirstBus != ebLastBus; )
@@ -1197,7 +1187,7 @@ namespace AZ
                     if (ebBus.size())
                     {
                         ebBus.add_ref();
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
                         while (ebCurrentEvent.m_iterator != ebEnd)
                         {
@@ -1211,7 +1201,6 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -1220,20 +1209,17 @@ namespace AZ
         inline void EBusBroadcaster<Bus, Traits>::BroadcastResult(Results& results, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
-
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 auto ebFirstBus = context.m_buses.begin();
                 auto ebLastBus = context.m_buses.end();
                 for (; ebFirstBus != ebLastBus; )
@@ -1242,7 +1228,7 @@ namespace AZ
                     if (ebBus.size())
                     {
                         ebBus.add_ref();
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
                         while (ebCurrentEvent.m_iterator != ebEnd)
                         {
@@ -1256,7 +1242,6 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -1265,18 +1250,17 @@ namespace AZ
         inline void EBusBroadcaster<Bus, Traits>::BroadcastReverse(Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 auto ebCurrentBus = context.m_buses.rbegin();
                 for (; ebCurrentBus != context.m_buses.rend(); )
                 {
@@ -1295,7 +1279,7 @@ namespace AZ
                         }
 
                         ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                         while (ebCurrentEvent.m_iterator != ebBus.rend())
                         {
                             ((*ebCurrentEvent.m_iterator++)->*func)(args...);
@@ -1331,7 +1315,6 @@ namespace AZ
                         ++ebCurrentBus;
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -1340,18 +1323,17 @@ namespace AZ
         inline void EBusBroadcaster<Bus, Traits>::BroadcastResultReverse(Results& results, Function func, InputArgs&& ... args)
         {
             auto& context = Bus::GetContext();
-            if (context.m_buses.size() || context.m_routing.m_routers.size())
+            if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
-                if (context.m_routing.m_routers.size())
+                // Route the event and skip processing if RouteEvent returns true.
+                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
                 {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
-                    {
-                        context.m_mutex.unlock();
-                        return;
-                    }
+                    return;
                 }
+            }
+            if (context.m_buses.size())
+            {
+                typename Bus::DispatchLockGuard lock(context.m_mutex);
                 auto ebCurrentBus = context.m_buses.rbegin();
                 for (; ebCurrentBus != context.m_buses.rend(); )
                 {
@@ -1370,7 +1352,7 @@ namespace AZ
                         }
 
                         ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::reverse_iterator> ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
+                        typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus.rbegin(), &ebBus.m_busId);
                         while (ebCurrentEvent.m_iterator != ebBus.rend())
                         {
                             results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
@@ -1406,7 +1388,6 @@ namespace AZ
                         ++ebCurrentBus;
                     }
                 }
-                context.m_mutex.unlock();
             }
         }
 
@@ -1427,7 +1408,7 @@ namespace AZ
                     if (ebBus.size())
                     {
                         ebBus.add_ref();
-                        typename Bus::template CallstackEntryIterator<typename Traits::EBNode::iterator> ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
+                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus.begin(), &ebBus.m_busId);
                         typename Traits::EBNode::iterator ebEnd = ebBus.end();
 
                         while (ebCurrentEvent.m_iterator != ebEnd)
@@ -1462,12 +1443,54 @@ namespace AZ
             return result;
         }
 
+        namespace Internal
+        {
+            template <class Function, bool AllowQueuedReferences>
+            struct QueueFunctionArgumentValidator
+            {
+                static void Validate() {}
+            };
+
+            template <class Function>
+            struct ArgumentValidatorHelper
+            {
+                static void Validate()
+                {
+                    ValidateHelper(AZStd::make_index_sequence<AZStd::function_traits<Function>::num_args>());
+                }
+
+                template <size_t... ArgIndices>
+                static void ValidateHelper(AZStd::index_sequence<ArgIndices...>)
+                {
+                    AZ_STATIC_ASSERT(!(AZStd::sequence_or<AZStd::is_reference, AZStd::function_traits_get_arg_t<Function, ArgIndices>...>::value), "It is not safe to queue a function call with ref/const ref arguments");
+                }
+            };
+
+            // bind_t has already copied/bound its arguments, we can't validate them further in any reasonable way
+            template <class R, class F, class L>
+            struct ArgumentValidatorHelper<AZStd::Internal::bind_t<R, F, L>>
+            {
+                static void Validate() {}
+            };
+
+            template <class Function>
+            struct QueueFunctionArgumentValidator<Function, false>
+            {
+                using Validator = ArgumentValidatorHelper<Function>;
+                static void Validate()
+                {
+                    Validator::Validate();
+                }
+            };
+        }
+
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
         inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcast(Function func, InputArgs&& ... args)
         {
             AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             auto& context = Bus::GetContext();
             if (context.m_buses.size() || context.m_routing.m_routers.size())
             {
@@ -1500,6 +1523,7 @@ namespace AZ
         {
             AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             auto& context = Bus::GetContext();
             if (context.m_buses.size() || context.m_routing.m_routers.size())
             {
@@ -1532,6 +1556,7 @@ namespace AZ
         {
             AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::FunctionQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             auto& context = Bus::GetContext();
             if (context.m_functionQueue.IsActive())
             {
@@ -1544,5 +1569,5 @@ namespace AZ
                 AZ_Warning("System", false, "You are trying to queue function on an EBus, but function queuing is NOT enabled! The function will not be executed/called!");
             }
         }
-    }
-}
+    } // namespace BusInternal
+} // namespace AZ

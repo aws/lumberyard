@@ -1,6 +1,7 @@
 {
   "version": "1.0.0",
-  "name": "SourceSolution",
+  "name": "cloud-gem-portal",
+  "description": "Amazon Lumberyard - Cloud Gem Portal",
   "scripts": {
     "gulp": "gulp",
     "rimraf": "rimraf",
@@ -10,91 +11,202 @@
     "tsc": "tsc",
     "tsc:w": "tsc -w",
     "typings": "typings",
-    "postinstall": "jspm install",
     "start": "node server",
     "test": "node run-tests",
     "build": "jspm bundle app --inject --minify"
   },
   "licenses": [
     {
-      "type": "MIT",
-      "url": "https://github.com/angular/angular.io/blob/master/LICENSE"
+      "license": "SEE LICENSE IN README.md"
     }
   ],
   "private": true,
   "dependencies": {
-    "@angular/common": "2.4.9",
-    "@angular/compiler": "2.4.9",
-    "@angular/core": "2.4.9",
-    "@angular/forms": "2.4.9",
-    "@angular/http": "2.4.9",
-    "@angular/platform-browser": "2.4.9",
-    "@angular/platform-browser-dynamic": "2.4.9",
-    "@angular/router": "3.4.9",
-    "@ng-bootstrap/ng-bootstrap": "1.0.0-alpha.20",
-    "angular-in-memory-web-api": "0.3.1",
+    "@angular/animations": "^4.3.1",
+    "@angular/common": "^4.3.1",
+    "@angular/compiler": "^4.3.1",
+    "@angular/core": "^4.3.1",
+    "@angular/forms": "^4.3.1",
+    "@angular/http": "^4.3.1",
+    "@angular/platform-browser-dynamic": "^4.3.1",
+    "@angular/router": "^4.3.1",
+    "@ng-bootstrap/ng-bootstrap": "^1.0.0-alpha.28",
     "chokidar-socket-emitter": "0.6.0",
-    "core-js": "2.4.1",
-    "dragula": "3.7.2",
-    "ng2-dragula": "1.3.0",
-    "rxjs": "5.2.0",
-    "ts-clipboard": "1.0.13"
+    "core-js": "^2.4.1",
+    "d3": "^4.10.0",
+    "dragula": "^3.7.2",
+    "ng2-dragula": "^1.5.0",
+    "ng2-toastr": "^4.1.2",
+    "reflect-metadata": "^0.1.10",
+    "rxjs": "^5.4.2",
+    "ts-clipboard": "1.0.13",
+    "ts-md5": "^1.2.2",
+    "zone.js": "^0.8.14"
   },
   "jspm": {
     "dependencies": {
-      "@angular/common": "npm:@angular/common@2.4.9",
-      "@angular/compiler": "npm:@angular/compiler@2.4.9",
-      "@angular/core": "npm:@angular/core@2.4.9",
-      "@angular/forms": "npm:@angular/forms@2.4.9",
-      "@angular/http": "npm:@angular/http@2.4.9",
-      "@angular/platform-browser": "npm:@angular/platform-browser@2.4.9",
-      "@angular/platform-browser-dynamic": "npm:@angular/platform-browser-dynamic@2.4.9",
-      "@angular/router": "npm:@angular/router@3.4.9",
-      "@ng-bootstrap/ng-bootstrap": "npm:@ng-bootstrap/ng-bootstrap@1.0.0-alpha.20",
-      "angular-in-memory-web-api": "npm:angular-in-memory-web-api@0.3.1",
-      "capaj/systemjs-hot-reloader": "github:alexisvincent/systemjs-hot-reloader@0.5.9",
-      "core-js": "npm:core-js@2.4.1",
-      "dragula": "npm:dragula@3.7.2",
+      "@angular/animations": "npm:@angular/animations@^4.3.1",
+      "@angular/common": "npm:@angular/common@^4.3.1",
+      "@angular/compiler": "npm:@angular/compiler@^4.3.1",
+      "@angular/core": "npm:@angular/core@^4.3.1",
+      "@angular/forms": "npm:@angular/forms@^4.3.1",
+      "@angular/http": "npm:@angular/http@^4.3.1",
+      "@angular/platform-browser": "npm:@angular/platform-browser@^4.3.1",
+      "@angular/platform-browser-dynamic": "npm:@angular/platform-browser-dynamic@^4.3.1",
+      "@angular/router": "npm:@angular/router@^4.3.1",
+      "@ng-bootstrap/ng-bootstrap": "npm:@ng-bootstrap/ng-bootstrap@^1.0.0-alpha.29",
+      "capaj/systemjs-hot-reloader": "github:alexisvincent/systemjs-hot-reloader@1.0.0",
+      "core-js": "npm:core-js@^2.4.1",
+      "d3": "npm:d3@^4.10.0",
+      "dragula": "npm:dragula@^3.7.2",
       "html": "github:Hypercubed/systemjs-plugin-html@0.0.8",
-      "ng2-dragula": "npm:ng2-dragula@1.3.0",
-      "reflect-metadata": "npm:reflect-metadata@0.1.3",
-      "rxjs": "npm:rxjs@5.2.0",
+      "ng2-dragula": "npm:ng2-dragula@^1.5.0",
+      "ng2-toastr": "npm:ng2-toastr@^4.1.2",
+      "process-finder": "npm:process-finder@^1.0.0",
+      "reflect-metadata": "npm:reflect-metadata@0.1.10",
+      "rxjs": "npm:rxjs@^5.4.2",
       "scss": "github:KevCJones/plugin-scss@^0.2.11",
-      "text": "github:systemjs/plugin-text@^0.0.9",
-      "ts-clipboard": "npm:ts-clipboard@1.0.13"
+      "text": "github:systemjs/plugin-text@^0.0.11",
+      "through2": "npm:through2@^2.0.3",
+      "ts-clipboard": "npm:ts-clipboard@1.0.13",
+      "ts-md5": "npm:ts-md5@^1.2.2",
+      "zone.js": "npm:zone.js@^0.8.14"
     },
     "devDependencies": {
-      "systemjs-hot-reloader": "npm:systemjs-hot-reloader@1.1.0",
+      "module": "npm:jspm-nodelibs-module@^0.2.0",
+      "net": "npm:jspm-nodelibs-net@^0.2.0",
+      "systemjs-hot-reloader": "npm:systemjs-hot-reloader@1.0.0",
       "ts": "github:frankwallis/plugin-typescript@^7.0.6",
       "ts-runtime": "npm:babel-runtime@^5.8.24",
-      "typescript": "npm:typescript@2.0.7"
+      "typescript": "npm:typescript@^2.4.1"
+    },
+    "overrides": {
+      "github:socketio/socket.io-client@1.7.4": {
+        "main": "dist/socket.io.js"
+      },
+      "npm:babel-runtime@5.8.38": {
+        "main": false,
+        "dependencies": {},
+        "optionalDependencies": {
+          "core-js": "^1.2.0"
+        }
+      },
+      "npm:debug@2.6.8": {
+        "main": "src/browser.js",
+        "jspmNodeConversion": false,
+        "format": "cjs",
+        "map": {
+          "./src/browser.js": {
+            "node": "./src/node.js"
+          },
+          "./node.js": {
+            "browser": "./src/browser.js"
+          },
+          "fs": "@node/fs",
+          "net": "@node/net",
+          "tty": "@node/tty",
+          "util": "@node/util"
+        }
+      },
+      "npm:inherits@2.0.3": {
+        "ignore": [
+          "test.js"
+        ]
+      },
+      "npm:lodash@4.17.4": {
+        "map": {
+          "buffer": "@empty",
+          "process": "@empty"
+        }
+      },
+      "npm:pbkdf2@3.0.12": {
+        "main": "browser.js"
+      },
+      "npm:reflect-metadata@0.1.10": {
+        "jspmNodeConversion": false,
+        "map": {
+          "crypto": {
+            "node": "@node/crypto",
+            "default": "@empty"
+          }
+        }
+      },
+      "npm:safe-buffer@5.1.1": {
+        "browser": "index.js"
+      },
+      "npm:sass.js@0.9.13": {
+        "map": {
+          "ws": "@empty"
+        },
+        "meta": {
+          "dist/sass.worker.js": {
+            "format": "global"
+          }
+        }
+      },
+      "npm:tslib@1.7.1": {
+        "format": "cjs",
+        "meta": {
+          "tslib.js": {
+            "esModule": true
+          }
+        }
+      },
+      "npm:typescript@2.4.1": {
+        "browser": {},
+        "map": {
+          "buffer": "@empty",
+          "child_process": "@empty",
+          "fs": "@empty",
+          "path": "@empty",
+          "process": "@empty",
+          "readline": "@empty"
+        },
+        "dependencies": {
+          "source-map-support": "*"
+        }
+      }
     }
   },
   "devDependencies": {
+    "@angular/platform-browser": "^4.3.1",
     "browser-sync": "2.18.6",
     "concurrently": "3.1.0",
     "del": "2.2.2",
-    "gulp": "3.9.1",
+    "fs": "0.0.1-security",
+    "gulp": "github:gulpjs/gulp#4.0",
     "gulp-autoprefixer": "3.1.1",
     "gulp-chmod": "2.0.0",
     "gulp-concat": "2.6.1",
+    "gulp-exec": "^2.1.3",
     "gulp-inline-ng2-template": "4.0.0",
     "gulp-jspm-build": "0.0.15",
     "gulp-nodemon": "2.2.1",
+    "gulp-protractor": "^4.1.0",
     "gulp-rename": "1.2.2",
     "gulp-replace": "0.5.4",
     "gulp-sass": "3.1.0",
+    "gulp-shell": "^0.6.3",
     "gulp-sourcemaps": "2.4.0",
     "gulp-typescript": "3.0.2",
-    "gulp-uglify": "2.1.0",
+    "gulp-uglify": "^2.1.0",
+    "gulp4": "^4.0.1",
     "http-server": "^0.9.0",
-    "jspm": "0.16.34",
+    "jspm": "^0.16.53",
     "lite-server": "2.2.2",
+    "map-stream": "0.0.7",
+    "merge-stream": "^1.0.1",
+    "path": "^0.12.7",
     "plugin-typescript": "5.2.7",
+    "process-finder": "^1.0.0",
     "rimraf": "2.5.4",
+    "selenium-server-standalone-jar": "3.4.0",
     "systemjs-builder": "0.15.35",
-    "systemjs-hot-reloader": "1.1.0",
-    "typescript": "2.0.10",
-    "typings": "1.5.0"
+    "systemjs-hot-reloader": "^1.0.0",
+    "through2": "^2.0.3",
+    "typescript": "2.3.4",
+    "typings": "1.5.0",
+    "vinyl-fs": "^2.4.4",
+    "yargs": "^8.0.2"
   }
 }

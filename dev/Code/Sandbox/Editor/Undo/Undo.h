@@ -256,6 +256,7 @@ private: // ---------------------------------------------------------------
     void BeginRestoreTransaction();
     void EndRestoreTransaction();
     void SignalNumUndoRedoToListeners();
+    void SignalUndoFlushedToListeners();
 
     bool                                            m_bRecording;
     bool                                            m_bSuperRecording;

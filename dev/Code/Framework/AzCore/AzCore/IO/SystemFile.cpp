@@ -1025,7 +1025,7 @@ SystemFile::Length(const char* fileName)
     }
     else
     {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)result);
+        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
     }
 #else
     // generic solution

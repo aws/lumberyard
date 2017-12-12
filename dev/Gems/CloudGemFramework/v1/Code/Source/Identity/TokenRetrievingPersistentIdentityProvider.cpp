@@ -10,12 +10,12 @@
 *
 */
 #include <StdAfx.h>
-#include <Configuration/TokenRetrievingPersistentIdentityProvider.h>
+#include <Identity/TokenRetrievingPersistentIdentityProvider.h>
 #include <aws/core/utils/DateTime.h>
 
 using namespace Aws::Auth;
 
-namespace LmbrAWS
+namespace CloudGemFramework
 {
     void TokenRetrievingPersistentIdentityProvider::Prefetch()
     {

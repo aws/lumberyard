@@ -27,7 +27,8 @@ public:
     ~NetPromoterScoreDialog();
 
     bool eventFilter(QObject* obj, QEvent* ev) override;
-
+    void SetRatingInterval(int ratingInterval);
+    
 Q_SIGNALS:
     void UserInteractionCompleted();
 
@@ -39,15 +40,14 @@ public Q_SLOTS:
     void reject() override;
 
 private:
-    QScopedPointer<Ui::NetPromoterScoreDialog> m_ui;
-
-    int m_ratingScore;
-    bool m_isConfirmed = false;
-
-    int m_prevRatingScore;
-    AZStd::vector<QPushButton*> m_buttonGroup;
-
+    void SetMessage();
     void UpdateRatingState(int start, int end, const char* state);
-
     void closeEvent(QCloseEvent* ev) override;
+
+    QScopedPointer<Ui::NetPromoterScoreDialog> m_ui;
+    int m_ratingScore;
+    int m_ratingInterval = 0;
+    bool m_isConfirmed = false;
+    int m_prevRatingScore;
+    AZStd::vector<QPushButton*> m_buttonGroup;   
 };

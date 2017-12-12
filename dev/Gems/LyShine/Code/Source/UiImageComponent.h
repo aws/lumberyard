@@ -137,9 +137,12 @@ private: // member functions
     // ChangeNotify callback for color change
     void OnColorChange();
 
-    //! Invalidate the parent's layout. Called when a property that 
+    //! Invalidate this element and its parent's layouts. Called when a property that 
     //! is used to calculate default layout cell values has changed
-    void InvalidateParentLayout();
+    void InvalidateLayouts();
+
+    //! Refresh the transform properties in the editor's properties pane
+    void CheckLayoutFitterAndRefreshEditorTransformProperties() const;
 
 private: // static member functions
 
@@ -161,4 +164,7 @@ private: // data
     ISprite* m_overrideSprite;
     AZ::Color m_overrideColor;
     float m_overrideAlpha;
+
+    bool m_isColorOverridden;
+    bool m_isAlphaOverridden;
 };

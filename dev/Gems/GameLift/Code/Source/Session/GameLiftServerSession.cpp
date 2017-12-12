@@ -195,8 +195,6 @@ namespace GridMate
                 ctorContext.m_peerMode.Set(member->m_peerMode.Get());
                 ctorContext.m_isHost.Set(member->IsHost());
                 ctorContext.Marshal(wb);
-
-                AZ_TracePrintf("GridMate", "[SERVER SESSION] Constructor a gridmember, memberid %d", member->m_memberId);
             }
         };
 

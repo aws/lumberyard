@@ -16,9 +16,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <GFxFramework/MaterialIO/IMaterial.h>
-#include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
-
-struct IConvertContext;
+#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 
 namespace AZ
 {
@@ -31,26 +29,27 @@ namespace AZ
     }
     namespace RC
     {
-        struct MeshGroupExportContext;
         struct ContainerExportContext;
+        struct NodeExportContext;
         struct MeshNodeExportContext;
 
         class MaterialExporter
-            : public SceneAPI::Events::CallProcessorBinder
+            : public SceneAPI::SceneCore::ExportingComponent
         {
         public:
-            MaterialExporter(IConvertContext* convertContext);
+            AZ_COMPONENT(MaterialExporter, "{F82300E0-ABE7-49F2-8BFF-1BFBD8BF3288}", SceneAPI::SceneCore::ExportingComponent);
+
+            MaterialExporter();
             ~MaterialExporter() override = default;
 
-            SceneAPI::Events::ProcessingResult SetupMaterial(GroupExportContext& context);
+            static void Reflect(ReflectContext* context);
+
             SceneAPI::Events::ProcessingResult ConfigureContainer(ContainerExportContext& context);
             SceneAPI::Events::ProcessingResult ProcessNode(NodeExportContext& context);
             SceneAPI::Events::ProcessingResult PatchMesh(MeshNodeExportContext& context);
 
         protected:
-            SceneAPI::Events::ProcessingResult HandleMaterialFileLoadingAndCreation(GroupExportContext& context);
-
-            bool LoadMaterialFile(GroupExportContext& context);
+            bool LoadMaterialFile(ContainerExportContext& context);
 
             void SetupGlobalMaterial(ContainerExportContext& context);
             void CreateSubMaterials(ContainerExportContext& context);
@@ -63,8 +62,14 @@ namespace AZ
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;
             AZStd::unordered_map<int, AZStd::string> m_physMaterialNames;
             const SceneAPI::DataTypes::IGroup* m_cachedGroup;
-            IConvertContext* m_convertContext;
             bool m_exportMaterial;
+
+        protected:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+            // Workaround for VS2013 - Delete the copy constructor and make it private
+            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+            MaterialExporter(const MaterialExporter&) = delete;
+#endif
         };
     } // RC
 } // AZ

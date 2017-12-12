@@ -47,7 +47,7 @@ namespace AZ
         typedef const ElementData* DynamicEditDataProvider (const void* /*handlerPtr*/, const void* /*elementPtr*/, const Uuid& /*elementType*/);
 
         /**
-         * Edit data is assigned to each SerializeContext::ClassInfo::Field. You can assign all kinds of
+         * Edit data is assigned to each SerializeContext::ClassBuilder::Field. You can assign all kinds of
          * generic attributes. You can have elements for class members called DataElements or Elements which define
          * attributes for the class itself called ClassElement.
          */
@@ -75,7 +75,7 @@ namespace AZ
         /**
          * Class data is assigned to every Serialize::Class. Don't confuse m_elements with
          * ElementData. Elements contains class Elements (like groups, etc.) while the ElementData
-         * contains attributes related to ehe SerializeContext::ClassInfo::Field.
+         * contains attributes related to ehe SerializeContext::ClassBuilder::Field.
          */
         struct ClassData
         {
@@ -106,8 +106,12 @@ namespace AZ
      */
     class EditContext
     {
-        class ClassInfo;
-        class EnumInfo;
+        /// @cond EXCLUDE_DOCS
+        class ClassBuilder;
+        class EnumBuilder;
+        using ClassInfo = ClassBuilder; ///< @deprecated Use EditContext::ClassBuilder
+        using EnumInfo = EnumBuilder; ///< @deprecated Use EditContext::EnumBuilder
+        /// @endcond
     public:
         AZ_CLASS_ALLOCATOR(EditContext, SystemAllocator, 0);
 
@@ -119,10 +123,10 @@ namespace AZ
         ~EditContext();
 
         template<class T>
-        ClassInfo Class(const char* displayName, const char* description);
+        ClassBuilder Class(const char* displayName, const char* description);
 
         template <class E>
-        EnumInfo Enum(const char* displayName, const char* description);
+        EnumBuilder Enum(const char* displayName, const char* description);
 
         void RemoveClassData(SerializeContext::ClassData* classData);
 
@@ -159,10 +163,10 @@ namespace AZ
          *  look at the unit tests and example to see use cases.
          *
          */
-        class ClassInfo
+        class ClassBuilder
         {
             friend EditContext;
-            ClassInfo(EditContext* context, SerializeContext::ClassData* classData, Edit::ClassData* classElement)
+            ClassBuilder(EditContext* context, SerializeContext::ClassData* classData, Edit::ClassData* classElement)
                 : m_context(context)
                 , m_classData(classData)
                 , m_classElement(classElement)
@@ -186,17 +190,17 @@ namespace AZ
             CopyEnumValues(Edit::ElementData*) {}
 
         public:
-            ~ClassInfo() {}
-            ClassInfo* operator->()     { return this; }
+            ~ClassBuilder() {}
+            ClassBuilder* operator->()     { return this; }
 
             /**
              * Declare element with attributes that belong to the class SerializeContext::Class, this is a logical structure, you can have one or more ClassElements.
              * \uiId is the logical element ID (for instance "Group" when you want to group certain elements in this class.
              * then in each DataElement you can attach the appropriate group attribute.
              */
-            ClassInfo*  ClassElement(Crc32 elementIdCrc, const char* description);
+            ClassBuilder*  ClassElement(Crc32 elementIdCrc, const char* description);
 
-            /** Declare element that will handle a specific class member variable (SerializeContext::ClassInfo::Field).
+            /** Declare element that will handle a specific class member variable (SerializeContext::ClassBuilder::Field).
              * \param uiId - us element ID ("Int" or "Real", etc. how to edit the memberVariable)
              * \param memberVariable - reference to the member variable to we can bind to serializations data.
              * \param name - descriptive name of the field. Use this when using types in context. For example T is 'int' and name describes what it does.
@@ -204,9 +208,9 @@ namespace AZ
              * \param description - detailed description that will usually appear in a tool tip.
              */
             template<class T>
-            ClassInfo*  DataElement(const char* uiId, T memberVariable, const char* name, const char* description);
+            ClassBuilder* DataElement(const char* uiId, T memberVariable, const char* name, const char* description);
 
-            /** Declare element that will handle a specific class member variable (SerializeContext::ClassInfo::Field).
+            /** Declare element that will handle a specific class member variable (SerializeContext::ClassBuilder::Field).
             * \param uiId - Crc32 of us element ID ("Int" or "Real", etc. how to edit the memberVariable)
             * \param memberVariable - reference to the member variable to we can bind to serializations data.
             * \param name - descriptive name of the field. Use this when using types in context. For example T is 'int' and name describes what it does.
@@ -214,7 +218,7 @@ namespace AZ
             * \param description - detailed description that will usually appear in a tool tip.
             */
             template<class T>
-            ClassInfo*  DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description);
+            ClassBuilder* DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description);
 
             /**
              * Same as above, except we will get the name and description from the edit context of the 'T' type. If 'T' doesn't have edit context
@@ -223,7 +227,7 @@ namespace AZ
              * (AzTypeInfo<T>::Name()).
              */
             template<class T>
-            ClassInfo*  DataElement(const char* uiId, T memberVariable);
+            ClassBuilder* DataElement(const char* uiId, T memberVariable);
 
             /**
             * Same as above, except we will get the name and description from the edit context of the 'T' type. If 'T' doesn't have edit context
@@ -232,7 +236,7 @@ namespace AZ
             * (AzTypeInfo<T>::Name()).
             */
             template<class T>
-            ClassInfo*  DataElement(Crc32 uiIdCrc, T memberVariable);
+            ClassBuilder* DataElement(Crc32 uiIdCrc, T memberVariable);
 
             /**
              * All T (attribute value) MUST be copy constructible as they are stored in internal
@@ -240,7 +244,7 @@ namespace AZ
              * Attributes can be assigned to either classes or DataElements.
              */
             template<class T>
-            ClassInfo* Attribute(const char* id, T value);
+            ClassBuilder* Attribute(const char* id, T value);
 
             /**
             * All T (attribute value) MUST be copy constructible as they are stored in internal
@@ -248,7 +252,7 @@ namespace AZ
             * Attributes can be assigned to either classes or DataElements.
             */
             template<class T>
-            ClassInfo* Attribute(Crc32 idCrc, T value);
+            ClassBuilder* Attribute(Crc32 idCrc, T value);
 
             /**
              * Specialized attribute for defining enum values with an associated description.
@@ -258,7 +262,7 @@ namespace AZ
              * enough and common enough that it's warranted for programmer ease.
              */
             template<class T>
-            ClassInfo* EnumAttribute(T value, const char* descriptor);
+            ClassBuilder* EnumAttribute(T value, const char* descriptor);
 
             /**
              * Specialized attribute for setting properties on elements inside a container.
@@ -266,7 +270,7 @@ namespace AZ
              * while only having to specify it once (on the parent container).
              */
             template<class T>
-            ClassInfo* ElementAttribute(const char* id, T value);
+            ClassBuilder* ElementAttribute(const char* id, T value);
 
             /**
             * Specialized attribute for setting properties on elements inside a container.
@@ -274,9 +278,9 @@ namespace AZ
             * while only having to specify it once (on the parent container).
             */
             template<class T>
-            ClassInfo* ElementAttribute(Crc32 idCrc, T value);
+            ClassBuilder* ElementAttribute(Crc32 idCrc, T value);
 
-            ClassInfo*  SetDynamicEditDataProvider(Edit::DynamicEditDataProvider* pHandler);
+            ClassBuilder* SetDynamicEditDataProvider(Edit::DynamicEditDataProvider* pHandler);
         };
 
         /**
@@ -293,11 +297,11 @@ namespace AZ
         *
         *
         */
-        class EnumInfo
+        class EnumBuilder
         {
             friend EditContext;
 
-            EnumInfo(EditContext* editContext, Edit::ElementData* elementData)
+            EnumBuilder(EditContext* editContext, Edit::ElementData* elementData)
                 : m_context(editContext)
                 , m_elementData(elementData)
             {}
@@ -305,10 +309,10 @@ namespace AZ
             EditContext* m_context;
             Edit::ElementData* m_elementData;
         public:
-            EnumInfo* operator->() { return this; }
+            EnumBuilder* operator->() { return this; }
 
             template <class E>
-            EnumInfo* Value(const char* name, E value);
+            EnumBuilder* Value(const char* name, E value);
         };
 
         typedef AZStd::list<Edit::ClassData> ClassDataListType;
@@ -344,7 +348,7 @@ namespace AZ
     // Class
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo
+    EditContext::ClassBuilder
     EditContext::Class(const char* displayName, const char* description)
     {
         // find the class data in the serialize context.
@@ -359,14 +363,14 @@ namespace AZ
         editClassData.m_editDataProvider = nullptr;
         editClassData.m_classData = serializeClassData;
         serializeClassData->m_editData = &editClassData;
-        return EditContext::ClassInfo(this, serializeClassData, &editClassData);
+        return EditContext::ClassBuilder(this, serializeClassData, &editClassData);
     }
 
     //=========================================================================
     // Enum
     //=========================================================================
     template <class E>
-    EditContext::EnumInfo
+    EditContext::EnumBuilder
     EditContext::Enum(const char* displayName, const char* description)
     {
         AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPE_INFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");
@@ -379,14 +383,14 @@ namespace AZ
         enumData.m_elementId = typeCrc;
         enumData.m_name = displayName;
         enumData.m_description = description;
-        return EditContext::EnumInfo(this, &enumData);
+        return EditContext::EnumBuilder(this, &enumData);
     }
 
     //=========================================================================
     // ClassElement
     //=========================================================================
-    inline EditContext::ClassInfo*
-    EditContext::ClassInfo::ClassElement(Crc32 elementIdCrc, const char* description)
+    inline EditContext::ClassBuilder*
+    EditContext::ClassBuilder::ClassElement(Crc32 elementIdCrc, const char* description)
     {
         m_classElement->m_elements.push_back();
         Edit::ElementData& ed = m_classElement->m_elements.back();
@@ -400,8 +404,8 @@ namespace AZ
     // DataElement
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::DataElement(const char* uiId, T memberVariable, const char* name, const char* description)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::DataElement(const char* uiId, T memberVariable, const char* name, const char* description)
     {
         return DataElement(Crc32(uiId), memberVariable, name, description);
     }
@@ -410,12 +414,12 @@ namespace AZ
     // DataElement
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description)
     {
         using ElementTypeInfo = typename SerializeInternal::ElementInfo<T>;
         using EnumElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, void>::type;
-        AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", description);
+        AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", name);
 
         // Not really portable but works for the supported compilers
         size_t offset = reinterpret_cast<size_t>(&(reinterpret_cast<typename ElementTypeInfo::ClassType const volatile*>(0)->*memberVariable));
@@ -431,7 +435,8 @@ namespace AZ
                 break;
             }
         }
-        AZ_Assert(classElement != NULL, "Class element for editor data element reflection '%s' was NOT found in the serialize context! This member MUST be serializable to be editable!", name);
+        // We cannot continue past this point, we must alert the user to fix their serialization config and crash
+        AZ_Assert(classElement, "Class element for editor data element reflection '%s' was NOT found in the serialize context! This member MUST be serializable to be editable!", name);
 
         m_classElement->m_elements.push_back();
         Edit::ElementData* ed = &m_classElement->m_elements.back();
@@ -456,7 +461,7 @@ namespace AZ
     // DataElement
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo* EditContext::ClassInfo::DataElement(const char* uiId, T memberVariable)
+    EditContext::ClassBuilder* EditContext::ClassBuilder::DataElement(const char* uiId, T memberVariable)
     {
         using ElementTypeInfo = typename SerializeInternal::ElementInfo<T>;
         using ElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, typename ElementTypeInfo::ElementType>::type;
@@ -484,7 +489,7 @@ namespace AZ
     // DataElement
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo* EditContext::ClassInfo::DataElement(Crc32 uiIdCrc, T memberVariable)
+    EditContext::ClassBuilder* EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable)
     {
         typedef typename SerializeInternal::ElementInfo<T>  ElementTypeInfo;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", AzTypeInfo<typename ElementTypeInfo::ValueType>::Name());
@@ -504,8 +509,8 @@ namespace AZ
     //=========================================================================
     // SetDynamicEditDataProvider
     //=========================================================================
-    inline EditContext::ClassInfo*
-    EditContext::ClassInfo::SetDynamicEditDataProvider(Edit::DynamicEditDataProvider* pHandler)
+    inline EditContext::ClassBuilder*
+    EditContext::ClassBuilder::SetDynamicEditDataProvider(Edit::DynamicEditDataProvider* pHandler)
     {
         m_classElement->m_editDataProvider = pHandler;
         return this;
@@ -515,8 +520,8 @@ namespace AZ
     // Attribute
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::Attribute(const char* id, T value)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::Attribute(const char* id, T value)
     {
         return Attribute(Crc32(id), value);
     }
@@ -525,8 +530,8 @@ namespace AZ
     // Attribute
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::Attribute(Crc32 idCrc, T value)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::Attribute(Crc32 idCrc, T value)
     {
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "Attribute (0x%08x) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
         typedef typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
@@ -572,8 +577,8 @@ namespace AZ
     // EnumAttribute
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::EnumAttribute(T value, const char* description)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::EnumAttribute(T value, const char* description)
     {
         AZ_STATIC_ASSERT(AZStd::is_enum<T>::value, "Type passed to EnumAttribute is not an enum.");
         // If the name of the element is the same as the class name, then this is the global reflection (see EditContext::Enum<E>())
@@ -597,7 +602,7 @@ namespace AZ
     //=========================================================================
     template<class E>
     typename AZStd::enable_if<AZStd::is_enum<E>::value>::type
-    EditContext::ClassInfo::CopyEnumValues(Edit::ElementData* ed)
+    EditContext::ClassBuilder::CopyEnumValues(Edit::ElementData* ed)
     {
         AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "You cannot copy enum values for a non-enum type!");
         using ContainerType = Edit::AttributeData<Edit::EnumConstant<E>>;
@@ -619,8 +624,8 @@ namespace AZ
     // ElementAttribute
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::ElementAttribute(const char* id, T value)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::ElementAttribute(const char* id, T value)
     {
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "ElementAttribute (%s) doesn't belong to '%s' class! You can't reference other classes!", id, m_classData->m_name);
         return ElementAttribute(Crc32(id), value);
@@ -630,8 +635,8 @@ namespace AZ
     // ElementAttribute
     //=========================================================================
     template<class T>
-    EditContext::ClassInfo*
-    EditContext::ClassInfo::ElementAttribute(Crc32 idCrc, T value)
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::ElementAttribute(Crc32 idCrc, T value)
     {
         AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "ElementAttribute (0x%08u) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
         typedef typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
@@ -655,8 +660,8 @@ namespace AZ
     }
 
     template <class E>
-    EditContext::EnumInfo*
-    EditContext::EnumInfo::Value(const char* name, E value)
+    EditContext::EnumBuilder*
+    EditContext::EnumBuilder::Value(const char* name, E value)
     {
         AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "Only values that are part of an enum are valid as value attributes");
         AZ_STATIC_ASSERT(Internal::HasAZTypeInfo<E>::value, "Enums must have reflection type info (via AZ_TYPEINFO_SPECIALIZE or AzTypeInfo<Enum>) to be reflected globally");

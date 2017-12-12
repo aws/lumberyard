@@ -87,11 +87,11 @@ namespace UnitTest
     TYPED_TEST_CASE(AnySizedTest, AnySizedTestTypes);
 
     // Fixture for tests with 2 types (for converting between types)
-    template<typename StructPair>
+    template <typename StructPair>
     class AnyConversionTest
         : public AllocatorsFixture
     {
-    protected:
+    public:
         using LHS = typename StructPair::first_type;
         using RHS = typename StructPair::second_type;
 
@@ -225,6 +225,38 @@ namespace UnitTest
             EXPECT_TRUE(any1.empty()); // Moves are always destructive.
             EXPECT_EQ(any_cast<TypeParam&>(any2).val(), 42);
         }
+
+        // Forward with data
+        TYPED_TEST(AnySizedTest, Any_ForwardConstructValid_IsValid)
+        {
+            any any1(AZStd::in_place_type_t<TypeParam>(), 55);
+            EXPECT_EQ(1, TypeParam::s_count);
+            EXPECT_EQ(0, TypeParam::s_copied);
+            EXPECT_EQ(0, TypeParam::s_moved);
+
+            any any2(AZStd::in_place_type_t<TypeParam>(), AZStd::initializer_list<int>{ 55 });
+
+            EXPECT_EQ(2, TypeParam::s_count);
+            EXPECT_EQ(0, TypeParam::s_moved);
+            EXPECT_EQ(0, TypeParam::s_copied);
+            EXPECT_EQ(any_cast<TypeParam&>(any1).val(), any_cast<TypeParam&>(any2).val());
+        }
+
+        // make_any helper forward functions
+        TYPED_TEST(AnySizedTest, Any_MakeAnyForwarder_IsValid)
+        {
+            any any1 = AZStd::make_any<TypeParam>(24);
+            EXPECT_EQ(1, TypeParam::s_count);
+            EXPECT_EQ(0, TypeParam::s_copied);
+            EXPECT_EQ(0, TypeParam::s_moved);
+
+            any any2 = AZStd::make_any<TypeParam, int>({ 24 });
+
+            EXPECT_EQ(2, TypeParam::s_count);
+            EXPECT_EQ(0, TypeParam::s_moved);
+            EXPECT_EQ(0, TypeParam::s_copied);
+            EXPECT_EQ(any_cast<TypeParam&>(any1).val(), any_cast<TypeParam&>(any2).val());
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -234,6 +266,8 @@ namespace UnitTest
         // Test copy assign other any
         TYPED_TEST(AnyConversionTest, Any_CopyAssignAny_IsValid)
         {
+            using LHS = typename TestFixture::LHS;
+            using RHS = typename TestFixture::RHS;
             {
                 any lhs(LHS(1));
                 any const rhs(RHS(2));
@@ -259,6 +293,8 @@ namespace UnitTest
         // Test move assign other any
         TYPED_TEST(AnyConversionTest, Any_MoveAssignAny_IsValid)
         {
+            using LHS = typename TestFixture::LHS;
+            using RHS = typename TestFixture::RHS;
             {
                 any lhs(LHS(1));
                 any rhs(RHS(2));
@@ -326,6 +362,8 @@ namespace UnitTest
         // Test copy assign other any, and that old value is destroyed
         TYPED_TEST(AnyConversionTest, Any_CopyAssignAny_OldIsDestroyed)
         {
+            using LHS = typename TestFixture::LHS;
+            using RHS = typename TestFixture::RHS;
             {
                 any lhs(LHS(1));
                 any const rhs(RHS(2));
@@ -397,6 +435,8 @@ namespace UnitTest
         // Test move assign other any, and that the old value is destroyed
         TYPED_TEST(AnyConversionTest, Any_MoveAssignAny_OldIsDestroyed)
         {
+            using LHS = typename TestFixture::LHS;
+            using RHS = typename TestFixture::RHS;
             {
                 LHS const s1(1);
                 any a(s1);
@@ -491,6 +531,8 @@ namespace UnitTest
         // Test swap 2 valid anys
         TYPED_TEST(AnyConversionTest, Any_SwapValidAnys_IsValid)
         {
+            using LHS = typename TestFixture::LHS;
+            using RHS = typename TestFixture::RHS;
             {
                 any a1((LHS(1)));
                 any a2(RHS(2));

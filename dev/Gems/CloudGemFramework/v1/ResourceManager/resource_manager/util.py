@@ -10,9 +10,12 @@
 #
 # $Revision: #1 $
 
+import copy
 import os
 import json
 import re
+
+from distutils.version import LooseVersion
 
 from errors import HandledError
 from botocore.exceptions import ClientError
@@ -80,7 +83,7 @@ def validate_stack_name_length(check_name):
 def validate_stack_name_format(check_name):
 
     if not re.match('^[a-z][a-z0-9\-]*$', check_name, re.I):
-        raise HandledError('Stack Name can only consist of letters, numbers and hyphens and must start with a letter: {}'.format(check_name))
+        raise HandledError('Name can only consist of letters, numbers and hyphens and must start with a letter: {}'.format(check_name))
 
 def validate_stack_name(check_name):
 
@@ -92,17 +95,35 @@ def validate_stack_name(check_name):
     validate_stack_name_format(check_name)
 
 def validate_writable_list(context, write_check_list):
+    '''Prompts the user to make specified files writable.
+
+    Arguments:
+
+        write_check_list - The list of file paths that should be writable.
+
+    Returns:
+
+        True once all files are writable, or False if the user chooses to
+        not make one or more files writable.
+
+    Raises:
+
+        The cli version raise HandledException instead of returning False.
+
+    '''
+    
     while True:
+
         fail_list = []
         for this_file in write_check_list:
             if not context.config.is_writable(this_file):
                 fail_list.append(this_file)
 
         if len(fail_list) == 0:
-            break
+            return True
 
         if not context.view.confirm_writable_try_again(fail_list):
-            break
+            return False
 
 def get_cloud_canvas_metadata(definition, metadata_name):
 
@@ -215,7 +236,7 @@ def load_json(path, default = None, optional = True):
         elif not optional:
             raise HandledError('Cloud not load {}. The file does not exist.'.format(path))
         else:
-            return default
+            return copy.deepcopy(default)
     except Exception as e:
         raise HandledError('Could not load {}.'.format(path), e)
 
@@ -266,3 +287,52 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
             break
 
         list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500, KeyMarker=list_res['NextKeyMarker'], VersionIdMarker=list_res['NextVersionIdMarker'])
+
+
+# Our version numbers should conform to http://semver.org/ 2.0.
+class Version(LooseVersion):
+
+    def __init__(self, s):
+        # LooseVersion is an old style class, so can't use super
+        LooseVersion.__init__(self, s) 
+
+    @property
+    def major(self):
+        return self.version[0]
+
+    @property
+    def minor(self):
+        return self.version[1]
+
+    @property
+    def revision(self):
+        return self.version[2]
+
+    def is_compatible_with(self, other):
+        
+        if not isinstance(other, Version):
+            other = Version(other)
+
+        if self.major != other.major:
+            return False
+        
+        # self.major == other.major
+
+        if self.minor < other.minor:
+            return False
+
+        if self.minor > other.minor:
+            return True
+
+        # self.minor == other.minor
+
+        if self.revision < other.revision:
+            return False
+
+        # self.revision == self.revions
+
+        return True
+
+
+
+

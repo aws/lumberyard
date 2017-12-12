@@ -19,15 +19,19 @@
 
 #pragma once
 
+#include "Cry_Geo.h"
 #include "Grid.h"
 #include "Viewport.h"
 #include "Include/IViewPane.h"
 #include "QtViewPaneManager.h"
-
 // forward declaration.
 class CLayoutWnd;
 class CViewport;
 
+namespace AzToolsFramework
+{
+    class ManipulatorManager;
+}
 
 /** Manages set of viewports.
 */
@@ -109,6 +113,8 @@ public:
 
     virtual void OnEditorNotifyEvent(EEditorNotifyEvent event);
 
+    AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> GetManipulatorManager();
+
 private:
     friend class CEditorImpl;
     friend class QtViewport;
@@ -142,6 +148,8 @@ private:
     std::vector<CViewport*> m_viewports;
 
     CViewport* m_pSelectedView;
+
+    AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager;
 };
 
 #endif // CRYINCLUDE_EDITOR_VIEWMANAGER_H

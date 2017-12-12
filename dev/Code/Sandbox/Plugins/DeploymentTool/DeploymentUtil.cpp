@@ -12,6 +12,8 @@
 
 #include "stdafx.h"
 #include "DeploymentUtil.h"
+#include <AzCore/Socket/AzSocket.h>
+#include <AzCore/std/string/conversions.h>
 
 #if _MSC_VER == 1900
     #define CRYSCOMPILESERVER_EXE_BUILD_TOOL "_vc140x64"
@@ -48,5 +50,60 @@ DeploymentUtil::~DeploymentUtil()
 void DeploymentUtil::LogStdOut(QProcess* process)
 {
     m_deploymentTool.Log(process->readAllStandardOutput().toStdString().c_str());
+}
+
+bool DeploymentUtil::LaunchShaderCompiler()
+{
+    // Try to connect to the shader compiler
+    AZSOCKET socket = AZ::AzSock::Socket();
+    if (!AZ::AzSock::IsAzSocketValid(socket))
+    {
+        m_deploymentTool.LogEndLine("Could not create valid socket!");
+        return false;
+    }
+    AZ::AzSock::AzSocketAddress socketAddress;
+    if (!socketAddress.SetAddress(m_cfg.m_shaderCompilerIP, AZStd::stoul(m_cfg.m_shaderCompilerPort)))
+    {
+        m_deploymentTool.LogEndLine("Could not set socket address!");
+        return false;
+    }
+    AZ::s32 result = AZ::AzSock::Connect(socket, socketAddress);
+
+    if (AZ::AzSock::SocketErrorOccured(result))
+    {
+        // We weren't able to connect. So, start the shader compiler.
+        m_deploymentTool.LogEndLine("Starting shader compiler...");
+        m_deploymentTool.LogEndLine(s_shaderCompilerCmd);
+        return m_cmdLauncher->DetachProcess(s_shaderCompilerCmd, s_pathToShaderCompiler);
+    }
+    else
+    {
+        const AZStd::string data = "<?xml version=\"1.0\"?><Compile Version=\"2.1\" Platform=\"DX11\" JobType=\"RequestLine\" ShaderRequest=\"&lt;3&gt;FixedPipelineEmu@FPPS()()(2a2a0505)(0)(0)(0)(PS)\"/>";
+        const uint64 size = data.size();
+        AZ::AzSock::Send(socket, (const char*)&size, 8, 0);
+        result = AZ::AzSock::Send(socket, data.c_str(), static_cast<uint32>(size), 0);
+        if (AZ::AzSock::SocketErrorOccured(result))
+        {
+            m_deploymentTool.LogEndLine("Could not send request to shader compiler!");
+            return false;
+        }
+
+        // We were able to connect to the shader compiler. So, it's already running.
+        m_deploymentTool.LogEndLine("Shader compiler already running. Skipping shader compiler launch...");
+        
+        // Close the connection and move on.
+        result = AZ::AzSock::Shutdown(socket, SD_BOTH);
+        if (AZ::AzSock::SocketErrorOccured(result))
+        {
+            m_deploymentTool.LogEndLine("Could not shutdown socket!");
+        }
+        result = AZ::AzSock::CloseSocket(socket);
+        if (AZ::AzSock::SocketErrorOccured(result))
+        {
+            m_deploymentTool.LogEndLine("Could not close socket!");
+        }
+    }
+
+    return true;
 }
 

@@ -52,9 +52,9 @@ namespace LuaRemoteDebugger
 		protected abstract List<CallStackItem> GetSymbolNamesFromAddressesInternal(List<UInt32> addresses);
 	}
 
-	public class XboxSymbolsManager : SymbolsManager
+	public class XboxSymbolsManager : SymbolsManager // ACCEPTED_USE
 	{
-		private List<XboxSymbolResolver> symbolResolvers = new List<XboxSymbolResolver>();
+		private List<XboxSymbolResolver> symbolResolvers = new List<XboxSymbolResolver>(); // ACCEPTED_USE
 
 		public void AddModuleInformation(string path, uint baseAddress, uint size, Guid guid, uint age)
 		{
@@ -66,7 +66,7 @@ namespace LuaRemoteDebugger
 				diaSource.openSession(out diaSession);
 				diaSession.loadAddress = baseAddress;
 
-				XboxSymbolResolver symbolResolver = new XboxSymbolResolver(diaSession, size);
+				XboxSymbolResolver symbolResolver = new XboxSymbolResolver(diaSession, size); // ACCEPTED_USE
 				symbolResolvers.Add(symbolResolver);
 
 				Marshal.ReleaseComObject(diaSource);
@@ -95,7 +95,7 @@ namespace LuaRemoteDebugger
 			foreach (UInt32 address in addresses)
 			{
 				bool found = false;
-				foreach (XboxSymbolResolver symbolResolver in symbolResolvers)
+				foreach (XboxSymbolResolver symbolResolver in symbolResolvers) // ACCEPTED_USE
 				{
 					if (symbolResolver.AddressIsInRange(address))
 					{
@@ -114,18 +114,18 @@ namespace LuaRemoteDebugger
 		}
 	}
 
-	public class XboxSymbolResolver : IDisposable
+	public class XboxSymbolResolver : IDisposable // ACCEPTED_USE
 	{
 		IDiaSession session;
 		UInt32 size;
 
-		public XboxSymbolResolver(IDiaSession session, UInt32 size)
+		public XboxSymbolResolver(IDiaSession session, UInt32 size) // ACCEPTED_USE
 		{
 			this.session = session;
 			this.size = size;
 		}
 
-		~XboxSymbolResolver()
+		~XboxSymbolResolver() // ACCEPTED_USE
 		{
 			Dispose(false);
 		}
@@ -190,102 +190,5 @@ namespace LuaRemoteDebugger
 		}
 
     #endregion
-	}
-
-	public class Ps3SymbolsManager : SymbolsManager
-	{
-		string ps3BinPath;
-		string selfPath;
-
-		public Ps3SymbolsManager(string ps3BinPath, string selfPath)
-		{
-			this.ps3BinPath = ps3BinPath;
-			this.selfPath = selfPath;
-		}
-
-		protected override List<CallStackItem> GetSymbolNamesFromAddressesInternal(List<UInt32> addresses)
-		{
-			string arguments = selfPath + " --addr2line=";
-			for (int i = 0; i < addresses.Count; ++i)
-			{
-				if (i > 0)
-					arguments += ",";
-				arguments += addresses[i].ToString();
-			}
-			
-			// Start the child process.
-			Process p = new Process();
-			p.StartInfo.UseShellExecute = false;
-			p.StartInfo.CreateNoWindow = true;
-			p.StartInfo.RedirectStandardOutput = true;
-			p.StartInfo.FileName = ps3BinPath;
-			p.StartInfo.Arguments = arguments;
-			p.Start();
-			string output = p.StandardOutput.ReadToEnd();
-			p.WaitForExit();
-
-			// output looks something like this:
-			// Address:       0x010C8FF4
-			// Directory:     E:/perforce/depot/dev/c3/Code/CryEngine/CryScriptSystem/LuaRemoteDebug
-			// File Name:     LuaRemoteDebug.cpp
-			// Line Number:   571
-			// Symbol:        CLuaRemoteDebug::SendLuaState(lua_Debug*)
-			// Address:       0x010CA180
-			// Directory:     E:/perforce/depot/dev/c3/Code/CryEngine/CryScriptSystem/LuaRemoteDebug
-			// File Name:     LuaRemoteDebug.cpp
-			// Line Number:   315
-			// Symbol:        CLuaRemoteDebug::OnNotificationNetworkReceive(void const*, unsigned int)
-			// etc...
-
-			string[] lines = output.Split('\n');
-
-			List<CallStackItem> items = new List<CallStackItem>();
-
-			CallStackItem item = new CallStackItem();
-			bool foundAddress = false;
-			foreach (string line in lines)
-			{
-				if (line.StartsWith("Address:"))
-				{
-					// The addresses should be returned in the order we requested them
-					if (foundAddress)
-					{
-						items.Add(item);
-					}
-					foundAddress = true;
-					item = new CallStackItem();
-				}
-				else if (line.StartsWith("File Name:"))
-				{
-					item.Source = line.Substring(line.IndexOf(':') + 1).Trim();
-				}
-				else if (line.StartsWith("Line Number:"))
-				{
-					int.TryParse(line.Substring(line.IndexOf(':') + 1).Trim(), out item.Line);
-				}
-				else if (line.StartsWith("Symbol:"))
-				{
-					item.Description = line.Substring(line.IndexOf(':') + 1).Trim();
-				}
-			}
-			if (foundAddress)
-			{
-				items.Add(item);
-			}
-
-			if (items.Count != addresses.Count)
-			{
-				// Something went wrong! Just return not found symbols
-				items.Clear();
-				foreach (UInt32 address in addresses)
-				{
-					item = new CallStackItem();
-					item.Description = "<symbol 0x" + Convert.ToString(address, 16) + " not found>";
-					items.Add(item);
-				}
-			}
-
-			return items;
-		}
 	}
 }

@@ -434,7 +434,7 @@ bool CDecalManager::Spawn(CryEngineDecalInfo DecalInfo, CDecal* pCallerManagedDe
     // get material if specified
     newDecal.m_pMaterial = 0;
 
-    if (DecalInfo.szMaterialName[0] != '0')
+    if (DecalInfo.szMaterialName[0] != '\0')
     {
         newDecal.m_pMaterial = GetMatMan()->LoadMaterial(DecalInfo.szMaterialName, false, true);
         if (!newDecal.m_pMaterial)
@@ -443,10 +443,6 @@ bool CDecalManager::Spawn(CryEngineDecalInfo DecalInfo, CDecal* pCallerManagedDe
             newDecal.m_pMaterial->AddRef();
             Warning("CDecalManager::Spawn: Specified decal material \"%s\" not found!\n", DecalInfo.szMaterialName);
         }
-    }
-    else
-    {
-        Warning("CDecalManager::Spawn: Decal material name is not specified");
     }
 
     newDecal.m_sortPrio = DecalInfo.sortPrio;
@@ -586,6 +582,11 @@ bool CDecalManager::Spawn(CryEngineDecalInfo DecalInfo, CDecal* pCallerManagedDe
         }
 
         // make decal geometry
+        if (!newDecal.m_pMaterial)
+        {
+            // I'm not sure what consequences will be if m_pMaterial is null, so we warn about it just in case. Feel free to remove this if you hit it and all is well.
+            Warning("CDecalManager::Spawn: Decal material is null while creating BigDecalRenderMesh"); 
+        }
         newDecal.m_pRenderMesh = MakeBigDecalRenderMesh(pSourceRenderMesh, DecalInfo.vPos, DecalInfo.fSize, DecalInfo.vNormal, newDecal.m_pMaterial, pStatObj ? pStatObj->GetMaterial() : NULL);
 
         if (!newDecal.m_pRenderMesh)
@@ -683,8 +684,9 @@ bool CDecalManager::Spawn(CryEngineDecalInfo DecalInfo, CDecal* pCallerManagedDe
     else
     if (DecalInfo.ownerInfo.pRenderNode &&
         (DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_RenderComponent || 
-            DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_StaticMeshRenderComponent ||
-            DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_SkinnedMeshRenderComponent) &&
+         DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_StaticMeshRenderComponent ||
+         DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_DynamicMeshRenderComponent ||
+         DecalInfo.ownerInfo.pRenderNode->GetRenderNodeType() == eERType_SkinnedMeshRenderComponent) &&
         DecalInfo.ownerInfo.nRenderNodeSlotId >= 0)
     {
         newDecal.m_eDecalType = eDecalType_OS_SimpleQuad;
@@ -886,12 +888,12 @@ void CDecalManager::Render(const SRenderingPassInfo& passInfo)
     float fWaterLevel = m_p3DEngine->GetWaterLevel();
 
     static int nLastUpdateStreamingPrioriryRoundId = 0;
-    bool bPrecacheMaterial = nLastUpdateStreamingPrioriryRoundId != GetObjManager()->m_nUpdateStreamingPrioriryRoundId;
-    nLastUpdateStreamingPrioriryRoundId = GetObjManager()->m_nUpdateStreamingPrioriryRoundId;
+    bool bPrecacheMaterial = nLastUpdateStreamingPrioriryRoundId != GetObjManager()->GetUpdateStreamingPrioriryRoundId();
+    nLastUpdateStreamingPrioriryRoundId = GetObjManager()->GetUpdateStreamingPrioriryRoundId();
 
     static int nLastUpdateStreamingPrioriryRoundIdFast = 0;
-    bool bPrecacheMaterialFast = nLastUpdateStreamingPrioriryRoundIdFast != GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast;
-    nLastUpdateStreamingPrioriryRoundIdFast = GetObjManager()->m_nUpdateStreamingPrioriryRoundIdFast;
+    bool bPrecacheMaterialFast = nLastUpdateStreamingPrioriryRoundIdFast != GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast();
+    nLastUpdateStreamingPrioriryRoundIdFast = GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast();
 
     const CCamera& rCamera = passInfo.GetCamera();
 
@@ -908,7 +910,7 @@ void CDecalManager::Render(const SRenderingPassInfo& passInfo)
             {
                 if (rCamera.IsSphereVisible_F(Sphere(pDecal->m_vWSPos, pDecal->m_fWSSize)))
                 {
-                    bool bAfterWater = CObjManager::IsAfterWater(pDecal->m_vWSPos, rCamera.GetPosition(), passInfo, fWaterLevel);
+                    bool bAfterWater = GetObjManager()->IsAfterWater(pDecal->m_vWSPos, rCamera.GetPosition(), passInfo, fWaterLevel);
                     if (pDecal->m_pMaterial)
                     {
                         if (passInfo.IsGeneralPass())

@@ -1,0 +1,27 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+            "SceneLoggingExampleModule.cpp",
+            "../ReadMe.txt"
+        ],
+        "Behaviors":
+        [
+            "Behaviors/LoggingGroupBehavior.h",
+            "Behaviors/LoggingGroupBehavior.cpp"
+        ],
+        "Groups":
+        [
+            "Groups/LoggingGroup.h",
+            "Groups/LoggingGroup.cpp"
+        ],
+        "Processors":
+        [
+            "Processors/ExportTrackingProcessor.h",
+            "Processors/ExportTrackingProcessor.cpp",
+            "Processors/LoadingTrackingProcessor.h",
+            "Processors/LoadingTrackingProcessor.cpp"
+        ]
+    }
+}

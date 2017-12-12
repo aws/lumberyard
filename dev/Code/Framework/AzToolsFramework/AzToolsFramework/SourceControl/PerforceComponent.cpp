@@ -738,7 +738,7 @@ namespace AzToolsFramework
         ExecuteAndParseFstat(filePath, sourceAwareFile);
         if (!s_perforceConn->m_command.CurrentActionIsAdd())
         {
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to add file '%s' (Perforce is connected but file was not added)\n", filePath);
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to add file '%s' (Perforce is connected but file was not added)\n", filePath);
             return false;
         }
 
@@ -764,7 +764,7 @@ namespace AzToolsFramework
 
         if (sourceAwareFile && (s_perforceConn->m_command.IsOpenByOtherUsers() && !allowMultiCheckout))
         {
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to edit file %s, it's already checked out by %s\n",
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to edit file %s, it's already checked out by %s\n",
                 filePath, s_perforceConn->m_command.GetOtherUserCheckedOut().c_str());
             return false;
         }
@@ -773,7 +773,7 @@ namespace AzToolsFramework
         {
             if (!ExecuteAdd(filePath))
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to add file %s\n", filePath);
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to add file %s\n", filePath);
                 // if the file is writable, this does not count as an error as we are likely
                 // simply outside the workspace.
                 return AZ::IO::SystemFile::IsWritable(filePath);
@@ -815,13 +815,13 @@ namespace AzToolsFramework
                 AZ_TracePrintf(SCC_WINDOW, "Perforce - Reverting deleted file %s in order to check it out\n", filePath);
                 if (!ExecuteRevert(filePath))
                 {
-                    AZ_TracePrintf(SCC_WINDOW, "Perforce - Failed to revert deleted file %s\n", filePath);
+                    AZ_Warning(SCC_WINDOW, false, "Perforce - Failed to revert deleted file %s\n", filePath);
                     return false;
                 }
             }
             else
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Requesting edit on file %s opened by current user, but not marked for add, edit or delete", filePath);
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Requesting edit on file %s opened by current user, but not marked for add, edit or delete", filePath);
                 return false;
             }
         }
@@ -832,7 +832,7 @@ namespace AzToolsFramework
             AZ_TracePrintf(SCC_WINDOW, "Perforce - re-Add fully deleted file %s in order to check it out\n", filePath);
             if (!ExecuteAdd(filePath))
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Failed to revert deleted file %s in order to check it out\n", filePath);
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Failed to revert deleted file %s in order to check it out\n", filePath);
                 return false;
             }
             return true;
@@ -848,14 +848,14 @@ namespace AzToolsFramework
 
         if (s_perforceConn->m_command.NeedsReopening() && !ClaimChangedFile(filePath, changeListNumber))
         {
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Failed to reopen file %s\n", filePath);
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Failed to reopen file %s\n", filePath);
             return false;
         }
 
         ExecuteAndParseFstat(filePath, sourceAwareFile);
         if (s_perforceConn->m_command.IsMarkedForAdd())
         {
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Can't edit file %s, already marked for add\n", filePath);
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Can't edit file %s, already marked for add\n", filePath);
             return false;
         }
 
@@ -883,7 +883,7 @@ namespace AzToolsFramework
             {
                 if (!ExecuteRevert(filePath))
                 {
-                    AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to revert file %s\n", filePath);
+                    AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to revert file %s\n", filePath);
                     return false;
                 }
             }
@@ -895,7 +895,7 @@ namespace AzToolsFramework
             int changeListNumber = GetOrCreateOurChangelist();
             if (changeListNumber <= 0)
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to find our changelist %s\n", m_autoChangelistDescription.c_str());
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to find our changelist %s\n", m_autoChangelistDescription.c_str());
                 return false;
             }
 
@@ -904,7 +904,7 @@ namespace AzToolsFramework
             s_perforceConn->m_command.ExecuteDelete(changeListNumberStr, filePath);
             if (!CommandSucceeded())
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Failed to delete file %s\n", filePath);
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Failed to delete file %s\n", filePath);
                 return false;
             }
 
@@ -941,7 +941,7 @@ namespace AzToolsFramework
         ExecuteAndParseFstat(filePath, sourceAwareFile);
         if (s_perforceConn->m_command.IsOpenByCurrentUser())
         {
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to revert file '%s' (Perforce is connected but file was not reverted)\n", filePath);
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to revert file '%s' (Perforce is connected but file was not reverted)\n", filePath);
             return false;
         }
 
@@ -975,7 +975,7 @@ namespace AzToolsFramework
         if (m_connectionState != SourceControlState::Active)
         {
             fileMessage = AZStd::string::format(" file %s", filePath);
-            AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to %s%s (Perforce is not connected)\n", actionDesc, filePath ? fileMessage.c_str() : "");
+            AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to %s%s (Perforce is not connected)\n", actionDesc, filePath ? fileMessage.c_str() : "");
             return false;
         }
 
@@ -1081,14 +1081,18 @@ namespace AzToolsFramework
                 {
                     AZStd::string fingerprint = tokens[fingerprintIdx];
 
-                    // Push to the main thread for convenience.
-                    AZStd::function<void()> trustNotify =
-                        [this, fingerprint]()
+                    if (AZ::TickBus::IsFunctionQueuing())
                     {
-                        SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::RequestTrust, fingerprint.c_str());
-                    };
+                        // Push to the main thread for convenience.
+                        AZStd::function<void()> trustNotify =
+                            [this, fingerprint]()
+                        {
+                            SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::RequestTrust, fingerprint.c_str());
+                        };
 
-                    AZ::TickBus::QueueFunction(trustNotify);
+                        AZ::TickBus::QueueFunction(trustNotify);
+                    }
+                    
                 }
             }
             else
@@ -1201,15 +1205,17 @@ namespace AzToolsFramework
         if (currentState != m_connectionState)
         {
             m_connectionState = currentState;
-
-            // Push to the main thread for convenience.
-            AZStd::function<void()> connectivityNotify = 
-                [this, currentState]()
+           
+            if (AZ::TickBus::IsFunctionQueuing())
+            {
+                // Push to the main thread for convenience.
+                AZStd::function<void()> connectivityNotify =
+                    [this, currentState]()
                 {
                     SourceControlNotificationBus::Broadcast(&SourceControlNotificationBus::Events::ConnectivityStateChanged, currentState);
                 };
-
-            AZ::TickBus::QueueFunction(connectivityNotify);
+                AZ::TickBus::QueueFunction(connectivityNotify);
+            }
         }
 
         return true;
@@ -1372,26 +1378,26 @@ namespace AzToolsFramework
         {
         case PerforceJobRequest::PJR_Stat:
         {
-            resp.m_fileInfo = GetFileInfo(request.m_requestPath.c_str());
+            resp.m_fileInfo = AZStd::move(GetFileInfo(request.m_requestPath.c_str()));
             resp.m_succeeded = resp.m_fileInfo.m_status > SCS_NUM_ERRORS;
         }
         break;
         case PerforceJobRequest::PJR_Edit:
         {
             resp.m_succeeded = RequestEdit(request.m_requestPath.c_str(), request.m_allowMultiCheckout);
-            resp.m_fileInfo = GetFileInfo(request.m_requestPath.c_str());
+            resp.m_fileInfo = AZStd::move(GetFileInfo(request.m_requestPath.c_str()));
         }
         break;
         case PerforceJobRequest::PJR_Delete:
         {
             resp.m_succeeded = RequestDelete(request.m_requestPath.c_str());
-            resp.m_fileInfo = GetFileInfo(request.m_requestPath.c_str());
+            resp.m_fileInfo = AZStd::move(GetFileInfo(request.m_requestPath.c_str()));
         }
         break;
         case PerforceJobRequest::PJR_Revert:
         {
             resp.m_succeeded = RequestRevert(request.m_requestPath.c_str());
-            resp.m_fileInfo = GetFileInfo(request.m_requestPath.c_str());
+            resp.m_fileInfo = AZStd::move(GetFileInfo(request.m_requestPath.c_str()));
         }
         break;
         default:

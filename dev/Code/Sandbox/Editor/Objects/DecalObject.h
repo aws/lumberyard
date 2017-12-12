@@ -48,7 +48,7 @@ public:
     virtual IRenderNode* GetEngineNode() const { return m_pRenderNode; };
 
     // special input handler (to be reused by this class as well as the decal object tool)
-    void MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint& point, int flags, bool callerIsMouseCreateCallback = false);
+    bool MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint& point, int flags, bool callerIsMouseCreateCallback = false);
 
     int GetProjectionType() const;
     void UpdateEngineNode();

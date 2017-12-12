@@ -6,20 +6,23 @@
 #include "QDynamicContentEditorMainWindow.h"
 #include "QtViewPaneManager.h"
 
+static const char* ViewPaneName = "Dynamic Content Manager";
+
 DynamicContentEditorPlugin::DynamicContentEditorPlugin(IEditor* editor)
     : m_registered(false)
 {
-    QtViewOptions opt;
+    AzToolsFramework::ViewPaneOptions opt;
     opt.isDeletable = true;
     opt.canHaveMultipleInstances = false;
-    m_registered = RegisterQtViewPane<DynamicContent::QDynamicContentEditorMainWindow>(editor, "Dynamic Content Manager", "Cloud Canvas", opt);
+    AzToolsFramework::RegisterViewPane<DynamicContent::QDynamicContentEditorMainWindow>(ViewPaneName, "Cloud Canvas", opt);
+    m_registered = true;
 }
 
 void DynamicContentEditorPlugin::Release()
 {
     if (m_registered)
     {
-        UnregisterQtViewPane<DynamicContent::QDynamicContentEditorMainWindow>();
+        AzToolsFramework::UnregisterViewPane(ViewPaneName);
     }
 }
 

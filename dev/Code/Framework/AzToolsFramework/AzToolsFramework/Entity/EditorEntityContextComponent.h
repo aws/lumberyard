@@ -156,6 +156,8 @@ namespace AzToolsFramework
         void OnContextEntitiesAdded(const AzToolsFramework::EntityList& entities) override;
         void OnContextEntityRemoved(const AZ::EntityId& id) override;
 
+        void HandleNewMetadataEntitiesCreated(AZ::SliceComponent& slice) override;
+
         void SetupEditorEntity(AZ::Entity* entity);
         void SetupEditorEntities(const AzToolsFramework::EntityList& entities);
 
@@ -211,6 +213,8 @@ namespace AzToolsFramework
             void Reset();
 
             bool OnCatalogAssetAdded(const AZ::Data::AssetId& assetId);
+
+            void OnSlicePreInstantiate();
 
             void Finalize(const AZ::SliceComponent::SliceInstanceAddress& instanceAddress);
 

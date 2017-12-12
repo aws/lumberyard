@@ -62,11 +62,7 @@ namespace UnitTest
         : public MemoryTrackingFixture
     {
         static const int            m_threadStackSize = 128 * 1024;
-#if defined(AZ_PLATFORM_WII)
-        static const unsigned int   m_maxNumThreads = 4;
-#else
         static const unsigned int   m_maxNumThreads = 10;
-#endif
         AZStd::thread_desc          m_desc[m_maxNumThreads];
 
     public:
@@ -80,29 +76,12 @@ namespace UnitTest
                 m_desc[i].m_stackSize = m_threadStackSize;
 
                 // Allocate stacks for the platforms that can't do it themself.
-#if defined(AZ_PLATFORM_WII)
-                char* stackMem = (char*)DebugAlignAlloc(m_desc[i].m_stackSize, 16);
-#   ifdef AZ_PLATFORM_WII
-                stackMem += m_threadStackSize;  // we need to point at the end of memory!
-#   endif
-                m_desc[i].m_stack = stackMem;
-#endif
             }
         }
 
         void TearDown() override
         {
             // Free allocated stacks.
-#if defined(AZ_PLATFORM_WII)
-            for (unsigned int i = 0; i < m_maxNumThreads; ++i)
-            {
-                char* stackMem = (char*)m_desc[i].m_stack;
-#ifdef AZ_PLATFORM_WII
-                stackMem -= m_threadStackSize;  // we need to point at the end of memory!
-#endif
-                DebugAlignFree(stackMem);
-            }
-#endif
             MemoryTrackingFixture::TearDown();
         }
 
@@ -199,11 +178,7 @@ namespace UnitTest
             SystemAllocator::Descriptor desc;
             desc.m_allocationRecords = true;
             desc.m_heap.m_numMemoryBlocks = 1;
-#if defined(AZ_PLATFORM_WII)
-            unsigned int memoryBufferSize = 25 * 1024 * 1024;
-#else
             unsigned int memoryBufferSize = 100 * 1024 * 1024;
-#endif
             desc.m_heap.m_memoryBlocksByteSize[0] = memoryBufferSize;
             desc.m_heap.m_memoryBlocks[0] = DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
 
@@ -232,18 +207,18 @@ namespace UnitTest
                 EXPECT_EQ(1000, ai.m_byteSize);
                 EXPECT_EQ(nullptr, ai.m_fileName); // We did not pass fileName or lineNum to sysAllocator.Allocate()
                 EXPECT_EQ(0, ai.m_lineNum);  // -- " --
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII)
+#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII) // ACCEPTED_USE
                 // if our hardware support stack traces make sure we have them, since we did not provide fileName,lineNum
                 EXPECT_TRUE(ai.m_stackFrames[0].IsValid());  // We need to have at least one frame
 #       if defined(AZ_PLATFORM_WINDOWS) && defined(_DEBUG)
                 // For windows we should be able to decode the program counters into readable content.
-                // This is possible on X360 and PS3 too, but weed to load the map file manually and so on... it's tricky.
+                // This is possible on X360 and PS3 too, but weed to load the map file manually and so on... it's tricky. // ACCEPTED_USE
                 SymbolStorage::StackLine stackLine;
                 stackLine[0] = '\0';
                 SymbolStorage::DecodeFrames(ai.m_stackFrames, 1, &stackLine);
                 EXPECT_TRUE(strstr(stackLine, "SystemAllocatorTest::run")); // We should have proper callstack
 #       endif // AZ_PLATFORM_WINDOWS
-#   endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3)
+#   endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) // ACCEPTED_USE
             }
             sysAlloc.GetRecords()->unlock();
 #endif //#ifdef AZCORE_ENABLE_MEMORY_TRACKING
@@ -359,9 +334,6 @@ namespace UnitTest
         {
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
-#if defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)
-            DebugAlignFree(m_sysAllocDesc.m_heap.m_memoryBlocks[0]);
-#endif
             MemoryTrackingFixture::TearDown();
         }
 
@@ -548,25 +520,9 @@ namespace UnitTest
             for (unsigned int i = 0; i < m_maxNumThreads; ++i)
             {
                 m_desc[i].m_stackSize = m_threadStackSize;
-#if defined(AZ_PLATFORM_WII)
-                char* stackMem = (char*)DebugAlignAlloc(m_desc[i].m_stackSize, 16);
-#   ifdef AZ_PLATFORM_WII
-                stackMem += m_threadStackSize;  // we need to point at the end of memory!
-#   endif
-                m_desc[i].m_stack = stackMem;
-#endif
             }
 
             m_sysAllocDesc.m_allocationRecords = true;
-#if defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)// We require pre-allocated memory blocks...
-            m_sysAllocDesc.m_heap.m_numMemoryBlocks = 1;
-#   if defined(AZ_PLATFORM_WII)
-            m_sysAllocDesc.m_heap.m_memoryBlocksByteSize[0] = 20 * 1024 * 1024;
-#   else
-            m_sysAllocDesc.m_heap.m_memoryBlocksByteSize[0] = 100 * 1024 * 1024;
-#   endif
-            m_sysAllocDesc.m_heap.m_memoryBlocks[0] = DebugAlignAlloc(m_sysAllocDesc.m_heap.m_memoryBlocksByteSize[0], m_sysAllocDesc.m_heap.m_memoryBlockAlignment);
-#endif
             AllocatorInstance<SystemAllocator>::Create(m_sysAllocDesc);
             ThreadPoolAllocator::Descriptor poolDesc;
             poolDesc.m_allocationRecords = true;
@@ -580,20 +536,7 @@ namespace UnitTest
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
 
-#if defined(AZ_PLATFORM_WII)
-            for (unsigned int i = 0; i < m_maxNumThreads; ++i)
-            {
-                char* stackMem = (char*)m_desc[i].m_stack;
-#ifdef AZ_PLATFORM_WII
-                stackMem -= m_threadStackSize;  // we need to point at the end of memory!
-#endif
-                DebugAlignFree(stackMem);
-            }
-#endif
 
-#if defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)
-            DebugAlignFree(m_sysAllocDesc.m_heap.m_memoryBlocks[0]);
-#endif
             MemoryTrackingFixture::TearDown();
         }
 
@@ -612,8 +555,9 @@ namespace UnitTest
             // Allocate
             for (int i = 0; i < numAllocations; ++i)
             {
-                AZStd::size_t size = AZStd::GetMax(rand() % 256, 1);
+                AZStd::size_t size = AZStd::GetMax(1, ((i + 1) * 2) % 256);
                 addresses[i] = poolAlloc.Allocate(size, 8, 0, "Test Alloc", __FILE__, __LINE__);
+                EXPECT_NE(addresses[i], nullptr);
                 memset(addresses[i], 1, size);
             }
             //////////////////////////////////////////////////////////////////////////
@@ -674,10 +618,6 @@ namespace UnitTest
                 }
 #endif
 
-#if defined(AZ_PLATFORM_WII)
-                // make sure we give control in cooperative (non-preemptive) mode. So we can release the allocated threads has finised.
-                AZStd::this_thread::yield();
-#endif
                 if (m_doneSharedAlloc) // once we know we don't add more elements, make one last check and exit.
                 {
                     ++isDone;
@@ -814,8 +754,6 @@ namespace UnitTest
             //AZStd::chrono::microseconds exTime = AZStd::chrono::system_clock::now() - startTime;
             //AZ_Printf("UnitTest","Time: %d Ms\n",exTime.count());
 
-            EXPECT_EQ(0, poolAlloc.NumAllocatedBytes());
-
             //////////////////////////////////////////////////////////////////////////
             // Spawn some threads that allocate and some that deallocate together
             {
@@ -886,7 +824,7 @@ namespace UnitTest
             : ThreadPoolAllocatorTest(false, 10000) {}
     };
 
-    TEST_F(ThreadPoolAllocatorStaticPagesTest, DISABLED_Test)
+    TEST_F(ThreadPoolAllocatorStaticPagesTest, Test)
     {
         run();
     }
@@ -962,9 +900,6 @@ namespace UnitTest
         {
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
-#if defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)
-            DebugAlignFree(m_sysAllocDesc.m_heap.m_memoryBlocks[0]);
-#endif
             MemoryTrackingFixture::TearDown();
         }
 
@@ -1091,9 +1026,6 @@ namespace UnitTest
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
 
-#if defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)
-            DebugAlignFree(m_sysAllocDesc.m_heap.m_memoryBlocks[0]);
-#endif
             MemoryTrackingFixture::TearDown();
         }
 
@@ -1193,7 +1125,7 @@ namespace UnitTest
         run();
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
     class PERF_MemoryBenchmark
         : public ::testing::Test
     {

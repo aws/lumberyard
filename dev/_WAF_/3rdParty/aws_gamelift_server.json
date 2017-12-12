@@ -109,7 +109,8 @@
         "linux_x64": {
             "aws_gamelift_server_static/defines": [
                 "AWS_CUSTOM_MEMORY_MANAGEMENT",
-                "BUILD_GAMELIFT_SERVER"
+                "BUILD_GAMELIFT_SERVER",
+                "GAMELIFT_USE_STD"
             ],
             "aws_gamelift_server_static/libpath_debug": [
                 "lib/linux/intel64/Debug_Static"
@@ -118,7 +119,7 @@
                 "lib/linux/intel64/Release_Static"
             ],
             "aws_gamelift_server_static/lib": [
-              "libaws-cpp-sdk-gamelift-server.a",
+                "libaws-cpp-sdk-gamelift-server.a",
                 "libsioclient.a",
                 "libboost_date_time.a",
                 "libboost_random.a",

@@ -35,11 +35,12 @@ def build(bld):
                                    'SceneData',
                                    'AzToolsFramework',
                                    'GFxFramework',
-                                   'EmotionFXSharedLib'],
+                                   'EMotionFXStaticLib'],
         uselib                  = ['FBXSDK'],
         defines                 = ['FBX_SCENE_BUILDER_EXPORTS',
                                    '_HAS_EXCEPTIONS=0'],
         output_sub_folder_copy  = ['rc'],
+		features				= ['link_running_program'],
 
         #platform specific
         darwin_file_list        = darwinExportedSymbolFileList,

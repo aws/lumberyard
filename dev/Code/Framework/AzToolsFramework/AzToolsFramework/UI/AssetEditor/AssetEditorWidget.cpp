@@ -28,6 +28,7 @@
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 #include <QtWidgets/QVBoxLayout>
@@ -182,7 +183,7 @@ namespace AzToolsFramework
                             AZStd::string targetFilePath = saveAs.toUtf8().constData();
                             if (AZ::IO::SystemFile::Exists(targetFilePath.c_str()))
                             {
-                                QMessageBox::warning(nullptr, tr("File Already Exists"),
+                                QMessageBox::warning(GetActiveWindow(), tr("File Already Exists"),
                                     tr("Asset cannot be created because file already exists."), QMessageBox::Ok, QMessageBox::Ok);
                                 return;
                             }
@@ -523,7 +524,7 @@ namespace AzToolsFramework
 
     void AssetEditorDialog::OnAssetSaveFailed(const AZStd::string& error)
     {
-        QMessageBox::warning(nullptr, tr("Unable to Save Asset"),
+        QMessageBox::warning(GetActiveWindow(), tr("Unable to Save Asset"),
             tr(error.c_str()), QMessageBox::Ok, QMessageBox::Ok);
 
         m_closeOnSuccess = false;
@@ -544,7 +545,7 @@ namespace AzToolsFramework
 
     void AssetEditorDialog::OnAssetRevertFailed(const AZStd::string& error)
     {
-        QMessageBox::warning(nullptr, tr("Unable to Revert Asset"),
+        QMessageBox::warning(GetActiveWindow(), tr("Unable to Revert Asset"),
             tr(error.c_str()), QMessageBox::Ok, QMessageBox::Ok);
 
         m_closeOnSuccess = false;

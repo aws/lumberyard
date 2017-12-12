@@ -16,6 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 
 namespace AZStd
 {
@@ -60,6 +61,7 @@ namespace AZ
             class ManifestVectorWidget
                 : public QWidget
                 , public AzToolsFramework::IPropertyEditorNotify
+                , public Events::ManifestMetaInfoBus::Handler
             {
                 Q_OBJECT
             public:
@@ -68,6 +70,7 @@ namespace AZ
                 using ManifestVectorType = AZStd::vector<AZStd::shared_ptr<DataTypes::IManifestObject> >;
 
                 ManifestVectorWidget(SerializeContext* serializeContext, QWidget* parent);
+                ~ManifestVectorWidget() override;
 
                 void SetManifestVector(const ManifestVectorType& manifestVector, DataTypes::IManifestObject* ownerObject);
                 ManifestVectorType GetManifestVector();
@@ -89,6 +92,7 @@ namespace AZ
                 void AddNewObject(SerializeContext::IObjectFactory* factory, const AZStd::string& typeName);
                 void UpdatePropertyGrid();
                 void UpdatePropertyGridSize();
+                void EmitObjectChanged(const DataTypes::IManifestObject* object);
 
                 // IPropertyEditorNotify
                 void AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/) override;
@@ -97,6 +101,9 @@ namespace AZ
                 void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*node*/) override;
                 void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/) override;
                 void SealUndoStack() override;
+
+                // ManifestMetaInfoBus
+                void ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender) override;
 
                 SerializeContext* m_serializeContext;
                 AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
@@ -108,6 +115,6 @@ namespace AZ
             private slots:
                 void OnPropertyGridContraction();
             };
-        } // UI
-    } // SceneAPI
-} // AZ
+        } // namespace UI
+    } // namespace SceneAPI
+} // namespace AZ

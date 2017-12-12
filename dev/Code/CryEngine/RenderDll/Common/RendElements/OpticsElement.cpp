@@ -22,12 +22,12 @@
 #if defined(FLARES_SUPPORT_EDITING)
 DynArray<FuncVariableGroup> COpticsElement::GetEditorParamGroups()
 {
-    if (paramGroups.empty())
+    if (m_paramGroups.empty())
     {
-        InitEditorParamGroups(paramGroups);
+        InitEditorParamGroups(m_paramGroups);
     }
 
-    return paramGroups;
+    return m_paramGroups;
 }
 
 #define MFPtr(FUNC_NAME) (Optics_MFPtr)(&COpticsElement::FUNC_NAME)

@@ -6,8 +6,8 @@
     "DisplayName": "Cloud Gem Dynamic Content",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Manages dynamic content updates through AWS",
-    "Tags": ["AWS", "Cloud Canvas"],
+    "Summary": "Balance your game or release new content post-launch. Package and upload your content to the cloud. Conveniently schedule the release of that content to make it dynamically available to your game clients.",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda", "S3"],
     "IconPath": "preview.png",
     "Dependencies": [
         {

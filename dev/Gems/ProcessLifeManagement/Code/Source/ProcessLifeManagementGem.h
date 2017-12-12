@@ -11,10 +11,10 @@
 */
 #pragma once
 
-#include <AzFramework/API/ApplicationAPI.h>
-
 #include <IGem.h>
-#include <IInput.h>
+
+#include <AzFramework/API/ApplicationAPI.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace ProcessLifeManagement
@@ -23,7 +23,7 @@ namespace ProcessLifeManagement
     class ProcessLifeManagementGem
         : public CryHooksModule
         , public AzFramework::ApplicationLifecycleEvents::Bus::Handler
-        , public IInputEventListener
+        , public AzFramework::InputChannelEventNotificationBus::Handler
     {
         AZ_RTTI(ProcessLifeManagementGem, "{D2BE47BB-53A7-4121-977D-95C94DF65155}", CryHooksModule)
 
@@ -34,7 +34,8 @@ namespace ProcessLifeManagement
         void OnApplicationConstrained(AzFramework::ApplicationLifecycleEvents::Event /*lastEvent*/) override;
         void OnApplicationUnconstrained(AzFramework::ApplicationLifecycleEvents::Event /*lastEvent*/) override;
 
-        bool OnInputEvent(const SInputEvent& inputEvent) override;
+        void OnInputChannelEvent(const AzFramework::InputChannel& inputChannel, bool& o_hasBeenConsumed) override;
+        AZ::s32 GetPriority() const override { return AzFramework::InputChannelEventListener::GetPriorityFirst(); }
 
     private:
         AZ::EntityId m_pausedCanvasId;

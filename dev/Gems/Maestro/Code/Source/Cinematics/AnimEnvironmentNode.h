@@ -24,10 +24,12 @@ class CAnimEnvironmentNode
     : public CAnimNode
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimEnvironmentNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimEnvironmentNode, "{8CB3E585-1A24-43E0-8124-9AE51EAE7F4C}", CAnimNode);
+
+    CAnimEnvironmentNode();
     CAnimEnvironmentNode(const int id);
     static void Initialize();
-
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Environment; }
 
     // Overrides from CAnimNode
     virtual void Animate(SAnimContext& ac);
@@ -37,6 +39,8 @@ public:
     //! Overrides from IAnimNode
     virtual unsigned int GetParamCount() const;
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;

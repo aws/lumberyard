@@ -13,20 +13,23 @@ import account_utils
 import boto3
 from boto3.dynamodb.conditions import Key
 import CloudCanvas
+import dynamodb_pagination
 import errors
 import service
 import traceback
 
-@service.api
-def get(request, StartPlayerName, CognitoIdentityId, CognitoUsername, Email):
+@service.api(logging_filter=account_utils.apply_logging_filter)
+def get(request, StartPlayerName=None, CognitoIdentityId=None, CognitoUsername=None, Email=None, PageToken=None):
     if CognitoIdentityId:
         return search_by_cognito_identity_id(CognitoIdentityId)
     if CognitoUsername:
         return search_by_username(CognitoUsername)
     if Email:
         return search_by_email(Email)
+    if PageToken:
+        return search_by_start_name(serialized_page_token=PageToken)
     if StartPlayerName:
-        return search_by_start_name(StartPlayerName)
+        return search_by_start_name(start_player_name=StartPlayerName)
 
     return default_search()
 
@@ -46,49 +49,41 @@ def search_by_cognito_identity_id(CognitoIdentityId):
 
     return {'Accounts': accounts}
 
-def search_by_start_name(StartPlayerName):
-    sortKeyCount = account_utils.get_name_sort_key_count()
-    limit = 20
+def search_by_start_name(start_player_name = None, serialized_page_token = None):
+    page_size = 20
 
-    accounts = []
+    config = dynamodb_pagination.PartitionedIndexConfig(
+        table=account_utils.get_account_table(),
+        index_name='PlayerNameIndex',
+        partition_key_name='PlayerNameSortKey',
+        sort_key_name='IndexedPlayerName',
+        partition_count=account_utils.get_name_sort_key_count(),
+        required_fields={ 'AccountId': ' ' }
+    )
 
-    # Accounts are randomly split across multiple partition keys in accounts.py to distribute load on the index.
-    # This will collect results from all of the keys and combine them.
-    for partition in range(1, sortKeyCount + 1):
-        # The query limit is set to the same limit as the number of returned accounts in case the results all come from
-        # the same partition key.  An eventually consistent query consumes half a unit per 4KB regardless of how
-        # many items contributed to the 4KB, so it's not too inefficient to read a lot of small items and throw most of them away.
-        # This implementation expects searches to be relatively infrequent.
-        queryArgs = {
-            'ConsistentRead': False,
-            'IndexName': 'PlayerNameIndex',
-            'KeyConditionExpression': Key('PlayerNameSortKey').eq(partition),
-            'Limit': limit,
-            'ScanIndexForward': True
-            }
+    if serialized_page_token:
+        page_token = dynamodb_pagination.PageToken(config, serialized_page_token)
+    else:
+        page_token = dynamodb_pagination.get_page_token_for_inclusive_start(config, start_player_name, forward=True)
 
-        if StartPlayerName:
-            # Convert the inclusive start key from the request into an exclusive start key since Dynamo only supports exclusive.
-            # Dynamo sorts keys by utf-8 bytes.  This attempts to decrement the last byte so that it's one before
-            # the start name.  Not guaranteed to work in all cases.
-            exclusiveStartKeyBytes = bytearray(StartPlayerName.lower(), 'utf-8')
-            if exclusiveStartKeyBytes[-1] > 0:
-                exclusiveStartKeyBytes[-1] = exclusiveStartKeyBytes[-1] - 1
-            exclusiveStartKey = exclusiveStartKeyBytes.decode('utf-8', 'ignore')
+    search = dynamodb_pagination.PaginatedSearch(config, page_token)
 
-            queryArgs['ExclusiveStartKey'] = {'PlayerNameSortKey': partition, 'IndexedPlayerName': exclusiveStartKey, 'AccountId': ' '}
-        response = account_utils.get_account_table().query(**queryArgs)
-
-        for item in response.get('Items', []):
-            accounts.append(account_utils.convert_account_from_dynamo_to_admin_model(item))
-
-    accounts.sort(cmp=account_utils.compare_accounts)
-    if len(accounts) > limit:
-        del accounts[limit:]
-
+    raw_account_items = search.get_next_page(page_size)
+    
+    accounts = [account_utils.convert_account_from_dynamo_to_admin_model(item) for item in raw_account_items]
     populate_identity_providers(accounts)
 
-    return {'Accounts': accounts}
+    result = {'Accounts': accounts}
+
+    forward_token = search.get_page_token(forward=True)
+    if forward_token:
+        result['next'] = forward_token
+
+    backward_token = search.get_page_token(forward=False)
+    if backward_token:
+        result['previous'] = backward_token
+
+    return result
 
 def search_by_username(Username):
     response = account_utils.get_user_pool_client().list_users(

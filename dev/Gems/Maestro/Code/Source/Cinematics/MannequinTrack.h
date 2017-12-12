@@ -26,6 +26,9 @@ class CMannequinTrack
     : public TAnimTrack<IMannequinKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CMannequinTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CMannequinTrack, "{D755F6D9-7C65-449F-8E5F-999AD200E191}", IAnimTrack);
+
     CMannequinTrack() {}
 
     //////////////////////////////////////////////////////////////////////////
@@ -40,10 +43,7 @@ public:
     //! a special consideration is required to compute the actual duration.
     float GetKeyDuration(int key) const;
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_MANNEQUINTRACK_H

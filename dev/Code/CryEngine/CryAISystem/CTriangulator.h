@@ -25,10 +25,10 @@ struct Vtx
     bool bCollidable;
     bool bHideable;
 
-    Vtx(real x = 0.0f, real y = 0.0f, real z = 0.0f)
-        : x(x)
-        , y(y)
-        , z(z) {bCollidable = true; bHideable = false; }
+    Vtx(real _x = 0.0f, real _y = 0.0f, real _z = 0.0f)
+        : x(_x)
+        , y(_y)
+        , z(_z) {bCollidable = true; bHideable = false; }
     Vtx(const Vec3r& v)
         : x(v.x)
         , y(v.y)

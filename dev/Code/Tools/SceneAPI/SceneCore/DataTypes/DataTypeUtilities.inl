@@ -38,6 +38,12 @@ namespace AZ
                     return CreateUniqueName(baseName, manifest, T::TYPEINFO_Uuid());
                 }
 
+                template<typename T>
+                AZStd::string CreateUniqueName(const AZStd::string& baseName, const AZStd::string& subName, const Containers::SceneManifest& manifest)
+                {
+                    return CreateUniqueName(baseName, subName, manifest, T::TYPEINFO_Uuid());
+                }
+
             } // Utilities
         } // DataTypes
     } // SceneAPI

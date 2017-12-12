@@ -1629,7 +1629,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
     def test_with_string(self):
 
-        resource_group_name = 'test-resoruce-group'
+        resource_group_name = 'test-resource-group'
         abstract_role_name = 'test-abstract-role'
         abstract_role = resource_group_name + '.' + abstract_role_name
         abstract_role_list = abstract_role
@@ -1646,8 +1646,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
     def test_with_list(self):
 
-        resource_group_name_1 = 'test-resoruce-group-1'
-        resource_group_name_2 = 'test-resoruce-group-2'
+        resource_group_name_1 = 'test-resource-group-1'
+        resource_group_name_2 = 'test-resource-group-2'
         abstract_role_name_1 = 'test-abstract-role-1'
         abstract_role_name_2 = 'test-abstract-role-2'
         abstract_role_1 = resource_group_name_1 + '.' + abstract_role_name_1

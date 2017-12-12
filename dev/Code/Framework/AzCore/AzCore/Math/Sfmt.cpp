@@ -153,8 +153,6 @@ namespace AZ
                 r2 = r;
             }
         }
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_X360)
-        // Redacted
 #else
         inline void rshift128(w128_t* out, w128_t const* in, int shift)
         {

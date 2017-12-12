@@ -17,7 +17,7 @@ def build(bld):
         target                  = 'AzCoreTestDLL',
         vs_filter               = 'AZ Framework/TestSuites',
         file_list               = 'azcoretestdll.waf_files',
-        platforms               = ['win'],
+        platforms               = ['win', 'darwin'],
         configurations          = ['test_all'],
         use                     = ['AzTest', 'AzCore'],
         win_cxxflags            = ['/W4']
@@ -28,7 +28,7 @@ def build(bld):
         target                  = 'AzCoreTests',
         vs_filter               = 'AZ Framework/TestSuites',
         file_list               = 'azcoretests.waf_files',
-        platforms               = ['win'],
+        platforms               = ['win', 'darwin'],
         configurations          = ['test_all'],
         use                     = ['AzTest', 'AzCore'],
         win_cxxflags            = ['/W4']

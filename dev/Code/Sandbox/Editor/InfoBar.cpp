@@ -564,15 +564,8 @@ void CInfoBar::IdleUpdate()
                     objRot = obj->GetRotation();
                 }
 
-                Quat displayRot = AZQuaternionToLYQuaternion(AzFramework::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(m_currValue)));
-                if (!Quat::IsEquivalent(objRot, displayRot))
-                {
-                    v = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(objRot)));
-                }
-                else
-                {
-                    v = m_currValue;
-                }
+                // Always convert objRot to v in order to ensure that the inspector and info bar are always in sync
+                v = AZVec3ToLYVec3(AzFramework::ConvertQuaternionToEulerDegrees(LYQuaternionToAZQuaternion(objRot)));
             }
             enable = true;
             min = -10000;

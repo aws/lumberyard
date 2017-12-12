@@ -1,0 +1,55 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Airship_Hull_Struts" MtlFlags="524416" Shader="Illum" GenMask="800010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1" Specular="0.06124606,0.06124606,0.06124606" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_strut_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_strut_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Hull_Tile_02" MtlFlags="524416" Shader="Illum" GenMask="80001A000041" StringGenMask="%ALLOW_SILHOUETTE_POM%DETAIL_MAPPING%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1" Specular="0.021219011,0.021219011,0.021219011" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_tiles_02_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_tiles_02_ddna.dds"/>
+    <Texture Map="Detail" File="objects/natural/rocks/rock03_detail.dds"/>
+    <Texture Map="Heightmap" File="objects/manmade/airship/airship_tiles_01_displ.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" PomDisplacement="0.0060000001" DetailDiffuseScale="0.75" SSSIndex="0" DetailBumpScale="0" SelfShadowStrength="3" ObmDisplacement="0.0040000002" HeightBias="1" DetailGlossScale="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Hull_Tile_01" MtlFlags="524416" Shader="Illum" GenMask="80001A000041" StringGenMask="%ALLOW_SILHOUETTE_POM%DETAIL_MAPPING%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1" Specular="0.021219011,0.021219011,0.021219011" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_tiles_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_tiles_02_ddna.dds"/>
+    <Texture Map="Detail" File="objects/natural/rocks/rock03_detail.dds"/>
+    <Texture Map="Heightmap" File="objects/manmade/airship/airship_tiles_01_displ.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" PomDisplacement="0.0060000001" DetailDiffuseScale="0.75" SSSIndex="0" DetailBumpScale="0" SelfShadowStrength="3" ObmDisplacement="0.0040000002" HeightBias="1" DetailGlossScale="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Proxy_COL" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_rock" Diffuse="0.5,0.5,0.5" Specular="0.5,0.5,0.5" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+  <Material Name="Airship_Glass" MtlFlags="524416" Shader="Illum" GenMask="800010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0,0,0" Specular="0.18782079,0.18782079,0.18782079" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_glass_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_glass_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Details_01" MtlFlags="524416" Shader="Illum" GenMask="800010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.5,0.5,0.5" Specular="0.080219828,0.080219828,0.080219828" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_details_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_details_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Hull_Tile_01_Damaged" MtlFlags="524416" Shader="Illum" GenMask="800018000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%PARALLAX_OCCLUSION_MAPPING%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1" Specular="0.04518621,0.04518621,0.04518621" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_tiles_01_damaged_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_tiles_02_damaged_ddna.dds"/>
+    <Texture Map="Heightmap" File="objects/manmade/airship/airship_tiles_01_displ.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" PomDisplacement="0.0060000001" SSSIndex="0" SelfShadowStrength="3" HeightBias="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

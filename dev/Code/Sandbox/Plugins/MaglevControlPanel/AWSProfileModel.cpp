@@ -16,8 +16,7 @@
 #include <QFileInfo>
 #include <IEditor.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvasEditor.h>
 
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
@@ -47,13 +46,8 @@ AWSProfileModel::AWSProfileModel(AWSResourceManager* resourceManager)
 
 void AWSProfileModel::SetDefaultProfile(const QString& profileName)
 {
-    LmbrAWS::IClientManager* clientManager = gEnv->pLmbrAWS->GetClientManager();
-
-    if (clientManager)
-    {
-        clientManager->GetEditorClientSettings().credentialProvider = Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD);
-        clientManager->ApplyEditorConfiguration();
-    }
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, SetCredentials, Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD));
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, ApplyConfiguration);
 
     QVariantMap args;
     args["set"] = profileName;

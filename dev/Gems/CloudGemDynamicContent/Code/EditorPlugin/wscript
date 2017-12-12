@@ -36,7 +36,6 @@ def build(bld):
         use             = ['AWS',
                            'MaglevControlPanel',
                            'AzQtComponents',
-                           'CloudGemFrameworkStaticLibrary',
                            'EditorUI_QT',
                            'EditorCommon',
                            'EditorCore'],

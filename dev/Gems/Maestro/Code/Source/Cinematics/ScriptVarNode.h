@@ -21,9 +21,11 @@ class CAnimScriptVarNode
     : public CAnimNode
 {
 public:
-    CAnimScriptVarNode(const int id);
+    AZ_CLASS_ALLOCATOR(CAnimScriptVarNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimScriptVarNode, "{D93FC866-A158-4C00-AB03-29DC7D3CCCFF}", CAnimNode);
 
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_ScriptVar; }
+    CAnimScriptVarNode(const int id);
+    CAnimScriptVarNode();
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CAnimNode
@@ -38,11 +40,8 @@ public:
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 private:
     void SetScriptValue();
     float m_value;

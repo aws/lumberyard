@@ -38,6 +38,10 @@ namespace AZ
             void ManifestMetaInfo::InitializeObject(const Containers::Scene& /*scene*/, DataTypes::IManifestObject& /*target*/)
             {
             }
-        } // Events
-    } // SceneAPI
-} // AZ
+
+            void ManifestMetaInfo::ObjectUpdated(const Containers::Scene& /*scene*/, const DataTypes::IManifestObject* /*target*/, void* /*sender*/)
+            {
+            }
+        } // namespace Events
+    } // namespace SceneAPI
+} // namespace AZ

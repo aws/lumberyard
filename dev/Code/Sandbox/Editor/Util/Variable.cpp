@@ -183,7 +183,7 @@ namespace
             for (std::vector<IVariablePtr>::const_iterator it = vars.begin(); it != vars.end(); ++it)
             {
                 IVariable* var = *it;
-                IVariable* found = var->FindVariable(name, bRecursive);
+                IVariable* found = var->FindVariable(name, bRecursive, bHumanName);
                 if (found)
                 {
                     return found;

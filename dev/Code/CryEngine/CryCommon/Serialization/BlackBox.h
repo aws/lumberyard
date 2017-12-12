@@ -53,21 +53,21 @@ namespace Serialization
             *this = rhs;
         }
 
-        void set(const char* format, const void* data, size_t size)
+        void set(const char* _format, const void* _data, size_t _size)
         {
-            if (data && freeFunction)
+            if (_data && freeFunction)
             {
                 freeFunction(this->data);
                 this->data = 0;
                 this->size = 0;
                 freeFunction = 0;
             }
-            this->format = format;
-            if (data && size)
+            this->format = _format;
+            if (_data && _size)
             {
-                this->data = malloc(size);
-                memcpy(this->data, data, size);
-                this->size = size;
+                this->data = malloc(_size);
+                memcpy(this->data, _data, _size);
+                this->size = _size;
                 freeFunction = &free;
             }
         }

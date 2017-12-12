@@ -4,6 +4,10 @@ import { AwsDeployment } from './deployment.class'
 import { AwsService, ProjectSettings, DeploymentSettings, Deployment } from './aws.service'
 import { AwsContext } from './context.class'
 import { Authentication, AuthStateActionContext, EnumAuthState } from './authentication/authentication.class'
+import { Http } from '@angular/http';
+import { LyMetricService } from 'app/shared/service/index'
+import 'rxjs/add/operator/map'
+import 'rxjs/add/operator/catch'
 
 export class AwsProject {
 
@@ -12,27 +16,8 @@ export class AwsProject {
 
     private _settings: BehaviorSubject<ProjectSettings>;
     private _isInitialized: boolean;
-    private _deployments: Deployment[]    
+    private _deployments: Deployment[]
     private _activeDeployment: BehaviorSubject<Deployment>;
-    private _projectName: string = '';
-
-    get name() {
-        return this._projectName;
-    }
-
-    set name(value: string) {
-        if (value === undefined || value === null)
-            return;
-
-        let configBucketParts = value.split('-');
-
-        let name = []        
-        for (var i = 0; i < configBucketParts.length - 2; i++) {            
-            name.push(configBucketParts[i])
-        }
-
-        this._projectName = name.join('');
-    }  
 
     get isInitialized() {
         return this._isInitialized;
@@ -40,7 +25,7 @@ export class AwsProject {
 
     set isInitialized(value: boolean) {
         this._isInitialized = value;
-    }  
+    }
 
     get deployments(): Deployment[] {
         return this._deployments;
@@ -51,16 +36,16 @@ export class AwsProject {
     }
 
     public setDeployment(value: Deployment) {
-        this._activeDeployment.next(value);             
+        this._activeDeployment.next(value);
     }
 
     get settings(): Observable<ProjectSettings> {
         return this._settings.asObservable();
     }
 
-    constructor(private context: AwsContext) { 
+    constructor(private context: AwsContext, private http: Http) {        
         this._settings = new BehaviorSubject<ProjectSettings>(null);
-        this._activeDeployment = new BehaviorSubject<Deployment>(null); 
+        this._activeDeployment = new BehaviorSubject<Deployment>(null);
         this._deployments = [];
 
         this.activeDeployment.subscribe(deployment => {
@@ -77,7 +62,7 @@ export class AwsProject {
                 this.isInitialized = true;
 
             //clear the array but don't generate a new reference
-            this._deployments.length = 0;       
+            this._deployments.length = 0;
 
             let default_deployment: string = d.DefaultDeployment;
             for (let entry in d.deployment) {
@@ -93,36 +78,27 @@ export class AwsProject {
                 this._deployments.push(awsdeployment);
             }
             this._activeDeployment.next(awsdeployment);
-        });     
+        });
 
-        this.context.authentication.change.subscribe(context => {
-            if (context.state === EnumAuthState.USER_CREDENTIAL_UPDATED) {
-                console.log("initializing AWS project")
-                let proj = this;
-                this.context.s3.getObject({
-                    Bucket: this.context.configBucket,
-                    Key: AwsProject.PROJECT_SETTING_FILE
-                }).promise().then(
-                    function (data: any) {
-                        var body = data.Body.toString('utf-8');
+        let proj = this;
+        var signedRequest = this.context.s3.getSignedUrl('getObject', { Bucket: this.context.configBucket, Key: AwsProject.PROJECT_SETTING_FILE, Expires: 60 })
+        this.http.request(signedRequest).map(response => {
+            return response;
+        }).catch((error: any) => {
+                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
+            }).subscribe(response => {                        
+                var body = response._body.toString('utf-8');
 
-                        let settings = JSON.parse(body);
+                let settings = JSON.parse(body);
 
-                        var deployments = settings.deployment;
-                        //Filter out our 'wildcard' settings and emit our deployment list
-                        delete deployments["*"];
+                var deployments = settings.deployment;
+                //Filter out our 'wildcard' settings and emit our deployment list
+                delete deployments["*"];
 
-                        proj._settings.next(settings);
-                    }
-                  
-                    );
-            }
-        })
+                proj._settings.next(settings);
+            }, (err) => {
+                console.error(err)
+            })
     }
-
-    public init(projectName: string): void {                            
-        this.name = this.context.configBucket;
-    }
-  
 
 }

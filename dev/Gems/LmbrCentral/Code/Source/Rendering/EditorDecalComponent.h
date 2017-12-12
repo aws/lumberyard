@@ -51,7 +51,7 @@ namespace LmbrCentral
     class EditorDecalComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private DecalComponentEditorRequests::Bus::Handler
-        , private MaterialRequestBus::Handler
+        , private MaterialOwnerRequestBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
@@ -89,7 +89,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MaterialRequestBus interface implementation
+        // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
         //////////////////////////////////////////////////////////////////////////

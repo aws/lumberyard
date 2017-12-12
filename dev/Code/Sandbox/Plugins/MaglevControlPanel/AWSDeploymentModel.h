@@ -37,9 +37,10 @@ public:
 
     QString GetActiveDeploymentName() const override;
     bool IsActiveDeploymentSet() const override;
+    QString GetActiveDeploymentRegion() const override;
 
 private:
 
     AWSResourceManager::ExecuteAsyncCallback CreateCallback(const char* operation);
-
+    QString m_region;
 };

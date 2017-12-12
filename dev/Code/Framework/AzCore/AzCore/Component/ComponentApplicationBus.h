@@ -20,6 +20,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/parallel/mutex.h> // For recursive_mutex due to GetSerializeContext().
+#include <AzCore/std/string/osstring.h>
 
 namespace AZ
 {
@@ -154,7 +155,7 @@ namespace AZ
          * @return The name of the entity with the specified entity ID. 
          * If no entity is found for the specified ID, it returns an empty string. 
          */
-        virtual AZStd::string   GetEntityName(const EntityId& id) { (void)id; return AZStd::string(); };
+        virtual AZStd::string           GetEntityName(const EntityId& id) { (void)id; return AZStd::string(); };
 
         /**
          * The type that AZ::ComponentApplicationRequests::EnumerateEntities uses to
@@ -196,12 +197,14 @@ namespace AZ
          */
         virtual Debug::DrillerManager*  GetDrillerManager() = 0;
 
-        /// Requests reload of a dynamic application module.
-        virtual void ReloadModule(const char* moduleFullPath) = 0;
-
-        using EnumerateModulesCallback = AZStd::function<bool(Module* /*module*/, DynamicModuleHandle* /*handle*/)>;
-        /// Calls cb on all loaded modules
-        virtual void EnumerateModules(EnumerateModulesCallback cb) { (void)cb; };
+        /**
+         * ResolveModulePath is called whenever LoadDynamicModule wants to resolve a module in order to actually load it.
+         * You can override this if you need to load modules from a different path or hijack module loading in some other way.
+         * If you do, ensure that you use platform-specific conventions to do so, as this is called by multiple platforms.
+         * The default implantation prepends the path to the executable to the module path, but you can override this behavior
+         * (Call the base class if you want this behavior to persist in overrides)
+         */
+        virtual void ResolveModulePath(AZ::OSString& /*modulePath*/) { }
     };
 
     /**

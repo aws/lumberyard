@@ -5,7 +5,7 @@ import { ActionItem } from '../class/index';
     selector: 'action-stub-items',
     template: `<div class="actions">
         <div class="action-stub-btn">
-            <i *ngIf="delete && !hideDelete" class="fa fa-trash" (click)="delete(model)" data-toggle="tooltip" data-placement="top" title="Delete"> </i>
+            <i *ngIf="delete && !hideDelete" class="fa fa-trash-o" (click)="delete(model)" data-toggle="tooltip" data-placement="top" title="Delete"> </i>
             <i *ngIf="edit && !hideEdit" class="fa fa-cog" (click)="edit(model)" data-toggle="tooltip" data-placement="top" title="Edit"> </i>
             <i *ngIf="add && !hideAdd" class="fa fa-plus" (click)="add(model)" data-toggle="tooltip" data-placement="top" title="Add"> </i>
         </div>

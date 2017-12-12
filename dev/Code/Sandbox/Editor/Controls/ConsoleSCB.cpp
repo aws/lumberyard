@@ -17,6 +17,7 @@
 #include "Core/QtEditorApplication.h"
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h"
 #include "Controls/ReflectedPropertyControl/ReflectedVar.h"
+#include <SFunctor.h>
 
 #include <AzQtComponents/Components/StyledLineEdit.h>
 #include <AzQtComponents/Components/StyledSpinBox.h>
@@ -192,7 +193,7 @@ void ConsoleLineEdit::keyPressEvent(QKeyEvent* ev)
             }
             else
             {
-                m_historyIndex = m_history.size();
+                ResetHistoryIndex();
             }
 
             // Do not add the same string if it is the top of the stack, but allow duplicate entries otherwise
@@ -201,13 +202,13 @@ void ConsoleLineEdit::keyPressEvent(QKeyEvent* ev)
                 m_history.push_back(str);
                 if (!m_bReusedHistory)
                 {
-                    m_historyIndex = m_history.size();
+                    ResetHistoryIndex();
                 }
             }
         }
         else
         {
-            m_historyIndex = m_history.size();
+            ResetHistoryIndex();
         }
 
         setText(QString());
@@ -218,11 +219,11 @@ void ConsoleLineEdit::keyPressEvent(QKeyEvent* ev)
         // disable log.
         GetIEditor()->ShowConsole(false);
         setText(QString());
-        m_historyIndex = m_history.size();
+        ResetHistoryIndex();
         break;
     case Qt::Key_Escape:
         setText(QString());
-        m_historyIndex = m_history.size();
+        ResetHistoryIndex();
         break;
     case Qt::Key_Up:
         DisplayHistory(false /*bForward*/);
@@ -242,14 +243,21 @@ void ConsoleLineEdit::DisplayHistory(bool bForward)
         return;
     }
 
-    // Immediately after reusing a history entry, ensure up arrow re-displays command just used
-    if (!m_bReusedHistory || bForward)
-    {
-        m_historyIndex = static_cast<unsigned int>(clamp_tpl(static_cast<int>(m_historyIndex) + (bForward ? 1 : -1), 0, m_history.size() - 1));
-    }
+    const int increment = bForward ? 1
+        : m_bReusedHistory ? 0 // Immediately after reusing a history entry, ensure up arrow re-displays command just used
+        : -1;
+    const int newHistoryIndex = static_cast<int>(m_historyIndex) + increment;
+
     m_bReusedHistory = false;
+    m_historyIndex = static_cast<unsigned int>(clamp_tpl(newHistoryIndex, 0, m_history.size() - 1));
 
     setText(m_history[m_historyIndex]);
+}
+
+void ConsoleLineEdit::ResetHistoryIndex()
+{
+    m_historyIndex = m_history.size();
+    m_bReusedHistory = false;
 }
 
 Lines CConsoleSCB::s_pendingLines;
@@ -259,12 +267,12 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
     , ui(new Ui::Console())
     , m_richEditTextLength(0)
     , m_backgroundTheme(gSettings.consoleBackgroundColorTheme)
-    , m_variableEditor(nullptr)
 {
     m_lines = s_pendingLines;
     s_pendingLines.clear();
     s_consoleSCB = this;
     ui->setupUi(this);
+    setMinimumHeight(120);
     
     // Setup the color table for the default (light) theme
     m_colorTable << QColor(0, 0, 0)
@@ -298,15 +306,16 @@ CConsoleSCB::~CConsoleSCB()
 
 void CConsoleSCB::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.preferedDockingArea = Qt::BottomDockWidgetArea;
     opts.isDeletable = false;
     opts.isStandard = true;
     opts.showInMenu = true;
     opts.builtInActionId = ID_VIEW_CONSOLEWINDOW;
+    opts.shortcut = QKeySequence(Qt::Key_QuoteLeft);
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
     
-    RegisterQtViewPane<CConsoleSCB>(GetIEditor(), LyViewPane::Console, LyViewPane::CategoryTools, opts);
+    AzToolsFramework::RegisterViewPane<CConsoleSCB>(LyViewPane::Console, LyViewPane::CategoryTools, opts);
 }
 
 void CConsoleSCB::OnStyleSettingsChanged()
@@ -414,6 +423,7 @@ void CConsoleSCB::FlushText()
     else
     {
         scrollBar->setValue(scrollBar->maximum());
+        ui->textEdit->moveCursor(QTextCursor::StartOfLine);
     }
 }
 
@@ -431,6 +441,27 @@ QSize CConsoleSCB::sizeHint() const
 void CConsoleSCB::AddToPendingLines(const QString& text, bool bNewLine)
 {
     s_pendingLines.push_back({ text, bNewLine });
+}
+
+/**
+ * When a CVar variable is updated, we need to tell alert our console variables
+ * pane so it can update the corresponding row
+ */
+static void OnVariableUpdated(int row, ICVar* pCVar)
+{
+    QtViewPane* pane = QtViewPaneManager::instance()->GetPane(LyViewPane::ConsoleVariables);
+    if (!pane)
+    {
+        return;
+    }
+
+    ConsoleVariableEditor* variableEditor = qobject_cast<ConsoleVariableEditor*>(pane->Widget());
+    if (!variableEditor)
+    {
+        return;
+    }
+
+    variableEditor->HandleVariableRowUpdated(row, pCVar);
 }
 
 static CVarBlock* VarBlockFromConsoleVars()
@@ -468,6 +499,12 @@ static CVarBlock* VarBlockFromConsoleVars()
         default:
             assert(0);
         }
+
+        // Add our on change handler so we can update the CVariable created for
+        // the matching ICVar that has been modified
+        SFunctor onChange;
+        onChange.Set(OnVariableUpdated, i, pCVar);
+        pCVar->AddOnChangeFunctor(onChange);
 
         pVariable->SetDescription(pCVar->GetHelp());
         pVariable->SetName(cmds[i]);
@@ -518,6 +555,73 @@ static void OnConsoleVariableUpdated(IVariable* pVar)
         pVar->Get(val);
         pCVar->Set(val.toLatin1().data());
     }
+}
+
+ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
+	: QTextEdit(parent)
+    , m_contextMenu(new QMenu(this))
+{
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(this, &QTextEdit::customContextMenuRequested, this, &ConsoleTextEdit::showContextMenu);
+
+    // Make sure to add the actions to this widget, so that the ShortCutDispatcher picks them up properly
+
+    QAction* copyAction = m_contextMenu->addAction(tr("&Copy"));
+    copyAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    copyAction->setShortcut(QKeySequence::Copy);
+    connect(copyAction, &QAction::triggered, this, &QTextEdit::copy);
+    addAction(copyAction);
+
+    QAction* selectAllAction = m_contextMenu->addAction(tr("Select &All"));
+    selectAllAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    connect(selectAllAction, &QAction::triggered, this, &QTextEdit::selectAll);
+    addAction(selectAllAction);
+
+    m_contextMenu->addSeparator();
+
+    QAction* clearAction = m_contextMenu->addAction(tr("Clear"));
+    clearAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    clearAction->setShortcut(QKeySequence::Delete);
+    connect(clearAction, &QAction::triggered, this, &QTextEdit::clear);
+    addAction(clearAction);
+
+    connect(this, &QTextEdit::copyAvailable, copyAction, &QAction::setEnabled);
+}
+
+bool ConsoleTextEdit::event(QEvent* theEvent)
+{
+    bool handled = false;
+    switch (theEvent->type())
+    {
+    case QEvent::ShortcutOverride:
+    {
+        // ignore several possible key combinations to prevent them bubbling up to the main editor
+        QKeyEvent* shortcutEvent = static_cast<QKeyEvent*>(theEvent);
+        
+        static QVector<QKeySequence::StandardKey> ignoredKeys = { QKeySequence::Backspace };
+
+        for (auto& currKey : ignoredKeys)
+        {
+            if (shortcutEvent->matches(currKey))
+            {
+                // these shortcuts are ignored. Accept them and do nothing.
+                theEvent->accept();
+                handled = true;
+            }
+        }
+
+        break;
+    }
+    default:
+        break;
+    }
+    return handled;
+}
+
+void ConsoleTextEdit::showContextMenu(const QPoint &pt)
+{
+    m_contextMenu->exec(mapToGlobal(pt));
 }
 
 ConsoleVariableItemDelegate::ConsoleVariableItemDelegate(QObject* parent)
@@ -935,7 +1039,7 @@ void ConsoleVariableModel::ClearModifiedRows()
 }
 
 ConsoleVariableEditor::ConsoleVariableEditor(QWidget* parent)
-    : QDialog(parent)
+    : QWidget(parent)
     , m_tableView(new QTableView(this))
     , m_model(new ConsoleVariableModel(this))
     , m_itemDelegate(new ConsoleVariableItemDelegate(this))
@@ -983,7 +1087,11 @@ ConsoleVariableEditor::ConsoleVariableEditor(QWidget* parent)
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->addWidget(m_filterWidget);
     mainLayout->addWidget(m_tableView, 1);
-    m_tableView->setMinimumSize(340, 500);
+
+    // Set the console variables
+    IConsole* console = GetIEditor()->GetSystem()->GetIConsole();
+    m_varBlock = VarBlockFromConsoleVars();
+    SetVarBlock(m_varBlock);
 }
 
 void ConsoleVariableEditor::SetVarBlock(CVarBlock* varBlock)
@@ -1007,30 +1115,60 @@ void ConsoleVariableEditor::SetVarBlock(CVarBlock* varBlock)
     m_tableView->selectRow(0);
 }
 
+void ConsoleVariableEditor::RegisterViewClass()
+{
+    AzToolsFramework::ViewPaneOptions opts;
+    opts.paneRect = QRect(100, 100, 340, 500);
+    opts.isDeletable = false;
+    opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+
+    AzToolsFramework::RegisterViewPane<ConsoleVariableEditor>(LyViewPane::ConsoleVariables, LyViewPane::CategoryOther, opts);
+}
+
+/**
+ * Update the IVariable in our var block when the corresponding ICVar has been
+ * changed
+ */
+void ConsoleVariableEditor::HandleVariableRowUpdated(int row, ICVar* pCVar)
+{
+    IVariable* var = m_varBlock->GetVariable(row);
+    if (!var)
+    {
+        return;
+    }
+
+    int varType = pCVar->GetType();
+    switch (varType)
+    {
+    case CVAR_INT:
+        var->Set(pCVar->GetIVal());
+        break;
+    case CVAR_FLOAT:
+        var->Set(pCVar->GetFVal());
+        break;
+    case CVAR_STRING:
+        var->Set(pCVar->GetString());
+        break;
+    }
+
+    // We need to let our model know that the underlying data has changed so
+    // that the view will be updated
+    QModelIndex index = m_model->index(row, ColumnValue);
+    Q_EMIT m_model->dataChanged(index, index);
+}
+
 void ConsoleVariableEditor::showEvent(QShowEvent* event)
 {
     // Clear out our list of modified rows whenever our view is re-shown
     m_model->ClearModifiedRows();
 
-    QDialog::showEvent(event);
+    QWidget::showEvent(event);
 }
 
 void CConsoleSCB::showVariableEditor()
 {
-    // Create our variable editor dialog if we haven't already
-    if (!m_variableEditor)
-    {
-        m_variableEditor = new ConsoleVariableEditor(this);
-    }
-
-    // Set the console variables on our variable editor
-    IConsole* console = GetIEditor()->GetSystem()->GetIConsole();
-    CVarBlock* varBlock = VarBlockFromConsoleVars();
-    m_variableEditor->SetVarBlock(varBlock);
-
-    // Make sure it is shown and raised to the top
-    m_variableEditor->show();
-    m_variableEditor->raise();
+    // Open the console variables pane
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::ConsoleVariables);
 }
 
 CConsoleSCB* CConsoleSCB::GetCreatedInstance()

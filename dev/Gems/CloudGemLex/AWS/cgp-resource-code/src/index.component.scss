@@ -1,0 +1,55 @@
+﻿@import "../../../styles/variables";
+
+.loading-spinner-container {
+    clear: both;
+    text-align: center;
+}
+
+.basic-button {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.number{
+    margin-top: 8px;
+    margin-right: 5px;
+}
+
+.upload {
+    display:none;
+}
+
+.content-container {
+	margin-bottom: 30px;
+}
+
+.question-mark {
+    cursor: pointer;
+}
+
+table.table {
+    margin-bottom: 30px;
+    thead {
+        display:table-header-group;
+    }
+    tr {
+        .name-column {
+            width: 15%;
+        }
+        .version-column {
+            width: 15%;
+        }
+        .preview-column {
+            width: 15%;
+        }
+        .status-column {
+            width: 15%;
+        }
+        .updated-column {
+            width: 15%;
+        }
+        .created-column {
+            width: 15%;
+        }
+    }
+}

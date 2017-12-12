@@ -22,7 +22,6 @@
 #include <ISystem.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-// DURANGO temporary pool configuration
 #if   defined(MOBILE)  // IOS/Android
 # define MTSAFE_TEMPORARY_POOL_SIZE (0)
 # define MTSAFE_TEMPORARY_POOL_MINALLOC (0)

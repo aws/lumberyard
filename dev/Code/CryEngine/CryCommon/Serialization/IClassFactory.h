@@ -68,9 +68,9 @@ namespace Serialization {
         string registeredName;
         IClassFactory* factory;
 
-        TypeNameWithFactory(const char* registeredName, IClassFactory* factory = 0)
-            : registeredName(registeredName)
-            , factory(factory)
+        TypeNameWithFactory(const char* _registeredName, IClassFactory* _factory = 0)
+            : registeredName(_registeredName)
+            , factory(_factory)
         {
         }
     };

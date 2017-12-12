@@ -13,6 +13,7 @@
 #include "internal_includes/languages.h"
 #include "internal_includes/debug.h"
 #include "internal_includes/hlslcc_malloc.h"
+#include "internal_includes/hlslccToolkit.h"
 #include "../offline/hash.h"
 
 #if defined(_WIN32) && !defined(PORTABLE)
@@ -1466,14 +1467,19 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
             case SVT_VOID:
                 psShader->aeCommonTempVecType[i] = SVT_FLOAT;
             case SVT_FLOAT:
-                bformata(psContext->glsl, "vec4 Temp%d", i);
-                break;
+            case SVT_FLOAT10:
+            case SVT_FLOAT16:
             case SVT_UINT:
-                bformata(psContext->glsl, "uvec4 Temp%d", i);
-                break;
+            case SVT_UINT8:
+            case SVT_UINT16:
             case SVT_INT:
-                bformata(psContext->glsl, "ivec4 Temp%d", i);
+            case SVT_INT12:
+            case SVT_INT16:
+                bformata(psContext->glsl, "%s Temp%d", GetConstructorForTypeGLSL(psContext, psShader->aeCommonTempVecType[i], 4, true), i);
                 break;
+            case SVT_FORCE_DWORD:
+                // temp register not used
+                continue;
             default:
                 continue;
             }
@@ -1484,6 +1490,7 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
             }
             bformata(psContext->glsl, ";\n");
         }
+
         if (psContext->psShader->bUseTempCopy)
         {
             bcatcstr(psContext->glsl, "vec4 TempCopy;\n");

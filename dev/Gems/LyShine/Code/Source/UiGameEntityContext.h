@@ -49,7 +49,7 @@ public: // member functions
     // UiGameEntityContextBus
     AzFramework::SliceInstantiationTicket InstantiateDynamicSlice(
         const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Vector2& position, bool isViewportPostion,
-        AZ::Entity* parent, const AZ::EntityUtils::EntityIdMapper& customIdMapper) override;
+        AZ::Entity* parent, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper) override;
     // ~UiGameEntityContextBus
 
     // SliceInstantiationResultBus

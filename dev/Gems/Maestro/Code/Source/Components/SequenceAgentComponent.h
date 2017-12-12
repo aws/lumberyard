@@ -12,7 +12,7 @@
 #pragma once
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/Component.h>
-#include <LmbrCentral/Cinematics/SequenceAgentComponentBus.h>
+#include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include "SequenceAgent.h"
 
 namespace AzFramework
@@ -20,7 +20,7 @@ namespace AzFramework
     class TransformComponent;
 }
 
-namespace LmbrCentral
+namespace Maestro
 {
     class SequenceAgentComponent
         : public AZ::Component
@@ -41,8 +41,8 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // SequenceAgentComponentRequestBus::Handler Interface
-        void GetAnimatedPropertyValue(AnimatedValue& returnValue, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
-        bool SetAnimatedPropertyValue(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value) override;
+        void GetAnimatedPropertyValue(AnimatedValue& returnValue, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
+        bool SetAnimatedPropertyValue(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value) override;
 
         AZ::Uuid GetAnimatedAddressTypeId(const AnimatablePropertyAddress& animatableAddress) override;
 
@@ -75,4 +75,4 @@ namespace LmbrCentral
         AZStd::unordered_set<AZ::EntityId>       m_sequenceEntityIds;
     };
 
-} // namespace LmbrCentral
+} // namespace Maestro

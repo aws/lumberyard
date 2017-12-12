@@ -24,6 +24,7 @@
 #include <QMap>
 #include <QApplication>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 
 class QMenu;
 
@@ -86,7 +87,8 @@ public:
 
     void Initialize();
     void InitializeCrashLog();
-
+    void OnBeginShutdownSequence();
+    void OnEarlyExitShutdownSequence();
     void Uninitialize();
 
 
@@ -316,6 +318,7 @@ public:
     bool IsUndoSuspended();
     void RecordUndo(IUndoObject* obj);
     bool FlushUndo(bool isShowMessage = false);
+    bool ClearLastUndoSteps(int steps);
     //! Retrieve current animation context.
     CAnimationContext* GetAnimation();
     CTrackViewSequenceManager* GetSequenceManager() override;
@@ -352,8 +355,9 @@ public:
     // Get Export manager
     IExportManager* GetExportManager();
     // Set current configuration spec of the editor.
-    void SetEditorConfigSpec(ESystemConfigSpec spec);
+    void SetEditorConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform);
     ESystemConfigSpec GetEditorConfigSpec() const;
+    ESystemConfigPlatform GetEditorConfigPlatform() const;
     void ReloadTemplates();
     void AddErrorMessage(const QString& text, const QString& caption);
     IResourceSelectorHost* GetResourceSelectorHost() { return m_pResourceSelectorHost.get(); }
@@ -382,12 +386,15 @@ public:
     virtual bool ToProjectConfigurator(const char* msg, const char* caption, const char* location) override;
 
     virtual QQmlEngine* GetQMLEngine() const;
-    void UnloadPlugins() override;
+    void UnloadPlugins(bool shuttingDown = false) override;
     void LoadPlugins() override;
 
     QMimeData* CreateQMimeData() const override;
     void DestroyQMimeData(QMimeData* data) const override;
     CBaseObject* BaseObjectFromEntityId(unsigned int id) override;
+
+    bool IsLegacyUIEnabled() override;
+    void SetLegacyUIEnabled(bool enabled) override;
 
 protected:
 
@@ -406,9 +413,14 @@ protected:
         return MainWindow::instance()->GetRollUpControl(rollupId);
     };
     
+    void LogStartingShutdown();
+    void LogEarlyShutdownExit();
     void ShutdownCrashLog();
     void LogBeginGameMode();
     void LogEndGameMode();
+
+    void LoadSettings();
+    void SaveSettings() const;
 
     //! List of all notify listeners.
     std::list<IEditorNotifyListener*> m_listeners;
@@ -445,7 +457,7 @@ protected:
     QString m_masterCDFolder;
     QString m_userFolder;
     bool m_bSelectionLocked;
-    CEditTool* m_pPickTool;
+    _smart_ptr<CEditTool> m_pPickTool;
     class CAxisGizmo* m_pAxisGizmo;
     CAIManager* m_pAIManager;
     CCustomActionsEditorManager* m_pCustomActionsManager;
@@ -518,12 +530,15 @@ protected:
 
     AssetDatabase::AssetDatabaseLocationListener* m_pAssetDatabaseLocationListener;
     AzAssetBrowserRequestHandler* m_pAssetBrowserRequestHandler;
+    AZStd::vector<AZStd::unique_ptr<AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler>> m_thumbnailRenderers;
 
     IAssetBrowser* m_pAssetBrowser; // Vladimir@Conffx
     IImageUtil* m_pImageUtil;  // Vladimir@conffx
     ILogFile* m_pLogFile;  // Vladimir@conffx
 
-    CryMutex m_pluginMutex; // protect any pointers that come from plugins, such as the source control cached pointer.    
+    CryMutex m_pluginMutex; // protect any pointers that come from plugins, such as the source control cached pointer.
     static const char* m_crashLogFileName;
+
+    bool m_isLegacyUIEnabled;
 };
 

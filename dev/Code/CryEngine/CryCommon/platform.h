@@ -1,6 +1,6 @@
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.
+* its licensors.	
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
 * distribution (the "License"). All use of this software is governed by the License,
@@ -68,7 +68,7 @@
     #define __FUNC__ __PRETTY_FUNCTION__
 #endif
 
-#if defined(_DEBUG) && !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)
+#if   defined(_DEBUG) && !defined(LINUX) && !defined(APPLE)
     #include <crtdbg.h>
 #endif
 
@@ -109,7 +109,7 @@
 //////////////////////////////////////////////////////////////////////////
 // Available predefined compiler macros for Visual C++.
 //      _MSC_VER                                        // Indicates MS Visual C compiler version
-//      _WIN32, _WIN64, _XBOX_VER       // Indicates target OS
+//      _WIN32, _WIN64       // Indicates target OS
 //      _M_IX86, _M_PPC                         // Indicates target processor
 //      _DEBUG                                          // Building in Debug mode
 //      _DLL                                                // Linking with DLL runtime libs
@@ -126,8 +126,8 @@
     #define NDEBUG
 #endif
 
-#if defined(DURANGO) || defined(ORBIS) || defined(MOBILE)
-#define CONSOLE
+#if   defined(MOBILE)
+	#define CONSOLE
 #endif
 
 //render thread settings, as this is accessed inside 3dengine and renderer and needs to be compile time defined, we need to do it here
@@ -142,10 +142,10 @@
 
 
 // We use WIN macros without _.
-#if defined(_WIN32) && !defined(DURANGO) && !defined(LINUX32) && !defined(LINUX64) && !defined(APPLE) && !defined(WIN32)
+#if defined(_WIN32) && !defined(LINUX32) && !defined(LINUX64) && !defined(APPLE) && !defined(WIN32)
     #define WIN32
 #endif
-#if defined(_WIN64) && !defined(WIN64) && !defined(DURANGO)
+#if defined(_WIN64) && !defined(WIN64)
     #define WIN64
 #endif
 
@@ -160,39 +160,39 @@
 
 #endif //WIN32
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
-#if defined(APPLE) || defined(LINUX64) || defined(ORBIS)
-// int64 is not the same type as the operating system's int64_t
-    #undef PRIX64
-    #undef PRIx64
-    #undef PRId64
-    #undef PRIu64
-    #define PRIX64 "llX"
-    #define PRIx64 "llx"
-    #define PRId64 "lld"
-    #define PRIu64 "llu"
-#endif
-#define PLATFORM_I64(x) x##ll
+#if   defined(LINUX) || defined(APPLE)
+	#define __STDC_FORMAT_MACROS
+	#include <inttypes.h>
+	#if defined(APPLE) || defined(LINUX64)
+	// int64 is not the same type as the operating system's int64_t
+		#undef PRIX64
+		#undef PRIx64
+		#undef PRId64
+		#undef PRIu64
+		#define PRIX64 "llX"
+		#define PRIx64 "llx"
+		#define PRId64 "lld"
+		#define PRIu64 "llu"
+	#endif
+	#define PLATFORM_I64(x) x##ll
 #else
-#include <inttypes.h>
-#define PLATFORM_I64(x) x##i64
+	#include <inttypes.h>
+	#define PLATFORM_I64(x) x##i64
 #endif
 
 #if !defined(PRISIZE_T)
-    #if defined(WIN64) || defined(DURANGO)
+    #if   defined(WIN64)
         #define PRISIZE_T "I64u" //size_t defined as unsigned __int64
     #elif defined(WIN32) || defined(LINUX32)
         #define PRISIZE_T "u"
-    #elif defined(MAC) || defined(LINUX64) || defined(ORBIS) || defined(IOS) || defined(APPLETV)
+    #elif defined(MAC) || defined(LINUX64) || defined(IOS) || defined(APPLETV)
         #define PRISIZE_T "lu"
     #else
         #error "Please defined PRISIZE_T for this platform"
     #endif
 #endif
 #if !defined(PRI_THREADID)
-    #if defined(MAC) || defined(IOS) && defined(__LP64__) || defined(APPLETV) && defined(__LP64__) || defined(ORBIS)
+    #if   defined(MAC) || defined(IOS) && defined(__LP64__) || defined(APPLETV) && defined(__LP64__)
         #define PRI_THREADID "lld"
     #elif defined(LINUX64) || defined(ANDROID)
         #define PRI_THREADID "ld"
@@ -291,13 +291,13 @@ static inline void  __dmb()
 
 //default stack size for threads, currently only used on pthread platforms
 #if   defined(LINUX) || defined(APPLE)
-#if !defined(_DEBUG)
-#define SIMPLE_THREAD_STACK_SIZE_KB (256)
+	#if !defined(_DEBUG)
+		#define SIMPLE_THREAD_STACK_SIZE_KB (256)
+	#else
+		#define SIMPLE_THREAD_STACK_SIZE_KB (256 * 4)
+	#endif
 #else
-#define SIMPLE_THREAD_STACK_SIZE_KB (256 * 4)
-#endif
-#else
-#define SIMPLE_THREAD_STACK_SIZE_KB (32)
+	#define SIMPLE_THREAD_STACK_SIZE_KB (32)
 #endif
 
 
@@ -354,13 +354,13 @@ static inline void  __dmb()
 #endif
 
 
-#if defined(WIN32) && !defined(WIN64) && !defined(DURANGO)
-#include "Win32specific.h"
-#endif
+    #if defined(WIN32) && !defined(WIN64)
+        #include "Win32specific.h"
+    #endif
 
-#if defined(WIN64) && !defined(DURANGO)
-#include "Win64specific.h"
-#endif
+    #if defined(WIN64)
+        #include "Win64specific.h"
+    #endif
 
 #if defined(LINUX64)
 #include "Linux64Specific.h"
@@ -421,9 +421,6 @@ typedef UINT_PTR EXPAND_PTR;
 #endif // !defined(__clang__) || defined(__GNUC__)
 
 #include <stdio.h>
-
-// Includes core CryEngine modules definitions.
-#include "CryModuleDefs.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -516,7 +513,7 @@ unsigned int CryGetFileAttributes(const char* lpFileName);
 
 inline void CryHeapCheck()
 {
-#if !defined(LINUX) && !defined (DURANGO) && !defined(ORBIS) && !defined(APPLE) // todo: this might be readded with later xdks?
+#if   !defined(LINUX) && !defined(APPLE) // todo: this might be readded with later xdks?
     int Result = _heapchk();
     assert(Result != _HEAPBADBEGIN);
     assert(Result != _HEAPBADNODE);
@@ -824,7 +821,7 @@ __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void* 
     #error "There's no support for thread local storage"
 #endif
 
-#if !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)
+#if   !defined(LINUX) && !defined(APPLE)
 typedef int socklen_t;
 #endif
 
@@ -852,14 +849,16 @@ typedef int socklen_t;
 //////////////////////////////////////////////////////////////////////////
 
 // In RELEASE disable printf and fprintf
+#if defined(_RELEASE) && !defined(RELEASE_LOGGING)
+#endif
 
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
-#define MESSAGE(msg) message(__FILE__ "(" STRINGIFY(__LINE__) "): " msg)
+#if   defined(WIN32) || defined(WIN64)
+	#define MESSAGE(msg) message(__FILE__ "(" STRINGIFY(__LINE__) "): " msg)
 #else
-#define MESSAGE(msg)
+	#define MESSAGE(msg)
 #endif
 
 #if !defined(BINFOLDER_NAME)

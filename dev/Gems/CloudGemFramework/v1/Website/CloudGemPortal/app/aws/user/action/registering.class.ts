@@ -39,22 +39,22 @@ export class RegisteringAction implements UserManagementAction {
         var paramsForGroup = {
             'GroupName': EnumGroupName[group].toLowerCase(),
             'UserPoolId': this.context.userPoolId,
-            'Username': username
+            'Username': username.trim()
         }
 
         var paramsForCreate = {            
             'UserPoolId': this.context.userPoolId,
-            'Username': username,
+            'Username': username.trim(),
             'UserAttributes': [{
                     'Name': 'email',
-                    'Value': email
+                    'Value': email.trim()
                 },
                 {
                     'Name': 'email_verified',
                     'Value': 'true'
                 }
             ],
-            'TemporaryPassword': password,
+            'TemporaryPassword': password.trim(),
             'DesiredDeliveryMediums': ["EMAIL"]            
         }
 

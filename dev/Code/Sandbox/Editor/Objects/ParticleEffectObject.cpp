@@ -348,11 +348,26 @@ void CParticleEffectObject::CFastParticleParser::ExtractLevelParticles()
             {
                 const QString& levelPath = pGameEngine->GetLevelPath();
                 const QString& levelName = pGameEngine->GetLevelName();
-                QString fullPath = levelPath + "/" + levelName + ".cry";
+                QString newPath = levelPath + "/" + levelName + ".ly";
+                QString oldPath = levelPath + "/" + levelName + ".cry";
+
                 ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
 
-                if (pIPak && pIPak->OpenPack(fullPath.toLatin1().data()))
+                if (pIPak)
                 {
+                    bool newExtension = false;
+                    if (!pIPak->OpenPack(oldPath.toLatin1().data()))
+                    {
+                        if (pIPak->OpenPack(newPath.toLatin1().data()))
+                        {
+                            newExtension = true;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+
                     QString particleLibrary = levelPath + "/" + "Level.editor_xml";
                     if (XmlNodeRef rootNode = XmlHelpers::LoadXmlFromFile(particleLibrary.toLatin1().data()))
                     {
@@ -374,7 +389,14 @@ void CParticleEffectObject::CFastParticleParser::ExtractLevelParticles()
                         }
                     }
 
-                    pIPak->ClosePack(fullPath.toLatin1().data());
+                    if (newExtension)
+                    {
+                        pIPak->ClosePack(newPath.toLatin1().data());
+                    }
+                    else
+                    {
+                        pIPak->ClosePack(oldPath.toLatin1().data());
+                    }
                 }
             }
         }

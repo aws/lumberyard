@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>795</width>
+    <height>747</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>600</width>
+    <height>400</height>
+   </size>
+  </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
+  </property>
+  <property name="windowTitle">
+   <string>Script Canvas (PREVIEW)</string>
+  </property>
+  <property name="toolButtonStyle">
+   <enum>Qt::ToolButtonIconOnly</enum>
+  </property>
+  <property name="documentMode">
+   <bool>false</bool>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
+  <property name="unifiedTitleAndToolBarOnMac">
+   <bool>false</bool>
+  </property>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>795</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="action_New_Script"/>
+    <addaction name="action_Open"/>
+    <addaction name="action_Save"/>
+    <addaction name="action_Save_As"/>
+    <addaction name="action_Close"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <widget class="QMenu" name="menuSettings">
+     <property name="title">
+      <string>Settings</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png
+      </iconset>
+     </property>
+     <addaction name="action_GlobalPreferences"/>
+     <addaction name="action_GraphPreferences"/>
+    </widget>
+    <addaction name="action_Undo"/>
+    <addaction name="action_Redo"/>
+    <addaction name="separator"/>
+    <addaction name="action_Cut"/>
+    <addaction name="action_Copy"/>
+    <addaction name="action_Paste"/>
+    <addaction name="action_Duplicate"/>
+    <addaction name="action_Delete"/>
+    <addaction name="separator"/>
+    <addaction name="menuSettings"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="action_ViewNodePalette"/>
+    <addaction name="action_ViewOutline"/>
+    <addaction name="action_ViewProperties"/>
+    <addaction name="action_ViewDebugger"/>
+    <addaction name="action_ViewCommandLine"/>
+    <addaction name="action_ViewLog"/>
+    <addaction name="separator"/>
+    <addaction name="action_ViewRestoreDefaultLayout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuView"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_New_Script">
+   <property name="text">
+    <string>&amp;New Script</string>
+   </property>
+  </action>
+  <action name="action_Save">
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+  </action>
+  <action name="action_Save_As">
+   <property name="text">
+    <string>&amp;Save As...</string>
+   </property>
+  </action>
+  <action name="action_Open">
+   <property name="text">
+    <string>&amp;Open</string>
+   </property>
+  </action>
+   <action name="action_ViewLog">
+     <property name="visible">
+       <bool>false</bool> <!-- disabled until debugging is implemented -->
+     </property>
+     <property name="shortcut">
+       <string>Ctrl+L</string>
+     </property>
+     <property name="checkable">
+       <bool>true</bool>
+     </property>
+     <property name="checked">
+       <bool>false</bool>
+     </property>
+     <property name="icon">
+       <iconset>
+         <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_log.png
+       </iconset>
+     </property>
+     <property name="text">
+       <string>Log</string>
+     </property>
+   </action>
+   <action name="action_ViewCommandLine">
+     <property name="visible">
+       <bool>false</bool>
+     </property>
+     <property name="shortcut">
+       <string>Ctrl+P</string>
+     </property>
+     <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="ScriptCanvasEditorResources.qrc">
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_commandline.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_commandline.png</iconset>
+   </property>
+   <property name="text">
+    <string>Command Line</string>
+   </property>
+  </action>
+  <action name="action_ViewNodePalette">
+    <property name="shortcut">
+      <string>Ctrl+Shift+L</string>
+    </property>
+    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="ScriptCanvasEditorResources.qrc">
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_nodes.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_nodes.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Node Palette</string>
+   </property>
+  </action>
+  <action name="action_ViewOutline">
+    <property name="shortcut">
+      <string>Ctrl+Shift+O</string>
+    </property>
+    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="ScriptCanvasEditorResources.qrc">
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_outliner.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_outliner.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Node Outliner</string>
+   </property>
+  </action>
+  <action name="action_ViewProperties">
+    <property name="shortcut">
+      <string>Ctrl+Shift+I</string>
+    </property>
+    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="ScriptCanvasEditorResources.qrc">
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_properties.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_properties.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Node Inspector</string>
+   </property>
+  </action>
+  <action name="action_ViewDebugger">
+    <property name="visible">
+      <bool>false</bool> <!-- disabled until the debugger is implemented -->
+    </property>
+    <property name="shortcut">
+      <string>Ctrl+Shift+D</string>
+    </property>
+    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="ScriptCanvasEditorResources.qrc">
+     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_debugger_off.png</normaloff>
+     <disabledoff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_debugger.png</disabledoff>
+     <disabledon>:/ScriptCanvasEditorResources/Resources/scriptcanvas_debugger_off.png</disabledon>:/ScriptCanvasEditorResources/Resources/scriptcanvas_debugger_off.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Debugger</string>
+   </property>
+  </action>
+  <action name="action_ViewRestoreDefaultLayout">
+   <property name="text">
+    <string>Restore Default Layout</string>
+   </property>
+  </action>
+
+  <action name="action_Close">
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </action>
+
+  <action name="action_Undo">
+   <property name="text">
+    <string>Undo</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_Redo">
+   <property name="text">
+    <string>Redo</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="shortcut">
+      <string>Ctrl+Shift+Z</string>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_Cut">
+   <property name="text">
+    <string>Cut</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_Copy">
+   <property name="text">
+    <string>Copy</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_Paste">
+   <property name="text">
+    <string>Paste</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_Duplicate">
+   <property name="text">
+    <string>Duplicate</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
+   </property>
+  </action>
+
+  <action name="action_Delete">
+   <property name="text">
+    <string>Delete</string>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <action name="action_GlobalPreferences">
+   <property name="text">
+    <string>Global Preferences</string>
+   </property>
+  </action>
+
+  <action name="action_GraphPreferences">
+   <property name="text">
+    <string>Graph Preferences</string>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+  </action>
+
+  <addaction name="action_ViewNodePalette"/>
+  <addaction name="action_ViewOutline"/>
+  <addaction name="action_ViewProperties"/>
+  <addaction name="action_ViewDebugger"/>
+  <addaction name="action_ViewCommandLine"/>
+  <addaction name="action_ViewRestoreDefaultLayout"/>
+ </widget>
+ <resources>
+  <include location="ScriptCanvasEditorResources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

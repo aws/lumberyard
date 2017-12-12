@@ -34,6 +34,8 @@
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
+#include <AzQtComponents/Buses/ShortcutDispatch.h>
+
 const char* FOCUSED_VIEW_PANE_EVENT_NAME = "FocusedViewPaneEvent";    //Sent when view panes are focused
 const char* FOCUSED_VIEW_PANE_ATTRIBUTE_NAME = "FocusedViewPaneName"; //Name of the current focused view pane
 
@@ -45,14 +47,28 @@ static QPointer<QWidget> s_lastFocus;
 
 // Returns either a top-level or a dock widget (regardless of floating)
 // This way when docking a main window Qt::WindowShortcut still works
-QWidget* ShortcutDispatcher::FindScopeRoot(QWidget* w)
+QWidget* ShortcutDispatcher::FindParentScopeRoot(QWidget* w)
 {
-    while (w && w->parent() && !qobject_cast<QDockWidget*>(w))
+    QWidget* newScopeRoot = w;
+    while (newScopeRoot && newScopeRoot->parent() && !qobject_cast<QDockWidget*>(newScopeRoot))
     {
-        w = w->parentWidget();
+        newScopeRoot = newScopeRoot->parentWidget();
     }
 
-    return w;
+    // This method should always return a parent scope root; if it can't find one
+    // it returns null
+    if (newScopeRoot == w)
+    {
+        newScopeRoot = nullptr;
+
+        if (w != nullptr)
+        {
+            // we couldn't find a valid parent; broadcast a message to see if something else wants to tell us about one
+            AzQtComponents::ShortcutDispatchBus::EventResult(newScopeRoot, w, &AzQtComponents::ShortcutDispatchBus::Events::GetShortcutDispatchScopeRoot, w);
+        }
+    }
+
+    return newScopeRoot;
 }
 
 // Returns true if a widget is ancestor of another widget
@@ -291,14 +307,14 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
 
     QWidget* correctedTopLevel = nullptr;
     QWidget* p = currentFocusWidget;
-    while (correctedTopLevel = FindScopeRoot(p))
+    while (correctedTopLevel = FindParentScopeRoot(p))
     {
         if (FindCandidateActionAndFire(correctedTopLevel, shortcutEvent, candidates, previouslyVisited))
         {
             return true;
         }
 
-        p = p->parentWidget();
+        p = correctedTopLevel;
     }
 
 

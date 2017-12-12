@@ -21,6 +21,7 @@
 #include "Undo/IUndoObject.h"
 #include "Undo/Undo.h"
 
+#include <QDebug>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Undo functionality for Managers, including add library, remove library, and rename library -- Vera, Confetti
@@ -179,18 +180,8 @@ void CBaseLibraryManager::ClearAll()
 //////////////////////////////////////////////////////////////////////////
 IDataBaseLibrary* CBaseLibraryManager::FindLibrary(const QString& library)
 {
-    QString lib = library;
-    lib.replace('\\', '/');
-    for (int i = 0; i < m_libs.size(); i++)
-    {
-        QString _lib = m_libs[i]->GetFilename();
-        _lib.replace('\\', '/');
-        if (QString::compare(lib, m_libs[i]->GetName(), Qt::CaseInsensitive) == 0 || QString::compare(lib, _lib, Qt::CaseInsensitive) == 0)
-        {
-            return m_libs[i];
-        }
-    }
-    return NULL;
+    const int index = FindLibraryIndex(library);
+    return index == -1 ? nullptr : m_libs[index];
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -289,28 +280,18 @@ void CBaseLibraryManager::DeleteItem(IDataBaseItem* pItem)
 //////////////////////////////////////////////////////////////////////////
 IDataBaseLibrary* CBaseLibraryManager::LoadLibrary(const QString& inFilename, bool bReload)
 {
-    QString filename = inFilename;
-    // If library is already loaded ignore it.
-    for (int i = 0; i < m_libs.size(); i++)
+    if (auto lib = FindLibrary(inFilename))
     {
-        if (QString::compare(filename, m_libs[i]->GetName(), Qt::CaseInsensitive) == 0 || QString::compare(inFilename, m_libs[i]->GetFilename(), Qt::CaseInsensitive) == 0)
-        {
-            Error(QObject::tr("Loading Duplicate Library: %1").arg(filename).toLatin1().data());
-            return 0;
-        }
+        return lib;
     }
 
     TSmartPtr<CBaseLibrary> pLib = MakeNewLibrary();
-    if (!pLib->Load(MakeFilename(filename)))
+    if (!pLib->Load(MakeFilename(inFilename)))
     {
-        Error(QObject::tr("Failed to Load Item Library: %1").arg(filename).toLatin1().data());
-        return 0;
+        Error(QObject::tr("Failed to Load Item Library: %1").arg(inFilename).toLatin1().data());
+        return nullptr;
     }
-    if (FindLibrary(pLib->GetName()) != 0)
-    {
-        Error(QObject::tr("Loading Duplicate Library: %1").arg(pLib->GetName()).toLatin1().data());
-        return 0;
-    }
+
     m_libs.push_back(pLib);
     return pLib;
 }

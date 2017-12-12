@@ -154,9 +154,9 @@ namespace Unicode
         struct SPackedIterators
         {
             const T begin, end;
-            SPackedIterators(const T& begin, const T& end)
-                : begin(begin)
-                , end(end) {}
+            SPackedIterators(const T& _begin, const T& _end)
+                : begin(_begin)
+                , end(_end) {}
         };
 
         // SPackedBuffer<T>:
@@ -167,9 +167,9 @@ namespace Unicode
         {
             T buffer;
             size_t size;
-            SPackedBuffer(T buffer, size_t size)
-                : buffer(buffer)
-                , size(size) {}
+            SPackedBuffer(T _buffer, size_t _size)
+                : buffer(_buffer)
+                , size(_size) {}
         };
 
         // SDependentType<T, X>:
@@ -837,8 +837,8 @@ namespace Unicode
         {
             typedef typename T::value_type OutputCharType;
             T& out;
-            SWriteSink(T& out, size_t)
-                : out(out)
+            SWriteSink(T& _out, size_t)
+                : out(_out)
             {
                 if (!Append)
                 {
@@ -891,8 +891,8 @@ namespace Unicode
             typedef typename BindHelper::UnboundCharType CharType;
             CharType* ptr;
             CharType* const terminator;
-            SWriteSink(CharType* terminator)
-                : terminator(terminator) {}
+            SWriteSink(CharType* _terminator)
+                : terminator(_terminator) {}
             SWriteSink(SPackedBuffer<P>& out, size_t)
                 : terminator(out.size && out.buffer ? out.buffer + out.size - 1 : 0)
             {

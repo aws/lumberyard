@@ -759,7 +759,6 @@ namespace Audio
         for (size_t i = 1; i < m_nMaxNumberListeners; ++i)
         {
             const TAudioObjectID nListenerID = m_nDefaultListenerID + i;
-            IATLListenerData* pNewListenerData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pNewListenerData, &AudioSystemImplementationRequestBus::Events::NewAudioListenerObjectData, i);
             auto pListenerObject = azcreate(CATLListenerObject, (nListenerID, pNewListenerData), Audio::AudioSystemAllocator, "ATLListenerObject");
             m_cListenerPool.push_back(pListenerObject);

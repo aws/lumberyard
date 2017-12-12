@@ -1,10 +1,8 @@
-require "Scripts/PlayerAccount/menu"
+local menu = require "Scripts/PlayerAccount/menu"
 
-confirmsignupmenu = menu:new{canvasName = "ConfirmSignUp"}
+local confirmsignupmenu = menu:new{canvasName = "ConfirmSignUp"}
 
-function confirmsignupmenu:Show()
-    menu.Show(self)
-
+function confirmsignupmenu:OnAfterShow()
     if self.context.username then
         self:SetText("UsernameText", self.context.username)
     end
@@ -18,22 +16,18 @@ function confirmsignupmenu:OnAction(entityId, actionName)
         self.context.username = username
 
         Debug.Log("Sending confirmation code for " .. username .. "...")
-        CloudGemPlayerAccountRequestBus.Broadcast.ConfirmSignUp(username, code:match("^%s*(.-)%s*$"));
+        self.playerAccountBus:ConfirmSignUp(username, code:match("^%s*(.-)%s*$")):OnComplete(function(result)
+            if (result.wasSuccessful) then
+                Debug.Log("Confirm signup success")
+                self.menuManager:ShowMenu("SignIn", {username = self.username})
+            else
+                Debug.Log("Confirm signup failed: " .. result.errorMessage)
+            end
+        end)
         return
     end
 
     menu.OnAction(self, entityId, actionName)
-end
-
-function confirmsignupmenu:OnConfirmSignUpComplete(basicResultInfo)
-    self:RunOnMainThread(function()
-        if (basicResultInfo.wasSuccessful) then
-            Debug.Log("Confirm signup success")
-            self.menuManager:ShowMenu("SignIn", {username = self.username})
-        else
-            Debug.Log("Confirm signup failed: " .. basicResultInfo.errorMessage)
-        end
-    end)
 end
 
 return confirmsignupmenu

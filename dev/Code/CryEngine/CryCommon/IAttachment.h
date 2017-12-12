@@ -46,12 +46,13 @@ enum AttachmentTypes
 enum AttachmentFlags
 {
     //Static Flags
-    FLAGS_ATTACH_HIDE_ATTACHMENT                    = 0x01, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_HIDE_ATTACHMENT                = 0x01, //already stored in CDF, so don't change this
     FLAGS_ATTACH_PHYSICALIZED_RAYS              = 0x02, //already stored in CDF, so don't change this
-    FLAGS_ATTACH_PHYSICALIZED_COLLISIONS    = 0x04, //already stored in CDF, so don't change this
-    FLAGS_ATTACH_SW_SKINNING                            = 0x08, //already stored in CDF, so don't change this
-    FLAGS_ATTACH_RENDER_ONLY_EXISTING_LOD   = 0x10, //already stored in CDF, so don't change this
-    FLAGS_ATTACH_LINEAR_SKINNING          = 0x20, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_PHYSICALIZED_COLLISIONS        = 0x04, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_SW_SKINNING                    = 0x08, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_RENDER_ONLY_EXISTING_LOD       = 0x10, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_LINEAR_SKINNING                = 0x20, //already stored in CDF, so don't change this
+    FLAGS_ATTACH_MATRIX_SKINNING                = 0x40, //already stored in CDF, so don't change this
 
     FLAGS_ATTACH_PHYSICALIZED = FLAGS_ATTACH_PHYSICALIZED_RAYS | FLAGS_ATTACH_PHYSICALIZED_COLLISIONS,
 

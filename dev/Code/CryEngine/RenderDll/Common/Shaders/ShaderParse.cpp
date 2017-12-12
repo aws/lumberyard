@@ -227,14 +227,14 @@ SShaderGenBit* CShaderMan::mfCompileShaderGenProperty(char* scr)
                     shgm->m_nDependencySet |= SHGD_USER_ENABLED;
                 }
                 else
-                if (!azstricmp(data, "$HW_DURANGO"))
+                if (!azstricmp(data, "$HW_DURANGO")) // ACCEPTED_USE
                 {
-                    shgm->m_nDependencySet |= SHGD_HW_DURANGO;
+                    shgm->m_nDependencySet |= SHGD_HW_DURANGO; // ACCEPTED_USE
                 }
                 else
-                if (!azstricmp(data, "$HW_ORBIS"))
+                if (!azstricmp(data, "$HW_ORBIS")) // ACCEPTED_USE
                 {
-                    shgm->m_nDependencySet |= SHGD_HW_ORBIS;
+                    shgm->m_nDependencySet |= SHGD_HW_ORBIS; // ACCEPTED_USE
                 }
                 else
                 if (!azstricmp(data, "$HW_DX11"))
@@ -403,14 +403,14 @@ SShaderGenBit* CShaderMan::mfCompileShaderGenProperty(char* scr)
                     shgm->m_nDependencyReset |= SHGD_HW_METAL;
                 }
                 else
-                if (!azstricmp(data, "$HW_DURANGO"))
+                if (!azstricmp(data, "$HW_DURANGO")) // ACCEPTED_USE
                 {
-                    shgm->m_nDependencyReset |= SHGD_HW_DURANGO;
+                    shgm->m_nDependencyReset |= SHGD_HW_DURANGO; // ACCEPTED_USE
                 }
                 else
-                if (!azstricmp(data, "$HW_ORBIS"))
+                if (!azstricmp(data, "$HW_ORBIS")) // ACCEPTED_USE
                 {
-                    shgm->m_nDependencyReset |= SHGD_HW_ORBIS;
+                    shgm->m_nDependencyReset |= SHGD_HW_ORBIS; // ACCEPTED_USE
                 }
                 else
                 if (!azstricmp(data, "$TEX_Emittance"))

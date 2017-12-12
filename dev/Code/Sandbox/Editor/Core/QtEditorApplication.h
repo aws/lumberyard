@@ -46,9 +46,6 @@ enum EEditorNotifyEvent;
 
 namespace Editor
 {
-    //! Returns the full path to the engine root directory
-    QString FindEngineRootDir();
-
     typedef void(* ScanDirectoriesUpdateCallBack)(void);
     /*!
       \param directoryList A list of directories to search. ScanDirectories will also search the subdirectories of each of these.

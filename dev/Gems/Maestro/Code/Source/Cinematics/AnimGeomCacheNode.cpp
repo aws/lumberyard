@@ -36,7 +36,7 @@ namespace AnimGeomCacheNode
 };
 
 CAnimGeomCacheNode::CAnimGeomCacheNode(const int id)
-    : CAnimEntityNode(id)
+    : CAnimEntityNode(id, eAnimNodeType_GeomCache)
     , m_bActive(false)
 {
     CAnimGeomCacheNode::Initialize();
@@ -65,7 +65,7 @@ void CAnimGeomCacheNode::Animate(SAnimContext& animContext)
         for (unsigned int paramIndex = 0; paramIndex < trackCount; ++paramIndex)
         {
             CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-            IAnimTrack* pTrack = m_tracks[paramIndex];
+            IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
             if (pTrack && paramType == eAnimParamType_TimeRanges)
             {
@@ -193,7 +193,7 @@ void CAnimGeomCacheNode::PrecacheDynamic(float startTime)
         for (unsigned int paramIndex = 0; paramIndex < trackCount; ++paramIndex)
         {
             CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-            IAnimTrack* pTrack = m_tracks[paramIndex];
+            IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
             if (pTrack && paramType == eAnimParamType_TimeRanges)
             {

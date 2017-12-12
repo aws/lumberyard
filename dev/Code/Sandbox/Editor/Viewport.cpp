@@ -156,9 +156,9 @@ QtViewport::QtViewport(QWidget* parent)
 
     m_pVisibleObjectsCache = new CBaseObjectsCache;
 
-    m_constructionPlane.SetPlane(Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, 0.0f, 0.0f));
-    m_constructionPlaneAxisX.Set(0, 0, 0);
-    m_constructionPlaneAxisY.Set(0, 0, 0);
+    m_constructionPlane.SetPlane(Vec3_OneZ, Vec3_Zero);
+    m_constructionPlaneAxisX = Vec3_Zero;
+    m_constructionPlaneAxisY = Vec3_Zero;
 
     GetIEditor()->GetViewManager()->RegisterViewport(this);
 
@@ -184,7 +184,8 @@ QtViewport::QtViewport(QWidget* parent)
 //////////////////////////////////////////////////////////////////////////
 QtViewport::~QtViewport()
 {
-    m_pLocalEditTool = 0;
+    if (m_pLocalEditTool)
+        m_pLocalEditTool->deleteLater();
     delete m_pVisibleObjectsCache;
 
     GetIEditor()->GetViewManager()->UnregisterViewport(this);
@@ -430,8 +431,6 @@ void QtViewport::Update()
     {
         bSpaceClick = CheckVirtualKey(Qt::Key_Space) & !CheckVirtualKey(Qt::Key_Shift) /*& !CheckVirtualKey(Qt::Key_Control)*/;
     }
-    QPoint point = QCursor::pos();
-    ScreenToClient(point);
     if (bSpaceClick && hasFocus())
     {
         m_bAdvancedSelectMode = true;
@@ -809,11 +808,13 @@ void QtViewport::AssignConstructionPlane(const Vec3& p1, const Vec3& p2, const V
     m_constructionPlaneAxisY = p2 - p1;
 }
 
+//////////////////////////////////////////////////////////////////////////
 HWND QtViewport::renderOverlayHWND() const
 {
     return reinterpret_cast<HWND>(m_renderOverlay.winId());
 }
 
+//////////////////////////////////////////////////////////////////////////
 void QtViewport::setRenderOverlayVisible(bool visible)
 {
     m_renderOverlay.setVisible(visible);
@@ -822,16 +823,25 @@ void QtViewport::setRenderOverlayVisible(bool visible)
 //////////////////////////////////////////////////////////////////////////
 void QtViewport::MakeConstructionPlane(int axis)
 {
-    QPoint cursor = QCursor::pos();
-    ScreenToClient(cursor);
-    Vec3 raySrc(0, 0, 0), rayDir(1, 0, 0);
-    ViewToWorldRay(cursor, raySrc, rayDir);
+    QPoint cursorPos;
+    if (m_mouseCaptured)
+    {
+        cursorPos = m_cMouseDownPos;
+    }
+    else
+    {
+        cursorPos = QCursor::pos();
+        ScreenToClient(cursorPos);
+    }
+
+    Vec3 raySrc(Vec3_Zero), rayDir(Vec3_OneX);
+    ViewToWorldRay(cursorPos, raySrc, rayDir);
 
     int coordSys = GetIEditor()->GetReferenceCoordSys();
 
-    Vec3 xAxis(1, 0, 0);
-    Vec3 yAxis(0, 1, 0);
-    Vec3 zAxis(0, 0, 1);
+    Vec3 xAxis(Vec3_OneX);
+    Vec3 yAxis(Vec3_OneY);
+    Vec3 zAxis(Vec3_OneZ);
 
     xAxis = m_constructionMatrix[coordSys].TransformVector(xAxis);
     yAxis = m_constructionMatrix[coordSys].TransformVector(yAxis);
@@ -934,9 +944,9 @@ Vec3 QtViewport::MapViewToCP(const QPoint& point, int axis)
 
     MakeConstructionPlane(axis);
 
-    Vec3 raySrc(0, 0, 0), rayDir(1, 0, 0);
+    Vec3 raySrc(Vec3_Zero), rayDir(Vec3_OneX);
     ViewToWorldRay(point, raySrc, rayDir);
-
+    
     Vec3 v;
 
     Ray ray(raySrc, rayDir);
@@ -947,7 +957,7 @@ Vec3 QtViewport::MapViewToCP(const QPoint& point, int axis)
         inversePlane.d = -inversePlane.d;
         if (!Intersect::Ray_Plane(ray, inversePlane, v))
         {
-            v.Set(0, 0, 0);
+            v = Vec3_Zero;
         }
     }
 
@@ -964,11 +974,11 @@ Vec3 QtViewport::GetCPVector(const Vec3& p1, const Vec3& p2, int axis)
 
     int coordSys = GetIEditor()->GetReferenceCoordSys();
 
-    Vec3 xAxis(1, 0, 0);
-    Vec3 yAxis(0, 1, 0);
-    Vec3 zAxis(0, 0, 1);
-    // In local coordinate system transform axises by construction matrix.
+    Vec3 xAxis(Vec3_OneX);
+    Vec3 yAxis(Vec3_OneY);
+    Vec3 zAxis(Vec3_OneZ);
 
+    // In local coordinate system transform axises by construction matrix.
     xAxis = m_constructionMatrix[coordSys].TransformVector(xAxis);
     yAxis = m_constructionMatrix[coordSys].TransformVector(yAxis);
     zAxis = m_constructionMatrix[coordSys].TransformVector(zAxis);
@@ -1063,7 +1073,7 @@ float QtViewport::GetZoomFactor() const
 };
 
 //////////////////////////////////////////////////////////////////////////
-Vec3 QtViewport::SnapToGrid(Vec3 vec)
+Vec3 QtViewport::SnapToGrid(const Vec3& vec)
 {
     return m_viewManager->GetGrid()->Snap(vec, m_fGridZoom);
 }
@@ -1239,6 +1249,8 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         ((buttons& Qt::MiddleButton) ? MK_MBUTTON : 0) |
         ((buttons& Qt::RightButton) ? MK_RBUTTON : 0);
 
+    PreWidgetRendering();
+
     switch (event)
     {
     case eMouseMove:
@@ -1246,6 +1258,7 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         if (m_nLastUpdateFrame == m_nLastMouseMoveFrame)
         {
             // If mouse move event generated in the same frame, ignore it.
+            PostWidgetRendering();
             return false;
         }
         m_nLastMouseMoveFrame = m_nLastUpdateFrame;
@@ -1267,6 +1280,7 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
     {
         if (pRuler->MouseCallback(this, event, tempPoint, flags))
         {
+            PostWidgetRendering();
             return true;
         }
     }
@@ -1281,6 +1295,7 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         {
             if (pManipulator->MouseCallback(this, event, tempPoint, flags))
             {
+                PostWidgetRendering();
                 return true;
             }
         }
@@ -1293,6 +1308,7 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
     {
         if (pEditTool->MouseCallback(this, event, tempPoint, flags))
         {
+            PostWidgetRendering();
             return true;
         }
 
@@ -1302,11 +1318,14 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         {
             if (pParentTool->MouseCallback(this, event, tempPoint, flags))
             {
+                PostWidgetRendering();
                 return true;
             }
             pParentTool = pParentTool->GetParentTool();
         }
     }
+
+    PostWidgetRendering();
 
     return false;
 }

@@ -48,4 +48,7 @@ protected:
 
     // Log std out of process
     void LogStdOut(QProcess* process);
+
+    // Launch shader compiler
+    bool LaunchShaderCompiler();
 };

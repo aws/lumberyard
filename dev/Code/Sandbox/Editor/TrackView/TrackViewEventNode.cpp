@@ -71,7 +71,7 @@ void CTrackViewEventNode::RenameTrackEvent(const char* fromName, const char* toN
                 IEventKey eventKey;
 
                 keyHandle.GetKey(&eventKey);
-                if (strcmp(eventKey.event, fromName) == 0)
+                if (strcmp(eventKey.event.c_str(), fromName) == 0)
                 {
                     // we have a match - re-set the eventKey with the toName
                     eventKey.event = toName;

@@ -169,7 +169,6 @@ hlsl_cbuffer(PerFrameConstantBuffer)
     hlsl_float4(PerFrame_CausticsSmoothSunDirection);
 
     hlsl_float4(PerFrame_DecalZFightingRemedy);
-    hlsl_float4(PerFrame_TerrainInfo);
     hlsl_float4(PerFrame_WaterLevel);
 
     hlsl_float4(PerFrame_StereoParams);

@@ -29,12 +29,13 @@ namespace LmbrCentral
      */
     enum PhysicalEntityTypes
     {
-        Static      = 1 << 0,   ///< Static entities and terrain
+        Static      = 1 << 0,   ///< Static entities
         Dynamic     = 1 << 1,   ///< Rigid bodies and sleeping rigid bodies
         Living      = 1 << 2,   ///< Living entities (characters, etc.)
         Independent = 1 << 3,   ///< Independent entities
+        Terrain     = 1 << 4,   ///< Terrain
 
-        All = Static | Dynamic | Living | Independent,  ///< Represents all entities
+        All = Static | Dynamic | Living | Independent | Terrain,  ///< Represents all entities
     };
 
     /*!

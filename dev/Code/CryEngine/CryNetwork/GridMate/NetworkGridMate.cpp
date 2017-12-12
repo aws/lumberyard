@@ -331,10 +331,10 @@ namespace GridMate
                         m_postFrameTasks.push_back(
                             [=]()
                             {
-                                EntityReplica* replica = FindEntityReplica(entityId);
-                                if (replica)
+                                EntityReplica* rep = FindEntityReplica(entityId);
+                                if (rep)
                                 {
-                                    replica->UploadClientDelegatedAspects();
+                                    rep->UploadClientDelegatedAspects();
                                 }
                             }
                             );

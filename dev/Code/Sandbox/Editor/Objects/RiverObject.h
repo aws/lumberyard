@@ -25,7 +25,7 @@
  *  CRiverObject used to create rivers.
  *
  */
-class CRiverObject
+class SANDBOX_API CRiverObject
     : public CRoadObject
 {
     Q_OBJECT

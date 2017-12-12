@@ -16,6 +16,7 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxBlendShapeImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
@@ -79,6 +80,17 @@ namespace AZ
 
                         if (mesh)
                         {
+                            //Maya is creating node names of the form cone_skin_blendShapeNode.cone_squash during export. 
+                            //We need the name after the period for our naming purposes. 
+                            AZStd::string nodeName(blendShapeChannel->GetName());
+                            size_t dotIndex = nodeName.rfind('.');
+                            if (dotIndex != AZStd::string::npos)
+                            {
+                                nodeName.erase(0, dotIndex + 1);
+                            }
+                            RenamedNodesMap::SanitizeNodeName(nodeName, context.m_scene.GetGraph(), context.m_currentGraphPosition, "BlendShape");
+                            AZ_TraceContext("Blend shape name", nodeName);
+
                             AZStd::shared_ptr<SceneData::GraphData::BlendShapeData> blendShapeData =
                                 AZStd::make_shared<SceneData::GraphData::BlendShapeData>();
 
@@ -91,14 +103,6 @@ namespace AZ
                                 blendShapeData->AddPosition(pos);
                             }
 
-                            //Maya is creating node names of the form cone_skin_blendShapeNode.cone_squash during export. 
-                            //We need the name after the period for our naming purposes. 
-                            AZStd::string nodeName(blendShapeChannel->GetName());
-                            size_t dotIndex = nodeName.rfind('.');
-                            if (dotIndex != AZStd::string::npos)
-                            {
-                                nodeName.erase(0, dotIndex + 1);
-                            }
                             Containers::SceneGraph::NodeIndex newIndex =
                                 context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, nodeName.c_str());
 

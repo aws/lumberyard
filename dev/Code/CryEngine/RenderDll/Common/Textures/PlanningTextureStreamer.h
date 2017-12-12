@@ -64,10 +64,10 @@ struct SPlanningAction
     {
     }
 
-    SPlanningAction(int eAction, size_t nTexture, uint8 nMip = 0)
-        : nTexture((uint16)nTexture)
-        , nMip(nMip)
-        , eAction((uint8)eAction)
+    SPlanningAction(int action, size_t texture, uint8 mip = 0)
+        : nTexture((uint16)texture)
+        , nMip(mip)
+        , eAction((uint8)action)
     {
     }
 
@@ -209,10 +209,10 @@ struct SPlanningTextureOrderKey
 struct SPlanningRequestIdent
 {
     SPlanningRequestIdent() {}
-    SPlanningRequestIdent(uint32 nSortKey, int nKey, int nMip)
-        : nSortKey(nSortKey)
-        , nKey(nKey)
-        , nMip(nMip)
+    SPlanningRequestIdent(uint32 sortKey, int key, int mip)
+        : nSortKey(sortKey)
+        , nKey(key)
+        , nMip(mip)
     {
     }
 

@@ -29,6 +29,8 @@
 
 #include <CryExtension/CryCreateClassInstance.h>
 
+#include <LyShine/Bus/UiCursorBus.h>
+
 #include <AzCore/Casting/lossy_cast.h>
 
 #define PERFHUD_CONFIG_FILE "Config/PerfHud_PC.xml"
@@ -400,7 +402,6 @@ void CPerfHUD::InitUI(IMiniGUI* pGUI)
     CreateCVarMenuItem(pStatsMenu, "Texture Memory Usage", "e_debugDraw", 0, 4);
     CreateCVarMenuItem(pStatsMenu, "Detailed Render Stats", "r_Stats", 0, 1);
     CreateCVarMenuItem(pStatsMenu, "Shader Stats", "r_ProfileShaders", 0, 1);
-    CreateCVarMenuItem(pStatsMenu, "Flash Stats", "sys_flash_info", 0, 1);
 
     //
     // SYSTEM MENU
@@ -801,13 +802,13 @@ bool CPerfHUD::OnInputEvent(const SInputEvent& rInputEvent)
                     {
                         if (!m_hwMouseEnabled)
                         {
-                            gEnv->pHardwareMouse->IncrementCounter();
+                            UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
                             m_hwMouseEnabled = true;
                         }
                     }
                     else if (m_hwMouseEnabled)
                     {
-                        gEnv->pHardwareMouse->DecrementCounter();
+                        UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
                         m_hwMouseEnabled = false;
                     }
                 }
@@ -844,13 +845,13 @@ void CPerfHUD::SetState(EHudState state)
         {
             if (state != eHudInFocus)
             {
-                gEnv->pHardwareMouse->DecrementCounter();
+                UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
                 m_hwMouseEnabled = false;
             }
         }
         else if (state == eHudInFocus)
         {
-            gEnv->pHardwareMouse->IncrementCounter();
+            UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
             m_hwMouseEnabled = true;
         }
 
@@ -1430,11 +1431,11 @@ void CRenderStatsWidget::Update()
     case eRT_DX11:
         pRenderType = "PC - DX11";
         break;
-    case eRT_XboxOne:
-        pRenderType = "Xbox One";
+    case eRT_XboxOne: // ACCEPTED_USE
+        pRenderType = "Xbox One"; // ACCEPTED_USE
         break;
-    case eRT_PS4:
-        pRenderType = "PS4";
+    case eRT_PS4: // ACCEPTED_USE
+        pRenderType = "PS4"; // ACCEPTED_USE
         break;
     case eRT_Null:
         pRenderType = "Null";

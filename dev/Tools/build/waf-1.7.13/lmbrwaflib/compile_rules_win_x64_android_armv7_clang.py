@@ -50,7 +50,7 @@ def load_win_x64_android_armv7_clang_common_settings(conf):
 
     # common settings
     gcc_toolchain = '--gcc-toolchain={}'.format(gcc_toolchain_root)
-    target_arch = '--target=armv7-none-linux-androideabi' # <arch><sub>-<vendor>-<sys>-<abi>
+    target_arch = '--target=thumbv7-none-linux-androideabi' # <arch><sub>-<vendor>-<sys>-<abi>
 
     common_flags = [
         gcc_toolchain,
@@ -61,9 +61,9 @@ def load_win_x64_android_armv7_clang_common_settings(conf):
     env['CXXFLAGS'] += common_flags[:]
     env['LINKFLAGS'] += common_flags[:]
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/vc140').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
     if not os.path.exists(azcg_dir):
-        azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/vc120').abspath()
+        azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc120')
     if not os.path.exists(azcg_dir):
         conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either the VS2013 or VS2015 binaries available')
     env['CODE_GENERATOR_PATH'] = [azcg_dir]

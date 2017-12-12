@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Source Files":
+        [
+            "MobileDetectSpec_Ios.cpp",
+            "MobileDetectSpec.cpp",
+            "MobileDetectSpec.h"
+        ]
+    }
+}

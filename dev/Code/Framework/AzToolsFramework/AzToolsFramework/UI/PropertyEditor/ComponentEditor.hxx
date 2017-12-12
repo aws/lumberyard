@@ -64,6 +64,12 @@ namespace AzToolsFramework
         void SetSelected(bool selected);
         bool IsSelected() const;
 
+        void SetDragged(bool dragged);
+        bool IsDragged() const;
+
+        void SetDropTarget(bool dropTarget);
+        bool IsDropTarget() const;
+
         ComponentEditorHeader* GetHeader();
         ReflectedPropertyEditor* GetPropertyEditor();
         AZStd::vector<AZ::Component*>& GetComponents();
@@ -79,7 +85,7 @@ namespace AzToolsFramework
 
     private:
         /// Set up header for this component type.
-        void SetComponentType(const AZ::Uuid& componentType);
+        void SetComponentType(const AZ::Component& componentInstance);
 
         /// Clear header of anything specific to component type.
         void InvalidateComponentType();
@@ -108,5 +114,8 @@ namespace AzToolsFramework
         AZStd::vector<AZ::Component*> m_components;
         AZStd::vector<QWidget*> m_notifications;
         AZ::Crc32 m_savedKeySeed;
+        bool m_selected;
+        bool m_dragged;
+        bool m_dropTarget;
     };
 }

@@ -1,0 +1,100 @@
+﻿<facet-generator [context]="context"
+                 [tabs]="['Bots', 'Settings']"
+                 (tabClicked)="getSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
+
+<div *ngIf="subNavActiveIndex == 0">
+    <button class="btn l-primary basic-button" (click)="clickUploadButton()">
+        Create Bot
+    </button>
+    <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="right" triggers="click" [ngbTooltip]="createBotTip"></i>
+    <input #upload class="upload" type="file" (change)="uploadBotDefinition($event)" accept=".json"/>
+
+    <div [ngSwitch]="isLoadingBots">
+        <div *ngSwitchCase="true">
+            <div class="loading-spinner-container">
+                <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div class="content-container" *ngSwitchCase="false">
+            <div *ngIf="!bots || bots.length == 0">
+                No bot
+            </div>
+            <div *ngIf="bots.length > 0">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="name-column" (click)="sortTable()">
+                                BOT NAME
+                                <i *ngIf="sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                <i *ngIf="sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                            </th>
+                            <th class="version-column"> CURRENT VERSION </th>
+                            <th class="status-column"> STATUS </th>
+                            <th class="updated-column"> UPDATED </th>
+                            <th class="created-column"> CREATED </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let bot of botsOnCurrentPage">
+                            <td class="name-column">
+                                {{bot.bot_name}}
+                            </td>
+                            <td class="version-column">
+                                {{bot.current_version}}
+                            </td>
+                            <td class="status-column">
+                                <i *ngIf="bot.status == 'PUBLISHING'" class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="left" [ngbTooltip]="publishBotTip"></i>
+                                {{bot.status}}
+                                <i *ngIf="bot.status == 'PUBLISHING'" class="fa fa-refresh fa-spin" aria-hidden="true"></i>
+                            </td>
+                            <td class="updated-column">
+                                {{bot.updated}}
+                            </td>
+                            <td class="created-column">
+                                {{bot.created}}
+                            </td>
+                            <td>
+                                <div class="float-right">
+                                    <action-stub-items *ngIf="bot.status != 'PUBLISHED'" [model]="bot" [custom]="unpublishedBotActions"></action-stub-items>
+                                    <action-stub-items *ngIf="bot.status == 'PUBLISHED'" [model]="bot" [custom]="publishedBotActions"></action-stub-items>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <pagination [pages]="botPages"
+                    (pageChanged)="updateBots($event)"></pagination>
+    </div>
+</div>
+<div *ngIf="subNavActiveIndex == 1">
+    <span class="col-md-10"> Additional settings can be configured through the <a #consoleLink href="" (click)="openAWSConsole()" target="_blank">Amazon Lex Console <i class="fa fa-external-link"></i></a>.</span>
+</div>
+
+<!-- Publish modal -->
+<modal *ngIf="mode == sttModes.Publish"
+       [title]="'Publish Bot'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="dismissModal"
+       [onClose]="dismissModal"
+       [submitButtonText]="'Publish Bot'"
+       (modalSubmitted)="publish()"
+       [metricIdentifier]="context.identifier">
+    <div class="modal-body">
+        <div class="modal-body">
+            <form>
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix">Alias</label>
+                    <span class="col-8">
+                        <input type="text" class="form-control" [(ngModel)]="alias" name="alias" placeholder="MyBotAlias">
+                    </span>
+                </div>
+            </form>
+        </div>
+        <p>
+            For more information on Lex versioning and aliases, see the documentation <a href="http://docs.aws.amazon.com/lex/latest/dg/versioning-aliases.html" target="_blank">here</a>.
+        </p>
+    </div>
+</modal>

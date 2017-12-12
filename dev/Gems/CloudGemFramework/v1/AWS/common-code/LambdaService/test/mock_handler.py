@@ -1,4 +1,5 @@
 import service
+from types import DictionaryType
 
 received_request = None
 received_param_a = None
@@ -72,4 +73,22 @@ def test_function_with_kwargs(request, param_a, **kwargs):
 def test_function_without_parameters(request):
     global received_request, response
     received_request = request
+    return response
+
+@service.api
+def test_function_with_first_parameter_name_conflict(param_a, param_b):
+    raise RuntimeError('Should not be called')
+
+def __logging_filter(parameter):
+    if type(parameter) is DictionaryType:
+        param_a = parameter.get('param_a')
+        if type(param_a) is DictionaryType and 'key1' in param_a:
+            param_a['key1'] = 'REPLACEMENT_VALUE'
+
+@service.api(unlogged_parameters=['param_b'], logging_filter=__logging_filter)
+def test_function_with_parameter_logging_filter(request, param_a, param_b):
+    global received_request, received_param_a, received_param_b, response
+    received_request = request
+    received_param_a = param_a
+    received_param_b = param_b
     return response

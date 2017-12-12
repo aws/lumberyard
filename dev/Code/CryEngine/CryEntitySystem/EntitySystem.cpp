@@ -139,9 +139,9 @@ SEntityLoadParams::SEntityLoadParams()
 }
 
 //////////////////////////////////////////////////////////////////////
-SEntityLoadParams::SEntityLoadParams(CEntity* pReuseEntity, SEntitySpawnParams& resetParams)
-    : spawnParams(resetParams)
-    , pReuseEntity(pReuseEntity)
+SEntityLoadParams::SEntityLoadParams(CEntity* _pReuseEntity, SEntitySpawnParams& _resetParams)
+    : spawnParams(_resetParams)
+    , pReuseEntity(_pReuseEntity)
     , bCallInit(true)
     , clonedLayerId(-1)
 {

@@ -27,7 +27,7 @@ namespace
 
     AZStd::string GetDeployOptionsString(const DeploymentConfig& deploymentConfiguration)
     {
-        AZStd::string deploymentOptions = AZStd::move(AZStd::string::format("--zones=android,adb_call --deploy-android=True --deploy-android-assets=True --deploy-android-clean-device=%s --from-editor-deploy", (deploymentConfiguration.m_cleanDeviceBeforeInstall)? "True" : "False"));
+        AZStd::string deploymentOptions = AZStd::move(AZStd::string::format("--deploy-android=True --deploy-android-asset-mode=loose --deploy-android-clean-device=%s --from-editor-deploy", (deploymentConfiguration.m_cleanDeviceBeforeInstall)? "True" : "False"));
         if (deploymentConfiguration.m_installExecutable)
         {
             deploymentOptions += " --deploy-android-executable=True --deploy-android-replace-apk=True";
@@ -154,8 +154,7 @@ StringOutcome AndroidDeploymentUtil::Launch()
         LMBR_ENSURE(m_cmdLauncher->SyncProcess(revPortCmd.c_str(), launchProcess), "Failed to reverse port");
     }
 
-    m_deploymentTool.LogEndLine(s_shaderCompilerCmd);
-    LMBR_ENSURE(m_cmdLauncher->DetachProcess(s_shaderCompilerCmd, s_pathToShaderCompiler), "Failed to launch shader compiler");
+    LMBR_ENSURE(LaunchShaderCompiler(), "Failed to launch shader compiler");
 
     const char unlockScreenCmd[] = "adb shell input keyevent 82";
 

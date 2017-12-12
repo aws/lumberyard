@@ -19,12 +19,12 @@
 #include "HyperGraph.h" //IsFlowgraph check
 #include "FlowGraphNode.h"
 #include "IGameFramework.h" //Pause game
-#include "IHardwareMouse.h" //SetGameMode
 #include <IInput.h>
 #include "HyperGraphDialog.h"
 #include "FlowGraph.h"
 #include "GameEngine.h" //enable flowsystemupdate in game engine
 #include <IFlowGraphModuleManager.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #define VALIDATE_DEBUGGER(a) if (!a) {return false; }
 #define VALIDATE_DEBUGGER_VOID(a) if (!a) {return; }
@@ -258,9 +258,11 @@ void CFlowGraphDebuggerEditor::PauseGame()
         gEnv->pGame->GetIGameFramework()->PauseGame(true, true);
     }
 
-    if (gEnv->pHardwareMouse && (m_CursorVisible == false) && m_InGame)
+    if ((m_CursorVisible == false) && m_InGame)
     {
-        gEnv->pHardwareMouse->SetGameMode(false);
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                        AzFramework::SystemCursorState::UnconstrainedAndVisible);
         m_CursorVisible = true;
     }
 }
@@ -286,9 +288,11 @@ void CFlowGraphDebuggerEditor::ResumeGame()
 
         if (bResume)
         {
-            if (gEnv->pHardwareMouse && m_CursorVisible)
+            if (m_CursorVisible)
             {
-                gEnv->pHardwareMouse->SetGameMode(true);
+                AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                                &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                                AzFramework::SystemCursorState::ConstrainedAndHidden);
                 m_CursorVisible = false;
             }
 
@@ -374,9 +378,11 @@ void CFlowGraphDebuggerEditor::OnEditorNotifyEvent(EEditorNotifyEvent event)
     break;
     case eNotify_OnBeginGameMode:
     {
-        if (gEnv->pHardwareMouse && m_CursorVisible)
+        if (m_CursorVisible)
         {
-            gEnv->pHardwareMouse->SetGameMode(true);
+            AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                            &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                            AzFramework::SystemCursorState::ConstrainedAndVisible);
             m_CursorVisible = false;
         }
 

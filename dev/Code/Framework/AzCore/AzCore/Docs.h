@@ -35,7 +35,6 @@ namespace AZ
      * \li \ref BasicUsage
      * \li \ref DesigningGoodJobs
      * \li \ref Techniques
-     * \li \ref PS3
      * \li \ref Examples
      *
      * \section BasicUsage Basic job system usage
@@ -47,7 +46,7 @@ namespace AZ
      * When creating a JobManager, the JobManagerDesc is used to specify the worker threads to create with the JobManager.
      * The details of this depend on the platform. For single-core platforms, i.e. Wii, no worker threads are
      * allowed (job processing will be synchronous on these platforms, and is only provided in order to simplify user
-     * code). On PC multiple worker threads are supported, on X360 the core for each worker thread can also be specified.
+     * code). On PC multiple worker threads are supported, on some platforms the core for each worker thread can also be specified.
      *
      * Optionally the global job context can also be specified, with JobContext::SetGlobalContext(). This is the execution
      * context that will be used for jobs when a context is not explicitly specified. If you have only one JobManager in
@@ -163,9 +162,6 @@ namespace AZ
      * current job will not conceptually be complete until the join job has finished. The Job::SetContinuation function
      * allows the current job to specify that the join job is a 'continuation' of the current job, and any dependency of
      * the current job should not actually be ran until the join job is complete also.
-     *
-     * \section PS3 PS3 jobs
-     * TODO
      *
      * \section Examples Examples
      * See \subpage JobExamples "Job system examples" for examples of job system usage.

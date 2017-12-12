@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/std/containers/vector.h>
 
 class QMimeData;
 class QWidget;
@@ -30,13 +29,25 @@ namespace AzToolsFramework
         // AssetBrowserComponent
         //////////////////////////////////////////////////////////////////////////
 
+        class AssetDatabaseLocationNotifications
+            : public AZ::EBusTraits
+        {
+        public:
+            //! Indicates that the Asset Database has been initialized
+            virtual void OnDatabaseInitialized() = 0;
+        };
+
+        using AssetDatabaseLocationNotificationsBus = AZ::EBus<AssetDatabaseLocationNotifications>;
+
         //! Sends requests to AssetBrowserComponent
         class AssetBrowserComponentRequests
             : public AZ::EBusTraits
         {
         public:
-            //! When database is initialized, cache needs to be refreshed
-            virtual void DatabaseInitialized() = 0;
+
+            // Only a single handler is allowed
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
             //! Request File Browser model
             virtual AssetBrowserModel* GetAssetBrowserModel() = 0;
         };
@@ -98,24 +109,5 @@ namespace AzToolsFramework
         };
 
         using AssetBrowserModelNotificationsBus = AZ::EBus<AssetBrowserModelNotifications>;
-
-        //////////////////////////////////////////////////////////////////////////
-        // Icons
-        //////////////////////////////////////////////////////////////////////////
-
-        //! Request bus for retrieving asset thumbnails
-        class AssetBrowserThumbnailRequests
-            : public AZ::EBusTraits
-        {
-        public:
-            //! Retrieve thumbnail of a specific entry
-            /*!
-            \param entry - asset entry to look up
-            \retval QPixmap - thumbnail image associated with provided entry
-            */
-            virtual QIcon GetThumbnail(const AssetBrowserEntry* entry) = 0;
-        };
-
-        using AssetBrowserThumbnailRequestsBus = AZ::EBus<AssetBrowserThumbnailRequests>;
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

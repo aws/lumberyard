@@ -13,6 +13,7 @@
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
 
+#include <aws/core/Aws.h>
 #include <GameLift/Session/GameLiftClientServiceBus.h>
 #include <GameLift/Session/GameLiftClientServiceEventsBus.h>
 #include <GameLift/Session/GameLiftSessionDefs.h>
@@ -70,6 +71,7 @@ namespace GridMate
         GRIDMATE_SERVICE_ID(GameLiftClientService);
 
         GameLiftClientService(const GameLiftClientServiceDesc& desc);
+        ~GameLiftClientService() override;
 
         bool IsReady() const;
         bool UseFleetId() const;
@@ -88,7 +90,7 @@ namespace GridMate
         GameLiftSessionRequest* RequestSession(const GameLiftSessionRequestParams& params) override;
         GameLiftSearch* StartSearch(const GameLiftSearchParams& params) override;
         GameLiftClientSession* QueryGameLiftSession(const GridSession* session) override;
-        GameLiftSearch* QueryGameLiftSearch(const GridSearch* search) override;        
+        GameLiftSearch* QueryGameLiftSearch(const GridSearch* search) override;
 
     protected:
         bool StartGameLiftClient();
@@ -112,6 +114,11 @@ namespace GridMate
         Aws::GameLift::GameLiftClient* m_client;
         Aws::GameLift::Model::UpdateFleetAttributesOutcomeCallable m_updateFleetAttributesOutcomeCallable;
         Aws::GameLift::Model::UpdateAliasOutcomeCallable m_updateAliasOutcomeCallable;
+
+        Aws::SDKOptions m_optionsSdk;
+
+        template<typename Callable>
+        void UpdateImpl(Callable& callable);
     };
 } // namespace GridMate
 

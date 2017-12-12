@@ -28,24 +28,24 @@ struct SVisualLogParams
     bool alignColumnsToThis;
 
     SVisualLogParams()  { Init(); }
-    SVisualLogParams(ColorF color)
+    SVisualLogParams(ColorF _color)
     {
         Init();
-        this->color = color;
+        this->color = _color;
     }
-    SVisualLogParams(ColorF color, float size)
+    SVisualLogParams(ColorF _color, float _size)
     {
         Init();
-        this->color = color;
-        this->size = size;
+        this->color = _color;
+        this->size = _size;
     }
-    SVisualLogParams(ColorF color, float size, int column, bool align)
+    SVisualLogParams(ColorF _color, float _size, int _column, bool _align)
     {
         Init();
-        this->color = color;
-        this->size = size;
-        this->column = column;
-        this->alignColumnsToThis = align;
+        this->color = _color;
+        this->size = _size;
+        this->column = _column;
+        this->alignColumnsToThis = _align;
     }
 
 private:

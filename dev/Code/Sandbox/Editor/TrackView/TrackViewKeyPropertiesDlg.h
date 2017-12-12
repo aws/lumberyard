@@ -19,7 +19,6 @@
 
 #include "TrackViewSequence.h"
 #include "TrackViewNode.h"
-#include "tcbpreviewctrl.h"
 #include "Plugin.h"
 #include "TrackViewDopeSheetBase.h"
 #include "QtViewPane.h"

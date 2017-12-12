@@ -13,7 +13,8 @@
 #include "SphereShapeComponent.h"
 #include "EditorSphereShapeComponent.h"
 
-#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Math/IntersectPoint.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace LmbrCentral
 {
@@ -50,11 +51,26 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Sphere_Shape.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(0, &EditorSphereShapeComponent::m_configuration, "Configuration", "Sphere Shape Configuration")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorSphereShapeComponent::ConfigurationChanged)    
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ;
             }
         }
+    }
+
+    void EditorSphereShapeComponent::Activate()
+    {
+        EditorBaseShapeComponent::Activate();
+        SphereShape::Activate(GetEntityId());        
+    }
+
+    void EditorSphereShapeComponent::Deactivate()
+    {
+        SphereShape::Deactivate();        
+        EditorBaseShapeComponent::Deactivate();
     }
 
     void EditorSphereShapeComponent::DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const
@@ -65,15 +81,19 @@ namespace LmbrCentral
         displayContext->DrawWireSphere(AZ::Vector3::CreateZero(), m_configuration.GetRadius());
     }
 
+    void EditorSphereShapeComponent::ConfigurationChanged()
+    {
+        SphereShape::InvalidateCache(SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);        
+    }
+
     void EditorSphereShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         auto component = gameEntity->CreateComponent<SphereShapeComponent>();
         if (component)
         {
-            component->m_configuration = m_configuration;
+            component->SetConfiguration(m_configuration);
         }
     }
-
 
     namespace ClassConverters
     {
@@ -89,28 +109,28 @@ namespace LmbrCentral
 
             New:
             <Class name="EditorSphereShapeComponent" field="element" version="1" type="{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}">
-             <Class name="SphereShapeConfiguration" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
+             <Class name="SphereShapeConfig" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
               <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
              </Class>
             </Class>
             */
 
             // Cache the Configuration
-            SphereShapeConfiguration configuration;
+            SphereShapeConfig configuration;
             int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<SphereShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<SphereShapeConfig>(configuration);
             }
 
             // Convert to EditorSphereShapeComponent
-            bool result = classElement.Convert(context, "{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}");
+            bool result = classElement.Convert<EditorSphereShapeComponent>(context);
             if (result)
             {
-                configIndex = classElement.AddElement<SphereShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<SphereShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<SphereShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<SphereShapeConfig>(context, configuration);
                 }
                 return true;
             }

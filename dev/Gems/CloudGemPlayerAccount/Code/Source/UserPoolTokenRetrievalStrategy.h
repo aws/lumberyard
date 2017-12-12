@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <TokenRetrievingPersistentIdentityProvider.h>
+#include <Identity/TokenRetrievingPersistentIdentityProvider.h>
 #include "CloudGemPlayerAccountSystemComponent.h"
 
 namespace CloudGemPlayerAccount
@@ -19,7 +19,7 @@ namespace CloudGemPlayerAccount
     class RegistrationComponent;
 
     class UserPoolTokenRetrievalStrategy
-        : public LmbrAWS::TokenRetrievalStrategy
+        : public CloudGemFramework::TokenRetrievalStrategy
     {
     public:
         UserPoolTokenRetrievalStrategy(CloudGemPlayerAccountSystemComponent* playerAccountComponent);

@@ -30,8 +30,10 @@ namespace AZ
                         {
                             m_graph = &graph;
                             m_index = graphIterator->m_childIndex;
-                            m_iterator = rootIterator ? AZStd::next(iterator, m_index) : iterator;
 
+                            s32 delta = rootIterator ? static_cast<s32>(m_index) : graph.ConvertToNodeIndex(graphIterator).Distance(graphIterator->GetChildIndex());
+                            m_iterator = AZStd::next(iterator, delta);
+                            
                             if (!ShouldAcceptNode(Filter()))
                             {
                                 MoveToNext();

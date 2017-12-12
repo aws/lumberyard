@@ -59,16 +59,30 @@ namespace CharacterTool
         }
     }
 
-    static void ExpandIncludes(AnimationSetFilter* outFilter, const std::vector<string>& includeStack, const vector<SkeletonParametersInclude>& includes, const string& selfPath, ExplorerFileList* skeletonList)
+    static bool ExpandIncludes(AnimationSetFilter* outFilter, const std::vector<string>& includeStack, const vector<SkeletonParametersInclude>& includes, const string& selfPath, ExplorerFileList* skeletonList, string& errorListString)
     {
+        bool result = true;
         std::vector<string> stack = includeStack;
         std::vector<AnimationFilterFolder> includedFolders;
         for (size_t i = 0; i < includes.size(); ++i)
         {
             const string& filename = includes[i].filename;
-            if (stl::find(includeStack, filename) || filename == selfPath)
+            string currentIncludeContext = selfPath;
+            if (!stack.empty())
             {
-                CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "Recursive inclusion of CHRAPARAMS: '%s'", includes[i].filename.c_str());
+                currentIncludeContext = stack.back().c_str();
+            }
+            
+            if (filename == selfPath || stl::find(stack, filename))
+            {
+                AZStd::string errorString = AZStd::string::format("Recursive inclusion of CHRPARAMS: '%s' while processing '%s'", includes[i].filename.c_str(), currentIncludeContext.c_str());
+
+                if (errorListString.length() > 0)
+                {
+                    errorListString = errorListString + ", ";
+                }
+                errorListString = errorListString + errorString.c_str();
+                result = false;
                 continue;
             }
 
@@ -83,7 +97,10 @@ namespace CharacterTool
 
                 AnimationSetFilter filter;
                 stack.push_back(filename);
-                ExpandIncludes(&filter, stack, entry->content.skeletonParameters.includes, selfPath, skeletonList);
+                if (!ExpandIncludes(&filter, stack, entry->content.skeletonParameters.includes, selfPath, skeletonList, errorListString))
+                {
+                    result = false;
+                }
                 stack.pop_back();
                 includedFolders.insert(includedFolders.end(),
                     filter.folders.begin(), filter.folders.end());
@@ -92,19 +109,28 @@ namespace CharacterTool
 
         outFilter->folders.insert(outFilter->folders.begin(),
             includedFolders.begin(), includedFolders.end());
+        return result;
     }
 
     void SkeletonContent::UpdateIncludedAnimationSet(ExplorerFileList* skeletonList)
     {
         includedAnimationSetFilter = AnimationSetFilter();
         const string selfPath = PathUtil::ReplaceExtension(skeletonParameters.skeletonFileName, ".chrparams");
-        ExpandIncludes(&includedAnimationSetFilter, std::vector<string>(), skeletonParameters.includes, selfPath, skeletonList);
+        string errorListString;
+        m_filterInValidState = ExpandIncludes(&includedAnimationSetFilter, std::vector<string>(), skeletonParameters.includes, selfPath, skeletonList, errorListString);
+        m_errorListString = errorListString;
     }
 
-    void SkeletonContent::ComposeCompleteAnimationSetFilter(AnimationSetFilter* outFilter, ExplorerFileList* skeletonList) const
+    bool SkeletonContent::ComposeCompleteAnimationSetFilter(AnimationSetFilter* outFilter, ExplorerFileList* skeletonList) const
     {
         *outFilter = skeletonParameters.animationSetFilter;
         const string selfPath = PathUtil::ReplaceExtension(skeletonParameters.skeletonFileName, ".chrparams");
-        ExpandIncludes(&*outFilter, vector<string>(), skeletonParameters.includes, selfPath, skeletonList);
+        string errorListString;
+        if (!ExpandIncludes(&*outFilter, vector<string>(), skeletonParameters.includes, selfPath, skeletonList, errorListString))
+        { 
+            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "%s", errorListString.c_str());
+            return false;
+        }
+        return true;
     }
 }

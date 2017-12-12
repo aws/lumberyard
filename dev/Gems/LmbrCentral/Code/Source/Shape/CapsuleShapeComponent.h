@@ -11,81 +11,46 @@
 */
 #pragma once
 
-#include <Cry_Geo.h>
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TransformBus.h>
-#include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
+#include "CapsuleShape.h"
 
 namespace LmbrCentral
 {
     class CapsuleShapeComponent
         : public AZ::Component
-        , private ShapeComponentRequestsBus::Handler
-        , private CapsuleShapeComponentRequestsBus::Handler
-        , private AZ::TransformNotificationBus::Handler
+        , public CapsuleShape
     {
     public:
 
-        friend class EditorCapsuleShapeComponent;
-
-        AZ_COMPONENT(CapsuleShapeComponent, "{967EC13D-364D-4696-AB5C-C00CC05A2305}");
+        AZ_COMPONENT(CapsuleShapeComponent, CapsuleShapeComponentTypeId);
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+        //////////////////////////////////////////////////////////////////////////        
 
-        //////////////////////////////////////////////////////////////////////////
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override
-        {
-            return AZ::Crc32("Capsule");
-        }
-        AZ::Aabb GetEncompassingAabb() override;
-
-
-        bool IsPointInside(const AZ::Vector3& point) override;
-
-        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
-
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // ShapeBoxComponentRequestBus::Handler implementation
-        CapsuleShapeConfiguration GetCapsuleConfiguration() override
-        {
-            return m_configuration;
-        }
-
-        void SetHeight(float newHeight) override;
-        void SetRadius(float newRadius) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////////////
-        // Transform notification bus listener
-        /// Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
-        //////////////////////////////////////////////////////////////////////////////////
+        CapsuleShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("ShapeService"));
-            provided.push_back(AZ_CRC("CapsuleShapeService"));
+            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            provided.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("ShapeService"));
-            incompatible.push_back(AZ_CRC("CapsuleShapeService"));
+            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+            incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
-            required.push_back(AZ_CRC("TransformService"));
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
         static void Reflect(AZ::ReflectContext* context);
@@ -94,42 +59,6 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // Serialized data
         //! Stores configuration of a cylinder for this component
-        CapsuleShapeConfiguration m_configuration;
-
-        //////////////////////////////////////////////////////////////////////////
-        // Runtime data
-        class CapsuleIntersectionDataCache : public IntersectionTestDataCache<CapsuleShapeConfiguration>
-        {
-        public:
-            friend class CapsuleShapeComponent;
-
-            void UpdateIntersectionParams(const AZ::Transform& currentTransform,
-                const CapsuleShapeConfiguration& configuration) override;
-
-        private:
-
-            // Values that are used for capsule intersection tests
-            // The end points of the cylinder inside the capsule
-            AZ::Vector3 m_basePlaneCenterPoint;
-            AZ::Vector3 m_topPlaneCenterPoint;
-
-            // A unit vector along the axis of this capsule
-            AZ::Vector3 m_axisVector;
-
-            // Length of the cylinder axis squared
-            float m_axisLengthSquared;
-
-            // Radius of the capsule squared
-            float m_radiusSquared;
-
-            // indicates whether the cylinder is actually just a sphere
-            bool m_isSphere = false;
-        };
-
-        // Caches transient intersection data
-        CapsuleIntersectionDataCache m_intersectionDataCache;
-
-        //! Caches the current World transform
-        AZ::Transform m_currentWorldTransform;
+        CapsuleShapeConfig m_configuration;
     };
 } // namespace LmbrCentral

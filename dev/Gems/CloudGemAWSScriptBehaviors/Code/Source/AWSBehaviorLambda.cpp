@@ -14,7 +14,7 @@
 
 #include "AWSBehaviorLambda.h"
 
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(push)
@@ -70,7 +70,7 @@ namespace CloudGemAWSScriptBehaviors
     AZStd::vector<AZStd::string> AWSBehaviorLambda::GetFunctionNames()
     {
         AZStd::vector<AZStd::string> functionNames;
-        CloudCanvasCommon::CloudCanvasCommonRequestBus::BroadcastResult(functionNames, &CloudCanvasCommon::CloudCanvasCommonRequestBus::Events::GetLogicalResourceNames, "AWS::Lambda::Function");
+        CloudGemFramework::CloudCanvasMappingsBus::BroadcastResult(functionNames, &CloudGemFramework::CloudCanvasMappingsBus::Events::GetMappingsOfType, "AWS::Lambda::Function");
         return functionNames;
     }
 
@@ -105,7 +105,7 @@ namespace CloudGemAWSScriptBehaviors
         *stream << m_inRequestBody.c_str();
 
         AZStd::string resourceFunctionName;
-        EBUS_EVENT_RESULT(resourceFunctionName, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, m_inFunctionName.c_str());
+        EBUS_EVENT_RESULT(resourceFunctionName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_inFunctionName.c_str());
         if (resourceFunctionName.empty())
         {
             // if there is no logical resource, user may have put in a physical resource, so try that

@@ -26,9 +26,6 @@
 
 #define _LAUNCHER
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Launcher
-
 // Insert your headers here
 #include <platform.h>
 #include <windows.h>

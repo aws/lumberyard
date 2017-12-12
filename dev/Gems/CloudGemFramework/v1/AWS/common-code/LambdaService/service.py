@@ -9,17 +9,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+from __future__ import print_function
+
+from copy import deepcopy
 import importlib
 import inspect
+from types import DictionaryType, FunctionType, ListType
 
 from errors import ClientError
 
-def api(f):
+def api(function_to_decorate=None, unlogged_parameters=None, logging_filter=None):
     '''Decorator that allows the dispatcher to call an handler function.'''
+
+    # If no arguments are provided to @api, this function acts as a normal decorator and
+    # receives the function to decorate as a single positional argument.
+    if function_to_decorate:
+        return __decorate_api(function_to_decorate, unlogged_parameters, logging_filter)
+
+    # If arguments are provided to @api(...), this function acts as a decorator factory.
+    # The function to decorate will be passed as a single positional argument to the following lambda.
+    return lambda f: __decorate_api(f, unlogged_parameters, logging_filter)
+
+def __decorate_api(f, unlogged_parameters, logging_filter):
     f.is_dispatch_handler = True
     f.arg_spec = inspect.getargspec(f) # See __check_function_parameters below.
+    f.unlogged_parameters = unlogged_parameters
+    f.logging_filter = logging_filter
     return f
-
 
 class Request(object):
     '''Enecapuslates the event and context object's passed to the 
@@ -63,8 +79,6 @@ def dispatch(event, context):
 
     '''
 
-    print 'dispatching event', event
-    
     module_name = event.get('module', None)
     if not module_name:
         raise ValueError('No "module" property was provided n the event object.')
@@ -72,6 +86,8 @@ def dispatch(event, context):
     function_name = event.get('function', None)
     if not function_name:
         raise ValueError('No "function" property was provided in the event object.')
+
+    print('request id {} has module {} and function {}'.format(context.aws_request_id, module_name, function_name))
 
     module = importlib.import_module('api.' + module_name)
 
@@ -90,11 +106,17 @@ def dispatch(event, context):
 
     __check_function_parameters(function, parameters)
 
+    # The request parameters are logged after finding the handler function since that's where the logging filters are defined.
+    # Request logging is also after the request validation so that the logging filters don't have to know how to filter unexpected data.
+    filtered_parameters = __apply_logging_filter(function, parameters)
+    print('dispatching request id {} function {} with parameters {}'.format(context.aws_request_id, 'api.{}.{}'.format(module_name, function_name), filtered_parameters))
+
     request = Request(event, context)
 
     result = function(request, **parameters)
 
-    print 'returning result', result
+    filtered_result = __apply_logging_filter(function, result)
+    print('returning result {}'.format(filtered_result))
 
     return result
 
@@ -114,6 +136,8 @@ def __check_function_parameters(function, parameters):
     for parameter_name, parameter_value in parameters.iteritems():
         if parameter_name in expected_parameters:
             if parameter_value is not None:
+                if parameter_name == arg_spec.args[0]:
+                    raise ValueError('Invalid handler arguments. The first parameter\'s name, {}, matches an api parameter name. Use an unique name for the first parameter, which is always a service.Request object.'.format(parameter_name))
                 expected_parameters.remove(parameter_name)
         elif not has_kwargs_parameter: # There are no "unexpected" parameters if there is a **kwargs parameter.
             unexpected_paramters.add(parameter_name)
@@ -145,3 +169,18 @@ def __check_function_parameters(function, parameters):
             error_message += 'The following parameters are unexpected: {}.'.format(', '.join(unexpected_paramters))
         error_message += ' Check the documentation for the the API your calling.'
         raise ClientError(error_message)
+
+def __apply_logging_filter(function, parameters):
+    if not function.unlogged_parameters and not function.logging_filter:
+        return parameters
+
+    result = deepcopy(parameters)
+    if function.unlogged_parameters:
+        for name in function.unlogged_parameters:
+            if name in result and result[name] is not None and result[name] != '':
+                result[name] = '<redacted>'
+
+    if function.logging_filter:
+        function.logging_filter(result)
+
+    return result

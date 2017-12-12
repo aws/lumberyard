@@ -362,7 +362,7 @@ void CVars::Init()
         "Debug");
     DefineConstIntCVar(e_ShadowsDebug, 0, VF_CHEAT,
         "0=off, 2=visualize shadow maps on the screen");
-    REGISTER_CVAR(e_ShadowsCache, 0, VF_NULL,
+    REGISTER_CVAR(e_ShadowsCache, 1, VF_NULL,
         "Activates drawing of static cached shadows");
     REGISTER_CVAR(e_ShadowsCacheUpdate, 0, VF_NULL,
         "Trigger updates of the shadow cache: 0=no update, 1=one update, 2=continuous updates");
@@ -370,6 +370,8 @@ void CVars::Init()
         "The lod used for rendering objects into the shadow cache. Set to -1 to disable");
     REGISTER_CVAR_CB(e_ShadowsCacheRenderCharacters, 0, VF_NULL,
         "Render characters into the shadow cache. 0=disabled, 1=enabled", OnDynamicDistanceShadowsVarChange);
+    REGISTER_CVAR(e_ShadowsCacheRequireManualUpdate, 0, VF_NULL,
+        "Sets whether levels must trigger manual updates of the cached shadow maps: 0=Cached shadows default to Incremental updates, 1=Levels must trigger cached shadow updates via script");
     REGISTER_CVAR_CB(e_DynamicDistanceShadows, 1, VF_NULL,
         "Enable dynamic distance shadows, 0=disable, 1=enable, -1=don't render dynamic distance shadows", OnDynamicDistanceShadowsVarChange);
     DefineConstIntCVar(e_ShadowsCascadesDebug, 0, VF_CHEAT,

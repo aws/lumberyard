@@ -27,16 +27,17 @@ void CVolumetricScattering::Render()
 
     // quickie-prototype
     //    - some ideas: add several types (cloudy/sparky/yadayada)
-
+    
     // Get current viewport
     int iTempX, iTempY, iWidth, iHeight;
     gcpRendD3D->GetViewport(&iTempX, &iTempY, &iWidth, &iHeight);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // Render god-rays into low-res render target for less fillrate hit
-
-    gcpRendD3D->FX_ClearTarget(CTexture::s_ptexBackBufferScaled[1], Clr_Transparent);
+    
     gcpRendD3D->FX_PushRenderTarget(0,  CTexture::s_ptexBackBufferScaled[1], NULL);
+    gcpRendD3D->FX_SetColorDontCareActions(0, false, false);
+    gcpRendD3D->FX_ClearTarget(CTexture::s_ptexBackBufferScaled[1], Clr_Transparent);
     gcpRendD3D->RT_SetViewport(0, 0, CTexture::s_ptexBackBufferScaled[1]->GetWidth(), CTexture::s_ptexBackBufferScaled[1]->GetHeight());
 
     float fAmount = m_pAmount->GetParam();
@@ -47,41 +48,43 @@ void CVolumetricScattering::Render()
     static CCryNameTSCRC pTechName("VolumetricScattering");
     uint32 nPasses;
     CShaderMan::s_shPostEffects->FXSetTechnique(pTechName);
-    CShaderMan::s_shPostEffects->FXBegin(&nPasses, FEF_DONTSETSTATES);
+    
+    {                
+        PROFILE_LABEL_SCOPE("VOLUMETRICSCATTERING");
+        CShaderMan::s_shPostEffects->FXBegin(&nPasses, FEF_DONTSETSTATES);
 
-    gcpRendD3D->SetCullMode(R_CULL_NONE);
-    gcpRendD3D->FX_SetState(GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCCOL | GS_NODEPTHTEST);
+        gcpRendD3D->SetCullMode(R_CULL_NONE);
+        gcpRendD3D->FX_SetState(GS_BLSRC_ONE | GS_BLDST_ONEMINUSSRCCOL | GS_NODEPTHTEST);
 
-    int nSlicesCount = 10;
+        int nSlicesCount = 10;
 
-    Vec4 pParams;
-    pParams = Vec4(fTilling, fSpeed, fTilling, fSpeed);
+        Vec4 pParams;
+        pParams = Vec4(fTilling, fSpeed, fTilling, fSpeed);
 
-    static CCryNameR pParam0Name("VolumetricScattering");
-    static CCryNameR pParam1Name("VolumetricScatteringColor");
+        static CCryNameR pParam0Name("VolumetricScattering");
+        static CCryNameR pParam1Name("VolumetricScatteringColor");
 
-    static CCryNameR pParam2Name("PI_volScatterParamsVS");
-    static CCryNameR pParam3Name("PI_volScatterParamsPS");
+        static CCryNameR pParam2Name("PI_volScatterParamsVS");
+        static CCryNameR pParam3Name("PI_volScatterParamsPS");
 
-    for (int r(0); r < nSlicesCount; ++r)
-    {
-        // !force updating constants per-pass! (dx10..)
-        CShaderMan::s_shPostEffects->FXBeginPass(0);
+        for (int r(0); r < nSlicesCount; ++r)
+        {
+            // !force updating constants per-pass! (dx10..)
+            CShaderMan::s_shPostEffects->FXBeginPass(0);
 
-        // Set PS default params
-        Vec4 pParamsPI = Vec4(1.0f, fAmount, r, 1.0f / (float) nSlicesCount);
-        CShaderMan::s_shPostEffects->FXSetVSFloat(pParam0Name, &pParams, 1);
-        CShaderMan::s_shPostEffects->FXSetPSFloat(pParam1Name, &pColor, 1);
-        CShaderMan::s_shPostEffects->FXSetVSFloat(pParam2Name, &pParamsPI, 1);
-        CShaderMan::s_shPostEffects->FXSetPSFloat(pParam3Name, &pParamsPI, 1);
+            // Set PS default params
+            Vec4 pParamsPI = Vec4(1.0f, fAmount, r, 1.0f / (float) nSlicesCount);
+            CShaderMan::s_shPostEffects->FXSetVSFloat(pParam0Name, &pParams, 1);
+            CShaderMan::s_shPostEffects->FXSetPSFloat(pParam1Name, &pColor, 1);
+            CShaderMan::s_shPostEffects->FXSetVSFloat(pParam2Name, &pParamsPI, 1);
+            CShaderMan::s_shPostEffects->FXSetPSFloat(pParam3Name, &pParamsPI, 1);
 
-        GetUtils().DrawFullScreenTri(CTexture::s_ptexBackBufferScaled[1]->GetWidth(), CTexture::s_ptexBackBufferScaled[1]->GetHeight());
+            GetUtils().DrawFullScreenTri(CTexture::s_ptexBackBufferScaled[1]->GetWidth(), CTexture::s_ptexBackBufferScaled[1]->GetHeight());
 
-        CShaderMan::s_shPostEffects->FXEndPass();
+            CShaderMan::s_shPostEffects->FXEndPass();
+        }
+        CShaderMan::s_shPostEffects->FXEnd();
     }
-
-
-    CShaderMan::s_shPostEffects->FXEnd();
 
     // Restore previous viewport
     gcpRendD3D->FX_PopRenderTarget(0);
@@ -89,14 +92,16 @@ void CVolumetricScattering::Render()
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // Display volumetric scattering effect
+    {
+        PROFILE_LABEL_SCOPE("VOLUMETRICSCATTERINGFINAL");
+        CCryNameTSCRC pTechName0("VolumetricScatteringFinal");
 
-    CCryNameTSCRC pTechName0("VolumetricScatteringFinal");
+        GetUtils().ShBeginPass(CShaderMan::s_shPostEffects, pTechName0, FEF_DONTSETSTATES);
+        gcpRendD3D->FX_SetState(GS_NODEPTHTEST);
 
-    GetUtils().ShBeginPass(CShaderMan::s_shPostEffects, pTechName0, FEF_DONTSETSTATES);
-    gcpRendD3D->FX_SetState(GS_NODEPTHTEST);
-
-    GetUtils().DrawFullScreenTri(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight());
-    GetUtils().ShEndPass();
+        GetUtils().DrawFullScreenTri(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight());
+        GetUtils().ShEndPass();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

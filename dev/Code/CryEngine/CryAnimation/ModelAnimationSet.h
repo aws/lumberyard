@@ -242,9 +242,9 @@ public:
 
     struct FacialAnimationEntry
     {
-        FacialAnimationEntry(const string& name, const string& path)
-            : name(name)
-            , path(path) {}
+        FacialAnimationEntry(const string& _name, const string& _path)
+            : name(_name)
+            , path(_path) {}
         string name;
         string path;
         uint32 crc;

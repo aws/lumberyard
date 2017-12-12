@@ -31,13 +31,13 @@ namespace AZ
                     systemFileMode |= SystemFile::SF_OPEN_CREATE;
                 }
 
-                // If writing and appending, append.
+                // If appending, append.
                 if (AnyFlag(mode & OpenMode::ModeAppend))
                 {
                     systemFileMode |= SystemFile::SF_OPEN_APPEND;
                 }
-                // If writing and NOT updating, empty the file.
-                else if (!AnyFlag(mode & OpenMode::ModeUpdate))
+                // If writing and not appending, empty the file
+                else if (AnyFlag(mode & OpenMode::ModeWrite))
                 {
                     systemFileMode |= SystemFile::SF_OPEN_TRUNCATE;
                 }

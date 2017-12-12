@@ -12,71 +12,197 @@
 
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
-#include <AzFramework/Input/Buses/Requests/RawInputRequestBus_darwin.h>
 
 #include <AppKit/NSEvent.h>
 #include <AppKit/NSTextView.h>
 #include <AppKit/NSWindow.h>
 #include <Carbon/Carbon.h>
 
+#include <objc/runtime.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-@interface KeyboardTextView : NSTextView
+// Ideally this would all be done by simply sub-classing NSTextView, but we've been forced to resort
+// to these shenanigans because the objective-c runtime deems a class defined in a static lib should
+// generate the following warning if that static lib happens to be used by multiple dynamic libs:
+//
+// "Class X is implemented in both A and B. One of the two will be used. Which one is undefined."
+//
+// To get around this absurdity we're using method swizzling to hook into the two NSTextView methods
+// we need to customize, using EBus to forward them to our InputDeviceKeyboardOsx instance, which in
+// turn will either intercept the calls to implement our custom logic (if it owns the NSTextView) or
+// return false (if it does not own the NSTextView) so that we'll invoke the original implementation.
+//
+// One advantage to all this is that we do not need to add our NSTextView to the view hierarchy, or
+// call makeFirstResponder, we just create it and call interpretKeyEvents as needed to process text.
+namespace
 {
-    AzFramework::InputDeviceKeyboard::Implementation* m_inputDevice;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (id)initWithInputDevice: (AzFramework::InputDeviceKeyboard::Implementation*)inputDevice;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (BOOL)shouldChangeTextInRange: (NSRange) range
-              replacementString: (NSString*) string;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)deleteBackward: (id) sender;
-
-@end // KeyboardTextView Interface
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-@implementation KeyboardTextView
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (id)initWithInputDevice: (AzFramework::InputDeviceKeyboard::Implementation*)inputDevice
-{
-    if ((self = [super initWithFrame: CGRectZero]))
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Sets the implementation of an objectice-c instance method
+    //! \param[in] selector The selector used to invoke the method
+    //! \param[in] newImplementation The new implementation of the method to set
+    //! \return The existing implementation if it differs from newImplementation, nullptr otherwise
+    IMP SetInstanceMethodImplementaion(Class classType, SEL selector, IMP newImplementation)
     {
-        self->m_inputDevice = inputDevice;
+        Method instanceMethod = class_getInstanceMethod(classType, selector);
+        if (!instanceMethod)
+        {
+            AZ_Warning("SetInstanceMethodImplementaion", false, "Instance method not found on NSTextView.");
+            return nullptr;
+        }
+
+        if (method_getImplementation(instanceMethod) == newImplementation)
+        {
+            return nullptr;
+        }
+
+        return method_setImplementation(instanceMethod, newImplementation);
     }
 
-    return self;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (BOOL)shouldChangeTextInRange: (NSRange) range
-              replacementString: (NSString*) string
-{
-    // Only queue text events if this application's window has focus
-    if (NSApplication.sharedApplication.mainWindow.keyWindow)
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! EBus interface used to listen for NSTextView method calls that have been intercepted
+    class NSTextViewMethodHookNotifications : public AZ::EBusTraits
     {
-        const AZStd::string textUTF8 = string.UTF8String;
-        m_inputDevice->QueueRawTextEvent(textUTF8);
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! EBus Trait: NSTextView method hook notifications are addressed to a single address
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! EBus Trait: NSTextView method hook notifications can be handled by multiple listeners
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Sent when a call to the NSTextView::deleteBackward method has been intercepted
+        //! \param[in] textView The NSTextView that the original method was invoked on
+        //! \param[in] sender The sender of the original deleteBackward message
+        //! \return True if the method call was handled, false otherwise
+        virtual bool DeleteBackward(NSTextView* textView, id sender) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Sent when a call to the NSTextView::shouldChangeTextInRange method has been intercepted
+        //! \param[in] textView The NSTextView that the original method was invoked on
+        //! \param[in] range The range of the text to change
+        //! \param[in] string The new replacement text
+        //! \return True if the method call was handled, false otherwise
+        virtual bool ShouldChangeTextInRange(NSTextView* textView, NSRange range, NSString* string) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Call to insert the custom method hooks into the NSTextView class implementation
+        static void InsertHooks();
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Call to remove the custom method hooks from the NSTextView class implementation
+        static void RemoveHooks();
+
+    private:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Custom implementation of NSTextView::deleteBackward:
+        //! \ref NSTextView::deleteBackward:
+        static void DeleteBackwardHook(NSTextView* textView, SEL selector, id sender);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Custom implementation of NSTextView::shouldChangeTextInRange:replacementString:
+        //! \ref NSTextView::shouldChangeTextInRange:replacementString:
+        static BOOL ShouldChangeTextInRangeHook(NSTextView* textView,
+                                                SEL selector,
+                                                NSRange range,
+                                                NSString* string);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Pointer to the default implementation of the NSTextView::deleteBackward method
+        static IMP s_defaultDeleteBackwardImplementation;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Pointer to the default implementation of the NSTextView::shouldChangeTextInRange method
+        static IMP s_defaultShouldChangeTextInRangeImplementation;
+    };
+    using NSTextViewMethodHookNotificationBus = AZ::EBus<NSTextViewMethodHookNotifications>;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    IMP NSTextViewMethodHookNotifications::s_defaultDeleteBackwardImplementation = nullptr;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    IMP NSTextViewMethodHookNotifications::s_defaultShouldChangeTextInRangeImplementation = nullptr;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void NSTextViewMethodHookNotifications::InsertHooks()
+    {
+        // Switch the imlplementation of NSTextView::deleteBackward with our custom one,
+        // storing the original default implementation so that it can be restored later.
+        s_defaultDeleteBackwardImplementation =
+            SetInstanceMethodImplementaion([NSTextView class],
+                                           @selector(deleteBackward:),
+                                           (IMP)DeleteBackwardHook);
+
+        // Switch the imlplementation of NSTextView::shouldChangeTextInRange with our custom one,
+        // storing the original default implementation so that it can be restored later.
+        s_defaultShouldChangeTextInRangeImplementation =
+            SetInstanceMethodImplementaion([NSTextView class],
+                                           @selector(shouldChangeTextInRange:replacementString:),
+                                           (IMP)ShouldChangeTextInRangeHook);
     }
 
-    // Return false so that the text field itself does not update.
-    return FALSE;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)deleteBackward: (id) sender
-{
-    // Only queue text events if this application's window has focus
-    if (NSApplication.sharedApplication.mainWindow.keyWindow)
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void NSTextViewMethodHookNotifications::RemoveHooks()
     {
-        const AZStd::string textUTF8 = "\b";
-        m_inputDevice->QueueRawTextEvent(textUTF8);
+        // Restore the default imlplementation of NSTextView::shouldChangeTextInRange.
+        SetInstanceMethodImplementaion([NSTextView class],
+                                       @selector(shouldChangeTextInRange:replacementString:),
+                                       s_defaultShouldChangeTextInRangeImplementation);
+        s_defaultShouldChangeTextInRangeImplementation = nullptr;
+
+        // Restore the default imlplementation of NSTextView::deleteBackward.
+        SetInstanceMethodImplementaion([NSTextView class],
+                                       @selector(deleteBackward:),
+                                       s_defaultDeleteBackwardImplementation);
+        s_defaultDeleteBackwardImplementation = nullptr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void NSTextViewMethodHookNotifications::DeleteBackwardHook(NSTextView* textView,
+                                                               SEL selector,
+                                                               id sender)
+    {
+        bool handled = false;
+        NSTextViewMethodHookNotificationBus::BroadcastResult(handled,
+                                                             &NSTextViewMethodHookNotifications::DeleteBackward,
+                                                             textView,
+                                                             sender);
+
+        if (!handled && s_defaultDeleteBackwardImplementation)
+        {
+            s_defaultDeleteBackwardImplementation(textView, selector, sender);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    BOOL NSTextViewMethodHookNotifications::ShouldChangeTextInRangeHook(NSTextView* textView,
+                                                                        SEL selector,
+                                                                        NSRange range,
+                                                                        NSString* string)
+    {
+        bool handled = false;
+        NSTextViewMethodHookNotificationBus::BroadcastResult(handled,
+                                                             &NSTextViewMethodHookNotifications::ShouldChangeTextInRange,
+                                                             textView,
+                                                             range,
+                                                             string);
+
+        if (handled)
+        {
+            // Return false so that the text field itself does not update.
+            return FALSE;
+        }
+
+        if (s_defaultShouldChangeTextInRangeImplementation)
+        {
+            s_defaultShouldChangeTextInRangeImplementation(textView, selector, range, string);
+            return TRUE;
+        }
+        return FALSE;
     }
 }
-@end // KeyboardTextView Implementation
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
@@ -149,10 +275,10 @@ namespace
         &InputDeviceKeyboard::Key::ModifierShiftL,        // 0x38 kVK_Shift
         &InputDeviceKeyboard::Key::EditCapsLock,          // 0x39 kVK_CapsLock
         &InputDeviceKeyboard::Key::ModifierAltL,          // 0x3A kVK_Option
-        &InputDeviceKeyboard::Key::ModifierControlL,      // 0x3B kVK_Control
+        &InputDeviceKeyboard::Key::ModifierCtrlL,         // 0x3B kVK_Control
         &InputDeviceKeyboard::Key::ModifierShiftR,        // 0x3C kVK_RightShift
         &InputDeviceKeyboard::Key::ModifierAltR,          // 0x3D kVK_RightOption
-        &InputDeviceKeyboard::Key::ModifierControlR,      // 0x3E kVK_RightControl
+        &InputDeviceKeyboard::Key::ModifierCtrlR,         // 0x3E kVK_RightControl
         nullptr,                                          // 0x3F kVK_Function
 
         &InputDeviceKeyboard::Key::Function17,            // 0x40 kVK_F17
@@ -243,7 +369,12 @@ namespace AzFramework
     //! Platform specific implementation for osx keyboard input devices
     class InputDeviceKeyboardOsx : public InputDeviceKeyboard::Implementation
                                  , public RawInputNotificationBusOsx::Handler
+                                 , public NSTextViewMethodHookNotificationBus::Handler
     {
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Count of the number instances of this class that have been created
+        static int s_instanceCount;
+
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
@@ -264,12 +395,16 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStopped
-        void TextEntryStopped() override;
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStart
+        void TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::TextEntryStop
+        void TextEntryStop() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceKeyboard::Implementation::TickInputDevice
@@ -280,8 +415,12 @@ namespace AzFramework
         void OnRawInputEvent(const NSEvent* nsEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Update the application's first responder based on whether text input should be active
-        void UpdateFirstResponder();
+        // \ref NSTextViewMethodHookNotifications::DeleteBackward
+        bool DeleteBackward(NSTextView* textView, id sender) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // \ref NSTextViewMethodHookNotifications::ShouldChangeTextInRange
+        bool ShouldChangeTextInRange(NSTextView* textView, NSRange range, NSString* string) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Convenience function to queue standard key events processed in OnRawInputEvent
@@ -296,8 +435,8 @@ namespace AzFramework
         void QueueRawModifierKeyEvent(AZ::u32 keyCode, AZ::u32 modifierFlags);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! A custom NSTextView used to receive text events
-        KeyboardTextView* m_textView = nullptr;
+        //! A dummy NSTextView used to receive text events
+        NSTextView* m_textView = nullptr;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Has text entry been started?
@@ -315,34 +454,45 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    int InputDeviceKeyboardOsx::s_instanceCount = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboardOsx::InputDeviceKeyboardOsx(InputDeviceKeyboard& inputDevice)
         : InputDeviceKeyboard::Implementation(inputDevice)
         , m_textView(nullptr)
         , m_hasTextEntryStarted(false)
         , m_hasFocus(false)
     {
-        // Create a KeyboardTextView that we can call makeFirstResponder on to enable text input.
-        m_textView = [[KeyboardTextView alloc] initWithInputDevice: this];
+        if (s_instanceCount++ == 0)
+        {
+            NSTextViewMethodHookNotifications::InsertHooks();
+        }
+
+        // Create an NSTextView that we can call interpretKeyEvents on to process text input.
+        m_textView = [[NSTextView alloc] initWithFrame: CGRectZero];
 
         // Add something to the text view so delete works.
         m_textView.string = @" ";
 
-        // Add the text view to the application's root view.
-        [NSApplication.sharedApplication.mainWindow.contentView addSubview: m_textView];
-
         RawInputNotificationBusOsx::Handler::BusConnect();
+        NSTextViewMethodHookNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboardOsx::~InputDeviceKeyboardOsx()
     {
+        NSTextViewMethodHookNotificationBus::Handler::BusDisconnect();
         RawInputNotificationBusOsx::Handler::BusDisconnect();
 
         if (m_textView)
         {
-            [m_textView removeFromSuperview];
             [m_textView release];
             m_textView = nullptr;
+        }
+
+        if (--s_instanceCount == 0)
+        {
+            NSTextViewMethodHookNotifications::RemoveHooks();
         }
     }
 
@@ -370,34 +520,30 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::TextEntryStarted(float /*activeTextFieldNormalizedBottomY*/)
+    bool InputDeviceKeyboardOsx::HasTextEntryStarted() const
     {
-        m_hasTextEntryStarted = true;
-        UpdateFirstResponder();
+        return m_hasTextEntryStarted;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::TextEntryStopped()
+    void InputDeviceKeyboardOsx::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
+    {
+        m_hasTextEntryStarted = true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboardOsx::TextEntryStop()
     {
         m_hasTextEntryStarted = false;
-        UpdateFirstResponder();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceKeyboardOsx::TickInputDevice()
     {
-        // We should probably only do this when we detect that the application loses or gains focus,
-        // but there may be other ways we can lose first responder status so we'll check every frame.
-        UpdateFirstResponder();
-
-        // Pump the osx event loop to ensure that it has dispatched all input events. Other systems
-        // (or other input devices) may also do this so some (or all) input events may have already
-        // been dispatched, but they are queued until ProcessRawEventQueues is called below so that
-        // all raw input events are processed at the same time every frame.
-        RawInputRequestBusOsx::Broadcast(&RawInputRequestsOsx::PumpRawEventLoop);
-
+        // The osx event loop has just been pumped in InputSystemComponentOsx::PreTickInputDevices,
+        // so we now just need to process any raw events that have been queued since the last frame
         const bool hadFocus = m_hasFocus;
-        m_hasFocus = NSApplication.sharedApplication.mainWindow.keyWindow;
+        m_hasFocus = NSApplication.sharedApplication.active;
         if (m_hasFocus)
         {
             // Process raw event queues once each frame while this application's window has focus
@@ -415,7 +561,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceKeyboardOsx::OnRawInputEvent(const NSEvent* nsEvent)
     {
-        if (!NSApplication.sharedApplication.mainWindow.keyWindow)
+        if (!NSApplication.sharedApplication.active)
         {
             return;
         }
@@ -458,22 +604,41 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::UpdateFirstResponder()
+    bool InputDeviceKeyboardOsx::DeleteBackward(NSTextView* textView, id /*sender*/)
     {
-    #if defined(ALWAYS_DISPATCH_KEYBOARD_TEXT_INPUT)
-        const bool shouldBeFirstResponder = true;
-    #else
-        const bool shouldBeFirstResponder = m_hasTextEntryStarted;
-    #endif // defined(ALWAYS_DISPATCH_KEYBOARD_TEXT_INPUT)
-        const bool isFirstResponder = NSApplication.sharedApplication.mainWindow.firstResponder == m_textView;
-        if (shouldBeFirstResponder && !isFirstResponder)
+        if (textView != m_textView)
         {
-            [NSApplication.sharedApplication.mainWindow makeFirstResponder: m_textView];
+            // We don't own the text view that this method was invoked on
+            return false;
         }
-        else if (!shouldBeFirstResponder && isFirstResponder)
+
+        // Only queue text events if this application's window has focus
+        if (NSApplication.sharedApplication.active)
         {
-            [NSApplication.sharedApplication.mainWindow makeFirstResponder: nil];
+            const AZStd::string textUTF8 = "\b";
+            QueueRawTextEvent(textUTF8);
         }
+        return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceKeyboardOsx::ShouldChangeTextInRange(NSTextView* textView,
+                                                         NSRange /*range*/,
+                                                         NSString* string)
+    {
+        if (textView != m_textView)
+        {
+            // We don't own the text view that this method was invoked on
+            return false;
+        }
+
+        // Only queue text events if this application's window has focus
+        if (NSApplication.sharedApplication.active)
+        {
+            const AZStd::string textUTF8 = string.UTF8String;
+            QueueRawTextEvent(textUTF8);
+        }
+        return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

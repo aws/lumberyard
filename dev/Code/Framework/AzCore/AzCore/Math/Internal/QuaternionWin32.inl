@@ -152,7 +152,7 @@ namespace AZ
     {
         SimdVectorType diff = _mm_sub_ps(q.m_value, m_value);
         SimdVectorType absDiff = _mm_and_ps(diff, *(const SimdVectorType*)&Internal::g_simdAbsMask);
-        return (_mm_movemask_ps(_mm_cmpge_ps(absDiff, tolerance.m_value)) == 0);
+        return (_mm_movemask_ps(_mm_cmpgt_ps(absDiff, tolerance.m_value)) == 0);
     }
 
     AZ_MATH_FORCE_INLINE const Quaternion Quaternion::operator-() const { return Quaternion(_mm_xor_ps(m_value, *(SimdVectorType*)&Internal::g_simdNegateMask)); }

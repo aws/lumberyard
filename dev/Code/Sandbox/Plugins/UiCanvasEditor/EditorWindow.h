@@ -18,6 +18,7 @@
 #include <QMetaObject>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <LyShine/Bus/UiEditorChangeNotificationBus.h>
 
 class AssetTreeEntry;
 
@@ -25,6 +26,7 @@ class EditorWindow
     : public QMainWindow
     , public IEditorNotifyListener
     , public UiEditorDLLBus::Handler
+    , public UiEditorChangeNotificationBus::Handler
     , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler
 {
     Q_OBJECT
@@ -44,6 +46,10 @@ public:
     AZ::EntityId GetActiveCanvasId() override;
     UndoStack* GetActiveUndoStack() override;
     // ~UiEditorDLLInterface
+
+    // UiEditorChangeNotificationBus
+    void OnEditorTransformPropertiesNeedRefresh() override;
+    // ~UiEditorChangeNotificationBus
 
     // AssetBrowserModelNotificationsBus
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
@@ -117,6 +123,8 @@ public:
     UiEditorEntityContext* GetEntityContext() { return m_entityContext.get(); }
 
     void ReplaceEntityContext(UiEditorEntityContext* entityContext);
+
+    QMenu* createPopupMenu() override;
 
 signals:
 

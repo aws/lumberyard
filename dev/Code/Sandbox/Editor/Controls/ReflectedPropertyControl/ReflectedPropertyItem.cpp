@@ -19,6 +19,28 @@ const float ReflectedPropertyItem::s_DefaultNumStepIncrements = 500.0f;
 //so we work around by adding the base property to the list of children and showing the value of the base property 
 //in the container value space instead of "X Elements"
 
+static ColorF StringToColor(const QString &value)
+{
+    ColorF color;
+    float r, g, b, a;
+    int res = sscanf(value.toLatin1().data(), "%f,%f,%f,%f", &r, &g, &b, &a);
+    if (res == 4)
+    {
+        color.Set(r, g, b, a);
+    }
+    else if (res == 3)
+    {
+        color.Set(r, g, b);
+    }
+    else
+    {
+        unsigned abgr;
+        sscanf(value.toLatin1().data(), "%u", &abgr);
+        color = ColorF(abgr);
+    }
+    return color;
+}
+
 class ReflectedVarContainerAdapter : public ReflectedVarAdapter
 {
 public:
@@ -174,6 +196,7 @@ void ReflectedPropertyItem::SetVariable(IVariable *var)
     assert(m_pVariable != NULL);
 
     m_pVariable->AddOnSetCallback(functor(*this, &ReflectedPropertyItem::OnVariableChange));
+    m_pVariable->AddOnSetEnumCallback(functor(*this, &ReflectedPropertyItem::OnVariableEnumChange));
 
     // Fetch base parameter description
     Prop::Description desc(m_pVariable);
@@ -375,11 +398,7 @@ ReflectedPropertyItem * ReflectedPropertyItem::findItem(IVariable *var)
 
 ReflectedPropertyItem* ReflectedPropertyItem::findItem(const QString &name)
 {
-    if (!m_pVariable)
-    {
-        return nullptr;
-    }
-    if (m_pVariable->GetHumanName() == name)
+    if (m_pVariable && m_pVariable->GetHumanName() == name)
         return this;
     for (auto child : m_childs)
     {
@@ -393,7 +412,18 @@ ReflectedPropertyItem* ReflectedPropertyItem::findItem(const QString &name)
 
 ReflectedPropertyItem * ReflectedPropertyItem::FindItemByFullName(const QString& fullName)
 {
-    //KDAB_PROPERTYCTRL_PORT_TODO
+    if (GetFullName() == fullName)
+    {
+        return this;
+    }
+    for (int i = 0; i < m_childs.size(); ++i)
+    {
+        auto pFound = m_childs[i]->FindItemByFullName(fullName);
+        if (pFound)
+        {
+            return pFound;
+        }
+    }
     return nullptr;
 }
 
@@ -402,6 +432,21 @@ QString ReflectedPropertyItem::GetName() const
     return m_pVariable ? m_pVariable->GetHumanName() : QString();
 }
 
+QString ReflectedPropertyItem::GetFullName() const
+{
+    if (m_parent && m_pVariable)
+    {
+        return m_parent->GetFullName() + "::" + m_pVariable->GetName();
+    }
+    else if (m_pVariable)
+    {
+        return m_pVariable->GetName();
+    }
+    else
+    {
+        return {};
+    }
+}
 
 void ReflectedPropertyItem::OnReflectedVarChanged()
 {
@@ -439,6 +484,7 @@ void ReflectedPropertyItem::ReleaseVariable()
     {
         // Unwire all from variable.
         m_pVariable->RemoveOnSetCallback(functor(*this, &ReflectedPropertyItem::OnVariableChange));
+        m_pVariable->RemoveOnSetEnumCallback(functor(*this, &ReflectedPropertyItem::OnVariableEnumChange));
     }
     m_pVariable = 0;
     delete m_reflectedVarAdapter;
@@ -461,9 +507,17 @@ void ReflectedPropertyItem::OnVariableChange(IVariable* pVar)
     }
     SyncReflectedVarToIVar();
 
-    //invalidate the control, but delay it.  This will give time for any other callbacks that 
-    //need to happen before updating the ReflectedPropertyEditor widgets
-    QMetaObject::invokeMethod(m_propertyCtrl, "InvalidateCtrl", Qt::QueuedConnection);
+    m_propertyCtrl->InvalidateCtrl();
+}
+
+void ReflectedPropertyItem::OnVariableEnumChange(IVariable* pVar)
+{
+    assert(pVar != 0 && pVar == m_pVariable);
+
+    if (m_reflectedVarAdapter && m_reflectedVarAdapter->UpdateReflectedVarEnums())
+    {
+        m_propertyCtrl->InvalidateCtrl(true);
+    }
 }
 
 //The AIWave property editor needs to know which territory is selected.  Territory is a sibling property to this one.
@@ -510,7 +564,169 @@ void ReflectedPropertyItem::ReloadValues()
 */
 void ReflectedPropertyItem::SetValue(const QString& sValue, bool bRecordUndo, bool bForceModified)
 {
-    //KDAB_PROPERTYCTRL_PORT_TODO
+    if (!m_pVariable)
+    {
+        return;
+    }
+
+    _smart_ptr<ReflectedPropertyItem> holder = this; // Make sure we are not released during this function.
+
+    QString value = sValue;
+
+    switch (m_type)
+    {
+    case ePropertyAiTerritory:
+#ifdef USE_SIMPLIFIED_AI_TERRITORY_SHAPE
+        if ((value == "<None>") || m_pVariable->GetDisplayValue() != value)
+#else
+        if ((value == "<Auto>") || (value == "<None>") ||  m_pVariable->GetDisplayValue() != value)
+#endif
+        {
+            auto pPropertyItem = GetParent()->FindItemByFullName("::AITerritoryAndWave::Wave");
+            if (pPropertyItem)
+            {
+                pPropertyItem->SetValue("<None>");
+            }
+        }
+        break;
+
+    case ePropertyBool:
+        if (QString::compare(value, "true", Qt::CaseInsensitive) == 0 || value.toInt() != 0)
+        {
+            value = "1";
+        }
+        else
+        {
+            value = "0";
+        }
+        break;
+
+    case ePropertyVector2:
+        if (!value.contains(','))
+        {
+            value = value + ", " + value;
+        }
+        break;
+
+    case ePropertyVector4:
+        if (!value.contains(','))
+        {
+            value = value + ", " + value + ", " + value + ", " + value;
+        }
+        break;
+
+    case ePropertyVector:
+        if (!value.contains(','))
+        {
+            value = value + ", " + value + ", " + value;
+        }
+        break;
+
+    case ePropertyTexture:
+    case ePropertyModel:
+    case ePropertyMaterial:
+        value.replace('\\', '/');
+        break;
+    }
+
+    // correct the length of value
+    switch (m_type)
+    {
+    case ePropertyTexture:
+    case ePropertyModel:
+    case ePropertyMaterial:
+    case ePropertyFile:
+        if (value.length() >= MAX_PATH)
+        {
+            value = value.left(MAX_PATH);
+        }
+        break;
+    }
+
+
+    bool bModified = bForceModified || m_pVariable->GetDisplayValue() != value;
+    bool bStoreUndo = (m_pVariable->GetDisplayValue() != value || bForceModified) && bRecordUndo;
+
+    std::unique_ptr<CUndo> undo;
+    if (bStoreUndo && !CUndo::IsRecording())
+    {
+        if (!m_propertyCtrl->CallUndoFunc(this))
+        {
+            undo.reset(new CUndo((GetName() + " Modified").toLatin1().data()));
+        }
+    }
+
+    if (m_pVariable)
+    {
+        if (bModified)
+        {
+            if (m_propertyCtrl->IsStoreUndoByItems() && bStoreUndo && CUndo::IsRecording())
+            {
+                CUndo::Record(new CUndoVariableChange(m_pVariable, "PropertyChange"));
+            }
+
+            if (bForceModified)
+            {
+                m_pVariable->SetForceModified(true);
+            }
+            
+            switch (m_type)
+            {
+            case ePropertyColor:
+            {
+                ColorF color = StringToColor(value);
+                if (m_pVariable->GetType() == IVariable::VECTOR)
+                {
+                    m_pVariable->Set(color.toVec3());
+                }
+                else
+                {
+                    m_pVariable->Set(static_cast<int>(color.pack_abgr8888()));
+                }
+                break;
+            }
+            case ePropertySOHelper:
+            case ePropertySONavHelper:
+            case ePropertySOAnimHelper:
+            {
+                // keep smart object class part
+
+                QString oldValue;
+                m_pVariable->Get(oldValue);
+                int f = oldValue.indexOf(':');
+                if (f >= 0)
+                {
+                    oldValue.remove(f + 1, oldValue.length());
+                }
+
+                QString newValue(value);
+                f = newValue.indexOf(':');
+                if (f >= 0)
+                {
+                    newValue.remove(0, f + 1);
+                }
+
+                m_pVariable->Set(oldValue + newValue);
+                break;
+            }
+            case ePropertyInvalid:
+                break;
+            default:
+                m_pVariable->SetDisplayValue(value);
+                break;
+            }
+        }
+    }
+    else
+    {
+        if (bModified)
+        {
+            m_modified = true;
+            // If Value changed mark document modified.
+            // Notify parent that this Item have been modified.
+            m_propertyCtrl->OnItemChange(this);
+        }
+    }
 }
 
 void ReflectedPropertyItem::SendOnItemChange()

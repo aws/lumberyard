@@ -18,7 +18,7 @@ namespace ComponentHelpers
         QWidget* parent);
     QList<QAction*> CreateRemoveComponentActions(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* optionalOnlyThisComponentType);
+        const AZ::Component* componentToRemove);
 
     struct ComponentTypeData
     {

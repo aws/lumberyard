@@ -23,6 +23,12 @@
 #include <QVBoxLayout>
 #include <QSettings>
 
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <AzQtComponents/Components/StyledDetailsTableView.h>
+#include <AzQtComponents/Components/StyledDetailsTableModel.h>
+
 using namespace AzQtComponents;
 
 QToolBar * toolBar()
@@ -164,13 +170,11 @@ int main(int argv, char **argc)
 {
     AzQtComponents::PrepareQtPaths();
 
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     QApplication app(argv, argc);
-    app.setStyle(new AzQtComponents::EditorProxyStyle(QStyleFactory::create("Fusion")));
-
     AzQtComponents::LumberyardStylesheet stylesheet(&app);
-    stylesheet.Refresh(&app);
-
-    //qApp->setStyleSheet("file:///:/stylesheet/style.qss");
+    stylesheet.Initialize(&app);
 
     auto wrapper = new AzQtComponents::WindowDecorationWrapper();
     QMainWindow *w = new MainWindow();
@@ -204,6 +208,68 @@ int main(int argv, char **argc)
         dock->resize(300, 200);
         dock->setFloating(true);
         dock->show();
+    });
+
+
+    QAction* newAction = fileMenu->addAction("Test StyledDetailsTableView");
+    newAction->setShortcut(QKeySequence::Delete);
+    QObject::connect(newAction, &QAction::triggered, [w]() {
+        QDialog temp(w);
+        temp.setWindowTitle("StyleTableWidget Test");
+
+        QVBoxLayout* layout = new QVBoxLayout(&temp);
+
+        AzQtComponents::StyledDetailsTableModel* tableModel = new AzQtComponents::StyledDetailsTableModel();
+        tableModel->AddColumn("Status", AzQtComponents::StyledDetailsTableModel::StatusIcon);
+        tableModel->AddColumn("Platform");
+        tableModel->AddColumn("Message");
+        tableModel->AddColumnAlias("message", "Message");
+
+        tableModel->AddPrioritizedKey("Data3");
+        tableModel->AddDeprioritizedKey("Data1");
+
+        auto table = new AzQtComponents::StyledDetailsTableView();
+        table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        table->setModel(tableModel);
+
+        {
+            AzQtComponents::StyledDetailsTableModel::TableEntry entry;
+            entry.Add("Message", "A very very long first message. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus et maximus tortor, ac commodo ante. Maecenas porta posuere mauris, vel consectetur arcu ornare interdum. Praesent rhoncus consequat neque, non volutpat mauris cursus a. Proin a nisl quis dui consectetur malesuada a et diam. Integer finibus luctus nibh nec cursus.");
+            entry.Add("Platform", "PC");
+            entry.Add("Status", AzQtComponents::StyledDetailsTableModel::StatusSuccess);
+            tableModel->AddEntry(entry);
+        }
+
+        {
+            AzQtComponents::StyledDetailsTableModel::TableEntry entry;
+            entry.Add("Message", "Second message. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus et maximus tortor, ac commodo ante. Maecenas porta posuere mauris, vel consectetur arcu ornare interdum. Praesent rhoncus consequat neque, non volutpat mauris cursus a. Proin a nisl quis dui consectetur malesuada a et diam. Integer finibus luctus nibh nec cursus.");
+            entry.Add("Platform", "PC");
+            entry.Add("Status", AzQtComponents::StyledDetailsTableModel::StatusError);
+            entry.Add("Data1", "Deprioritized item.");
+            entry.Add("Data3", "Prioritized item.");
+            tableModel->AddEntry(entry);
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            AzQtComponents::StyledDetailsTableModel::TableEntry entry;
+            entry.Add("message", "Third message");
+            entry.Add("Status", AzQtComponents::StyledDetailsTableModel::StatusWarning);
+            entry.Add("Platform", "PC");
+            entry.Add("Index1", "A smaller detail.");
+            entry.Add("Index2", "Another small detail.");
+            entry.Add("Index3", "A final small detail.");
+            tableModel->AddEntry(entry);
+        }
+
+        layout->addWidget(table);
+
+        temp.exec();
+    });
+
+    QAction* refreshAction = fileMenu->addAction("Refresh Stylesheet");
+    QObject::connect(refreshAction, &QAction::triggered, [&stylesheet, &app]() {
+        stylesheet.Refresh(&app);
     });
 
 

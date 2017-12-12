@@ -26,16 +26,16 @@ class CConsoleTrack
     : public TAnimTrack<IConsoleKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CConsoleTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CConsoleTrack, "{5D61289C-DE66-40E6-8C2D-A6CBF41A6EF4}", IAnimTrack);
+
     //////////////////////////////////////////////////////////////////////////
     // Overrides of IAnimTrack.
     //////////////////////////////////////////////////////////////////////////
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(IConsoleKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_CONSOLETRACK_H

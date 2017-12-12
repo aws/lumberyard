@@ -16,11 +16,13 @@
 #pragma once
 
 #include "BoostHelpers.h"
+#include "IComponent.h"
 
 struct IEntity;
 struct SEntitySpawnParams;
 struct IEntityScript;
 struct IScriptTable;
+class XmlNodeRef;
 
 struct SEditorClassInfo
 {

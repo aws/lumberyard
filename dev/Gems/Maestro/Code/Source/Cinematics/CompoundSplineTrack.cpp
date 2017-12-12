@@ -12,10 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "CompoundSplineTrack.h"
 #include "AnimSplineTrack.h"
 
 CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CAnimParamType subTrackParamTypes[MAX_SUBTRACKS])
+    : m_refCount(0)
 {
     assert(nDims > 0 && nDims <= MAX_SUBTRACKS);
     m_node = nullptr;
@@ -25,11 +28,10 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
     m_nParamType = eAnimNodeType_Invalid;
     m_flags = 0;
 
-    ZeroStruct(m_subTracks);
-
+    m_subTracks.resize(MAX_SUBTRACKS);
     for (int i = 0; i < m_nDimensions; i++)
     {
-        m_subTracks[i] = new C2DSplineTrack();
+        m_subTracks[i].reset(aznew C2DSplineTrack());
         m_subTracks[i]->SetParameterType(subTrackParamTypes[i]);
 
         if (inValueType == eAnimValue_RGB)
@@ -38,6 +40,7 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
         }
     }
 
+    m_subTrackNames.resize(MAX_SUBTRACKS);
     m_subTrackNames[0] = "X";
     m_subTrackNames[1] = "Y";
     m_subTrackNames[2] = "Z";
@@ -46,6 +49,18 @@ CCompoundSplineTrack::CCompoundSplineTrack(int nDims, EAnimValue inValueType, CA
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     m_bCustomColorSet = false;
 #endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Need default constructor for AZ Serialization
+CCompoundSplineTrack::CCompoundSplineTrack()
+    : m_refCount(0)
+    , m_nDimensions(0)
+    , m_valueType(eAnimValue_Float)
+#ifdef MOVIESYSTEM_SUPPORT_EDITING
+    , m_bCustomColorSet(false)
+#endif
+{
 }
 
 void CCompoundSplineTrack::SetNode(IAnimNode* node)
@@ -66,40 +81,7 @@ void CCompoundSplineTrack::SetTimeRange(const Range& timeRange)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCompoundSplineTrack::PrepareNodeForSubTrackSerialization(XmlNodeRef& subTrackNode, XmlNodeRef& xmlNode, int i, bool bLoading)
-{
-    assert(!bLoading || xmlNode->getChildCount() == m_nDimensions);
-
-    if (bLoading)
-    {
-        subTrackNode = xmlNode->getChild(i);
-        // First, check its version.
-        if (strcmp(subTrackNode->getTag(), "SubTrack") == 0)
-        // So, it's an old format.
-        {
-            CAnimParamType paramType = m_subTracks[i]->GetParameterType();
-            // Recreate sub tracks as the old format.
-            m_subTracks[i] = new CTcbFloatTrack;
-            m_subTracks[i]->SetParameterType(paramType);
-        }
-    }
-    else
-    {
-        if (m_subTracks[i]->GetCurveType() == eAnimCurveType_BezierFloat)
-        {
-            // It's a new 2D Bezier curve.
-            subTrackNode = xmlNode->newChild("NewSubTrack");
-        }
-        else
-        // Old TCB spline
-        {
-            assert(m_subTracks[i]->GetCurveType() == eAnimCurveType_TCBFloat);
-            subTrackNode = xmlNode->newChild("SubTrack");
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 bool CCompoundSplineTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks /*=true */)
 {
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
@@ -131,7 +113,14 @@ bool CCompoundSplineTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bL
     for (int i = 0; i < m_nDimensions; i++)
     {
         XmlNodeRef subTrackNode;
-        PrepareNodeForSubTrackSerialization(subTrackNode, xmlNode, i, bLoading);
+        if (bLoading)
+        {
+            subTrackNode = xmlNode->getChild(i);
+        }
+        else
+        {
+            subTrackNode = xmlNode->newChild("NewSubTrack");
+        }
         m_subTracks[i]->Serialize(subTrackNode, bLoading, bLoadEmptyTracks);
     }
     return true;
@@ -143,7 +132,14 @@ bool CCompoundSplineTrack::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading
     for (int i = 0; i < m_nDimensions; i++)
     {
         XmlNodeRef subTrackNode;
-        PrepareNodeForSubTrackSerialization(subTrackNode, xmlNode, i, bLoading);
+        if (bLoading)
+        {
+            subTrackNode = xmlNode->getChild(i);
+        }
+        else
+        {
+            subTrackNode = xmlNode->newChild("NewSubTrack");
+        }
         m_subTracks[i]->SerializeSelection(subTrackNode, bLoading, bCopySelected, fTimeOffset);
     }
     return true;
@@ -260,7 +256,7 @@ void CCompoundSplineTrack::OffsetKeyPosition(const Vec3& offset)
     {
         for (int i = 0; i < 3; i++)
         {
-            IAnimTrack* pSubTrack = m_subTracks[i];
+            IAnimTrack* pSubTrack = m_subTracks[i].get();
             // Iterate over all keys.
             for (int k = 0, num = pSubTrack->GetNumKeys(); k < num; k++)
             {
@@ -283,14 +279,14 @@ void CCompoundSplineTrack::OffsetKeyPosition(const Vec3& offset)
 IAnimTrack* CCompoundSplineTrack::GetSubTrack(int nIndex) const
 {
     assert(nIndex >= 0 && nIndex < m_nDimensions);
-    return m_subTracks[nIndex];
+    return m_subTracks[nIndex].get();
 }
 
 //////////////////////////////////////////////////////////////////////////
 const char* CCompoundSplineTrack::GetSubTrackName(int nIndex) const
 {
     assert(nIndex >= 0 && nIndex < m_nDimensions);
-    return m_subTrackNames[nIndex];
+    return m_subTrackNames[nIndex].c_str();
 }
 
 
@@ -404,7 +400,7 @@ void CCompoundSplineTrack::GetKeyInfo(int key, const char*& description, float& 
     }
     if (m == m_subTracks[0]->GetNumKeys())
     {
-        cry_strcat(str, m_subTrackNames[0]);
+        cry_strcat(str, m_subTrackNames[0].c_str());
     }
     // Tail cases
     for (int i = 1; i < GetSubTrackCount(); ++i)
@@ -422,7 +418,7 @@ void CCompoundSplineTrack::GetKeyInfo(int key, const char*& description, float& 
         }
         if (m == m_subTracks[i]->GetNumKeys())
         {
-            cry_strcat(str, m_subTrackNames[i]);
+            cry_strcat(str, m_subTrackNames[i].c_str());
         }
     }
 }
@@ -513,4 +509,17 @@ int CCompoundSplineTrack::NextKeyByTime(int key) const
         count += m_subTracks[i]->GetNumKeys();
     }
     return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCompoundSplineTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CCompoundSplineTrack>()
+        ->Version(1)
+        ->Field("Flags", &CCompoundSplineTrack::m_flags)
+        ->Field("ParamType", &CCompoundSplineTrack::m_nParamType)
+        ->Field("NumSubTracks", &CCompoundSplineTrack::m_nDimensions)
+        ->Field("SubTracks", &CCompoundSplineTrack::m_subTracks)
+        ->Field("SubTrackNames", &CCompoundSplineTrack::m_subTrackNames)
+        ->Field("ValueType", &CCompoundSplineTrack::m_valueType);
 }

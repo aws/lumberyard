@@ -39,10 +39,12 @@ namespace AZ
             {
                 Events::ManifestMetaInfoBus::Handler::BusConnect();
                 Events::AssetImportRequestBus::Handler::BusConnect();
+                Events::GraphMetaInfoBus::Handler::BusConnect();
             }
 
             void PhysicsRuleBehavior::Deactivate()
             {
+                Events::GraphMetaInfoBus::Handler::BusDisconnect();
                 Events::AssetImportRequestBus::Handler::BusDisconnect();
                 Events::ManifestMetaInfoBus::Handler::BusDisconnect();
             }
@@ -129,6 +131,14 @@ namespace AZ
                 else
                 {
                     return Events::ProcessingResult::Ignored;
+                }
+            }
+
+            void PhysicsRuleBehavior::GetAllVirtualTypes(AZStd::set<Crc32>& types)
+            {
+                if (types.find(AZ_CRC("PhysicsMesh", 0xc75d4ff1)) == types.end())
+                {
+                    types.insert(AZ_CRC("PhysicsMesh", 0xc75d4ff1));
                 }
             }
 

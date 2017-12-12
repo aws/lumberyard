@@ -3,15 +3,15 @@
     "visual_studio_name"    : "ScriptCanvas Tests",
     "comment"               : "This is meant to build the ScriptCanvas DLLs faster, but you still need to build the 'all' spec at least once to run/debug from this solution.",
     "platforms" : ["win"],
-    "configurations" : ["debug_test"],
+    "configurations" : ["debug_test", "profile_test"],
+    "enable_memory_tracking": true,
 
-    "modules" :
-    [
-        "AzCore",
-        "AzFramework",
-        "AzTest",
-        "AzTestRunner",
-        "ScriptCanvas",
-        "ScriptCanvasGem"
-    ]
+  "modules": [
+    "AzCore",
+    "AzCoreTests",
+    "AzFramework",
+    "AzTest",
+    "AzTestRunner",
+    "ScriptCanvasGem"
+  ]
 }

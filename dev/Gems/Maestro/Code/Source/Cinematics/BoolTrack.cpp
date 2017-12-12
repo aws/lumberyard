@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "BoolTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -72,6 +74,7 @@ void CBoolTrack::SetDefaultValue(const bool bDefaultValue)
     m_bDefaultValue = bDefaultValue;
 }
 
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 bool CBoolTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     bool retVal = TAnimTrack<IBoolKey>::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -85,4 +88,26 @@ bool CBoolTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTr
         xmlNode->setAttr("DefaultValue", m_bDefaultValue);
     }
     return retVal;
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<IBoolKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<IBoolKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<IBoolKey>::m_flags)
+        ->Field("Range", &TAnimTrack<IBoolKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<IBoolKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<IBoolKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CBoolTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<IBoolKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CBoolTrack, TAnimTrack<IBoolKey> >()
+        ->Version(1)
+        ->Field("DefaultValue", &CBoolTrack::m_bDefaultValue);
 }

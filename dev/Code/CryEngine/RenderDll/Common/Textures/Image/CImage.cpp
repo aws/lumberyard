@@ -140,10 +140,10 @@ namespace
         if (!gEnv->pCryPak->IsFileExist(sFileToLoad.c_str()))
         {
             //if missing texture is not present than we send a request to asset processor to process it
-            AssetStatus status = AssetStatus_Unknown;
-            EBUS_EVENT_RESULT(status, AzFramework::AssetSystemRequestBus, CompileAssetSync, sFileToLoad);
+            AssetStatus assetStatus = AssetStatus_Unknown;
+            EBUS_EVENT_RESULT(assetStatus, AzFramework::AssetSystemRequestBus, CompileAssetSync, sFileToLoad);
 
-            if (status != AssetStatus_Compiled)
+            if (assetStatus != AssetStatus_Compiled)
             {
                 //if we are here ,it means we were not able to compile both the source asset as well the replacement asset
                 return AZStd::string();

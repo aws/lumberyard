@@ -17,52 +17,53 @@
 
 
 #include <vector>                       // STL vector<>
+#include <CryEngineAPI.h>
 
 class CPowerOf2BlockPacker
 {
 public:
     CTexture* m_pTexture;
-    float                           m_fLastUsed;
+    float m_fLastUsed;
 
 public:
     // constructor
     // Arguments:
     //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
     //   dwLogHeight - e.g. specify 5 for 32, keep is small like ~ 5 or 6, don't use pixel size
-    CPowerOf2BlockPacker(const uint32 dwLogWidth, const uint32 dwLogHeight);
+    ENGINE_API CPowerOf2BlockPacker(const uint32 dwLogWidth, const uint32 dwLogHeight);
 
-    ~CPowerOf2BlockPacker();
+    ENGINE_API ~CPowerOf2BlockPacker();
 
     // Arguments:
     //   dwLogHeight - e.g. specify 5 for 32
     //   dwLogHeight - e.g. specify 5 for 32
     // Returns:
     //   dwBlockID (to remove later), 0xffffffff if there was no free space
-    uint32 AddBlock(const uint32 dwLogWidth, const uint32 dwLogHeight);
+    ENGINE_API uint32 AddBlock(const uint32 dwLogWidth, const uint32 dwLogHeight);
 
     // Arguments:
     //   dwBlockID - as it was returned from AddBlock()
-    uint32 GetBlockInfo(const uint32 dwBlockID, uint32& dwMinX, uint32& dwMinY, uint32& dwMaxX, uint32& dwMaxY);
+    ENGINE_API uint32 GetBlockInfo(const uint32 dwBlockID, uint32& dwMinX, uint32& dwMinY, uint32& dwMaxX, uint32& dwMaxY);
 
-    void UpdateSize(int nW, int nH);
+    ENGINE_API void UpdateSize(int nW, int nH);
 
     // Arguments:
     //   dwBlockID - as it was returned from AddBlock()
-    void RemoveBlock(const uint32 dwBlockID);
+    ENGINE_API void RemoveBlock(const uint32 dwBlockID);
 
     // used for debugging
     // Return
     //   0xffffffff if not block was found
-    uint32 GetRandomBlock() const;
+    ENGINE_API uint32 GetRandomBlock() const;
 
     uint32 GetNumUsedBlocks() const
     {
         return m_nUsedBlocks;
     }
 
-    void Clear();
+    ENGINE_API void Clear();
 
-    void FreeContainers();
+    ENGINE_API void FreeContainers();
 
 private: // ----------------------------------------------------------
 

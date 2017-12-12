@@ -29,7 +29,6 @@ public:
     ~CAnimGeomCacheNode();
     static void Initialize();
 
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_GeomCache; }
     virtual void Animate(SAnimContext& animContext);
     virtual void CreateDefaultTracks();
     virtual void OnReset();

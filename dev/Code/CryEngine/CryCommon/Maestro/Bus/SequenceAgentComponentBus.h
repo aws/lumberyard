@@ -14,9 +14,9 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     /*!
     * SequenceAgentComponentRequests EBus Interface
@@ -47,8 +47,8 @@ namespace LmbrCentral
         : public SequenceAgentComponentBus
     {
     public:
-        using AnimatablePropertyAddress = LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress;
-        using AnimatedValue = LmbrCentral::SequenceComponentRequests::AnimatedValue;
+        using AnimatablePropertyAddress = Maestro::SequenceComponentRequests::AnimatablePropertyAddress;
+        using AnimatedValue = Maestro::SequenceComponentRequests::AnimatedValue;
 
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides - application is a singleton
@@ -73,18 +73,18 @@ namespace LmbrCentral
         virtual bool SetAnimatedPropertyValue(const AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value) = 0;
 
         //! Returns the Uuid of the type that the 'getter' returns for this animatableAddress
-        virtual AZ::Uuid GetAnimatedAddressTypeId(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
+        virtual AZ::Uuid GetAnimatedAddressTypeId(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
     };
 
     using SequenceAgentComponentRequestBus = AZ::EBus<SequenceAgentComponentRequests>;
-} // namespace LmbrCentral
+} // namespace Maestro
 
 namespace AZStd
 {
     template <>
-    struct hash < LmbrCentral::SequenceAgentEventBusId >
+    struct hash < Maestro::SequenceAgentEventBusId >
     {
-        inline size_t operator()(const LmbrCentral::SequenceAgentEventBusId& eventBusId) const
+        inline size_t operator()(const Maestro::SequenceAgentEventBusId& eventBusId) const
         {
             AZStd::hash<AZ::EntityId> entityIdHasher;
             size_t retVal = entityIdHasher(eventBusId.first);

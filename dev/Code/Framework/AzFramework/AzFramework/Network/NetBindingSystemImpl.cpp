@@ -49,7 +49,7 @@ namespace AzFramework
     {
         if (m_sliceAssetId.IsValid())
         {
-            auto RemapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/) -> AZ::EntityId
+            auto RemapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
             {
                 auto iter = m_bindingQueue.find(originalId);
                 if (iter != m_bindingQueue.end())
@@ -92,7 +92,8 @@ namespace AzFramework
  
                 itBindRecord->second.m_actualRuntimeEntityId = sliceEntity->GetId();
             }
-            EBUS_EVENT(AzFramework::GameEntityContextRequestBus, MarkEntityForNoActivation, sliceEntity->GetId());
+
+            sliceEntity->SetRuntimeActiveByDefault(false);
         }
     }
 
@@ -159,8 +160,9 @@ namespace AzFramework
     NetBindingSystemImpl::NetBindingSystemImpl()
         : m_bindingSession(nullptr)
         , m_currentBindingContextSequence(UnspecifiedNetBindingContextSequence)
+        , m_isAuthoritativeRootSliceLoad(false)
+        , m_overrideRootSliceLoadAuthoritative(false)
     {
-        AZ::TickBus::Handler::m_tickOrder = AZ::TICK_PLACEMENT + 1;
     }
 
     NetBindingSystemImpl::~NetBindingSystemImpl()
@@ -223,6 +225,7 @@ namespace AzFramework
         }
     }
     }
+
 
     AZ::EntityId NetBindingSystemImpl::GetStaticIdFromEntityId(AZ::EntityId entityId)
     {
@@ -316,9 +319,19 @@ namespace AzFramework
         }
     }
 
+    bool NetBindingSystemImpl::IsAuthoritateLoad() const
+    {
+        if (m_overrideRootSliceLoadAuthoritative)
+        {
+            return m_isAuthoritativeRootSliceLoad;
+        }
+
+        return !m_bindingSession || m_bindingSession->IsHost();
+    }
+
     void NetBindingSystemImpl::OnEntityContextLoadedFromStream(const AZ::SliceComponent::EntityList& contextEntities)
     {
-        bool isAuthoritativeLoad = !m_bindingSession || m_bindingSession->IsHost();
+        bool isAuthoritativeLoad = IsAuthoritateLoad();
 
         for (AZ::Entity* entity : contextEntities)
         {
@@ -330,7 +343,8 @@ namespace AzFramework
 
             if (!isAuthoritativeLoad && netBinder)
             {
-                EBUS_EVENT(AzFramework::GameEntityContextRequestBus, MarkEntityForNoActivation, entity->GetId());
+                entity->SetRuntimeActiveByDefault(false);
+
                 auto& slicesQueue = m_bindRequests[GetCurrentContextSequence()];
                 auto& sliceHandler = slicesQueue[entity->GetId()];
                 BindRequest& request = sliceHandler.m_bindingQueue[entity->GetId()];
@@ -340,13 +354,18 @@ namespace AzFramework
         }
     }
 
-void NetBindingSystemImpl::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    void NetBindingSystemImpl::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
         (void)deltaTime;
         (void)time;
         UpdateContextSequence();
         ProcessBindRequests();
         ProcessSpawnRequests();
+    }
+
+    int NetBindingSystemImpl::GetTickOrder()
+    {
+        return AZ::TICK_PLACEMENT + 1;
     }
 
     void NetBindingSystemImpl::UpdateContextSequence()
@@ -431,7 +450,7 @@ void NetBindingSystemImpl::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         if (!m_spawnRequests.empty())
         {
             SpawnRequestContextContainerType::iterator itContextQueue = m_spawnRequests.lower_bound(UnspecifiedNetBindingContextSequence);
-            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified spawn queue!");
+            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified (aka global entity) spawn queue!");
 
             // Process requests for global entities (not part of any context)
             SpawnRequestContainerType& globalQueue = itContextQueue->second;
@@ -477,7 +496,7 @@ void NetBindingSystemImpl::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         if (!m_bindRequests.empty())
         {
             BindRequestContextContainerType::iterator itContextQueue = m_bindRequests.lower_bound(UnspecifiedNetBindingContextSequence);
-            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified spawn queue!");
+            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified/global spawn queue!");
 
             if (GetCurrentContextSequence() != UnspecifiedNetBindingContextSequence)
             {

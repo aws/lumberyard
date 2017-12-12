@@ -75,14 +75,14 @@ namespace CharacterTool {
         : IEntryLoader
     {
         bool Load(EntryBase* entry, const char* filename, LoaderContext* context) override;
-        bool Save(EntryBase* entry, const char* filename, LoaderContext* context) override;
+        bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) override;
     };
 
     struct CDFLoader
         : IEntryLoader
     {
         bool Load(EntryBase* entry, const char* filename, LoaderContext* context) override;
-        bool Save(EntryBase* entry, const char* filename, LoaderContext* context) override;
+        bool Save(EntryBase* entry, const char* filename, LoaderContext* context, string& errorString) override;
     };
 
     struct CHRParamsDependencies

@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/EditContext.h>
 
 #include <LmbrCentral/Animation/CharacterAnimationBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include "MotionParameterSmoothingComponent.h"
 
@@ -43,6 +44,7 @@ namespace LmbrCentral
                 ->Field("Settings", &MotionParameterSmoothingComponent::m_settings)
                 ;
 
+#ifdef ENABLE_LEGACY_ANIMATION
             AZ::EditContext* edit = serializeContext->GetEditContext();
             if (edit)
             {
@@ -65,25 +67,42 @@ namespace LmbrCentral
                 edit->Class<MotionParameterSmoothingComponent>(
                     "Motion Parameter Smoothing", "The Motion Parameter Smoothing component allows configuration of the animation blend parameter behavior (for blend spaces) for a specified character instance")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MotionParameterSmoothing")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MotionParameterSmoothing.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/MotionParameterSmoothing.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-motion-parameter-smoothing.html")
                     ->DataElement(0, &MotionParameterSmoothingComponent::m_settings, "Smoothing settings", "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                     ;
             }
+#endif
         }
     }
 
     void MotionParameterSmoothingComponent::Activate()
     {
-        EBUS_EVENT_ID(GetEntityId(), CharacterAnimationRequestBus, SetMotionParameterSmoothingSettings, m_settings);
+        // If the character instance is already ready, apply settings immediately, otherwise listen for when it's ready.
+        ICharacterInstance* character = nullptr;
+        SkinnedMeshComponentRequestBus::EventResult(character, GetEntityId(), &SkinnedMeshComponentRequests::GetCharacterInstance);
+        if (character)
+        {
+            OnCharacterInstanceRegistered(character);
+        }
+
+        CharacterAnimationNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
     void MotionParameterSmoothingComponent::Deactivate()
     {
+        CharacterAnimationNotificationBus::Handler::BusDisconnect(GetEntityId());
+    }
+
+    void MotionParameterSmoothingComponent::OnCharacterInstanceRegistered(ICharacterInstance* character)
+    {
+        (void)character;
+        CharacterAnimationRequestBus::Event(GetEntityId(), &CharacterAnimationRequests::SetMotionParameterSmoothingSettings, m_settings);
     }
 
     //////////////////////////////////////////////////////////////////////////

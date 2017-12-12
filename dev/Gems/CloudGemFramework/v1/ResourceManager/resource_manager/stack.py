@@ -22,6 +22,8 @@ from datetime import datetime
 from dateutil.tz import tzlocal
 import json
 
+MONITOR_WAIT_SECONDS = 10
+
 class StackContext(object):
 
     STATUS_CREATE_COMPLETE        = 'CREATE_COMPLETE'
@@ -44,6 +46,7 @@ class StackContext(object):
 
     PENDING_DELETE_REASON = 'Not in local configuration.'
     PENDING_CREATE_REASON = 'Does not exist in AWS.'
+    IS_DISABLED_REASON = 'The resource is disabled.'
 
     def __init__(self, context):
         self.context = context
@@ -143,7 +146,7 @@ class StackContext(object):
 
         stack_name = util.get_stack_name_from_arn(stack_id)
 
-        self.context.view.updating_stack(stack_name, template_url)
+        self.context.view.updating_stack(stack_name, template_url, parameters)
 
         if pending_resource_status is not None:
             self.__clean_undeltable_resources(stack_id, pending_resource_status=pending_resource_status)
@@ -392,7 +395,8 @@ class StackContext(object):
         stack_id,
         new_template = {},
         new_parameter_values = {},
-        new_content_paths = {}
+        new_content_paths = {},
+        is_enabled = True
     ):
 
         if stack_id:
@@ -417,33 +421,60 @@ class StackContext(object):
 
             if resource_description is None:
 
-                # is pending create because it is in new template but not in descriptions map
+                if is_enabled:
 
-                resource_description = {
-                    'ResourceType': new_resource_definition.get('Type', None),
-                    'PendingAction': self.PENDING_CREATE,
-                    'PendingReason': self.PENDING_CREATE_REASON,
-                    'NewDefinition': new_resource_definition
-                }
+                    # is pending create because it is in new template but not in descriptions map, and is enabled
+
+                    resource_description = {
+                        'ResourceType': new_resource_definition.get('Type', None),
+                        'PendingAction': self.PENDING_CREATE,
+                        'PendingReason': self.PENDING_CREATE_REASON,
+                        'NewDefinition': new_resource_definition
+                    }
+
+                    self.__check_for_security_metadata(resource_description, new_resource_definition)
+    
+                else:
+
+                    # is not enabled
+
+                    resource_description = {
+                        'ResourceType': new_resource_definition.get('Type', None),
+                        'ResourceStatus': 'DISABLED',
+                        'NewDefinition': new_resource_definition
+                    }
 
                 resource_descriptions[logical_resource_name] = resource_description
 
-                self.__check_for_security_metadata(resource_description, new_resource_definition)
-
             else:
-
-                # is in new template and in description map, look for changes...
 
                 old_resource_definition = old_resource_definitions.get(logical_resource_name)
 
-                self.__diff_resource(
-                    logical_resource_name,
-                    resource_description,
-                    new_resource_definition,
-                    old_resource_definition,
-                    changed_reference_targets,
-                    new_content_paths
-                )
+                if is_enabled:
+
+                    # is in new template and in description map, look for changes...
+
+                    self.__diff_resource(
+                        logical_resource_name,
+                        resource_description,
+                        new_resource_definition,
+                        old_resource_definition,
+                        changed_reference_targets,
+                        new_content_paths
+                    )
+
+                else:
+
+                    # Is pending delete because resources are disabled.
+
+                    resource_description.update(
+                        {
+                            'PendingAction': self.PENDING_DELETE,
+                            'PendingReason': self.IS_DISABLED_REASON,
+                            'OldDefinition': old_resource_definition
+                        }
+                    )
+
 
         # look for removed resource definitions...
 
@@ -1010,7 +1041,7 @@ class Monitor(object):
                     stack_events = reversed(res['StackEvents'])
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'Throttling':
-                        time.sleep(5) # seconds
+                        time.sleep(MONITOR_WAIT_SECONDS)
                         stack_events = []
                     else:
                         raise HandledError('Could not get events for {0} stack.'.format(self.stack_id), e)
@@ -1054,4 +1085,4 @@ class Monitor(object):
                                 self.monitored_stacks.remove(event['PhysicalResourceId'])
 
             if not done:
-                time.sleep(5) # seconds
+                time.sleep(MONITOR_WAIT_SECONDS) # seconds

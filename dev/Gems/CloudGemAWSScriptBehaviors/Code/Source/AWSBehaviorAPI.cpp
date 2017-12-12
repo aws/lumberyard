@@ -22,12 +22,10 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
 
-#include <LmbrAWS/IAWSClientManager.h>
-#include <LmbrAWS/ILmbrAWS.h>
-
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <CloudGemFramework/ServiceJob.h>
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
@@ -101,7 +99,7 @@ namespace CloudGemAWSScriptBehaviors
         }
 
         AZStd::string resourceName;
-        EBUS_EVENT_RESULT(resourceName, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, m_resourceName.c_str());
+        EBUS_EVENT_RESULT(resourceName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_resourceName.c_str());
         if (resourceName.empty())
         {
             resourceName = m_resourceName;
@@ -151,7 +149,7 @@ namespace CloudGemAWSScriptBehaviors
             Aws::String requestURL{ url.c_str() };
 
             std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentialsProvider;
-            EBUS_EVENT_RESULT(credentialsProvider, CloudGemFramework::CloudGemFrameworkRequestBus, GetPlayerCredentialsProvider);
+            EBUS_EVENT_RESULT(credentialsProvider, CloudGemFramework::CloudCanvasPlayerIdentityBus, GetPlayerCredentialsProvider);
             AZStd::unique_ptr<Aws::Client::AWSAuthV4Signer> authSigner;
             if (credentialsProvider)
             {

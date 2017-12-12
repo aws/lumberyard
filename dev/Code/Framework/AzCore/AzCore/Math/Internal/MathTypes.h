@@ -24,9 +24,6 @@
         #define AZ_SIMD 1
 //#define AZ_AVX 1 // TODO optimize for AVX
         #define AZ_SIMD_WINDOWS 1
-    #elif defined(AZ_PLATFORM_X360)
-        #define AZ_SIMD 1
-        #define AZ_SIMD_X360 1
     #elif defined(AZ_PLATFORM_LINUX)
         #define AZ_SIMD 1
 //#define AZ_AVX
@@ -38,19 +35,12 @@
 //#define AZ_AVX
         #define AZ_SIMD_APPLE_OSX 1
 
-    #elif defined(AZ_PLATFORM_WII)
-// We use floats, but process them in pairs.
-        #define AZ_SIMD_WII 1
     #endif
 #endif
 
 //now include platform specific types
 #if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
     #include <AzCore/Math/Internal/MathTypesWin32.inl>
-#elif defined(AZ_SIMD_X360)
-    #include <AzCore/Math/Internal/MathTypesX360.inl>
-#elif defined(AZ_SIMD_PS3)
-    #include <AzCore/Math/Internal/MathTypesPs3.inl>
 #elif defined(AZ_SIMD_WII)
     #include <AzCore/Math/Internal/MathTypesWii.inl>
 #else

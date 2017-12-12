@@ -13,12 +13,14 @@
 #include "TestTypes.h"
 
 #include <AzCore/Math/Matrix3x3.h>
+#include <AzCore/Math/Random.h>
 #include <AzCore/Serialization/Utils.h>
 
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
 
 #include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Component/ComponentApplication.h>
 
 using namespace AZ;
 using namespace AzFramework;
@@ -52,7 +54,7 @@ namespace UnitTest
         AzFramework::Application m_app;
     };
 
-    
+
     // Runs a series of tests on TransformComponent.
     class TransformComponentUberTest
         : public TransformComponentApplication
@@ -62,14 +64,14 @@ namespace UnitTest
 
         //////////////////////////////////////////////////////////////////////////////
         // TransformNotificationBus
-        virtual void OnTransformChanged(const Transform& local, const Transform& world)
+        void OnTransformChanged(const Transform& local, const Transform& world) override
         {
             AZ_TEST_ASSERT(m_checkWorldTM == world);
             AZ_TEST_ASSERT(m_checkLocalTM == local);
         }
 
         /// Called when the parent of an entity has changed. When the old/new parent are invalid the !EntityId.IsValid
-        virtual void OnParentChanged(EntityId oldParent, EntityId newParent)
+        void OnParentChanged(EntityId oldParent, EntityId newParent) override
         {
             AZ_TEST_ASSERT(m_checkOldParentId == oldParent);
             AZ_TEST_ASSERT(m_checkNewParentId == newParent);
@@ -163,9 +165,9 @@ namespace UnitTest
             TransformNotificationBus::Handler::BusConnect(parentId);
 
             Entity childEntity;
-            TransformComponentConfiguration transformConfig;
+            AZ::TransformConfig transformConfig;
             transformConfig.m_isStatic = false;
-            childEntity.CreateComponent<TransformComponent>(transformConfig);
+            childEntity.CreateComponent<TransformComponent>()->SetConfiguration(transformConfig);
 
             m_checkChildId = childEntity.GetId();
 
@@ -494,7 +496,7 @@ namespace UnitTest
         TransformBus::Event(m_childId, &TransformBus::Events::RotateAroundLocalZ, rz);
         Vector3 localRotation;
         TransformBus::EventResult(localRotation, m_childId, &TransformBus::Events::GetLocalRotation);
-        EXPECT_TRUE(localRotation.IsClose(Vector3(0.0f, 0.0f, rz)));   
+        EXPECT_TRUE(localRotation.IsClose(Vector3(0.0f, 0.0f, rz)));
     }
 
     TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalZ_RepeatCallingThisFunctionDoesNotSkewScale)
@@ -746,9 +748,12 @@ namespace UnitTest
 
             m_entity = aznew Entity(IsStatic ? "Static Entity" : "Movable Entity");
 
-            TransformComponentConfiguration transformConfig;
+            AZ::TransformConfig transformConfig;
             transformConfig.m_isStatic = IsStatic;
-            m_transformInterface = m_entity->CreateComponent<TransformComponent>(transformConfig);
+
+            auto transformComponent = m_entity->CreateComponent<TransformComponent>();
+            transformComponent->SetConfiguration(transformConfig);
+            m_transformInterface = transformComponent;
 
             m_entity->Init();
             m_entity->Activate();
@@ -832,20 +837,20 @@ namespace UnitTest
             m_parentEntity = aznew Entity("Parent");
             m_parentEntity->Init();
 
-            TransformComponentConfiguration parentConfig;
+            AZ::TransformConfig parentConfig;
             parentConfig.m_isStatic = true;
-            parentConfig.m_transform.SetPosition(5.f, 5.f, 5.f);
-            m_parentEntity->CreateComponent<TransformComponent>(parentConfig);
+            parentConfig.SetTransform(AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)));
+            m_parentEntity->CreateComponent<TransformComponent>()->SetConfiguration(parentConfig);
 
             m_childEntity = aznew Entity("Child");
             m_childEntity->Init();
 
-            TransformComponentConfiguration childConfig;
+            AZ::TransformConfig childConfig;
             childConfig.m_isStatic = true;
-            childConfig.m_transform.SetPosition(5.f, 5.f, 5.f);
+            childConfig.SetTransform(AZ::Transform::CreateTranslation(AZ::Vector3(5.f, 5.f, 5.f)));
             childConfig.m_parentId = m_parentEntity->GetId();
-            childConfig.m_parentActivationTransformMode = TransformComponentConfiguration::ParentActivationTransformMode::MaintainOriginalRelativeTransform;
-            m_childEntity->CreateComponent<TransformComponent>(childConfig);
+            childConfig.m_parentActivationTransformMode = AZ::TransformConfig::ParentActivationTransformMode::MaintainOriginalRelativeTransform;
+            m_childEntity->CreateComponent<TransformComponent>()->SetConfiguration(childConfig);
         }
 
         Entity* m_parentEntity = nullptr;
@@ -900,8 +905,8 @@ namespace UnitTest
     public:
         TransformComponentConvertFromV2()
         {
-            m_objectStreamBuffer = 
-R"DELIMITER(<ObjectStream version="1">
+            m_objectStreamBuffer =
+                R"DELIMITER(<ObjectStream version="1">
     <Class name="TransformComponent" field="element" version="2" type="{22B10178-39B6-4C12-BB37-77DB45FDD3B6}">
 	    <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 		    <Class name="AZ::u64" field="Id" value="18023671824091307142" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -925,4 +930,104 @@ R"DELIMITER(<ObjectStream version="1">
         EXPECT_FALSE(m_transformInterface->IsStaticTransform());
     }
 
+    TEST_F(TransformComponentConvertFromV2, IsPositionInterpolated_False)
+    {
+        EXPECT_FALSE(m_transformInterface->IsPositionInterpolated());
+    }
+
+    TEST_F(TransformComponentConvertFromV2, IsRotationInterpolated_False)
+    {
+        EXPECT_FALSE(m_transformInterface->IsRotationInterpolated());
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // TransformConfig
+
+    static bool operator==(const AZ::TransformConfig& lhs, const AZ::TransformConfig& rhs)
+    {
+        return lhs.m_parentId == rhs.m_parentId
+            && lhs.m_parentActivationTransformMode == rhs.m_parentActivationTransformMode
+            && lhs.m_netSyncEnabled == rhs.m_netSyncEnabled
+            && lhs.m_interpolatePosition == rhs.m_interpolatePosition
+            && lhs.m_interpolateRotation == rhs.m_interpolateRotation
+            && lhs.m_isStatic == rhs.m_isStatic
+            && lhs.GetLocalTransform() == rhs.GetLocalTransform()
+            && lhs.GetWorldTransform() == rhs.GetWorldTransform()
+            ;
+    }
+
+    class TransformConfigTest
+        : public TransformComponentApplication
+    {
+    public:
+        TransformConfig GetRandomConfig()
+        {
+            TransformConfig config;
+
+            float floatBuf[24];
+            for (int i = 0; i < AZ_ARRAY_SIZE(floatBuf); ++i)
+            {
+                floatBuf[i] = m_random.GetRandomFloat();
+            }
+
+            config.SetLocalAndWorldTransform(
+                AZ::Transform::CreateFromColumnMajorFloat12(&floatBuf[0]),
+                AZ::Transform::CreateFromColumnMajorFloat12(&floatBuf[12]));
+            config.m_parentId = AZ::Entity::MakeId();
+            config.m_parentActivationTransformMode = (TransformConfig::ParentActivationTransformMode)(m_random.GetRandom() % 2);
+            config.m_netSyncEnabled = (m_random.GetRandom() % 2) == 1;
+            config.m_interpolatePosition = (m_random.GetRandom() % 2) == 1 ? InterpolationMode::NoInterpolation : InterpolationMode::LinearInterpolation;
+            config.m_interpolateRotation = (m_random.GetRandom() % 2) == 1 ? InterpolationMode::NoInterpolation : InterpolationMode::LinearInterpolation;
+            config.m_isStatic = (m_random.GetRandom() % 2) == 1;
+
+            return config;
+        }
+
+        void SetUp() override
+        {
+            TransformComponentApplication::SetUp();
+
+            m_random.SetSeed(static_cast<AZ::u64>(m_app.GetTimeAtCurrentTick().GetMilliseconds()));
+        }
+
+        AZ::SimpleLcgRandom m_random;
+    };
+
+    TEST_F(TransformConfigTest, SetConfiguration_Succeeds)
+    {
+        TransformComponent component;
+        TransformConfig config = GetRandomConfig();
+        EXPECT_TRUE(component.SetConfiguration(config));
+    }
+
+    TEST_F(TransformConfigTest, GetConfiguration_Succeeds)
+    {
+        TransformComponent component;
+        TransformConfig config;
+        EXPECT_TRUE(component.GetConfiguration(config));
+    }
+
+    TEST_F(TransformConfigTest, SetThenGet_ConfigsMatches)
+    {
+        TransformComponent component;
+        TransformConfig originalConfig = GetRandomConfig();
+        EXPECT_TRUE(component.SetConfiguration(originalConfig));
+
+        TransformConfig retrievedConfig;
+        EXPECT_TRUE(component.GetConfiguration(retrievedConfig));
+
+        EXPECT_TRUE(originalConfig == retrievedConfig);
+    }
+
+    TEST_F(TransformConfigTest, ConfigDefaultsComparedToComponentDefaults_Same)
+    {
+        // A default-constructed TransformConfig should be equivalent
+        // to a configuration fetched from a default-constructed TransformComponent.
+        TransformConfig defaultConfig;
+        TransformConfig retrievedConfig;
+        TransformComponent component;
+
+        EXPECT_TRUE(component.GetConfiguration(retrievedConfig));
+        EXPECT_TRUE(defaultConfig == retrievedConfig);
+    }
 } // namespace UnitTest

@@ -110,7 +110,7 @@ protected:
     // Flag set when the library is just created and it's not yet saved for the first time.
     bool m_bNewLibrary;
 
-    //! Level library is saved within the level .cry file and is local for this level.
+    //! Level library is saved within the level .ly file and is local for this level.
     bool m_bLevelLib;
 
     //////////////////////////////////////////////////////////////////////////

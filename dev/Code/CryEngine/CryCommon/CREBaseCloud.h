@@ -135,7 +135,6 @@ inline const ColorF SCloudParticle::GetLitColor(unsigned int index) const
 }
 
 //===========================================================================
-
 class CREBaseCloud
     : public CRendElementBase
 {

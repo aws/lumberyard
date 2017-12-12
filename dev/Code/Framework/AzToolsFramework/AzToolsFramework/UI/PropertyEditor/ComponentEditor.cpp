@@ -14,6 +14,7 @@
 #include "ComponentEditorHeader.hxx"
 #include "ComponentEditorNotification.hxx"
 
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
@@ -81,9 +82,7 @@ namespace AzToolsFramework
                 AZ::Entity::ComponentArrayType allComponents = entity->GetComponents();
 
                 //also include invalid components waiting for requirements to be met
-                AZ::Entity::ComponentArrayType pendingComponents;
-                EditorPendingCompositionRequestBus::EventResult(pendingComponents, entity->GetId(), &EditorPendingCompositionRequests::GetPendingComponents);
-                allComponents.insert(allComponents.end(), pendingComponents.begin(), pendingComponents.end());
+                EditorPendingCompositionRequestBus::Event(entity->GetId(), &EditorPendingCompositionRequests::GetPendingComponents, allComponents);
 
                 //for every component related to the entity, determine if its services are incompatible with the primary component
                 for (auto component2 : allComponents)
@@ -156,7 +155,7 @@ namespace AzToolsFramework
         m_propertyEditor->setObjectName(ComponentEditorConstants::kPropertyEditorId);
         m_propertyEditor->Setup(context, notifyTarget, false, ComponentEditorConstants::kPropertyLabelWidth);
         m_propertyEditor->SetHideRootProperties(true);
-        m_propertyEditor->setProperty("ComponentDisabl", true); // used by stylesheet
+        m_propertyEditor->setProperty("ComponentBlock", true); // used by stylesheet
         m_savedKeySeed = AZ_CRC("WorldEditorEntityEditor_Component", 0x926c865f);
 
         m_mainLayout = aznew QVBoxLayout(this);
@@ -173,6 +172,8 @@ namespace AzToolsFramework
 
         SetExpanded(true);
         SetSelected(false);
+        SetDragged(false);
+        SetDropTarget(false);
     }
 
     void ComponentEditor::AddInstance(AZ::Component* componentInstance, AZ::Component* aggregateInstance, AZ::Component* compareInstance)
@@ -199,12 +200,14 @@ namespace AzToolsFramework
         // When first instance is set, use its data to fill out the header.
         if (m_componentType.IsNull())
         {
-            SetComponentType(GetUnderlyingComponentType(*componentInstance));
+            SetComponentType(*componentInstance);
         }
     }
 
     void ComponentEditor::ClearInstances(bool invalidateImmediately)
     {
+        m_propertyEditor->SetDynamicEditDataProvider(nullptr);
+
         //clear warning flag and icon
         m_header->SetWarning(false);
         m_header->SetReadOnly(false);
@@ -276,7 +279,7 @@ namespace AzToolsFramework
         //display notification for conflicting components, including duplicates
         for (auto conflict : forwardPendingComponentInfo.m_validComponentsThatAreIncompatible)
         {
-            QString message = tr("This component has been disabled because it is incompatible with \"%1\".").arg(AzToolsFramework::GetFriendlyComponentName(conflict));
+            QString message = tr("This component has been disabled because it is incompatible with \"%1\".").arg(AzToolsFramework::GetFriendlyComponentName(conflict).c_str());
             uniqueMessages[message].push_back(conflict);
         }
         for (const auto& message : uniqueMessages)
@@ -288,7 +291,7 @@ namespace AzToolsFramework
         //display notification that one pending component might have requirements satisfied by another
         for (auto conflict : forwardPendingComponentInfo.m_pendingComponentsWithRequiredServices)
         {
-            QString message = tr("This component is disabled pending \"%1\". This component will be enabled when the required component is resolved.").arg(AzToolsFramework::GetFriendlyComponentName(conflict));
+            QString message = tr("This component is disabled pending \"%1\". This component will be enabled when the required component is resolved.").arg(AzToolsFramework::GetFriendlyComponentName(conflict).c_str());
             uniqueMessages[message].push_back(conflict);
         }
         for (const auto& message : uniqueMessages)
@@ -328,7 +331,7 @@ namespace AzToolsFramework
     {
         //TODO ask about moving all of these to the context menu instead
         auto notification = CreateNotification(message);
-        auto featureButton = aznew QPushButton(tr("Remove this component"), notification);
+        auto featureButton = aznew QPushButton(tr("Delete component"), notification);
         connect(featureButton, &QPushButton::clicked, this, [this]()
         {
             emit OnRequestRemoveComponents(GetComponents());
@@ -400,7 +403,7 @@ namespace AzToolsFramework
             if (entity)
             {
                 AZ::Entity::ComponentArrayType disabledComponents;
-                EditorDisabledCompositionRequestBus::EventResult(disabledComponents, entity->GetId(), &EditorDisabledCompositionRequests::GetDisabledComponents);
+                EditorDisabledCompositionRequestBus::Event(entity->GetId(), &EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
                 if (AZStd::find(disabledComponents.begin(), disabledComponents.end(), component) != disabledComponents.end())
                 {
                     return true;
@@ -446,6 +449,8 @@ namespace AzToolsFramework
         EntityIdList selectedEntityIds;
         ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
 
+        AZ::Entity::ComponentArrayType componentsOnEntity;
+
         for (auto entityId : selectedEntityIds)
         {
             auto entity = GetEntityById(entityId);
@@ -455,9 +460,10 @@ namespace AzToolsFramework
             }
 
             //build a set of all active and pending components associated with the current entity
-            const auto& allComponents = AzToolsFramework::GetAllComponentsForEntity(entity);
+            componentsOnEntity.clear();
+            AzToolsFramework::GetAllComponentsForEntity(entity, componentsOnEntity);
 
-            for (auto component : allComponents)
+            for (auto component : componentsOnEntity)
             {
                 //for each component, get any pending info/warnings
                 AzToolsFramework::EntityCompositionRequests::PendingComponentInfo pendingComponentInfo;
@@ -489,8 +495,10 @@ namespace AzToolsFramework
         m_propertyEditor->QueueInvalidation(refreshLevel);
     }
 
-    void ComponentEditor::SetComponentType(const AZ::Uuid& componentType)
+    void ComponentEditor::SetComponentType(const AZ::Component& componentInstance)
     {
+        const AZ::Uuid componentType = GetUnderlyingComponentType(componentInstance);
+
         auto classData = m_serializeContext->FindClassData(componentType);
         if (!classData || !classData->m_editData)
         {
@@ -503,7 +511,23 @@ namespace AzToolsFramework
 
         m_propertyEditor->SetSavedStateKey(AZ::Crc32(componentType.ToString<AZStd::string>().data()));
 
-        m_header->SetTitle(classData->m_editData->m_name);
+        m_header->SetTitle(GetFriendlyComponentName(&componentInstance).c_str());
+
+        m_header->ClearHelpURL();
+
+        if (classData->m_editData)
+        {
+            if (auto editorData = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+            {
+                if (auto nameAttribute = editorData->FindAttribute(AZ::Edit::Attributes::HelpPageURL))
+                {
+                    AZStd::string helpUrl;
+                    AZ::AttributeReader nameReader(const_cast<AZ::Component*>(&componentInstance), nameAttribute);
+                    nameReader.Read<AZStd::string>(helpUrl);
+                    m_header->SetHelpURL(helpUrl);
+                }
+            }
+        }
 
         AZStd::string iconPath;
         EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentType);
@@ -642,11 +666,10 @@ namespace AzToolsFramework
 
     void ComponentEditor::SetSelected(bool selected)
     {
-        if (m_header->IsSelected() != selected)
+        if (m_selected != selected)
         {
-            m_header->SetSelected(selected);
-
-            setProperty("selected", selected);
+            m_selected = selected;
+            setProperty("selected", m_selected);
             style()->unpolish(this);
             style()->polish(this);
         }
@@ -654,7 +677,27 @@ namespace AzToolsFramework
 
     bool ComponentEditor::IsSelected() const
     {
-        return m_header->IsSelected();
+        return m_selected;
+    }
+
+    void ComponentEditor::SetDragged(bool dragged)
+    {
+        m_dragged = dragged;
+    }
+
+    bool ComponentEditor::IsDragged() const
+    {
+        return m_dragged;
+    }
+
+    void ComponentEditor::SetDropTarget(bool dropTarget)
+    {
+        m_dropTarget = dropTarget;
+    }
+
+    bool ComponentEditor::IsDropTarget() const
+    {
+        return m_dropTarget;
     }
 
     AzToolsFramework::ComponentEditorHeader* ComponentEditor::GetHeader()
@@ -676,6 +719,7 @@ namespace AzToolsFramework
     {
         return m_components;
     }
+
 }
 
 #include <UI/PropertyEditor/ComponentEditor.moc>

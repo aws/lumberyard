@@ -15,7 +15,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
     /////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgent::CacheAllVirtualPropertiesFromBehaviorContext(AZ::Entity* entity)
@@ -42,7 +42,7 @@ namespace LmbrCentral
                         AZ::BehaviorEBus* behaviorEbus = findBusIter->second;
                         for (auto virtualPropertyIter = behaviorEbus->m_virtualProperties.begin(); virtualPropertyIter != behaviorEbus->m_virtualProperties.end(); virtualPropertyIter++)
                         {
-                            LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress   address(component->GetId(), virtualPropertyIter->first);
+                            Maestro::SequenceComponentRequests::AnimatablePropertyAddress   address(component->GetId(), virtualPropertyIter->first);
                             m_addressToBehaviorVirtualPropertiesMap[address] = &virtualPropertyIter->second;
                         }
                     }
@@ -52,7 +52,7 @@ namespace LmbrCentral
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
-    AZ::Uuid SequenceAgent::GetVirtualPropertyTypeId(const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) const
+    AZ::Uuid SequenceAgent::GetVirtualPropertyTypeId(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) const
     {
         AZ::Uuid retTypeUuid = AZ::Uuid::CreateNull();
 
@@ -65,7 +65,7 @@ namespace LmbrCentral
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool SequenceAgent::SetAnimatedPropertyValue(AZ::EntityId entityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const LmbrCentral::SequenceComponentRequests::AnimatedValue& value)
+    bool SequenceAgent::SetAnimatedPropertyValue(AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const Maestro::SequenceComponentRequests::AnimatedValue& value)
     {
         bool changed = false;
         const AZ::Uuid propertyTypeId = GetVirtualPropertyTypeId(animatableAddress);
@@ -102,6 +102,13 @@ namespace LmbrCentral
                 findIter->second->m_setter->m_event->Invoke(entityId, boolValue);
                 changed = true;
             }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
+            {
+                AZ::u32 u32value = 0;
+                value.GetValue(u32value);
+                findIter->second->m_setter->m_event->Invoke(entityId, u32value);
+                changed = true;
+            }
             else
             {
                 // fall-through default is to cast to float
@@ -115,7 +122,7 @@ namespace LmbrCentral
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    void SequenceAgent::GetAnimatedPropertyValue(LmbrCentral::SequenceComponentRequests::AnimatedValue& returnValue, AZ::EntityId entityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    void SequenceAgent::GetAnimatedPropertyValue(Maestro::SequenceComponentRequests::AnimatedValue& returnValue, AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
     {
         const AZ::Uuid propertyTypeId = GetVirtualPropertyTypeId(animatableAddress);
 
@@ -146,6 +153,12 @@ namespace LmbrCentral
                 findIter->second->m_getter->m_event->InvokeResult(boolValue, entityId);
                 returnValue.SetValue(boolValue);
             }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
+            {
+                AZ::u32 u32Value;
+                findIter->second->m_getter->m_event->InvokeResult(u32Value, entityId);
+                returnValue.SetValue(u32Value);
+            }
             else
             {
                 // fall-through default is to cast to float
@@ -155,4 +168,4 @@ namespace LmbrCentral
             }
         }
     }
-}// namespace LmbrCentral
+}// namespace Maestro

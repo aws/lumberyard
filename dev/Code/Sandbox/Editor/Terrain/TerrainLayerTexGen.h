@@ -91,8 +91,6 @@ private: // --------------------------------------------------------------------
 
     std::vector<SLayerInfo>         m_layers;                                                   // Used Layers
 
-    CLayer*                                        m_waterLayer;                                            // If have water layer
-
     std::vector<CTexSectorInfo> m_sectorGrid;                                           // Sector grid.
 
     // ------------------------------------------------------------------------------

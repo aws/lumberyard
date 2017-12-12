@@ -17,7 +17,7 @@ import service
 from random import randint
 import uuid
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def get(request):
     if not request.event["cognitoIdentityId"]:
         raise errors.ForbiddenRequestError('The credentials used did not contain Cognito identity information')
@@ -36,7 +36,7 @@ def get(request):
 
     return account_utils.convert_account_from_dynamo_to_player_model(response['Item'])
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def put(request, UpdateAccountRequest):
     if not request.event["cognitoIdentityId"]:
         raise errors.ForbiddenRequestError('The credentials used did not contain Cognito identity information')

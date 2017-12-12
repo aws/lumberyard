@@ -150,12 +150,21 @@ namespace AssetProcessor
         //SourceFileDependency
         bool SetSourceFileDependency(AzToolsFramework::AssetDatabase::SourceFileDependencyEntry& entry);
         bool SetSourceFileDependencies(AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
-        bool GetSourceFileDependenciesByDependsOnSource(QString dependsOnSource, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
+
+        //! Finds all records where other files depend on 'dependsOnSource'
+        bool GetSourceFileDependenciesByDependsOnSource(const QString& dependsOnSource, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
+        //! Finds all records where 'source' is dependent on another file
+        bool GetDependsOnSourceBySource(const QString& source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
+
         bool GetSourceFileDependenciesByBuilderGUIDAndSource(const AZ::Uuid& builderGuid, const char* source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
         bool GetSourceFileDependency(const AzToolsFramework::AssetDatabase::SourceFileDependencyEntry& inputEntry, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry& databaseEntry);
         bool GetSourceFileDependencyBySourceDependencyId(AZ::s64 sourceDependencyId, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry& sourceDependencyEntry);
         bool RemoveSourceFileDependencies(AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container);
         bool RemoveSourceFileDependency(const AzToolsFramework::AssetDatabase::SourceFileDependencyEntry& entry);
+
+        bool CreateOrUpdateLegacySubID(AzToolsFramework::AssetDatabase::LegacySubIDsEntry& entry);  // create or overwrite operation.
+        bool RemoveLegacySubID(AZ::s64 legacySubIDsEntryID);
+        bool RemoveLegacySubIDsByProductID(AZ::s64 productID);
  
     protected:
         void SetDatabaseVersion(AzToolsFramework::AssetDatabase::DatabaseVersion ver);

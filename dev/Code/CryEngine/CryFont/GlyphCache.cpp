@@ -25,7 +25,6 @@ CGlyphCache::CGlyphCache()
     : m_dwUsage(1)
     , m_iGlyphBitmapWidth(0)
     , m_iGlyphBitmapHeight(0)
-    , m_fSizeRatio(0.8f)
     , m_pScaleBitmap(0)
 {
     m_pCacheTable.clear();
@@ -38,10 +37,8 @@ CGlyphCache::~CGlyphCache()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount, float fSizeRatio)
+int CGlyphCache::Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount)
 {
-    m_fSizeRatio = fSizeRatio;
-
     m_iSmoothMethod = iSmoothMethod;
     m_iSmoothAmount = iSmoothAmount;
 
@@ -124,7 +121,6 @@ int CGlyphCache::Release()
 
     m_iGlyphBitmapWidth = 0;
     m_iGlyphBitmapHeight = 0;
-    m_fSizeRatio = 0.8f;
 
     return 1;
 }
@@ -321,7 +317,7 @@ CCacheSlot* CGlyphCache::GetMRUSlot()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, char& iCharOffsetX, char& iCharOffsetY, uint32 cChar)
+int CGlyphCache::GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, uint32 cChar)
 {
     CCacheTable::iterator pItor = m_pCacheTable.find(cChar);
 

@@ -14,13 +14,13 @@
 #ifndef _COMMONRENDER_H_
 #define _COMMONRENDER_H_
 
+#include <CryEngineAPI.h>
 #include "Cry_Math.h"
 
 #include "Defs.h"
 #include "Cry_Color.h"
 #include <Cry_Camera.h>
 #include <MemoryAccess.h>
-
 #include "STLGlobalAllocator.h"
 
 #if defined(NULL_RENDERER)
@@ -42,7 +42,7 @@
 
 //////////////////////////////////////////////////////////////////////
 class CRenderer;
-extern CRenderer* gRenDev;
+extern ENGINE_API CRenderer* gRenDev;
 
 class CBaseResource;
 

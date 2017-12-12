@@ -8,6 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+import json
 import os
 import urllib
 from xml.etree import ElementTree
@@ -31,6 +32,27 @@ def xml_contains_failure(xml_filename):
         pass
 
     return False
+
+
+def get_scan_results_from_json(json_path):
+    """
+    Gathers ScanResult information from a JSON file.
+
+    :param json_path: path to the JSON file to read
+    :return: list of ScanResults with the appropriate data or an empty list if file has nothing in it
+    """
+    scan_results = []
+    try:
+        with open(json_path, 'r') as f:
+            scan_results_json = json.load(f)
+    except IOError:
+        return scan_results  # If no file exists, we just move on
+    
+    if 'scan_results' in scan_results_json:
+        for scan_result in scan_results_json['scan_results']:
+            scan_results.append(ScanResult(path=scan_result['path'], xml_path=scan_result['xml_path'],
+                                           return_code=scan_result['return_code'], error_msg=scan_result['error_msg']))
+    return scan_results
 
 
 def get_scan_result_from_module(xml_path):
@@ -440,13 +462,16 @@ def generate_standalone_report(args, extra):
     # Report directory defaults to XML directory if different path is not given
     output_dir = args.output_path or xml_dir
 
-    # Get ScanResult list from the XML files
-    scan_results = []
-    xml_files = get_xml_files(xml_dir)
-    for f in xml_files:
-        scan_result = get_scan_result_from_module(f)
-        if scan_result:
-            scan_results.append(scan_result)
+    json_path = os.path.join(output_dir, 'scan_results.json')
+    scan_results = get_scan_results_from_json(json_path)
+    if not scan_results:
+        # Get ScanResult list from the XML files
+        scan_results = []
+        xml_files = get_xml_files(xml_dir)
+        for f in xml_files:
+            scan_result = get_scan_result_from_module(f)
+            if scan_result:
+                scan_results.append(scan_result)
 
     # Generate the reports
     create_html_report(scan_results, output_dir)

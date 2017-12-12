@@ -12,7 +12,7 @@
 #include "StdAfx.h"
 #include "LibDyad.h"
 #include <CrySimpleManagedThread.h>
-#include <atomic>
+#include <AzCore/std/parallel/atomic.h>
 
 using namespace dyad;
 
@@ -85,7 +85,7 @@ namespace dyad
         std::unordered_map<StreamId, DyadStreamContext> m_contexts;
 
         // Run flag used to signal the worker thread
-        std::atomic<bool> m_runThread;
+        AZStd::atomic<bool> m_runThread;
 
         void Update(void);
 

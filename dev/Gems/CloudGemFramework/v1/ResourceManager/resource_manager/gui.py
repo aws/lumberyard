@@ -67,7 +67,8 @@ command_handlers = {
     'create-deployment-stack': deployment.create_stack,
     'delete-deployment-stack' : deployment.delete_stack,
     'protect-deployment' : deployment.protect,
-    'create-function-folder': resource_group.create_function_folder
+    'create-function-folder': resource_group.create_function_folder,
+    'update-framework-version': project.update_framework_version
 }
 
 
@@ -120,6 +121,9 @@ def __execute(command, args):
         handler = command_handlers.get(command, None)
         if handler is None:
             raise HandledError('Unknown command: ' + command)
+
+        if handler != project.update_framework_version:
+            context.config.verify_framework_version()
 
         handler(context, argsObj)
 

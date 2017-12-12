@@ -17,14 +17,14 @@
 #define CRYINCLUDE_CRYMOVIE_MOVIE_H
 
 #pragma once
+#include <AzCore/std/containers/map.h>
 
 #include "IMovieSystem.h"
-#include <CrySizer.h>
 
 struct PlayingSequence
 {
     //! Sequence playing
-    _smart_ptr<IAnimSequence> sequence;
+    AZStd::intrusive_ptr<IAnimSequence> sequence;
 
     //! Start/End/Current playing time for this sequence.
     float startTime;
@@ -35,11 +35,6 @@ struct PlayingSequence
     //! Sequence from other sequence's sequence track
     bool trackedSequence;
     bool bSingleFrame;
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(sequence);
-    }
 };
 
 class CLightAnimWrapper
@@ -59,7 +54,7 @@ public:
 private:
     typedef std::map<string, CLightAnimWrapper*> LightAnimWrapperCache;
     static LightAnimWrapperCache ms_lightAnimWrapperCache;
-    static _smart_ptr<IAnimSequence> ms_pLightAnimSet;
+    static AZStd::intrusive_ptr<IAnimSequence> ms_pLightAnimSet;
 
 private:
     static CLightAnimWrapper* FindLightAnim(const char* name);
@@ -81,7 +76,11 @@ class CMovieSystem
     typedef std::vector<PlayingSequence> PlayingSequences;
 
 public:
+    AZ_CLASS_ALLOCATOR(CMovieSystem, AZ::SystemAllocator, 0);
+    AZ_RTTI(CMovieSystem, "{760D45C1-08F2-4C70-A506-BD2E69085A48}", IMovieSystem);
+
     CMovieSystem(ISystem* system);
+    CMovieSystem();
 
     void Release() { delete this; };
 
@@ -91,8 +90,6 @@ public:
     bool Load(const char* pszFile, const char* pszMission);
 
     ISystem* GetSystem() { return m_pSystem; }
-
-    IAnimTrack* CreateTrack(EAnimCurveType type);
 
     IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, ESequenceType = eSequenceType_Legacy);
     IAnimSequence* LoadSequence(const char* pszFilePath);
@@ -202,15 +199,9 @@ public:
 
     ILightAnimWrapper* CreateLightAnimWrapper(const char* name) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_sequences);
-        pSizer->AddObject(m_playingSequences);
-        pSizer->AddObject(m_movieListenerMap);
-    }
-
     void SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xmlNode, bool bLoading, const uint version, int flags) override;
+    virtual void LoadParamTypeFromXml(CAnimParamType& animParamType, const XmlNodeRef& xmlNode, const uint version) override;
+    virtual void SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNodeRef& xmlNode) override;
     virtual void SerializeParamType(CAnimParamType& animParamType, XmlNodeRef& xmlNode, bool bLoading, const uint version);
 
     static const char* GetParamTypeName(const CAnimParamType& animParamType);
@@ -221,7 +212,12 @@ public:
     void ClearUserNotificationMsgs() override;
     const AZStd::string& GetUserNotificationMsgs() const override;
 
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 private:
+
+    void CheckForEndCapture();
+
     void NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMovieEvent event);
 
     void InternalStopAllSequences(bool bIsAbort, bool bAnimate);
@@ -252,13 +248,13 @@ private:
 
     CTimeValue m_lastUpdateTime;
 
-    typedef std::vector<_smart_ptr<IAnimSequence> > Sequences;
+    typedef AZStd::vector<AZStd::intrusive_ptr<IAnimSequence> > Sequences;
     Sequences m_sequences;
 
     PlayingSequences m_playingSequences;
 
-    typedef std::vector<IMovieListener*> TMovieListenerVec;
-    typedef std::map<IAnimSequence*, TMovieListenerVec> TMovieListenerMap;
+    typedef AZStd::vector<IMovieListener*> TMovieListenerVec;
+    typedef AZStd::map<IAnimSequence*, TMovieListenerVec> TMovieListenerMap;
 
     // a container which maps sequences to all interested listeners
     // listeners is a vector (could be a set in case we have a lot of listeners, stl::push_back_unique!)

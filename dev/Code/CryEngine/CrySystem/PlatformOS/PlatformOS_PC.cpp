@@ -439,21 +439,6 @@ void CPlatformOS_PC::NotifyListeners(SPlatformEvent& event)
     }
 }
 
-bool CPlatformOS_PC::KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback)
-{
-    return false;
-}
-
-bool CPlatformOS_PC::KeyboardIsRunning()
-{
-    return false;
-}
-
-bool CPlatformOS_PC::KeyboardCancel()
-{
-    return false;
-}
-
 bool CPlatformOS_PC::StringVerifyStart(const char* inString, IStringVerifyEvents* pInCallback)
 {
     return false;

@@ -11,6 +11,7 @@
 */
 
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
@@ -71,16 +72,66 @@ namespace AZ
                         }
                     }
 
+                    AZStd::string result;
                     if (highestIndex == -1)
                     {
-                        return baseName;
+                        result = baseName;
                     }
                     else
                     {
-                        return AZStd::string::format("%s-%i", baseName.c_str(), highestIndex + 1);
+                        result = AZStd::string::format("%s-%i", baseName.c_str(), highestIndex + 1);
                     }
+
+                    // Replace any characters that are invalid as part of a file name.
+                    const char* invalidCharactersBegin = AZ_FILESYSTEM_INVALID_CHARACTERS;
+                    const char* invalidCharactersEnd = invalidCharactersBegin + AZ_ARRAY_SIZE(AZ_FILESYSTEM_INVALID_CHARACTERS);
+                    for (size_t i = 0; i < result.length(); ++i)
+                    {
+                        if (result[i] == AZ_FILESYSTEM_DRIVE_SEPARATOR || result[i] == AZ_FILESYSTEM_WILDCARD ||
+                            result[i] == AZ_CORRECT_FILESYSTEM_SEPARATOR || result[i] == AZ_WRONG_FILESYSTEM_SEPARATOR ||
+                            AZStd::find(invalidCharactersBegin, invalidCharactersEnd, result[i]) != invalidCharactersEnd)
+                        {
+                            result[i] = '_';
+                        }
+                    }
+
+                    return result;
                 }
-            } // Utilities
-        } // DataTypes
-    } // SceneAPI
-} // AZ
+
+                AZStd::string CreateUniqueName(const AZStd::string& baseName, const AZStd::string& subName, 
+                    const Containers::SceneManifest& manifest, const Uuid& type)
+                {
+                    return CreateUniqueName(AZStd::string::format("%s_%s", baseName.c_str(), subName.c_str()), manifest, type);
+                }
+
+                Uuid CreateStableUuid(const Containers::Scene& scene, const Uuid& typeId)
+                {
+                    char guid[sizeof(Uuid) * 2];
+                    memcpy(guid, scene.GetSourceGuid().data, sizeof(Uuid));
+                    memcpy(guid + sizeof(Uuid), typeId.data, sizeof(Uuid));
+                    return Uuid::CreateData(guid, sizeof(Uuid) * 2);
+                }
+
+                Uuid CreateStableUuid(const Containers::Scene& scene, const Uuid& typeId, const AZStd::string& subId)
+                {
+                    AZStd::string guid;
+                    guid += scene.GetSourceGuid().ToString<AZStd::string>();
+                    guid += typeId.ToString<AZStd::string>();
+                    guid += subId;
+
+                    return Uuid::CreateData(guid.data(), guid.size() * sizeof(guid[0]));
+                }
+
+                Uuid CreateStableUuid(const Containers::Scene& scene, const Uuid& typeId, const char* subId)
+                {
+                    AZStd::string guid;
+                    guid += scene.GetSourceGuid().ToString<AZStd::string>();
+                    guid += typeId.ToString<AZStd::string>();
+                    guid += subId;
+
+                    return Uuid::CreateData(guid.data(), guid.size() * sizeof(guid[0]));
+                }
+            } // namespace Utilities
+        } // namespace DataTypes
+    } // namespace SceneAPI
+} // namespace AZ

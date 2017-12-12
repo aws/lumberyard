@@ -20,7 +20,7 @@ Node: filesystem structure, contains lists of nodes
    (:py:class:`waflib.Node.Nod3`, see the :py:class:`waflib.Context.Context` initializer). A reference to the context owning a node is held as self.ctx
 """
 
-import os, re, sys, shutil
+import os, re, sys, shutil, hashlib, base64
 from waflib import Utils, Errors
 
 exclude_regs = '''
@@ -662,13 +662,30 @@ class Node(object):
 					else:
 						tmp.append(i)				
 				return self.ctx.bldnode.make_node(tmp)
-			lst.append(cur.name)
+			if ' ' in cur.name:
+				lst.append(cur.name.replace(' ', '_'))
+			else:
+				lst.append(cur.name)
+
 			cur = cur.parent
 		# the file is external to the current project, make a fake root in the current build directory
 		lst.reverse()
 		if lst and Utils.is_win32 and len(lst[0]) == 2 and lst[0].endswith(':'):
 			lst[0] = lst[0][0]
-		return self.ctx.bldnode.make_node(['__root__'] + lst)
+
+		# Try to use the shortest possible path between the length of the hash and the length of the original path.
+		# This will help minimize the chances of having the path too long for certain linkers (Microsoft @ 260 characters) to handle
+		expanded_path = '/'.join(lst)
+
+		hasher = hashlib.md5()
+		hasher.update(expanded_path)
+		hashed_and_encoded = hasher.hexdigest()
+
+		if len(expanded_path) > 32:
+			return self.ctx.bldnode.make_node(['__root__', hashed_and_encoded])
+		else:
+			return self.ctx.bldnode.make_node(['__root__'] + lst)
+
 
 	def find_resource(self, lst):
 		"""

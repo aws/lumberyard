@@ -160,7 +160,7 @@ void RunGame()
         LOGE("[ERROR] Unable to get current working path!");
         RunGame_EXIT(1);
     }
-    CryLog("CWD = %s", absPath);
+    LOGI("CWD = %s", absPath);
 
     size_t uDefStackSize;
     if (!IncreaseResourceMaxLimit(RLIMIT_CORE, RLIM_INFINITY)
@@ -182,7 +182,7 @@ void RunGame()
     signal(SIGTERM, HandleSignal);
 
     // setup the android environment
-    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+    AZ::AllocatorInstance<AZ::OSAllocator>::Create();
 
     if (JNIEnv* jniEnv = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv()))
     {
@@ -196,8 +196,8 @@ void RunGame()
         descriptor.m_jvm = javaVm;
         descriptor.m_activityRef = activityObject;
         descriptor.m_assetManager = SDLExt_GetAssetManager();
-        descriptor.m_internalStoragePath = SDL_AndroidGetInternalStoragePath();
-        descriptor.m_externalStoragePath = SDL_AndroidGetExternalStoragePath();
+        descriptor.m_appPrivateStoragePath = SDL_AndroidGetInternalStoragePath();
+        descriptor.m_appPublicStoragePath = SDL_AndroidGetExternalStoragePath();
 
         if (!AZ::Android::AndroidEnv::Create(descriptor))
         {
@@ -206,40 +206,6 @@ void RunGame()
         }
 
         jniEnv->DeleteLocalRef(activityObject);
-    }
-
-    const char* gameName = AZ::Android::Utils::GetGameProjectName();
-
-    // Check if need to download OBB
-    bool useMainObb = AZ::Android::Utils::GetBooleanResource("use_main_obb");
-    bool usePatchObb = AZ::Android::Utils::GetBooleanResource("use_patch_obb");
-    bool isObbEnabled = true;
-#if !defined(_RELEASE)
-    isObbEnabled &= AZ::Android::Utils::GetBooleanResource("enable_obb_in_dev");
-#endif // !defined(_RELEASE)
-    if (isObbEnabled && (useMainObb || usePatchObb))
-    {
-        const char* obbStorage = AZ::Android::Utils::GetObbStoragePath();
-        AZStd::string mainObbPath = AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(true).c_str());
-        AZStd::string patchObbPath = AZStd::string::format("%s/%s", obbStorage, AZ::Android::Utils::GetObbFileName(false).c_str());
-
-
-        bool needToDownload = (useMainObb && access(mainObbPath.c_str(), F_OK)) ||
-            (usePatchObb && access(patchObbPath.c_str(), F_OK));
-
-        if (needToDownload)
-        {
-            AZ::Android::JNI::Object activity(AZ::Android::Utils::GetActivityClassRef(), AZ::Android::Utils::GetActivityRef());
-            activity.RegisterMethod("DownloadObb", "()Z");
-
-            // This call will wait until the obb is download or it fails.
-            jboolean result = activity.InvokeBooleanMethod("DownloadObb");
-            if (!result)
-            {
-                LOGE("[ERROR] Failed to download Obb!\n");
-                RunGame_EXIT(1);
-            }
-        }
     }
 
 #if !defined(AZ_MONOLITHIC_BUILD)
@@ -260,8 +226,8 @@ void RunGame()
 
 #endif // !defined(AZ_MONOLITHIC_BUILD)
 
-    const char* pakPath = AZ::Android::Utils::FindAssetsDirectory();
-    if (!pakPath)
+    const char* assetsPath = AZ::Android::Utils::FindAssetsDirectory();
+    if (!assetsPath)
     {
         LOGE("#################################################");
         LOGE("[ERROR] Unable to locate bootstrap.cfg - Exiting!");
@@ -269,18 +235,9 @@ void RunGame()
         RunGame_EXIT(1);
     }
 
-    char searchPathName[1024] = { 0 };
-    if (AZ::Android::Utils::IsApkPath(pakPath))
-    {
-        sprintf_s(searchPathName, "/%s/", pakPath);
-    }
-    else
-    {
-        sprintf_s(searchPathName, "%s/%s", pakPath, gameName);
-    }
-
-    const char* searchPaths[] = {searchPathName};
-
+    const char* searchPaths[] = {
+        assetsPath
+    };
 
     CEngineConfig engineCfg(searchPaths, 1);
 
@@ -292,11 +249,7 @@ void RunGame()
     strcpy(startupParams.szSystemCmdLine, "");
     startupParams.sLogFileName = "Game.log";
     startupParams.pUserCallback = NULL;
-
     startupParams.pSharedEnvironment = AZ::Environment::GetInstance();
-    sprintf_s(startupParams.logPath, "%s/log", searchPathName);
-
-    const char* externalStorage = AZ::Android::Utils::GetExternalStorageRoot();
 
     // VFS will override all other methods of file access and no logs will be written to the SD card
     if (startupParams.remoteFileIO)
@@ -307,18 +260,17 @@ void RunGame()
     }
     else
     {
-        if (!AZ::Android::Utils::IsApkPath(startupParams.rootPath))
-        {
-            LOGI("[INFO] Using SD card for game files");
-            LOGI("[INFO] Log and cache files will be written to your SD card");
-        }
-        else
-        {
-            LOGI("[INFO] Using APK for game files");
-            LOGI("[INFO] Log and cache files will be written to your SD card");
-            sprintf(startupParams.logPath, "%s/%s/log", externalStorage, gameName);
-            sprintf(startupParams.userPath, "%s/%s/user", externalStorage, gameName);
-        }
+        LOGI("[INFO] Using %s for game files", AZ::Android::Utils::IsApkPath(startupParams.rootPath) ? "APK" : "app storage");
+        LOGI("[INFO] Log and cache files will be written to app storage");
+
+    #if defined(_RELEASE)
+        const char* writeStorage = AZ::Android::Utils::GetAppPrivateStoragePath();
+    #else
+        const char* writeStorage = AZ::Android::Utils::GetAppPublicStoragePath();
+    #endif
+
+        sprintf(startupParams.logPath, "%s/log", writeStorage);
+        sprintf(startupParams.userPath, "%s/user", writeStorage);
 
         LOGI("**** ROOT path set to  : %s ****", startupParams.rootPath);
         LOGI("**** ASSET path set to : %s ****", startupParams.assetsPath);
@@ -331,7 +283,7 @@ void RunGame()
     startupParams.pPrintSync = &g_androidPrintSink;
 #endif
 
-    chdir(searchPathName);
+    chdir(assetsPath);
 
     // Init AzGameFramework
     AzGameFramework::GameApplication gameApp;
@@ -342,30 +294,32 @@ void RunGame()
     gameAppParams.m_loadDynamicModules = false;
 #endif
 
+    const char* gameName = engineCfg.m_gameDLL.c_str();
+
     AZ::ComponentApplication::Descriptor androidDescriptor;
     SetupAndroidDescriptor(gameName, androidDescriptor);
     gameApp.Start(androidDescriptor, gameAppParams);
 
     // If there are no handlers for the editor game bus, attempt to load the legacy gamedll instead
     bool legacyGameDllStartup = (EditorGameRequestBus::GetTotalNumOfEventHandlers() == 0);
-#if !defined(AZ_MONOLITHIC_BUILD)
 
+#if !defined(AZ_MONOLITHIC_BUILD)
     IGameStartup::TEntryFunction CreateGameStartup = nullptr;
     HMODULE gameDll = 0;
 
     if (legacyGameDllStartup)
     {
-        {
-            char gameSoFilename[1024];
-            snprintf(gameSoFilename, sizeof(gameSoFilename), "lib%s.so", gameName);
-            gameDll = CryLoadLibrary(gameSoFilename);
-        }
+        char gameSoFilename[1024];
+        snprintf(gameSoFilename, sizeof(gameSoFilename), "lib%s.so", gameName);
+
+        gameDll = CryLoadLibrary(gameSoFilename);
         if (!gameDll)
         {
             LOGE("[ERROR] Failed to load GAME DLL (%s)\n", dlerror());
             CryFreeLibrary(systemlib);
             RunGame_EXIT(1);
         }
+
         // get address of startup function
         CreateGameStartup = (IGameStartup::TEntryFunction)CryGetProcAddress(gameDll, "CreateGameStartup");
         if (!CreateGameStartup)

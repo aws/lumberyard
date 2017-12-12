@@ -3,7 +3,7 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 @Component({
     selector: 'login-container',
     template: `
-        <div class="login-container">
+        <div (keydown.enter)="submit()" class="login-container">
             <h2> {{ heading }} </h2>
             <ng-content></ng-content>
             <div class="login-submit-container">

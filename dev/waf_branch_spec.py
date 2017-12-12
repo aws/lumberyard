@@ -51,7 +51,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 448546
+LUMBERYARD_BUILD = 486406
 
 # validate the Lumberyard version string above
 VERSION_NUMBER_PATTERN = re.compile("^(\.?\d+)*$")
@@ -78,8 +78,6 @@ PLATFORMS = {
     'win32' : [
         'win_x64_vs2015',
         'win_x64_vs2013',
-        
-        
         'android_armv7_gcc',
         'android_armv7_clang'
     ],
@@ -128,7 +126,7 @@ for configuration_alias_key in CONFIGURATION_SHORTCUT_ALIASES:
 PLATFORM_CONFIGURATION_FILTER = {
     # Remove these as testing comes online for each platform
     platform : CONFIGURATION_SHORTCUT_ALIASES['non_test'] for platform in ('android_armv7_gcc', 'android_armv7_clang',
-        'ios', 'appletv',  'linux_x64_gcc', 'linux_x64_clang')
+        'ios', 'appletv', 'linux_x64_gcc', 'linux_x64_clang')
 }
 
 ## what conditions do you want a monolithic build ?  Uses the same matching rules as other settings
@@ -144,9 +142,7 @@ MONOLITHIC_BUILDS = [
     'performance',
     'ios',
     'appletv',
-    
     'darwin_release',
-    'durango_release',
     'android_armv7_gcc_release',
     'android_armv7_clang_release'
 ]
@@ -156,8 +152,6 @@ AVAILABLE_LAUNCHERS = {
     'modules':
         [
             'WindowsLauncher',
-            
-            
             'MacLauncher',
             'DedicatedLauncher',
             'IOSLauncher',

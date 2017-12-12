@@ -1,41 +1,40 @@
-import { Injectable } from '@angular/core';
+import { Md5 } from 'ts-md5/dist/md5';
+import { Injectable, OnInit } from '@angular/core';
 
-declare const CryptoJS: any;
+declare var System: any
 
 @Injectable()
 export class CacheHandlerService {
     private cacheMap = new Map<String, any>();
 
-	constructor() { }
-
     public set(key: string, value: any, options?: any): void {
-        var encryptedKeyString = CryptoJS.MD5(key).toString();
+        var encryptedKeyString = Md5.hashStr(key).toString();
         this.cacheMap.set(encryptedKeyString, value);
-}
+    }
     public setObject(key: any, value: any, options?: any): void {
         this.set(JSON.stringify(key), value, options);
-	}
+    }
 
-	public get(key: string): any {
-        var encryptedKeyString = CryptoJS.MD5(key).toString();
+    public get(key: string): any {
+        var encryptedKeyString = Md5.hashStr(key).toString();
         var cacheResult = this.cacheMap.get(encryptedKeyString);
-        return cacheResult;  
-	}
+        return cacheResult;
+    }
     public getObject(key: any): any {
         return this.get(JSON.stringify(key));
-	}
-	public remove(key: string): void {
-        var encryptedKeyString = CryptoJS.MD5(key).toString();
+    }
+    public remove(key: string): void {
+        var encryptedKeyString = Md5.hashStr(key).toString();
         this.cacheMap.delete(encryptedKeyString);
-	}
-	public removeAll(): void {
+    }
+    public removeAll(): void {
         this.cacheMap = new Map<String, any>();
-	}
-    public exists(key: string): boolean {
-        var encryptedKeyString = CryptoJS.MD5(key).toString();
+    }
+    public exists(key: string): boolean {        
+        var encryptedKeyString = Md5.hashStr(key).toString();
         var valueExists = this.cacheMap.has(encryptedKeyString);
         if (valueExists) {
-            return true; 
+            return true;
         }
         return false;
     }

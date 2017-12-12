@@ -1035,12 +1035,12 @@ public:
     Velocity3(type_zero)
         : vLin(ZERO)
         , vRot(ZERO) {}
-    Velocity3(Vec3 const& vLin)
-        : vLin(vLin)
+    Velocity3(Vec3 const& lin)
+        : vLin(lin)
         , vRot(ZERO) {}
-    Velocity3(Vec3 const& vLin, Vec3 const& vRot)
-        : vLin(vLin)
-        , vRot(vRot) {}
+    Velocity3(Vec3 const& lin, Vec3 const& rot)
+        : vLin(lin)
+        , vRot(rot) {}
 
     void FromDelta(QuatT const& loc0, QuatT const& loc1, float fTime)
     {

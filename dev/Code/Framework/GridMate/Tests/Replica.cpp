@@ -40,7 +40,7 @@ namespace UnitTest {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-class InterpolatorTest 
+class InterpolatorTest
     : public GridMateMPTestFixture
 {
 public:
@@ -148,7 +148,7 @@ public:
             PointSample< float, k_sampleArraySize > interpolator;
             interpolator.Clear();
             AddSamplesConstant(interpolator, k_numSamples, k_constant);
-            
+
             epsilon.SetBaseline(k_constant);
 
             for (int a = -k_offsetBetweenSamples; a < k_offsetBetweenSamples * (k_numSamples + 2); ++a)
@@ -168,7 +168,7 @@ public:
             const float k_intercept = 10.f;
             PointSample< float, k_sampleArraySize > interpolator;
             AddSamplesLinear(interpolator, k_numSamples, k_slope, k_intercept);
-            
+
             epsilon.SetBaseline(k_intercept);
 
             // interpolate to value before any samples
@@ -245,7 +245,7 @@ public:
             const float k_constant = 5.f;
             PointSample< float, k_sampleArraySize > interpolator;
             AddSamplesConstant(interpolator, k_numSamples, k_constant);
-            
+
             epsilon.SetBaseline(k_constant);
 
             for (int a = -k_offsetBetweenSamples; a < (k_numSamples + 2) * k_offsetBetweenSamples; ++a)
@@ -254,7 +254,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
 
@@ -267,7 +267,7 @@ public:
             PointSample< float, k_sampleArraySize > interpolator;
             interpolator.Clear();
             AddSamplesLinear(interpolator, k_numSamples, k_slope, k_intercept);
-            
+
             epsilon.SetBaseline(k_intercept);
 
             // interpolate to value before any samples
@@ -295,7 +295,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             epsilon.SetBaseline(k_slope * static_cast< float >(k_numSamples - 1) + k_intercept);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
@@ -306,7 +306,7 @@ public:
             const int k_numSamples = k_sampleArraySize;
             PointSample< float, k_sampleArraySize > interpolator;
             AddSamplesZigZag(interpolator, k_numSamples);
-            
+
             epsilon.SetBaseline(m_zigVals[0]);
 
             // interpolate to before earliest remaining sample record
@@ -335,7 +335,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
@@ -410,7 +410,7 @@ public:
             {
                 check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                 epsilon.SetBaseline(m_zigVals[ (k_numSamples - k_sampleArraySize) % AZ_ARRAY_SIZE(m_zigVals) ]);
-                AZ_TEST_ASSERT(epsilon.WithinThreshold(check));                
+                AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
 
@@ -452,24 +452,24 @@ public:
 
             // with populated set
             interpolator.AddSample(1.f, 100);
-            check = interpolator.GetInterpolatedValue(90);            
+            check = interpolator.GetInterpolatedValue(90);
             epsilon.SetBaseline(1.f);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(1.f));
             check = interpolator.GetInterpolatedValue(100);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
-            check = interpolator.GetInterpolatedValue(110);            
+            check = interpolator.GetInterpolatedValue(110);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
-            check = interpolator.GetLastValue();            
+            check = interpolator.GetLastValue();
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
 
             // with the only sample replaced
             interpolator.AddSample(10.f, 200);
             epsilon.SetBaseline(10.f);
-            check = interpolator.GetInterpolatedValue(190);            
+            check = interpolator.GetInterpolatedValue(190);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
-            check = interpolator.GetInterpolatedValue(200);            
+            check = interpolator.GetInterpolatedValue(200);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
-            check = interpolator.GetInterpolatedValue(210);            
+            check = interpolator.GetInterpolatedValue(210);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
             check = interpolator.GetLastValue();
             AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
@@ -608,7 +608,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
@@ -628,7 +628,7 @@ public:
             // (40, 50]: past last sample
             for (int a = -k_offsetBetweenSamples; a < k_numSamples * k_offsetBetweenSamples; ++a)
             {
-                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                
+                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
@@ -666,13 +666,13 @@ public:
             // interpolate past last sample
             float target = k_slope * static_cast< float >(k_numSamples - 1) + k_intercept;
             epsilon.SetBaseline(target);
-            
+
             for (int a = k_offsetBetweenSamples * (k_numSamples - 1) + 1; a < k_offsetBetweenSamples * k_numSamples; ++a)
             {
-                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                
+                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
-            }            
+            }
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
 
@@ -690,7 +690,7 @@ public:
             // interpolate to before samples start
             for (int a = -k_offsetBetweenSamples; a < 0; ++a)
             {
-                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                
+                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
@@ -705,7 +705,7 @@ public:
                     * static_cast< float >(a - k_offsetBetweenSamples * (a / k_offsetBetweenSamples))
                     / static_cast< float >(k_offsetBetweenSamples);
                 check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
-                
+
                 epsilon.SetBaseline(target);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)target;
@@ -720,7 +720,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
@@ -741,7 +741,7 @@ public:
             // (40, 50]: past last sample
             for (int a = -k_offsetBetweenSamples; a < k_numSamples * k_offsetBetweenSamples; ++a)
             {
-                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                
+                check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
@@ -755,7 +755,7 @@ public:
             const float k_slope = 0.5f;
             const float k_intercept = 5.f;
             LinearInterp< float, k_sampleArraySize > interpolator;
-            AddSamplesLinear(interpolator, k_numSamples, k_slope, k_intercept);            
+            AddSamplesLinear(interpolator, k_numSamples, k_slope, k_intercept);
 
             // interpolate to before samples start
             for (int a = k_offsetBetweenSamples * (k_numSamples - k_sampleArraySize - 1); a < k_offsetBetweenSamples * (k_numSamples - k_sampleArraySize); ++a)
@@ -812,7 +812,7 @@ public:
                 float target = m_zigVals[idxLower] + static_cast< float >(m_zigVals[idxUpper] - m_zigVals[idxLower]) * static_cast< float >(a - k_offsetBetweenSamples * (a / k_offsetBetweenSamples)) / static_cast< float >(k_offsetBetweenSamples);
                 epsilon.SetBaseline(target);
                 check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
-                AZ_TEST_ASSERT(epsilon.WithinThreshold(check));                
+                AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)target;
                 (void)check;
             }
@@ -825,7 +825,7 @@ public:
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
             }
-            
+
             epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
             AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
         }
@@ -837,7 +837,7 @@ public:
             const int k_break = 10;
             const float k_intercept = 0.f;
             const float k_slope = 1.f;
-            LinearInterp< float, k_sampleArraySize > interpolator;            
+            LinearInterp< float, k_sampleArraySize > interpolator;
             for (int a = 0; a < k_numSamples; ++a)
             {
                 if (a == k_break)
@@ -846,7 +846,7 @@ public:
                 }
                 interpolator.AddSample(k_slope * static_cast< float >(a) + k_intercept, k_actualSampleStart + a * k_offsetBetweenSamples);
             }
-            
+
             epsilon.SetBaseline(k_intercept);
 
             // interpolate to before samples start
@@ -870,7 +870,7 @@ public:
                 {
                     target = k_slope * static_cast< float >(a) / static_cast< float >(k_offsetBetweenSamples) + k_intercept;
                 }
-                
+
                 epsilon.SetBaseline(target);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                 (void)check;
@@ -969,7 +969,7 @@ public:
                 // (70, 80]: past last sample
                 for (int a = -k_offsetBetweenSamples; a < k_offsetBetweenSamples * k_numSamples; ++a)
                 {
-                    check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                    
+                    check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
                 }
@@ -1083,7 +1083,7 @@ public:
                 // (70, 80]: past last sample
                 for (int a = -k_offsetBetweenSamples; a < k_offsetBetweenSamples * k_numSamples; ++a)
                 {
-                    check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);                    
+                    check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
                 }
@@ -1175,7 +1175,7 @@ public:
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
                 }
-                
+
                 epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
             }
@@ -1268,7 +1268,7 @@ public:
                         * static_cast< float >(a - k_offsetBetweenSamples * (a / k_offsetBetweenSamples))
                         / static_cast< float >(k_offsetBetweenSamples);
                     check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
-                    
+
                     epsilon.SetBaseline(target);
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)target;
@@ -1289,7 +1289,7 @@ public:
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
                 }
-                
+
                 epsilon.SetBaseline(m_zigVals[ (k_numSamples - 1) % AZ_ARRAY_SIZE(m_zigVals) ]);
                 AZ_TEST_ASSERT(epsilon.WithinThreshold(interpolator.GetLastValue()));
             }
@@ -1301,8 +1301,8 @@ public:
                 const int k_break = 10;
                 const float k_intercept = 0.f;
                 const float k_slope = 1.f;
-                LinearInterpExtrap< float, k_sampleArraySize > interpolator;                
-                
+                LinearInterpExtrap< float, k_sampleArraySize > interpolator;
+
                 for (int a = 0; a < k_numSamples; ++a)
                 {
                     if (a == k_break)
@@ -1334,7 +1334,7 @@ public:
                     {
                         target = k_slope * static_cast< float >(a) / static_cast< float >(k_offsetBetweenSamples) + k_intercept;
                     }
-                    
+
                     epsilon.SetBaseline(target);
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
@@ -1345,7 +1345,7 @@ public:
                 {
                     check = interpolator.GetInterpolatedValue(k_actualSampleStart + a);
                     float target = k_slope * static_cast< float >(a) / static_cast< float >(k_offsetBetweenSamples) + k_intercept;
-                    
+
                     epsilon.SetBaseline(target);
                     AZ_TEST_ASSERT(epsilon.WithinThreshold(check));
                     (void)check;
@@ -1887,11 +1887,12 @@ protected:
 };
 //-----------------------------------------------------------------------------
 
-class ReplicaGMTest
+class Integ_ReplicaGMTest
     : public UnitTest::GridMateMPTestFixture
-{
-public:
-    void run()
+    , public ::testing::Test
+{};
+
+TEST_F(Integ_ReplicaGMTest, ReplicaTest)
     {
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<MigratableReplica, MigratableReplica::Descriptor>();
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<NonMigratableReplica>();
@@ -1923,7 +1924,7 @@ public:
         int basePort = 4427;
         for (int i = 0; i < nSessions; ++i)
         {
-            CarrierDesc desc;
+        TestCarrierDesc desc;
             desc.m_port = basePort + i;
             desc.m_enableDisconnectDetection = false;
             if (i == s2)
@@ -2154,12 +2155,12 @@ public:
             DefaultCarrier::Destroy(sessions[i].GetTransport());
         }
     }
-};
 
-class ForcedReplicaMigrationTest
+class Integ_ForcedReplicaMigrationTest
     : public UnitTest::GridMateMPTestFixture
     , public ReplicaMgrCallbackBus::Handler
     , public MigratableReplica::MigratableReplicaDebugMsgs::EBus::Handler
+    , public ::testing::Test
 {
     void OnNewHost(bool isHost, ReplicaManager* pMgr) override
     {
@@ -2184,11 +2185,31 @@ class ForcedReplicaMigrationTest
     }
 
 public:
-    ForcedReplicaMigrationTest()    { ReplicaMgrCallbackBus::Handler::BusConnect(m_gridMate); }
-    ~ForcedReplicaMigrationTest()   { ReplicaMgrCallbackBus::Handler::BusDisconnect(); }
+    Integ_ForcedReplicaMigrationTest()    { ReplicaMgrCallbackBus::Handler::BusConnect(m_gridMate); }
+    ~Integ_ForcedReplicaMigrationTest()   { ReplicaMgrCallbackBus::Handler::BusDisconnect(); }
 
-    void run()
+
+    enum
     {
+        p1, p2, p3, p4, p5, nPeers
+    };
+
+    static const int k_frameTimePerNodeMs = 10;
+    static const int k_numFramesToRun = 300;
+    static const int k_hostSendRateMs = k_frameTimePerNodeMs * nPeers * 2; // limiting host send rate x2 times
+
+    int m_frameCount;
+    int m_newHostEventOnNewHostCount;
+    int m_newHostEventOnPeersCount;
+    AZStd::unordered_map<ReplicaId, ReplicaManager*> m_replicaOwnership;
+};
+
+const int Integ_ForcedReplicaMigrationTest::k_frameTimePerNodeMs;
+const int Integ_ForcedReplicaMigrationTest::k_numFramesToRun;
+const int Integ_ForcedReplicaMigrationTest::k_hostSendRateMs;
+
+TEST_F(Integ_ForcedReplicaMigrationTest, ForcedReplicaMigrationTest)
+{
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<MigratableReplica, MigratableReplica::Descriptor>();
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<NonMigratableReplica>();
 
@@ -2205,7 +2226,7 @@ public:
         int basePort = 4427;
         for (int i = 0; i < nPeers; ++i)
         {
-            CarrierDesc desc;
+        TestCarrierDesc desc;
             desc.m_port = basePort + i;
             desc.m_enableDisconnectDetection = /*false*/ true;
             desc.m_threadUpdateTimeMS = k_frameTimePerNodeMs / 2;
@@ -2338,27 +2359,9 @@ public:
         MigratableReplica::MigratableReplicaDebugMsgs::EBus::Handler::BusDisconnect();
     }
 
-    enum
-    {
-        p1, p2, p3, p4, p5, nPeers
-    };
-
-    static const int k_frameTimePerNodeMs = 10;
-    static const int k_numFramesToRun = 300;
-    static const int k_hostSendRateMs = k_frameTimePerNodeMs * nPeers * 2; // limiting host send rate x2 times
-
-    int m_frameCount;
-    int m_newHostEventOnNewHostCount;
-    int m_newHostEventOnPeersCount;
-    AZStd::unordered_map<ReplicaId, ReplicaManager*> m_replicaOwnership;
-};
-
-const int ForcedReplicaMigrationTest::k_frameTimePerNodeMs;
-const int ForcedReplicaMigrationTest::k_numFramesToRun;
-const int ForcedReplicaMigrationTest::k_hostSendRateMs;
-
-class ReplicaMigrationRequestTest
+class Integ_ReplicaMigrationRequestTest
     : public UnitTest::GridMateMPTestFixture
+    , public ::testing::Test
 {
 public:
     enum
@@ -2507,7 +2510,12 @@ public:
         SometimesMigratable::Ptr    m_sometimes;
     };
 
-    void run()
+
+    static const int k_frameTimePerNodeMs = 10;
+    static const int k_hostSendTimeMs = k_frameTimePerNodeMs * TotalNodes * 4; // limiting host send rate to be x4 times slower than tick
+};
+
+TEST_F(Integ_ReplicaMigrationRequestTest, ReplicaMigrationRequestTest)
     {
         /*
         Topology:
@@ -2544,9 +2552,9 @@ public:
         int basePort = 4427;
         for (int i = 0; i < TotalNodes; ++i)
         {
-            CarrierDesc desc;
+        TestCarrierDesc desc;
             desc.m_port = basePort + i;
-            //desc.m_enableDisconnectDetection = false;
+            desc.m_connectionTimeoutMS = 15000;
             // initialize replica managers
             nodes[i].m_session.SetTransport(DefaultCarrier::Create(desc, m_gridMate));
             nodes[i].m_session.AcceptConn(true);
@@ -2828,19 +2836,16 @@ public:
         }
     }
 
-    static const int k_frameTimePerNodeMs = 10;
-    static const int k_hostSendTimeMs = k_frameTimePerNodeMs * TotalNodes * 4; // limiting host send rate to be x4 times slower than tick
-};
-
-const int ReplicaMigrationRequestTest::k_frameTimePerNodeMs;
-const int ReplicaMigrationRequestTest::k_hostSendTimeMs;
+const int Integ_ReplicaMigrationRequestTest::k_frameTimePerNodeMs;
+const int Integ_ReplicaMigrationRequestTest::k_hostSendTimeMs;
 
 
-class PeerRejoinTest
+class Integ_PeerRejoinTest
     : public UnitTest::GridMateMPTestFixture
     , public ReplicaMgrCallbackBus::Handler
+    , public ::testing::Test
 {
-    void OnNewHost(bool isHost, ReplicaManager* pMgr)
+    void OnNewHost(bool isHost, ReplicaManager* pMgr) override
     {
         (void)pMgr;
         if (isHost)
@@ -2854,10 +2859,11 @@ class PeerRejoinTest
     }
 
 public:
-    PeerRejoinTest()    { ReplicaMgrCallbackBus::Handler::BusConnect(m_gridMate); }
-    ~PeerRejoinTest()   { ReplicaMgrCallbackBus::Handler::BusDisconnect(); }
+    Integ_PeerRejoinTest()    { ReplicaMgrCallbackBus::Handler::BusConnect(m_gridMate); }
+    ~Integ_PeerRejoinTest()   { ReplicaMgrCallbackBus::Handler::BusDisconnect(); }
+};
 
-    void run()
+TEST_F(Integ_PeerRejoinTest, PeerRejoinTest)
     {
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<MigratableReplica, MigratableReplica::Descriptor>();
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<NonMigratableReplica>();
@@ -2877,7 +2883,7 @@ public:
         int basePort = 4427;
         for (int i = 0; i < nPeers; ++i)
         {
-            CarrierDesc desc;
+        TestCarrierDesc desc;
             desc.m_port = basePort + i;
             desc.m_enableDisconnectDetection = true;
             desc.m_threadUpdateTimeMS = frameTime / 2;
@@ -3003,11 +3009,12 @@ public:
             DefaultCarrier::Destroy(peers[i].GetTransport());
         }
     }
-};
 
-class ReplicationSecurityOptionsTest
+class Integ_ReplicationSecurityOptionsTest
     : public UnitTest::GridMateMPTestFixture
+    , public ::testing::Test
 {
+public:
     enum
     {
         s1,
@@ -3146,9 +3153,9 @@ class ReplicationSecurityOptionsTest
         Rpc<>::BindInterface<TestChunk, &TestChunk::OnAuthoritativeOnlyRpcFromS3, DisableNonAuthoritativeRequestTrait> AuthoritativeOnlyRpcFromS3;
     };
     using TestChunkPtr = AZStd::intrusive_ptr<TestChunk> ;
+};
 
-public:
-    void run()
+TEST_F(Integ_ReplicationSecurityOptionsTest, ReplicationSecurityOptionsTest)
     {
         AZ_TracePrintf("GridMate", "\n");
 
@@ -3162,7 +3169,7 @@ public:
         int basePort = 4427;
         for (int i = 0; i < nSessions; ++i)
         {
-            CarrierDesc desc;
+        TestCarrierDesc desc;
             desc.m_port = basePort + i;
             // initialize replica managers
             // s2(c)<-->(p)s1(p)<-->(c)s3
@@ -3178,7 +3185,7 @@ public:
 
         // connect s2 to s1
         sessions[s2].GetTransport()->Connect("127.0.0.1", basePort);
-        
+
         // connect s3 to s1
         sessions[s3].GetTransport()->Connect("127.0.0.1", basePort);
 
@@ -3324,7 +3331,7 @@ public:
             DefaultCarrier::Destroy(sessions[i].GetTransport());
         }
     }
-};
+
 
 /*
     *03.25.2015* Typical test results on Core i7 3.4 GHz desktop (with polling):
@@ -3348,7 +3355,7 @@ public:
         Replica update time (msec): avg=4.94, min=1, max=9 (peers=40, replicas=16000, freq=10%, samples=4000)
         Replica update time (msec): avg=8.05, min=6, max=15 (peers=40, replicas=16000, freq=100%, samples=4000)
 */
-class ReplicaStressTest
+class Integ_ReplicaStressTest
     : public UnitTest::GridMateMPTestFixture
 {
 public:
@@ -3380,7 +3387,7 @@ public:
     static const int BASE_PORT = 44270;
 
     // TODO: Reduce the size or disable the test for platforms which can't allocate 2 GiB
-    ReplicaStressTest()
+    Integ_ReplicaStressTest()
         : UnitTest::GridMateMPTestFixture(2000u * 1024u * 1024u)
     {}
 
@@ -3557,7 +3564,7 @@ public:
 
         for (unsigned int i = 0; i < NUM_PEERS; ++i)
         {
-            CarrierDesc desc;
+            TestCarrierDesc desc;
             desc.m_port = BASE_PORT + i;
             desc.m_enableDisconnectDetection = false;
 
@@ -3615,27 +3622,27 @@ public:
         Replica update time (msec): avg=2.01, min=1, max=5 (peers=40, replicas=16000, freq=10%, samples=4000)
         Replica update time (msec): avg=4.61, min=3, max=10 (peers=40, replicas=16000, freq=50%, samples=4000)
 */
-class ReplicaStableStressTest
-    : public ReplicaStressTest
+class Integ_ReplicaStableStressTest
+    : public Integ_ReplicaStressTest
 {
 public:
 
-    virtual void MarkChanging(vector<AZStd::pair<ReplicaPtr, StressTestReplica::Ptr> >& replicas, double freq) override
+    void MarkChanging(vector<AZStd::pair<ReplicaPtr, StressTestReplica::Ptr> >& replicas, double freq) override
     {
         (void)replicas;
         (void)freq;
     }
 
-    virtual void RunStressTests(MPSession* sessions, vector<AZStd::pair<ReplicaPtr, StressTestReplica::Ptr> >& replicas) override
+    void RunStressTests(MPSession* sessions, vector<AZStd::pair<ReplicaPtr, StressTestReplica::Ptr> >& replicas) override
     {
-        ReplicaStressTest::MarkChanging(replicas, 0.1); // picks 10% of replicas
+        Integ_ReplicaStressTest::MarkChanging(replicas, 0.1); // picks 10% of replicas
         Wait(sessions, replicas, 20, FRAME_TIME);
         TestProfiler::StartProfiling();
         TestReplicas(sessions, replicas, 100, FRAME_TIME, 0.1);
         TestProfiler::PrintProfilingTotal("GridMate");
         TestProfiler::PrintProfilingSelf("GridMate");
 
-        ReplicaStressTest::MarkChanging(replicas, 0.5); // picks 50% of replicas
+        Integ_ReplicaStressTest::MarkChanging(replicas, 0.5); // picks 50% of replicas
         Wait(sessions, replicas, 20, FRAME_TIME);
         TestProfiler::StartProfiling();
         TestReplicas(sessions, replicas, 100, FRAME_TIME, 0.5);
@@ -3658,7 +3665,7 @@ public:
 *   expected |none |brst |  capped  |under cap |brst |  capped  |
 *
 */
-class ReplicaBandiwdthTest
+class Integ_ReplicaBandiwdthTest
     : public UnitTest::GridMateMPTestFixture
 {
 public:
@@ -3702,7 +3709,7 @@ public:
         int basePort = 4427;
         for (int i = 0; i < nSessions; ++i)
         {
-            CarrierDesc desc;
+            TestCarrierDesc desc;
             desc.m_port = basePort + i;
             desc.m_enableDisconnectDetection = false;
             sessions[i].SetClient(i != sHost);
@@ -3934,16 +3941,11 @@ public:
 
 GM_TEST_SUITE(ReplicaSuite)
 GM_TEST(InterpolatorTest)
-GM_TEST(ReplicaGMTest)
-GM_TEST(ForcedReplicaMigrationTest)
-GM_TEST(ReplicaMigrationRequestTest)
-GM_TEST(PeerRejoinTest)
-GM_TEST(ReplicationSecurityOptionsTest)
 
 #if !defined(AZ_DEBUG_BUILD) // these tests are a little slow for debug
-GM_TEST(ReplicaBandiwdthTest)
-GM_TEST(ReplicaStressTest)
-GM_TEST(ReplicaStableStressTest)
+GM_TEST(Integ_ReplicaBandiwdthTest)
+GM_TEST(Integ_ReplicaStressTest)
+GM_TEST(Integ_ReplicaStableStressTest)
 #endif
 
 GM_TEST_SUITE_END()

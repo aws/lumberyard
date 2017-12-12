@@ -154,13 +154,14 @@ void UiCanvasLuaProxy::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasLuaBus>("UiCanvasLuaBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Event("FindElementById", &UiCanvasLuaBus::Events::FindElementById)
             ->Event("FindElementByName", &UiCanvasLuaBus::Events::FindElementByName)
             ->Event("GetEnabled", &UiCanvasLuaBus::Events::GetEnabled)
             ->Event("SetEnabled", &UiCanvasLuaBus::Events::SetEnabled);
 
         behaviorContext->Class<UiCanvasLuaProxy>()
-            ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             ->Method("LoadCanvas", &UiCanvasLuaProxy::LoadCanvas)
             ->Method("UnloadCanvas", &UiCanvasLuaProxy::UnloadCanvas)

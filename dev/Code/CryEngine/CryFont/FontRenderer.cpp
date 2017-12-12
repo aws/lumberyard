@@ -158,7 +158,7 @@ int CFontRenderer::SetEncoding(FT_Encoding pEncoding)
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, char& iCharOffsetX, char& iCharOffsetY, int iX, int iY, int iCharCode)
+int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, int iX, int iY, int iCharCode)
 {
     int iError = FT_Load_Char(m_pFace, iCharCode, FT_LOAD_DEFAULT);
 
@@ -195,8 +195,8 @@ int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8
     AZ_Assert(pBuffer, "CGlyphBitmap: bad buffer");
 
     uint32 dwGlyphWidth = pGlyphBitmap->GetWidth();
-    iCharOffsetX = (char)m_pGlyph->bitmap_left;
-    iCharOffsetY = (char)((int)(m_iGlyphBitmapHeight * m_fSizeRatio) - m_pGlyph->bitmap_top);     // is that correct? - we need the baseline
+    iCharOffsetX = static_cast<AZ::s8>(m_pGlyph->bitmap_left);
+    iCharOffsetY = static_cast<AZ::s8>(((int)(m_iGlyphBitmapHeight * m_fSizeRatio) - m_pGlyph->bitmap_top));     // is that correct? - we need the baseline
 
     // might happen if font characters are too big or cache dimenstions in font.xml is too small "<font path="VeraMono.ttf" w="320" h="368"/>"
     AZ_Assert(iX + m_pGlyph->bitmap.width <= pGlyphBitmap->GetWidth(), "CFontRenderer: Check Font XML - characters are either too big or cache dimensions are too small");            

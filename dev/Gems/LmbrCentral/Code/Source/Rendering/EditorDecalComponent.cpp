@@ -46,11 +46,12 @@ namespace LmbrCentral
                     "Decal", "The Decal component allows an entity to project a texture or material onto a mesh")->
                     ClassElement(AZ::Edit::ClassElements::EditorData, "")->
                     Attribute(AZ::Edit::Attributes::Category, "Rendering")->
-                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Decal")->
+                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Decal.png")->
                     Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::MaterialAsset>::Uuid())->
                     Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Decal.png")->
                     Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))->
                     Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+                    Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-decal.html")->
                     DataElement(0, &EditorDecalComponent::m_configuration, "Settings", "Decal configuration")->
                     Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                 ;
@@ -191,7 +192,7 @@ namespace LmbrCentral
         m_decalRenderNode = static_cast<IDecalRenderNode*>(editor->Get3DEngine()->CreateRenderNode(eERType_Decal));
         RefreshDecal();
 
-        MaterialRequestBus::Handler::BusConnect(entityId);
+        MaterialOwnerRequestBus::Handler::BusConnect(entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
         DecalComponentEditorRequests::Bus::Handler::BusConnect(entityId);
         RenderNodeRequestBus::Handler::BusConnect(entityId);
@@ -202,7 +203,7 @@ namespace LmbrCentral
 
     void EditorDecalComponent::Deactivate()
     {
-        MaterialRequestBus::Handler::BusDisconnect();
+        MaterialOwnerRequestBus::Handler::BusDisconnect();
         DecalComponentEditorRequests::Bus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();

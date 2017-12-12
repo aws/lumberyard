@@ -25,6 +25,16 @@ PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
     QVBoxLayout* innerLayout = new QVBoxLayout();
     {
         innerLayout->setContentsMargins(4, 4, 4, 4);
+        innerLayout->setSpacing(2);
+
+        QLabel* elementName = new QLabel(this);
+        elementName->setObjectName(QStringLiteral("m_elementName"));
+        elementName->setText("Canvas");
+
+        innerLayout->addWidget(elementName);
+
+        m_properties->SetSelectedEntityDisplayNameWidget(elementName);
+
         innerLayout->addWidget(new ComponentButton(hierarchy, this));
     }
     outerLayout->addLayout(innerLayout);

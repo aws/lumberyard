@@ -12,16 +12,18 @@
 #pragma once
 
 #include "EditorBaseShapeComponent.h"
+#include "CapsuleShapeComponent.h"
 #include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
 
 namespace LmbrCentral
 {
     class EditorCapsuleShapeComponent
         : public EditorBaseShapeComponent
+        , public CapsuleShape
     {
     public:
 
-        AZ_EDITOR_COMPONENT(EditorCapsuleShapeComponent, "{06B6C9BE-3648-4DA2-9892-755636EF6E19}", EditorBaseShapeComponent);
+        AZ_EDITOR_COMPONENT(EditorCapsuleShapeComponent, EditorCapsuleShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         ~EditorCapsuleShapeComponent() override = default;
@@ -33,19 +35,31 @@ namespace LmbrCentral
 
         ////////////////////////////////////////////////////////////////////////
         void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
-        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////        
+
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::Component interface implementation
+        void Activate() override;
+        void Deactivate() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        // CapsuleShape
+        CapsuleShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
-            provided.push_back(AZ_CRC("CapsuleShapeService"));
+            provided.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
         }
 
+        AZ::Crc32 OnConfigurationChanged();
+
     private:
+        void ConfigurationChanged();
 
         //! Stores configuration of a capsule for this component
-        CapsuleShapeConfiguration m_configuration;
+        CapsuleShapeConfig m_configuration;
     };
 } // namespace LmbrCentral

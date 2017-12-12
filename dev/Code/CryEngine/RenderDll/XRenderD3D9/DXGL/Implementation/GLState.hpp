@@ -107,6 +107,8 @@ namespace NCryOpenGL
     bool InitializeDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& kDesc, SDepthStencilState& kState, CContext* pContext);
     bool InitializeRasterizerState(const D3D11_RASTERIZER_DESC& kDesc, SRasterizerState& kState, CContext* pContext);
     bool InitializeSamplerState(const D3D11_SAMPLER_DESC& kDesc, SSamplerState& kState, CContext* pContext);
+    void ResetSamplerState(SSamplerState& kSamplerState);
+    bool GetTexFilterParams(GLenum& eMinFilter, GLenum& eMagFilter, bool& bAnisotropic, bool& bComparison, D3D11_FILTER eD3DFilter, bool bMip);
 
     inline bool operator==(SBlendFunction kLeft, SBlendFunction kRight)
     {

@@ -33,9 +33,10 @@ namespace AZ
                 SCENE_CORE_API explicit Scene(const AZStd::string& name);
                 SCENE_CORE_API explicit Scene(AZStd::string&& name);
 
-                SCENE_CORE_API void SetSourceFilename(const AZStd::string& name);
-                SCENE_CORE_API void SetSourceFilename(AZStd::string&& name);
+                SCENE_CORE_API void SetSource(const AZStd::string& filename, const Uuid& guid);
+                SCENE_CORE_API void SetSource(AZStd::string&& filename, const Uuid& guid);
                 SCENE_CORE_API const AZStd::string& GetSourceFilename() const;
+                SCENE_CORE_API const Uuid& GetSourceGuid() const;
 
                 SCENE_CORE_API void SetManifestFilename(const AZStd::string& name);
                 SCENE_CORE_API void SetManifestFilename(AZStd::string&& name);
@@ -49,12 +50,19 @@ namespace AZ
 
                 SCENE_CORE_API const AZStd::string& GetName() const;
 
+                enum class SceneOrientation {YUp, ZUp, XUp, NegYUp, NegZUp, NegXUp};
+
+                SCENE_CORE_API void SetOriginalSceneOrientation(SceneOrientation orientation);
+                SCENE_CORE_API SceneOrientation GetOriginalSceneOrientation() const;
+                
             private:
                 AZStd::string m_name;
                 AZStd::string m_manifestFilename;
                 AZStd::string m_sourceFilename;
+                Uuid m_sourceGuid;
                 SceneGraph m_graph;
                 SceneManifest m_manifest;
+                SceneOrientation m_originalOrientation;
             };
         } // Containers
     } // SceneAPI

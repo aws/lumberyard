@@ -1,4 +1,6 @@
-menu = {}
+local asyncresult = require "Scripts/asyncresult"
+
+local menu = {}
 
 function menu:new(instance)
     instance = instance or {}
@@ -8,6 +10,26 @@ function menu:new(instance)
 end
 
 function menu:Show()
+    self.isActive = true
+    self:OnBeforeShow():OnComplete(function()
+        if self.isActive then
+            self:LoadCanvas()
+            self:OnAfterShow()
+        else
+            Debug.Log("OnBeforeShow completed after the menu was hidden, not loading the canvas")
+        end
+    end, true)
+end
+
+function menu:OnBeforeShow()
+    return asyncresult:new{
+        threadHandler = self.menuManager,
+        completed = true,
+        result = {}
+    }
+end
+
+function menu:LoadCanvas()
     if not self.canvasName then
         Debug.Log("menu:Show: Missing canvasName")
         return
@@ -27,16 +49,13 @@ function menu:Show()
     end
 
     self.canvasHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
-    self:ConnectToCloudGemPlayerAccountNotificationHandler()
 end
 
-function menu:ConnectToCloudGemPlayerAccountNotificationHandler()
-    if not self.cloudGemPlayerAccountNotificationHandler then
-        self.cloudGemPlayerAccountNotificationHandler = CloudGemPlayerAccountNotificationBus.Connect(self, self.entityId)
-    end
+function menu:OnAfterShow()
 end
 
 function menu:Hide()
+    self.isActive = false
     if self.canvasHandler then
         self.canvasHandler:Disconnect()
         self.canvasHandler = nil
@@ -44,10 +63,6 @@ function menu:Hide()
     if self.canvasEntityId then
         UiCanvasManagerBus.Broadcast.UnloadCanvas(self.canvasEntityId)
         self.canvasEntityId = nil
-    end
-    if self.cloudGemPlayerAccountNotificationHandler then
-        self.cloudGemPlayerAccountNotificationHandler:Disconnect()
-        self.cloudGemPlayerAccountNotificationHandler = nil
     end
 end
 
@@ -62,16 +77,14 @@ function menu:OnAction(entityId, actionName)
 end
 
 function menu:OnAfterConfigurationChange()
-    CloudGemPlayerAccountRequestBus.Broadcast.GetCurrentUser()
-end
-
-function menu:OnGetCurrentUserComplete(result)
-    if not result.wasSuccessful and self.loadMainMenuOnSignOut then
-        Debug.Log("Not signed in, loading main menu.")
-        self:RunOnMainThread(function()
-            self.menuManager:ShowMenu("MainMenu")
-        end)
-    end
+    self.playerAccountBus:GetCurrentUser():OnComplete(function(result)
+        if not result.wasSuccessful and self.loadMainMenuOnSignOut then
+            Debug.Log("Not signed in, loading main menu.")
+            self:RunOnMainThread(function()
+                self.menuManager:ShowMenu("MainMenu")
+            end)
+        end
+    end)
 end
 
 function menu:GetText(elementName)

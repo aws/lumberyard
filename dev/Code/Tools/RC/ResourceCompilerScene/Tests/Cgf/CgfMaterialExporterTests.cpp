@@ -27,8 +27,8 @@ namespace AZ
         {
         public:
             MaterialExporterContextTestBase()
-                : m_cacheGenerationContext(m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, Phase::Construction)
-                , m_testExporter(new ConvertContext())
+                : m_cacheGenerationContext(m_productList, m_stubScene, m_sampleOutputDirectory, m_stubMeshGroup, Phase::Construction)
+                , m_testExporter()
             {
             }
             ~MaterialExporterContextTestBase() override = default;

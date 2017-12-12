@@ -32,6 +32,7 @@
 #include <QRubberBand>
 #include <QScrollBar>
 #include <QStaticText>
+#include <QTimer>
 #include <QToolTip>
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/QtWin>
@@ -794,6 +795,13 @@ void CTrackViewDopeSheetBase::OnRButtonUp(Qt::KeyboardModifiers modifiers, const
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTrackViewDopeSheetBase::CancelDrag()
+{
+    AcceptUndo();
+    m_mouseMode = eTVMouseMode_None;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTrackViewDopeSheetBase::mouseMoveEvent(QMouseEvent* event)
 {
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
@@ -808,6 +816,12 @@ void CTrackViewDopeSheetBase::mouseMoveEvent(QMouseEvent* event)
         m_bJustSelected = false;
         return;
     }
+
+    // For some drags, make sure the left mouse button is still down.
+    // If you drag off the window, and press the right mouse button,
+    // and *then* release the left mouse button, QT will never tell us
+    // about the release event.
+    bool leftButtonPressed = event->buttons() & Qt::LeftButton;
 
     m_bMouseMovedAfterRButtonDown = true;
     m_mouseOverPos = event->pos();
@@ -842,7 +856,14 @@ void CTrackViewDopeSheetBase::mouseMoveEvent(QMouseEvent* event)
     }
     else if (m_mouseMode == eTVMouseMode_Move)
     {
-        MouseMoveMove(event->pos(), event->modifiers());
+        if (leftButtonPressed)
+        {
+            MouseMoveMove(event->pos(), event->modifiers());
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else if (m_mouseMode == eTVMouseMode_Clone)
     {
@@ -851,15 +872,36 @@ void CTrackViewDopeSheetBase::mouseMoveEvent(QMouseEvent* event)
     }
     else if (m_mouseMode == eTVMouseMode_DragTime)
     {
-        MouseMoveDragTime(event->pos(), event->modifiers());
+        if (leftButtonPressed)
+        {
+            MouseMoveDragTime(event->pos(), event->modifiers());
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else if (m_mouseMode == eTVMouseMode_DragStartMarker)
     {
-        MouseMoveDragStartMarker(event->pos(), event->modifiers());
+        if (leftButtonPressed)
+        {
+            MouseMoveDragStartMarker(event->pos(), event->modifiers());
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else if (m_mouseMode == eTVMouseMode_DragEndMarker)
     {
-        MouseMoveDragEndMarker(event->pos(), event->modifiers());
+        if (leftButtonPressed)
+        {
+            MouseMoveDragEndMarker(event->pos(), event->modifiers());
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else if (m_mouseMode == eTVMouseMode_Paste)
     {
@@ -867,11 +909,25 @@ void CTrackViewDopeSheetBase::mouseMoveEvent(QMouseEvent* event)
     }
     else if (m_mouseMode == eTVMouseMode_StartTimeAdjust)
     {
-        MouseMoveStartEndTimeAdjust(event->pos(), true);
+        if (leftButtonPressed)
+        {
+            MouseMoveStartEndTimeAdjust(event->pos(), true);
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else if (m_mouseMode == eTVMouseMode_EndTimeAdjust)
     {
-        MouseMoveStartEndTimeAdjust(event->pos(), false);
+        if (leftButtonPressed)
+        {
+            MouseMoveStartEndTimeAdjust(event->pos(), false);
+        }
+        else
+        {
+            CancelDrag();
+        }
     }
     else
     {
@@ -1750,7 +1806,9 @@ void CTrackViewDopeSheetBase::ShowKeyPropertyCtrlOnSpot(int x, int y, bool bMult
     m_wndPropsOnSpot->show();
     m_wndPropsOnSpot->move(x, y);
     m_wndPropsOnSpot->ExpandAll();
-    m_wndPropsOnSpot->resize(m_wndPropsOnSpot->sizeHint());
+    QTimer::singleShot(0, [this]() {
+        m_wndPropsOnSpot->resize(m_wndPropsOnSpot->sizeHint());
+    });
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2407,7 +2465,7 @@ void CTrackViewDopeSheetBase::DrawSelectTrack(const Range& timeRange, QPainter* 
         ISelectKey selectKey;
         keyHandle.GetKey(&selectKey);
 
-        if (*selectKey.szSelection != 0 || selectKey.cameraAzEntityId.IsValid())
+        if (!selectKey.szSelection.empty() || selectKey.cameraAzEntityId.IsValid())
         {
             float time = keyHandle.GetTime();
             float nextTime = timeRange.end;
@@ -2520,7 +2578,7 @@ void CTrackViewDopeSheetBase::DrawSequenceTrack(const Range& timeRange, QPainter
 
         ISequenceKey sequenceKey;
         keyHandle.GetKey(&sequenceKey);
-        if (*sequenceKey.szSelection != 0)
+        if (!sequenceKey.szSelection.empty())
         {
             float time = keyHandle.GetTime();
             float nextTime = timeRange.end;

@@ -325,6 +325,8 @@ public:
 
     void Reset();
 
+    inline void SwitchToNewGraphicsPipeline() {}
+
 protected:
     void SetPipelineStateImpl(CDeviceGraphicsPSOPtr devicePSO);
 

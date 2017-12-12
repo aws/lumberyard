@@ -30,6 +30,9 @@
 #include <IGameFramework.h>
 #include <QApplication>
 
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzToolsFramework/Manipulators/ManipulatorManager.h>
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -73,6 +76,8 @@ CViewManager::CViewManager()
     RegisterQtViewPane<QTopRendererWnd>(GetIEditor(), "Map", LyViewPane::CategoryViewport, viewportOptions);
 
     GetIEditor()->RegisterNotifyListener(this);
+
+    m_manipulatorManager = AZStd::make_shared<AzToolsFramework::ManipulatorManager>(1);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -298,4 +303,9 @@ void CViewManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
         UpdateViews();
         break;
     }
+}
+
+AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> CViewManager::GetManipulatorManager()
+{
+    return m_manipulatorManager;
 }

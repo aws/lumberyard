@@ -100,7 +100,7 @@ bool ValidateExecutableString(const AZStd::string& executableString)
         commandString.find("HLSLcc_vc140x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc120x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc140x64.exe") == AZStd::string::npos &&
-        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos)
+        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos) // ACCEPTED_USE
     {
         return false;
     }
@@ -121,8 +121,8 @@ CCrySimpleJobCompile::CCrySimpleJobCompile(uint32_t requestIP, EProtocolVersion 
 
     // Intentionally put a space after the executable name so that attackers can't 
     // try to change the executable name that we are going to run
-    m_platformToCompilerMap["ORBIS"] = "ORBIS\\V030\\DXOrbisShaderCompiler.exe ";
-    m_platformToCompilerMap["DURANGO"] = "Durango\\October2016\\FXC.exe ";
+    m_platformToCompilerMap["ORBIS"] = "ORBIS\\V030\\DXOrbisShaderCompiler.exe "; // ACCEPTED_USE
+    m_platformToCompilerMap["DURANGO"] = "Durango\\FXC.exe "; // ACCEPTED_USE
     m_platformToCompilerMap["D3D11"] = "PCD3D11\\v006\\fxc.exe ";
     m_platformToCompilerMap["GL4"] = "PCGL\\V006\\HLSLcc.exe ";
     m_platformToCompilerMap["GLES3_0"] = "PCGL\\V006\\HLSLcc.exe ";

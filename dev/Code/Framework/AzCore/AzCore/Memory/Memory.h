@@ -263,41 +263,54 @@ namespace AZ {
     static void  AZ_CLASS_ALLOCATOR_DeAllocate(void* object);                                                                                                                                                                                       \
     void AZ_CLASS_ALLOCATOR_DECLARED();
 
-#define AZ_CLASS_ALLOCATOR_IMPL(_Class, _Allocator, _Flags)                                                                                                                                                                                         \
+#define AZ_CLASS_ALLOCATOR_IMPL_INTERNAL(_Class, _Allocator, _Flags, _Template)                                                                                                                                                                                         \
     /* ========== standard operator new/delete ========== */                                                                                                                                                                                        \
+    _Template                                                                                                                                                                                                                                       \
     void* _Class::operator new(std::size_t size)                                                                                                                                                                                                    \
     {                                                                                                                                                                                                                                               \
         AZ_Assert(size >= sizeof(_Class), "Size mismatch! Did you forget to declare the macro in derived class? Size: %d sizeof(_Class): %d", size, sizeof(_Class));                                                                                \
         AZ_Warning(0, false, "Make sure you use aznew, offers better tracking!");                                                                                                                                                                   \
         return AZ::AllocatorInstance< _Allocator >::Get().Allocate(size, AZStd::alignment_of< _Class >::value, _Flags,#_Class);                                                                                                                     \
     }                                                                                                                                                                                                                                               \
+    _Template                                                                                                                                                                                                                                       \
     void _Class::operator delete(void* p, std::size_t size)  {                                                                                                                                                                                      \
         if (p) { AZ::AllocatorInstance< _Allocator >::Get().DeAllocate(p, size, AZStd::alignment_of< _Class >::value); }                                                                                                                            \
     }                                                                                                                                                                                                                                               \
     /* ========== aznew (called "aznew _Class()")========== */                                                                                                                                                                                      \
+    _Template                                                                                                                                                                                                                                       \
     void* _Class::operator new(std::size_t size, const char* fileName, int lineNum, const char* name) {                                                                                                                                             \
         AZ_Assert(size >= sizeof(_Class), "Size mismatch! Did you forget to declare the macro in derived class? Size: %d sizeof(_type): %d", size, sizeof(_Class));                                                                                 \
         return AZ::AllocatorInstance< _Allocator >::Get().Allocate(size, AZStd::alignment_of< _Class >::value, _Flags, (name == 0) ?#_Class: name, fileName, lineNum);                                                                              \
     }                                                                                                                                                                                                                                               \
+    _Template                                                                                                                                                                                                                                       \
     void* _Class::operator new(std::size_t size, const AZ::Internal::AllocatorDummy*) {                                                                                                                                                             \
         AZ_Assert(size >= sizeof(_Class), "Size mismatch! Did you forget to declare the macro in derived class? Size: %d sizeof(_type): %d", size, sizeof(_Class));                                                                                 \
         return AZ::AllocatorInstance< _Allocator >::Get().Allocate(size, AZStd::alignment_of< _Class >::value);                                                                                                                                     \
     }                                                                                                                                                                                                                                               \
     /* ========== Symetrical delete operators (required incase aznew throws) ========== */                                                                                                                                                          \
+    _Template                                                                                                                                                                                                                                       \
     void  _Class::operator delete(void* p, const char*, int, const char*) {                                                                                                                                                                         \
         if (p) { AZ::AllocatorInstance< _Allocator >::Get().DeAllocate(p); }                                                                                                                                                                        \
     }                                                                                                                                                                                                                                               \
+    _Template                                                                                                                                                                                                                                       \
     void  _Class::operator delete(void* p, const AZ::Internal::AllocatorDummy*) {                                                                                                                                                                   \
         if (p) { AZ::AllocatorInstance< _Allocator >::Get().DeAllocate(p); }                                                                                                                                                                        \
     }                                                                                                                                                                                                                                               \
     /* ========== AZ_CLASS_ALLOCATOR API ========== */                                                                                                                                                                                              \
+    _Template                                                                                                                                                                                                                                       \
     void* _Class::AZ_CLASS_ALLOCATOR_Allocate() {                                                                                                                                                                                                   \
         return AZ::AllocatorInstance< _Allocator >::Get().Allocate(sizeof(_Class), AZStd::alignment_of< _Class >::value, _Flags, #_Class);                                                                                                          \
     }                                                                                                                                                                                                                                               \
+    _Template                                                                                                                                                                                                                                       \
     void _Class::AZ_CLASS_ALLOCATOR_DeAllocate(void* object) {                                                                                                                                                                                      \
         AZ::AllocatorInstance< _Allocator >::Get().DeAllocate(object, sizeof(_Class), AZStd::alignment_of< _Class >::value);                                                                                                                        \
     }
 
+#define AZ_CLASS_ALLOCATOR_IMPL(_Class, _Allocator, _Flags)                                                                                                                                                                                         \
+    AZ_CLASS_ALLOCATOR_IMPL_INTERNAL(_Class, _Allocator, _Flags,)
+
+#define AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(_Class, _Allocator, _Flags)                                                                                                                                                                                \
+    AZ_CLASS_ALLOCATOR_IMPL_INTERNAL(_Class, _Allocator, _Flags, template<>)
 
 //////////////////////////////////////////////////////////////////////////
 // new operator overloads
@@ -345,7 +358,7 @@ namespace AZ
      * So as of today we use a POD buffer for the allocator storage and create it on first request. This should BE considered TEMP solution and
      * we should attempt to remove this this implementation and use the one above ASAP.
      * IsReady function is specially made so it's "safe" to call it even before the Allocator is constructed. Again this is hack and a temp solution.
-     * As of today the known offenders are MFC and PS3 static lib that calls new.
+     * As of today the known offenders are MFC static lib that calls new.
      */
     template<class Allocator>
     class AllocatorInstance
@@ -548,8 +561,6 @@ namespace AZ
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
 #elif defined(AZ_PLATFORM_LINUX)
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
-#elif defined(AZ_PLATFORM_X360)
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)400 * 1024 * 1024)
 #else
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)10 * 1024 * 1024)
 #endif

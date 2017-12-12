@@ -19,7 +19,6 @@
 #include "InputDevice.h"
 #include "InputCVars.h"
 #include "UnicodeFunctions.h"
-#include "IHardwareMouse.h"
 #include "InputNotificationBus.h"
 #include <IRenderer.h>
 #include <AzCore/Component/EntityId.h>
@@ -55,8 +54,6 @@ CBaseInput::CBaseInput()
     , m_pCVars(new CInputCVars())
     , m_platformFlags(0)
     , m_forceFeedbackDeviceIndex(EFF_INVALID_DEVICE_INDEX)
-    , m_pKinectInput(0)
-    , m_pNaturalPointInput(0)
 {
     GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
 
@@ -73,26 +70,12 @@ CBaseInput::~CBaseInput()
     SAFE_DELETE(m_pCVars);
     g_pInputCVars = NULL;
 
-    SAFE_DELETE(m_pKinectInput);
-    SAFE_DELETE(m_pNaturalPointInput);
 }
 
 bool CBaseInput::Init()
 {
     m_modifiers = 0;
-    // always pass
-    m_pKinectInput = new CKinectInputNULL();
-    m_pNaturalPointInput = new TNaturalPointInput;
 
-    m_pKinectInput->Init();
-
-    m_pNaturalPointInput->Init();
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    ClearAllDeviceMappings();
-    PopAllContexts();
-    AZ::InputRequestBus::Handler::BusConnect();
-    AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     return true;
 }
@@ -134,22 +117,10 @@ void CBaseInput::Update(bool bFocus)
     event.keyId = eKI_SYS_Commit;
     PostInputEvent(event);
 
-    if (m_pKinectInput)
-    {
-        m_pKinectInput->Update();
-    }
-
-    if (m_pNaturalPointInput)
-    {
-        m_pNaturalPointInput->Update();
-    }
 }
 
 void CBaseInput::ShutDown()
 {
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    AZ::InputRequestBus::Handler::BusDisconnect();
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
     std::for_each(m_inputDevices.begin(), m_inputDevices.end(), stl::container_object_deleter());
     m_inputDevices.clear();
     m_inputDeviceNames.clear();
@@ -246,81 +217,6 @@ char CBaseInput::GetInputCharAscii(const SInputEvent& event)
 
     return '\0';
 }
-
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-void CBaseInput::RequestDeviceMapping(const Input::ProfileId& profilelId, const AZ::EntityId& requester)
-{
-    if (m_profileIdToBoundEntityIds.find(profilelId) == m_profileIdToBoundEntityIds.end())
-    {
-        AZ_Error("Input", m_nextValidDeviceIndex < std::numeric_limits<AZ::u8>::max(), "Attempting to request more devices than are supported");
-        AZ_WarningOnce("Input", m_nextValidDeviceIndex < std::numeric_limits<AZ::u8>::digits, "You are requesting a high volume of devices, is this intended?");
-        m_profileIdToBoundEntityIds[profilelId].insert(requester);
-        m_deviceIndexToProfileIdCrc[m_nextValidDeviceIndex] = profilelId;
-        ++m_nextValidDeviceIndex;
-    }
-    else
-    {
-        m_profileIdToBoundEntityIds[profilelId].insert(requester);
-    }
-}
-
-void CBaseInput::ClearAllDeviceMappings()
-{
-    m_nextValidDeviceIndex = 0;
-    m_deviceIndexToProfileIdCrc.clear();
-    m_profileIdToBoundEntityIds.clear();
-}
-
-Input::ProfileId CBaseInput::GetProfileIdByDeviceIndex(AZ::u8 deviceIndex)
-{
-    if (m_deviceIndexToProfileIdCrc.find(deviceIndex) != m_deviceIndexToProfileIdCrc.end())
-    {
-        return m_deviceIndexToProfileIdCrc[deviceIndex];
-    }
-    return Input::ProfileId();
-}
-
-void CBaseInput::PushContext(const AZStd::string& context)
-{
-    AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextDeactivated);
-    m_contexts.push_back(context);
-    AZ::InputContextNotificationBus::Event(AZ::Crc32(context.c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
-}
-
-void CBaseInput::PopContext()
-{
-    if (m_contexts.size())
-    {
-        AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextDeactivated);
-        m_contexts.pop_back();
-        AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
-    }
-}
-
-void CBaseInput::PopAllContexts()
-{
-    if (m_contexts.size())
-    {
-        AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextDeactivated);
-        m_contexts.clear();
-        AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
-    }
-}
-
-AZStd::string CBaseInput::GetCurrentContext()
-{
-    if (m_contexts.size())
-    {
-        return m_contexts.back();
-    }
-    return AZStd::string("");
-}
-
-AZStd::vector<AZStd::string> CBaseInput::GetContextStack()
-{
-    return m_contexts;
-}
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
 const char* CBaseInput::GetOSKeyName(const SInputEvent& event)
 {
@@ -629,21 +525,6 @@ bool CBaseInput::SendEventToListeners(const SInputEvent& event)
         }
     }
 
-    // pass the event on to Ebus listeners
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    if (!gEnv->pConsole->IsOpened())
-    {
-        Input::ProfileId profilelId = GetProfileIdByDeviceIndex(event.deviceIndex);
-        if (profilelId != Input::BroadcastProfile)
-        {
-            AZ::InputNotificationBus::Event(AZ::InputNotificationId(profilelId, event.crc), &AZ::InputNotification::OnNotifyInputEvent, event);
-            AZ::InputNotificationBus::Event(AZ::CreateAllEventsOnProfileNotificationId(profilelId), &AZ::InputNotification::OnNotifyInputEvent, event);
-        }
-        AZ::InputNotificationBus::Event(AZ::CreateSpecificEventNotificationId(event.crc), &AZ::InputNotification::OnNotifyInputEvent, event);
-        AZ::InputNotificationBus::Event(AZ::CreateBroadcastNotificationId(), &AZ::InputNotification::OnNotifyInputEvent, event);
-    }
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-
     // exclusive listener can filter out the event if he wants to and cause this call to return
     // before any of the regular listeners get to process it
     if (m_pExclusiveListener)
@@ -834,19 +715,12 @@ void CBaseInput::PostHoldEvents()
     SInputEvent event;
 
     Vec2 mousePosition(ZERO);
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     AZ::Vector2 systemCursorPositionNormalized = AZ::Vector2::CreateZero();
     AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
                                                           AzFramework::InputDeviceMouse::Id,
                                                           &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
     mousePosition.x = systemCursorPositionNormalized.GetX() * gEnv->pRenderer->GetWidth();
     mousePosition.y = systemCursorPositionNormalized.GetY() * gEnv->pRenderer->GetHeight();
-#else
-    if (gEnv->pHardwareMouse)
-    {
-        gEnv->pHardwareMouse->GetHardwareMouseClientPosition(&(mousePosition.x), &(mousePosition.y));
-    }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     // DARIO_NOTE: In this loop, m_holdSymbols size and content is changed so previous
     // code was resulting in occasional index out of bounds.
@@ -911,7 +785,7 @@ void CBaseInput::ClearHoldEvent(SInputSymbol* pSymbol)
 
 void CBaseInput::ForceFeedbackEvent(const SFFOutputEvent& event)
 {
-    if (g_pInputCVars->i_forcefeedback == 0 || m_hasFocus == false)
+    if (m_hasFocus == false)
     {
         return;
     }
@@ -990,10 +864,6 @@ void CBaseInput::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lpa
         break;
     case ESYSTEM_EVENT_LEVEL_LOAD_START:
         ClearKeyState();
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        ClearAllDeviceMappings();
-        PopAllContexts();
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
         break;
     case ESYSTEM_EVENT_LEVEL_GAMEPLAY_START:
         ClearKeyState();
@@ -1012,12 +882,6 @@ void CBaseInput::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lpa
         }
         // Clear all key states and hold symbols, as their symbol pointers have now changed
         ClearKeyState();
-        break;
-    case ESYSTEM_EVENT_GAME_MODE_SWITCH_START:
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        ClearAllDeviceMappings();
-        PopAllContexts();
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
         break;
     default:
         break;

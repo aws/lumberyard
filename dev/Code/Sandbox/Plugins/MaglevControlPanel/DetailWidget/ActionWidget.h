@@ -61,7 +61,6 @@ private:
     void OnLinkActivated(const QString& link);
 
     // always included
-    void AddGettingStartedWithCloudCanvasLink();
     void AddCloudCanvasDocumentationLink();
     void AddCloudCanvasTutorialsLink();
 };

@@ -20,7 +20,7 @@
 #include <MathConversion.h>
 
 #include <IPhysics.h> // For basic physicalization at edit-time for object snapping.
-#include "StaticMeshComponent.h"
+#include "MeshComponent.h"
 #include <AzCore/Asset/AssetManager.h>
 
 namespace LmbrCentral
@@ -61,6 +61,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SkinnedMesh.png")
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-skinned-mesh.html")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSkinnedMeshComponent::m_mesh);
 
@@ -92,9 +93,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
                         ->Attribute(AZ::Edit::Attributes::Max, 255)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_castShadows, "Cast dynamic shadows", "Casts dynamic shadows (shadow maps).")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_castLightmap, "Cast static shadows", "Casts static shadows (lightmap).")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_castShadows, "Cast shadows", "Object will cast shadows.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
@@ -103,15 +102,7 @@ namespace LmbrCentral
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_rainOccluder, "Rain occluder", "Occludes dynamic raindrops.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_affectDynamicWater, "Affect dynamic water", "Will generate ripples in dynamic water.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_receiveWind, "Receive wind", "Receives wind.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_acceptDecals, "Accept decals", "Can receive decals.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_affectNavmesh, "Affect navmesh", "Will affect navmesh generation.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::m_visibilityOccluder, "Visibility occluder", "Is appropriate for occluding visibility of other objects.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SkinnedMeshComponentRenderNode::SkinnedRenderOptions::OnChanged)
                     ;
 
@@ -149,7 +140,7 @@ namespace LmbrCentral
 
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
-        MaterialRequestBus::Handler::BusConnect(GetEntityId());
+        MaterialOwnerRequestBus::Handler::BusConnect(GetEntityId());
         MeshComponentRequestBus::Handler::BusConnect(GetEntityId());
         MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
@@ -173,7 +164,7 @@ namespace LmbrCentral
     {
         SkeletalHierarchyRequestBus::Handler::BusDisconnect();
         SkinnedMeshComponentRequestBus::Handler::BusDisconnect();
-        MaterialRequestBus::Handler::BusDisconnect();
+        MaterialOwnerRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
         MeshComponentNotificationBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
@@ -456,8 +447,6 @@ namespace LmbrCentral
             renderOptions.GetChildData(AZ_CRC("ReceiveWind", 0x952a1261), receiveWind);
             bool acceptDecals = true;
             renderOptions.GetChildData(AZ_CRC("AcceptDecals", 0x3b3240a7), acceptDecals);
-            bool affectNavmesh = true;
-            renderOptions.GetChildData(AZ_CRC("AffectNavmesh", 0x77bd2697), affectNavmesh);
             bool visibilityOccluder = false;
             renderOptions.GetChildData(AZ_CRC("VisibilityOccluder", 0xe5819c29), visibilityOccluder);
             bool depthTest = true;
@@ -502,9 +491,9 @@ namespace LmbrCentral
             {
                 newComponentStringGuid = "{FC315B86-3280-4D03-B4F0-5553D7D08432}";
                 renderNodeName = "Static Mesh Render Node";
-                renderNodeUuid = AZ::AzTypeInfo<StaticMeshComponentRenderNode>::Uuid();
-                meshAssetUuId = AZ::AzTypeInfo<StaticMeshAsset>::Uuid();
-                renderOptionUuid = StaticMeshComponentRenderNode::GetRenderOptionsUuid();
+                renderNodeUuid = AZ::AzTypeInfo<MeshComponentRenderNode>::Uuid();
+                meshAssetUuId = AZ::AzTypeInfo<MeshAsset>::Uuid();
+                renderOptionUuid = MeshComponentRenderNode::GetRenderOptionsUuid();
                 meshTypeString = "Static Mesh";
             }
             else
@@ -551,7 +540,6 @@ namespace LmbrCentral
             newRenderOptions.AddElementWithData(context, "AffectDynamicWater", affectDynamicWater);
             newRenderOptions.AddElementWithData(context, "ReceiveWind", receiveWind);
             newRenderOptions.AddElementWithData(context, "AcceptDecals", acceptDecals);
-            newRenderOptions.AddElementWithData(context, "affectNavmesh", affectNavmesh);
             newRenderOptions.AddElementWithData(context, "VisibilityOccluder", visibilityOccluder);
             newRenderOptions.AddElementWithData(context, "DepthTest", depthTest);
             //////////////////////////////////////////////////////////////////////////

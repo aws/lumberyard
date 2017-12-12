@@ -1077,62 +1077,65 @@ static int Global_Typeid(lua_State* l)
 {
     LSV_BEGIN(l, 1);
 
-    if (lua_gettop(l) != 1)
+    AZ::Uuid typeId = AZ::Uuid::CreateNull();
+
+    if (lua_gettop(l) == 1)
     {
-        ScriptContext::FromNativeContext(l)->Error(ScriptContext::ErrorType::Warning, false, "function 'typeid' requires exactly 1 argument.");
-        lua_pushnil(l); // Push nil
-        return 1;
-    }
-
-    switch (lua_type(l, -1))
-    {
-    case LUA_TNIL:
+        switch (lua_type(l, -1))
         {
-            Internal::azlua_pushtypeid(l, azrtti_typeid<void>());
+        case LUA_TNIL:
+        {
+            typeId = azrtti_typeid<void>();
         }
         break;
 
-    case LUA_TBOOLEAN:
+        case LUA_TBOOLEAN:
         {
-            Internal::azlua_pushtypeid(l, azrtti_typeid<bool>());
+            typeId = azrtti_typeid<bool>();
         }
         break;
 
-    case LUA_TNUMBER:
+        case LUA_TNUMBER:
         {
-            Internal::azlua_pushtypeid(l, azrtti_typeid<lua_Number>());
+            typeId = azrtti_typeid<lua_Number>();
         }
         break;
 
-    case LUA_TSTRING:
+        case LUA_TSTRING:
         {
-            Internal::azlua_pushtypeid(l, azrtti_typeid<AZStd::string>());
+            typeId = azrtti_typeid<AZStd::string>();
         }
         break;
 
-    case LUA_TTABLE:
-    case LUA_TUSERDATA:
-    case LUA_TLIGHTUSERDATA:
+        case LUA_TTABLE:
+        case LUA_TUSERDATA:
+        case LUA_TLIGHTUSERDATA:
         {
             // load the class metatable
             if (lua_getmetatable(l, -1))
             {
-                lua_rawgeti(l, -1, AZ_LUA_CLASS_METATABLE_TYPE_INDEX); // load the class's typeid (hash)
-                lua_remove(l, -2); // remove metatable
-            }
-            else
-            {
-                lua_pushnil(l);
+                // load the class's BehaviorClass
+                lua_rawgeti(l, -1, AZ_LUA_CLASS_METATABLE_BEHAVIOR_CLASS);
+                BehaviorClass* behaviorClass = reinterpret_cast<BehaviorClass*>(lua_touserdata(l, -1));
+                // capture the typeid
+                typeId = behaviorClass->m_typeId;
+                // remove the behavior class and metatable
+                lua_pop(l, 2);
             }
         }
         break;
 
-    default:
-        {
-            lua_pushnil(l);
+        default:
+            break;
         }
-        break;
     }
+    else
+    {
+        ScriptContext::FromNativeContext(l)->Error(ScriptContext::ErrorType::Warning, false, "function 'typeid' requires exactly 1 argument.");
+    }
+
+    // Write the typeid (may be Null)
+    Internal::LuaClassToStack(l, &typeId, azrtti_typeid<AZ::Uuid>());
 
     return 1;
 }

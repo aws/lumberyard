@@ -199,6 +199,9 @@ def scan(args, extra):
                 if result:
                     scan_results += [result]
                     if result.return_code != RunnerReturnCodes.TESTS_SUCCEEDED:
+                        logger.error("Module FAILED: {}, with exit code: {} ({})".format(file_name, result.return_code,
+                                                                                         RunnerReturnCodes.to_string(
+                                                                                             result.return_code)))
                         module_failures += 1
                     if not os.path.exists(result.xml_path):
                         XMLGenerator.create_xml_output_file(result.xml_path, result.return_code, result.error_msg)
@@ -228,9 +231,20 @@ def scan(args, extra):
             if result:
                 scan_results += [result]
                 if result.return_code != RunnerReturnCodes.TESTS_SUCCEEDED:
+                    logger.error("Module FAILED: {}, with exit code: {} ({})".format(file_name, result.return_code,
+                                                                                     RunnerReturnCodes.to_string(
+                                                                                         result.return_code)))
                     module_failures += 1
                 if not os.path.exists(result.xml_path):
                     XMLGenerator.create_xml_output_file(result.xml_path, result.return_code, result.error_msg)
+
+    # Always save ScanResult data in a JSON file so we have access to it later
+    scan_results_json = {'scan_results': []}
+    for scan_result in scan_results:
+        scan_results_json['scan_results'].append(scan_result._asdict())
+    json_path = os.path.join(output_dir, 'scan_results.json')
+    with open(json_path, 'w') as f:
+        json.dump(scan_results_json, f)
 
     if args.html_report:
         # Convert the set of XML files into an HTML report

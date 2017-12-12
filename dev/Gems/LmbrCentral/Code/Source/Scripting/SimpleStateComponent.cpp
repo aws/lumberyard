@@ -17,8 +17,6 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
-#include <AzFramework/Entity/GameEntityContextBus.h>
-
 #include "SimpleStateComponent.h"
 
 namespace
@@ -75,7 +73,8 @@ namespace LmbrCentral
         UpdateNameCrc();
         for (const AZ::EntityId& currId : m_entityIds)
         {
-            EBUS_EVENT(AzFramework::GameEntityContextRequestBus, MarkEntityForNoActivation, currId);
+            // Listen for the entity's initialization so we can adjust initial activation state.
+            AZ::EntityBus::MultiHandler::BusConnect(currId);
         }
     }
 
@@ -142,6 +141,22 @@ namespace LmbrCentral
     }
 
     //=========================================================================
+    // OnEntityExists
+    //=========================================================================
+    void State::OnEntityExists(const AZ::EntityId& entityId)
+    {
+        AZ::EntityBus::MultiHandler::BusDisconnect(entityId);
+
+        // Mark the entity to not be activated by default.
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+        if (entity && entity->GetState() <= AZ::Entity::ES_INIT)
+        {
+            entity->SetRuntimeActiveByDefault(false);
+        }
+    }
+
+    //=========================================================================
     // SimpleStateComponent::Reflect
     //=========================================================================
     void State::Reflect(AZ::ReflectContext* context)
@@ -174,11 +189,9 @@ namespace LmbrCentral
     //=========================================================================
     void SimpleStateComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        State::Reflect(context);
 
-        State::Reflect(serializeContext);
-
-        if (serializeContext)
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<SimpleStateComponent, AZ::Component>()
                 ->Version(1)
@@ -196,6 +209,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SimpleState.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SimpleState.png")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-simple-state.html")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SimpleStateComponent::m_initialStateName, "Initial state", "The initial active state")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c))
                         ->Attribute(AZ::Edit::Attributes::StringList, &SimpleStateComponent::GetStateNames)

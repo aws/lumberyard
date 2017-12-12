@@ -1,0 +1,22 @@
+﻿@import "./styles/variables";
+
+.submission-info {
+    padding-top: 10px;
+}
+
+.response {
+    border: 1px solid $border-gray;
+    width: 800px;
+    padding: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.no-submission-text {
+    margin: 10px;
+}
+
+.no-more-submission-text {
+    color: green;
+    margin: 10px;
+}

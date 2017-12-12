@@ -54,7 +54,8 @@ else:
 
 REMOVE_SOURCES_C = ['DXGL/Specification%']
 REMOVE_SOURCES_H = ['DXGL/Specification%']
-REMOVE_SOURCES_CPP = ['DXCAFE%','DXPS%','DXOrbis%','DXGL/Specification%']
+REMOVE_SOURCES_CPP = ['DXPS%',
+'DXGL/Specification%']
 
 VCXPROJ = 'CryRenderGL.vcxproj'
 

@@ -49,9 +49,6 @@ template <typename F>
 struct Ang3_tpl;
 typedef Ang3_tpl<f32>       Ang3;
 
-#include "AzCore/Math/Guid.h"
-#include "AzCore/Math/Uuid.h"
-
 
 #if defined(QT_VERSION)
 #include <QColor>
@@ -60,6 +57,10 @@ typedef Ang3_tpl<f32>       Ang3;
 #elif defined(_AFX)
 #include "Util/GuidUtil.h"
 #endif
+
+// Guid needs to be included after QUuid to enable QUuid <-> GUID conversions
+#include <AzCore/Math/Guid.h>
+#include <AzCore/Math/Uuid.h>
 
 class QColor;
 class QString;
@@ -562,7 +563,9 @@ public:
     //   Sets GUID attribute.
     void setAttr(const char* key, const GUID& value)
     {
-        setAttr(key, QUuid(value).toString().toLatin1().data());
+        QUuid uuid;
+        uuid = value;
+        setAttr(key, uuid.toString().toUtf8().data());
     };
 
     // Summary:

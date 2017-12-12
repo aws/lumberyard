@@ -26,6 +26,7 @@
 #include <ISystem.h>
 #include <IRenderer.h>
 
+#include <LyShine/Bus/UiCursorBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 CRYREGISTER_SINGLETON_CLASS(minigui::CMiniGUI)
@@ -178,20 +179,12 @@ void CMiniGUI::ProcessInput()
     if (!m_pDPadMenu)
     {
         float mx(0), my(0);
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZ::Vector2 systemCursorPositionNormalized = AZ::Vector2::CreateZero();
         AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
                                                               AzFramework::InputDeviceMouse::Id,
                                                               &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
         mx = systemCursorPositionNormalized.GetX() * gEnv->pRenderer->GetWidth();
         my = systemCursorPositionNormalized.GetY() * gEnv->pRenderer->GetHeight();
-#else
-        IHardwareMouse* pMouse = GetISystem()->GetIHardwareMouse();
-        if (pMouse)
-        {
-            pMouse->GetHardwareMouseClientPosition(&mx, &my);
-        }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
         //update moving control
         if (m_pMovingCtrl)
@@ -391,7 +384,7 @@ void CMiniGUI::OnMouseInputEvent(const SInputEvent& rInputEvent)
 void CMiniGUI::SetDPadMenu(IMiniCtrl* pMenu)
 {
     m_pDPadMenu = (CMiniMenu*)pMenu;
-    gEnv->pHardwareMouse->DecrementCounter();
+    UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
 }
 
 void CMiniGUI::CloseDPadMenu()
@@ -409,7 +402,7 @@ void CMiniGUI::CloseDPadMenu()
 
         m_pDPadMenu->ClearFlag(eCtrl_Highlight);
         m_pDPadMenu = NULL;
-        gEnv->pHardwareMouse->IncrementCounter();
+        UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
     }
 }
 

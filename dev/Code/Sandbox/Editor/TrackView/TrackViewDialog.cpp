@@ -95,11 +95,11 @@ namespace
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.shortcut = QKeySequence(Qt::Key_T);
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTrackViewDialog>(GetIEditor(), LyViewPane::TrackView, LyViewPane::CategoryTools, opts);
+    AzToolsFramework::RegisterViewPane<CTrackViewDialog>(LyViewPane::TrackView, LyViewPane::CategoryTools, opts);
     GetIEditor()->GetSettingsManager()->AddToolName(s_kTrackViewLayoutSection, LyViewPane::TrackView);
 }
 
@@ -669,11 +669,11 @@ void CTrackViewDialog::InitToolbar()
     m_actions[ID_TV_SNAP_TICK] = qaction;
     connect(qaction, &QAction::triggered, this, &CTrackViewDialog::OnSnapTick);
     m_keysToolBar->addSeparator();
-    qaction = m_keysToolBar->addAction(QIcon(":/Trackview/keys/tvkeys-11.png"), "Sync Selected Tracks to Base Position");
+    qaction = m_keysToolBar->addAction(QIcon(":/Trackview/keys/tvkeys-11.png"), "Sync Selected Entity Nodes to Base Position");
     qaction->setData(ID_TV_SYNC_TO_BASE);
     m_actions[ID_TV_SYNC_TO_BASE] = qaction;
     connect(qaction, &QAction::triggered, this, &CTrackViewDialog::OnSyncSelectedTracksToBase);
-    qaction = m_keysToolBar->addAction(QIcon(":/Trackview/keys/tvkeys-12.png"), "Sync Selected Tracks from Base Position");
+    qaction = m_keysToolBar->addAction(QIcon(":/Trackview/keys/tvkeys-12.png"), "Sync Selected Entity Nodes from Base Position");
     qaction->setData(ID_TV_SYNC_FROM_BASE);
     m_actions[ID_TV_SYNC_FROM_BASE] = qaction;
     connect(qaction, &QAction::triggered, this, &CTrackViewDialog::OnSyncSelectedTracksFromBase);
@@ -898,27 +898,29 @@ void CTrackViewDialog::UpdateActions()
         m_actions[ID_TV_ADD_LIGHT_ANIMATION_NODE]->setEnabled(false);
         m_actions[ID_ADDSCENETRACK]->setEnabled(false);
         m_actions[ID_ADDNODE]->setEnabled(false);
+        m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(false);
     }
 
-    // enable the Create Light Animation Set button only for legacy sequences
-    ESequenceType sequenceType = pSequence ? pSequence->GetSequenceType() : eSequenceType_Legacy;
-    if (sequenceType == eSequenceType_Legacy)
+    if (pSequence != nullptr)
     {
-        IAnimSequence* pAnimSequence = GetIEditor()->GetMovieSystem()->FindSequence(LIGHT_ANIMATION_SET_NAME);
-        if (pAnimSequence)
+        // enable the Create Light Animation Set button only for legacy sequences
+        if (pSequence->GetSequenceType() == eSequenceType_Legacy)
         {
-            m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setDisabled(pAnimSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet);
+            IAnimSequence* pAnimSequence = GetIEditor()->GetMovieSystem()->FindSequence(LIGHT_ANIMATION_SET_NAME);
+            if (pAnimSequence && pAnimSequence->GetSequenceType() == eSequenceType_Legacy)
+            {
+                m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setDisabled(pAnimSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet);
+            }
+            else
+            {
+                m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(true);
+            }
         }
         else
         {
-            m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(true);
-        }
+            m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(false);
+        }    
     }
-    else
-    {
-        m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(false);
-    }    
-
     m_actions[ID_TOOLS_BATCH_RENDER]->setEnabled((GetIEditor()->GetMovieSystem()->GetNumSequences() > 0) ? true : false);
 }
 
@@ -1642,9 +1644,11 @@ void CTrackViewDialog::OnAddDirectorNode()
     if (pSequence)
     {
         CUndo undo("Create TrackView Director Node");
+        AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
         QString name = pSequence->GetAvailableNodeNameStartingWith("Director");
         pSequence->CreateSubNode(name, eAnimNodeType_Director);
         UpdateActions();
+        undoBatch.MarkEntityDirty(pSequence->GetSequenceComponentEntityId());
     }
 }
 

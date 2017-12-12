@@ -42,7 +42,19 @@ R"DELIMITER(<ObjectStream version="1">
 class LoadStaticPhysicsComponentFromLegacyData
     : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentralModule, StaticPhysicsComponent>
 {
+protected:
+    void SetUp() override
+    {
+        LoadReflectedObjectTest::SetUp();
+        if (m_object)
+        {
+            m_object->GetConfiguration(m_staticPhysicsConfig);
+        }
+    }
+
     const char* GetSourceDataBuffer() const override { return kLegacyPhysicsComponentWithStaticBehavior; }
+
+    StaticPhysicsConfig m_staticPhysicsConfig;
 };
 
 TEST_F(LoadStaticPhysicsComponentFromLegacyData, Application_IsRunning)
@@ -62,7 +74,7 @@ TEST_F(LoadStaticPhysicsComponentFromLegacyData, ComponentId_MatchesSourceData)
 
 TEST_F(LoadStaticPhysicsComponentFromLegacyData, EnabledInitially_MatchesSourceData)
 {
-    EXPECT_EQ(m_object->GetConfiguration().m_enabledInitially, false);
+    EXPECT_EQ(m_staticPhysicsConfig.m_enabledInitially, false);
 }
 
 // A legacy PhysicsComponent with no behavior should be converted to a StaticPhysicsComponent.

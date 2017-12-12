@@ -4,6 +4,8 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
+#include <IConsole.h>
+
 #include "NullVRDevice.h"
 #include <d3d11.h>
 

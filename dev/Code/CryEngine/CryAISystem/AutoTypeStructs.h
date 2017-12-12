@@ -28,10 +28,10 @@
 //====================================================================
 struct SLinkRecord
 {
-    SLinkRecord(int nodeIndex = 0, float radiusOut = 0, float radiusIn = 0)
-        : nodeIndex(nodeIndex)
-        , radiusOut(radiusOut)
-        , radiusIn(radiusIn) {}
+    SLinkRecord(int _nodeIndex = 0, float _radiusOut = 0, float _radiusIn = 0)
+        : nodeIndex(_nodeIndex)
+        , radiusOut(_radiusOut)
+        , radiusIn(_radiusIn) {}
     int nodeIndex;
     float radiusOut, radiusIn;
     AUTO_STRUCT_INFO;
@@ -104,9 +104,9 @@ struct LinkDescriptor
 
 struct SVolumeHideSpot
 {
-    SVolumeHideSpot(const Vec3& pos = Vec3(0, 0, 0), const Vec3& dir = Vec3(0, 0, 0))
-        : pos(pos)
-        , dir(dir) {}
+    SVolumeHideSpot(const Vec3& _pos = Vec3(0, 0, 0), const Vec3& _dir = Vec3(0, 0, 0))
+        : pos(_pos)
+        , dir(_dir) {}
     const Vec3& GetPos() const {return pos; }
     void GetMemoryUsage(ICrySizer* pSizer) const{}
     Vec3 pos;

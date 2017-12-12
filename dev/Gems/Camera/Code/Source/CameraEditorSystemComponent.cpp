@@ -17,6 +17,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
@@ -32,6 +33,7 @@
 #include <Cry_Geo.h>
 #include <MathConversion.h>
 #include <AzToolsFramework/API/EditorCameraBus.h>
+#include "ViewportCameraSelectorWindow.h"
 
 namespace Camera
 {
@@ -91,12 +93,16 @@ namespace Camera
     void CameraEditorSystemComponent::CreateCameraEntityFromViewport()
     {
 #if defined(AZ_PLATFORM_WINDOWS)
+        AzToolsFramework::ScopedUndoBatch undoBatch("Create Camera Entity");
         IEditor* editor;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
 
         // Create new entity
         AZ::Entity* newEntity;
-        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntity, &AzToolsFramework::EditorEntityContextRequests::CreateEditorEntity, "Camera");
+        AZ::EBusAggregateResults<AZ::EntityId> cameras;
+        Camera::CameraBus::BroadcastResult(cameras, &CameraBus::Events::GetCameras);
+        AZStd::string newCameraName = AZStd::string::format("Camera%d", cameras.values.size() + 1);
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntity, &AzToolsFramework::EditorEntityContextRequests::CreateEditorEntity, newCameraName.c_str());
 
         // Add CameraComponent
         AzToolsFramework::AddComponents<EditorCameraComponent>::ToEntities(newEntity);
@@ -104,6 +110,12 @@ namespace Camera
         // Set transform to that of the viewport
         AZ::TransformBus::Event(newEntity->GetId(), &AZ::TransformInterface::SetWorldTM, LYTransformToAZTransform(editor->GetViewManager()->GetSelectedViewport()->GetViewTM()));
         CameraRequestBus::Event(newEntity->GetId(), &CameraComponentRequests::SetFov, AZ::RadToDeg(editor->GetViewManager()->GetSelectedViewport()->GetFOV()));
+        undoBatch.MarkEntityDirty(newEntity->GetId());
 #endif
+    }
+
+    void CameraEditorSystemComponent::NotifyRegisterViews()
+    {
+        RegisterViewportCameraSelectorWindow();
     }
 }

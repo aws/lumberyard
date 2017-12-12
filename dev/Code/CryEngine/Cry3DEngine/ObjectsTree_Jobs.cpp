@@ -190,17 +190,21 @@ void COctreeNode::RenderVegetations(TDoublyLinkedList<IRenderNode>* lstObjects, 
 
     if (!m_lstVegetationsForRendering.Count())
     {
-        for (IRenderNode* pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, *pNext; pObj; pObj = pNext)
+        for (IRenderNode* pObj = m_arrObjects[eRNListType_Vegetation].m_pFirstNode, * pNext; pObj; pObj = pNext)
         {
             pNext = pObj->m_pNext;
 
             CVegetation* pInst = (CVegetation*)pObj;
 
             if (pObj->m_dwRndFlags & ERF_HIDDEN)
+            {
                 continue;
+            }
 
             if (pObj->m_dwRndFlags & ERF_STATIC_INSTANCING)
+            {
                 continue;
+            }
 
             m_lstVegetationsForRendering.Add(pInst);
         }
@@ -211,18 +215,26 @@ void COctreeNode::RenderVegetations(TDoublyLinkedList<IRenderNode>* lstObjects, 
     for (int i = 0; i < m_lstVegetationsForRendering.Count(); i++)
     {
         rendItemSorter.IncreaseObjectCounter();
-        CVegetation * pObj = (CVegetation *)m_lstVegetationsForRendering[i];
+        CVegetation* pObj = (CVegetation*)m_lstVegetationsForRendering[i];
 
         if (pObj->m_dwRndFlags & ERF_HIDDEN)
+        {
             continue;
+        }
 
 #if !defined(_RELEASE)
         if (GetCVars()->e_StaticInstancing == 2 && !pObj->m_pInstancingInfo)
+        {
             continue;
+        }
         if (GetCVars()->e_StaticInstancing == 3 && !pObj->m_pInstancingInfo)
+        {
             continue;
+        }
         if (GetCVars()->e_StaticInstancing == 4 && pObj->m_pInstancingInfo)
+        {
             continue;
+        }
 #endif
 
         if (pObj->m_pInstancingInfo)
@@ -408,7 +420,7 @@ void COctreeNode::RenderCommonObjects(TDoublyLinkedList<IRenderNode>* lstObjects
             {
                 if (nRenderMask & OCTREENODE_RENDER_FLAG_OBJECTS_ONLY_ENTITIES)
                 {
-                    if (rnType != eERType_RenderComponent && rnType != eERType_StaticMeshRenderComponent && rnType != eERType_SkinnedMeshRenderComponent)
+                    if (rnType != eERType_RenderComponent && rnType != eERType_DynamicMeshRenderComponent && rnType != eERType_SkinnedMeshRenderComponent)
                     {
                         if (rnType == eERType_Light)
                         {
@@ -741,7 +753,7 @@ void COctreeNode::UpdateObjects(IRenderNode* pObj)
 
     float fObjMaxViewDistance = 0;
     size_t numCasters = 0;
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
 
     bool bVegetHasAlphaTrans = false;
     int nFlags = pObj->GetRndFlags();
@@ -803,7 +815,7 @@ void COctreeNode::UpdateObjects(IRenderNode* pObj)
                 }
             }
 
-            if (eRType == eERType_RenderComponent || eRType == eERType_StaticMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
+            if (eRType == eERType_RenderComponent || eRType == eERType_DynamicMeshRenderComponent || eRType == eERType_SkinnedMeshRenderComponent)
             {
                 int nSlotCount = pObj->GetSlotCount();
 
@@ -1537,7 +1549,7 @@ _smart_ptr<IMaterial> CVegetation::GetMaterial(Vec3* pHitPos)
         return vegetGroup.pMaterial;
     }
 
-    if (CStatObj* pBody = vegetGroup.GetStatObj())
+    if (IStatObj* pBody = vegetGroup.GetStatObj())
     {
         return pBody->GetMaterial();
     }

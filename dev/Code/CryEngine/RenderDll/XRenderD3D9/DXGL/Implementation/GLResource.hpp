@@ -677,6 +677,7 @@ namespace NCryOpenGL
         GLenum m_eInputColorBuffer, m_eOutputColorBuffer;
         GLsizei m_iDefaultFBOWidth, m_iDefaultFBOHeight;
         bool m_bInputDirty, m_bOutputDirty;
+        SShaderTextureViewPtr m_kInputFBOColorTextureView;
 #if DXGL_FULL_EMULATION
         TWindowContext m_kCustomWindowContext;
 #endif //DXGL_FULL_EMULATION

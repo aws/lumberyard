@@ -31,6 +31,8 @@
 #include <QtUtil.h>
 #include <QtUtilWin.h>
 
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
+
 #include "Include/IIconManager.h"
 
 struct CPreviewModelCtrl::SPreviousContext
@@ -780,7 +782,7 @@ void CPreviewModelCtrl::mouseMoveEvent(QMouseEvent* event)
         }
         else
         {
-            QCursor::setPos(mapToGlobal(m_previousMousePosition));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_previousMousePosition));
         }
 
         update();
@@ -812,7 +814,7 @@ void CPreviewModelCtrl::mouseMoveEvent(QMouseEvent* event)
         }
         else
         {
-            QCursor::setPos(mapToGlobal(m_previousMousePosition));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_previousMousePosition));
         }
 
         update();
@@ -843,7 +845,7 @@ void CPreviewModelCtrl::mouseMoveEvent(QMouseEvent* event)
         }
         else
         {
-            QCursor::setPos(mapToGlobal(m_previousMousePosition));
+            AzQtComponents::SetCursorPos(mapToGlobal(m_previousMousePosition));
         }
 
         update();

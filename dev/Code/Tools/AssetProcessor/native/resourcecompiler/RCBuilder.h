@@ -39,11 +39,9 @@ namespace AssetProcessor
     //! Worker class to handle shell execution of the legacy rc.exe compiler
     class NativeLegacyRCCompiler
         : public RCCompiler
-        , public AssetRegistryNotificationBus::Handler
     {
     public:
         NativeLegacyRCCompiler();
-        ~NativeLegacyRCCompiler() override;
 
         bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) override;
         bool Execute(const QString& inputFile, const QString& watchFolder, int platformId, const QString& params, const QString& dest, 
@@ -172,14 +170,28 @@ namespace AssetProcessor
             const AssetBuilderSDK::JobCancelListener& jobCancelListener,
             AssetBuilderSDK::ProcessJobResponse& response);
 
+        //! Given a folder (dest) containing the aftermath of a RC process, generate a response structure.
+        //! if responseFromRCCompiler is true it means that the response is an already-populated response struct
+        //! that was loaded from a response file and we should just append legacy SubIDs to it (responses are used INSTEAD of
+        //! heuristics).
+        //! otherwise it means that we know nothing about the files that were produced and should perform heuristics to determine.
+        //! productAssetType is what uuid type (or nulls) to apply to the generated products for when responseFromRCCompiler is false.
+        void ProcessRCResultFolder(const QString &dest, const AZ::Uuid& productAssetType, bool responseFromRCCompiler, AssetBuilderSDK::ProcessJobResponse &response);
+
         void ProcessCopyJob(
             const AssetBuilderSDK::ProcessJobRequest& request,
             AZ::Uuid productAssetType,
             const AssetBuilderSDK::JobCancelListener& jobCancelListener,
             AssetBuilderSDK::ProcessJobResponse& response);
 
+        // overridable so we can unit-test override it.
         virtual QFileInfoList GetFilesInDirectory(const QString& directoryPath);
+        
+        // overridable so we can unit-test override it.
+        virtual bool SaveProcessJobRequestFile(const char* requestFileDir, const char* requestFileName, const AssetBuilderSDK::ProcessJobRequest& request);
 
+        // returns false only if there is a critical failure.
+        virtual bool LoadProcessJobResponseFile(const char* responseFileDir, const char* responseFileName, AssetBuilderSDK::ProcessJobResponse& response, bool& responseLoaded);
 
         AZStd::unique_ptr<RCCompiler>           m_rcCompiler;
         volatile bool                           m_isShuttingDown;
@@ -190,5 +202,6 @@ namespace AssetProcessor
         //! UUid for the internal recognizer for logging purposes since the this
         //! class manages multiple internal build uuids
         AZ::Uuid                                m_internalRecognizerBuilderUuid;
+
     };
 } // namespace AssetProcessor

@@ -729,7 +729,7 @@ bool CCloudGroup::ImportExportFolder(const QString& fileName)
                 if (!QString::compare(ch1, ".cld"))
                 {
                     QString file = folder;
-                    file += fileInfo.fileName().toLatin1().data();
+                    file += fileInfo.fileName();
                     ImportFS(file);
                     strcpy(ch1, ".xml");
                     m_exportFile = folder;

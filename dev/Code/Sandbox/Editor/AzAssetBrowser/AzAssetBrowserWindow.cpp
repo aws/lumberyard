@@ -25,17 +25,19 @@
 AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::AzAssetBrowserWindowClass())
-    , m_filterModel(new AssetBrowserFilterModel(parent))
+    , m_filterModel(new AzToolsFramework::AssetBrowser::AssetBrowserFilterModel(parent))
 {
     m_ui->setupUi(this);
     m_ui->m_searchWidget->Setup(true, true);
 
-    EBUS_EVENT_RESULT(m_assetBrowserModel, AssetBrowserComponentRequestsBus, GetAssetBrowserModel);
+    using namespace AzToolsFramework::AssetBrowser;
+    AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(m_assetBrowserModel, "Failed to get filebrowser model");
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_filterModel->SetFilter(m_ui->m_searchWidget->GetFilter());
 
     m_ui->m_assetBrowserTreeViewWidget->setModel(m_filterModel.data());
+    m_ui->m_assetBrowserTreeViewWidget->SetThumbnailContext("AssetBrowser");
 
     // set up search parameters widget
     auto& filters = m_ui->m_searchWidget->GetFilter()->GetSubFilters();
@@ -49,9 +51,12 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
         m_ui->m_searchParametersWidget->SetFilter(*it);
     }
 
-    connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
-    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal, this, &AzAssetBrowserWindow::SelectionChangedSlot);
-    connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal, [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
+    connect(m_ui->m_searchWidget->GetFilter().data(), &AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::updatedSignal,
+        m_filterModel.data(), &AzToolsFramework::AssetBrowser::AssetBrowserFilterModel::filterUpdatedSlot);
+    connect(m_ui->m_assetBrowserTreeViewWidget, &AzToolsFramework::AssetBrowser::AssetBrowserTreeView::selectionChangedSignal, 
+        this, &AzAssetBrowserWindow::SelectionChangedSlot);
+    connect(m_ui->m_searchParametersWidget, &AzToolsFramework::AssetBrowser::SearchParametersWidget::ClearAllSignal, 
+        [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
 
     m_ui->m_assetBrowserTreeViewWidget->LoadState("AssetBrowserTreeView_main");
 }
@@ -63,10 +68,10 @@ AzAssetBrowserWindow::~AzAssetBrowserWindow()
 
 void AzAssetBrowserWindow::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.preferedDockingArea = Qt::LeftDockWidgetArea;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<AzAssetBrowserWindow>(GetIEditor(), LyViewPane::AssetBrowser, LyViewPane::CategoryTools, options);
+    AzToolsFramework::RegisterViewPane<AzAssetBrowserWindow>(LyViewPane::AssetBrowser, LyViewPane::CategoryTools, options);
 }
 
 void AzAssetBrowserWindow::UpdatePreview() const

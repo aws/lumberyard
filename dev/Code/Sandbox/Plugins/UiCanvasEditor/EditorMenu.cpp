@@ -26,9 +26,23 @@ void EditorWindow::EditorMenu_Open(QString optional_selectedFile, EditorWrapper*
 
     if (optional_selectedFile.isEmpty())
     {
+        QString dir;
+        QStringList recentFiles = ReadRecentFiles();
+
+        // If we had recently opened canvases, open the most recent one's directory
+        if (recentFiles.size() > 0)
+        {
+            dir = Path::GetPath(recentFiles.front());
+        }
+        // Else go to the default canvas directory
+        else
+        {
+            dir = FileHelpers::GetAbsoluteDir(UICANVASEDITOR_CANVAS_DIRECTORY);
+        }
+
         optional_selectedFile = QFileDialog::getOpenFileName(this,
                 QString(),
-                FileHelpers::GetAbsoluteDir(UICANVASEDITOR_CANVAS_DIRECTORY),
+                dir,
                 "*." UICANVASEDITOR_CANVAS_EXTENSION);
     }
 

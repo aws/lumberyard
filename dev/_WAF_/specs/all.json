@@ -12,6 +12,7 @@
         "AzFramework",
         "FrameworkTests",
         "AzGameFramework",
+        "AzQtComponents",
         "AzTest",
         "AzTestIntegBootstrap",
         "AzTestRunner",
@@ -27,13 +28,11 @@
         "CryCommon",
         "CryFont",
         "CryInput",
-        "CryMovie",
         "CryNetwork",
         "CryPhysics",
         "CryScriptSystem",
         "CrySoundSystem",
         "CrySystem",
-        "LmbrAWS",
         "CryRenderD3D11",
         "CryRenderD3D12",
         "CryRenderGL",
@@ -50,6 +49,7 @@
         "EditorModularBehaviorTree",
         "EditorNoSound",
         "EditorUI_QT",
+        
         "AssetTagging",
         "AssetTaggingTools",
         "ComponentEntityEditorPlugin",
@@ -62,6 +62,7 @@
         "LuaBuilder",
         "MaterialBuilder",
         "SliceBuilder",
+        "TranslationBuilder",
         "CryEntitySystem",
         "UiCanvasEditor",
         "DeploymentTool",
@@ -96,7 +97,6 @@
         "LyzardApplicationDescriptors",
         "LyzardGems",
         "LyzardHelloWorld",
-        "LyzardCloudCanvas",
         "LyzardEngines",
         "LyzardProjects",
         "LyzardTemplates",
@@ -124,6 +124,9 @@
         "PRT",
         "NewsBuilder",
         "NewsShared",
-        "GraphCanvas"
+        "SetupAssistant",
+        "SetupAssistantBatch",
+        "StaticDataMonitorPlugin",
+        "DynamicContentEditorPlugin"
     ]
 }

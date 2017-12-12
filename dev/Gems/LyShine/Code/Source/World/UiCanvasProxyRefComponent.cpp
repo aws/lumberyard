@@ -77,6 +77,7 @@ void UiCanvasProxyRefComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvasRef.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvasRef.png")
+                ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-ui-canvas-proxy-ref.html")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
 
             editInfo->DataElement(0, &UiCanvasProxyRefComponent::m_canvasAssetRefEntityId,
@@ -88,6 +89,7 @@ void UiCanvasProxyRefComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasProxyRefBus>("UiCanvasProxyRefBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("SetCanvasRefEntity", &UiCanvasProxyRefBus::Events::SetCanvasRefEntity);
     }
 }

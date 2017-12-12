@@ -61,11 +61,16 @@ namespace UnitTest
     class Arrays
         : public AllocatorsFixture
     {
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+            MyCtorClass::s_numConstructedObjects = 0;
+        }
     };
 
     TEST_F(Arrays, Pair)
     {
-        using intref = AZStd::reference_wrapper<int>;
         int val1 = 20;
         int val2 = 30;
         AZStd::pair<int, int> pi1(val1, val2);
@@ -674,6 +679,34 @@ namespace UnitTest
         AZ_TEST_ASSERT(myArr.back() == 33);
         AZ_TEST_ASSERT(myArr1.front() == 10);
         AZ_TEST_ASSERT(myArr1.back() == 0);
+        // ArrayContainerTest-End
+    }
+
+    TEST_F(Arrays, ZeroLengthArray)
+    {
+        // ArrayContainerTest-Begin
+        array<int, 0> myArr;
+        EXPECT_TRUE(myArr.empty());
+        EXPECT_EQ(0, myArr.size());
+        EXPECT_EQ(0, myArr.max_size());
+        AZ_TEST_START_ASSERTTEST;
+        myArr.front();
+        myArr.back();
+        myArr.at(0);
+        myArr[0];
+        AZ_TEST_STOP_ASSERTTEST(4);
+
+        array<int, 0> myArr2;
+        EXPECT_EQ(myArr, myArr2);
+
+        myArr.data();
+        myArr.fill(33);
+        myArr.swap(myArr2);
+        EXPECT_EQ(myArr.begin(), myArr.end());
+        EXPECT_EQ(myArr.cbegin(), myArr.cend());
+        EXPECT_EQ(myArr.rbegin(), myArr.rend());
+        EXPECT_EQ(myArr.crbegin(), myArr.crend());
+
         // ArrayContainerTest-End
     }
 

@@ -9,126 +9,141 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_EBUS_HANDLER_CONTAINER_H
-#define AZ_EBUS_HANDLER_CONTAINER_H
+#pragma once
 
 #include <AzCore/std/containers/intrusive_set.h>
 #include <AzCore/std/containers/intrusive_list.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/typetraits/is_same.h>
 
+#include <AzCore/EBus/Policies.h>
+
 namespace AZ
 {
-#define AZ_EBUS_CONTAINER_COMMON(_EB_CONTAINER_IMPL, _Interface, _Traits)                                                                                \
-    typedef typename _Traits::BusIdType BusIdType;                                                                                                       \
-    typedef typename _Traits::BusIdOrderCompare BusIdOrderCompare;                                                                                       \
-    typedef typename _Traits::AllocatorType AllocatorType;                                                                                               \
-    typedef _Interface InterfaceType;                                                                                                                    \
-    BusIdType    m_busId;                                                                                                                                \
-    unsigned int m_refCount;                                                                                                                             \
-    struct hash                                                                                                                                          \
-        : public AZStd::unary_function<_EB_CONTAINER_IMPL, AZStd::size_t> {                                                                              \
-        AZ_FORCE_INLINE AZStd::size_t operator()(const BusIdType& busId) const { return AZStd::hash<BusIdType>()(busId); }                               \
-        AZ_FORCE_INLINE AZStd::size_t operator()(const _EB_CONTAINER_IMPL& v) const { return AZStd::hash<BusIdType>()(v.m_busId); }                      \
-    };                                                                                                                                                   \
-    struct equal_to                                                                                                                                      \
-        : public AZStd::binary_function<_EB_CONTAINER_IMPL, _EB_CONTAINER_IMPL, bool> {                                                                  \
-        AZ_FORCE_INLINE bool operator()(const _EB_CONTAINER_IMPL& left, const _EB_CONTAINER_IMPL& right) const { return left.m_busId == right.m_busId; } \
-        AZ_FORCE_INLINE bool operator()(const BusIdType& leftBusId, const _EB_CONTAINER_IMPL& right) const { return leftBusId == right.m_busId; }        \
-        AZ_FORCE_INLINE bool operator()(const _EB_CONTAINER_IMPL& left, const BusIdType& rightBusId) const { return left.m_busId == rightBusId; }        \
-    };                                                                                                                                                   \
-    struct ConvertFromBusId {                                                                                                                            \
-        typedef BusIdType   key_type;                                                                                                                    \
-        const key_type&     to_key(const BusIdType&busId) const { return busId; }                                                                        \
-        _EB_CONTAINER_IMPL  to_value(BusIdType busId) const { return _EB_CONTAINER_IMPL(busId); }                                                        \
-    };                                                                                                                                                   \
-    AZ_FORCE_INLINE operator BusIdType() const { return m_busId; }                                                                                       \
-    void add_ref();                                                                                                                                      \
-    void release();                                                                                                                                      \
-    void lock();                                                                                                                                         \
-    void unlock();                                                                                                                                       \
-    typedef AZStd::intrusive_ptr<_EB_CONTAINER_IMPL>  pointer;
-
-    /// @cond EXCLUDE
-
-    template<class Interface, class Traits>
-    struct EBECSingle
+    namespace Internal
     {
-        AZ_EBUS_CONTAINER_COMMON(EBECSingle, Interface, Traits)
-        InterfaceType *  m_eventGroup;
-        InterfaceType** m_eventGroupEnd;
-        EBECSingle(BusIdType id = 0)
-            : m_busId(id)
-            , m_refCount(0)
-            , m_eventGroup(0)
+        template <class ContainerImpl, class Interface, class Traits>
+        struct HandlerContainerBase
         {
-            m_eventGroupEnd = &m_eventGroup;
+            using BusIdType = typename Traits::BusIdType;
+            using BusIdOrderCompare = typename Traits::BusIdOrderCompare;
+            using AllocatorType = typename Traits::AllocatorType;
+            using pointer = AZStd::intrusive_ptr<ContainerImpl>;
+
+            struct hash
+                : public AZStd::unary_function<ContainerImpl, AZStd::size_t> 
+            {
+                AZ_FORCE_INLINE AZStd::size_t operator()(const BusIdType& busId) const { return AZStd::hash<BusIdType>()(busId); }
+                AZ_FORCE_INLINE AZStd::size_t operator()(const ContainerImpl& v) const { return AZStd::hash<BusIdType>()(v.m_busId); }
+            };
+            struct equal_to
+                : public AZStd::binary_function<ContainerImpl, ContainerImpl, bool> 
+            {
+                AZ_FORCE_INLINE bool operator()(const ContainerImpl& left, const ContainerImpl& right) const { return left.m_busId == right.m_busId; }
+                AZ_FORCE_INLINE bool operator()(const BusIdType& leftBusId, const ContainerImpl& right) const { return leftBusId == right.m_busId; }
+                AZ_FORCE_INLINE bool operator()(const ContainerImpl& left, const BusIdType& rightBusId) const { return left.m_busId == rightBusId; }
+            };
+            struct ConvertFromBusId 
+            {
+                typedef BusIdType   key_type;
+                const key_type&  to_key(const BusIdType&busId) const { return busId; }
+                ContainerImpl    to_value(BusIdType busId) const { return ContainerImpl(busId); }
+            };
+
+            HandlerContainerBase(BusIdType id = 0)
+                : m_busId(id)
+                , m_refCount(0)
+            {
+            }
+
+            HandlerContainerBase(const HandlerContainerBase& rhs)
+                : m_busId(rhs.m_busId)
+                , m_refCount(static_cast<unsigned int>(rhs.m_refCount))
+            {}
+
+            HandlerContainerBase(HandlerContainerBase&& rhs)
+                : m_busId(rhs.m_busId)
+                , m_refCount(static_cast<unsigned int>(rhs.m_refCount))
+            {
+                rhs.m_refCount = 0;
+            }
+
+            AZ_FORCE_INLINE operator BusIdType() const { return m_busId; }
+            void add_ref()
+            {
+                ++m_refCount;
+            }
+            void release();
+            void lock();
+            void unlock();
+
+            BusIdType    m_busId;
+            AZStd::atomic_uint m_refCount;
         };
 
-        EBECSingle(const EBECSingle& rhs)
-            : m_busId(rhs.m_busId)
-            , m_refCount(0)
-            , m_eventGroup(rhs.m_eventGroup)
+        template <class Interface, class Traits, AZ::EBusHandlerPolicy = Traits::HandlerPolicy>
+        struct HandlerContainer;
+
+        template <class Interface, class Traits>
+        struct HandlerContainer<Interface, Traits, EBusHandlerPolicy::Single>
+            : public HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>
         {
-            if (rhs.m_eventGroupEnd == &rhs.m_eventGroup)
+            using HandlerNode = Interface*;
+            using Base = HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>;
+            using BusIdType = typename Base::BusIdType;
+            using iterator = Interface**;
+            using reverse_iterator = Interface**;
+
+            Interface*  m_eventGroup;
+            Interface** m_eventGroupEnd;
+
+            HandlerContainer(BusIdType id = 0)
+                : Base(id)
+                , m_eventGroup(0)
             {
                 m_eventGroupEnd = &m_eventGroup;
-            }
-            else
+            };
+
+            HandlerContainer(const HandlerContainer& rhs)
+                : Base(rhs)
+                , m_eventGroup(rhs.m_eventGroup)
             {
-                m_eventGroupEnd = &m_eventGroup + 1;
+                m_eventGroupEnd = &m_eventGroup + rhs.size();
             }
-        }
 
-        EBECSingle(EBECSingle&& rhs)
-            : m_busId(rhs.m_busId)
-            , m_refCount(rhs.m_refCount)
-            , m_eventGroup(rhs.m_eventGroup)
-        {
-            if (rhs.m_eventGroupEnd == &rhs.m_eventGroup)
+            HandlerContainer(HandlerContainer&& rhs)
+                : Base(AZStd::forward<HandlerContainer>(rhs))
+                , m_eventGroup(rhs.m_eventGroup)
             {
-                m_eventGroupEnd = &m_eventGroup;
-            }
-            else
-            {
-                m_eventGroupEnd = &m_eventGroup + 1;
+                m_eventGroupEnd = &m_eventGroup + rhs.size();
+                // invalidate the source
+                rhs.m_eventGroupEnd = &rhs.m_eventGroup;
             }
 
-            // invalidate the source
-            rhs.m_eventGroupEnd = &rhs.m_eventGroup;
-            rhs.m_refCount = 0;
-        }
+            iterator begin() { return &m_eventGroup; }
+            iterator end() { return m_eventGroupEnd; }
+            reverse_iterator rbegin() { return &m_eventGroup; }
+            reverse_iterator rend() { return m_eventGroupEnd; }
+            AZStd::size_t size() { return m_eventGroupEnd - &m_eventGroup; }
+            void insert(HandlerNode node) 
+            { 
+                AZ_Assert(size() == 0, "Bus is already connected!"); 
+                m_eventGroup = node; 
+                m_eventGroupEnd = &m_eventGroup + 1; 
+            }
+            void erase(HandlerNode node) 
+            { 
+                (void)node; 
+                AZ_Assert(m_eventGroup == node, "You are passing a different event group pointer!"); 
+                m_eventGroupEnd = &m_eventGroup; 
+            }
+        };
 
-        typedef InterfaceType*  HandlerNode;
-
-        typedef InterfaceType** iterator;
-        typedef InterfaceType** reverse_iterator;
-
-
-        iterator begin()                    { return &m_eventGroup; }
-        iterator end()                      { return m_eventGroupEnd; }
-        reverse_iterator rbegin()           { return &m_eventGroup; }
-        reverse_iterator rend()             { return m_eventGroupEnd; }
-        AZStd::size_t size()                { return m_eventGroupEnd == &m_eventGroup ? 0 : 1; }
-        void insert(HandlerNode node)       { AZ_Assert(size() == 0, "Bus is already connected!"); m_eventGroup = node; m_eventGroupEnd = &m_eventGroup + 1; }
-        void erase(HandlerNode node)        { (void)node; AZ_Assert(m_eventGroup == node, "You are passing a different event group pointer!"); m_eventGroupEnd = &m_eventGroup; }
-    };
-
-    template<class Interface, class Traits>
-    struct EBECMulti
-    {
-        AZ_EBUS_CONTAINER_COMMON(EBECMulti, Interface, Traits)
-
-        struct HandlerNode
-            : public AZStd::intrusive_list_node<HandlerNode>
+        template <class ContainerNode, class InterfaceType>
+        struct MultiHandlerNode
+            : public ContainerNode
         {
             InterfaceType*  m_handler;
-
-            inline HandlerNode& operator=(InterfaceType* handler)
-            {
-                m_handler = handler;
-                return *this;
-            }
 
             inline InterfaceType* operator->() const
             {
@@ -141,98 +156,91 @@ namespace AZ
             }
         };
 
-        typedef AZStd::intrusive_list<HandlerNode, AZStd::list_base_hook<HandlerNode> > ListType;
-        ListType  m_handlers;
+        template <class Interface, class Traits>
+        struct HandlerContainer<Interface, Traits, EBusHandlerPolicy::Multiple>
+            : public HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>
+        {
+            struct HandlerNode
+                : public MultiHandlerNode<AZStd::intrusive_list_node<HandlerNode>, Interface>
+            {
+                inline HandlerNode& operator=(Interface* handler)
+                {
+                    this->m_handler = handler;
+                    return *this;
+                }
+            };
 
-        EBECMulti(BusIdType id = 0)
-            : m_busId(id)
-            , m_refCount(0)
-        {}
+            using Base = HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>;
+            using BusIdType = typename Base::BusIdType;
+            using ListType = AZStd::intrusive_list<HandlerNode, AZStd::list_base_hook<HandlerNode>>;
+            using iterator = typename ListType::iterator;
+            using reverse_iterator = typename ListType::reverse_iterator;  // technically we can use the just iterator as the list is unsorted!
 
-        typedef typename ListType::iterator iterator;
-        typedef typename ListType::reverse_iterator reverse_iterator;  // technically we can use the just iterator as the list is unsorted!
+            ListType  m_handlers;
 
-        iterator begin()                { return m_handlers.begin(); }
-        iterator end()                  { return m_handlers.end(); }
-        reverse_iterator rbegin()       { return m_handlers.rbegin(); }
-        reverse_iterator rend()         { return m_handlers.rend(); }
-        AZStd::size_t size()            { return m_handlers.size(); }
-        void  insert(HandlerNode& node){ m_handlers.push_front(node);   } // always insert first so we don't call till next message
-        void  erase(HandlerNode& node)  { m_handlers.erase(node);   }
-    };
+            HandlerContainer(BusIdType id = 0)
+                : Base(id)
+            {}
 
+            iterator begin() { return m_handlers.begin(); }
+            iterator end() { return m_handlers.end(); }
+            reverse_iterator rbegin() { return m_handlers.rbegin(); }
+            reverse_iterator rend() { return m_handlers.rend(); }
+            AZStd::size_t size() { return m_handlers.size(); }
+            void  insert(HandlerNode& node) { m_handlers.push_front(node); } // always insert first so we don't call till next message
+            void  erase(HandlerNode& node) { m_handlers.erase(node); }
+        };
 
-    /**
-    * This is the default bus event compare operator. If used it your bus traits and
-    * you use ordered handlers (HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered) you will need to implement
-    * a function 'bool Compare(const MessageBus* rhs) const' in you message handler.
-    */
-    struct BusHandlerCompareDefault;
+        /**
+        * This is the default bus event compare operator. If used it your bus traits and
+        * you use ordered handlers (HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered) you will need to implement
+        * a function 'bool Compare(const MessageBus* rhs) const' in you message handler.
+        */
+        struct BusHandlerCompareDefault;
 
-    namespace Internal
-    {
         template<class Interface>
         struct BusHandlerCompareDefaultImpl
             : public AZStd::binary_function<Interface*, Interface*, bool>
         {
             AZ_FORCE_INLINE bool operator()(const Interface* left, const Interface* right) const { return left->Compare(right); }
         };
-    }
 
-    template<class Interface, class Traits>
-    struct EBECMultiOrdered
-    {
-        AZ_EBUS_CONTAINER_COMMON(EBECMultiOrdered, Interface, Traits)
-
-        struct HandlerNode
-            : public AZStd::intrusive_multiset_node<HandlerNode>
+        template <class Interface, class Traits>
+        struct HandlerContainer<Interface, Traits, EBusHandlerPolicy::MultipleAndOrdered>
+            : public HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>
         {
-            InterfaceType*  m_handler;
-
-            inline HandlerNode& operator=(InterfaceType* handler)
+            struct HandlerNode
+                : public MultiHandlerNode<AZStd::intrusive_multiset_node<HandlerNode>, Interface>
             {
-                m_handler = handler;
-                return *this;
-            }
+                inline HandlerNode& operator=(Interface* handler)
+                {
+                    this->m_handler = handler;
+                    return *this;
+                }
+            };
 
-            inline InterfaceType* operator->() const
-            {
-                return m_handler;
-            }
+            typedef typename AZStd::Utils::if_c<AZStd::is_same<typename Traits::BusHandlerOrderCompare, BusHandlerCompareDefault>::value,
+                Internal::BusHandlerCompareDefaultImpl<Interface>, typename Traits::BusHandlerOrderCompare>::type HandlerOrderCompare;
 
-            inline operator InterfaceType*() const
-            {
-                return m_handler;
-            }
+            using Base = HandlerContainerBase<HandlerContainer<Interface, Traits>, Interface, Traits>;
+            using BusIdType = typename Base::BusIdType;
+            using SetType = AZStd::intrusive_multiset<HandlerNode, AZStd::intrusive_multiset_base_hook<HandlerNode>, HandlerOrderCompare>;
+            using iterator = typename SetType::iterator;
+            using reverse_iterator = typename SetType::reverse_iterator;
+
+            SetType m_set;
+
+            HandlerContainer(BusIdType id = 0)
+                : Base(id)
+            {}
+
+            iterator begin() { return m_set.begin(); }
+            iterator end() { return m_set.end(); }
+            reverse_iterator rbegin() { return m_set.rbegin(); }
+            reverse_iterator rend() { return m_set.rend(); }
+            AZStd::size_t size() { return m_set.size(); }
+            void  insert(HandlerNode& node) { m_set.insert(node); }
+            void  erase(HandlerNode& node) { m_set.erase(node); }
         };
-
-        typedef typename AZStd::Utils::if_c<AZStd::is_same<typename Traits::BusHandlerOrderCompare, BusHandlerCompareDefault>::value,
-            Internal::BusHandlerCompareDefaultImpl<InterfaceType>, typename Traits::BusHandlerOrderCompare>::type HandlerOrderCompare;
-
-        typedef AZStd::intrusive_multiset<HandlerNode, AZStd::intrusive_multiset_base_hook<HandlerNode>, HandlerOrderCompare> SetType;
-        typedef typename SetType::iterator          iterator;
-        typedef typename SetType::reverse_iterator  reverse_iterator;
-
-        SetType m_set;
-
-        EBECMultiOrdered(BusIdType id = 0 /*, const typename Traits::AllocatorType& alloc*/)
-            : m_busId(id)
-            , m_refCount(0)
-        {}
-
-        iterator begin()            { return m_set.begin(); }
-        iterator end()              { return m_set.end(); }
-        reverse_iterator rbegin()   { return m_set.rbegin(); }
-        reverse_iterator rend()     { return m_set.rend(); }
-        AZStd::size_t size()        { return m_set.size(); }
-        void  insert(HandlerNode& node) { m_set.insert(node); }
-        void  erase(HandlerNode& node)   { m_set.erase(node); }
-    };
-
-    /// @endcond
-
-    // End of Event Containers
-    //////////////////////////////////////////////////////////////////////////
-}
-#endif //AZ_EBUS_HANDLER_CONTAINER_H
-#pragma once
+    } // namespace Internal
+} // namespace AZ

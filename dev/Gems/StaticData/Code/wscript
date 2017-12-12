@@ -25,7 +25,7 @@ def build(bld):
         file_list += aws_files
 
     bld.DefineGem(
-        uselib          = ['AWS_CPP_SDK_ALL'],
+        uselib          = ['AWS_CPP_SDK_CORE'],
         includes        = [bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Gems/StaticData/Code/EditorPlugin')],
         file_list       = file_list,

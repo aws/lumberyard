@@ -4,13 +4,21 @@ local AWSBehaviorAPITest = {
 }
 
 function AWSBehaviorAPITest:OnActivate()
-    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.gamePlayHandler = GameplayNotificationBus.Connect(self, runTestEventId)
 
     self.apiHandler = AWSBehaviorAPINotificationsBus.Connect(self, self.entityId)
 end
 
-function AWSBehaviorAPITest:OnEventBegin()
+function AWSBehaviorAPITest:URLEncodeTimestamp(str)
+   if (str) then
+      str = string.gsub (str, ":", "%%3A")
+      str = string.gsub (str, " ", "%%20")
+   end
+   return str    
+end
+
+function AWSBehaviorAPITest:OnEventBegin(message)
      if isActive == false then
         Debug.Log("AWSBehaviorAPITest not active")
         self:NotifyMainEntity("success")
@@ -18,7 +26,7 @@ function AWSBehaviorAPITest:OnEventBegin()
     end
 
     local apiCall = AWSBehaviorAPI()
-    local timeVal = os.date("%b %d %Y %H:%M")
+    local timeVal = self:URLEncodeTimestamp(os.date("%b %d %Y %H:%M"))
     local lang = "Eng"
     apiCall.ResourceName = "CloudGemMessageOfTheDay.ServiceApi"
     apiCall.Query = "/player/messages?time=" .. timeVal .. "&lang=" .. lang
@@ -52,7 +60,7 @@ end
 
 function AWSBehaviorAPITest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 return AWSBehaviorAPITest

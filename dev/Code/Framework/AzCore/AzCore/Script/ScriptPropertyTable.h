@@ -18,7 +18,7 @@
 
 #include <AzCore/Script/ScriptProperty.h>
 #include <AzCore/Script/ScriptPropertyWatcherBus.h>
-#include <AzCore/std/string/const_string.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/containers/unordered_map.h>
 
 // Weird forward declares for friending.
@@ -349,7 +349,7 @@ namespace AZ
 
         ScriptProperty* FindTableValue(AZ::ScriptDataContext& scriptDataContext, int keyIndex) const;
         ScriptProperty* FindTableValue(const AZ::ScriptPropertyGenericClass* scriptProperty) const;        
-        ScriptProperty* FindTableValue(const AZStd::const_string& keyValue) const;
+        ScriptProperty* FindTableValue(const AZStd::string_view& keyValue) const;
         ScriptProperty* FindTableValue(int index) const;        
         
         // This is the generalized update method that will determine the correct type of key to use.
@@ -357,12 +357,12 @@ namespace AZ
 
         // These are the update methods coming that directly use the appropriate key.
         void UpdateTableValue(const AZ::ScriptPropertyGenericClass* scriptProperty, AZ::ScriptDataContext& scriptDataContext, int index);
-        void UpdateTableValue(const AZStd::const_string& keyValue, AZ::ScriptDataContext& scriptDataContext, int index);
+        void UpdateTableValue(const AZStd::string_view& keyValue, AZ::ScriptDataContext& scriptDataContext, int index);
         void UpdateTableValue(int tableIndex, AZ::ScriptDataContext& scriptDataContext, int stackIndex);
         
         void SetTableValue(const AZ::ScriptProperty* keyProperty, const AZ::ScriptProperty* value);
         void SetTableValue(const AZ::ScriptPropertyGenericClass* keyProperty, const AZ::ScriptProperty* value);
-        void SetTableValue(const AZStd::const_string& keyValue, const ScriptProperty* value);
+        void SetTableValue(const AZStd::string_view& keyValue, const ScriptProperty* value);
         void SetTableValue(int index, const ScriptProperty* value);
 
         template<typename T>

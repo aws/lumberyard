@@ -76,8 +76,6 @@ namespace GridMate
 
         freeaddrinfo(addrInfo);
         machineName = name;
-    #elif defined(AZ_PLATFORM_X360)
-        // Redacted
     #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
         struct ifaddrs* ifAddrStruct = nullptr;
         struct ifaddrs* ifa = nullptr;

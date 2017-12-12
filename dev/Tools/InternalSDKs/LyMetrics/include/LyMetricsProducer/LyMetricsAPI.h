@@ -43,6 +43,8 @@ enum LY_METRICS_PRODUCER_API EEditorSessionStatus
 {
     EESS_EditorOpened = 0,
     EESS_EditorShutdown,
+    EESS_StartingEditorShutdown,
+    EESS_EarlyShutdownExit,
     EESS_InGame,
     EESS_DebuggerAttached,
     EESS_Unknown
@@ -67,7 +69,7 @@ LY_METRICS_PRODUCER_API bool LyMetrics_AddMetric(LyMetricIdType eventId, const c
 LY_METRICS_PRODUCER_API bool LyMetrics_SubmitEvent(LyMetricIdType eventId);
 LY_METRICS_PRODUCER_API bool LyMetrics_CancelEvent(LyMetricIdType eventId);
 
-LY_METRICS_PRODUCER_API bool LyMetrics_SendRating(int numberOfStars, const char* comment);
+LY_METRICS_PRODUCER_API bool LyMetrics_SendRating(int numberOfStars, int ratingInterval, const char* comment);
 
 // Creates and submits a metric event immediately.
 // Metric event can be built from optional attributes and metrics.

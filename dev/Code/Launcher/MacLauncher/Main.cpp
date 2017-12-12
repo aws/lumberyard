@@ -14,11 +14,6 @@
 
 #include <AppleLauncher.h>
 
-#include <AzFramework/Input/System/InputSystemComponent.h>
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-#   include <SDL.h>
-#endif
-
 #if defined(AZ_TESTS_ENABLED)
 #include <AzTest/AzTest.h>
 DECLARE_AZ_UNIT_TEST_MAIN()
@@ -33,13 +28,9 @@ int main(int argc, char* argv[])
     INVOKE_AZ_UNIT_TEST_MAIN();
 #endif
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
     // Ensure the process is a foreground application. Must be done before creating the application.
-    ProcessSerialNumber processSerialNumber;
-    if (!GetCurrentProcess(&processSerialNumber))
-    {
-        TransformProcessType(&processSerialNumber, kProcessTransformToForegroundApplication);
-    }
+    ProcessSerialNumber processSerialNumber = { 0, kCurrentProcess };
+    TransformProcessType(&processSerialNumber, kProcessTransformToForegroundApplication);
 
     // Create a memory pool, a custom AppKit application, and a custom AppKit application delegate.
     NSAutoreleasePool* autoreleasePool = [[NSAutoreleasePool alloc] init];
@@ -56,13 +47,6 @@ int main(int argc, char* argv[])
     // Launch the AppKit application and release the memory pool.
     [NSApp finishLaunching];
     [autoreleasePool release];
-#else // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
-    {
-        fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError());
-        return 1;
-    }
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
     // Launch the Lumberyard application.
     return AppleLauncher::Launch("");

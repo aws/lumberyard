@@ -214,9 +214,8 @@ namespace GridMate
             : m_driver(nullptr)
             , m_trafficControl(nullptr)
             , m_handshake(nullptr)
-            , m_crypter(nullptr)
-            , m_compressor(nullptr)
             , m_simulator(nullptr)
+            , m_compressionFactory(nullptr)
             , m_familyType(0)
             , m_address(nullptr)
             , m_port(0)
@@ -245,9 +244,9 @@ namespace GridMate
         class Driver*                   m_driver;
         class TrafficControl*           m_trafficControl;
         class Handshake*                m_handshake;
-        class Crypter*                  m_crypter;
-        class Compressor*               m_compressor;
         class Simulator*                m_simulator;
+
+        class CompressionFactory*       m_compressionFactory;       ///< Abstract factory to provide carrier with compression implementation
 
         int                             m_familyType;               ///< Family type (this is driver specific value) for default family use 0.
         const char*                     m_address;                  ///< Communication address, when 0 we use any address otherwise we bind a specific one.
@@ -259,7 +258,7 @@ namespace GridMate
 
         VersionType                     m_version;                  ///< Carriers with mismatching version numbers are not allowed to connect to each other. Default is 1.
 
-        const char*                     m_securityData;             ///< Pointer to string with security data (for example on XBox One this is the Security template name).
+        const char*                     m_securityData;             ///< Pointer to string with security data
 
         bool                            m_enableDisconnectDetection; ///< Enable/Disable disconnect detection. (should be set to false ONLY for debug purpose)
         unsigned int                    m_connectionTimeoutMS;      ///< Connection timeout in milliseconds
@@ -335,15 +334,21 @@ namespace GridMate
         {
             EC_OK = 0,
 
-            EC_UPDATE_TIMEOUT,                 ///< Carrier should be Updated/Ticked in time( the connection timeout value for now)
-            EC_BUFFER_READ_OUT_OF_BOUND,       ///< Out of bounds buffer reads
-            EC_CHANNEL_ID_OUT_OF_BOUND,        ///< Out of bounds channel id
-            EC_MESSAGE_TYPE_NOT_SUPPORTED,     ///< Unsupported message type
-            EC_SEQUENCE_NUMBER_OUT_OF_BOUND,   ///< Seq number is far from expected range
-            EC_PACKET_RATE_TOO_HIGH,           ///< Packet rate is too high
-            EC_DATA_RATE_TOO_HIGH,             ///< Data rate is too high
-            EC_MAX                             ///< Max # of types
-        } m_errorCode;                         ///< Security error code
+            EC_UPDATE_TIMEOUT,                  ///< Carrier should be Updated/Ticked in time( the connection timeout value for now)
+            EC_BUFFER_READ_OUT_OF_BOUND,        ///< Out of bounds buffer reads
+            EC_CHANNEL_ID_OUT_OF_BOUND,         ///< Out of bounds channel id
+            EC_MESSAGE_TYPE_NOT_SUPPORTED,      ///< Unsupported message type
+            EC_SEQUENCE_NUMBER_OUT_OF_BOUND,    ///< Seq number is far from expected range
+            EC_SEQUENCE_NUMBER_DUPLICATED,      ///< Duplicate seq number
+            EC_PACKET_RATE_TOO_HIGH,            ///< Packet rate is too high
+            EC_DATA_RATE_TOO_HIGH,              ///< Data rate is too high
+            EC_INVALID_SOURCE_ADDRESS,          ///< Invalid source address
+            EC_DATAGRAM_TOO_LARGE,              ///< datagram exceeds max size
+            EC_BAD_PACKET,                      ///< datagram exceeds max size
+
+            // EC_MAX must be last
+            EC_MAX                              ///< Max # of types
+        } m_errorCode;                          ///< Security error code
     };
 
     /**
@@ -368,8 +373,7 @@ namespace GridMate
 
         DISCONNECT_VERSION_MISMATCH,            ///< Attempting to connect to a different application version.
 
-        DISCONNECT_MAX,     /// Must be last for internal reasons
-        //DISCONNECT_USER
+        DISCONNECT_MAX,                         ///< Must be last for internal reasons
     };
 
     /**

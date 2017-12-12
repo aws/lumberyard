@@ -13,9 +13,10 @@
 
 #include <IRenderer.h>
 #include <LyShine/ILyShine.h>
-#include <IInput.h>
-#include <IHardwareMouse.h>
+#include <LyShine/Bus/UiCursorBus.h>
 #include <AzCore/Math/Vector2.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
+#include <AzFramework/Input/Events/InputTextEventListener.h>
 
 #if defined(_DEBUG)
 //#define LYSHINE_INTERNAL_UNIT_TEST
@@ -34,7 +35,9 @@ class UiCanvasManager;
 class CLyShine
     : public ILyShine
     , public IRenderDebugListener
-    , public IInputEventListener
+    , public UiCursorBus::Handler
+    , public AzFramework::InputChannelEventListener
+    , public AzFramework::InputTextEventListener
 {
 public:
 
@@ -82,14 +85,27 @@ public:
 
     // ~IRenderDebugListener
 
-    // IInputEventListener
-    bool OnInputEvent(const SInputEvent& event) override;
-    bool OnInputEventUI(const SUnicodeEvent& event) override;
-    // ~IInputEventListener
+    // UiCursorInterface
+    void IncrementVisibleCounter() override;
+    void DecrementVisibleCounter() override;
+    bool IsUiCursorVisible() override;
+    void SetUiCursor(const char* cursorImagePath) override;
+    AZ::Vector2 GetUiCursorPosition() override;
+    // ~UiCursorInterface
+
+    // InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+    // ~InputChannelEventListener
+
+    // InputTextEventListener
+    bool OnInputTextEventFiltered(const AZStd::string& textUTF8) override;
+    // ~InputTextEventListener
 
 private: // member functions
 
     AZ_DISABLE_COPY_MOVE(CLyShine);
+
+    void RenderUiCursor();
 
 private: // data
 
@@ -99,4 +115,7 @@ private: // data
     std::unique_ptr<UiRenderer> m_uiRenderer;  // using a pointer rather than an instance to avoid including Draw2d.h
 
     std::unique_ptr<UiCanvasManager> m_uiCanvasManager;
+
+    ITexture* m_uiCursorTexture;
+    int m_uiCursorVisibleCounter;
 };

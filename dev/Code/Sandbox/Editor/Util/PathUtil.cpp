@@ -484,6 +484,12 @@ namespace Path
             // if the bus message didn't succeed, 'guess' the source assets:
             else
             {
+                // Not all systems have been converted to use local paths. Some editor files save XML files directly, and a full path is already passed in.
+                // If the path passed in was already a full path, then we can just return it.
+                if (AZ::IO::FileIOBase::GetDirectInstance()->Exists(adjustedFilePath.c_str()))
+                {
+                    return path;
+                }
                 // if we get here it means that the Asset Processor does not know about this file.  most of the time we should never get here
                 // the rest of this code just does a bunch of heuristic guesses in case of missing files or if the user has hand-edited
                 // the asset cache by moving files in via some other means or external process.

@@ -47,14 +47,12 @@ namespace AzFramework
     }};
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceTouch::Implementation::CustomCreateFunctionType InputDeviceTouch::Implementation::CustomCreateFunctionPointer = nullptr;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceTouch::InputDeviceTouch()
         : InputDevice(Id)
         , m_allChannelsById()
         , m_touchChannelsById()
         , m_pimpl(nullptr)
+        , m_implementationRequestHandler(*this)
     {
         // Create all touch input channels
         for (AZ::u32 i = 0; i < Touch::All.size(); ++i)
@@ -66,16 +64,14 @@ namespace AzFramework
         }
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceTouch::~InputDeviceTouch()
     {
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy all touch input channels
         for (const auto& channelById : m_touchChannelsById)

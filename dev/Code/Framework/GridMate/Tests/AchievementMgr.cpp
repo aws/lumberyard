@@ -13,8 +13,6 @@
 #include <GridMate/Achievements/AchievementMgr.h>
 #include <AzCore/std/parallel/thread.h>
 
-#include <GridMate/Online/XBoneUserService.h>
-#include <GridMate/Online/PS4UserService.h>
 
 using namespace GridMate;
 

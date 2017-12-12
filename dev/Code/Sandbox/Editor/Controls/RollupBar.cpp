@@ -82,15 +82,16 @@ CRollupBar::CRollupBar(QWidget* parent)
 
 void CRollupBar::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.preferedDockingArea = Qt::RightDockWidgetArea;
     opts.isDeletable = false;
-    opts.isStandard = true;
+    opts.isStandard = GetIEditor()->IsLegacyUIEnabled();
     opts.showInMenu = true;// doesn't appear in "View->Open View Pane", but will appear in the new menu layout's Tools menu
     opts.canHaveMultipleInstances = true;
     opts.builtInActionId = ID_VIEW_ROLLUPBAR;
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CRollupBar>(GetIEditor(), LyViewPane::LegacyRollupBar, LyViewPane::CategoryTools, opts);
+    opts.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CRollupBar>(LyViewPane::LegacyRollupBar, LyViewPane::CategoryTools, opts);
 }
 
 void CRollupBar::insertControl(int index, QWidget* w, const QString& tooltip)

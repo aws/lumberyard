@@ -83,6 +83,8 @@ namespace AzQtComponents
         */
         void restoreGeometryFromSettings();
 
+        QMargins margins() const;
+
     protected:
         bool event(QEvent* ev) override;
         void paintEvent(QPaintEvent*) override;
@@ -99,7 +101,6 @@ namespace AzQtComponents
         static QMargins win10TitlebarHeight(QWindow *w);
         static Qt::WindowFlags specialFlagsForOS();
         QWidget* topLevelParent();
-        QMargins margins() const;
         void centerInParent();
         bool autoAttachEnabled() const;
         bool autoTitleBarButtonsEnabled() const;

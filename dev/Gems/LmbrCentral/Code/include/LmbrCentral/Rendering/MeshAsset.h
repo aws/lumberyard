@@ -19,14 +19,14 @@
 
 namespace LmbrCentral
 {
-    class StaticMeshAsset
+    class MeshAsset
         : public AZ::Data::AssetData
     {
     public:
         using MeshPtr = _smart_ptr<IStatObj>;
 
-        AZ_RTTI(StaticMeshAsset, "{C2869E3B-DDA0-4E01-8FE3-6770D788866B}", AZ::Data::AssetData);
-        AZ_CLASS_ALLOCATOR(StaticMeshAsset, AZ::SystemAllocator, 0);
+        AZ_RTTI(MeshAsset, "{C2869E3B-DDA0-4E01-8FE3-6770D788866B}", AZ::Data::AssetData);
+        AZ_CLASS_ALLOCATOR(MeshAsset, AZ::SystemAllocator, 0);
 
         /// The assigned static mesh instance.
         MeshPtr m_statObj = nullptr;

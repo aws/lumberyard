@@ -1,8 +1,11 @@
 ﻿// Changing all headers in CGP.
 body {
-	h1, h2, h3, h4 {
-	font-family: "AmazonEmber-Light";
-	color: $darker-gray;
+	h1, h2, h3 {
+		font-family: "AmazonEmber-Light";
+	}
+	* {
+		font-family: "AmazonEmber-Light";
+		font-size: 14px;
 	}
 
 	h1{
@@ -15,12 +18,5 @@ body {
 
 	h3 {
 		font-size: 16px;
-		font-family: "AmazonEmber-Regular";
-	}
-	h4 {
-		font-size: 12px;
-	}
-	p, section, ul > li {
-		font-size: 14px;
 	}
 }

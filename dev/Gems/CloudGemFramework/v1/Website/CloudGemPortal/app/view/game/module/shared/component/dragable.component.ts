@@ -4,7 +4,7 @@ import { DragulaService } from 'ng2-dragula/ng2-dragula';
 @Component({
     selector: 'dragable',
     template: `
-        <div [id]="id" class="container" [style.width.%]="widthPc" [style.height.px]="heightPx" style="overflow: auto; cursor: move;" [dragula]="bagId">
+        <div [id]="id" class="" [style.width.%]="widthPc" [style.height.px]="heightPx" style="overflow: auto; cursor: move;" [dragula]="bagId">
             <ng-content></ng-content>
         </div>
     `,

@@ -124,11 +124,11 @@ private:
             , forcePoolId(0)
             , bCallInit(false)
             , bIsDynamic(false) {}
-        SEntityPrepareRequest(EntityId entityId, EntityId forcePoolId, bool bCallInit, bool bIsDynamic)
-            : entityId(entityId)
-            , forcePoolId(forcePoolId)
-            , bCallInit(bCallInit)
-            , bIsDynamic(bIsDynamic) {}
+        SEntityPrepareRequest(EntityId _entityId, EntityId _forcePoolId, bool _bCallInit, bool _bIsDynamic)
+            : entityId(_entityId)
+            , forcePoolId(_forcePoolId)
+            , bCallInit(_bCallInit)
+            , bIsDynamic(_bIsDynamic) {}
 
         void Serialize(TSerialize ser);
     };

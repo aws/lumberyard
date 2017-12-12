@@ -127,7 +127,8 @@ struct ShadowMapFrustum
         {
             eFullUpdate,
             eFullUpdateTimesliced,
-            eIncrementalUpdate
+            eIncrementalUpdate,
+            eManualUpdate // Updates must triggered manually via script
         };
 
         ShadowCacheData() { Reset(); }
@@ -435,10 +436,10 @@ struct ShadowMapFrustum
             const Vec3 vForward   = Vec3(sCubeVector[nS][0], sCubeVector[nS][1], sCubeVector[nS][2]);
             const Vec3 vUp        = Vec3(sCubeVector[nS][3], sCubeVector[nS][4], sCubeVector[nS][5]);
             const Matrix33 matRot = Matrix33::CreateOrientation(vForward, vUp, DEG2RAD(sCubeVector[nS][6]));
-            const float fFOV = bUnwrapedOmniDirectional ? (float)DEG2RAD_R(g_fOmniShadowFov) : (float)DEG2RAD_R(90.0f);
+            const float fov = bUnwrapedOmniDirectional ? (float)DEG2RAD_R(g_fOmniShadowFov) : (float)DEG2RAD_R(90.0f);
 
             FrustumPlanes[nS].SetMatrix(Matrix34(matRot, vPos));
-            FrustumPlanes[nS].SetFrustum(nTexSize, nTexSize, fFOV, fNearDist, fFarDist);
+            FrustumPlanes[nS].SetFrustum(nTexSize, nTexSize, fov, fNearDist, fFarDist);
         }
     }
 

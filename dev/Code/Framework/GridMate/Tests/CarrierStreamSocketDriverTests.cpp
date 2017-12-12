@@ -164,7 +164,7 @@ public:
 
 namespace UnitTest
 {
-    class CarrierStreamBasicTest
+    class Integ_CarrierStreamBasicTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
     {
@@ -178,7 +178,7 @@ namespace UnitTest
 #endif // AZ_SOCKET_IPV6_SUPPORT
 
             CarrierStreamCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier test!");
 
@@ -322,7 +322,7 @@ namespace UnitTest
         }
     };
 
-    class CarrierStreamAsyncHandshakeTest
+    class Integ_CarrierStreamAsyncHandshakeTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
     {
@@ -364,7 +364,7 @@ namespace UnitTest
         void run()
         {
             CarrierStreamCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier test!");
             clientCarrierDesc.m_driver = CreateDriverForJoin(clientCarrierDesc);
@@ -454,124 +454,126 @@ namespace UnitTest
         }
     };
 
-    class CarrierStreamStressTest
+    class Integ_CarrierStreamStressTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
+        , public ::testing::Test
     {
     public:
-        void run()
-        {
-            CarrierStreamCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
-
-            string str("Hello this is a carrier stress test!");
-
-            clientCarrierDesc.m_enableDisconnectDetection = false;
-            serverCarrierDesc.m_enableDisconnectDetection = false;
-            clientCarrierDesc.m_threadUpdateTimeMS = 5;
-            serverCarrierDesc.m_threadUpdateTimeMS = 5;
-            clientCarrierDesc.m_port = 4427;
-            serverCarrierDesc.m_port = 4430;
-
-            clientCarrierDesc.m_driver = CreateDriverForJoin(clientCarrierDesc);
-            serverCarrierDesc.m_driver = CreateDriverForHost(serverCarrierDesc);
-
-            Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
-            clientCB.Activate(clientCarrier, clientCarrierDesc.m_driver);
-
-            Carrier* serverCarrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
-            serverCB.Activate(serverCarrier, serverCarrierDesc.m_driver);
-
-            // stream socket driver has explicit connection calls
-            const char* targetAddress = "127.0.0.1";
-            static_cast<StreamSocketDriver*>(serverCarrierDesc.m_driver)->StartListen(100);
-            auto serverName = static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->IPPortToAddress(targetAddress, serverCarrierDesc.m_port);
-            auto serverAddr = static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->CreateDriverAddress(serverName);
-            static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->ConnectTo(AZStd::static_pointer_cast<SocketDriverAddress>(serverAddr));
-
-            //////////////////////////////////////////////////////////////////////////
-            // Test carriers [0 is server, 1 is client]
-            char serverBuffer[kMaxPacketSize];
-
-            ConnectionID connId = InvalidConnectionID;
-            int numUpdates = 0;
-            int numSend = 0;
-            int numRecv = 0;
-            int numUpdatesLastPrint = 0;
-            while (numRecv < 70000)
-            {
-                // Client
-                if (connId == InvalidConnectionID)
-                {
-                    connId = clientCarrier->Connect(targetAddress, serverCarrierDesc.m_port);
-                    AZ_TEST_ASSERT(connId != InvalidConnectionID);
-                }
-                else
-                {
-                    if (connId != AllConnections && clientCB.m_connectionID == connId)
-                    {
-                        clientCarrier->Send(str.c_str(), static_cast<unsigned>(str.length() + 1), clientCB.m_connectionID);
-                        numSend++;
-                    }
-                }
-
-                // Server
-                if (serverCB.m_connectionID != InvalidConnectionID)
-                {
-                    AZ_TEST_ASSERT(serverCB.m_incommingConnectionID == serverCB.m_connectionID);
-
-                    Carrier::ReceiveResult result;
-                    while ((result = serverCarrier->Receive(serverBuffer, AZ_ARRAY_SIZE(serverBuffer), serverCB.m_connectionID)).m_state == Carrier::ReceiveResult::RECEIVED)
-                    {
-                        AZ_TEST_ASSERT(memcmp(str.c_str(), serverBuffer, str.length()) == 0);
-                        numRecv++;
-                    }
-                }
-
-                serverCarrier->Update();
-                clientCarrier->Update();
-
-                if ((clientCB.m_disconnectID != InvalidConnectionID && serverCB.m_disconnectID != InvalidConnectionID) ||
-                    clientCB.m_errorCode != -1 || serverCB.m_errorCode != -1)
-                {
-                    break;
-                }
-
-                if (numUpdates - numUpdatesLastPrint == 5000)
-                {
-                    numUpdatesLastPrint = numUpdates;
-                    AZ_Printf("GridMate", "numSend:%d numRecv:%d\n", numSend, numRecv);
-
-                    // check statistics
-                    Carrier::Statistics clientStats, clientStatsLifeTime, clientStatsLastSecond;
-                    Carrier::Statistics serverStats, serverStatsLifeTime, serverStatsLastSecond;
-                    clientCarrier->QueryStatistics(clientCB.m_connectionID, &clientStatsLastSecond, &clientStatsLifeTime);
-                    serverCarrier->QueryStatistics(serverCB.m_connectionID, &serverStatsLastSecond, &serverStatsLifeTime);
-
-                    clientStats = clientStatsLifeTime;
-                    clientStats.m_rtt = (clientStats.m_rtt + clientStatsLastSecond.m_rtt) * .5f;
-                    clientStats.m_packetSend += clientStatsLastSecond.m_packetSend;
-                    clientStats.m_dataSend += clientStatsLastSecond.m_dataSend;
-
-                    serverStats = serverStatsLifeTime;
-                    serverStats.m_rtt = (serverStats.m_rtt + serverStatsLastSecond.m_rtt) * .5f;
-                    serverStats.m_packetSend += serverStatsLastSecond.m_packetSend;
-                    serverStats.m_dataSend += serverStatsLastSecond.m_dataSend;
-
-                    AZ_Printf("GridMate", "Server rtt %.2f ms numPkgSent %d dataSend %d\n", serverStats.m_rtt, serverStats.m_packetSend, serverStats.m_dataSend);
-                    AZ_Printf("GridMate", "Client rtt %.2f ms numPkgSent %d dataSend %d\n", clientStats.m_rtt, clientStats.m_packetSend, clientStats.m_dataSend);
-                }
-
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(2));
-                numUpdates++;
-            }
-            DefaultCarrier::Destroy(clientCarrier);
-            DefaultCarrier::Destroy(serverCarrier);
-            //////////////////////////////////////////////////////////////////////////
-        }
     };
 
-    class CarrierStreamTest
+    TEST_F(Integ_CarrierStreamStressTest, Stress_Test)
+    {
+        CarrierStreamCallbacksHandler clientCB, serverCB;
+        UnitTest::TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
+
+        string str("Hello this is a carrier stress test!");
+
+        clientCarrierDesc.m_enableDisconnectDetection = /*false*/ true;
+        serverCarrierDesc.m_enableDisconnectDetection = /*false*/ true;
+        clientCarrierDesc.m_threadUpdateTimeMS = 5;
+        serverCarrierDesc.m_threadUpdateTimeMS = 5;
+        clientCarrierDesc.m_port = 4427;
+        serverCarrierDesc.m_port = 4430;
+
+        clientCarrierDesc.m_driver = CreateDriverForJoin(clientCarrierDesc);
+        serverCarrierDesc.m_driver = CreateDriverForHost(serverCarrierDesc);
+
+        Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
+        clientCB.Activate(clientCarrier, clientCarrierDesc.m_driver);
+
+        Carrier* serverCarrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
+        serverCB.Activate(serverCarrier, serverCarrierDesc.m_driver);
+
+        // stream socket driver has explicit connection calls
+        const char* targetAddress = "127.0.0.1";
+        static_cast<StreamSocketDriver*>(serverCarrierDesc.m_driver)->StartListen(100);
+        auto serverName = static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->IPPortToAddress(targetAddress, serverCarrierDesc.m_port);
+        auto serverAddr = static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->CreateDriverAddress(serverName);
+        static_cast<StreamSocketDriver*>(clientCarrierDesc.m_driver)->ConnectTo(AZStd::static_pointer_cast<SocketDriverAddress>(serverAddr));
+
+        //////////////////////////////////////////////////////////////////////////
+        // Test carriers [0 is server, 1 is client]
+        char serverBuffer[kMaxPacketSize];
+
+        ConnectionID connId = InvalidConnectionID;
+        int numUpdates = 0;
+        int numSend = 0;
+        int numRecv = 0;
+        int numUpdatesLastPrint = 0;
+        while (numRecv < 70000)
+        {
+            // Client
+            if (connId == InvalidConnectionID)
+            {
+                connId = clientCarrier->Connect(targetAddress, serverCarrierDesc.m_port);
+                AZ_TEST_ASSERT(connId != InvalidConnectionID);
+            }
+            else
+            {
+                if (connId != AllConnections && clientCB.m_connectionID == connId)
+                {
+                    clientCarrier->Send(str.c_str(), static_cast<unsigned>(str.length() + 1), clientCB.m_connectionID);
+                    numSend++;
+                }
+            }
+
+            // Server
+            if (serverCB.m_connectionID != InvalidConnectionID)
+            {
+                AZ_TEST_ASSERT(serverCB.m_incommingConnectionID == serverCB.m_connectionID);
+
+                Carrier::ReceiveResult result;
+                while ((result = serverCarrier->Receive(serverBuffer, AZ_ARRAY_SIZE(serverBuffer), serverCB.m_connectionID)).m_state == Carrier::ReceiveResult::RECEIVED)
+                {
+                    AZ_TEST_ASSERT(memcmp(str.c_str(), serverBuffer, str.length()) == 0);
+                    numRecv++;
+                }
+            }
+
+            serverCarrier->Update();
+            clientCarrier->Update();
+
+            if ((clientCB.m_disconnectID != InvalidConnectionID && serverCB.m_disconnectID != InvalidConnectionID) ||
+                clientCB.m_errorCode != -1 || serverCB.m_errorCode != -1)
+            {
+                break;
+            }
+
+            if (numUpdates - numUpdatesLastPrint == 5000)
+            {
+                numUpdatesLastPrint = numUpdates;
+                AZ_Printf("GridMate", "numSend:%d numRecv:%d\n", numSend, numRecv);
+
+                // check statistics
+                Carrier::Statistics clientStats, clientStatsLifeTime, clientStatsLastSecond;
+                Carrier::Statistics serverStats, serverStatsLifeTime, serverStatsLastSecond;
+                clientCarrier->QueryStatistics(clientCB.m_connectionID, &clientStatsLastSecond, &clientStatsLifeTime);
+                serverCarrier->QueryStatistics(serverCB.m_connectionID, &serverStatsLastSecond, &serverStatsLifeTime);
+
+                clientStats = clientStatsLifeTime;
+                clientStats.m_rtt = (clientStats.m_rtt + clientStatsLastSecond.m_rtt) * .5f;
+                clientStats.m_packetSend += clientStatsLastSecond.m_packetSend;
+                clientStats.m_dataSend += clientStatsLastSecond.m_dataSend;
+
+                serverStats = serverStatsLifeTime;
+                serverStats.m_rtt = (serverStats.m_rtt + serverStatsLastSecond.m_rtt) * .5f;
+                serverStats.m_packetSend += serverStatsLastSecond.m_packetSend;
+                serverStats.m_dataSend += serverStatsLastSecond.m_dataSend;
+
+                AZ_Printf("GridMate", "Server rtt %.2f ms numPkgSent %d dataSend %d\n", serverStats.m_rtt, serverStats.m_packetSend, serverStats.m_dataSend);
+                AZ_Printf("GridMate", "Client rtt %.2f ms numPkgSent %d dataSend %d\n", clientStats.m_rtt, clientStats.m_packetSend, clientStats.m_dataSend);
+            }
+
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(2));
+            numUpdates++;
+        }
+        DefaultCarrier::Destroy(clientCarrier);
+        DefaultCarrier::Destroy(serverCarrier);
+        //////////////////////////////////////////////////////////////////////////
+    }
+
+    class Integ_CarrierStreamTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
     {
@@ -593,7 +595,7 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
 
             CarrierStreamCallbacksHandler clientCB, serverCB;
-            CarrierDesc serverCarrierDesc, clientCarrierDesc;
+            TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_driver = CreateDriverForJoin(clientCarrierDesc, 16 * 1024, 16 * 1024, kMaxPacketSize);
@@ -668,21 +670,21 @@ namespace UnitTest
                                 case Carrier::ReceiveResult::NO_MESSAGE_TO_RECEIVE:
                                 {
                                     // make sure the query return 0 if we have no message to receive
-                                    AZ_TEST_ASSERT(queryBufferSize == 0);     
+                                    AZ_TEST_ASSERT(queryBufferSize == 0);
                                     break;
-                                } 
+                                }
                                 case Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE:
                                 {
                                     // we should have a message waiting if we fail to receive it
                                     AZ_TEST_ASSERT(queryBufferSize > 0);
                                     break;
-                                } 
+                                }
                                 case Carrier::ReceiveResult::RECEIVED:
                                 {
                                     // we have small buffer we should never be able to receive a message
                                     AZ_TEST_ASSERT(false);
                                     break;
-                                } 
+                                }
                                 default:
                                     break;
                             }
@@ -773,7 +775,7 @@ namespace UnitTest
         }
     };
 
-    class CarrierStreamDisconnectDetectionTest
+    class Integ_CarrierStreamDisconnectDetectionTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
     {
@@ -784,14 +786,14 @@ namespace UnitTest
             DefaultSimulator clientSimulator;
             clientSimulator.SetOutgoingPacketLoss(2, 2); // drop 50% packets
 
-            CarrierDesc serverCarrierDesc;
+            TestCarrierDesc serverCarrierDesc;
             serverCarrierDesc.m_port = 4432;
             serverCarrierDesc.m_enableDisconnectDetection = true;
             serverCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.4f; // disconnect once hit 40% loss
             serverCarrierDesc.m_disconnectDetectionRttThreshold = 50; // disconnect once hit 50 msec rtt
             serverCarrierDesc.m_driver = CreateDriverForHost(serverCarrierDesc);
 
-            CarrierDesc clientCarrierDesc = serverCarrierDesc;
+            TestCarrierDesc clientCarrierDesc = serverCarrierDesc;
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_simulator = &clientSimulator;
             clientCarrierDesc.m_driver = CreateDriverForJoin(clientCarrierDesc);
@@ -863,7 +865,7 @@ namespace UnitTest
         }
     };
 
-    class CarrierStreamMultiChannelTest
+    class Integ_CarrierStreamMultiChannelTest
         : public GridMateMPTestFixture
         , protected SocketDriverSupplier
     {
@@ -895,7 +897,7 @@ namespace UnitTest
             for (int i = 0; i < nCarriers; ++i)
             {
                 // Create carriers
-                CarrierDesc desc;
+                TestCarrierDesc desc;
                 desc.m_enableDisconnectDetection = true;
                 desc.m_port = basePort + i;
                 if (i == c1)
@@ -918,7 +920,7 @@ namespace UnitTest
             {
                 if (k == c1)
                 {
-                    static_cast<StreamSocketDriver*>(drivers[k])->StartListen(100); 
+                    static_cast<StreamSocketDriver*>(drivers[k])->StartListen(100);
                 }
                 else
                 {
@@ -989,10 +991,9 @@ namespace UnitTest
 }
 
 GM_TEST_SUITE(CarrierStreamSuite)
-    GM_TEST(CarrierStreamBasicTest)
-    GM_TEST(CarrierStreamTest)
-    GM_TEST(CarrierStreamStressTest)
-    GM_TEST(CarrierStreamDisconnectDetectionTest)
-    GM_TEST(CarrierStreamAsyncHandshakeTest)
-    GM_TEST(CarrierStreamMultiChannelTest)
+    GM_TEST(Integ_CarrierStreamBasicTest)
+    GM_TEST(Integ_CarrierStreamTest)
+    GM_TEST(Integ_CarrierStreamDisconnectDetectionTest)
+    GM_TEST(Integ_CarrierStreamAsyncHandshakeTest)
+    GM_TEST(Integ_CarrierStreamMultiChannelTest)
 GM_TEST_SUITE_END()

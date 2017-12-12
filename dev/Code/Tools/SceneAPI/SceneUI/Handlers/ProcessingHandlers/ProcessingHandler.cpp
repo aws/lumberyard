@@ -18,8 +18,9 @@ namespace AZ
     {
         namespace SceneUI
         {
-            ProcessingHandler::ProcessingHandler(QObject* parent)
+            ProcessingHandler::ProcessingHandler(Uuid traceTag, QObject* parent)
                 : QObject(parent)
+                , m_traceTag(traceTag)
             {
             }
         }

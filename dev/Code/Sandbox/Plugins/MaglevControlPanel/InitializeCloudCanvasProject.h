@@ -61,8 +61,6 @@ public slots:
     void OnLearnMoreClicked();
     void SourceChangedAttemptCreate();
 
-    void OnProfileModelChanged();
-
     void SourceUpdatedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
     void SourceChangedInitializeProject(const QString& regionName, const QString& projectName, const QString& accessKey, const QString& secretKey);
 

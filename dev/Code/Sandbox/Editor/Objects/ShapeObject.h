@@ -175,9 +175,11 @@ protected:
 
     virtual void EndCreation();
 
+public:
     //! Update game area.
     virtual void UpdateGameArea(bool bRemove = false);
 
+protected:
     //overrided from CBaseObject.
     void InvalidateTM(int nWhyFlags);
     virtual bool ConvertFromObject(CBaseObject* pObject) override;

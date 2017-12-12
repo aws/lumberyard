@@ -34,7 +34,6 @@ enum
 CTerrainLayerTexGen::CTerrainLayerTexGen(const int resolution)
 {
     m_bLog = true;
-    m_waterLayer = NULL;
 
     Init(resolution);
 }
@@ -42,7 +41,6 @@ CTerrainLayerTexGen::CTerrainLayerTexGen(const int resolution)
 CTerrainLayerTexGen::CTerrainLayerTexGen()
 {
     m_bLog = true;
-    m_waterLayer = NULL;
 
     SSectorInfo si;
     GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
@@ -65,11 +63,6 @@ CTerrainLayerTexGen::~CTerrainLayerTexGen()
         CLayer* pLayer = GetLayer(i);
 
         pLayer->ReleaseTempResources();
-    }
-
-    if (m_waterLayer)
-    {
-        delete m_waterLayer;
     }
 }
 
@@ -196,20 +189,7 @@ bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRec
     {
         // Enable texturing.
         //////////////////////////////////////////////////////////////////////////
-        // Setup water layer.
-        if (bShowWater && m_waterLayer == NULL)
-        {
-            // Apply water level.
-            // Add a temporary water layer to the list
-            SLayerInfo li;
-            m_waterLayer = new CLayer;
-            m_waterLayer->LoadTexture(":/water.png", 128, 128);
-            m_waterLayer->SetLayerStart(0);
-            m_waterLayer->SetLayerEnd(waterLevel);
 
-            li.m_pLayer = m_waterLayer;
-            m_layers.push_back(li);
-        }
 
         ////////////////////////////////////////////////////////////////////////
         // Generate the layer masks
@@ -322,12 +302,9 @@ bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRec
                             // Blend the layer into the existing color, iBlend is the blend factor taken from the layer
                             int iBlendSrc = 255 - iBlend;
                             // WAT_EDIT
-                            *pTex = ((iBlendSrc * (*pTex & 0x000000FF)  +  (clr & 0x000000FF)        * iBlend) >> 8)      |
-                                (((iBlendSrc * (*pTex & 0x0000FF00) >>  8) + ((clr & 0x0000FF00) >>  8) * iBlend) >> 8) << 8 |
-                                (((iBlendSrc * (*pTex & 0x00FF0000) >> 16) + ((clr & 0x00FF0000) >> 16) * iBlend) >> 8) << 16;
-                            //*pTex = ((iBlendSrc * (*pTex & 0x00ff0000)    +  (clr & 0x00ff0000)        * iBlend) >> 8)      |
-                            //  (((iBlendSrc * (*pTex & 0x0000FF00) >>  8) + ((clr & 0x0000FF00) >>  8) * iBlend) >> 8) << 8 |
-                            //  (((iBlendSrc * (*pTex & 0x000000ff) >> 16) + ((clr & 0x000000ff) >> 16) * iBlend) >> 8) << 16;
+                            *pTex = RGB(((iBlendSrc * GetRValue(*pTex)) + (GetRValue(clr) * iBlend)) >> 8,
+                                        ((iBlendSrc * GetGValue(*pTex)) + (GetGValue(clr) * iBlend)) >> 8,
+                                        ((iBlendSrc * GetBValue(*pTex)) + (GetBValue(clr) * iBlend)) >> 8);
                         }
                         pTex++;
                     }

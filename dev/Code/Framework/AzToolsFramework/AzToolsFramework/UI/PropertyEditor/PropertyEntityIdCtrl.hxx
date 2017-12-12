@@ -31,83 +31,86 @@ class QPushButton;
 
 namespace AzToolsFramework
 {
-    class EntityIdQLabel;
+	class EntityIdQLabel;
 
-    //just a test to see how it would work to pop a dialog
+	//just a test to see how it would work to pop a dialog
 
-    class PropertyEntityIdCtrl
-        : public QWidget
+	class PropertyEntityIdCtrl 
+		: public QWidget
         , private EditorPickModeRequests::Bus::Handler
-    {
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(PropertyEntityIdCtrl, AZ::SystemAllocator, 0);
+	{
+		Q_OBJECT
+	public:
+		AZ_CLASS_ALLOCATOR(PropertyEntityIdCtrl, AZ::SystemAllocator, 0);
 
-        PropertyEntityIdCtrl(QWidget *pParent = NULL);
-        virtual ~PropertyEntityIdCtrl();
+		PropertyEntityIdCtrl(QWidget *pParent = NULL);
+		virtual ~PropertyEntityIdCtrl();
 
-        AZ::EntityId GetEntityId() const;
+		AZ::EntityId GetEntityId() const;
 
-        QWidget* GetFirstInTabOrder();
-        QWidget* GetLastInTabOrder();
-        void UpdateTabOrder();
+		QWidget* GetFirstInTabOrder();
+		QWidget* GetLastInTabOrder();
+		void UpdateTabOrder();
 
-        // QT overrides
-        virtual void dragEnterEvent(QDragEnterEvent* event) override;
-        virtual void dropEvent(QDropEvent* event) override;
-        virtual void dragLeaveEvent(QDragLeaveEvent* event) override;
+		// QT overrides
+		virtual void dragEnterEvent(QDragEnterEvent* event) override;
+		virtual void dropEvent(QDropEvent* event) override;
+		virtual void dragLeaveEvent(QDragLeaveEvent* event) override;
 
-        //////////////////////////////////////////////////////////////////////////
-        // EditorPickModeRequests::Bus::Handler
-        void StopObjectPickMode() override;
-        void OnPickModeSelect(AZ::EntityId /*id*/) override;
-        //////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		// EditorPickModeRequests::Bus::Handler
+		void StopObjectPickMode() override;
+		void OnPickModeSelect(AZ::EntityId /*id*/) override;
+		//////////////////////////////////////////////////////////////////////////
 
-        void SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices);
-        void SetIncompatibleServices(const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
-        void SetMismatchedServices(bool mismatchedServices);
+		void SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices);
+		void SetIncompatibleServices(const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
+		void SetMismatchedServices(bool mismatchedServices);
 
-        void SetAcceptedEntityContext(AzFramework::EntityContextId contextId);
+		void SetAcceptedEntityContext(AzFramework::EntityContextId contextId);
 
-    signals:
-        void OnEntityIdChanged(AZ::EntityId newEntityId);
+	signals:
+		void OnEntityIdChanged(AZ::EntityId newEntityId);
 
-        public slots:
-        void SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange);
+		void OnPickStart();
+		void OnPickComplete();
 
-    protected:
-        bool IsCorrectMimeData(const QMimeData* data) const;
-        AZ::EntityId EntityIdFromMimeData(const QMimeData &data) const;
-        void InitObjectPickMode();
+	public slots:
+		void SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride);
 
-        EntityIdQLabel* m_entityIdLabel;
-        QPushButton* m_pickButton;
-        QPushButton* m_clearButton;
-        AZStd::vector<AZ::ComponentServiceType> m_requiredServices;
-        AZStd::vector<AZ::ComponentServiceType> m_incompatibleServices;
-        AzFramework::EntityContextId m_acceptedEntityContextId;
-    };
+	protected:
+		bool IsCorrectMimeData(const QMimeData* data) const;
+		AZ::EntityId EntityIdFromMimeData(const QMimeData &data) const;
+                void InitObjectPickMode();
+		
+		EntityIdQLabel* m_entityIdLabel;
+		QPushButton* m_pickButton;
+		QPushButton* m_clearButton;
+		AZStd::vector<AZ::ComponentServiceType> m_requiredServices;
+		AZStd::vector<AZ::ComponentServiceType> m_incompatibleServices;
+		AzFramework::EntityContextId m_acceptedEntityContextId;
+	};
 
-    class EntityIdPropertyHandler : QObject, public PropertyHandler<AZ::EntityId, PropertyEntityIdCtrl>
-    {
-        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(EntityIdPropertyHandler, AZ::SystemAllocator, 0);
+	class EntityIdPropertyHandler : QObject, public PropertyHandler<AZ::EntityId, PropertyEntityIdCtrl>
+	{
+		// this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
+		Q_OBJECT
+	public:
+		AZ_CLASS_ALLOCATOR(EntityIdPropertyHandler, AZ::SystemAllocator, 0);
 
-        virtual AZ::u32 GetHandlerName(void) const override { return AZ::Edit::UIHandlers::EntityId; }
-        virtual bool IsDefaultHandler() const override { return true; }
-        virtual QWidget* GetFirstInTabOrder(PropertyEntityIdCtrl* widget) override { return widget->GetFirstInTabOrder(); }
-        virtual QWidget* GetLastInTabOrder(PropertyEntityIdCtrl* widget) override { return widget->GetLastInTabOrder(); }
-        virtual void UpdateWidgetInternalTabbing(PropertyEntityIdCtrl* widget) override { widget->UpdateTabOrder(); }
+		virtual AZ::u32 GetHandlerName(void) const override  { return AZ::Edit::UIHandlers::EntityId; }
+		virtual bool IsDefaultHandler() const override { return true; }
+		virtual QWidget* GetFirstInTabOrder(PropertyEntityIdCtrl* widget) override { return widget->GetFirstInTabOrder(); }
+		virtual QWidget* GetLastInTabOrder(PropertyEntityIdCtrl* widget) override { return widget->GetLastInTabOrder(); }
+		virtual void UpdateWidgetInternalTabbing(PropertyEntityIdCtrl* widget) override { widget->UpdateTabOrder(); }
 
-        virtual QWidget* CreateGUI(QWidget *pParent) override;
-        virtual void ConsumeAttribute(PropertyEntityIdCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
-        virtual void WriteGUIValuesIntoProperty(size_t index, PropertyEntityIdCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        virtual bool ReadValuesIntoGUI(size_t index, PropertyEntityIdCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
-    };
+		virtual QWidget* CreateGUI(QWidget *pParent) override;
+		virtual void ConsumeAttribute(PropertyEntityIdCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+		virtual void WriteGUIValuesIntoProperty(size_t index, PropertyEntityIdCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
+		virtual bool ReadValuesIntoGUI(size_t index, PropertyEntityIdCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
+	};
 
-    void RegisterEntityIdPropertyHandler();
+	void RegisterEntityIdPropertyHandler();
 };
 
 #endif

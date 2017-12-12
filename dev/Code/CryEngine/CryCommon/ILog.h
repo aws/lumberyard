@@ -11,12 +11,16 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// In Mac, including ILog without including platform.h first fails because platform.h 
+// includes CryThread.h which includes CryThread_pthreads.h which uses ILog. 
+// So plaform.h needs the contents of ILog.h.
+// By including platform.h outside of the guard, we give platform.h the right include order
+#include <platform.h>
+
 #ifndef CRYINCLUDE_CRYCOMMON_ILOG_H
 #define CRYINCLUDE_CRYCOMMON_ILOG_H
 #pragma once
 
-
-#include <platform.h>
 #include <IMiniLog.h> // <> required for Interfuscator
 
 // enable this define to support log scopes to provide more context information for log lines

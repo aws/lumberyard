@@ -24,10 +24,21 @@ class CAnimStringTable
     : public IAnimStringTable
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimStringTable, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimStringTable, "{B7C435CF-A763-41B5-AA1E-3BA2CD4232B2}", IAnimStringTable);
+
     CAnimStringTable();
     ~CAnimStringTable();
 
-    virtual const char* Add(const char* p);
+    const char* Add(const char* p) override;
+
+    //////////////////////////////////////////////////////////////////////////
+    // for intrusive_ptr support
+    void add_ref() override;
+    void release() override;
+    //////////////////////////////////////////////////////////////////////////
+
+    static void Reflect(AZ::SerializeContext* serializeContext) {}
 
 private:
     struct Page
@@ -43,6 +54,7 @@ private:
     CAnimStringTable& operator = (const CAnimStringTable&);
 
 private:
+    int m_refCount;
     Page* m_pLastPage;
     char* m_pEnd;
     TableMap m_table;
@@ -52,7 +64,11 @@ class CTrackEventTrack
     : public TAnimTrack<IEventKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CTrackEventTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CTrackEventTrack, "{3F659864-D66B-4211-93FB-1401EF4614D4}", IAnimTrack);
+
     explicit CTrackEventTrack(IAnimStringTable* pStrings);
+    CTrackEventTrack();     // default constr needed for AZ Serialization
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides of IAnimTrack.
@@ -60,14 +76,12 @@ public:
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(IEventKey& key, XmlNodeRef& keyNode, bool bLoading);
     void SetKey(int index, IKey* key);
+    void InitPostLoad(IAnimSequence* sequence) override;
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
-    _smart_ptr<IAnimStringTable> m_pStrings;
+    AZStd::intrusive_ptr< IAnimStringTable> m_pStrings;
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_TRACKEVENTTRACK_H

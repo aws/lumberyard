@@ -84,6 +84,8 @@ protected:
     void Activate(int index);
     void Select(int num);
 
+    CDataBaseDialogPage* GetPageFromTab(QWidget* widget);
+
     // prevent sending the metrics event when the 
     // Database View is just open
     bool m_isReady = false;

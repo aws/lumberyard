@@ -58,6 +58,67 @@ namespace AZ
     }
 
     //=========================================================================
+    // SetConfiguration
+    //=========================================================================
+    bool Component::SetConfiguration(const ComponentConfig& config)
+    {
+        // Components cannot be configured while activated.
+        if (!m_entity || (m_entity->GetState() <= Entity::State::ES_INIT))
+        {
+            if (ReadInConfig(&config))
+            {
+                return true;
+            }
+
+            AZ_Warning("System", false, "Configuration type '%s' %s incompatible with component type '%s' %s.",
+                config.RTTI_GetTypeName(), config.RTTI_GetType().ToString<AZStd::string>().c_str(),
+                RTTI_GetTypeName(), RTTI_GetType().ToString<AZStd::string>().c_str());
+        }
+        else
+        {
+            AZ_Warning("System", false, "Component cannot be configured while activated!");
+        }
+        return false;
+    }
+
+    //=========================================================================
+    // GetConfiguration
+    //=========================================================================
+    bool Component::GetConfiguration(ComponentConfig& outConfig) const
+    {
+        if (WriteOutConfig(&outConfig))
+        {
+            return true;
+        }
+
+        AZ_Warning("System", false, "Configuration type '%s' %s incompatible with component type '%s' %s.",
+            outConfig.RTTI_GetTypeName(), outConfig.RTTI_GetType().ToString<AZStd::string>().c_str(),
+            RTTI_GetTypeName(), RTTI_GetType().ToString<AZStd::string>().c_str());
+
+        return false;
+    }
+
+    //=========================================================================
+    // ReadInConfig
+    //=========================================================================
+    bool Component::ReadInConfig(const ComponentConfig*)
+    {
+        AZ_Warning("System", false, "ReadInConfig() is not implemented for component type '%s' %s",
+            RTTI_GetTypeName(), RTTI_GetType().ToString<AZStd::string>().c_str());
+        return false;
+    }
+
+    //=========================================================================
+    // WriteOutConfig
+    //=========================================================================
+    bool Component::WriteOutConfig(ComponentConfig*) const
+    {
+        AZ_Warning("System", false, "WriteOutConfig() is not implemented for component type '%s' %s",
+            RTTI_GetTypeName(), RTTI_GetType().ToString<AZStd::string>().c_str());
+        return false;
+    }
+
+    //=========================================================================
     // Reflect
     //=========================================================================
     void Component::SetEntity(Entity* entity)

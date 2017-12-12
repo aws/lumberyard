@@ -274,6 +274,7 @@ namespace AZStd
         typedef unordered_multimap<Key, MappedType, Hasher, EqualKey, Allocator> this_type;
         typedef hash_table< Internal::UnorderedMapTableTraits<Key, MappedType, Hasher, EqualKey, Allocator, true> > base_type;
     public:
+        using base_type::insert;
         typedef typename base_type::traits_type traits_type;
 
         typedef typename base_type::key_type    key_type;

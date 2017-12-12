@@ -14,12 +14,13 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
+#include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include <IMovieSystem.h>
 
 #include "SequenceAgentComponentBus.h"
 
-namespace LmbrCentral
+namespace Maestro
 {
     /*!
     * EditorSequenceAgentComponentRequests EBus Interface
@@ -59,4 +60,4 @@ namespace LmbrCentral
     };
 
     using EditorSequenceAgentComponentRequestBus = AZ::EBus<EditorSequenceAgentComponentRequests>;
-} // namespace LmbrCentral
+} // namespace Maestro

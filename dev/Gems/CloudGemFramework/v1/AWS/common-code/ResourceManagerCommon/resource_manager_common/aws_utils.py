@@ -205,7 +205,8 @@ RESOURCE_ARN_PATTERNS = {
     'AWS::S3::Bucket': 'arn:aws:s3:::{resource_name}',
     'Custom::CognitoUserPool': 'arn:aws:cognito-idp:{region}:{account_id}:userpool/{resource_name}',
     'Custom::ServiceApi': 'arn:aws:execute-api:{region}:{account_id}:{resource_name}',
-    'Custom::Polly': "*"
+    'Custom::Polly': "*",
+    'Custom::Lex': '*'
 }
 
 
@@ -226,7 +227,7 @@ def get_resource_arn(stack_arn, resource_type, resource_name):
 
     pattern = RESOURCE_ARN_PATTERNS.get(resource_type, None)
     if pattern is None:
-        raise RuntimeError('Unsupported ARN mapping for resource type {} on resource {}. To add support for additional resource types, add an entry to RESOURCE_ARN_PATTERNS in project-code\discovery_utils.py.'.format(resource_type, resource_name))
+        raise RuntimeError('Unsupported ARN mapping for resource type {} on resource {}. To add support for additional resource types, add an entry to RESOURCE_ARN_PATTERNS in {}.'.format(resource_type, resource_name, __file__))
 
     return pattern.format(
         region=get_region_from_stack_arn(stack_arn),

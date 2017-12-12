@@ -885,12 +885,12 @@ namespace
         struct SPointGenerator
         {
         public:
-            SPointGenerator(const SVolumeDataSrcB& src, unsigned int size, Points& pts)
-                : m_src(src)
-                , m_pts(pts)
+            SPointGenerator(const SVolumeDataSrcB& _src, unsigned int _size, Points& _pts)
+                : m_src(_src)
+                , m_pts(_pts)
                 , m_cache()
             {
-                size_t cacheSize = (src.m_width * src.m_height * src.m_depth + 7) >> 3;
+                size_t cacheSize = (m_src.m_width * m_src.m_height * m_src.m_depth + 7) >> 3;
                 m_cache.resize(cacheSize);
 
                 for (size_t i = 0; i < cacheSize; ++i)
@@ -898,9 +898,9 @@ namespace
                     m_cache[i] = 0;
                 }
 
-                if (Traverse(0, 0, 0, size))
+                if (Traverse(0, 0, 0, _size))
                 {
-                    PushPts(0, 0, 0, size);
+                    PushPts(0, 0, 0, _size);
                 }
             }
 

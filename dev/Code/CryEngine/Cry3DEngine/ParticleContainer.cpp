@@ -81,7 +81,7 @@ CParticleContainer::CParticleContainer(CParticleContainer* pParent, CParticleEmi
     OnEffectChange();
 
     m_nChildFlags = 0;
-    m_bUnused = false;
+    m_bUsed = true;
     m_fMaxParticleFullLife = m_pEffect->CalcMaxParticleFullLife(m_pMainEmitter->GetPreviewMode());
 
     m_nNeedJobUpdate = 0;
@@ -1454,5 +1454,17 @@ void CParticleContainer::FillFadeParticleSortArray(SParticleUpdateContext& conte
         }
         pElem++;
         ++pPart;
+    }
+}
+
+void CParticleContainer::SetUsed(bool used)
+{
+    m_bUsed = used;
+
+    // If the container is used, recursively set the parent container to be used,
+    // which will prevent the emitter to erase the parent container.
+    if (m_bUsed && m_pParentContainer)
+    {
+        m_pParentContainer->SetUsed(m_bUsed);
     }
 }

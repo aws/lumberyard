@@ -28,12 +28,7 @@ namespace Input
     /// Input handles raw input from any source and outputs Pressed, Held, and Released input events
     class Input
         : public InputSubComponent
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         , protected AzFramework::InputChannelEventListener
-#else
-        , protected AZ::InputNotificationBus::Handler
-        , protected AZ::TickBus::Handler
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
         , protected AZ::GlobalInputRecordRequestBus::Handler
         , protected AZ::InputRecordRequestBus::Handler
     {
@@ -44,7 +39,7 @@ namespace Input
         static void Reflect(AZ::ReflectContext* reflection);
 
         //////////////////////////////////////////////////////////////////////////
-        // IInputSubComponent
+        // InputSubComponent
         void Activate(const AZ::InputEventNotificationId& eventNotificationId) override;
         void Deactivate(const AZ::InputEventNotificationId& eventNotificationId) override;
 
@@ -63,28 +58,14 @@ namespace Input
         // AZ::EditableInputRecord::Handler
         void SetInputRecord(const AZ::EditableInputRecord& newInputRecord) override;
 
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::InputChannelEventListener
         bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
-#else
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::InputNotificationBus::Handler
-        void OnNotifyInputEvent(const SInputEvent& completeInputEvent) override;
-
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Tickbus::Handler
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
         //////////////////////////////////////////////////////////////////////////
         // Non Reflected Data
         AZ::InputEventNotificationId m_outgoingBusId;
-#if !defined(AZ_FRAMEWORK_INPUT_ENABLED)
-        float m_lastKnownEventValue = 0.f;
-#else
         bool m_wasPressed = false;
-#endif // !defined(AZ_FRAMEWORK_INPUT_ENABLED)
 
         //////////////////////////////////////////////////////////////////////////
         // Reflected Data

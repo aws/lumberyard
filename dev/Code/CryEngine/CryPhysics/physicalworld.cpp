@@ -3861,9 +3861,11 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
                 CPhysArea* pArea, * pNextArea;
                 for (pArea = m_pActiveArea, m_pActiveArea = 0; pArea; pArea = pNextArea)
                 {
-                    pArea->Update(time_interval);
+                    // Update the chain to remove this item so it can add itself back
                     pNextArea = pArea->m_nextActive;
                     pArea->m_nextActive = pArea;
+                    // Run the update now.
+                    pArea->Update(time_interval);
                 }
             }
             // flush deleted areas

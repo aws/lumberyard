@@ -4,7 +4,9 @@
             "Source/EditorCameraComponent.cpp",
             "Source/EditorCameraComponent.h",
             "Source/CameraEditorSystemComponent.h",
-            "Source/CameraEditorSystemComponent.cpp"
+            "Source/CameraEditorSystemComponent.cpp",
+            "Source/ViewportCameraSelectorWindow.h",
+            "Source/ViewportCameraSelectorWindow.cpp"
         ]
     }
 }

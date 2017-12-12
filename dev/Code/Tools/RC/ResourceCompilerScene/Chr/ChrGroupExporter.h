@@ -16,6 +16,7 @@
 #include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
 
 struct IConvertContext;
+class CContentCGF;
 
 namespace AZ
 {
@@ -27,7 +28,7 @@ namespace AZ
             : public SceneAPI::Events::CallProcessorBinder
         {
         public:
-            explicit ChrGroupExporter(IAssetWriter* writer, IConvertContext* convertContext);
+            ChrGroupExporter(IAssetWriter* writer, IConvertContext* convertContext);
             ~ChrGroupExporter() override = default;
 
             SceneAPI::Events::ProcessingResult ProcessContext(ChrGroupExportContext& context) const;

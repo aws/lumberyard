@@ -48,6 +48,8 @@ private:
     GUIApplicationManager* m_guiApplicationManager;
     RCJobSortFilterProxyModel* m_sortFilterProxy;
     QPointer<AssetProcessor::LogPanel> m_loggingPanel;
+    int m_processJobsCount = 0;
+    int m_createJobCount = 0;
 
     void OnProxyIPEditingFinished();
     void OnProxyConnectChanged(int state);

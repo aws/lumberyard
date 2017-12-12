@@ -61,7 +61,7 @@
 /**
  * \def AZSTD_NO_CHECKED_ITERATORS_IN_MULTI_THREADS
  * This define must be defined if you do not want to use containers in different threads and have AZSTD_CHECKED_ITERATORS enabled.
- * By default this is enabled for Windows/X360/PS3 when AZSTD_HAS_CHECKED_ITERATORS is enabled. This is used for debugging only, you still need to do the container access
+ * By default this is enabled for Windows when AZSTD_HAS_CHECKED_ITERATORS is enabled. This is used for debugging only, you still need to do the container access
  * synchronization yourself or use provided sync classes like concurent_queue, concurent_prioriry_queue, etc.
  */
 #if !defined(AZSTD_NO_CHECKED_ITERATORS_IN_MULTI_THREADS) && defined(AZSTD_HAS_CHECKED_ITERATORS)

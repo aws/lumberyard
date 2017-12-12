@@ -958,8 +958,6 @@ void SplineWidget::DrawKeys(QPainter* painter, int splineIndex, float startTime,
     const QPen pOldPen = painter->pen();
     painter->setPen(Qt::black);
 
-    int lastKeyX = m_rcSpline.left() - 100;
-
     int i;
 
     int nTotalNumberOfDimensions(0);
@@ -970,7 +968,7 @@ void SplineWidget::DrawKeys(QPainter* painter, int splineIndex, float startTime,
     {
         // Why is this here? Not even god knows...
         //for (i = 0; i < pSpline->GetKeyCount() && pSpline->GetKeyTime(i) < startTime; ++i);
-        int lastKeyX = m_rcSpline.left() - 100;
+        QPoint lastKeyPt;
 
         int numKeys = pSpline->GetKeyCount();
         for (i = 0; i < numKeys; i++)
@@ -1003,7 +1001,7 @@ void SplineWidget::DrawKeys(QPainter* painter, int splineIndex, float startTime,
                 continue;
             }
 
-            if (abs(pt.x() - lastKeyX) < 4)
+            if (i > 0 && (pt - lastKeyPt).manhattanLength() < 4)
             {
                 continue;
             }
@@ -1022,7 +1020,7 @@ void SplineWidget::DrawKeys(QPainter* painter, int splineIndex, float startTime,
             // Draw this key.
             painter->drawRect(QRect(QPoint(pt.x() - m_nKeyDrawRadius, pt.y() - m_nKeyDrawRadius), QPoint(pt.x() + m_nKeyDrawRadius - 1, pt.y() + m_nKeyDrawRadius - 1)));
 
-            lastKeyX = pt.x();
+            lastKeyPt = pt;
 
             painter->setBrush(pOldBrush);
         }
@@ -1420,7 +1418,7 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
                     {
                         time = pSpline->GetKeyTime(i);
                         pSpline->GetKeyValue(i, afValue);
-                        tipText = QStringLiteral("t=%1  v=%2").arg(time * m_fTooltipScaleX, 0, 'f', 3).arg(afValue[nCurrentDimension] * m_fTooltipScaleY, 2, 'f', 3);
+                        tipText = QStringLiteral("t=%1  v=%2").arg(time * m_fTooltipScaleX, 0, 'f', 3).arg(afValue[nCurrentDimension] * m_fTooltipScaleY, 0, 'f', 3);
                         boFoundTheSelectedKey = true;
                         break;
                     }
@@ -2367,8 +2365,10 @@ void AbstractSplineWidget::RemoveKey(ISplineInterpolator* pSpline, int nKey)
     m_pHitSpline = 0;
     m_pHitDetailSpline = 0;
     m_nHitKeyIndex = -1;
-    pSpline->RemoveKey(nKey);
-
+    if (nKey != -1)
+    {
+        pSpline->RemoveKey(nKey);
+    }
     SendNotifyEvent(SPLN_CHANGE);
     update();
 }

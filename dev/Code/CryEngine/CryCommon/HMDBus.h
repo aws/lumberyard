@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <IInput.h>
+#include <ISystem.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Transform.h>
 #include <IStereoRenderer.h>

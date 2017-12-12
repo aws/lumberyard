@@ -5,8 +5,9 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{890409f9-5895-4045-9b7c-f96f23e1e2e6}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>project_service.py</StartupFile>
-    <SearchPath>..\..\common-code\ResourceManagerCommon\;..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\</SearchPath>
+    <StartupFile>
+    </StartupFile>
+    <SearchPath>..\..\common-code\ResourceManagerCommon\;..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\LambdaService\;..\..\common-code\LambdaSettings\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
@@ -21,13 +22,18 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="project_service.py" />
+    <Compile Include="api\resource_info.py" />
+    <Compile Include="api\service_status.py" />
+    <Compile Include="api\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />
     <Content Include=".import">
       <SubType>Code</SubType>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="api\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

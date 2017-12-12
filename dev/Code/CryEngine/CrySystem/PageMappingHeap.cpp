@@ -20,8 +20,8 @@ namespace
 {
     struct DLMMapFindBest
     {
-        DLMMapFindBest(size_t requiredLength)
-            : requiredLength(requiredLength)
+        DLMMapFindBest(size_t size)
+            : requiredLength(size)
             , bestPosition(-1)
             , bestFragmentLength(INT_MAX)
         {

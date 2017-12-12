@@ -156,6 +156,7 @@ void UiCanvasAssetRefComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiCanvasRef.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiCanvasRef.png")
+                ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-ui-canvas-asset-ref.html")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
 
             editInfo->DataElement("SimpleAssetRef", &UiCanvasAssetRefComponent::m_canvasAssetRef,
@@ -173,16 +174,20 @@ void UiCanvasAssetRefComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasAssetRefBus>("UiCanvasAssetRefBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("LoadCanvas", &UiCanvasAssetRefBus::Events::LoadCanvas)
             ->Event("UnloadCanvas", &UiCanvasAssetRefBus::Events::UnloadCanvas);
 
         behaviorContext->EBus<UiCanvasRefBus>("UiCanvasRefBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetCanvas", &UiCanvasRefBus::Events::GetCanvas);
 
         behaviorContext->EBus<UiCanvasAssetRefNotificationBus>("UiCanvasAssetRefNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiCanvasAssetRefNotificationBusBehaviorHandler>();
 
         behaviorContext->EBus<UiCanvasRefNotificationBus>("UiCanvasRefNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiCanvasRefNotificationBusBehaviorHandler>();
     }
 }

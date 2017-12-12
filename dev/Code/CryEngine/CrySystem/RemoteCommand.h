@@ -209,7 +209,6 @@ class CRemoteCommandServer
     : public IRemoteCommandServer
     , public CryRunnable
 {
-    static const uint32 kThreadAffinityDurango = 5;
 
 protected:
     // Wrapped commands

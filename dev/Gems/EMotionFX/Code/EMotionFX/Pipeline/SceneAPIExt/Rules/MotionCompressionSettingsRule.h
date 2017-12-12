@@ -11,39 +11,41 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMotionCompressionSettingsRule.h>
 #include <AzCore/Memory/Memory.h>
+#include <SceneAPIExt/Rules/IMotionCompressionSettingsRule.h>
 
 namespace AZ
 {
     class ReflectContext;
+}
 
-    namespace SceneAPI
+namespace EMotionFX
+{
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
-            class EFXMotionCompressionSettingsRule
-                : public DataTypes::IEFXMotionCompressionSettingsRule
+            class MotionCompressionSettingsRule
+                : public IMotionCompressionSettingsRule
             {
             public:
-                AZ_RTTI(EFXMotionCompressionSettingsRule, "{2717884D-1F28-4E57-91E2-974FD985C075}", DataTypes::IEFXMotionCompressionSettingsRule);
+                AZ_RTTI(MotionCompressionSettingsRule, "{2717884D-1F28-4E57-91E2-974FD985C075}", IMotionCompressionSettingsRule);
                 AZ_CLASS_ALLOCATOR_DECL
 
-                EFXMotionCompressionSettingsRule();
-                ~EFXMotionCompressionSettingsRule() override = default;
+                MotionCompressionSettingsRule();
+                ~MotionCompressionSettingsRule() override = default;
 
                 void SetMaxTranslationError(float value);
                 void SetMaxRotationError(float value);
                 void SetMaxScaleError(float value);
 
-                // IIEFXMotionCompressionSettingsRule overrides
+                // IMotionCompressionSettingsRule overrides
                 virtual float GetMaxTranslationError() const;
                 virtual float GetMaxRotationError() const;
                 virtual float GetMaxScaleError() const;
 
-                static void Reflect(ReflectContext* context);
+                static void Reflect(AZ::ReflectContext* context);
 
             protected:
                 float m_maxTranslationError;
@@ -53,4 +55,3 @@ namespace AZ
         } // SceneData
     } // SceneAPI
 } // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED

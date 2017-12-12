@@ -25,11 +25,10 @@ def build(bld):
             file_list += aws_files
 
     bld.DefineGem(
-        uselib          = ['AWS_CPP_SDK_ALL', 'OPENSSL'],
+        uselib          = ['AWS_CPP_SDK_CORE', 'OPENSSL'],
         includes        = [bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/CryEngine/CrySystem')
         ],
-        use = ['CloudGemFrameworkStaticLibrary'],
         file_list   = file_list,
         pch     = '',
         platforms = ['all'],
@@ -37,6 +36,8 @@ def build(bld):
         shared_settings = ['awsgem.json'],
 
         win_lib    = ['gdi32'],
+
+       
     )
 
     bld.recurse(SUBFOLDERS)

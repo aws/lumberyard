@@ -31,6 +31,9 @@
 
 #include <QMouseEvent>
 #include <QDebug>
+#include <QToolBar>
+#include <QLayout>
+#include <QLabel>
 
 const int MAX_CLASSVIEWS = 100;
 const int MIN_VIEWPORT_RES = 64;
@@ -51,7 +54,7 @@ enum TitleMenuCommonCommands
 
 //////////////////////////////////////////////////////////////////////////
 CLayoutViewPane::CLayoutViewPane(QWidget* parent)
-    : QWidget(parent)
+    : AzQtComponents::ToolBarArea(parent)
     , m_viewportTitleDlg(this)
 {
     m_viewport = 0;
@@ -61,9 +64,18 @@ CLayoutViewPane::CLayoutViewPane(QWidget* parent)
     m_bFullscreen = false;
     m_viewportTitleDlg.SetViewPane(this);
 
-    m_id = -1;
+    QWidget* viewportContainer = m_viewportTitleDlg.findChild<QWidget*>(QStringLiteral("ViewportTitleDlgContainer"));
+    QToolBar* toolbar = CreateToolBarFromWidget(viewportContainer,
+                                                Qt::TopToolBarArea,
+                                                QStringLiteral("Viewport Settings"));
+    toolbar->setMovable(false);
+    toolbar->installEventFilter(&m_viewportTitleDlg);
+    toolbar->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(toolbar, &QWidget::customContextMenuRequested, &m_viewportTitleDlg, &QWidget::customContextMenuRequested);
 
-    m_titleHeight = m_viewportTitleDlg.height();
+    setContextMenuPolicy(Qt::NoContextMenu);
+
+    m_id = -1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -118,17 +130,23 @@ void CLayoutViewPane::AttachViewport(QWidget* pViewport)
         return;
     }
 
+    DisconnectRenderViewportInteractionRequestBus();
     m_viewport = pViewport;
     if (pViewport)
     {
-        m_viewport->setParent(this);
+        m_viewport->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        SetMainWidget(m_viewport);
 
         if (QtViewport* vp = qobject_cast<QtViewport*>(pViewport))
         {
             vp->SetViewportId(GetId());
+            vp->SetViewPane(this);
+            if (CRenderViewport* renderViewport = viewport_cast<CRenderViewport*>(vp))
+            {
+                renderViewport->ConnectViewportInteractionRequestBus();
+            }
         }
 
-        RecalcLayout();
         m_viewport->setVisible(true);
 
         setWindowTitle(m_viewPaneClass);
@@ -150,6 +168,7 @@ void CLayoutViewPane::AttachViewport(QWidget* pViewport)
 //////////////////////////////////////////////////////////////////////////
 void CLayoutViewPane::DetachViewport()
 {
+    DisconnectRenderViewportInteractionRequestBus();
     OnFOVChanged(gSettings.viewports.fDefaultFov);
     m_viewport = 0;
 }
@@ -159,6 +178,7 @@ void CLayoutViewPane::ReleaseViewport()
 {
     if (m_viewport)
     {
+        DisconnectRenderViewportInteractionRequestBus();
         m_viewport->deleteLater();
         m_viewport = 0;
     }
@@ -167,11 +187,9 @@ void CLayoutViewPane::ReleaseViewport()
 //////////////////////////////////////////////////////////////////////////
 void CLayoutViewPane::resizeEvent(QResizeEvent* event)
 {
-    QWidget::resizeEvent(event);
+    AzQtComponents::ToolBarArea::resizeEvent(event);
 
     int toolHeight = 0;
-
-    RecalcLayout();
 
     if (m_viewport)
     {
@@ -179,19 +197,14 @@ void CLayoutViewPane::resizeEvent(QResizeEvent* event)
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CLayoutViewPane::RecalcLayout()
+void CLayoutViewPane::DisconnectRenderViewportInteractionRequestBus()
 {
-    int cx = width();
-    int cy = height();
-
-    int nBorder = VIEW_BORDER;
-
-    m_viewportTitleDlg.setGeometry(m_nBorder, m_nBorder, cx - m_nBorder, m_titleHeight);
-
-    if (m_viewport)
+    if (QtViewport* vp = qobject_cast<QtViewport*>(m_viewport))
     {
-        m_viewport->setGeometry(m_nBorder, m_nBorder + m_titleHeight, cx - m_nBorder, cy - m_nBorder * 2 - m_titleHeight);
+        if (CRenderViewport* renderViewport = viewport_cast<CRenderViewport*>(vp))
+        {
+            renderViewport->DisconnectViewportInteractionRequestBus();
+        }
     }
 }
 

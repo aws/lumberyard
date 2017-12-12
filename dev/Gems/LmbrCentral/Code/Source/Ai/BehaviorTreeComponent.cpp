@@ -41,6 +41,7 @@ namespace LmbrCentral
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/BehaviorTree.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/BehaviorTree.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-behavior-tree.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &BehaviorTreeComponent::m_behaviorTreeAsset, "Behavior tree asset", "The behavior tree asset")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &BehaviorTreeComponent::m_enabledInitially, "Enabled initially", "When true the behavior tree will be loaded and activated with the entity");
             }
@@ -50,6 +51,7 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<BehaviorTreeComponentRequestBus>("BehaviorTreeComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("StartBehaviorTree", &BehaviorTreeComponentRequestBus::Events::StartBehaviorTree)
                 ->Event("StopBehaviorTree", &BehaviorTreeComponentRequestBus::Events::StopBehaviorTree)
                 ->Event("GetVariableNameCrcs", &BehaviorTreeComponentRequestBus::Events::GetVariableNameCrcs)

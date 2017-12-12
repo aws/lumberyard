@@ -232,6 +232,25 @@ class jar_create(Task.Task):
 				raise Errors.WafError('Could not find the basedir %r for %r' % (self.basedir, self))
 		return super(jar_create, self).runnable_status()
 
+
+class jarsigner(Task.Task):
+	"""
+	Signs a file using jarsigner
+	"""
+	color = 'PINK'
+	run_str = '${JARSIGNER} -keystore ${KEYSTORE} -storepass ${STOREPASS} -keypass ${KEYPASS} -signedjar ${TGT} ${SRC} ${KEYSTORE_ALIAS}'
+
+	def runnable_status(self):
+		result = super(jarsigner, self).runnable_status()
+
+		if result == Task.SKIP_ME:
+			for output in self.outputs:
+				if not os.path.isfile(output.abspath()):
+					return Task.RUN_ME
+
+		return result
+
+
 class javac(Task.Task):
 	"""
 	Compile java files

@@ -37,6 +37,13 @@ namespace AZ
                 return m_vertexLinks[vertexIndex][linkIndex];
             }
 
+            SceneAPI::DataTypes::ISkinWeightData::Link& SkinWeightData::GetLink(size_t vertexIndex, size_t linkIndex)
+            {
+                AZ_Assert(vertexIndex < m_vertexLinks.size(), "Invalid vertex index %i for skin weight data links.", vertexIndex);
+                AZ_Assert(linkIndex < m_vertexLinks[vertexIndex].size(), "Invalid link index %i for skin weight data %i.", linkIndex, vertexIndex);
+                return m_vertexLinks[vertexIndex][linkIndex];
+            }
+
             size_t SkinWeightData::GetBoneCount() const
             {
                 return m_boneIdNameMap.size();

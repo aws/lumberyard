@@ -3,8 +3,7 @@ import { Observable } from 'rxjs/Observable'
 import { Targetable, Outputable } from './aws.service'
 import { Schema } from './schema.class'
 import { AwsContext } from './context.class'
-
-declare const toastr: any;
+import { LyMetricService } from 'app/shared/service/index'
 
 export enum ResourceOutputEnum {
     ServiceUrl
@@ -80,7 +79,7 @@ export class AwsResourceGroup extends ResourceGroup {
     constructor(private context: AwsContext, spec: any) {         
         super();
         this.setResource(spec);
-        this._outputs = new Map<string, ResourceOutput>();
+        this._outputs = new Map<string, any>();
         this._updating = new BehaviorSubject<boolean>(true);
     }
 
@@ -92,16 +91,13 @@ export class AwsResourceGroup extends ResourceGroup {
             if (err) {
                 let message = err.message
                 if (err.statusCode == 403) {
-                    this.context.authentication.logout();
+                    this.context.authentication.refreshSessionOrLogout();
                 }
-                toastr.error(message);
-                return;
             }
             var stackOutputs = data.Stacks[0].Outputs
             for (var i = 0; i < stackOutputs.length; i++) {
-                let o = stackOutputs[i];
-                let output = new ResourceOutput(o.OutputKey, o.OutputValue, o.Description)                
-                this.outputs[o.OutputKey] = output;
+                let o = stackOutputs[i];                
+                this.outputs[o.OutputKey] = o.OutputValue;
             }
             this._updating.next(false);
         });

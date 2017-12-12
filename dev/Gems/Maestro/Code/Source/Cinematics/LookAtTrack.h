@@ -27,6 +27,9 @@ class CLookAtTrack
     : public TAnimTrack<ILookAtKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CLookAtTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CLookAtTrack, "{30A5C53C-F158-4CCE-A7A0-1A902D13B91C}", IAnimTrack);
+
     CLookAtTrack()
         : m_iAnimationLayer(-1) {}
 
@@ -35,14 +38,10 @@ public:
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(ILookAtKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
-
     int GetAnimationLayerIndex() const { return m_iAnimationLayer; }
     void SetAnimationLayerIndex(int index) { m_iAnimationLayer = index; }
 
+    static void Reflect(AZ::SerializeContext* serializeContext);
 private:
     int m_iAnimationLayer;
 };

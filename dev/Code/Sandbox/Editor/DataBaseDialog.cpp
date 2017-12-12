@@ -36,6 +36,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <QDebug>
+#include <QScrollArea>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include "ShortcutDispatcher.h"
@@ -47,11 +48,12 @@
 //////////////////////////////////////////////////////////////////////
 void CDataBaseDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(200, 200, 1000, 800);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CDataBaseDialog>(GetIEditor(), LyViewPane::DatabaseView, LyViewPane::CategoryOther, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CDataBaseDialog>(LyViewPane::DatabaseView, LyViewPane::CategoryOther, options);
 
     GetIEditor()->GetSettingsManager()->AddToolVersion(LyViewPane::DatabaseView, DATABASE_VIEW_VER);
 }
@@ -95,11 +97,20 @@ void CDataBaseDialog::PostNcDestroy()
 
 BOOL CDataBaseDialog::OnInitDialog()
 {
-    m_tabCtrl->addTab(new CEntityProtLibDialog(m_tabCtrl), tr("Entity Library"));
-    m_tabCtrl->addTab(new CPrefabDialog(m_tabCtrl), tr("Prefabs Library"));
-    m_tabCtrl->addTab(new CVegetationDataBasePage(m_tabCtrl), tr("Vegetation"));
-    m_tabCtrl->addTab(new CParticleDialog(m_tabCtrl), tr("Particles"));
-    m_tabCtrl->addTab(new CGameTokenDialog(m_tabCtrl), tr("GameTokens"));
+    auto addTab = [&](QWidget* widget, const QString& name)
+    {
+        // Since our tabs can get big enough to interfere with docking behavior, make sure we size down gracefully with scroll areas
+        QScrollArea* scrollArea = new QScrollArea;
+        scrollArea->setWidgetResizable(true);
+        scrollArea->setWidget(widget);
+        m_tabCtrl->addTab(scrollArea, name);
+    };
+
+    addTab(new CEntityProtLibDialog(m_tabCtrl), tr("Entity Library"));
+    addTab(new CPrefabDialog(m_tabCtrl), tr("Prefabs Library"));
+    addTab(new CVegetationDataBasePage(m_tabCtrl), tr("Vegetation"));
+    addTab(new CParticleDialog(m_tabCtrl), tr("Particles"));
+    addTab(new CGameTokenDialog(m_tabCtrl), tr("GameTokens"));
 
     return TRUE;
 }
@@ -113,7 +124,8 @@ void CDataBaseDialog::Activate(int index)
 {
     for (int i = 0; i < m_tabCtrl->count(); ++i)
     {
-        Activate(qobject_cast<CDataBaseDialogPage*>(m_tabCtrl->widget(i)), i == index);
+        CDataBaseDialogPage* page = GetPageFromTab(m_tabCtrl->widget(i));
+        Activate(page, i == index);
 
         if (m_isReady && (i == index))
         {
@@ -186,16 +198,24 @@ void CDataBaseDialog::Select(int num)
     int prevSelected = m_tabCtrl->currentIndex();
     if (prevSelected >= 0 && prevSelected < m_tabCtrl->count())
     {
-        Activate(qobject_cast<CDataBaseDialogPage*>(m_tabCtrl->widget(prevSelected)), false);
+        Activate(GetPageFromTab(m_tabCtrl->widget(prevSelected)), false);
     }
     m_tabCtrl->setCurrentIndex(num);
-    Activate(qobject_cast<CDataBaseDialogPage*>(m_tabCtrl->currentWidget()), true);
+    Activate(GetPageFromTab(m_tabCtrl->currentWidget()), true);
+}
+
+CDataBaseDialogPage *CDataBaseDialog::GetPageFromTab(QWidget *widget)
+{
+    auto scrollArea = qobject_cast<QScrollArea*>(widget);
+    auto page = qobject_cast<CDataBaseDialogPage*>(scrollArea->widget());
+    AZ_Assert(scrollArea && page, "Expected QScrollArea instances containing CDataBaseDialogPage instances.");
+    return page;
 }
 
 //////////////////////////////////////////////////////////////////////////
 CDataBaseDialogPage* CDataBaseDialog::GetPage(int num)
 {
-    return qobject_cast<CDataBaseDialogPage*>(m_tabCtrl->widget(num));
+    return GetPageFromTab(m_tabCtrl->widget(num));
 }
 
 int CDataBaseDialog::GetSelection() const
@@ -206,7 +226,7 @@ int CDataBaseDialog::GetSelection() const
 //////////////////////////////////////////////////////////////////////////
 CDataBaseDialogPage* CDataBaseDialog::GetCurrent()
 {
-    return qobject_cast<CDataBaseDialogPage*>(m_tabCtrl->currentWidget());
+    return GetPageFromTab(m_tabCtrl->currentWidget());
 }
 
 //////////////////////////////////////////////////////////////////////////

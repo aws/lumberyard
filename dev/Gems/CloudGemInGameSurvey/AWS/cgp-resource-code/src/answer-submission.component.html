@@ -1,0 +1,99 @@
+<div *ngIf="answerSubmissionUIModel">
+    <div>
+        <button class="btn l-primary" (click)="onShowSumissionList()">
+            < Back to all responses
+        </button>
+    </div>
+    <div class="submission-info">
+        <span class="float-right">                
+            <i class="fa fa-trash-o" data-toggle="tooltip" data-placement="top" title="Delete" (click)="onShowDeleteSubmissionModal(answerSubmission)"></i>
+        </span>
+        <div>
+            <b>Submission ID: {{answerSubmission.submissionId}}</b>
+        </div>
+        <div>
+            <b>Submitted: {{epochToString(answerSubmission.creationTime)}}</b>
+        </div>
+    </div>
+    <div class="response" *ngFor="let answer of answerSubmissionUIModel.answers; let i = index">
+        <div>
+            <b>{{answer.questionTitle}}</b>
+        </div>
+        <div>
+            Response: {{answer.answer}}
+        </div>
+    </div>
+</div>
+
+<div *ngIf="!answerSubmissionUIModel">
+    <div *ngIf="!isLoading && surveyAnswerSubmissions.answerSubmissions.length == 0" class="no-submission-text">
+        No submission
+    </div>    
+
+    <div *ngIf="surveyAnswerSubmissions.answerSubmissions.length > 0">
+        <button class="btn l-primary" (click)="onExportAnswerSubmissionsToCSV()">
+            Export to CSV
+        </button>
+
+        <ng-container *ngIf="isExportingCSV">
+            <span class="fa fa-spinner fa-spin"></span>
+            Number of Submission Exported: {{numResponsesExported}} / Total Submissions: {{this.survey.surveyMetadata.numResponses}}
+        </ng-container>               
+            
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th> SUBMISSION ID </th>
+                    <th>
+                        SUBMITTED
+                        <div class="fa fa-caret-down" (click)="onReverseSubmissionTimeSortOrder()"></div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let submission of surveyAnswerSubmissions.answerSubmissions">
+                    <td (click)="onShowAnswerSubmissionDetail(submission)"> {{submission.submissionId}} </td>
+                    <td (click)="onShowAnswerSubmissionDetail(submission)"> {{epochToString(submission.creationTime)}} </td>
+                    <td>
+                        <div class="float-right">
+                            <i (click)="onShowDeleteSubmissionModal(submission)" class="fa fa-trash-o" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div *ngIf="isLoading">
+        <loading-spinner></loading-spinner>
+    </div>
+
+    <div *ngIf="surveyAnswerSubmissions.answerSubmissions.length > 0 && !hasMoreSubmissionToLoad" class="no-more-submission-text">
+        No more answer submission to load
+    </div>        
+
+    <ng-container [ngSwitch]="hasMoreSubmissionToLoad">
+        <button *ngSwitchCase="true" class="btn l-primary" (click)="loadNextPageOfAnswerSubmissions()">
+            Load next {{loadSubmissionBatchSize}} submissions
+        </button>
+        <button *ngSwitchCase="false" class="btn l-primary" (click)="loadNextPageOfAnswerSubmissions()" disabled>
+            Load next {{loadSubmissionBatchSize}} submissions
+        </button>
+    </ng-container>
+</div>
+
+
+<modal *ngIf="editMode == EditMode.DeleteSubmission"
+       title="Delete Answer Submission"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       submitButtonText="Delete Submission"
+       (modalSubmitted)="onDeleteAnswerSubmission(curEditingAnswerSubmission)">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <p>
+            Are you sure you want to delete this submission?
+        </p>
+    </div>
+</modal>

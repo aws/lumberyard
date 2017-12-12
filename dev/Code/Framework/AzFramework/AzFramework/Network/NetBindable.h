@@ -83,7 +83,7 @@ namespace AzFramework
         template <typename ... Args>
         class Rpc;
 
-        inline bool IsSyncEnabled() { return m_isSyncEnabled; }
+        inline bool IsSyncEnabled() const { return m_isSyncEnabled; }
         //! Can be used to disabled net sync on a per component basis
         inline void SetSyncEnabled(bool enabled) { m_isSyncEnabled = enabled; }
     protected:

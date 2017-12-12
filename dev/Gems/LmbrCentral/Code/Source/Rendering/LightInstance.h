@@ -30,11 +30,6 @@ namespace LmbrCentral
         : private AZ::TransformNotificationBus::Handler
     {
     public:
-        enum class State
-        {
-            On,
-            Off,
-        };
 
         AZ_TYPE_INFO(LightInstance, "{844D6585-6613-4E0D-BBA7-C37073B84F5F}");
 

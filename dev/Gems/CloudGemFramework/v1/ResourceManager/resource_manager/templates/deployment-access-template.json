@@ -86,7 +86,8 @@
                                 "s3:GetObject"
                             ],
                             "Resource": [
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings.json" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings.json" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings/*" ]] }
                             ]
                         }
                     ]
@@ -372,6 +373,41 @@
                 }
             }
         },
+		
+		"Server": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+                            "Principal": {
+                                "Federated": "cognito-identity.amazonaws.com"
+                            }
+                        },
+                        {
+                            "Sid": "AccountUserAssumeRole",
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": { "AWS": {"Ref": "AWS::AccountId"} }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "CloudCanvas": {
+                    "RoleMappings": [
+                        {
+                            "AbstractRole": [ "*.Server" ],
+                            "Effect": "Allow"
+                        }
+                    ]
+                }
+            }
+        },
 
         "AccessControl": {
             "Type": "Custom::AccessControl",
@@ -380,7 +416,7 @@
                 "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
                 "ConfigurationKey": { "Ref": "ConfigurationKey" }
             },
-            "DependsOn": [ "Player", "DeploymentOwner", "DeploymentAdmin" ]
+            "DependsOn": [ "Player", "Server", "DeploymentOwner", "DeploymentAdmin" ]
         },
 
         "PlayerLoginRole": {

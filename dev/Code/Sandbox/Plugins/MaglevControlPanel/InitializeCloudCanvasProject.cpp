@@ -62,7 +62,6 @@ InitializeCloudCanvasProject::InitializeCloudCanvasProject(QWidget* parent)
     : QMainWindow(parent)
     , m_model(GetIEditor()->GetAWSResourceManager()->GetProfileModel())
 {
-    QWidget::connect(&*m_model, &IAWSProfileModel::modelReset, this, &InitializeCloudCanvasProject::OnProfileModelChanged);
     InitializeWindow();
 }
 
@@ -434,11 +433,6 @@ void InitializeCloudCanvasProject::SaveNewProfile(const QString& profileName, co
     {
         GetIEditor()->Notify(eNotify_OnFirstAWSUse);
     }
-}
-
-void InitializeCloudCanvasProject::OnProfileModelChanged()
-{
-    InitializeWindow();
 }
 
 void InitializeCloudCanvasProject::SourceChangedAttemptCreate()

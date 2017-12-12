@@ -12,6 +12,8 @@
 #include "StdAfx.h"
 #include "ComponentEditorHeader.hxx"
 
+#include <QDesktopServices>
+
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QPushButton>
@@ -29,6 +31,7 @@ namespace AzToolsFramework
         static const char* kWarningIconId = "WarningIcon";
         static const char* kTitleId = "Title";
         static const char* kContextMenuId = "ContextMenu";
+        static const char* khelpButtonId = "Help";
     }
 
     ComponentEditorHeader::ComponentEditorHeader(QWidget* parent /*= nullptr*/)
@@ -68,6 +71,13 @@ namespace AzToolsFramework
         m_warningLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         m_warningLabel->hide();
 
+        m_helpButton = aznew QPushButton(m_backgroundFrame);
+        m_helpButton->setObjectName(HeaderBarConstants::khelpButtonId);
+        m_helpButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        m_helpButton->hide();
+        connect(m_helpButton, &QPushButton::clicked, this, &ComponentEditorHeader::TriggerHelpButton);
+
+
         // context menu widget
         m_contextMenuButton = aznew QPushButton(m_backgroundFrame);
         m_contextMenuButton->setObjectName(HeaderBarConstants::kContextMenuId);
@@ -85,6 +95,7 @@ namespace AzToolsFramework
         m_backgroundLayout->addWidget(m_titleLabel);
         m_backgroundLayout->addStretch(1);
         m_backgroundLayout->addWidget(m_warningLabel);
+        m_backgroundLayout->addWidget(m_helpButton);
         m_backgroundLayout->addWidget(m_contextMenuButton);
         m_backgroundFrame->setLayout(m_backgroundLayout);
 
@@ -97,7 +108,6 @@ namespace AzToolsFramework
         setLayout(m_mainLayout);
 
         SetExpanded(true);
-        SetSelected(false);
         SetWarning(false);
         SetReadOnly(false);
         UpdateStyleSheets();
@@ -133,20 +143,6 @@ namespace AzToolsFramework
     bool ComponentEditorHeader::IsExpanded() const
     {
         return m_expanderButton->isChecked();
-    }
-
-    void ComponentEditorHeader::SetSelected(bool selected)
-    {
-        if (m_selected != selected)
-        {
-            m_selected = selected;
-            UpdateStyleSheets();
-        }
-    }
-
-    bool ComponentEditorHeader::IsSelected() const
-    {
-        return m_selected;
     }
 
     void ComponentEditorHeader::SetWarningIcon(const QIcon& icon)
@@ -218,19 +214,34 @@ namespace AzToolsFramework
 
     void ComponentEditorHeader::UpdateStyleSheets()
     {
-        setProperty("selected", m_selected);
         setProperty("warning", m_warning);
         setProperty("readOnly", m_readOnly);
         style()->unpolish(this);
         style()->polish(this);
 
-        m_backgroundFrame->setProperty("selected", m_selected);
         m_backgroundFrame->setProperty("warning", m_warning);
         m_backgroundFrame->setProperty("readOnly", m_readOnly);
         m_backgroundFrame->style()->unpolish(m_backgroundFrame);
         m_backgroundFrame->style()->polish(m_backgroundFrame);
     }
 
+    void ComponentEditorHeader::TriggerHelpButton()
+    {
+        QString webLink = tr(m_helpUrl.c_str());
+        QDesktopServices::openUrl(QUrl(webLink));
+    }
+
+    void ComponentEditorHeader::SetHelpURL(AZStd::string& url)
+    {
+        m_helpUrl = url;
+        m_helpButton->setVisible(m_helpUrl.length() > 0);
+    }
+
+    void ComponentEditorHeader::ClearHelpURL()
+    {
+        m_helpUrl = "";
+        m_helpButton->setVisible(false);
+    }
 }
 
 #include <UI/PropertyEditor/ComponentEditorHeader.moc>

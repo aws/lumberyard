@@ -20,7 +20,8 @@
             "Include/IFileUtil.h",
             "Include/EditorCoreAPI.h",
             "Include/IEditorParticleManager.h",
-            "Include/IEntityPrototype.h"
+            "Include/IEntityPrototype.h",
+            "Include/LegacyEntityConversion/LegacyEntityConversionBus.h"
         ]
     },
     "auto":
@@ -49,12 +50,13 @@
             "BaseLibraryItem.cpp",
             "BaseLibrary.cpp",
             "SourceControlAddDlg.cpp",
-	    "SourceControlAddDlg.h",
-	    "SourceControlAddDlg.ui",
+            "SourceControlAddDlg.h",
+            "SourceControlAddDlg.ui",
             "UsedResources.cpp",
             "UIEnumsDatabase.cpp",
             "fancydocking.cpp",
             "fancydocking.h",
+            "LyViewPaneNames.h",
             "QtViewPaneManager.cpp",
             "QtViewPaneManager.h",
             "DockWidgetUtils.cpp",

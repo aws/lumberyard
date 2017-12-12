@@ -176,7 +176,7 @@ void CThumbnailGenerator::GenerateForDirectory(const QString& path)
             assert(!"IStatObj::MakeObjectPicture does not exist anymore");
             //          obj->MakeObjectPicture( (unsigned char*)image.GetData(),thumbSize );
 
-            CImageUtil::SaveBitmap(bmpFile, image, false);
+            CImageUtil::SaveBitmap(bmpFile, image);
             SetThumbFileTime(bmpFile, ft1);
 #if defined(AZ_PLATFORM_WINDOWS)
             SetFileAttributes(bmpFile, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED);
@@ -220,7 +220,7 @@ void CThumbnailGenerator::GenerateForFile(const QString& fileName)
         assert(!"IStatObj::MakeObjectPicture does not exist anymore");
         //      obj->MakeObjectPicture( (unsigned char*)image.GetData(),thumbSize );
 
-        CImageUtil::SaveBitmap(bmpFile, image, false);
+        CImageUtil::SaveBitmap(bmpFile, image);
         SetThumbFileTime(bmpFile, ft1);
 #if defined(AZ_PLATFORM_WINDOWS)
         SetFileAttributes(bmpFile, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED);

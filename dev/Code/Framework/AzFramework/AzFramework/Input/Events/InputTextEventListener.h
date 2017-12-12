@@ -31,6 +31,7 @@ namespace AzFramework
         ///@{
         //! Predefined text event listener priority, used to sort handlers from highest to lowest
         inline static AZ::s32 GetPriorityFirst()    { return std::numeric_limits<AZ::s32>::max(); }
+        inline static AZ::s32 GetPriorityUI()       { return GetPriorityFirst() / 2;              }
         inline static AZ::s32 GetPriorityDefault()  { return 0;                                   }
         inline static AZ::s32 GetPriorityLast()     { return std::numeric_limits<AZ::s32>::min(); }
         ///@}

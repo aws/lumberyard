@@ -2902,9 +2902,15 @@ bool CLoaderCGF::LoadGeomChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDes
 
                 int32* pNumLinks;
                 StepData(pNumLinks, pMeshChunkData, 1, bSwapEndianness);
-                if (pNumLinks <= 0)
+
+                if (pNumLinks == nullptr)
                 {
-                    m_LastError.Format("%s: Number of links for vertex is invalid: %i", __FUNCTION__, pNumLinks);
+                    return false;
+                }
+
+                if (*pNumLinks <= 0)
+                {
+                    m_LastError.Format("%s: Number of links for vertex is invalid: %i", __FUNCTION__, *pNumLinks);
                     return false;
                 }
 

@@ -1,6 +1,7 @@
-<sub-nav [tabs]="['Overview', 'Banned Players', 'Settings']"
-         (tabClicked)="subNavUpdated($event)">
-</sub-nav>
+<facet-generator [context]="context"
+        [tabs]="['Overview', 'Banned Players', 'Settings']"
+        (tabClicked)="subNavUpdated($event)"
+        [metricIdentifier]="context.identifier"></facet-generator>
 <div *ngIf="subNavActiveIndex == 0">
     <div [ngSwitch]="mode == leaderboardModes.Show">
         <div *ngSwitchCase="false">
@@ -25,19 +26,21 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th class="string-column"> LEADERBOARD ID </th>
-                            <th class="string-column"> MODE </th>
+                            <th > LEADERBOARD ID </th>
+                            <th > MODE </th>
                             <th class="number-column"> MINIMUM ALLOWABLE VALUE </th>
                             <th class="number-column"> MAXIMUM ALLOWABLE VALUE </th>                                                        
+                            <th class="number-column"> RESEVOIR SAMPLE SIZE </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr *ngFor="let leaderboard of leaderboards">
-                            <td class="string-column" (click)="show(leaderboard)">  {{leaderboard.name}} </td>
-                            <td class="string-column" (click)="show(leaderboard)">  {{leaderboard.mode}} </td>
-                            <td class="number-column" (click)="show(leaderboard)">  {{leaderboard.min}} </td>
-                            <td class="number-column" (click)="show(leaderboard)">  {{leaderboard.max}} </td>
-                            <td>
+                            <td width="20%" (click)="show(leaderboard)">  {{leaderboard.name}} </td>
+                            <td width="20%" (click)="show(leaderboard)">  {{leaderboard.mode}} </td>
+                            <td width="15%" class="number-column" (click)="show(leaderboard)">  {{leaderboard.min}} </td>
+                            <td width="15%" class="number-column" (click)="show(leaderboard)">  {{leaderboard.max}} </td>
+                            <td width="15%" class="number-column" (click)="show(leaderboard)">  {{leaderboard.sample_size}} </td>
+                            <td width="15%">
                                 <div class="float-right">
                                     <i (click)="editModal(leaderboard)" class="fa fa-cog" data-toggle="tooltip" data-placement="top" title="Edit {{leaderboard.name}}"></i>
                                     <i (click)="deleteModal(leaderboard)" class="fa fa-trash-o" data-toggle="tooltip" data-placement="top" title="Delete {{leaderboard.name}}"></i>
@@ -76,9 +79,9 @@
                     </thead>
                     <tbody>
                         <tr *ngFor="let score of currentScores">
-                            <td class="player-name-column">  {{score.user}} </td>
-                            <td class="score-column">  {{score.value}} </td>
-                            <td>
+                            <td width="35%" class="player-name-column">  {{score.user}} </td>
+                            <td width="25%" class="score-column">  {{score.value}} </td>
+                            <td width="40%">
                                 <div class="float-right">
                                     <i (click)="banPlayerModal(score)" class="fa fa-ban" data-toggle="tooltip" data-placement="top" title="Ban user '{{score.user}}'"></i>
                                     <i (click)="deleteScoreModal(score)" class="fa fa-trash-o" data-toggle="tooltip" data-placement="top" title="Delete score '{{score.value}}' for player '{{score.user}}'"></i>
@@ -107,13 +110,13 @@
             <table class="table table-hover" *ngIf="bannedPlayers?.length > 0">
                 <thead>
                     <tr>
-                        <th> NAME </th>
+                        <th > NAME </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr *ngFor="let playerName of bannedPlayers">
-                        <td (click)="unbanPlayerModal(playerName)">  {{playerName}} </td>
-                        <td>
+                        <td width="70%" (click)="unbanPlayerModal(playerName)">  {{playerName}} </td>
+                        <td width="30%">
                             <div class="float-right">
                                 <i (click)="unbanPlayerModal(playerName)" class="fa fa-ban"
                                 data-toggle="tooltip" data-placement="top" title="Remove Ban on {{playerName}}"></i>
@@ -142,6 +145,7 @@
    [title]="mode == leaderboardModes.Edit ? 'Edit Leaderboard' : 'Add Leaderboard'"
    [autoOpen]="true"
    [hasSubmit]="true"
+   [metricIdentifier]="context.identifier"
    [onClose]="dismissModal"
    [onDismiss]="dismissModal"
    [submitButtonText]="mode == leaderboardModes.Edit ? 'Save Changes' : 'Create Leaderboard'"
@@ -172,15 +176,23 @@
             <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.min.valid == false">
                 <label class="col-5 col-form-label affix ">Minimum Reportable Value Allowed</label>
                 <div class="col-7 form-control-danger">
-                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.min" name="currentLeaderboard.min" type="text" />
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.min" name="currentLeaderboard.min" type="number" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.min.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.min.message}}</div>
                 </div>
             </div>
             <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.max.valid == false" >
                 <label class="col-5 col-form-label affix ">Maximum Reportable Value Allowed</label>
                 <div class="col-7 form-control-danger">                                    
-                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.max" name="currentLeaderboard.max" type="text" />
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.max" name="currentLeaderboard.max" type="number" />
                     <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.max.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.max.message}}</div>
+                </div>
+            </div>    
+            <div class="form-group row" [class.has-danger]="currentLeaderboard.validation && currentLeaderboard.validation.sample_size.valid == false">
+                <label class="col-5 col-form-label affix ">Reservoir Sample Size <i class="fa fa-question-circle-o" placement="right"
+                    ngbTooltip="The leaderboard sample resevoir size. The recommended range is between 200 to 1000. Example: 300"></i></label>
+                <div class="col-7 form-control-danger">
+                    <input class="form-control full-width" [(ngModel)]="currentLeaderboard.sample_size" name="currentLeaderboard.sample_size" type="number" />
+                    <div *ngIf="currentLeaderboard.validation && currentLeaderboard.validation.sample_size.valid == false" class="form-control-feedback">{{currentLeaderboard.validation.sample_size.message}}</div>
                 </div>
             </div>            
         </form>
@@ -192,6 +204,7 @@
 <modal *ngIf="mode == leaderboardModes.Delete"
        title="Delete Leaderboard"
        [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
        [hasSubmit]="true"
        [onClose]="dismissModal"
        [onDismiss]="dismissModal"
@@ -209,6 +222,7 @@
 <modal *ngIf="playerMode == playerModes.BanUser"
        title="Ban User"
        [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
        [onClose]="dismissPlayerModal"
        [onDismiss]="dismissPlayerModal"
        [hasSubmit]="true"
@@ -216,8 +230,7 @@
        submitButtonText ="Ban Player">
     <div class="modal-body">
         <p> Are you sure you want to ban the player '{{currentScore.user}}'?</p>
-        <p> '{{currentScore.user}}' will have all their current scores removed from all leaderboards
-        and their future scores will not be recorded </p>
+        <p> '{{currentScore.user}}' will have their future scores rejected.  All their current scores will remain.  The scores can be deleted manually. </p>        
         <p> These changes will be reflected locally in the CGP for now and may take a few minutes to propagate to the server. </p>
         <pre>{{currentScore | json | devonly}}</pre>
     </div>
@@ -227,6 +240,7 @@
 <modal *ngIf="playerMode == playerModes.DeleteScore"
        title="Delete Score"
        [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
        submitButtonText="Delete Score"
        [onClose]="dismissPlayerModal"
        [onDismiss]="dismissPlayerModal"
@@ -243,6 +257,7 @@
 <modal *ngIf="mode == leaderboardModes.Unban"
        title="Remove Ban"
        [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
        [hasSubmit]="true"
        [onClose]="dismissModal"
        [onDismiss]="dismissModal"
@@ -260,6 +275,7 @@
 <modal *ngIf="mode == leaderboardModes.ProcessQueue"
        title="Process Leaderboard Queue"
        [autoOpen]="true"
+       [metricIdentifier]="context.identifier"
        (modalSubmitted)="processLeaderboardQueue()"
        submitButtonText="Process Queue"
        [hasSubmit]="true"

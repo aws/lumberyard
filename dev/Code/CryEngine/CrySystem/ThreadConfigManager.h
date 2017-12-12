@@ -25,10 +25,9 @@ Loads a thread configuration from an xml file and stores them.
 = Platform names =
 (case insensitive)
 "ANDROID"
-"DURANGO"
-"ORBIS"
 "PC"
 "MAC"
+etc.
 
 = Basic Layout =
 <ThreadConfig>

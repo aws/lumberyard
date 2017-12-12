@@ -580,7 +580,7 @@ TArray<SRenderLight>* CRenderer::EF_GetDeferredLights(const SRenderingPassInfo& 
 
 SRenderLight* CRenderer::EF_GetDeferredLightByID(const uint16 nLightID, const eDeferredLightType eLightType)
 {
-    return NULL;
+    return nullptr;
 }
 
 
@@ -613,4 +613,45 @@ void CRenderer::ClearJobResources()
 ITexture* CNULLRenderer::EF_CreateCompositeTexture(int type, const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, ETEX_Format eTF, const STexComposition* pCompositions, size_t nCompositions, int8 nPriority)
 {
     return CTexture::s_ptexNoTexture;
+}
+
+void CNULLRenderer::FX_ClearTarget(CTexture* pTex)
+{
+}
+
+void CNULLRenderer::FX_ClearTarget(SDepthTexture* pTex)
+{
+}
+
+bool CNULLRenderer::FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
+{
+    return true;
+}
+
+bool CNULLRenderer::FX_PushRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
+{
+    return true;
+}
+
+bool CNULLRenderer::FX_SetRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, bool bPush, int nCMSide, bool bScreenVP, uint32 nTileCount)
+{
+    return true;
+}
+
+bool CNULLRenderer::FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide, bool bScreenVP, uint32 nTileCount)
+{
+    return true;
+}
+bool CNULLRenderer::FX_RestoreRenderTarget(int nTarget)
+{
+    return true;
+}
+bool CNULLRenderer::FX_PopRenderTarget(int nTarget)
+{
+    return true;
+}
+
+SDepthTexture* CNULLRenderer::FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA)
+{
+    return nullptr;
 }

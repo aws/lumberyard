@@ -58,7 +58,7 @@ namespace UnitTest
                 }
                 else
                 {
-                    // for PS3 scheduler we need the yield otherwise we will deadlock
+                    // for some schedulers we need the yield otherwise we will deadlock
                     AZStd::this_thread::yield();
                 }
             }

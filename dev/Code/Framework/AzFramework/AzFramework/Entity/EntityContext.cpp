@@ -15,26 +15,43 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/containers/stack.h>
+#include <AzCore/Slice/SliceMetadataInfoComponent.h>
 
 #include "EntityContext.h"
 
 namespace AzFramework
 {
     //=========================================================================
-    // ReflectSerialize
+    // Reflect
     //=========================================================================
-    void EntityContext::ReflectSerialize(AZ::SerializeContext& serialize)
+    void EntityContext::Reflect(AZ::ReflectContext* context)
     {
-        // EntityContext entity data is serialized through streams / Ebus messages.
-        serialize.Class<EntityContext>()
-            ->Version(1)
-            ->SerializerForEmptyClass()
-        ;
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            // EntityContext entity data is serialized through streams / Ebus messages.
+            serializeContext->Class<EntityContext>()
+                ->Version(1)
+                ;
+                
+            serializeContext->Class<AzFramework::SliceInstantiationTicket>()
+                ->Version(0);
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<AzFramework::SliceInstantiationTicket>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Method("Equal", &AzFramework::SliceInstantiationTicket::operator==)
+                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                ->Method("IsValid", &AzFramework::SliceInstantiationTicket::operator bool)
+                ;
+        }
     }
 
     //=========================================================================
@@ -102,13 +119,29 @@ namespace AzFramework
 
         // Manually create an asset to hold the root slice.
         m_rootAsset.Get()->SetData(rootEntity, rootEntity->FindComponent<AZ::SliceComponent>());
-        m_rootAsset.Get()->GetComponent()->SetMyAsset(m_rootAsset.Get());
-        m_rootAsset.Get()->GetComponent()->SetSerializeContext(m_serializeContext);
-        m_rootAsset.Get()->GetComponent()->ListenForAssetChanges();
+        auto* rootSliceComponent = m_rootAsset.Get()->GetComponent();
+        rootSliceComponent->SetMyAsset(m_rootAsset.Get());
+        rootSliceComponent->SetSerializeContext(m_serializeContext);
+        rootSliceComponent->ListenForAssetChanges();
 
         // Editor context slice is always dynamic by default. Whether it's a "level",
         // or something else, it can be instantiated at runtime.
-        m_rootAsset.Get()->GetComponent()->SetIsDynamic(true);
+        rootSliceComponent->SetIsDynamic(true);
+
+        // Make sure the root slice metadata entity is marked as persistent.
+        AZ::Entity* metadataEntity = rootSliceComponent->GetMetadataEntity();
+
+        if (metadataEntity)
+        {
+            AZ::SliceMetadataInfoComponent* infoComponent = metadataEntity->FindComponent<AZ::SliceMetadataInfoComponent>();
+
+            if (infoComponent)
+            {
+                infoComponent->MarkAsPersistent(true);
+            }
+
+            HandleNewMetadataEntitiesCreated(*rootSliceComponent);
+        }
 
         OnRootSliceCreated();
     }
@@ -244,6 +277,69 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // ActivateEntity
+    //=========================================================================
+    void EntityContext::ActivateEntity(AZ::EntityId entityId)
+    {
+        // Verify that this context has the right to perform operations on the entity
+        bool validEntity = IsOwnedByThisContext(entityId);
+        AZ_Warning("GameEntityContext", validEntity, "Entity with id %llu does not belong to the game context.", entityId);
+
+        if (validEntity)
+        {
+            // Look up the entity and activate it.
+            AZ::Entity* entity = nullptr;
+            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+            if (entity)
+            {
+                // Safety Check: Is the entity initialized?
+                if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+                {
+                    AZ_Warning("GameEntityContext", false, "Entity with id %llu was not initialized before activation requested.", entityId);
+                    entity->Init();
+                }
+
+                if (entity->GetState() == AZ::Entity::ES_INIT)
+                {
+                    entity->Activate();
+                }
+            }
+        }
+    }
+
+    //=========================================================================
+    // DeactivateEntity
+    //=========================================================================
+    void EntityContext::DeactivateEntity(AZ::EntityId entityId)
+    {
+        // Verify that this context has the right to perform operations on the entity
+        bool validEntity = IsOwnedByThisContext(entityId);
+        AZ_Warning("GameEntityContext", validEntity, "Entity with id %llu does not belong to the game context.", entityId);
+
+        if (validEntity)
+        {
+            // Then look up the entity and deactivate it.
+            AZ::Entity* entity = nullptr;
+            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+            if (entity)
+            {
+                switch (entity->GetState())
+                {
+                case AZ::Entity::ES_ACTIVATING:
+                case AZ::Entity::ES_ACTIVE:
+                    // Queue deactivate to trigger next frame
+                    EBUS_QUEUE_FUNCTION(AZ::TickBus, &AZ::Entity::Deactivate, entity);
+                    break;
+
+                default:
+                    // Don't do anything, it's not even active.
+                    break;
+                }
+            }
+        }
+    }
+
+    //=========================================================================
     // DestroyEntity
     //=========================================================================
     bool EntityContext::DestroyEntity(AZ::Entity* entity)
@@ -346,7 +442,7 @@ namespace AzFramework
     //=========================================================================
     // InstantiateSlice
     //=========================================================================
-    SliceInstantiationTicket EntityContext::InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::EntityUtils::EntityIdMapper& customIdMapper)
+    SliceInstantiationTicket EntityContext::InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper)
     {
         if (asset.GetId().IsValid())
         {
@@ -403,7 +499,6 @@ namespace AzFramework
             return false;
         }
 
-
         // Flush asset database events after serialization, so all loaded asset statuses are updated.
         if (AZ::Data::AssetManager::IsReady())
         {
@@ -433,7 +528,7 @@ namespace AzFramework
             AZ::SliceComponent::EntityIdToEntityIdMap entityIdMap;
             AZ::SliceComponent::InstantiatedContainer entityContainer;
             entityContainer.m_entities = AZStd::move(entities);
-            AZ::EntityUtils::GenerateNewIdsAndFixRefs(&entityContainer, idRemapTable ? *idRemapTable : entityIdMap, m_serializeContext);
+            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&entityContainer, idRemapTable ? *idRemapTable : entityIdMap, m_serializeContext);
             entities = AZStd::move(entityContainer.m_entities);
             m_loadedEntityIdMap = AZStd::move(entityIdMap);
         }
@@ -442,9 +537,30 @@ namespace AzFramework
             m_loadedEntityIdMap.clear();
         }
 
+        // Make sure the root slice metadata entity is marked as persistent.
+        AZ::Entity* metadataEntity = newRootSlice->GetMetadataEntity();
+
+        if (!metadataEntity)
+        {
+            AZ_Error("EntityContext", false, "Root entity must have a metadata entity");
+            return false;
+        }
+
+        AZ::SliceMetadataInfoComponent* infoComponent = metadataEntity->FindComponent<AZ::SliceMetadataInfoComponent>();
+
+        if (!infoComponent)
+        {
+            AZ_Error("EntityContext", false, "Root metadata entity must have a valid info component");
+            return false;
+        }
+
+        infoComponent->MarkAsPersistent(true);
+
         EBUS_EVENT_ID(m_contextId, EntityContextEventBus, OnEntityContextLoadedFromStream, entities);
 
         HandleEntitiesAdded(entities);
+
+        HandleNewMetadataEntitiesCreated(*newRootSlice);
 
         AZ::Data::AssetBus::MultiHandler::BusConnect(m_rootAsset.GetId());
         return true;
@@ -509,11 +625,11 @@ namespace AzFramework
             if (instantiating.m_asset.GetId() == asset.GetId())
             {
                 AZStd::function<void()> notifyCallback =
-                    [instantiating, this]()
+                    [instantiating]()
                     {
-                        const AZ::Data::Asset<AZ::Data::AssetData>& asset = instantiating.m_asset;
+                        const AZ::Data::Asset<AZ::Data::AssetData>& failedAsset = instantiating.m_asset;
                         const SliceInstantiationTicket& ticket = instantiating.m_ticket;
-                        EBUS_EVENT_ID(ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, asset.GetId());
+                        EBUS_EVENT_ID(ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, failedAsset.GetId());
                     };
 
                 EBUS_QUEUE_FUNCTION(AZ::TickBus, notifyCallback);
@@ -530,24 +646,24 @@ namespace AzFramework
     //=========================================================================
     // OnAssetReady - Slice asset available for instantiation
     //=========================================================================
-    void EntityContext::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void EntityContext::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> readyAsset)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
-        AZ_Assert(asset.GetAs<AZ::SliceAsset>(), "Asset is not a slice!");
+        AZ_Assert(readyAsset.GetAs<AZ::SliceAsset>(), "Asset is not a slice!");
 
-        if (asset == m_rootAsset)
+        if (readyAsset == m_rootAsset)
         {
             return;
         }
 
-        AZ::Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect(readyAsset.GetId());
 
         for (auto iter = m_queuedSliceInstantiations.begin(); iter != m_queuedSliceInstantiations.end(); )
         {
             const InstantiatingSliceInfo& instantiating = *iter;
 
-            if (instantiating.m_asset.GetId() == asset.GetId())
+            if (instantiating.m_asset.GetId() == readyAsset.GetId())
             {                
                 AZStd::function<void()> instantiateCallback =
                     [instantiating, this]()
@@ -620,6 +736,8 @@ namespace AzFramework
             m_rootAsset.Get()->GetComponent()->GetEntities(entities);
 
             HandleEntitiesAdded(entities);
+
+            HandleNewMetadataEntitiesCreated(*m_rootAsset.Get()->GetComponent());
         }
     }
 } // namespace AzFramework

@@ -21,8 +21,7 @@
 #include <aws/s3/model/PutObjectRequest.h>
 #pragma warning(pop)
 #include <fstream>
-#include <LmbrAWS/IAWSClientManager.h>
-#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 namespace CloudGemAWSScriptBehaviors
 {
@@ -98,7 +97,7 @@ namespace CloudGemAWSScriptBehaviors
         }
 
         AZStd::string bucketName;
-        EBUS_EVENT_RESULT(bucketName, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
+        EBUS_EVENT_RESULT(bucketName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_bucketName.c_str());
 
         using S3UploadRequestJob = AWS_API_REQUEST_JOB(S3, PutObject);
         S3UploadRequestJob::Config config(S3UploadRequestJob::GetDefaultConfig());

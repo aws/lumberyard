@@ -38,10 +38,10 @@ public:
         {
         }
 
-        void  AddLibraryContainer(const TMFXNameId& libraryName, TMFXContainerPtr pContainer)
+        void  AddLibraryContainer(const TMFXNameId& _libraryName, TMFXContainerPtr _pContainer)
         {
-            pContainer->SetLibraryAndId(libraryName, allContainers.size());
-            allContainers.push_back(pContainer);
+            _pContainer->SetLibraryAndId(_libraryName, allContainers.size());
+            allContainers.push_back(_pContainer);
         }
 
         const TMFXNameId& libraryName;

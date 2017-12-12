@@ -9,10 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_PARALLEL_ATOMIC_IMPL_INL
-#define AZSTD_PARALLEL_ATOMIC_IMPL_INL 1
+#pragma once
 
 #include <AzCore/std/base.h>
+#include <AzCore/std/typetraits/conditional.h>
+
+#if !defined(AZ_USE_STD_ATOMIC)
 
 #if defined(AZ_PLATFORM_WINDOWS)
     #include <AzCore/std/parallel/internal/atomic_impl_x86_x64.inl>
@@ -21,14 +23,18 @@
     #else
         #include <AzCore/std/parallel/internal/atomic_impl_x86.inl>
     #endif
-#elif defined(AZ_PLATFORM_X360)
-    #include <AzCore/std/parallel/internal/atomic_impl_x360.inl>
 #else
     #include <AzCore/std/parallel/internal/atomic_impl_locks.inl>
 #endif
 
 namespace AZStd
 {
+    template <typename T>
+    T kill_dependency(T t)
+    {
+        return t;
+    }
+
     namespace internal
     {
         inline bool memory_order_is_weaker_or_equal(memory_order order, memory_order compare_order)
@@ -49,11 +55,8 @@ namespace AZStd
             atomic_base(T v)
                 : base_type(v) { }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
-            bool is_lock_free() const volatile { return true; }
-#else
-            bool is_lock_free() const volatile { return false; }
-#endif
+            bool is_lock_free() const volatile { return AZ_ATOMICS_LOCK_FREE == 2; }
+
             void store(T v, memory_order order = memory_order_seq_cst) volatile
             {
                 AZ_Assert((order == memory_order_relaxed) || (order == memory_order_release) || (order == memory_order_seq_cst), "Invalid memory ordering type for store");
@@ -547,13 +550,13 @@ namespace AZStd
     struct atomic_bool
         : public internal::atomic_base<bool>
     {
-        atomic_bool() { }
+        atomic_bool()
+            : atomic_bool(false) { }
         atomic_bool(bool v)
             : internal::atomic_base<bool>(v) { }
         bool operator=(bool v) volatile { store(v); return v; }
-    private:
-        atomic_bool(const atomic_bool&);
-        atomic_bool& operator=(const atomic_bool& v) volatile;
+        atomic_bool(const atomic_bool&) = delete;
+        atomic_bool& operator=(const atomic_bool& v) volatile = delete;
     };
 
     /**
@@ -562,7 +565,8 @@ namespace AZStd
     struct atomic_address
         : public internal::atomic_base<void*>
     {
-        atomic_address() { }
+        atomic_address()
+            : atomic_address(nullptr) { }
         atomic_address(void* v)
             : internal::atomic_base<void*>(v) { }
         void* operator=(void* v) volatile { store(v); return v; }
@@ -642,99 +646,26 @@ namespace AZStd
                 reinterpret_cast<void*>(v));
         }
 
-    private:
-        atomic_address(const atomic_address&);
-        atomic_address& operator=(const atomic_address& v) volatile;
+        atomic_address(const atomic_address&) = delete;
+        atomic_address& operator=(const atomic_address& v) volatile = delete;
     };
-
-#define AZSTD_ATOMIC_INTEGRAL_DEFINE(_name, _type)                   \
-    struct atomic_##_name                                            \
-        : public internal::atomic_integral<_type>                    \
-    {                                                                \
-        atomic_##_name() { }                                         \
-        atomic_##_name(_type v)                                      \
-            : internal::atomic_integral<_type>(v) { }                \
-        _type operator=(_type v) volatile { store(v); return v; }    \
-    private:                                                         \
-        atomic_##_name(const atomic_##_name &);                      \
-        atomic_##_name& operator=(const atomic_##_name& v) volatile; \
-    };
-
-#define AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(_name, _type)   \
-    AZSTD_ATOMIC_INTEGRAL_DEFINE(_name, _type)                    \
-    template<>                                                    \
-    struct atomic<_type>                                          \
-        : public atomic_##_name                                   \
-    {                                                             \
-        atomic() { }                                              \
-        atomic(_type v)                                           \
-            : atomic_##_name(v) { }                               \
-        _type operator=(_type v) volatile { store(v); return v; } \
-    private:                                                      \
-        atomic(const atomic&);                                    \
-        atomic& operator=(const atomic& v) volatile;              \
-    };
-
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(char, char);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(schar, signed char);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(uchar, unsigned char);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(short, short);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(ushort, unsigned short);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(int, int);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(uint, unsigned int);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(long, long);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(ulong, unsigned long);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(llong, AZ::s64);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(ullong, AZ::u64);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(char16_t, char16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(char32_t, char32_t);
-#if defined(AZ_PLATFORM_X360)
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(wchar_t, wchar_t);
-#else
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE_WITH_GENERIC(wchar_t, wchar_t);
-#endif
-
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_least8_t, int_least8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_least8_t, uint_least8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_least16_t, int_least16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_least16_t, uint_least16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_least32_t, int_least32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_least32_t, uint_least32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_least64_t, int_least64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_least64_t, uint_least64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_fast8_t, int_fast8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_fast8_t, uint_fast8_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_fast16_t, int_fast16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_fast16_t, uint_fast16_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_fast32_t, int_fast32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_fast32_t, uint_fast32_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(int_fast64_t, int_fast64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uint_fast64_t, uint_fast64_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(intptr_t, intptr_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uintptr_t, uintptr_t);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE(size_t, size_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(ssize_t, ssize_t);
-    AZSTD_ATOMIC_INTEGRAL_DEFINE(ptrdiff_t, ptrdiff_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(intmax_t, intmax_t);
-    //AZSTD_ATOMIC_INTEGRAL_DEFINE(uintmax_t, uintmax_t);
-
-#undef AZSTD_ATOMIC_INTEGRAL_DEFINE
-
 
     /**
      * Generic atomic type, will work with any type having a supported size.
      */
-    template<typename T>
+    template <typename T>
     struct atomic
-        : public internal::atomic_base<T>
+        : public AZStd::Utils::if_c<AZStd::is_integral<T>::value, internal::atomic_integral<T>, internal::atomic_base<T>>::type
     {
-        atomic() { }
+        using base = typename AZStd::Utils::if_c<AZStd::is_integral<T>::value, internal::atomic_integral<T>, internal::atomic_base<T>>::type;
+        atomic()
+            : base(T()) { }
         atomic(T v)
-            : internal::atomic_base<T>(v) { }
+            : base(v) { }
         T operator=(T v) volatile { this->store(v); return v; }
-    private:
-        atomic(const atomic&);
-        atomic& operator=(const atomic&) volatile;
+        // delete copy, cv operator =
+        atomic(const atomic&) = delete;
+        atomic& operator=(const atomic&) volatile = delete;
     };
 
     /**
@@ -742,16 +673,20 @@ namespace AZStd
      * Derives from atomic_address, which is consistent for conversions, but means we must re-implement operations
      * to work with generic T* type instead of void* type.
      */
-    template<typename T>
+    template <typename T>
     struct atomic<T*>
         : public atomic_address
     {
-        atomic() { }
+        atomic() 
+            : atomic_address(nullptr) { }
         atomic(T* v)
             : atomic_address(v) { }
         T* operator=(T* v) volatile { store(v); return v; }
 
-        void store(T* v, memory_order order = memory_order_seq_cst) volatile { atomic_address::store(v, order); }
+        void store(T* v, memory_order order = memory_order_seq_cst) volatile 
+        { 
+            atomic_address::store(const_cast<typename AZStd::remove_const<T>::type*&>(v), order);
+        }
         T* load(memory_order order = memory_order_seq_cst) const volatile
         {
             return static_cast<T*>(atomic_address::load(order));
@@ -761,25 +696,33 @@ namespace AZStd
         }
         T* exchange(T* v, memory_order order = memory_order_seq_cst) volatile
         {
-            return static_cast<T*>(atomic_address::exchange(v, order));
+            return static_cast<T*>(atomic_address::exchange(const_cast<typename AZStd::remove_const<T>::type*&>(v), order));
         }
         bool compare_exchange_weak(T*& expected, T* desired, memory_order success, memory_order failure) volatile
         {
-            return atomic_address::compare_exchange_weak(reinterpret_cast<void*&>(expected), desired,
+            return atomic_address::compare_exchange_weak(reinterpret_cast<void*&>(
+                const_cast<typename AZStd::remove_const<T>::type*&>(expected)), 
+                const_cast<typename AZStd::remove_const<T>::type*&>(desired),
                 success, failure);
         }
         bool compare_exchange_strong(T*& expected, T* desired, memory_order success, memory_order failure) volatile
         {
-            return atomic_address::compare_exchange_strong(reinterpret_cast<void*&>(expected), desired,
+            return atomic_address::compare_exchange_strong(reinterpret_cast<void*&>(
+                const_cast<typename AZStd::remove_const<T>::type*&>(expected)), 
+                const_cast<typename AZStd::remove_const<T>::type*&>(desired),
                 success, failure);
         }
         bool compare_exchange_weak(T*& expected, T* desired, memory_order order = memory_order_seq_cst) volatile
         {
-            return atomic_address::compare_exchange_weak(reinterpret_cast<void*&>(expected), desired, order);
+            return atomic_address::compare_exchange_weak(reinterpret_cast<void*&>(
+                const_cast<typename AZStd::remove_const<T>::type*&>(expected)), 
+                const_cast<typename AZStd::remove_const<T>::type*&>(desired), order);
         }
         bool compare_exchange_strong(T*& expected, T* desired, memory_order order = memory_order_seq_cst) volatile
         {
-            return atomic_address::compare_exchange_strong(reinterpret_cast<void*&>(expected), desired, order);
+            return atomic_address::compare_exchange_strong(reinterpret_cast<void*&>(
+                const_cast<typename AZStd::remove_const<T>::type*&>(expected)), 
+                const_cast<typename AZStd::remove_const<T>::type*&>(desired), order);
         }
         T* fetch_add(ptrdiff_t v, memory_order order = memory_order_seq_cst) volatile
         {
@@ -847,9 +790,8 @@ namespace AZStd
             return static_cast<T*>(atomic_address::fetch_sub<order>(v * sizeof(T)));
         }
 
-    private:
-        atomic(const atomic&);
-        atomic& operator=(const atomic&) volatile;
+        atomic(const atomic&) = delete;
+        atomic& operator=(const atomic&) volatile = delete;
     };
 
     /**
@@ -859,16 +801,377 @@ namespace AZStd
      */
     struct atomic_flag
     {
-        atomic_flag() { }
+        atomic_flag(bool flag=false)
+            : m_flag(flag)
+        { }
         bool test_and_set(memory_order order = memory_order_seq_cst) volatile { return m_flag.exchange(true, order); }
         void clear(memory_order order = memory_order_seq_cst) volatile { m_flag.store(false, order); }
     private:
-        atomic_flag(const atomic_flag&);
-        atomic_flag& operator=(const atomic_flag&);
+        atomic_flag(const atomic_flag&) = delete;
+        atomic_flag& operator=(const atomic_flag&) = delete;
 
         atomic_bool m_flag;
     };
+
+    using atomic_char = atomic<char>;
+    using atomic_schar = atomic<signed char>;
+    using atomic_uchar = atomic<unsigned char>;
+    using atomic_wchar_t = atomic<wchar_t>;
+    using atomic_short = atomic<short>;
+    using atomic_ushort = atomic<unsigned short>;
+    using atomic_int = atomic<int>;
+    using atomic_uint = atomic<unsigned int>;
+    using atomic_long = atomic<long>;
+    using atomic_ulong = atomic<unsigned long>;
+    using atomic_llong = atomic<AZ::s64>;
+    using atomic_ullong = atomic<AZ::u64>;
+    using atomic_size_t = atomic<size_t>;
+    using atomic_ptrdiff_t = atomic<ptrdiff_t>;
+}
+#endif // !AZ_USE_STD_ATOMIC
+
+namespace AZStd
+{
+    inline void atomic_init(atomic_bool* atom, bool desired)
+    {
+        *atom = desired;
+    }
+
+    inline void atomic_init(volatile atomic_bool* atom, bool desired)
+    {
+        *atom = desired;
+    }
+
+    template <class T>
+    inline void atomic_init(atomic<T>* atom, T desired)
+    {
+        *atom = desired;
+    }
+
+    template <class T>
+    inline void atomic_init(volatile atomic<T>* atom, T desired)
+    {
+        *atom = desired;
+    }
+
+    template <class T>
+    inline bool atomic_is_lock_free(const atomic<T>* atom)
+    {
+        return atom->is_lock_free();
+    }
+
+    template <class T>
+    inline bool atomic_is_lock_free(const volatile atomic<T>* atom)
+    {
+        return atom->is_lock_free();
+    }
+
+    template <class T>
+    inline void atomic_store(atomic<T>* atom, T desired)
+    {
+        atom->store(desired);
+    }
+
+    template <class T>
+    inline void atomic_store(volatile atomic<T>* atom, T desired)
+    {
+        atom->store(desired);
+    }
+
+    template <class T>
+    inline void atomic_store_explicit(atomic<T>* atom, T desired, memory_order order)
+    {
+        atom->store(desired, order);
+    }
+
+    template <class T>
+    inline void atomic_store_explicit(volatile atomic<T>* atom, T desired, memory_order order)
+    {
+        atom->store(desired, order);
+    }
+
+    template <class T>
+    inline T atomic_load(atomic<T>* atom)
+    {
+        return atom->load();
+    }
+
+    template <class T>
+    inline T atomic_load(volatile atomic<T>* atom)
+    {
+        return atom->load();
+    }
+
+    template <class T>
+    inline T atomic_load_explicit(atomic<T>* atom, memory_order order)
+    {
+        return atom->load(order);
+    }
+
+    template <class T>
+    inline T atomic_load_explicit(volatile atomic<T>* atom, memory_order order)
+    {
+        return atom->load(order);
+    }
+
+    template <class T>
+    inline T atomic_exchange(atomic<T>* atom, T desired)
+    {
+        return atom->exchange(desired);
+    }
+
+    template <class T>
+    inline T atomic_exchange(volatile atomic<T>* atom, T desired)
+    {
+        return atom->exchange(desired);
+    }
+
+    template <class T>
+    inline T atomic_exchange_explicit(atomic<T>* atom, T desired, memory_order order)
+    {
+        return atom->exchange(desired, order);
+    }
+
+    template <class T>
+    inline T atomic_exchange_explicit(volatile atomic<T>* atom, T desired, memory_order order)
+    {
+        return atom->exchange(desired, order);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_weak(atomic<T>* atom, T* expected, T desired)
+    {
+        return atom->compare_exchange_weak(*expected, desired);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_weak(volatile atomic<T>* atom, T* expected, T desired)
+    {
+        return atom->compare_exchange_weak(*expected, desired);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_weak_explicit(atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail)
+    {
+        return atom->compare_exchange_weak(*expected, desired, success, fail);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_weak_explicit(volatile atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail)
+    {
+        return atom->compare_exchange_weak(*expected, desired, success, fail);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_strong(atomic<T>* atom, T* expected, T desired)
+    {
+        return atom->compare_exchange_strong(*expected, desired);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_strong(volatile atomic<T>* atom, T* expected, T desired)
+    {
+        return atom->compare_exchange_strong(*expected, desired);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_strong_explicit(atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail)
+    {
+        return atom->compare_exchange_strong(*expected, desired, success, fail);
+    }
+
+    template <class T>
+    inline bool atomic_compare_exchange_strong_explicit(volatile atomic<T>* atom, T* expected, T desired, memory_order success, memory_order fail)
+    {
+        return atom->compare_exchange_strong(*expected, desired, success, fail);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_add(atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_add(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_add(volatile atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_add(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_add_explicit(atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_add(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_add_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_add(arg, order);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_add(atomic<T*>* atom, ptrdiff_t arg)
+    {
+        return atom->fetch_add(arg);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_add(volatile atomic<T*>* atom, ptrdiff_t arg)
+    {
+        return atom->fetch_add(arg);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_add_explicit(atomic<T*>* atom, ptrdiff_t arg, memory_order order)
+    {
+        return atom->fetch_add(arg, order);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_add_explicit(volatile atomic<T*>* atom, ptrdiff_t arg, memory_order order)
+    {
+        return atom->fetch_add(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_sub(atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_sub(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_sub(volatile atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_sub(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_sub_explicit(atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_sub(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_sub_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_sub(arg, order);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_sub(atomic<T*>* atom, ptrdiff_t arg)
+    {
+        return atom->fetch_sub(arg);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_sub(volatile atomic<T*>* atom, ptrdiff_t arg)
+    {
+        return atom->fetch_sub(arg);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_sub_explicit(atomic<T*>* atom, ptrdiff_t arg, memory_order order)
+    {
+        return atom->fetch_sub(arg, order);
+    }
+
+    template <class T>
+    inline T* atomic_fetch_sub_explicit(volatile atomic<T*>* atom, ptrdiff_t arg, memory_order order)
+    {
+        return atom->fetch_sub(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_and(atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_and(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_and(volatile atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_and(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_and_explicit(atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_and(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_and_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_and(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_or(atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_or(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_or(volatile atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_or(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_or_explicit(atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_or(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_or_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_or(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_xor(atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_xor(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_xor(volatile atomic<Integral>* atom, Integral arg)
+    {
+        return atom->fetch_xor(arg);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_xor_explicit(atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_xor(arg, order);
+    }
+
+    template <class Integral, class>
+    inline Integral atomic_fetch_xor_explicit(volatile atomic<Integral>* atom, Integral arg, memory_order order)
+    {
+        return atom->fetch_xor(arg, order);
+    }
+
+    inline bool atomic_flag_test_and_set(volatile atomic_flag* atom)
+    {
+        return atom->test_and_set();
+    }
+
+    inline bool atomic_flag_test_and_set_explicit(volatile atomic_flag* atom, memory_order order)
+    {
+        return atom->test_and_set(order);
+    }
+
+    inline void atomic_flag_clear(volatile atomic_flag* atom)
+    {
+        return atom->clear();
+    }
+
+    inline void atomic_flag_clear_explicit(volatile atomic_flag* atom, memory_order order)
+    {
+        return atom->clear(order);
+    }
 }
 
-#endif
-#pragma once

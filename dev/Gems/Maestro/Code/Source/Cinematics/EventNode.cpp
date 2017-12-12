@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EventNode.h"
 #include "AnimTrack.h"
 #include "TrackEventTrack.h"
@@ -19,8 +20,14 @@
 #include <ISystem.h>
 
 //////////////////////////////////////////////////////////////////////////
+CAnimEventNode::CAnimEventNode()
+    : CAnimEventNode(0)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
 CAnimEventNode::CAnimEventNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Event)
 {
     SetFlags(GetFlags() | eAnimNodeFlags_CanChangeName);
     m_lastEventKey = -1;
@@ -71,7 +78,7 @@ void CAnimEventNode::Animate(SAnimContext& ec)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType trackType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (pTrack && pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled)
         {
@@ -88,7 +95,7 @@ void CAnimEventNode::Animate(SAnimContext& ec)
                 bool bKeyAfterStartTime = key.time >= ec.startTime;
                 if (bKeyAfterStartTime)
                 {
-                    ec.pSequence->TriggerTrackEvent(key.event, key.eventValue);
+                    ec.pSequence->TriggerTrackEvent(key.event.c_str(), key.eventValue.c_str());
                 }
             }
             m_lastEventKey = nEventKey;
@@ -99,4 +106,11 @@ void CAnimEventNode::Animate(SAnimContext& ec)
 void CAnimEventNode::OnReset()
 {
     m_lastEventKey = -1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimEventNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimEventNode, CAnimNode>()
+        ->Version(1);
 }

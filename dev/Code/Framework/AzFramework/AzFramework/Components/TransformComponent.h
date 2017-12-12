@@ -15,10 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/EntityBus.h>
-#include <AzCore/Math/Crc.h>
-#include <AzCore/Math/Transform.h>
-#include <AzCore/Math/Vector3.h>
-
+#include <AzCore/Component/TickBus.h>
 #include <AzFramework/Network/NetBindable.h>
 
 namespace AzToolsFramework
@@ -34,55 +31,8 @@ namespace AzFramework
     class TransformReplicaChunk;
     class GameEntityContextComponent;
 
-    /**
-     * Configuration for TransformComponent.
-     */
-    struct TransformComponentConfiguration
-    {
-        /**
-         * Behavior when a parent entity activates.
-         * A parent may activate before or after its children have activated.
-         */
-        enum class ParentActivationTransformMode : AZ::u32
-        {
-            MaintainOriginalRelativeTransform,  ///< Child will snap to originally-configured parent-relative transform when parent is activated.
-            MaintainCurrentWorldTransform,      ///< Child will still follow parent, but will maintain its current world transform when parent is activated.
-        };
-
-        /**
-         * 3D transform.
-         * The entity's position, rotation, and scale in 3D.
-         */
-        AZ::Transform m_transform = AZ::Transform::Identity();
-
-        /**
-        * 3D world transform.
-        * The entity's position, rotation, and scale in 3D.
-        */
-        AZ::Transform m_worldTransform = AZ::Transform::Identity();
-
-        /**
-         * ID of parent entity.
-         * When the parent entity moves, this transform will follow.
-         */
-        AZ::EntityId m_parentId;
-
-        /**
-         * Behavior when the parent entity activates.
-         */
-        ParentActivationTransformMode m_parentActivationTransformMode = ParentActivationTransformMode::MaintainOriginalRelativeTransform;
-
-        /**
-         * Whether the transform is synced over the network.
-         */
-        bool m_isBoundToNetwork = false;
-
-        /**
-         * Whether the transform is static.
-         * A static transform will never move.
-         */
-        bool m_isStatic = false;
-    };
+    /// @deprecated Use AZ::TransformConfig
+    using TransformComponentConfiguration = AZ::TransformConfig;
 
     /**
     * Fundamental component that describes the entity in 3D space.
@@ -95,21 +45,22 @@ namespace AzFramework
         , public AZ::TransformBus::Handler
         , public AZ::TransformNotificationBus::Handler
         , public AZ::EntityBus::Handler
+        , public AZ::TickBus::Handler
         , private AZ::TransformHierarchyInformationBus::Handler
         , public NetBindable
     {
         friend class TransformReplicaChunk;
 
     public:
-        AZ_COMPONENT(TransformComponent, "{22B10178-39B6-4C12-BB37-77DB45FDD3B6}", NetBindable);
+        AZ_COMPONENT(TransformComponent, AZ::TransformComponentTypeId, NetBindable);
 
         friend class AzToolsFramework::Components::TransformComponent;
         friend class AzFramework::GameEntityContextComponent;
 
-        using ParentActivationTransformMode = TransformComponentConfiguration::ParentActivationTransformMode;
+        using ParentActivationTransformMode = AZ::TransformConfig::ParentActivationTransformMode;
 
         TransformComponent();
-        TransformComponent(const TransformComponentConfiguration& configuration);
+        TransformComponent(const TransformComponent& copy);
         virtual ~TransformComponent();
 
     protected:
@@ -117,6 +68,8 @@ namespace AzFramework
         // Component
         void Activate() override;
         void Deactivate() override;
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -152,7 +105,7 @@ namespace AzFramework
         void SetWorldX(float x) override;
         void SetWorldY(float y) override;
         void SetWorldZ(float z) override;
-        
+
         float GetWorldX() override;
         float GetWorldY() override;
         float GetWorldZ() override;
@@ -164,7 +117,8 @@ namespace AzFramework
         float GetLocalX() override;
         float GetLocalY() override;
         float GetLocalZ() override;
-        
+
+        bool IsPositionInterpolated() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -199,6 +153,7 @@ namespace AzFramework
         AZ::Vector3 GetLocalRotation() override;
         AZ::Quaternion GetLocalRotationQuaternion() override;
 
+        bool IsRotationInterpolated() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -288,6 +243,11 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
         // Actual Implementation Functions
         // They are protected so we can gate them when network-controlled
         void SetParentImpl(AZ::EntityId parentId, bool isKeepWorldTM);
@@ -318,13 +278,37 @@ namespace AzFramework
         ParentActivationTransformMode           m_parentActivationTransformMode;
         GridMate::ReplicaChunkPtr               m_replicaChunk;
         bool                                    m_isStatic;                 ///< If true, the transform is static and doesn't move while entity is active.
+        AZ::InterpolationMode                   m_interpolatePosition;      ///< Interpolation mode for net-synced position updates
+        AZ::InterpolationMode                   m_interpolateRotation;      ///< Interpolation mode for net-synced rotation updates
 
         //////////////////////////////////////////////////////////////////////////
         // TransformHierarchyInformationBus
         void GatherChildren(AZStd::vector<AZ::EntityId>& children) override;
         //////////////////////////////////////////////////////////////////////////
-    };
 
+        //////////////////////////////////////////////////////////////////////////////
+        // Feedback from corresponding replica chunk
+        void OnNewPositionData(const AZ::Vector3&, const GridMate::TimeContext&);
+        void OnNewRotationData(const AZ::Quaternion&, const GridMate::TimeContext&);
+        void OnNewScaleData(const AZ::Vector3&, const GridMate::TimeContext&);
+        //////////////////////////////////////////////////////////////////////////////
+
+    private:
+
+        //////////////////////////////////////////////////////////////////////////////
+        bool HasAnyInterpolation();
+
+        void CreateSamples();
+        void CreateTranslationSample();
+        void CreateRotationSample();
+
+        AZStd::unique_ptr<AZ::Sample<AZ::Vector3>>    m_netTargetTranslation;
+        AZStd::unique_ptr<AZ::Sample<AZ::Quaternion>> m_netTargetRotation;
+        AZ::Vector3 m_netTargetScale;
+
+        AZ::Transform GetInterpolatedTransform(unsigned int localTime);
+        //////////////////////////////////////////////////////////////////////////////
+    };
 }   // namespace AZ
 
 #endif  // AZ_TRANSFORM_COMPONENT_H

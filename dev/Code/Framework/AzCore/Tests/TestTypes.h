@@ -125,6 +125,15 @@ namespace UnitTest
             ++s_count;
             test[0] = def;
         }
+
+        CreationCounter(AZStd::initializer_list<int> il)
+        {
+            ++s_count;
+            if (il.size() > 0)
+            {
+                test[0] = *il.begin();
+            }
+        }
         CreationCounter(const CreationCounter& rhs)
             : CreationCounter()
         {

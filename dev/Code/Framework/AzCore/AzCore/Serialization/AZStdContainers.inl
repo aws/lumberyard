@@ -2264,7 +2264,7 @@ namespace AZ
             // AZStdSmartPtrContainer uses the underlying smart_ptr container value_type typedef type id for serialization
             const Uuid& GetSpecializedTypeId() override
             {
-                return azrtti_typeid<typename Internal::AZStdSmartPtrContainer<ContainerType>::ValueType>();
+                return azrtti_typeid<ContainerType>();
             }
 
             static GenericClassSharedPtr* Instance()
@@ -2321,7 +2321,7 @@ namespace AZ
             // AZStdSmartPtrContainer uses the underlying smart_ptr container value_type typedef type id for serialization
             const Uuid& GetSpecializedTypeId() override
             {
-                return azrtti_typeid<typename Internal::AZStdSmartPtrContainer<ContainerType>::ValueType>();
+                return azrtti_typeid<ContainerType>();
             }
 
             static GenericClassIntrusivePtr* Instance()
@@ -2375,10 +2375,10 @@ namespace AZ
                 return SerializeGenericTypeInfo<T>::GetClassTypeId();
             }
 
-            // AZStdSmartPtrContainer uses the underlying smart_ptr container value_type typedef type id for serialization
+            // AZStdSmartPtrContainer uses the smart_ptr container type id for serialization
             const Uuid& GetSpecializedTypeId() override
             {
-                return azrtti_typeid<typename Internal::AZStdSmartPtrContainer<ContainerType>::ValueType>();
+                return azrtti_typeid<ContainerType>();
             }
 
             static GenericClassUniquePtr* Instance()

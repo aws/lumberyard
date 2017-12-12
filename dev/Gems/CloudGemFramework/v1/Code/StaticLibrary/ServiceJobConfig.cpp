@@ -11,9 +11,6 @@
 */
 #include "StdAfx.h"
 
-#include <aws/core/client/ClientConfiguration.h>
-#include <aws/core/http/HttpClientFactory.h>
-
 #include <CloudGemFramework/ServiceJobConfig.h>
 
 namespace CloudGemFramework
@@ -21,16 +18,7 @@ namespace CloudGemFramework
 
     void ServiceJobConfig::ApplySettings() 
     {
-
-        AwsApiJobConfig::ApplySettings();
-
-        Aws::Client::ClientConfiguration config{GetClientConfiguration()};
-
-        m_readRateLimiter = config.readRateLimiter;
-        m_writeRateLimiter = config.writeRateLimiter;
-        m_userAgent = config.userAgent;
-        m_httpClient = Aws::Http::CreateHttpClient(config);
-
+        HttpRequestJobConfig::ApplySettings();
     }
 
 } // namespace CloudGemFramework

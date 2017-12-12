@@ -29,6 +29,19 @@ namespace AZ
 
 namespace AzToolsFramework
 {
+    class EntityStateCommandNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void PreRestore() {}
+        virtual void PostRestore(AZ::Entity* /*restoredEntity*/) {}
+    };
+
+    using EntityStateCommandNotificationBus = AZ::EBus<EntityStateCommandNotifications>;
+
     // The entity State URSequencePoint stores the state of an entity before and after some change to it.
     // it does so by serializing the entire entity, so its a good "default behavior" that cannot miss any particular change.
     // we can specialize undos (such as the Entity Transform command) to be more specific and narrower in scope

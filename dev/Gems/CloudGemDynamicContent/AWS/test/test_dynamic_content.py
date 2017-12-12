@@ -48,8 +48,7 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         self.setup_base_stack()
 
     def __080_add_gem_resource_group(self):
-        gem_path = self.add_to_gems_file(self.gem_name)
-        self.lmbr_aws('add-resource-group', '--resource-group', self.gem_name, '--gem', gem_path)
+        self.enable_real_gem(self.gem_name)
 
     def __085_upload_gem_resources(self):
         self.lmbr_aws('upload-resources', '--deployment', self.TEST_DEPLOYMENT_NAME, '--resource-group', self.gem_name, '--confirm-aws-usage', '--confirm-security-change')

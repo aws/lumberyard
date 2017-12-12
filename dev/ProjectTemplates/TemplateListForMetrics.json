@@ -1,0 +1,7 @@
+{
+    "TemplateListDescription": "This is a white list of project template names that are included in usage event tracking. If a template name is not in this list, the name will not be included in the event.",
+    "TemplateNameWhitelist": [
+        "DefaultTemplate",
+        "EmptyTemplate"
+    ]
+}

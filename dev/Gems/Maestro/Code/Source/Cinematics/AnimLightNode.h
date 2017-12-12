@@ -33,8 +33,6 @@ public:
 
     virtual void Animate(SAnimContext& ec);
 
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Light; }
-
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
         pSizer->AddObject(this, sizeof(*this));

@@ -31,8 +31,8 @@ public: // member functions
     UiCanvasOnMeshComponent();
 
     // UiCanvasOnMeshInterface
-    bool ProcessCollisionInputEvent(const SInputEvent& event, int triangleIndex, Vec3 hitPoint) override;
-    bool ProcessRayHitInputEvent(const SInputEvent& event, const ray_hit& rayHit) override;
+    bool ProcessCollisionInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint) override;
+    bool ProcessRayHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const ray_hit& rayHit) override;
     // ~UiCanvasOnMeshInterface
 
     // UiCanvasAssetRefListener
@@ -53,7 +53,7 @@ public: // static member functions
 
     static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("StaticMeshService", 0x31654276));
+        required.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));
         required.push_back(AZ_CRC("UiCanvasRefService", 0xb4cb5ef4));
     }
 
@@ -66,7 +66,7 @@ protected: // member functions
     void Deactivate() override;
     // ~AZ::Component
 
-    bool ProcessCollisionInputEventInternal(const SInputEvent& event, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex);
+    bool ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex);
     AZ::EntityId GetCanvas();
 
     AZ_DISABLE_COPY_MOVE(UiCanvasOnMeshComponent);

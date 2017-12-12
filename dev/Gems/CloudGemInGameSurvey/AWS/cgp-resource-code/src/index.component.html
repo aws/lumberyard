@@ -1,0 +1,12 @@
+<div *ngIf="curPage == InGameSurveyPages.SurveyListPage">
+    <survey-list-page [context]="context"
+                      [toSurveyDetailsPageCallback]="toSurveyDetailsPage"></survey-list-page>
+</div>
+
+<div *ngIf="curPage == InGameSurveyPages.SurveyDetailsPage">
+    <button class="btn l-primary back-survey-list-button" (click)="toSurveyListPage()">
+        < Back to Survey List Page
+    </button>
+
+    <survey-details-page [context]="context" [surveyMetadata]="curSurveyMetadata"></survey-details-page>
+</div>

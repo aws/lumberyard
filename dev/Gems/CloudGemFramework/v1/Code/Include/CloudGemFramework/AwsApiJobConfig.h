@@ -20,8 +20,9 @@
 #include <aws/core/http/Scheme.h>
 #include <aws/core/Region.h>
 #include <aws/core/http/HttpTypes.h>
-#include <LmbrAWS/IAWSClientManager.h>
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
+
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 namespace AZ
 {
@@ -73,6 +74,7 @@ namespace CloudGemFramework
     public:
 
         virtual AZ::JobContext* GetJobContext() = 0;
+        virtual void OnAfterIdentityUpdate() = 0;
 
     };
 
@@ -139,13 +141,19 @@ namespace CloudGemFramework
         /// Applys settings changes made after first use.
         virtual void ApplySettings();
 
-        // IAwsApiJobConfig implemeantions
+        // IAwsApiJobConfig implementations
 
-        AZ::JobContext* GetJobContext() override
-        {
-            EnsureSettingsApplied();
-            return m_jobContext;
-        }
+        AZ::JobContext* GetJobContext() override;
+
+        /// Clears configuration related to player identity.
+        /// This does not clear everything because some configuration is set only once, such as the region from the mappings.
+        void OnAfterIdentityUpdate() override;
+
+        /// Get a ClientConfiguration object initialized using the current settings.
+        /// The base settings object's overrides are applied first, then this objects 
+        /// overrides are applied. By default all ClientConfiguration members will 
+        /// have default values (as set by the 
+        Aws::Client::ClientConfiguration GetClientConfiguration() const;
 
     protected:
 
@@ -185,12 +193,6 @@ namespace CloudGemFramework
         /// from the base settings object. By default a nullptr is returned.
         std::shared_ptr<Aws::Auth::AWSCredentialsProvider> GetCredentialsProvider() const;
 
-        /// Get a ClientConfiguration object initialized using the current settings.
-        /// The base settings object's overrides are applied first, then this objects 
-        /// overrides are applied. By default all ClientConfiguration members will 
-        /// have default values (as set by the 
-        Aws::Client::ClientConfiguration GetClientConfiguration() const;
-
     private:
 
         /// The settings object with values overridden by this settings object, or
@@ -214,14 +216,14 @@ namespace CloudGemFramework
     template<class ConfigType>
     class AwsApiJobConfigHolder
         : public InternalCloudGemFrameworkNotificationBus::Handler
-        , public LmbrAWS::ClientManagerNotificationBus::Handler
+        , public CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler
     {
     public:
 
         ~AwsApiJobConfigHolder()
         {
             InternalCloudGemFrameworkNotificationBus::Handler::BusDisconnect();
-            LmbrAWS::ClientManagerNotificationBus::Handler::BusDisconnect();
+            CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusDisconnect();
         }
 
         ConfigType* GetConfig(AwsApiJobConfig* defaultConfig = nullptr, typename ConfigType::InitializerFunction initializer = nullptr)
@@ -229,7 +231,7 @@ namespace CloudGemFramework
             if(!m_config)
             {
                 InternalCloudGemFrameworkNotificationBus::Handler::BusConnect();
-                LmbrAWS::ClientManagerNotificationBus::Handler::BusConnect();
+                CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();
                 m_config.reset(aznew ConfigType(defaultConfig, initializer));
             }
             return m_config.get();
@@ -242,9 +244,16 @@ namespace CloudGemFramework
             m_config.reset();
         }
 
-        void OnAfterConfigurationChange() override
+        void OnBeforeIdentityUpdate() override
         {
-            m_config.reset();
+
+        }
+
+        void OnAfterIdentityUpdate() override
+        {
+            if (m_config) {
+                m_config->OnAfterIdentityUpdate();
+            }
         }
 
         AZStd::unique_ptr<ConfigType> m_config;

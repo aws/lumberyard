@@ -30,6 +30,9 @@ namespace AssetBuilderSDK
     const char* const WarningWindow = "Warning"; //Use this window name to log warning messages.
     const char* const InfoWindow = "Info"; //Use this window name to log info messages.
 
+    const char* const s_processJobRequestFileName = "ProcessJobRequest.xml";
+    const char* const s_processJobResponseFileName = "ProcessJobResponse.xml";
+
     // for now, we're going to put our various masks that are widely known in here.
     // we may expand this into a 64-bit "namespace" by adding additional 32 bits at the front at some point, if it becomes necessary.
     const AZ::u32 SUBID_MASK_ID         = 0x0000FFFF;
@@ -116,11 +119,12 @@ namespace AssetBuilderSDK
         }
     }
 
-    CreateJobsRequest::CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, int platformFlags)
+    CreateJobsRequest::CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, int platformFlags, const AZ::Uuid& sourceFileUUID)
         : m_builderid(builderid)
         , m_sourceFile(sourceFile)
         , m_watchFolder(watchFolder)
         , m_platformFlags(platformFlags)
+        , m_sourceFileUUID(sourceFileUUID)
     {
     }
 
@@ -178,11 +182,13 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<CreateJobsRequest>()->
-                Version(1)->
+                Version(2)->
                 Field("Builder Id", &CreateJobsRequest::m_builderid)->
                 Field("Watch Folder", &CreateJobsRequest::m_watchFolder)->
                 Field("Source File", &CreateJobsRequest::m_sourceFile)->
-                Field("Platform Flags", &CreateJobsRequest::m_platformFlags);
+                Field("Platform Flags", &CreateJobsRequest::m_platformFlags)->
+                Field("Source File UUID", &CreateJobsRequest::m_sourceFileUUID);
+
         }
     }
 
@@ -249,7 +255,7 @@ namespace AssetBuilderSDK
     static AZ::Data::AssetType unknownAssetType = AZ::Data::AssetType::CreateNull();
 
     // as real BuilderSDK builders are created for these types, they will no longer need to be matched by extension
-    // and can be emitted by the builder itself, which has knowlege of the type.
+    // and can be emitted by the builder itself, which has knowledge of the type.
     // first, we'll do the ones which are randomly assigned because they did not actually have an asset type or handler in the main engine yet
     static AZ::Data::AssetType textureMipsAssetType("{3918728C-D3CA-4D9E-813E-A5ED20C6821E}");
     static AZ::Data::AssetType skinnedMeshLodsAssetType("{58E5824F-C27B-46FD-AD48-865BA41B7A51}");
@@ -262,7 +268,7 @@ namespace AssetBuilderSDK
     // and thus can emit their own asset types, but for legacy compatibility, this is an alternate means to do this.
     static AZ::Data::AssetType textureAssetType("{59D5E20B-34DB-4D8E-B867-D33CC2556355}"); // from MaterialAsset.h
     static AZ::Data::AssetType materialAssetType("{F46985B5-F7FF-4FCB-8E8C-DC240D701841}"); // from MaterialAsset.h
-    static AZ::Data::AssetType staticMeshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
+    static AZ::Data::AssetType meshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
     static AZ::Data::AssetType skinnedMeshAssetType("{C5D443E1-41FF-4263-8654-9438BC888CB7}"); // from MeshAsset.h
     static AZ::Data::AssetType sliceAssetType("{C62C7A87-9C09-4148-A985-12F2C99C0A45}"); // from SliceAsset.h
     static AZ::Data::AssetType dynamicSliceAssetType("{78802ABF-9595-463A-8D2B-D022F906F9B1}"); // from SliceAsset.h
@@ -281,8 +287,8 @@ namespace AssetBuilderSDK
     static AZ::Data::AssetType uiCanvasAssetType("{E48DDAC8-1F1E-4183-AAAB-37424BCC254B}"); // from UiAssetTypes.h
     static AZ::Data::AssetType behaviorTreeAssetType("{0DB1F34B-EB30-4318-A20B-CF035F419E74}"); // from BehaviorTreeAsset.h
 
-#if defined(MOTIONCANVAS_GEM_ENABLED)
     // EMotionFX Gem types
+    // If we have a way to register gem specific asset type in the future, we can remove this.
     static const char* emotionFXActorExtension = ".actor";
     static const char* emotionFXMotionExtension = ".motion";
     static const char* emotionFXMotionSetExtension = ".motionset";
@@ -291,7 +297,6 @@ namespace AssetBuilderSDK
     static AZ::Data::AssetType emotionFXMotionAssetType("{00494B8E-7578-4BA2-8B28-272E90680787}"); // from MotionAsset.h in EMotionFX Gem
     static AZ::Data::AssetType emotionFXMotionSetAssetType("{1DA936A0-F766-4B2F-B89C-9F4C8E1310F9}"); // from MotionSetAsset.h in EMotionFX Gem
     static AZ::Data::AssetType emotionFXAnimGraphAssetType("{28003359-4A29-41AE-8198-0AEFE9FF5263}"); // from AnimGraphAsset.h in EMotionFX Gem
-#endif
 
     AZ::Data::AssetType JobProduct::InferAssetTypeByProductFileName(const char* productFile)
     {
@@ -361,7 +366,7 @@ namespace AssetBuilderSDK
 
         if (AzFramework::StringFunc::Find(staticMeshExtensions, extension.c_str()) != AZStd::string::npos)
         {
-            return staticMeshAssetType;
+            return meshAssetType;
         }
 
         if (AzFramework::StringFunc::Find(skinnedMeshExtensions, extension.c_str()) != AZStd::string::npos)
@@ -379,8 +384,8 @@ namespace AssetBuilderSDK
             return skeletonAssetType;
         }
 
-#if defined(MOTIONCANVAS_GEM_ENABLED)
         // EMFX Gem Begin
+        // If we have a way to register gem specific asset type in the future, we can remove this.
         if (AzFramework::StringFunc::Find(emotionFXActorExtension, extension.c_str()) != AZStd::string::npos)
         {
             return emotionFXActorAssetType;
@@ -401,7 +406,6 @@ namespace AssetBuilderSDK
             return emotionFXAnimGraphAssetType;
         }
         // EMFX Gem End
-#endif
 
         // if its an XML file then we may need to open it up to find out what it is...
         if (AzFramework::StringFunc::Find(xmlExtensions, extension.c_str()) != AZStd::string::npos)
@@ -560,7 +564,7 @@ namespace AssetBuilderSDK
         bool isTexture = assetType == textureAssetType;
 
         //if its a static or skinned mesh, then its not a lod so return 0
-        if ((assetType == skinnedMeshAssetType) || (assetType == staticMeshAssetType))
+        if ((assetType == skinnedMeshAssetType) || (assetType == meshAssetType))
         {
             return 0;
         }
@@ -631,10 +635,11 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobProduct>()->
-                Version(1)->
+                Version(2)->
                 Field("Product File Name", &JobProduct::m_productFileName)->
                 Field("Product Asset Type", &JobProduct::m_productAssetType)->
-                Field("Product Sub Id", &JobProduct::m_productSubID);
+                Field("Product Sub Id", &JobProduct::m_productSubID)->
+                Field("Legacy Sub Ids", &JobProduct::m_legacySubIDs);
         }
     }
 
@@ -647,8 +652,9 @@ namespace AssetBuilderSDK
         if (this != &other)
         {
             m_productFileName = AZStd::move(other.m_productFileName);
-            m_productAssetType = other.m_productAssetType;
+            m_productAssetType = AZStd::move(other.m_productAssetType);
             m_productSubID = other.m_productSubID;
+            m_legacySubIDs = AZStd::move(other.m_legacySubIDs);
         }
         return *this;
     }
@@ -662,14 +668,15 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ProcessJobRequest>()->
-                Version(1)->
+                Version(2)->
                 Field("Source File", &ProcessJobRequest::m_sourceFile)->
                 Field("Watch Folder", &ProcessJobRequest::m_watchFolder)->
                 Field("Full Path", &ProcessJobRequest::m_fullPath)->
                 Field("Builder Guid", &ProcessJobRequest::m_builderGuid)->
                 Field("Job Description", &ProcessJobRequest::m_jobDescription)->
                 Field("Temp Dir Path", &ProcessJobRequest::m_tempDirPath)->
-                Field("Source File Dependency List", &ProcessJobRequest::m_sourceFileDependencyList);
+                Field("Source File Dependency List", &ProcessJobRequest::m_sourceFileDependencyList)->
+                Field("Source File UUID", &ProcessJobRequest::m_sourceFileUUID);
         }
     }
 
@@ -683,9 +690,10 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ProcessJobResponse>()->
-                Version(1)->
+                Version(2)->
+                Field("Output Products", &ProcessJobResponse::m_outputProducts)->
                 Field("Result Code", &ProcessJobResponse::m_resultCode)->
-                Field("Output Products", &ProcessJobResponse::m_outputProducts);
+                Field("Requires SubId Generation", &ProcessJobResponse::m_requiresSubIdGeneration);
         }
     }
 
@@ -695,6 +703,7 @@ namespace AssetBuilderSDK
         {
             m_resultCode = other.m_resultCode;
             m_outputProducts.swap(other.m_outputProducts);
+            m_requiresSubIdGeneration = other.m_requiresSubIdGeneration;
         }
         return *this;
     }

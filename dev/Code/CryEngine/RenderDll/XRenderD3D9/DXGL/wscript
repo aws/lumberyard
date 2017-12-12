@@ -60,6 +60,8 @@ def build(bld):
                                 'DIRECT3D10',
                                 'XRENDERGL_EXPORTS',
                                 '_RENDERER',
+                                'RENDERER_EXPORTS',
+                                'ENGINE_EXPORTS',
                                 'DXSDK="'+bld.Path('Code/SDKs/DXSDK/Include')+'/"',
                                 'EXCLUDE_CINEMIZER_SDK',
                                 'OPENGL' ],

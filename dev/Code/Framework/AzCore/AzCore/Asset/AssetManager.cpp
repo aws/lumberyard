@@ -733,7 +733,8 @@ namespace AZ
             AssetData* newAssetData = nullptr;
             AssetHandler* handler = nullptr;
 
-            if (!currentAssetData->IsRegisterReadonlyAndShareable())
+            // TODO: AZ_DEPRECATED Temporary workaround in order to veto an asset reload
+            if (!currentAssetData->IsRegisterReadonlyAndShareable() || currentAssetData->ShouldVetoAssetReload())
             {
                 // Reloading an "instance asset" is basically a no-op.
                 // We'll simply notify users to reload the asset.

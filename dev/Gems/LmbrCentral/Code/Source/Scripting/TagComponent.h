@@ -43,7 +43,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         /// EditorTagComponent will call this
         friend EditorTagComponent;
-        void EditorSetTags(const EditorTags& editorTagList);
+        void EditorSetTags(Tags&& editorTagList);
 
         //////////////////////////////////////////////////////////////////////////
         // TagGlobalRequestBus::MultiHandler
@@ -65,12 +65,12 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("TagService"));
+            provided.push_back(AZ_CRC("TagService", 0xf1ef347d));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("TagService"));
+            incompatible.push_back(AZ_CRC("TagService", 0xf1ef347d));
         }
 
 

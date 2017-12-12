@@ -195,7 +195,6 @@ void CStandardGraphicsPipeline::UpdatePerFrameConstantBuffer(const PerFrameParam
     cb->PerFrame_CausticsSmoothSunDirection = Vec4(perFrameParams.m_CausticsSunDirection, 0.0f);
 
     cb->PerFrame_DecalZFightingRemedy = Vec4(perFrameParams.m_DecalZFightingRemedy, CD3D9Renderer::CV_r_ssdoAmountDirect);
-    cb->PerFrame_TerrainInfo = Vec4(gEnv->p3DEngine->GetTerrainTextureMultiplier(), 0, 0, 0);
     cb->PerFrame_WaterLevel = Vec4(perFrameParams.m_WaterLevel, 0.0f);
 
     cb->PerFrame_HDRParams = perFrameParams.m_HDRParams;
@@ -472,30 +471,35 @@ void CStandardGraphicsPipeline::RenderAutoExposure()
 
 void CStandardGraphicsPipeline::RenderBloom()
 {
+    CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->SwitchToNewGraphicsPipeline();
     m_pBloomPass->Execute();
     ResetRenderState();
 }
 
 void CStandardGraphicsPipeline::RenderScreenSpaceObscurance()
 {
+    CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->SwitchToNewGraphicsPipeline();
     m_pScreenSpaceObscurancePass->Execute();
     ResetRenderState();
 }
 
 void CStandardGraphicsPipeline::RenderScreenSpaceReflections()
 {
+    CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->SwitchToNewGraphicsPipeline();
     m_pScreenSpaceReflectionsPass->Execute();
     ResetRenderState();
 }
 
 void CStandardGraphicsPipeline::RenderScreenSpaceSSS(CTexture* pIrradianceTex)
 {
+    CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->SwitchToNewGraphicsPipeline();
     m_pScreenSpaceSSSPass->Execute(pIrradianceTex);
     ResetRenderState();
 }
 
 void CStandardGraphicsPipeline::RenderMotionBlur()
 {
+    CDeviceObjectFactory::GetInstance().GetCoreGraphicsCommandList()->SwitchToNewGraphicsPipeline();
     m_pMotionBlurPass->Execute();
     ResetRenderState();
 }

@@ -11,10 +11,13 @@
             "StaticLibrary/AwsApiJobConfig.cpp",
             "StaticLibrary/Error.cpp",
             "StaticLibrary/JsonObjectHandler.cpp",
+            "StaticLibrary/MultipartFormData.cpp",
             "StaticLibrary/RequestBuilder.cpp",
             "StaticLibrary/ServiceJob.cpp",
             "StaticLibrary/ServiceJobConfig.cpp",
-            "StaticLibrary/HttpRequestJob.cpp"
+            "StaticLibrary/HttpFileUploadJob.cpp",
+            "StaticLibrary/HttpRequestJob.cpp",
+            "StaticLibrary/HttpRequestJobConfig.cpp"
         ]
     }
 }

@@ -80,7 +80,6 @@ public:
     CAnimCameraNode(const int id);
     virtual ~CAnimCameraNode();
     static void Initialize();
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Camera; }
     virtual void Animate(SAnimContext& ec);
 
     bool GetShakeRotation(const float& time, Quat& rot);

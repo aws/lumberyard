@@ -290,8 +290,12 @@ public:
         ESystemConfigSpec(bool));
     MOCK_CONST_METHOD0(GetMaxConfigSpec,
         ESystemConfigSpec());
-    MOCK_METHOD2(SetConfigSpec,
-        void(ESystemConfigSpec spec, bool bClient));
+    MOCK_METHOD3(SetConfigSpec,
+        void(ESystemConfigSpec spec, ESystemConfigPlatform platform, bool bClient));
+    MOCK_CONST_METHOD0(GetConfigPlatform,
+        ESystemConfigPlatform());
+    MOCK_METHOD1(SetConfigPlatform,
+        void(ESystemConfigPlatform platform));
     MOCK_METHOD1(AutoDetectSpec,
         void(bool detectResolution));
     MOCK_METHOD2(SetThreadState,
@@ -392,6 +396,8 @@ public:
         int(bool, WIN_HWND));
     MOCK_METHOD0(CreateLocalFileIO,
         std::shared_ptr<AZ::IO::FileIOBase>());
+
+    MOCK_METHOD2(ForceMaxFps, void(bool, int));
 };
 
 #pragma warning( pop )

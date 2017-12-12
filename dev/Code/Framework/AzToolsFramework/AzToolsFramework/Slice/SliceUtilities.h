@@ -13,12 +13,15 @@
 #include <AzCore/base.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/UserSettings/UserSettings.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #pragma once
 
 namespace AzToolsFramework
 {
+    class InstanceDataNode;
+
     namespace SliceUtilities
     {
         /**
@@ -71,17 +74,50 @@ namespace AzToolsFramework
         bool CheckSliceAdditionCyclicDependencySafe(const AZ::SliceComponent::SliceInstanceAddress& instanceToAdd,
                                                     const AZ::SliceComponent::SliceInstanceAddress& targetInstanceToAddTo);
 
+
+        /**
+         * Push a set of entities to a given slice asset.
+         * It is assumed that all provided entities belong to an instance of the provided slice, otherwise AZ::Failure will be returned.
+         * \param entityIdList list of live entity Ids whose overrides will be pushed to the slice. Live entities must belong to instances of the specified slice.
+         * \param sliceAsset the target slice asset.
+         * \return AZ::Success if push is completed successfully, otherwise AZ::Failure with an AZStd::string payload.
+         */
+        AZ::Outcome<void, AZStd::string> PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList, const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset);
+
         /**
          * Returns true if the entity has no transform parent.
          */
         bool IsRootEntity(const AZ::Entity& entity);
+
+        /**
+        * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
+        * \param editData - The specific element data to check for slice flags (can be nullptr)
+        * \param classData - The class data to check for slice flags (some flags can cascade from class to all elements, can also be nullptr)
+        * return ref AZ::Edit::SliceFlags
+        */
+        AZ::u32 GetSliceFlags(const AZ::Edit::ElementData* editData, const AZ::Edit::ClassData* classData);
+
+        /**
+        * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
+        * \param node - instance data hierarchy node
+        * return ref AZ::Edit::SliceFlags
+        */
+        AZ::u32 GetNodeSliceFlags(const InstanceDataNode& node);
+
+        /**
+         * Returns true if the specified node is slice-pushable.
+         * \param node instance data node to evaluate.
+         * \param isRootEntity (optional) specifies whether the parent entity is a transform root.
+         */
+        bool IsNodePushable(const InstanceDataNode& node, bool isRootEntity = false);
+
 
         bool GenerateSuggestedSlicePath(const AzToolsFramework::EntityIdSet& entitiesInSlice, const AZStd::string& targetDirectory, AZStd::string& suggestedFullPath);
 
         void SetSliceSaveLocation(const AZStd::string& path);
         bool GetSliceSaveLocation(AZStd::string& path);
 
-        void Reflect(AZ::SerializeContext* context);
+        void Reflect(AZ::ReflectContext* context);
 
         class SliceUserSettings
             : public AZ::UserSettings

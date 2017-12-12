@@ -92,6 +92,8 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     , m_ui(new Ui::MaterialBrowser)
     , m_filterModel(new MaterialBrowserFilterModel(this))
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     m_ui->setupUi(this);
 
     m_ui->treeView->installEventFilter(this);
@@ -99,16 +101,17 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     MaterialBrowserWidgetBus::Handler::BusConnect();
 
     // Get the asset browser model
-    AzToolsFramework::AssetBrowser::AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AzToolsFramework::AssetBrowser::AssetBrowserComponentRequests::GetAssetBrowserModel);
+    AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(m_assetBrowserModel, "Failed to get filebrowser model");
 
     // Set up the filter model
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_ui->treeView->setModel(m_filterModel.data());
+    m_ui->treeView->SetThumbnailContext("AssetBrowser");
 
     m_ui->m_searchWidget->Setup(true, false);
     m_filterModel->SetSearchFilter(m_ui->m_searchWidget);
-    connect(m_ui->m_searchWidget->GetFilter().data(), &AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &MaterialBrowserFilterModel::SearchFilterUpdated);
+    connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &MaterialBrowserFilterModel::SearchFilterUpdated);
 
     // Call LoadState to initialize the AssetBrowserTreeView's QTreeViewStateSaver
     // This must be done BEFORE StartRecordUpdateJobs(). A race condition from the update jobs was causing a 5-10% crash/hang when opening the Material Editor.
@@ -210,8 +213,6 @@ void MaterialBrowserWidget::TryLoadRecordMaterial(CMaterialBrowserRecord& record
     m_filterModel->SetRecord(record);
     m_bIgnoreSelectionChange = false;
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////
 void MaterialBrowserWidget::TickRefreshMaterials()
@@ -517,7 +518,11 @@ void MaterialBrowserWidget::OnPaste()
 
     if (strcmp(node->getTag(), "Material") == 0)
     {
-        GetIEditor()->ExecuteCommand("material.create");
+        if (!m_pMatMan->GetCurrentMaterial())
+        {
+            GetIEditor()->ExecuteCommand("material.create");
+        }
+
         _smart_ptr<CMaterial> pMtl = m_pMatMan->GetCurrentMaterial();
         if (pMtl)
         {
@@ -852,7 +857,7 @@ void MaterialBrowserWidget::OnMakeSubMtlSlot(const CMaterialBrowserRecord& recor
             if (QMessageBox::question(this, tr("Confirm Override"), str) == QMessageBox::Yes)
             {
                 QString name = tr("SubMtl%1")
-                    .arg(m_selectedSubMaterialIndex + 1);
+                        .arg(m_selectedSubMaterialIndex + 1);
                 _smart_ptr<CMaterial> pMtl = new CMaterial(name, MTL_FLAG_PURE_CHILD);
                 parentMaterial->SetSubMaterial(m_selectedSubMaterialIndex, pMtl);
             }
@@ -1118,7 +1123,10 @@ void MaterialBrowserWidget::AddContextMenuActionsMultiSelect(QMenu& menu) const
 
 void MaterialBrowserWidget::AddContextMenuActionsNoSelection(QMenu& menu) const
 {
-    menu.addAction(tr("Paste\tCtrl+V"))->setData(MENU_PASTE);
+    QAction* action = menu.addAction(tr("Paste\tCtrl+V"));
+    action->setData(MENU_PASTE);
+    action->setEnabled(CanPaste());
+
     menu.addSeparator();
     menu.addAction(tr("Add New Material"))->setData(MENU_ADDNEW);
     menu.addAction(tr("Add New Multi Material"))->setData(MENU_ADDNEW_MULTI);
@@ -1163,6 +1171,7 @@ void MaterialBrowserWidget::AddContextMenuActionsSingleSelection(QMenu& menu, _s
 void MaterialBrowserWidget::AddContextMenuActionsSubMaterial(QMenu& menu, _smart_ptr<CMaterial> parentMaterial, _smart_ptr<CMaterial> subMaterial) const
 {
     bool enabled = true;
+
     if (parentMaterial)
     {
         uint32 nFileAttr = parentMaterial->GetFileAttributes();
@@ -1185,6 +1194,9 @@ void MaterialBrowserWidget::AddContextMenuActionsSubMaterial(QMenu& menu, _smart
     action = menu.addAction(tr("Copy\tCtrl+C"));
     action->setData(MENU_COPY);
 
+    action = menu.addAction(tr("Paste\tCtrl+V"));
+    action->setData(MENU_PASTE);
+    action->setEnabled(CanPaste() && enabled);
     action = menu.addAction(tr("Rename\tF2"));
     action->setData(MENU_RENAME);
     action->setEnabled(enabled);
@@ -1210,11 +1222,17 @@ void MaterialBrowserWidget::AddContextMenuActionsCommon(QMenu& menu, _smart_ptr<
 {
     uint32 fileAttributes = material->GetFileAttributes();
 
+    bool modificationsEnabled = true;
+    if (fileAttributes & SCC_FILE_ATTRIBUTE_READONLY)
+    {
+        modificationsEnabled = false;
+    }
+
     menu.addAction(tr("Cut\tCtrl+X"))->setData(MENU_CUT);
     menu.addAction(tr("Copy\tCtrl+C"))->setData(MENU_COPY);
     QAction* action = menu.addAction(tr("Paste\tCtrl+V"));
     action->setData(MENU_PASTE);
-    action->setEnabled(CanPaste());
+    action->setEnabled(CanPaste() && modificationsEnabled);
     menu.addAction(tr("Copy Path to Clipboard"))->setData(MENU_COPY_NAME);
     if (fileAttributes & SCC_FILE_ATTRIBUTE_INPAK)
     {

@@ -14,6 +14,7 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/std/string/string.h>
 
+#include <AzCore/Math/Color.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 
 namespace LmbrCentral
@@ -31,7 +32,7 @@ namespace LmbrCentral
             : m_visible(true)
             , m_enable(true)
             , m_prime(false)
-            , m_color(1.0f, 1.0f, 1.0f)
+            , m_color(1.0f, 1.0f, 1.0f, 1.0f)
             , m_countScale(1.f)
             , m_timeScale(1.f)
             , m_speedScale(1.f)
@@ -55,7 +56,7 @@ namespace LmbrCentral
         AZStd::string               m_selectedEmitter;          //!< Name of the particle emitter to use.
         AZ::EntityId                m_targetEntity;             //!< Target Entity to be used for emitters with Target Attraction or similar features enabled.
         bool                        m_prime;                    //!< "Pre-Roll". Set emitter as though it's been running indefinitely.
-        AZ::Vector3                 m_color;                    //!< An additional tint color
+        AZ::Color                   m_color;                    //!< An additional tint color
         float                       m_countScale;               //!< Multiple for particle count (on top of m_countPerUnit if set).
         float                       m_timeScale;                //!< Multiple for emitter time evolution.
         float                       m_speedScale;               //!< Multiple for particle emission speed.
@@ -114,33 +115,62 @@ namespace LmbrCentral
 
         // Specifies the visibility of the particle component.
         virtual void SetVisibility(bool visible) = 0;
+
+        // Get the visibility of the particle component.
+        virtual bool GetVisibility() = 0;
                 
         // Enable/disable current emitter.
         virtual void Enable(bool enable) = 0;
+
+        // Get whehther current emitter is enabled.
+        virtual bool GetEnable() = 0;
 
         // Set pre-roll
         virtual void EnablePreRoll(bool enable) = 0;
         
         // Set color tint
-        virtual void SetColorTint(const AZ::Vector3& tint) = 0;
+        virtual void SetColorTint(const AZ::Color& tint) = 0;
+
+        // Get color tint
+        virtual AZ::Color GetColorTint() = 0;
 
         // Set count scale
         virtual void SetCountScale(float scale) = 0;
 
+        // Get count scale
+        virtual float GetCountScale() = 0;
+
         // Set time scale
         virtual void SetTimeScale(float scale) = 0;
+
+        // Get time scale
+        virtual float GetTimeScale() = 0;
 
         // Set speed scale
         virtual void SetSpeedScale(float scale) = 0;
 
+        // Get speed scale
+        virtual float GetSpeedScale() = 0;
+
         // Set global size scale
         virtual void SetGlobalSizeScale(float scale) = 0;
 
+        // Get global size scale
+        virtual float GetGlobalSizeScale() = 0;
+        
         // Set particle size scale
-        virtual void SetParticleSizeScale(float scaleX, float scaleY) = 0;
+        virtual void SetParticleSizeScaleX(float scale) = 0;
+        virtual void SetParticleSizeScaleY(float scale) = 0;
+
+        // Get particle size scale
+        virtual float GetParticleSizeScaleX() = 0;
+        virtual float GetParticleSizeScaleY() = 0;
         
         // Set pulse period
         virtual void SetPulsePeriod(float pulse) = 0;
+
+        // Get pulse period
+        virtual float GetPulsePeriod() = 0;
 
         // Set lifetime strength
         virtual void SetLifetimeStrength(float strenth) = 0;
@@ -178,6 +208,7 @@ namespace LmbrCentral
         using Bus = AZ::EBus<ParticleComponentEvents>;
     };
 
+
     /*!
     * EditorParticleComponentRequestBus
     * Messages serviced by EditorParticleComponent.
@@ -188,8 +219,58 @@ namespace LmbrCentral
     public:
         virtual ~EditorParticleComponentRequests() {}
 
+        // Specifies the visibility of the particle component.
+        virtual void SetVisibility(bool visible) = 0;
+
+        // Get the visibility of the particle component.
+        virtual bool GetVisibility() = 0;
+
+        // Enable/disable current emitter.
+        virtual void Enable(bool enable) = 0;
+
+        // Get whehther current emitter is enabled.
+        virtual bool GetEnable() = 0;
+
+        // Set color tint
+        virtual void SetColorTint(const AZ::Color& tint) = 0;
+
+        // Get color tint
+        virtual AZ::Color GetColorTint() = 0;
+
+        // Set count scale
+        virtual void SetCountScale(float scale) = 0;
+
+        // Get count scale
+        virtual float GetCountScale() = 0;
+
+        // Set time scale
+        virtual void SetTimeScale(float scale) = 0;
+
+        // Get time scale
+        virtual float GetTimeScale() = 0;
+
+        // Set speed scale
+        virtual void SetSpeedScale(float scale) = 0;
+
+        // Get speed scale
+        virtual float GetSpeedScale() = 0;
+
+        // Set global size scale
+        virtual void SetGlobalSizeScale(float scale) = 0;
+
+        // Get global size scale
+        virtual float GetGlobalSizeScale() = 0;
+
+        // Set particle size scale
+        virtual void SetParticleSizeScaleX(float scale) = 0;
+        virtual void SetParticleSizeScaleY(float scale) = 0;
+
+        // Get particle size scale
+        virtual float GetParticleSizeScaleX() = 0;
+        virtual float GetParticleSizeScaleY() = 0;
+
         // Sets up an effect emitter by name
-        virtual void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libName) = 0;
+        virtual void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libPath) = 0;
     };
 
     using EditorParticleComponentRequestBus = AZ::EBus <EditorParticleComponentRequests>;

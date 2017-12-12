@@ -29,14 +29,19 @@
 #include "UiScrollBarComponent.h"
 #include "UiScrollBoxComponent.h"
 #include "UiFaderComponent.h"
+#include "UiLayoutFitterComponent.h"
 #include "UiMaskComponent.h"
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
+#include "UiRadioButtonComponent.h"
+#include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
 #include "UiTooltipDisplayComponent.h"
 #include "UiDynamicLayoutComponent.h"
 #include "UiDynamicScrollBoxComponent.h"
+#include "UiDropdownComponent.h"
+#include "UiDropdownOptionComponent.h"
 #include "Script/UiCanvasNotificationLuaBus.h"
 #include "Script/UiCanvasLuaBus.h"
 #include "Script/UiElementLuaBus.h"
@@ -44,6 +49,7 @@
 #include "UiSerialize.h"
 #include "UiRenderer.h"
 
+#include <LyShine/Bus/UiCursorBus.h>
 #include <LyShine/Bus/UiDraggableBus.h>
 #include <LyShine/Bus/UiDropTargetBus.h>
 
@@ -60,6 +66,8 @@
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 
 #include "Animation/UiAnimationSystem.h"
@@ -68,7 +76,7 @@
 #include "World/UiCanvasOnMeshComponent.h"
 
 
-//! \brief Simple utility class for LyShine funtionality in Lua.
+//! \brief Simple utility class for LyShine functionality in Lua.
 //!
 //! Functionality unrelated to UI, such as showing the mouse cursor, should
 //! eventually be moved into other modules (for example, mouse cursor functionality
@@ -86,7 +94,7 @@ public:
             if (!sShowCursor)
             {
                 sShowCursor = true;
-                gEnv->pHardwareMouse->IncrementCounter();
+                UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
             }
         }
         else
@@ -94,7 +102,7 @@ public:
             if (sShowCursor)
             {
                 sShowCursor = false;
-                gEnv->pHardwareMouse->DecrementCounter();
+                UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
             }
         }
     }
@@ -107,20 +115,24 @@ namespace AZ
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CLyShine::CLyShine(ISystem* system)
-    : m_system(system)
+    : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityUI())
+    , AzFramework::InputTextEventListener(AzFramework::InputTextEventListener::GetPriorityUI())
+    , m_system(system)
     , m_draw2d(new CDraw2d)
     , m_uiRenderer(new UiRenderer)
     , m_uiCanvasManager(new UiCanvasManager)
+    , m_uiCursorTexture(nullptr)
+    , m_uiCursorVisibleCounter(0)
 {
     // Reflect the Deprecated Lua buses using the behavior context.
-    // Thuis support will be removed at some point
+    // This support will be removed at some point
     {
         AZ::BehaviorContext* behaviorContext = nullptr;
         EBUS_EVENT_RESULT(behaviorContext, AZ::ComponentApplicationBus, GetBehaviorContext);
         if (behaviorContext)
         {
             behaviorContext->Class<LyShineLua>("LyShineLua")
-                ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("ShowMouseCursor", &LyShineLua::ShowMouseCursor)
             ;
@@ -140,7 +152,9 @@ CLyShine::CLyShine(ISystem* system)
 
     m_system->GetIRenderer()->AddRenderDebugListener(this);
 
-    m_system->GetIInput()->AddEventListener(this);
+    AzFramework::InputChannelEventListener::Connect();
+    AzFramework::InputTextEventListener::Connect();
+    UiCursorBus::Handler::BusConnect();
 
     // These are internal Amazon components, so register them so that we can send back their names to our metrics collection
     // IF YOU ARE A THIRDPARTY WRITING A GEM, DO NOT REGISTER YOUR COMPONENTS WITH EditorMetricsComponentRegistrationBus
@@ -166,25 +180,33 @@ CLyShine::CLyShine(ISystem* system)
         azrtti_typeid<UiLayoutColumnComponent>(),
         azrtti_typeid<UiLayoutRowComponent>(),
         azrtti_typeid<UiLayoutGridComponent>(),
+        azrtti_typeid<UiRadioButtonComponent>(),
+        azrtti_typeid<UiRadioButtonGroupComponent>(),
+        azrtti_typeid<UiDropdownComponent>(),
+        azrtti_typeid<UiDropdownOptionComponent>(),
+        azrtti_typeid<UiLayoutFitterComponent>(),
     };
     EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, componentUuidsForMetricsCollection);
 
 
 
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
+
+    AZ_Assert(!gEnv->IsEditor(), "Please run LyShine unit-tests from a stand-alone launcher");
+
     TextMarkup::UnitTest();
     UiTextComponent::UnitTest(this);
     UiTextComponent::UnitTestLocalization(this);
+
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CLyShine::~CLyShine()
 {
-    if (m_system->GetIInput())
-    {
-        m_system->GetIInput()->RemoveEventListener(this);
-    }
+    UiCursorBus::Handler::BusDisconnect();
+    AzFramework::InputTextEventListener::Disconnect();
+    AzFramework::InputChannelEventListener::Disconnect();
 
     if (m_system->GetIRenderer())
     {
@@ -195,6 +217,12 @@ CLyShine::~CLyShine()
 
     // must be done after UiCanvasComponent::Shutdown
     CSprite::Shutdown();
+
+    if (m_uiCursorTexture)
+    {
+        m_uiCursorTexture->Release();
+        m_uiCursorTexture = nullptr;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -315,6 +343,8 @@ void CLyShine::Render()
     m_uiCanvasManager->RenderLoadedCanvases();
 
     m_draw2d->RenderDeferredPrimitives();
+
+    RenderUiCursor();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -343,6 +373,10 @@ void CLyShine::Reset()
 
     // Delete all the canvases in m_canvases map that are not open in the editor.
     m_uiCanvasManager->DestroyLoadedCanvases(false);
+
+    // Ensure that the UI Cursor is hidden.
+    LyShineLua::ShowMouseCursor(false);
+    m_uiCursorVisibleCounter = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,9 +399,56 @@ void CLyShine::OnDebugDraw()
     LyShineDebug::RenderDebug();
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::IncrementVisibleCounter()
+{
+    ++m_uiCursorVisibleCounter;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool CLyShine::OnInputEvent(const SInputEvent& event)
+void CLyShine::DecrementVisibleCounter()
+{
+    --m_uiCursorVisibleCounter;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CLyShine::IsUiCursorVisible()
+{
+    return m_uiCursorVisibleCounter > 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::SetUiCursor(const char* cursorImagePath)
+{
+    if (m_uiCursorTexture)
+    {
+        m_uiCursorTexture->Release();
+        m_uiCursorTexture = nullptr;
+    }
+
+    if (cursorImagePath && *cursorImagePath && gEnv && gEnv->pRenderer)
+    {
+        m_uiCursorTexture = gEnv->pRenderer->EF_LoadTexture(cursorImagePath, FT_DONT_RELEASE | FT_DONT_STREAM);
+        if (m_uiCursorTexture)
+        {
+            m_uiCursorTexture->SetClamp(true);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Vector2 CLyShine::GetUiCursorPosition()
+{
+    AZ::Vector2 systemCursorPositionNormalized;
+    AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
+                                                          AzFramework::InputDeviceMouse::Id,
+                                                          &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
+    return AZ::Vector2(systemCursorPositionNormalized.GetX() * static_cast<float>(gEnv->pRenderer->GetOverlayWidth()),
+                       systemCursorPositionNormalized.GetY() * static_cast<float>(gEnv->pRenderer->GetOverlayHeight()));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CLyShine::OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_ACTION);
 
@@ -378,9 +459,10 @@ bool CLyShine::OnInputEvent(const SInputEvent& event)
     if (gEnv->pConsole->GetStatus())
     {
         bool isPrimaryRelease = false;
-        if (event.keyId == eKI_Mouse1 || event.keyId == eKI_Touch0)
+        if (inputChannel.GetInputChannelId() == AzFramework::InputDeviceMouse::Button::Left ||
+            inputChannel.GetInputChannelId() == AzFramework::InputDeviceTouch::Touch::Index0)
         {
-            if (event.state == eIS_Released)
+            if (inputChannel.IsStateEnded())
             {
                 isPrimaryRelease = true;
             }
@@ -392,31 +474,19 @@ bool CLyShine::OnInputEvent(const SInputEvent& event)
         }
     }
 
-    // currently I can't find a way to get the unicode events when running in the editor,
-    // so handle the keyboard events though this path when in the editor
-    //if (event.state != eIS_UI)
-    if (event.state != eIS_UI || (gEnv && gEnv->IsEditor()))
+    bool result = m_uiCanvasManager->HandleInputEventForLoadedCanvases(inputChannel);
+    if (result)
     {
-        bool result = m_uiCanvasManager->HandleInputEventForLoadedCanvases(event);
-        if (result)
-        {
-            // Execute events that have been queued during the input event handler
-            ExecuteQueuedEvents();
-        }
-        
-        return result;
+        // Execute events that have been queued during the input event handler
+        ExecuteQueuedEvents();
     }
 
-    return false;
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool CLyShine::OnInputEventUI(const SUnicodeEvent& event)
+bool CLyShine::OnInputTextEventFiltered(const AZStd::string& textUTF8)
 {
-    // NOTE: this function is not yet implemented to do anything. It is a little confusing that
-    // the input system distinguishes between regular events and UI events and which ones
-    // we should be responding to. I think we may need to use this one for text input for text
-    // entry fields.
     FUNCTION_PROFILER(GetISystem(), PROFILE_ACTION);
 
     if (gEnv->pConsole->GetStatus()) // disable UI inputs when console is open
@@ -424,13 +494,34 @@ bool CLyShine::OnInputEventUI(const SUnicodeEvent& event)
         return false;
     }
 
-    // keyboard events come through this path
-    bool result = m_uiCanvasManager->HandleKeyboardEventForLoadedCanvases(event);
+    bool result = m_uiCanvasManager->HandleTextEventForLoadedCanvases(textUTF8);
     if (result)
     {
         // Execute events that have been queued during the input event handler
         ExecuteQueuedEvents();
     }
 
-    return false;
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::RenderUiCursor()
+{
+    if (!gEnv || !gEnv->pRenderer || !m_uiCursorTexture || !IsUiCursorVisible())
+    {
+        return;
+    }
+
+    const AzFramework::InputDevice* mouseDevice = AzFramework::InputDeviceRequests::FindInputDevice(AzFramework::InputDeviceMouse::Id);
+    if (!mouseDevice || !mouseDevice->IsConnected())
+    {
+        return;
+    }
+
+    const AZ::Vector2 position = GetUiCursorPosition();
+    const AZ::Vector2 dimensions(static_cast<float>(m_uiCursorTexture->GetWidth()), static_cast<float>(m_uiCursorTexture->GetHeight()));
+
+    m_draw2d->BeginDraw2d();
+    m_draw2d->DrawImage(m_uiCursorTexture->GetTextureID(), position, dimensions);
+    m_draw2d->EndDraw2d();
 }

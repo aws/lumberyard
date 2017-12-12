@@ -40,7 +40,7 @@ struct CSplinePoint
 
 
 //////////////////////////////////////////////////////////////////////////
-class CSplineObject
+class SANDBOX_API CSplineObject
     : public CBaseObject
 {
     Q_OBJECT

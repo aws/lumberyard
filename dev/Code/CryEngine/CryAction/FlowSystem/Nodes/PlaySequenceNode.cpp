@@ -59,7 +59,7 @@ class CPlaySequence_Node
         PS_Last
     } EPlayingState;
 
-    _smart_ptr<IAnimSequence> m_pSequence;
+    AZStd::intrusive_ptr<IAnimSequence> m_pSequence;
     SActivationInfo m_actInfo;
     EPlayingState m_playingState;
     float m_currentTime;
@@ -87,7 +87,7 @@ public:
             IMovieSystem* pMovieSystem = gEnv->pMovieSystem;
             if (pMovieSystem)
             {
-                pMovieSystem->RemoveMovieListener(m_pSequence, this);
+                pMovieSystem->RemoveMovieListener(m_pSequence.get(), this);
             }
         }
     };
@@ -232,7 +232,7 @@ public:
                 {
                     float time = GetPortFloat(pActInfo, EIP_JumpToTime);
                     time = clamp_tpl(time, m_pSequence->GetTimeRange().start, m_pSequence->GetTimeRange().end);
-                    gEnv->pMovieSystem->SetPlayingTime(m_pSequence, time);
+                    gEnv->pMovieSystem->SetPlayingTime(m_pSequence.get(), time);
                 }
             }
             else if (IsPortActive(pActInfo, EIP_TriggerJumpToEnd))
@@ -240,7 +240,7 @@ public:
                 if (gEnv->pMovieSystem && m_pSequence)
                 {
                     float endTime = m_pSequence->GetTimeRange().end;
-                    gEnv->pMovieSystem->SetPlayingTime(m_pSequence, endTime);
+                    gEnv->pMovieSystem->SetPlayingTime(m_pSequence.get(), endTime);
                 }
             }
             if (IsPortActive(pActInfo, EIP_PlaySpeed))
@@ -248,7 +248,7 @@ public:
                 const float playSpeed = GetPortFloat(pActInfo, EIP_PlaySpeed);
                 if (gEnv->pMovieSystem)
                 {
-                    gEnv->pMovieSystem->SetPlayingSpeed(m_pSequence, playSpeed);
+                    gEnv->pMovieSystem->SetPlayingSpeed(m_pSequence.get(), playSpeed);
                 }
             }
             break;
@@ -305,7 +305,7 @@ protected:
         UpdatePermanentOutputs();
         if (gEnv->pMovieSystem && m_pSequence)
         {
-            gEnv->pMovieSystem->RemoveMovieListener(m_pSequence, this);
+            gEnv->pMovieSystem->RemoveMovieListener(m_pSequence.get(), this);
         }
         m_pSequence = 0;
         m_actInfo.pGraph->SetRegularlyUpdated(m_actInfo.myID, false);
@@ -336,16 +336,16 @@ protected:
         if (pMovieSystem && m_pSequence)
         {
             // we remove first to NOT get notified!
-            pMovieSystem->RemoveMovieListener(m_pSequence, this);
-            if (!bUnRegisterOnly && pMovieSystem->IsPlaying(m_pSequence))
+            pMovieSystem->RemoveMovieListener(m_pSequence.get(), this);
+            if (!bUnRegisterOnly && pMovieSystem->IsPlaying(m_pSequence.get()))
             {
                 if (bAbort) // stops sequence and leaves it at current position
                 {
-                    pMovieSystem->AbortSequence(m_pSequence, bLeaveTime);
+                    pMovieSystem->AbortSequence(m_pSequence.get(), bLeaveTime);
                 }
                 else
                 {
-                    pMovieSystem->StopSequence(m_pSequence);
+                    pMovieSystem->StopSequence(m_pSequence.get());
                 }
             }
             SequenceStopped();
@@ -356,8 +356,8 @@ protected:
     {
         if (gEnv->pMovieSystem && m_pSequence)
         {
-            const double currentTime = gEnv->pMovieSystem->GetPlayingTime(m_pSequence);
-            const double currentSpeed = gEnv->pMovieSystem->GetPlayingSpeed(m_pSequence);
+            const double currentTime = gEnv->pMovieSystem->GetPlayingTime(m_pSequence.get());
+            const double currentSpeed = gEnv->pMovieSystem->GetPlayingSpeed(m_pSequence.get());
             ActivateOutput(&m_actInfo, EOP_SequenceTime, currentTime);
             ActivateOutput(&m_actInfo, EOP_CurrentSpeed, currentSpeed);
         }
@@ -378,10 +378,10 @@ protected:
         }
 
         // If sequence was changed in the meantime, stop old sequence first
-        if (m_pSequence && pSequence != m_pSequence)
+        if (m_pSequence.get() && pSequence != m_pSequence.get())
         {
-            pMovieSystem->RemoveMovieListener(m_pSequence, this);
-            pMovieSystem->StopSequence(m_pSequence);
+            pMovieSystem->RemoveMovieListener(m_pSequence.get(), this);
+            pMovieSystem->StopSequence(m_pSequence.get());
         }
 
         m_pSequence = pSequence;
@@ -395,9 +395,9 @@ protected:
             }
 
             m_pSequence->Resume();
-            pMovieSystem->AddMovieListener(m_pSequence, this);
-            pMovieSystem->PlaySequence(m_pSequence, NULL, true, false);
-            pMovieSystem->SetPlayingTime(m_pSequence, curTime);
+            pMovieSystem->AddMovieListener(m_pSequence.get(), this);
+            pMovieSystem->PlaySequence(m_pSequence.get(), NULL, true, false);
+            pMovieSystem->SetPlayingTime(m_pSequence.get(), curTime);
 
             // set blend parameters only for tracks with Director Node, having camera track inside
             IViewSystem* pViewSystem = CCryAction::GetCryAction()->GetIViewSystem();
@@ -444,7 +444,7 @@ protected:
 
         NotifyEntities();
         // this can happens when a timedemo is being recorded and the sequence is flagged as CUTSCENE
-        if (m_pSequence && m_playingState == PS_Playing && !pMovieSystem->IsPlaying(m_pSequence))
+        if (m_pSequence && m_playingState == PS_Playing && !pMovieSystem->IsPlaying(m_pSequence.get()))
         {
             SequenceAborted();
         }
@@ -454,7 +454,7 @@ protected:
             if (gEnv->pMovieSystem && m_pSequence)
             {
                 float endTime = m_pSequence->GetTimeRange().end;
-                gEnv->pMovieSystem->SetPlayingTime(m_pSequence, endTime);
+                gEnv->pMovieSystem->SetPlayingTime(m_pSequence.get(), endTime);
             }
         }
     }

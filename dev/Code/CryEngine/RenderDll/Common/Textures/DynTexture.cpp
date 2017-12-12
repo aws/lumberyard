@@ -15,14 +15,15 @@
 
 
 #include "StdAfx.h"
+#include <CryEngineAPI.h>
 
 //======================================================================
 // Dynamic textures
 SDynTexture SDynTexture::s_Root("Root");
 uint32 SDynTexture::s_nMemoryOccupied = 0;
 
-uint32    SDynTexture::s_iNumTextureBytesCheckedOut;
-uint32    SDynTexture::s_iNumTextureBytesCheckedIn;
+uint32 SDynTexture::s_iNumTextureBytesCheckedOut;
+uint32 SDynTexture::s_iNumTextureBytesCheckedIn;
 
 SDynTexture::TextureSet    SDynTexture::s_availableTexturePool2D_BC1;
 SDynTexture::TextureSubset SDynTexture::s_checkedOutTexturePool2D_BC1;
@@ -79,15 +80,12 @@ SDynTexture::TextureSubset SDynTexture::s_checkedOutTexturePoolCubeCustom_R16G16
 
 int SDynTexture2::s_nMemoryOccupied[eTP_Max];
 
-uint32    SDynTexture::s_SuggestedDynTexAtlasCloudsMaxsize;
-uint32    SDynTexture::s_SuggestedTexAtlasSize;
-uint32    SDynTexture::s_SuggestedDynTexMaxSize;
-
-uint32    SDynTexture::s_CurDynTexAtlasCloudsMaxsize;
-uint32    SDynTexture::s_CurTexAtlasSize;
-uint32    SDynTexture::s_CurDynTexMaxSize;
-
-//======================================================================
+ENGINE_API uint32 SDynTexture::s_SuggestedDynTexAtlasCloudsMaxsize;
+uint32 SDynTexture::s_SuggestedTexAtlasSize;
+uint32 SDynTexture::s_SuggestedDynTexMaxSize;
+uint32 SDynTexture::s_CurDynTexAtlasCloudsMaxsize;
+uint32 SDynTexture::s_CurTexAtlasSize;
+uint32 SDynTexture::s_CurDynTexMaxSize;
 
 SDynTexture::SDynTexture(const char* szSource)
 {

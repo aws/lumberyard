@@ -17,6 +17,7 @@
 #include "ClipVolumeManager.h"
 #include "LightEntity.h"
 #include "FogVolumeRenderNode.h"
+#include "ObjMan.h"
 
 CClipVolumeManager::~CClipVolumeManager()
 {
@@ -52,7 +53,7 @@ bool CClipVolumeManager::UpdateClipVolume(IClipVolume* pClipVolume, _smart_ptr<I
         volumeInfo.m_bActive = bActive;
 
         AABB volumeBBox = pClipVolume->GetClipVolumeBBox();
-        Get3DEngine()->m_pObjManager->ReregisterEntitiesInArea(volumeBBox.min, volumeBBox.max);
+        Get3DEngine()->GetObjManager()->ReregisterEntitiesInArea(volumeBBox.min, volumeBBox.max);
         return true;
     }
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ApiHandler } from 'app/shared/class/index';
 import { Http } from '@angular/http';
-import { Observable } from 'rxjs/rx';
+import { Observable } from 'rxjs/Observable';
 import { AwsService } from 'app/aws/aws.service';
 import { Router } from "@angular/router";
 
@@ -17,7 +17,7 @@ export class ApiService {
 
 export class ProjectServiceAPI extends ApiHandler {
     constructor(serviceBaseURL: string, http: Http, aws: AwsService) {
-        super(serviceBaseURL, http, aws);
+        super(serviceBaseURL, http, aws, null, "Project");
     }    
 
     public delete(id: string): Observable<any> {

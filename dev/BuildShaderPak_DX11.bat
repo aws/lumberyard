@@ -33,8 +33,8 @@ set GAMENAME=SamplesProject
 set DESTSHADERFOLDER=Cache\%GAMENAME%\PC\user\Cache\Shaders
 
 set SHADERPLATFORM=PC
-rem other available platforms are GL4 GLES3 ORBIS DURANGO METAL
-rem if changing the above platform, also change the below folder name (D3D11, ORBIS, DURANGO, METAL, GL4, GLES3)
+rem other available platforms are GL4 GLES3 METAL and the Console platforms
+rem if changing the above platform, also change the below folder name to match
 set SHADERFLAVOR=D3D11
 
 if [%1] == [] GOTO MissingShaderParam

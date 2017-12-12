@@ -26,17 +26,17 @@ class CAnimSequence
     : public IAnimSequence
 {
 public:
+    AZ_CLASS_ALLOCATOR(CAnimSequence, AZ::SystemAllocator, 0)
+    AZ_RTTI(CAnimSequence, "{5127191A-0E7C-4C6F-9AF2-E5544F07BF22}", IAnimSequence);
+
     CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceType = eSequenceType_Legacy);
+    CAnimSequence();
     ~CAnimSequence();
 
     //////////////////////////////////////////////////////////////////////////
-    virtual void Release()
-    {
-        if (--m_nRefCounter <= 0)
-        {
-            delete this;
-        }
-    }
+    // for intrusive_ptr support
+    void add_ref() override;
+    void release() override;
     //////////////////////////////////////////////////////////////////////////
 
     // Movie system.
@@ -45,11 +45,9 @@ public:
     void SetName(const char* name);
     const char* GetName() const;
     uint32 GetId() const { return m_id; }
+    void ResetId() override;
 
     float GetTime() const { return m_time; }
-
-    float GetFixedTimeStep() const { return m_fixedTimeStep; }
-    void SetFixedTimeStep(float dt) { m_fixedTimeStep = dt; }
 
     void SetOwner(IAnimSequenceOwner* pOwner) override { m_pOwner = pOwner; }
     virtual IAnimSequenceOwner* GetOwner() const override { return m_pOwner; }
@@ -115,6 +113,8 @@ public:
     void Render();
 
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true, uint32 overrideId = 0, bool bResetLightAnimSet = false);
+    void InitPostLoad() override;
+
     void CopyNodes(XmlNodeRef& xmlNode, IAnimNode** pSelectedNodes, uint32 count);
     void PasteNodes(const XmlNodeRef& xmlNode, IAnimNode* pParent);
 
@@ -129,7 +129,7 @@ public:
     //! Get the track events in the sequence
     virtual int GetTrackEventsCount() const;
     virtual char const* GetTrackEvent(int iIndex) const;
-    virtual IAnimStringTable* GetTrackEventStringTable() { return m_pEventStrings; }
+    virtual IAnimStringTable* GetTrackEventStringTable() { return m_pEventStrings.get(); }
 
     //! Call to trigger a track event
     virtual void TriggerTrackEvent(const char* event, const char* param = NULL);
@@ -138,15 +138,9 @@ public:
     virtual void AddTrackEventListener(ITrackEventListener* pListener);
     virtual void RemoveTrackEventListener(ITrackEventListener* pListener);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        pSizer->AddObject(m_name);
-        pSizer->AddObject(m_nodes);
-        pSizer->AddObject(m_listeners);
-    }
-
     ESequenceType GetSequenceType() const override { return m_sequenceType; }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
     void ComputeTimeRange();
@@ -162,17 +156,19 @@ private:
 
     void SetId(uint32 newId);
 
-    typedef std::vector< _smart_ptr<IAnimNode> > AnimNodes;
+    int m_refCount;
+
+    typedef AZStd::vector< AZStd::intrusive_ptr<IAnimNode> > AnimNodes;
     AnimNodes m_nodes;
     AnimNodes m_nodesNeedToRender;
 
     uint32 m_id;
-    string m_name;
+    AZStd::string m_name;
     mutable string m_fullNameHolder;
     Range m_timeRange;
     TrackEvents m_events;
 
-    _smart_ptr<IAnimStringTable> m_pEventStrings;
+    AZStd::intrusive_ptr<IAnimStringTable> m_pEventStrings;
 
     // Listeners
     typedef std::list<ITrackEventListener*> TTrackEventListeners;
@@ -193,12 +189,13 @@ private:
     uint32 m_lastGenId;
 
     IAnimSequenceOwner* m_pOwner;   // legacy owners (sequence entities) are connected by pointer
+
+    // NOTE: for Legacy components this contains the Sequence Id so that we have a single way to find an existing sequence
     AZ::EntityId        m_ownerId;  // SequenceComponent owners are connected by Id
 
     IAnimNode* m_pActiveDirector;
 
     float m_time;
-    float m_fixedTimeStep;
 
     VectorSet<IEntity*> m_precachedEntitiesSet;
     ESequenceType m_sequenceType;       // indicates if this sequence is connected to a legacy sequence entity or Sequence Component

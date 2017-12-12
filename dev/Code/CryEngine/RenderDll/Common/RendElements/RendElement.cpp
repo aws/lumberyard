@@ -103,7 +103,7 @@ CRendElement::CRendElement()
 
 CRendElement::~CRendElement()
 {
-    assert(m_Type == eDATA_Unknown || m_Type == eDATA_Particle || m_Type == eDATA_GPUParticle);
+    assert(m_Type == eDATA_Unknown || m_Type == eDATA_Particle || m_Type == eDATA_GPUParticle || m_Type == eDATA_Gem);
 
     //@TODO: Fix later, prevent crash on exit in single executable
     if (this == &m_RootRelease[0] || this == &m_RootRelease[1] || this == &m_RootRelease[2] || this == &m_RootRelease[3] || this == &m_RootGlobal)
@@ -152,7 +152,6 @@ CRendElementBase::CRendElementBase()
 }
 CRendElementBase::~CRendElementBase()
 {
-
     if ((m_Flags & FCEF_ALLOC_CUST_FLOAT_DATA) && m_CustomData)
     {
         delete [] ((float*)m_CustomData);
@@ -224,6 +223,8 @@ const char* CRendElement::mfTypeString()
         return "BreakableGlass";
     case eDATA_GeomCache:
         return "GeomCache";
+    case eDATA_Gem:
+        return "Gem";
     default:
     {
         CRY_ASSERT(false);

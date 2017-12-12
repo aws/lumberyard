@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AM_Grass_tuft_04_Mat" MtlFlags="524416" Shader="Vegetation" GenMask="2500000000" StringGenMask="%PHONG_TESSELLATION%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="1,1,1" Specular="0.5,0.5,0.5" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="Objects/Natural/Vegetation/AM_Grass_Tuft_01_diff.tif"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" bendDetailLeafAmplitude="0.2" TessellationFactor="1" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" VertexAlphaBlendFactor="1" TessellationFactorMax="32" BlendTerrainColDist="0.5" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Proxy_COL" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="0.5,0.5,0.5" Specular="0.5,0.5,0.5" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+</Material>

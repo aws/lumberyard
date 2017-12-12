@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
+#include <AzFramework/Input/Devices/InputDeviceId.h>
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -43,6 +44,46 @@ namespace AzFramework
         };
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Snapshot of an input channel that can be constructed, copied, and stored independently.
+        struct Snapshot
+        {
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Constructor
+            //! \param[in] inputChannel The input channel used to initialize the snapshot
+            Snapshot(const InputChannel& inputChannel);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Constructor
+            //! \param[in] channelId The channel id used to initialize the snapshot
+            //! \param[in] deviceId The device id used to initialize the snapshot
+            //! \param[in] state The state used to initialize the snapshot
+            Snapshot(const InputChannelId& channelId,
+                     const InputDeviceId& deviceId,
+                     State state);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Constructor
+            //! \param[in] channelId The channel id used to initialize the snapshot
+            //! \param[in] deviceId The device id used to initialize the snapshot
+            //! \param[in] state The state used to initialize the snapshot
+            //! \param[in] value The value used to initialize the snapshot
+            //! \param[in] delta The delta used to initialize the snapshot
+            Snapshot(const InputChannelId& channelId,
+                     const InputDeviceId& deviceId,
+                     State state,
+                     float value,
+                     float delta);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Variables
+            InputChannelId m_channelId;      //!< The channel id of the input channel
+            InputDeviceId m_deviceId;        //!< The device id of the input channel
+            State m_state;                   //!< The state of the input channel
+            float m_value;                   //!< The value of the input channel
+            float m_delta;                   //!< The delta of the input channel
+        };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Base struct from which to derive all custom input data
         struct CustomData
         {
@@ -60,6 +101,10 @@ namespace AzFramework
             AZ::Vector2 m_normalizedPosition = AZ::Vector2(0.5f, 0.5f);
             AZ::Vector2 m_normalizedPositionDelta = AZ::Vector2::CreateZero();
         };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Alias for verbose shared_ptr class
+        using SharedPositionData2D = AZStd::shared_ptr<InputChannel::PositionData2D>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator

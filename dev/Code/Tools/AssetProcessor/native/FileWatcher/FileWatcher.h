@@ -79,6 +79,9 @@ public:
     virtual int AddFolderWatch(FolderWatchBase* pFolderWatch);
     virtual void RemoveFolderWatch(int handle);
     //////////////////////////////////////////////////////////////////////////
+    
+    void StartWatching();
+    void StopWatching();
 
 Q_SIGNALS:
     void AnyFileChange(FileChangeInfo info);
@@ -86,6 +89,7 @@ Q_SIGNALS:
 private:
     int m_nextHandle;
     QVector<FolderRootWatch*> m_folderWatchRoots;
+    bool m_startedWatching = false;
 };
 
 #endif//FILEWATCHER_COMPONENT_H

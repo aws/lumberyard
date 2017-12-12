@@ -14,23 +14,29 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserThumbnailer.h>
 #include <AzToolsFramework/AssetBrowser/AssetEntryChangeset.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
+#include <AzToolsFramework/AssetBrowser/Thumbnails/FolderThumbnail.h>
+#include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
+#include <AzToolsFramework/AssetBrowser/Thumbnails/ProductThumbnail.h>
 
 #include <chrono>
+
+#include <QApplication>
+#include <QStyle>
+#include <QSharedPointer>
 
 namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
         AssetBrowserComponent::AssetBrowserComponent()
-            : m_databaseConnection(aznew AssetDatabase::AssetDatabaseConnection())
-            , m_rootEntry(aznew RootAssetBrowserEntry())
-            , m_thumbnailProvider(aznew AssetBrowserThumbnailer())
+            : m_databaseConnection(aznew AssetDatabase::AssetDatabaseConnection)
+            , m_rootEntry(aznew RootAssetBrowserEntry)
             , m_dbReady(false)
             , m_waitingForMore(false)
             , m_disposed(false)
-            , m_assetBrowserModel(aznew AssetBrowserModel())
+            , m_assetBrowserModel(aznew AssetBrowserModel)
             , m_changeset(new AssetEntryChangeset(m_databaseConnection, m_rootEntry))
         {
             m_assetBrowserModel->SetRootEntry(m_rootEntry);
@@ -44,11 +50,19 @@ namespace AzToolsFramework
             m_waitingForMore = false;
             m_thread = AZStd::thread(AZStd::bind(&AssetBrowserComponent::UpdateAssets, this));
 
+            AssetDatabaseLocationNotificationsBus::Handler::BusConnect();
             AssetBrowserComponentRequestsBus::Handler::BusConnect();
             AzFramework::AssetCatalogEventBus::Handler::BusConnect();
             AZ::TickBus::Handler::BusConnect();
             AssetSystemBus::Handler::BusConnect();
-            m_thumbnailProvider->BusConnect();
+
+            using namespace Thumbnailer;
+            const char* contextName = "AssetBrowser";
+            int thumbnailSize = qApp->style()->pixelMetric(QStyle::PM_SmallIconSize);
+            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterContext, contextName, thumbnailSize);
+            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(FolderThumbnailCache), contextName);
+            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(SourceThumbnailCache), contextName);
+            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(ProductThumbnailCache), contextName);
         }
 
         void AssetBrowserComponent::Deactivate()
@@ -60,11 +74,11 @@ namespace AzToolsFramework
                 m_thread.join(); // wait for the thread to finish
                 m_thread = AZStd::thread(); // destroy
             }
+            AssetDatabaseLocationNotificationsBus::Handler::BusDisconnect();
             AssetBrowserComponentRequestsBus::Handler::BusDisconnect();
             AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             AssetSystemBus::Handler::BusDisconnect();
-            m_thumbnailProvider->BusDisconnect();
         }
 
         void AssetBrowserComponent::Reflect(AZ::ReflectContext* context)
@@ -76,7 +90,7 @@ namespace AzToolsFramework
             }
         }
 
-        void AssetBrowserComponent::DatabaseInitialized()
+        void AssetBrowserComponent::OnDatabaseInitialized()
         {
             m_databaseConnection->OpenDatabase();
             PopulateAssets();
@@ -101,7 +115,6 @@ namespace AzToolsFramework
                 NotifyUpdateThread();
             }
         }
-
         void AssetBrowserComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
         {
             m_changeset->AddEntry(assetId);

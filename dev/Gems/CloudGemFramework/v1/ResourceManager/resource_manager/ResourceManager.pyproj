@@ -5,21 +5,20 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{d35996a8-3647-4de0-b6c0-733c0d1880b0}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>aws.py</StartupFile>
+    <StartupFile>cli.py</StartupFile>
     <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\lib\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
-    <InterpreterVersion />
     <Name>lmbr_aws</Name>
+    <CommandLineArguments>resource-group list</CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <PropertyGroup>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
-    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="aws.py" />
@@ -38,6 +37,22 @@
     <Compile Include="hook.py" />
     <Compile Include="importer.py" />
     <Compile Include="importer_class.py" />
+    <Compile Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\api\example_data.py" />
+    <Compile Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\bucket_data.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\api\example_data.py" />
+    <Compile Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\table_data.py" />
+    <Compile Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\api\example.py" />
+    <Compile Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="initial-gem-content\lambda\lambda-code\Lambda\main.py" />
+    <Compile Include="initial-gem-content\resource-manager-plugin\resource-manager-code\command.py" />
+    <Compile Include="initial-gem-content\resource-manager-plugin\resource-manager-code\update.py" />
     <Compile Include="mappings.py" />
     <Compile Include="metrics.py" />
     <Compile Include="player_identity.py" />
@@ -48,15 +63,23 @@
     <Compile Include="security.py" />
     <Compile Include="stack.py" />
     <Compile Include="test\base_stack_test.py" />
+    <Compile Include="test\junction_safe.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test\lmbr_aws_test_support.py" />
     <Compile Include="test\mock_specification.py" />
+    <Compile Include="test\project_snapshot.py" />
     <Compile Include="test\test_constant.py" />
     <Compile Include="test\test_integration.py" />
+    <Compile Include="test\test_integration_version_update.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test\test_integration_security.py" />
     <Compile Include="test\test_integraton_cognito_resource_handlers.py" />
     <Compile Include="test\test_integraton_custom_resource_handler_plugins.py" />
     <Compile Include="test\test_project_resource_hooks.py" />
     <Compile Include="test\test_unit_lmbr_aws.py" />
+    <Compile Include="test\test_unit_util.py" />
     <Compile Include="test\test_update_hooks.py" />
     <Compile Include="test\__init__.py" />
     <Compile Include="uploader.py" />
@@ -66,15 +89,72 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="config\" />
+    <Folder Include="initial-gem-content\" />
+    <Folder Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\" />
+    <Folder Include="initial-gem-content\api-lambda-bucket\lambda-code\" />
+    <Folder Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\" />
+    <Folder Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\api\" />
+    <Folder Include="initial-gem-content\api-lambda-dynamodb\" />
+    <Folder Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\" />
+    <Folder Include="initial-gem-content\api-lambda-dynamodb\lambda-code\" />
+    <Folder Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\" />
+    <Folder Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\api\" />
+    <Folder Include="initial-gem-content\api-lambda\" />
+    <Folder Include="initial-gem-content\api-lambda\cgp-resource-code\" />
+    <Folder Include="initial-gem-content\api-lambda\lambda-code\" />
+    <Folder Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\" />
+    <Folder Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\api\" />
+    <Folder Include="initial-gem-content\bucket\" />
+    <Folder Include="initial-gem-content\lambda\" />
+    <Folder Include="initial-gem-content\lambda\lambda-code\" />
+    <Folder Include="initial-gem-content\lambda\lambda-code\Lambda\" />
+    <Folder Include="initial-gem-content\api-lambda-bucket\" />
+    <Folder Include="initial-gem-content\no-resources\" />
+    <Folder Include="initial-gem-content\resource-manager-plugin\" />
+    <Folder Include="initial-gem-content\resource-manager-plugin\resource-manager-code\" />
     <Folder Include="templates\" />
     <Folder Include="test" />
+    <Folder Include="test\snapshots\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="config\aws_name_validation_rules.json" />
+    <Content Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.module.ts" />
+    <Content Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.ts" />
+    <Content Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\index.component.ts" />
+    <Content Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\index.ts" />
+    <Content Include="initial-gem-content\api-lambda-bucket\cgp-resource-code\thumbnail.component.ts" />
+    <Content Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\.ignore" />
+    <Content Include="initial-gem-content\api-lambda-bucket\lambda-code\ServiceLambda\.import" />
+    <Content Include="initial-gem-content\api-lambda-bucket\resource-template.json" />
+    <Content Include="initial-gem-content\api-lambda-bucket\swagger.json" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.module.ts" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.ts" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\index.component.ts" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\index.ts" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\cgp-resource-code\thumbnail.component.ts" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\.ignore" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\lambda-code\ServiceLambda\.import" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\resource-template.json" />
+    <Content Include="initial-gem-content\api-lambda-dynamodb\swagger.json" />
+    <Content Include="initial-gem-content\api-lambda\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.module.ts" />
+    <Content Include="initial-gem-content\api-lambda\cgp-resource-code\%24-GEM-NAME-LOWER-CASE-%24.ts" />
+    <Content Include="initial-gem-content\api-lambda\cgp-resource-code\index.component.ts" />
+    <Content Include="initial-gem-content\api-lambda\cgp-resource-code\index.ts" />
+    <Content Include="initial-gem-content\api-lambda\cgp-resource-code\thumbnail.component.ts" />
+    <Content Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\.ignore" />
+    <Content Include="initial-gem-content\api-lambda\lambda-code\ServiceLambda\.import" />
+    <Content Include="initial-gem-content\api-lambda\resource-template.json" />
+    <Content Include="initial-gem-content\api-lambda\swagger.json" />
+    <Content Include="initial-gem-content\bucket\resource-template.json" />
+    <Content Include="initial-gem-content\lambda\lambda-code\Lambda\.import" />
+    <Content Include="initial-gem-content\lambda\resource-template.json" />
+    <Content Include="initial-gem-content\no-resources\resource-template.json" />
     <Content Include="templates\deployment-access-template.json" />
     <Content Include="templates\deployment-template.json" />
     <Content Include="templates\project-template.json" />
+    <Content Include="test\project_snapshot.cmd" />
+    <Content Include="test\snapshots\CGF_1_0_0_Minimal_Initialized.zip" />
+    <Content Include="test\snapshots\CGF_1_0_0_Minimal_Uninitialized.zip" />
   </ItemGroup>
-  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

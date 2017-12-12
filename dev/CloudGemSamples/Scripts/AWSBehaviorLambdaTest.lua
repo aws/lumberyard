@@ -4,14 +4,14 @@ local AWSBehaviorLambdaTest = {
 }
 
 function AWSBehaviorLambdaTest:OnActivate()
-    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.GamePlayHandler = GameplayNotificationBus.Connect(self, runTestEventId)
 
     self.lambdaHandler = AWSLambdaHandler.Connect(self, self.entityId)
 
 end
 
-function AWSBehaviorLambdaTest:OnEventBegin()
+function AWSBehaviorLambdaTest:OnEventBegin(message)
     if isActive == false then
         Debug.Log("AWSBehaviorLambdaTest not active")
         self:NotifyMainEntity("success")
@@ -19,7 +19,7 @@ function AWSBehaviorLambdaTest:OnEventBegin()
     end
 
     local lambda = AWSLambda()
-    lambda.functionName = "CloudGemAWSBehavior.AWSBehaviorLambdaExample"
+    lambda.functionName = "CloudGemAWSScriptBehaviors.AWSBehaviorLambdaExample"
     lambda:InvokeAWSLambda()
 end
 
@@ -40,7 +40,7 @@ end
 
 function AWSBehaviorLambdaTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 return AWSBehaviorLambdaTest

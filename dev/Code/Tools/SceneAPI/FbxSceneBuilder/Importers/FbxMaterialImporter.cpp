@@ -15,6 +15,7 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxMaterialImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxMaterialWrapper.h>
 #include <SceneAPI/SceneData/GraphData/MeshData.h>
@@ -66,6 +67,10 @@ namespace AZ
                         continue;
                     }
 
+                    AZStd::string materialName = fbxMaterial->GetName().c_str();
+                    RenamedNodesMap::SanitizeNodeName(materialName, context.m_scene.GetGraph(), context.m_currentGraphPosition, "Material");
+                    AZ_TraceContext("Material Name", materialName);
+
                     AZStd::shared_ptr<SceneData::GraphData::MaterialData> materialData =
                         BuildMaterial(context.m_sourceNode, materialIndex);
 
@@ -77,7 +82,6 @@ namespace AZ
                     }
 
                     Events::ProcessingResult materialResult;
-                    AZStd::string materialName = fbxMaterial->GetName().c_str();
                     Containers::SceneGraph::NodeIndex newIndex = 
                         context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, materialName.c_str());
 
@@ -122,8 +126,18 @@ namespace AZ
                 material->SetDiffuseColor(fbxMaterial->GetDiffuseColor());
                 material->SetSpecularColor(fbxMaterial->GetSpecularColor());
                 material->SetEmissiveColor(fbxMaterial->GetEmissiveColor());
-                material->SetOpacity(fbxMaterial->GetOpacity());
                 material->SetShininess(fbxMaterial->GetShininess());
+
+                float opacity = fbxMaterial->GetOpacity();
+                if (opacity == 0.0f)
+                {
+                    opacity = 1.0f;
+                    AZ_TracePrintf(Utilities::WarningWindow, "Opacity has been changed from 0 to full. Some DCC tools ignore the opacity and "
+                        "write 0 to indicate opacity is not used. This causes meshes to turn invisible, which is often not the intention so "
+                        "the opacity has been set to full automatically. If the intention was for a fully transparent mesh, please update "
+                        "the opacity in Lumberyards material editor.");
+                }
+                material->SetOpacity(opacity);
 
                 return material;
             }

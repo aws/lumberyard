@@ -38,6 +38,16 @@ namespace AssetProcessor
     // which do not handle this case ,therefore we will make AP fail any jobs whose either source file or output file name exceeds the windows legacy path length limit
 #define AP_MAX_PATH_LEN 260
 
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    const char* const CURRENT_PLATFORM = "ios";
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    const char* const CURRENT_PLATFORM = "osx_gl";
+#elif defined(AZ_PLATFORM_ANDROID)
+    const char* const CURRENT_PLATFORM = "es3";
+#elif defined(AZ_PLATFORM_WINDOWS)
+    const char* const CURRENT_PLATFORM = "pc";
+#endif
+
     extern AZ::s64 GetThreadLocalJobId();
     extern void SetThreadLocalJobId(AZ::s64 jobId);
 
@@ -104,16 +114,17 @@ namespace AssetProcessor
     public:
         // note that QStrings are ref-counted copy-on-write, so a move operation will not be beneficial unless this struct gains considerable heap allocated fields.
 
-        QString m_relativePathToFile;     //! contains relative path (relative to watch folder), used to identify input file and database name
-        QString m_absolutePathToFile;     //! contains the actual absolute path to the file, including watch folder.
-        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();     //! the builder that will perform the job
-        QString m_platform;     //! the platform that the job will operate for
-        QString m_jobKey;     // JobKey is used when a single input file, for a single platform, for a single builder outputs many separate jobs
-        AZ::u32 m_computedFingerprint = 0;     // what the fingerprint was at the time of job creation.
-        qint64 m_computedFingerprintTimeStamp = 0; // stores the number of milliseconds since the universal coordinated time when the fingerprint was computed.
+        QString m_relativePathToFile;     ///< contains relative path (relative to watch folder), used to identify input file and database name
+        QString m_absolutePathToFile;     ///< contains the actual absolute path to the file, including watch folder.
+        AZ::Uuid m_sourceFileUUID = AZ::Uuid::CreateNull(); ///< The actual UUID of the source being processed
+        AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();     ///< the builder that will perform the job
+        QString m_platform;     ///< the platform that the job will operate for
+        QString m_jobKey;    ///< JobKey is used when a single input file, for a single platform, for a single builder outputs many separate jobs
+        AZ::u32 m_computedFingerprint = 0;     ///< what the fingerprint was at the time of job creation.
+        qint64 m_computedFingerprintTimeStamp = 0; ///< stores the number of milliseconds since the universal coordinated time when the fingerprint was computed.
         AZ::u64 m_jobRunKey = 0;
-        bool m_checkExclusiveLock = false;      // indicates whether we need to check the input file for exclusive lock before we process this job
-        bool m_addToDatabase = true; //! If false, this is just a UI job, and should not affect the database.
+        bool m_checkExclusiveLock = false;      ///< indicates whether we need to check the input file for exclusive lock before we process this job
+        bool m_addToDatabase = true; ///< If false, this is just a UI job, and should not affect the database.
 
         AZ::u32 GetHash() const
         {
@@ -130,7 +141,7 @@ namespace AssetProcessor
 
         JobEntry(const JobEntry& other) = default;
 
-        JobEntry(const QString& absolutePathToFile, const QString& relativePathToFile, const AZ::Uuid& builderGuid, const QString& platform, const QString& jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, bool addToDatabase=true)
+        JobEntry(const QString& absolutePathToFile, const QString& relativePathToFile, const AZ::Uuid& builderGuid, const QString& platform, const QString& jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase=true)
             : m_absolutePathToFile(absolutePathToFile)
             , m_relativePathToFile(relativePathToFile)
             , m_builderGuid(builderGuid)
@@ -139,6 +150,7 @@ namespace AssetProcessor
             , m_computedFingerprint(computedFingerprint)
             , m_jobRunKey(jobRunKey)
             , m_addToDatabase(addToDatabase)
+            , m_sourceFileUUID(sourceUuid)
         {
         }
     };

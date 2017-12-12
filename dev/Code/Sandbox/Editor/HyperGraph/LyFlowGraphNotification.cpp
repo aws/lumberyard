@@ -13,6 +13,8 @@
 #include "stdafx.h"
 #include "LyFlowGraphNotification.h"
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -24,7 +26,7 @@ FlowGraphNotificationDialog::FlowGraphNotificationDialog(QWidget* parent /* = nu
     setAttribute(Qt::WA_DeleteOnClose);
     setModal(true);
     setWindowModality(Qt::ApplicationModal);
-    setWindowTitle(tr("Flow Graph Update"));
+    setWindowTitle(tr("Lumberyard Visual Scripting Announcement"));
     setSizeGripEnabled(false);
 
     QPoint dialogCenter = mapToGlobal(rect().center());
@@ -35,46 +37,53 @@ FlowGraphNotificationDialog::FlowGraphNotificationDialog(QWidget* parent /* = nu
     
     QLabel* label = new QLabel();
     label->setText(tr(
-R"(Amazon Lumberyard has accelerated the development of a new visual scripting solution that will deeply integrate with the new 
-Component Entity system and its improved reflection, serialization, messaging and slice features, but we're going to ask that you 
-be a little more patient before we show it to you.
-
-If you're using Flow Graph on your project, we'll continue to support you. In the meantime, if you are using the new Component Entity system, 
-we encourage you to use Lua for your scripting needs until our new visual scripting solution is available.)"));
+R"(Amazon Lumberyard is pleased to announce the PREVIEW release of Script Canvas. 
+This new visual scripting solution is deeply integrated with the component entity 
+system's improved reflection, serialization, messaging, and slice features.)"));
     layout->addWidget(label);
 
     label = new QLabel();
-    label->setText(tr("\nHave a great idea for visual scripting ? We'd love to hear about it - let us know on the forums."));
+    label->setText(tr("Learn more about Script Canvas:\r\n"));
     layout->addWidget(label);
-    
+
     label = new QLabel();
     label->setOpenExternalLinks(true);
-    label->setStyleSheet("font-size: 1.5em; font-weight: bold; font-decoration: underline; font-color: #428fF4;");
-    label->setText(tr("<a href=\"https://gamedev.amazon.com/forums/spaces/115/scripting.html\">Amazon GameDev Forum - Scripting</a>"));
+    label->setText(tr("<a href=\"http://docs.aws.amazon.com/console/lumberyard/userguide/script-canvas\">Getting Started with Script Canvas</a>."));
     layout->addWidget(label);
 
     label = new QLabel();
-    label->setOpenExternalLinks(true);    
-    label->setText(tr("\nNeed help getting started with Lua? Check out the Lua Scripting topic in the Lumberyard Developer Guide."));
-    layout->addWidget(label);
-    
-    label = new QLabel();
-    label->setOpenExternalLinks(true);
-    label->setStyleSheet("font-size: 1.5em; font-weight: bold; font-decoration: underline; font-color: #428fF4;");
-    label->setText(tr("<a href=\"http://docs.aws.amazon.com/lumberyard/latest/developerguide/lua-scripting-intro.html\">Help with Lua Scripting</a>"));
     layout->addWidget(label);
 
     m_dontShowAgainCheckbox = new QCheckBox();
     m_dontShowAgainCheckbox->setText(tr("Don't show this again."));
     layout->addWidget(m_dontShowAgainCheckbox);
 
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+
     QPushButton* okButton = new QPushButton();
     okButton->setText(tr("Ok"));
     okButton->setDefault(true);
-    layout->addWidget(okButton);
+    buttonLayout->addWidget(okButton);
     connect(okButton, &QPushButton::clicked, this, &QDialog::close);
 
+    QPushButton* scButton = new QPushButton();
+    scButton->setText(tr("Try Script Canvas"));
+    scButton->setDefault(false);
+    buttonLayout->addWidget(scButton);
+    connect(scButton, &QPushButton::clicked, this, &FlowGraphNotificationDialog::OnTryScriptCanvas);
+
+    layout->addLayout(buttonLayout);
+
     setLayout(layout);
+}
+
+void FlowGraphNotificationDialog::OnTryScriptCanvas()
+{
+    close();
+
+    AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::CloseViewPane, LyViewPane::LegacyFlowGraph);
+
+    AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::OpenViewPane, LyViewPane::ScriptCanvas);
 }
 
 void FlowGraphNotificationDialog::closeEvent(QCloseEvent* evt)

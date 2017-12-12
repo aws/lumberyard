@@ -15,7 +15,7 @@
 #define CRYINCLUDE_EDITOR_TERRAINPANEL_H
 #pragma once
 
-
+#include "Controls/QRollupCtrl.h"
 #include "Dialogs/ButtonsPanel.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -27,6 +27,22 @@ class CTerrainPanel
 
 public:
     CTerrainPanel(QWidget* pParent = nullptr);
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// CTerrainTool pane
+class CTerrainTool
+    : public QRollupCtrl
+{
+    Q_OBJECT
+
+public:
+    CTerrainTool(QWidget* parent = nullptr);
+
+    static void RegisterViewClass();
+
+private:
+    CTerrainPanel* m_terrainPanel;
 };
 
 #endif // CRYINCLUDE_EDITOR_TERRAINPANEL_H

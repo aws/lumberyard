@@ -28,6 +28,10 @@ class CEventTrack
     : public TAnimTrack<IEventKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CEventTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CEventTrack, "{CA9D004F-7003-46E7-AB85-7D3846E8C10B}", IAnimTrack);
+
+    CEventTrack();
     explicit CEventTrack(IAnimStringTable* pStrings);
 
     //////////////////////////////////////////////////////////////////////////
@@ -36,14 +40,12 @@ public:
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(IEventKey& key, XmlNodeRef& keyNode, bool bLoading);
     void SetKey(int index, IKey* key);
+    void InitPostLoad(IAnimSequence* sequence) override;
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
-    _smart_ptr<IAnimStringTable> m_pStrings;
+    AZStd::intrusive_ptr<IAnimStringTable> m_pStrings;
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_EVENTTRACK_H

@@ -299,7 +299,7 @@ bool CVegetationTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& po
     else if (m_opMode == OPMODE_SELECT)
     {
         // Define selection.
-        view->SetSelectionRectangle(m_mouseDownPos, point);
+        view->SetSelectionRectangle(QRect(m_mouseDownPos, point));
         QRect rect = view->GetSelectionRectangle();
 
         if (!rect.isEmpty())
@@ -648,8 +648,8 @@ void CVegetationTool::PaintBrush()
 {
     GetSelectedObjects(m_selectedObjects);
 
-    QRect rc(m_pointerPos.x - m_brushRadius, m_pointerPos.y - m_brushRadius,
-        m_brushRadius * 2.0f, m_brushRadius * 2.0f);
+    QRect rc(QPoint(m_pointerPos.x - m_brushRadius, m_pointerPos.y - m_brushRadius), 
+             QSize(m_brushRadius * 2, m_brushRadius * 2));
 
     AABB updateRegion;
     updateRegion.min = m_pointerPos - Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
@@ -1278,9 +1278,14 @@ void CVegetationTool::Command_Activate()
         // Already active.
         return;
     }
+
+    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
+
+    // This needs to be done after the terrain tab is selected, because in
+    // Cry-Free mode the terrain tool could be closed, whereas in legacy
+    // mode the rollupbar is never deleted, it's only hidden
     pTool = new CVegetationTool;
     GetIEditor()->SetEditTool(pTool);
-    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
 }
 
 const GUID& CVegetationTool::GetClassID()

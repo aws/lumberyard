@@ -24,6 +24,7 @@
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISkinGroup.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
@@ -74,7 +75,12 @@ namespace AZ
             
             if (m_assetWriter)
             {
-                if (!m_assetWriter->WriteSKIN(&cgfContent, m_convertContext, true))
+                if (m_assetWriter->WriteSKIN(&cgfContent, m_convertContext, true))
+                {
+                    static const AZ::Data::AssetType skinnedMeshAssetType("{C5D443E1-41FF-4263-8654-9438BC888CB7}"); // from MeshAsset.h
+                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshAssetType, 0);
+                }
+                else
                 {
                     AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Writing Skin has failed.");
                     result += SceneEvents::ProcessingResult::Failure;

@@ -36,9 +36,8 @@ namespace Gems
         const AZStd::string& GetSummary() const override { return m_summary; }
         const AZStd::string& GetIconPath() const override { return m_iconPath; }
         const AZStd::vector<AZStd::string>& GetTags() const override { return m_tags; }
-        LinkType GetLinkType() const override { return m_linkType; }
-        const AZStd::string& GetDllFileName() const override { return m_dllFileName; }
-        const AZStd::string& GetEditorDllFileName() const override { return m_editorDllFileName; }
+        const ModuleDefinitionVector& GetModules() const override { return m_modules; }
+        const ModuleDefinitionVector& GetModulesOfType(ModuleDefinition::Type type) const override { return m_modulesByType.find(type)->second; }
         const AZStd::string& GetEngineModuleClass() const override { return m_engineModuleClass; }
         const AZStd::vector<AZStd::shared_ptr<GemDependency> >& GetGemDependencies() const override { return m_gemDependencies; }
         const bool IsGameGem() const override { return m_gameGem;  }
@@ -83,12 +82,10 @@ namespace Gems
         AZStd::string m_iconPath;
         /// Tags to associate with the Gem
         AZStd::vector<AZStd::string> m_tags;
-        /// How to link against this Gem
-        LinkType m_linkType;
-        /// The name of the compiled dll
-        AZStd::string m_dllFileName;
-        /// The name of the compiled dll (for the editor). Same as m_dllFileName if no Editor specific module.
-        AZStd::string m_editorDllFileName;
+        /// List of modules produced by the Gem
+        ModuleDefinitionVector m_modules;
+        /// All modules to be loaded for a given function
+        AZStd::unordered_map<ModuleDefinition::Type, ModuleDefinitionVector> m_modulesByType;
         /// The name of the engine module class to initialize
         AZStd::string m_engineModuleClass;
         /// A Gem's dependencies

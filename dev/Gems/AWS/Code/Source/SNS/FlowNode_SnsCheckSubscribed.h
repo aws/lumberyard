@@ -39,7 +39,7 @@ namespace LmbrAWS
         virtual const char* GetClassTag() const override;
 
     private:
-        void SendListSubscriptions(LmbrAWS::SNS::TopicClient& client, const std::shared_ptr<const FlowGraphContext> context, const string& topicArn, const string& nextToken = "");
+        void SendListSubscriptions(const std::shared_ptr<const FlowGraphContext> context, const string& topicArn, const string& nextToken = "");
         void ApplyResult(const Aws::SNS::Model::ListSubscriptionsByTopicRequest&, const Aws::SNS::Model::ListSubscriptionsByTopicOutcome& outcome,
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context);
 
@@ -54,10 +54,6 @@ namespace LmbrAWS
         {
             EOP_True = EOP_StartIndex,
             EOP_False
-        };
-
-        LmbrAWS::SNS::TopicClientInputPort m_topicClientPort {
-            EIP_TopicClient
         };
     };
 } // namespace AWS

@@ -62,7 +62,7 @@ namespace AZ
 
             static void PrintCallstack(const char* window, unsigned int suppressCount = 0, void* nativeContext = 0);
 
-            /// PEXCEPTION_POINTERS on Windows/X360, always NULL on other platforms
+            /// PEXCEPTION_POINTERS on Windows/X360, always NULL on other platforms // ACCEPTED_USE
             static void* GetNativeExceptionInfo();
         };
     }

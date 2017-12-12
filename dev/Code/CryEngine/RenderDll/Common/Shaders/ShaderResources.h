@@ -14,6 +14,7 @@
 #pragma once
 
 #include "DeviceManager/Enums.h"
+#include <CryEngineAPI.h>
 
 //! This class provide all necessary resources to the shader extracted from material definition.
 class CShaderResources
@@ -137,7 +138,7 @@ public:
     virtual void ToInputLM(CInputLightMaterial& lm) final;
 
     virtual ColorF GetColorValue(EEfResTextures slot) const final;
-    virtual float GetStrengthValue(EEfResTextures slot) const final;
+    ENGINE_API virtual float GetStrengthValue(EEfResTextures slot) const final;
 
     virtual void SetColorValue(EEfResTextures slot, const ColorF& color) final;
     virtual void SetStrengthValue(EEfResTextures slot, float value) final;

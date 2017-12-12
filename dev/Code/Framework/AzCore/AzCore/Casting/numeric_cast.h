@@ -53,9 +53,9 @@
 //#define AZ_NUMERICCAST_ENABLED 1
 
 #if AZ_NUMERICCAST_ENABLED
-#define AZ_NUMERIC_ASSERT(expr, text, ...) AZ_Assert(expr, text, __VA_ARGS__)
+#define AZ_NUMERIC_ASSERT(expr, ...) AZ_Assert(expr, __VA_ARGS__)
 #else
-#define AZ_NUMERIC_ASSERT(expr, text, ...) void(0)
+#define AZ_NUMERIC_ASSERT(expr, ...) void(0)
 #endif
 
 #pragma push_macro("max")

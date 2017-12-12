@@ -160,6 +160,8 @@ public:
     }
 
 public:
+    static const int MAX_COUNT;
+
     void GenGhosts(SAuxParams& aux);
 
     EFlareType GetType() { return eFT_MultiGhosts; }
@@ -211,26 +213,7 @@ public:
     }
 
     int GetCount() const { return m_nCount; }
-    void SetCount(int count)
-    {
-        if (count < 0)
-        {
-            return;
-        }
-        m_nCount = count;
-        RemoveAll();
-        for (int i = 0; i < count; i++)
-        {
-            CLensGhost* ghost = new CLensGhost("SubGhost");
-            ghost->SetAutoRotation(true);
-            ghost->SetAspectRatioCorrection(true);
-            ghost->SetOccBokehEnabled(true);
-            ghost->SetSensorSizeFactor(1);
-            ghost->SetSensorBrightnessFactor(1);
-            Add(ghost);
-        }
-        m_bContentDirty = true;
-    }
+    void SetCount(int count);
 
     int GetRandSeed() const { return m_nRandSeed; }
     void SetRandSeed(int n)

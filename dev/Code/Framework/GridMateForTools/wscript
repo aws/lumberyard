@@ -17,44 +17,38 @@ SUBFOLDERS = [
     ]
 
 def build(bld):
+
+    msvc_cxx_flags = [
+        '/W4', # warning level
+    ]
+
+    clang_flags = [
+        '-Werror',  # warnings as errors
+        '-Wall'     # warning level
+    ]
+
     bld.CryEngineStaticLibrary(
-        target      = 'GridMateForTools',
-        vs_filter   = 'Network',
-        file_list   = ['../GridMate/GridMate/gridmate.waf_files'],
-        platforms   = ['all'],
+        target          = 'GridMateForTools',
+        vs_filter       = 'Network',
+        file_list       = ['../GridMate/GridMate/gridmate.waf_files'],
+        platforms       = ['all'],
         configurations  = ['all'],
-        disable_pch = True,
-        includes = ['../GridMate'],
-        use         = ['AzCore'],
+        disable_pch     = True,
+        includes        = ['../GridMate'],
+        use             = ['AzCore'],
         export_includes = ['../GridMate'],
 
 		defines = ['GRIDMATE_FOR_TOOLS'],
 
-        win_cxxflags=[
-            '/W4', # warning level
-            ],
+        win_cxxflags=msvc_cxx_flags,
 
        
-
        
-
-        android_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
+        android_cxxflags=clang_flags,
         
-        ios_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
+        ios_cxxflags=clang_flags,
         
-        appletv_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ],
+        appletv_cxxflags=clang_flags,
         
-        darwin_cxxflags=[
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            ]
+        darwin_cxxflags=clang_flags
     )

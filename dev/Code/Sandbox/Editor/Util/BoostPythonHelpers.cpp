@@ -43,6 +43,12 @@
 
 #include <QThread>
 #include <QDebug>
+#include <Qsettings>
+#include <QApplication>
+#include <QDir>
+#include <QFile>
+
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
 
 CAutoRegisterPythonModuleHelper::ModuleList CAutoRegisterPythonModuleHelper::s_modules;
 CAutoRegisterPythonCommandHelper* CAutoRegisterPythonCommandHelper::s_pFirst = NULL;
@@ -1556,10 +1562,30 @@ namespace PyScript
     class CQStringToPythonConverter
     {
     public:
+        // We can't use QString::toStdWString() because on sizeof(wchar_t)==2 systems, it returns UTF-16, while Python
+        // 2.7 expects UCS2.
+
+        template<size_t N>
+        static PyObject* Convert(const QString& s);
+
+        template<>
+        static PyObject* Convert<2>(const QString& s)
+        {
+            return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(s.constData()), s.size());
+        }
+
+        template<>
+        static PyObject* Convert<4>(const QString& s)
+        {
+            const QVector<uint> ucs4 = s.toUcs4();
+            return PyUnicode_FromUnicode(reinterpret_cast<const Py_UNICODE*>(ucs4.constData()), ucs4.size());
+        }
+
         static PyObject* convert(QString const& s)
         {
-            return boost::python::incref(boost::python::object(s.toLatin1().data()).ptr());
+            return Convert<sizeof(Py_UNICODE)>(s);
         }
+
     };
 
     /////////////////////////////////////////////////////////////////////////

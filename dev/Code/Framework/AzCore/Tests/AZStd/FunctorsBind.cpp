@@ -268,7 +268,7 @@ namespace UnitTest
 
             // Default construction
             func_void_type v1;
-            AZ_TEST_ASSERT(v1.empty());
+            AZ_TEST_ASSERT(!v1);
 
             // Assignment to an empty function
             v1 = five;
@@ -285,7 +285,7 @@ namespace UnitTest
 
             // Assignment to an empty function
             v1 = three;
-            AZ_TEST_ASSERT(!v1.empty());
+            AZ_TEST_ASSERT(v1);
 
             // Invocation and self-assignment
             global_int = 0;
@@ -317,7 +317,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v1 = AZSTD_FUNCTION_TARGET_FIX(&) write_three;
-            AZ_TEST_ASSERT(!v1.empty());
+            AZ_TEST_ASSERT(v1);
 
             // Invocation
             global_int = 0;
@@ -326,7 +326,7 @@ namespace UnitTest
 
             // Assignment
             v1 = five;
-            AZ_TEST_ASSERT(!v1.empty());
+            AZ_TEST_ASSERT(v1);
 
             // Invocation
             global_int = 0;
@@ -335,7 +335,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v1 = &write_three;
-            AZ_TEST_ASSERT(!v1.empty());
+            AZ_TEST_ASSERT(v1);
 
             // Invocation
             global_int = 0;
@@ -349,7 +349,7 @@ namespace UnitTest
 
             // Assignment to an empty function
             v2 = three;
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v2);
 
             // Invocation
             global_int = 0;
@@ -365,7 +365,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(global_int == 5);
 
             v2.clear();
-            AZ_TEST_ASSERT(v2.empty());
+            AZ_TEST_ASSERT(!v2);
 
             // Assignment to an empty function from a free function
             v2 = (AZSTD_FUNCTION_TARGET_FIX(&) write_five);
@@ -378,7 +378,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v2 = AZSTD_FUNCTION_TARGET_FIX(&) write_three;
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v2);
 
             // Invocation
             global_int = 0;
@@ -397,7 +397,7 @@ namespace UnitTest
 
             // Assignment
             v2 = five;
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v2);
 
             // Invocation
             global_int = 0;
@@ -406,7 +406,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v2 = &write_three;
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v2);
 
             // Invocation
             global_int = 0;
@@ -415,13 +415,13 @@ namespace UnitTest
 
             // Assignment to a function from an empty function
             v2 = v1;
-            AZ_TEST_ASSERT(v2.empty());
+            AZ_TEST_ASSERT(!v2);
 
             // Assignment to a function from a function with a functor
             v1 = three;
             v2 = v1;
-            AZ_TEST_ASSERT(!v1.empty());
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v1);
+            AZ_TEST_ASSERT(v2);
 
             // Invocation
             global_int = 0;
@@ -434,8 +434,8 @@ namespace UnitTest
             // Assign to a function from a function with a function
             v2 = AZSTD_FUNCTION_TARGET_FIX(&) write_five;
             v1 = v2;
-            AZ_TEST_ASSERT(!v1.empty());
-            AZ_TEST_ASSERT(!v2.empty());
+            AZ_TEST_ASSERT(v1);
+            AZ_TEST_ASSERT(v2);
             global_int = 0;
             v1();
             AZ_TEST_ASSERT(global_int == 5);
@@ -457,7 +457,7 @@ namespace UnitTest
 
             // Assignment to an empty function
             v3 = three;
-            AZ_TEST_ASSERT(!v3.empty());
+            AZ_TEST_ASSERT(v3);
 
             // Invocation
             global_int = 0;
@@ -474,11 +474,11 @@ namespace UnitTest
 
             // clear()
             v3.clear();
-            AZ_TEST_ASSERT(v3.empty());
+            AZ_TEST_ASSERT(!v3);
 
             // Assignment to an empty function from a free function
             v3 = &write_five;
-            AZ_TEST_ASSERT(!v3.empty());
+            AZ_TEST_ASSERT(v3);
 
             // Invocation
             global_int = 0;
@@ -487,7 +487,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v3 = &write_three;
-            AZ_TEST_ASSERT(!v3.empty());
+            AZ_TEST_ASSERT(v3);
 
             // Invocation
             global_int = 0;
@@ -496,7 +496,7 @@ namespace UnitTest
 
             // Assignment
             v3 = five;
-            AZ_TEST_ASSERT(!v3.empty());
+            AZ_TEST_ASSERT(v3);
 
             // Invocation
             global_int = 0;
@@ -513,11 +513,11 @@ namespace UnitTest
 
             // clear() method
             v4.clear();
-            AZ_TEST_ASSERT(v4.empty());
+            AZ_TEST_ASSERT(!v4);
 
             // Assignment to an empty function
             v4 = three;
-            AZ_TEST_ASSERT(!v4.empty());
+            AZ_TEST_ASSERT(v4);
 
             // Invocation
             global_int = 0;
@@ -534,11 +534,11 @@ namespace UnitTest
 
             // clear()
             v4.clear();
-            AZ_TEST_ASSERT(v4.empty());
+            AZ_TEST_ASSERT(!v4);
 
             // Assignment to an empty function from a free function
             v4 = &write_five;
-            AZ_TEST_ASSERT(!v4.empty());
+            AZ_TEST_ASSERT(v4);
 
             // Invocation
             global_int = 0;
@@ -547,7 +547,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v4 = &write_three;
-            AZ_TEST_ASSERT(!v4.empty());
+            AZ_TEST_ASSERT(v4);
 
             // Invocation
             global_int = 0;
@@ -556,7 +556,7 @@ namespace UnitTest
 
             // Assignment
             v4 = five;
-            AZ_TEST_ASSERT(!v4.empty());
+            AZ_TEST_ASSERT(v4);
 
             // Invocation
             global_int = 0;
@@ -573,11 +573,11 @@ namespace UnitTest
 
             // clear() method
             v5.clear();
-            AZ_TEST_ASSERT(v5.empty());
+            AZ_TEST_ASSERT(!v5);
 
             // Assignment to an empty function
             v5 = three;
-            AZ_TEST_ASSERT(!v5.empty());
+            AZ_TEST_ASSERT(v5);
 
             // Invocation
             global_int = 0;
@@ -594,11 +594,11 @@ namespace UnitTest
 
             // clear()
             v5.clear();
-            AZ_TEST_ASSERT(v5.empty());
+            AZ_TEST_ASSERT(!v5);
 
             // Assignment to an empty function from a free function
             v5 = &write_five;
-            AZ_TEST_ASSERT(!v5.empty());
+            AZ_TEST_ASSERT(v5);
 
             // Invocation
             global_int = 0;
@@ -607,7 +607,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v5 = &write_three;
-            AZ_TEST_ASSERT(!v5.empty());
+            AZ_TEST_ASSERT(v5);
 
             // Invocation
             global_int = 0;
@@ -616,7 +616,7 @@ namespace UnitTest
 
             // Assignment
             v5 = five;
-            AZ_TEST_ASSERT(!v5.empty());
+            AZ_TEST_ASSERT(v5);
 
             // Invocation
             global_int = 0;
@@ -633,11 +633,11 @@ namespace UnitTest
 
             // clear() method
             v6.clear();
-            AZ_TEST_ASSERT(v6.empty());
+            AZ_TEST_ASSERT(!v6);
 
             // Assignment to an empty function
             v6 = three;
-            AZ_TEST_ASSERT(!v6.empty());
+            AZ_TEST_ASSERT(v6);
 
             // Invocation
             global_int = 0;
@@ -654,11 +654,11 @@ namespace UnitTest
 
             // clear()
             v6.clear();
-            AZ_TEST_ASSERT(v6.empty());
+            AZ_TEST_ASSERT(!v6);
 
             // Assignment to an empty function from a free function
             v6 = &write_five;
-            AZ_TEST_ASSERT(!v6.empty());
+            AZ_TEST_ASSERT(v6);
 
             // Invocation
             global_int = 0;
@@ -667,7 +667,7 @@ namespace UnitTest
 
             // Assignment to a non-empty function from a free function
             v6 = &write_three;
-            AZ_TEST_ASSERT(!v6.empty());
+            AZ_TEST_ASSERT(v6);
 
             // Invocation
             global_int = 0;
@@ -676,7 +676,7 @@ namespace UnitTest
 
             // Assignment
             v6 = five;
-            AZ_TEST_ASSERT(!v6.empty());
+            AZ_TEST_ASSERT(v6);
 
             // Invocation
             global_int = 0;
@@ -768,15 +768,15 @@ namespace UnitTest
         static void test_emptiness()
         {
             function<float ()> f1;
-            AZ_TEST_ASSERT(f1.empty());
+            AZ_TEST_ASSERT(!f1);
 
             function<float ()> f2;
             f2 = f1;
-            AZ_TEST_ASSERT(f2.empty());
+            AZ_TEST_ASSERT(!f2);
 
             function<double ()> f3;
             f3 = f2;
-            AZ_TEST_ASSERT(f3.empty());
+            AZ_TEST_ASSERT(!f3);
         }
 
         struct X
@@ -847,12 +847,12 @@ namespace UnitTest
 
         void test_call_obj(AZStd::function<int (int, int)> f)
         {
-            AZ_TEST_ASSERT(!f.empty());
+            AZ_TEST_ASSERT(f);
         }
 
         void test_call_cref(const AZStd::function<int (int, int)>& f)
         {
-            AZ_TEST_ASSERT(!f.empty());
+            AZ_TEST_ASSERT(f);
         }
 
         void test_call()

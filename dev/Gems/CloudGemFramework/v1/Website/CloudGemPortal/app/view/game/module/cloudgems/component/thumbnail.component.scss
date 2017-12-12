@@ -1,6 +1,7 @@
 @import "./styles/variables";
 
 .card.gem-thumbnail {
+    cursor: pointer;
     width: 330px;
     display: inline-block;
     margin-right: 15px;
@@ -8,7 +9,6 @@
     vertical-align: top;
     height: 220px;
     position: relative;
-    cursor: pointer;
     background-color: $off-white;
     border: 1px solid $lighter-gray;
 

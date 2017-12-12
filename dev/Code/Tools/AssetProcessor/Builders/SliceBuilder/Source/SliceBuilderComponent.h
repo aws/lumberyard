@@ -40,7 +40,7 @@ namespace SliceBuilder
     private:
         BuilderPluginComponent(const BuilderPluginComponent&) = delete;
 
-        SliceBuilderWorker m_sliceBuilder;
+        AZStd::unique_ptr<SliceBuilderWorker> m_sliceBuilder;
         UiSliceBuilderWorker m_uiSliceBuilder;
     };
 }

@@ -1,0 +1,19 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
+    "Name": "ScriptCanvasDeveloperGem",
+    "DisplayName": "Script Canvas Developer Tools",
+    "Version": "0.1.0",
+    "LinkType": "DynamicStatic",
+    "EditorModule": true,
+    "Summary": "Script Canvas Developer Gem containing developer features(such as the ability to dump available nodes).",
+    "Tags": ["Scripting", "Editor"],
+    "IconPath": "preview.png",
+    "Dependencies" : [
+        {
+            "Uuid" : "869a0d0ec11a45c299917d45c81555e6",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "ScriptCanvas"
+        }
+    ]
+}

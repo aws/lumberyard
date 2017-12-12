@@ -10,6 +10,7 @@ export class Schema {
             TYPES: {
                 S3: string,
                 CLOUD_FORMATION: string,
+                LAMBDA: string
             }
         },
         STACK_ID: string,
@@ -22,7 +23,8 @@ export class Schema {
             NAME: "ResourceType",
             TYPES: {                
                 S3: "AWS::S3::Bucket",
-                CLOUD_FORMATION: "AWS::CloudFormation::Stack"
+                CLOUD_FORMATION: "AWS::CloudFormation::Stack",
+                LAMBDA: "AWS::Lambda::Function"
             }
         },
         STACK_ID: "StackId",

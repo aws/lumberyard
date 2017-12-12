@@ -15,11 +15,14 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 #include "EditorCameraComponent.h"
+#include "ViewportCameraSelectorWindow.h"
 
 #include <MathConversion.h>
 #include <IGameFramework.h>
 #include <IRenderer.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzToolsFramework/API/EditorCameraBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 namespace Camera
 {
@@ -55,16 +58,24 @@ namespace Camera
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         CameraBus::Handler::BusConnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        CameraNotificationBus::Broadcast(&CameraNotificationBus::Events::OnCameraAdded, GetEntityId());
+        AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorCameraComponent::Deactivate()
     {
+        AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
+        CameraNotificationBus::Broadcast(&CameraNotificationBus::Events::OnCameraRemoved, GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         CameraBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         CameraRequestBus::Handler::BusDisconnect(GetEntityId());
         if (m_viewSystem)
         {
+            if (m_view != nullptr)
+            {
+                m_view->Unlink();
+            }
             if (m_viewSystem->GetActiveView() == m_view)
             {
                 m_viewSystem->SetActiveView(m_prevViewId);
@@ -87,7 +98,11 @@ namespace Camera
                 ->Field("Far Clip Plane Distance", &EditorCameraComponent::m_farClipPlaneDistance)
                 ->Field("SpecifyDimensions", &EditorCameraComponent::m_specifyDimensions)
                 ->Field("FrustumWidth", &EditorCameraComponent::m_frustumWidth)
-                ->Field("FrustumHeight", &EditorCameraComponent::m_frustumHeight);
+                ->Field("FrustumHeight", &EditorCameraComponent::m_frustumHeight)
+                ->Field("ViewButton", &EditorCameraComponent::m_viewButton)
+                ->Field("FrustumLengthPercent", &EditorCameraComponent::m_frustumViewPercentLength)
+                ->Field("FrustumDrawColor", &EditorCameraComponent::m_frustumDrawColor)
+                ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
@@ -99,34 +114,38 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Camera.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->DataElement(0, &EditorCameraComponent::m_fov, "Field of view", "Vertical field of view in degrees")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-camera.html")
+                    ->DataElement(AZ::Edit::UIHandlers::Button, &EditorCameraComponent::m_viewButton, "", "Sets the view to this camera")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCameraComponent::OnPossessCameraButtonClicked)
+                        ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorCameraComponent::GetCameraViewButtonText)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_fov, "Field of view", "Vertical field of view in degrees")
                         ->Attribute(AZ::Edit::Attributes::Min, MIN_FOV)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
                         ->Attribute(AZ::Edit::Attributes::Step, 1.f)
                         ->Attribute(AZ::Edit::Attributes::Max, AZ::RadToDeg(AZ::Constants::Pi) - 0.0001f)       //We assert at fovs >= Pi so set the max for this field to be just under that
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
-                    ->DataElement(0, &EditorCameraComponent::m_nearClipPlaneDistance, "Near clip distance",
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_nearClipPlaneDistance, "Near clip distance",
                         "Distance to the near clip plane of the view Frustum")
                         ->Attribute(AZ::Edit::Attributes::Min, CAMERA_MIN_NEAR)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                         ->Attribute(AZ::Edit::Attributes::Max, &EditorCameraComponent::GetFarClipDistance)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c))
-                    ->DataElement(0, &EditorCameraComponent::m_farClipPlaneDistance, "Far clip distance",
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_farClipPlaneDistance, "Far clip distance",
                         "Distance to the far clip plane of the view Frustum")
                         ->Attribute(AZ::Edit::Attributes::Min, &EditorCameraComponent::GetNearClipDistance)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 10.f)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c))
-                    ->DataElement(0, &EditorCameraComponent::m_specifyDimensions, "Specify dimensions",
-                        "when true you can specify the dimensions of the frustum")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                    ->DataElement(0, &EditorCameraComponent::m_frustumWidth, "Frustum width",
-                        "the width or horizontal resolution of the frustum")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorCameraComponent::m_specifyDimensions)
-                    ->DataElement(0, &EditorCameraComponent::m_frustumHeight, "Frustum height",
-                        "the height or vertical resolution of the frustum")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorCameraComponent::m_specifyDimensions)
+
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Debug")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_frustumViewPercentLength, "Frustum length", "Frustum length percent .01 to 100")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " percent")
+                        ->Attribute(AZ::Edit::Attributes::Step, 1.f)
+                    ->DataElement(AZ::Edit::UIHandlers::Color, &EditorCameraComponent::m_frustumDrawColor, "Frustum color", "Frustum draw color RGB")
                     ;
             }
         }
@@ -136,6 +155,52 @@ namespace Camera
             behaviorContext->Class<EditorCameraComponent>()->RequestBus("CameraRequestBus");
         }
 
+    }
+
+    void EditorCameraComponent::OnSelected()
+    {
+        EditorCameraNotificationBus::Handler::BusConnect();
+    }
+
+    void EditorCameraComponent::OnDeselected()
+    {
+        EditorCameraNotificationBus::Handler::BusDisconnect();
+    }
+
+    void EditorCameraComponent::OnViewportViewEntityChanged(const AZ::EntityId& newViewId)
+    {
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
+    }
+
+    AZ::Crc32 EditorCameraComponent::OnPossessCameraButtonClicked()
+    {
+        AZ::EntityId currentViewEntity;
+        EditorCameraRequests::Bus::BroadcastResult(currentViewEntity, &EditorCameraRequests::GetCurrentViewEntityId);
+        AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequestBus::Events::ShowViewPane, s_viewportCameraSelectorName);
+        if (currentViewEntity != GetEntityId())
+        {
+            EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewFromEntityPerspective, GetEntityId());
+        }
+        else
+        {
+            // set the view entity id back to Invalid, thus enabling the editor camera
+            EditorCameraRequests::Bus::Broadcast(&EditorCameraRequests::SetViewFromEntityPerspective, AZ::EntityId());
+        }
+        return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+    }
+
+    AZStd::string EditorCameraComponent::GetCameraViewButtonText() const
+    {
+        AZ::EntityId currentViewEntity;
+        EditorCameraRequests::Bus::BroadcastResult(currentViewEntity, &EditorCameraRequests::GetCurrentViewEntityId);
+        if (currentViewEntity == GetEntityId())
+        {
+            return "Return to default editor camera";
+        }
+        else
+        {
+            return "Be this camera";
+        }
     }
 
     void EditorCameraComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -238,26 +303,34 @@ namespace Camera
 
     void EditorCameraComponent::EditorDisplay(AzFramework::EntityDebugDisplayRequests& displayInterface, const AZ::Transform& world, bool& handled)
     {
-        const float distance = 4.f;
+        const float distance = m_farClipPlaneDistance * m_frustumViewPercentLength * 0.01f;
 
         float tangent = static_cast<float>(tan(0.5f * AZ::DegToRad(m_fov)));
         float height = distance * tangent;
         float width = height * displayInterface.GetAspectRatio();
 
-        AZ::Vector3 points[4];
-        points[0] = AZ::Vector3( width, distance,  height);
-        points[1] = AZ::Vector3(-width, distance,  height);
-        points[2] = AZ::Vector3(-width, distance, -height);
-        points[3] = AZ::Vector3( width, distance, -height);
+        AZ::Vector3 farPoints[4];
+        farPoints[0] = AZ::Vector3( width, distance,  height);
+        farPoints[1] = AZ::Vector3(-width, distance,  height);
+        farPoints[2] = AZ::Vector3(-width, distance, -height);
+        farPoints[3] = AZ::Vector3( width, distance, -height);
 
         AZ::Vector3 start(0, 0, 0);
+        AZ::Vector3 nearPoints[4];
+        nearPoints[0] = farPoints[0].GetNormalizedSafe() * m_nearClipPlaneDistance;
+        nearPoints[1] = farPoints[1].GetNormalizedSafe() * m_nearClipPlaneDistance;
+        nearPoints[2] = farPoints[2].GetNormalizedSafe() * m_nearClipPlaneDistance;
+        nearPoints[3] = farPoints[3].GetNormalizedSafe() * m_nearClipPlaneDistance;
+
 
         displayInterface.PushMatrix(world);
-        displayInterface.DrawLine(start, points[0]);
-        displayInterface.DrawLine(start, points[1]);
-        displayInterface.DrawLine(start, points[2]);
-        displayInterface.DrawLine(start, points[3]);
-        displayInterface.DrawPolyLine(points, AZ_ARRAY_SIZE(points));
+        displayInterface.SetColor(m_frustumDrawColor.GetAsVector4());
+        displayInterface.DrawLine(nearPoints[0], farPoints[0]);
+        displayInterface.DrawLine(nearPoints[1], farPoints[1]);
+        displayInterface.DrawLine(nearPoints[2], farPoints[2]);
+        displayInterface.DrawLine(nearPoints[3], farPoints[3]);
+        displayInterface.DrawPolyLine(nearPoints, AZ_ARRAY_SIZE(nearPoints));
+        displayInterface.DrawPolyLine(farPoints, AZ_ARRAY_SIZE(farPoints));
         displayInterface.PopMatrix();
     }
 

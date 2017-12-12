@@ -29,7 +29,7 @@ namespace GridMate
 
     /*
      * AchievementId
-     * On X360/PS3, achievements are identified by a number, while on Steam they are identified by a string.
+     * On some platforms achievements are identified by a number, while on Steam they are identified by a string.
      * Care must be taken to ensure that the id matches the settings for each platform and their
      * platform definitions.
      */

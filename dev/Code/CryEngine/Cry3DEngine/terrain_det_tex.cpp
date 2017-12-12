@@ -61,12 +61,12 @@ void CTerrain::LoadSurfaceTypesFromXML(XmlNodeRef pDoc)
         return;
     }
 
+    IMaterialManager*       pMatMan = Get3DEngine()->GetMaterialManager();
     for (int nId = 0; nId < pDoc->getChildCount() && nId < SurfaceTile::MaxSurfaceCount; nId++)
     {
         XmlNodeRef pDetLayer = pDoc->getChild(nId);
-        IMaterialManager* pMatMan = Get3DEngine()->GetMaterialManager();
         const char* pMatName = pDetLayer->getAttr("DetailMaterial");
-        _smart_ptr<IMaterial> pMat = pMatName[0] ? pMatMan->LoadMaterial(pMatName) : NULL;
+        _smart_ptr<IMaterial> pMat = pMatName[0] ? pMatMan->LoadMaterial(pMatName, true, false, MTL_FLAG_IS_TERRAIN) : nullptr;
 
         float fScaleX = 1.f;
         pDetLayer->getAttr("DetailScaleX", fScaleX);

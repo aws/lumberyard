@@ -130,6 +130,10 @@ namespace Audio
         MOCK_CONST_METHOD0(GetImplementationNameString, const char* const());
 
         MOCK_CONST_METHOD1(GetMemoryInfo, void(SAudioImplMemoryInfo&));
+
+        MOCK_METHOD1(CreateAudioSource, bool(const SAudioInputConfig&));
+
+        MOCK_METHOD1(DestroyAudioSource, void(TAudioSourceId));
     };
 
 } // namespace Audio

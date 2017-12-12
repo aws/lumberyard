@@ -22,6 +22,7 @@
 
 #include <QAbstractTableModel>
 #include <QStyledItemDelegate>
+#include <QScopedPointer>
 
 class QMenu;
 class ConsoleWidget;
@@ -58,6 +59,8 @@ signals:
 
 private:
     void DisplayHistory(bool bForward);
+    void ResetHistoryIndex();
+
     QStringList m_history;
     unsigned int m_historyIndex;
     bool m_bReusedHistory;
@@ -69,6 +72,12 @@ class ConsoleTextEdit
     Q_OBJECT
 public:
     explicit ConsoleTextEdit(QWidget* parent = nullptr);
+    virtual bool event(QEvent* theEvent) override;
+
+private:
+    void showContextMenu(const QPoint& pt);
+
+    QScopedPointer<QMenu> m_contextMenu;
 };
 
 class ConsoleVariableItemDelegate
@@ -122,20 +131,25 @@ private:
 };
 
 class ConsoleVariableEditor
-    : public QDialog
+    : public QWidget
 {
     Q_OBJECT
 public:
     explicit ConsoleVariableEditor(QWidget* parent = nullptr);
-    void SetVarBlock(CVarBlock* varBlock);
+
+    static void RegisterViewClass();
+    void HandleVariableRowUpdated(int row, ICVar* pCVar);
 
 protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    void SetVarBlock(CVarBlock* varBlock);
+
     QTableView* m_tableView;
     ConsoleVariableModel* m_model;
     ConsoleVariableItemDelegate* m_itemDelegate;
+    CVarBlock* m_varBlock;
 };
 
 class CConsoleSCB
@@ -171,7 +185,6 @@ private:
 
     QList<QColor> m_colorTable;
     SEditorSettings::ConsoleColorTheme m_backgroundTheme;
-    ConsoleVariableEditor* m_variableEditor;
 };
 
 #endif // CRYINCLUDE_EDITOR_CONTROLS_CONSOLESCB_H

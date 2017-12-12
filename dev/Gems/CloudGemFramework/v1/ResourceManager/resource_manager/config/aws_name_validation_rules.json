@@ -28,8 +28,8 @@
 	},
     "s3" : {
         "name" : {
-            "regex" : "[a-z0-9\\-.]{0,33}",
-            "help" : "S3 bucket name must contain only lowercase alphanumeric, hyphen and dot. The first character must be alpha and the last must be alpha numeric. ",
+            "regex" : "[a-z0-9\\.]{0,33}",
+            "help" : "S3 bucket name must contain only lowercase alphanumeric and dot. The first character must be alpha and the last must be alpha numeric. ",
             "_comment" : "http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html with some liberties to make regex simpler"
         }
     },

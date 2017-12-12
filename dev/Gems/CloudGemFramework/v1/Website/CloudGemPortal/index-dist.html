@@ -1,6 +1,5 @@
 ﻿<!DOCTYPE html>
 <html>
-
 <head profile="http://www.w3.org/2005/10/profile">
     <title>Lumberyard - Cloud Gem Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,152 +7,59 @@
     <META HTTP-EQUIV="Expires" CONTENT="-1">
     <base href="/">
 
-    <link rel="shortcut icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/images/favicon_16x16._V532413168_.png" />
+    <link rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-32x32._V510683448_.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-16x16._V510683448_.png" sizes="16x16" />
     <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/fontawesome/css/font-awesome.min._V522234553_.css">
-    <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/toastr/toastr.min._V522976442_.css">
-    <link rel="stylesheet" href="https://m.media-amazon.com/images/G/01/cloudcanvas/bootstrap/bootstrap._V534991908_.css">
-    <link rel="stylesheet" href="https://m.media-amazon.com/images/G/01/cloudcanvas/bootstrap._V532315242_.css">    
-
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/jquery/jquery-3.1.1.min._V522976668_.js"></script>
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/toastr/toastr.min._V522976442_.js"></script>
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/cryptojs/core._V522075809_.js"></script>
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/cryptojs/md5._V522075900_.js"></script>
+    <link href="https://m.media-amazon.com/images/G/01/cloudcanvas/ng2-toastr/ng2-toastr.min._V504635404_.css" rel="stylesheet" />
+    
+   <!-- 2. Configure SystemJS -->
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/systemjs/system._V518062568_.js"></script>
 
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-cognito-sdk.min._V511621773_.js"></script>
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/amazon-cognito-identity.min._V511621774_.js"></script>
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-2.46.0.min._V511621773_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/amazon-cognito-identity.min._V511621774_.js"></script>    
 
-    <!-- 1. Load libraries -->
-    <!-- IE required polyfill -->
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/es6-shim/es6-shim._V522074298_.js"></script>
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/system-polyfills/system-polyfills._V522075056_.js"></script>
-
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/zonejs/zone.min._V522074719_.js"></script>
-    <script src="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/reflectjs/Reflect._V522069253_.js"></script>
-    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/systemjs/system.min._V506722814_.js"></script>
+    <!-- CognitoIdentity, APIGateway, CloudFormation, CognitoIdentityServiceProvider, S3, CloudWatch, MobileAnalytics -->        
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-2.77.0.min._V518065551_.js"></script>
+    <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/aws/aws-sdk-mobile-analytics.min._V518065352_.js"></script>
 
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/momentjs/moment.min._V511042353_.js"></script>
-
-
+    
     <script src="cgp_bootstrap.js"></script>
 
+    <script src="config.js"></script>
+
     <script>        
-        function waitForLibs() {
-            if (typeof AWS !== "undefined" && typeof toastr !== "undefined") {
-                //variable exists, do what you want
-                System.config({
-                    map: {
-                        'app': './dist/app',
+        let normalizeFn = System.normalize;
+         let customNormalize = function (name, parentName) {            
+            if ((name[0] != '.' || (!!name[1] && name[1] != '/' && name[1] != '.')) && name[0] != '/' && !name.match(System.absURLRegEx))
+                return normalizeFn(name, parentName)
+            return name
+        }         
 
-                        "rxjs": "node_modules/rxjs",
-                        "@angular": "node_modules/@angular",
-                        "@ng-bootstrap/ng-bootstrap": "node_modules/@ng-bootstrap/ng-bootstrap/bundles/ng-bootstrap.js",
-                        "typescript": "node_modules/typescript/lib/typescript.js",
-                        "ts": "node_modules/plugin-typescript/lib/plugin.js",
-                        'dragula': 'node_modules/dragula/dist/dragula.js',
-                        'ng2-dragula': 'node_modules/ng2-dragula',
-                        'ts-clipboard': 'node_modules/ts-clipboard/ts-clipboard.js',
-                        'web-animations-js': 'node_modules/web-animations-js/web-animations.min.js'
-
-                    },
-                    packages: {
-                        'app': {
-                            main: './main.js',
-                            defaultExtension: 'js'
-                        },
-                        'rxjs': {
-                            defaultExtension: 'js'
-                        },
-                        'ng2-dragula': {
-                            main: 'ng2-dragula.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/core': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/common': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/compiler': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/platform-browser': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/platform-browser-dynamic': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/http': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/router': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        },
-                        '@angular/forms': {
-                            main: 'index.js',
-                            defaultExtension: 'js'
-                        }
-                    },
-                    buildCSS: true,
-                    transpiler: "ts",
-                    meta: {
-                        typescript: {
-                            exports: "ts"
-                        }
-                    }
-                });
-
-
-                System.import('bundles/dependencies.bundle.js').then(function () {
-                    System.import('bundles/app.bundle.js').then(function () {
-                        System.import('app/main');
-                    }).then(
-                            function handleResolve() {
-
-                                console.info("System.js successfully bootstrapped app.");
-
-                            },
-                            function handleReject(error) {
-
-                                console.warn("System.js could not bootstrap the app.");
-                                console.error(error);
-
-                            }
-                        )
-                        .catch(function (err) {
-                            console.error(err);
-                        })
-                });
-            } else {
-                setTimeout(function () {
-                    waitForLibs();
-                }, 100);
-            }
-        }
-        waitForLibs();
+        System.normalize = customNormalize;
+        System.import('bundles/dependencies.bundle.js').then(function () {
+            System.normalize = customNormalize;
+            System.import('bundles/app.bundle.js').then(function () {
+                System.import('app');
+            });
+            System.normalize = normalizeFn;
+        });
+        System.normalize = normalizeFn;
     </script>
 
 
     <style>
-     @font-face {
-            font-family: "AmazonEmber-Regular";
-            src: url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_rg-webfont._V536573323_.woff2') format('woff2'),
-                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_rg-webfont._V536573323_.woff') format('woff'),
-                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/AmazonEmber_Rg._V536573323_.ttf') format('truetype');
+        @font-face {
+            font-family: "AmazonEmber-Light";
+            src: url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_lt-webfont._V536573323_.woff2') format('woff2'),
+                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/amazon_ember_lt-webfont._V536573323_.woff') format('woff'),
+                url('https://m.media-amazon.com/images/G/01/cloudcanvas/fonts/AmazonEmber_Lt._V536573323_.ttf') format('truetype');
         }
-
         .text-center {
             text-align: center;
         }
         .loading-container {
-            font-family: "AmazonEmber-Regular";
+            font-family: "AmazonEmber-Light";
         }
     </style>
 </head>
@@ -172,7 +78,7 @@
             </div>
             <div class="row">
                 <div class="col-12 text-center">
-                    <img src="https://m.media-amazon.com/images/G/01/cloudcanvas/beaver_animation._V532414134_.gif"> </img>
+                    <img src="https://m.media-amazon.com/images/G/01/cloudcanvas/images/beaver_flat_animation_optimized_32._V518427760_.gif" />
                 </div>
             </div>
             <div class="row">

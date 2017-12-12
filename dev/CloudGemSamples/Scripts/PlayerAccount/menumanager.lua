@@ -1,13 +1,14 @@
-require "Scripts/PlayerAccount/changepasswordmenu"
-require "Scripts/PlayerAccount/confirmsignupmenu"
-require "Scripts/PlayerAccount/createaccountmenu"
-require "Scripts/PlayerAccount/editaccountmenu"
-require "Scripts/PlayerAccount/editplayernamemenu"
-require "Scripts/PlayerAccount/forcechangepasswordmenu"
-require "Scripts/PlayerAccount/forgotpasswordmenu"
-require "Scripts/PlayerAccount/mainmenu"
-require "Scripts/PlayerAccount/manageaccountmenu"
-require "Scripts/PlayerAccount/signinmenu"
+local changepasswordmenu = require "Scripts/PlayerAccount/changepasswordmenu"
+local confirmsignupmenu = require "Scripts/PlayerAccount/confirmsignupmenu"
+local createaccountmenu = require "Scripts/PlayerAccount/createaccountmenu"
+local editaccountmenu = require "Scripts/PlayerAccount/editaccountmenu"
+local editplayernamemenu = require "Scripts/PlayerAccount/editplayernamemenu"
+local forcechangepasswordmenu = require "Scripts/PlayerAccount/forcechangepasswordmenu"
+local forgotpasswordmenu = require "Scripts/PlayerAccount/forgotpasswordmenu"
+local mainmenu = require "Scripts/PlayerAccount/mainmenu"
+local manageaccountmenu = require "Scripts/PlayerAccount/manageaccountmenu"
+local playeraccountbus = require "Scripts/PlayerAccount/playeraccountbus"
+local signinmenu = require "Scripts/PlayerAccount/signinmenu"
 
 menumanager =
 {
@@ -35,20 +36,28 @@ function menumanager:OnActivate()
     local util = require("scripts.util")
     util.SetMouseCursorVisible(true)
 
+    self.playerAccountBus = playeraccountbus:new{
+        threadHandler = self
+    }
+
     self:ShowMenu("MainMenu")
 
     self.tickBusHandler = TickBus.Connect(self, self.entityId);
-    self.clientManagerNotificationHandler = ClientManagerNotificationBus.Connect(self)
+    self.playerIdentityNotificationHandler = PlayerIdentityNotificationBus.Connect(self)
 end
 
 function menumanager:OnDeactivate()
+    if self.playerAccountBus then
+        self.playerAccountBus:OnDeactivate()
+        self.playerAccountBus = nil
+    end
     if self.tickBusHandler then
         self.tickBusHandler:Disconnect();
         self.tickBusHandler = nil
     end
     if self.clientManagerNotificationHandler then
-        self.clientManagerNotificationHandler:Disconnect()
-        self.clientManagerNotificationHandler = nil
+        self.playerIdentityNotificationHandler:Disconnect()
+        self.playerIdentityNotificationHandler = nil
     end
     if self.menu then
         self.menu:Hide()
@@ -66,7 +75,7 @@ function menumanager:OnTick(deltaTime, timePoint)
     until not task
 end
 
-function menumanager:OnAfterConfigurationChange()
+function menumanager:OnAfterIdentityUpdate()
     if self.menu then
         self.menu:OnAfterConfigurationChange()
     end
@@ -88,7 +97,8 @@ function menumanager:ShowMenu(menuName, context)
     self.menu = self.menus[menuName]:new{
         menuManager = self,
         entityId = self.entityId,
-        context = self.context
+        context = self.context,
+        playerAccountBus = self.playerAccountBus
     }
     self.menu:Show(context)
 end

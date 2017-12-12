@@ -14,7 +14,22 @@
         "aws_cpp_sdk_identity_lambda",
         "aws_cpp_sdk_access_management",
         "aws_cpp_sdk_transfer",
-        "aws_cpp_sdk_identity_metrics"
+        "aws_cpp_sdk_identity_metrics",
+        "aws_cpp_sdk_all_android_21",
+        "aws_cpp_sdk_gamelift_android_21",
+        "aws_cpp_sdk_sts_android_21",
+        "aws_cpp_sdk_core_android_21",
+        "aws_cpp_sdk_mobileanalytics_android_21",
+        "aws_cpp_sdk_identity_management_android_21",
+        "aws_cpp_sdk_cognito_identity_android_21",
+        "aws_cpp_sdk_cognito_idp_android_21",
+        "aws_cpp_sdk_kinesis_android_21",
+        "aws_cpp_sdk_lambda_android_21",
+        "aws_cpp_sdk_s3_android_21",
+        "aws_cpp_sdk_identity_lambda_android_21",
+        "aws_cpp_sdk_access_management_android_21",
+        "aws_cpp_sdk_transfer_android_21",
+        "aws_cpp_sdk_identity_metrics_android_21"
     ],
     "source": "@ROOT@/Code/SDKs/AWSNativeSDK",
     "description": "Shared and Static libraries for AWS Native SDK",
@@ -84,7 +99,13 @@
             "aws-cpp-sdk-cognito-identity",
             "aws-cpp-sdk-cognito-idp",
             "aws-cpp-sdk-core"
-        ]
+        ],
+        "aws_android_static_dependencies": [
+            "curl",
+            "ssl",
+            "crypto",
+            "z"
+        ] 
     },
     "includes": [
         "include"
@@ -617,7 +638,8 @@
                 "lib${aws_cpp_sdk_all}.a"
             ],
             "aws_cpp_sdk_core/lib": [
-                "lib${aws_cpp_sdk_core}.a"
+                "lib${aws_cpp_sdk_core}.a",
+                "libcurl.a"
             ],
             "aws_cpp_sdk_gamelift/lib": [
                 "lib${aws_cpp_sdk_gamelift}.a"
@@ -664,7 +686,8 @@
                 "lib${aws_cpp_sdk_all}.a"
             ],
             "aws_cpp_sdk_core/lib": [
-                "lib${aws_cpp_sdk_core}.a"
+                "lib${aws_cpp_sdk_core}.a",
+                "libcurl.a"
             ],
             "aws_cpp_sdk_gamelift/lib": [
                 "lib${aws_cpp_sdk_gamelift}.a"
@@ -797,16 +820,102 @@
         },
         "android_armv7_clang": {
             "libpath_debug": [
-                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug"
+                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug",
+                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug/dependencies"
             ],
             "libpath_release": [
-                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release"
+                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release",
+                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release/dependencies"
+            ],
+            "aws_cpp_sdk_all_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug",
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug/dependencies"
+            ],
+            "aws_cpp_sdk_all_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release",
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release/dependencies"
+            ],
+            "aws_cpp_sdk_core_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug",
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug/dependencies"
+            ],
+            "aws_cpp_sdk_core_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release",
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release/dependencies"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_s3_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_s3_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_sts_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_sts_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_mobileanalytics_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_mobileanalytics_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_lambda_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_lambda_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_metrics_android_21/libpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_metrics_android_21/libpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
             ],
             "aws_cpp_sdk_all/lib": [
-                "lib${aws_cpp_sdk_all}.a"
+                "lib${aws_cpp_sdk_all}.a",
+                "lib${aws_android_static_dependencies}.a"
             ],
             "aws_cpp_sdk_core/lib": [
-                "lib${aws_cpp_sdk_core}.a"
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_android_static_dependencies}.a"
             ],
             "aws_cpp_sdk_gamelift/lib": [
                 "lib${aws_cpp_sdk_gamelift}.a"
@@ -841,12 +950,130 @@
             "aws_cpp_sdk_identity_metrics/lib": [
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ],
-
+            "aws_cpp_sdk_all_android_21/lib": [
+                "lib${aws_cpp_sdk_all}.a",
+                "lib${aws_android_static_dependencies}.a"
+            ],
+            "aws_cpp_sdk_core_android_21/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_android_static_dependencies}.a"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_s3_android_21/lib": [
+                "lib${aws_cpp_sdk_s3}.a"
+            ],
+            "aws_cpp_sdk_sts_android_21/lib": [
+                "lib${aws_cpp_sdk_sts}.a"
+            ],
+            "aws_cpp_sdk_mobileanalytics_android_21/lib": [
+                "lib${aws_cpp_sdk_mobileanalytics}.a"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/lib": [
+                "lib${aws_cpp_sdk_identity_management}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/lib": [
+                "lib${aws_cpp_sdk_cognito_idp}.a"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/lib": [
+                "lib${aws_cpp_sdk_kinesis}.a"
+            ],
+            "aws_cpp_sdk_lambda_android_21/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics_android_21/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a"
+            ],
             "sharedlibpath_debug": [
                 "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug"
             ],
             "sharedlibpath_release": [
                 "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_all_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_all_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_core_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_core_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_s3_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_s3_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_sts_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_sts_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_mobile_analytics_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_mobile_analytics_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_lambda_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_lambda_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+            ],
+            "aws_cpp_sdk_identity_metrics_android_21/sharedlibpath_debug": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+            ],
+            "aws_cpp_sdk_identity_metrics_shared_android_21/sharedlibpath_release": [
+                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
             ],
             "aws_cpp_sdk_all/shared": [
                 "lib${aws_cpp_sdk_all}.so"
@@ -886,7 +1113,46 @@
             ],
             "aws_cpp_sdk_identity_metrics/shared": [
                 "lib${aws_cpp_sdk_identity_metrics}.so"
-            ]
+            ],
+            "aws_cpp_sdk_all_android_21/shared": [
+                "lib${aws_cpp_sdk_all}.so"
+            ],
+            "aws_cpp_sdk_core_android_21/shared": [
+                "lib${aws_cpp_sdk_core}.so"
+            ],
+            "aws_cpp_sdk_gamelift_android_21/shared": [
+                "lib${aws_cpp_sdk_gamelift}.so"
+            ],
+            "aws_cpp_sdk_s3_android_21/shared": [
+                "lib${aws_cpp_sdk_s3}.so"
+            ],
+            "aws_cpp_sdk_sts_android_21/shared": [
+                "lib${aws_cpp_sdk_sts}.so"
+            ],
+            "aws_cpp_sdk_mobileanalytics_android_21/shared": [
+                "lib${aws_cpp_sdk_mobileanalytics}.so"
+            ],
+            "aws_cpp_sdk_identity_management_android_21/shared": [
+                "lib${aws_cpp_sdk_identity_management}.so"
+            ],
+            "aws_cpp_sdk_cognito_identity_android_21/shared": [
+                "lib${aws_cpp_sdk_cognito_identity}.so"
+            ],
+            "aws_cpp_sdk_cognito_idp_android_21/shared": [
+                "lib${aws_cpp_sdk_cognito_idp}.so"
+            ],
+            "aws_cpp_sdk_kinesis_android_21/shared": [
+                "lib${aws_cpp_sdk_kinesis}.so"
+            ],
+            "aws_cpp_sdk_lambda_android_21/shared": [
+                "lib${aws_cpp_sdk_lambda}.so"
+            ],
+            "aws_cpp_sdk_identity_lambda_android_21/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.so"
+            ],
+            "aws_cpp_sdk_identity_metrics_android_21/shared": [
+                "lib${aws_cpp_sdk_identity_metrics}.so"
+            ]        
         },
         "orbis": {
             "libpath_debug": [

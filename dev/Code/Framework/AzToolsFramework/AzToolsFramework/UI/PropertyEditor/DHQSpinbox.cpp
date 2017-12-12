@@ -79,6 +79,8 @@ namespace AzToolsFramework
         connect(this, valueChanged, this, [this](int newValue){
             m_lastValue = newValue;
         });
+
+        EditorEvents::Bus::Handler::BusConnect();
     }
 
     bool DHQSpinbox::event(QEvent* event)
@@ -109,7 +111,13 @@ namespace AzToolsFramework
         return QSpinBox::event(event);
     }
 
-    void DHQSpinbox::keyPressEvent(QKeyEvent* event)
+    void DHQSpinbox::setValue(int value)
+    {
+        m_lastValue = value;
+        QSpinBox::setValue(value);
+    }
+
+    void DHQSpinbox::OnEscape()
     {
         if (!keyboardTracking())
         {
@@ -117,36 +125,22 @@ namespace AzToolsFramework
             // aren't 'committed' until the user hits Enter, Return, tabs out of
             // the field, or the spinbox is hidden.
             // We want to stop the commit from happening if the user hits escape.
-            if (event->key() == Qt::Key_Escape)
+            if (hasFocus())
             {
-                QWidget* currentFocus = QApplication::focusWidget();
-                QWidget* editField = lineEdit();
-
-                if ((currentFocus == editField) || (currentFocus == this))
+                // Big logic jump here; if the current value has been committed already,
+                // then everything listening on the signals knows about it already.
+                // If the current value has NOT been committed, nothing knows about it
+                // but we don't want to trigger any further updates, because we're resetting
+                // it.
+                // So we disable signals here
                 {
-                    // Big logic jump here; if the current value has been committed already,
-                    // then everything listening on the signals knows about it already.
-                    // If the current value has NOT been committed, nothing knows about it
-                    // but we don't want to trigger any further updates, because we're resetting
-                    // it.
-                    // So we disable signals here
-                    {
-                        QSignalBlocker blocker(this);
-                        setValue(m_lastValue);
-                    }
-
-                    selectAll();
+                    QSignalBlocker blocker(this);
+                    setValue(m_lastValue);
                 }
+
+                selectAll();
             }
         }
-
-        QSpinBox::keyPressEvent(event);
-    }
-
-    void DHQSpinbox::setValue(int value)
-    {
-        m_lastValue = value;
-        QSpinBox::setValue(value);
     }
 
     QSize DHQSpinbox::minimumSizeHint() const
@@ -169,6 +163,8 @@ namespace AzToolsFramework
         connect(this, valueChanged, this, [this](double newValue){
             m_lastValue = newValue;
         });
+
+        EditorEvents::Bus::Handler::BusConnect();
     }
 
     bool DHQDoubleSpinbox::event(QEvent* event)
@@ -199,7 +195,13 @@ namespace AzToolsFramework
         return QDoubleSpinBox::event(event);
     }
 
-    void DHQDoubleSpinbox::keyPressEvent(QKeyEvent* event)
+    void DHQDoubleSpinbox::setValue(double value)
+    {
+        m_lastValue = value;
+        QDoubleSpinBox::setValue(value);
+    }
+
+    void DHQDoubleSpinbox::OnEscape()
     {
         if (!keyboardTracking())
         {
@@ -207,36 +209,22 @@ namespace AzToolsFramework
             // aren't 'committed' until the user hits Enter, Return, tabs out of
             // the field, or the spinbox is hidden.
             // We want to stop the commit from happening if the user hits escape.
-            if (event->key() == Qt::Key_Escape)
+            if (hasFocus())
             {
-                QWidget* currentFocus = QApplication::focusWidget();
-                QWidget* editField = lineEdit();
-
-                if ((currentFocus == editField) || (currentFocus == this))
+                // Big logic jump here; if the current value has been committed already,
+                // then everything listening on the signals knows about it already.
+                // If the current value has NOT been committed, nothing knows about it
+                // but we don't want to trigger any further updates, because we're resetting
+                // it.
+                // So we disable signals here
                 {
-                    // Big logic jump here; if the current value has been committed already,
-                    // then everything listening on the signals knows about it already.
-                    // If the current value has NOT been committed, nothing knows about it
-                    // but we don't want to trigger any further updates, because we're resetting
-                    // it.
-                    // So we disable signals here
-                    {
-                        QSignalBlocker blocker(this);
-                        setValue(m_lastValue);
-                    }
-
-                    selectAll();
+                    QSignalBlocker blocker(this);
+                    setValue(m_lastValue);
                 }
+
+                selectAll();
             }
         }
-
-        QDoubleSpinBox::keyPressEvent(event);
-    }
-
-    void DHQDoubleSpinbox::setValue(double value)
-    {
-        m_lastValue = value;
-        QDoubleSpinBox::setValue(value);
     }
 
     QSize DHQDoubleSpinbox::minimumSizeHint() const

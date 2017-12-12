@@ -127,11 +127,11 @@ SShaderBin* CShaderManBin::SaveBinShader(
     gEnv->pCryPak->FRead(buf, nSize, srcFileHandle);
 
     RemoveCR(buf);
-    const char* kWhiteSpace = " ";
+    const char* whiteSpace = " ";
 
     while (buf && buf[0])
     {
-        SkipCharacters (&buf, kWhiteSpace);
+        SkipCharacters (&buf, whiteSpace);
         SkipComments (&buf, true);
         if (!buf || !buf[0])
         {
@@ -144,7 +144,7 @@ SShaderBin* CShaderManBin::SaveBinShader(
         dwToken = Parser.NewUserToken(dwToken, com, false);
         pBin->m_Tokens.push_back(dwToken);
 
-        SkipCharacters (&buf, kWhiteSpace);
+        SkipCharacters (&buf, whiteSpace);
         SkipComments (&buf, true);
         if (dwToken >= eT_float && dwToken <= eT_int)
         {
@@ -157,7 +157,7 @@ SShaderBin* CShaderManBin::SaveBinShader(
         if (dwToken == eT_include)
         {
             CRY_ASSERT(bKey);
-            SkipCharacters(&buf, kWhiteSpace);
+            SkipCharacters(&buf, whiteSpace);
             CRY_ASSERT(*buf == '"' || *buf == '<');
             char brak = *buf;
             ++buf;
@@ -251,7 +251,7 @@ SShaderBin* CShaderManBin::SaveBinShader(
             char* b = &macro[0];
             while (*b)
             {
-                SkipCharacters (&b, kWhiteSpace);
+                SkipCharacters (&b, whiteSpace);
                 SkipComments (&b, true);
                 if (!b || !b[0])
                 {
@@ -2497,7 +2497,7 @@ bool CShaderManBin::ParseBinFX_Sampler(CParserBin& Parser, SParserFrame& Frame, 
             break;
         default:
         {
-            const char *szFilter = Parser.GetString(nFilter);
+            const char* szFilter = Parser.GetString(nFilter);
             assert(0);
         }
         break;
@@ -2814,17 +2814,17 @@ bool CShaderManBin::ParseBinFX_Texture(CParserBin& Parser, SParserFrame& Frame, 
 
     FX_BEGIN_TOKENS
         FX_TOKEN(Texture)
-        FX_TOKEN(UIName)
-        FX_TOKEN(UIDescription)
-        FX_TOKEN(sRGBLookup)
-        FX_TOKEN(Global)
-        FX_TOKEN(slot)
-        FX_TOKEN(vsslot)
-        FX_TOKEN(psslot)
-        FX_TOKEN(hsslot)
-        FX_TOKEN(dsslot)
-        FX_TOKEN(gsslot)
-        FX_TOKEN(csslot)
+    FX_TOKEN(UIName)
+    FX_TOKEN(UIDescription)
+    FX_TOKEN(sRGBLookup)
+    FX_TOKEN(Global)
+    FX_TOKEN(slot)
+    FX_TOKEN(vsslot)
+    FX_TOKEN(psslot)
+    FX_TOKEN(hsslot)
+    FX_TOKEN(dsslot)
+    FX_TOKEN(gsslot)
+    FX_TOKEN(csslot)
     FX_END_TOKENS
 
     int nIndex = -1;
@@ -2925,7 +2925,7 @@ void CShaderManBin::AddAffectedParameter(CParserBin& Parser, std::vector<SFXPara
     int nFlags = pParam->GetParamFlags();
     bool bCheckAffect = CParserBin::m_bParseFX ? true : false;
 
-    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL)
+    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
     {
         CRY_ASSERT(eSHClass < eHWSC_Num);
         if (((nFlags & PF_TWEAKABLE_MASK) || pParam->m_Values.c_str()[0] == '(') && pParam->m_RegisterOffset[eSHClass] >= 0 && pParam->m_RegisterOffset[eSHClass] < 1000)
@@ -3232,7 +3232,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_PackParameters (CParserBin& Parser
         {
             continue; // Parameter doesn't have custom register definition
         }
-		const char* src = strstr(pr->m_Annotations.c_str(), "register");
+        const char* src = strstr(pr->m_Annotations.c_str(), "register");
         if (src)
         {
             char* b = (char*)&src[8];
@@ -3944,7 +3944,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
             Parser.CopyTokens(cf, SHData, Replaces, NewTokens, h);
             if (cf->m_eType == eFT_Sampler)
             {
-                if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL)
+                if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
                 {
                     int nT = Parser.m_Tokens[cf->m_nLastToken - 1];
                     //CRY_ASSERT(nT >= eT_s0 && nT <= eT_s15);
@@ -4740,6 +4740,7 @@ bool CShaderManBin::ParseBinFX_Technique_CustomRE(CParserBin& Parser, SParserFra
             delete ps;
         }
     }
+#if 0
     else
     if (nName == eT_Cloud)
     {
@@ -4755,6 +4756,7 @@ bool CShaderManBin::ParseBinFX_Technique_CustomRE(CParserBin& Parser, SParserFra
             delete ps;
         }
     }
+#endif
     else
     if (nName == eT_Beam)
     {
@@ -5220,7 +5222,7 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
                     }
                 }
                 else
-                if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL))
+                if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL)) // ACCEPTED_USE
                 {
                     uint32 nTokName = Parser.GetToken(Parser.m_Name);
                     const char* name = Parser.GetString(nTokName);

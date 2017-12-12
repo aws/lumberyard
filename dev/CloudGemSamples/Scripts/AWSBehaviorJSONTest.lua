@@ -29,11 +29,11 @@ local testJSONString = [[
 ]]
 
 function AWSBehaviorJSONTest:OnActivate()
-    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.gamePlayHandler = GameplayNotificationBus.Connect(self, runTestEventId)
 end
 
-function AWSBehaviorJSONTest:OnEventBegin()
+function AWSBehaviorJSONTest:OnEventBegin(message)
      if isActive == false then
         Debug.Log("AWSBehaviorHTTPTest not active")
         self:NotifyMainEntity("success")
@@ -201,7 +201,7 @@ end
 
 function AWSBehaviorJSONTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 return AWSBehaviorJSONTest

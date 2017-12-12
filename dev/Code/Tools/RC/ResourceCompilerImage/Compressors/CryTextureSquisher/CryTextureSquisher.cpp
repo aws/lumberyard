@@ -33,8 +33,8 @@ AZStd::mutex s_squishLock;
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wnull-dereference"
 #endif
-#include "../../SDKs/squish-ccr/squish.h"
-#include "../../SDKs/squish-ccr/squish.inl"
+#include <squish.h>
+#include <squish.inl>
 #if defined(__clang__)
 #   pragma clang diagnostic pop
 #endif

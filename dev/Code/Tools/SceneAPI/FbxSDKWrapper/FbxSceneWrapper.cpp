@@ -125,7 +125,7 @@ namespace AZ
 
         bool FbxSceneWrapper::LoadSceneFromFile(const char* fileName)
         {
-            AZ_TraceContext("Load fbx file name", fileName);
+            AZ_TraceContext("Filename", fileName);
             if (!m_fbxManager)
             {
                 m_fbxManager = FbxManager::Create();
@@ -180,16 +180,6 @@ namespace AZ
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to import FbxScene. Error returned: %s", error.Buffer());
                 return false;
             }
-
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-            // convert into our coordinate system if needed
-            FbxAxisSystem fbxAxis = m_fbxScene->GetGlobalSettings().GetAxisSystem();
-            if (fbxAxis != FbxAxisSystem::eMayaZUp)
-            {
-                AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "FBXImporter - Converting coordinate system.");
-                FbxAxisSystem::MayaZUp.ConvertScene(m_fbxScene);
-            }
-#endif
 
             return true;
         }

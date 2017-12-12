@@ -25,10 +25,10 @@ namespace AZ
         {
             namespace
             {
-                //////////////////////////////////////////////////////////////// 
+                ////////////////////////////////////////////////////////////////
                 const char* GetApkAssetsPrefix()
                 {
-                    return "APK";
+                    return "/APK/";
                 }
             }
 
@@ -52,39 +52,27 @@ namespace AZ
             }
 
             ////////////////////////////////////////////////////////////////
-            const char* GetInternalStoragePath()
+            const char* GetAppPrivateStoragePath()
             {
-                return AndroidEnv::Get()->GetInternalStoragePath().c_str();
+                return AndroidEnv::Get()->GetAppPrivateStoragePath();
             }
 
             ////////////////////////////////////////////////////////////////
-            const char* GetExternalStorageRoot()
+            const char* GetAppPublicStoragePath()
             {
-                return AndroidEnv::Get()->GetExternalStorageRoot().c_str();
-            }
-
-            ////////////////////////////////////////////////////////////////
-            const char* GetExternalStoragePath()
-            {
-                return AndroidEnv::Get()->GetExternalStoragePath().c_str();
+                return AndroidEnv::Get()->GetAppPublicStoragePath();
             }
 
             ////////////////////////////////////////////////////////////////
             const char* GetObbStoragePath()
             {
-                return AndroidEnv::Get()->GetObbStoragePath().c_str();
+                return AndroidEnv::Get()->GetObbStoragePath();
             }
 
             ////////////////////////////////////////////////////////////////
             const char* GetPackageName()
             {
-                return AndroidEnv::Get()->GetPackageName().c_str();
-            }
-
-            ////////////////////////////////////////////////////////////////
-            const char* GetGameProjectName()
-            {
-                return AndroidEnv::Get()->GetGameProjectName().c_str();
+                return AndroidEnv::Get()->GetPackageName();
             }
 
             ////////////////////////////////////////////////////////////////
@@ -94,21 +82,15 @@ namespace AZ
             }
 
             ////////////////////////////////////////////////////////////////
-            AZStd::string GetObbFileName(bool mainFile)
+            const char* GetObbFileName(bool mainFile)
             {
                 return AndroidEnv::Get()->GetObbFileName(mainFile);
             }
 
             ////////////////////////////////////////////////////////////////
-            bool GetBooleanResource(const char* resourceName)
-            {
-                return AndroidEnv::Get()->GetBooleanResource(resourceName);
-            }
-
-            //////////////////////////////////////////////////////////////// 
             bool IsApkPath(const char* filePath)
             {
-                return (strstr(filePath, GetApkAssetsPrefix()) != nullptr);
+                return (strncmp(filePath, GetApkAssetsPrefix(), 4) == 0); // +3 for "APK", +1 for '/' starting slash
             }
 
             ////////////////////////////////////////////////////////////////
@@ -126,82 +108,35 @@ namespace AZ
             ////////////////////////////////////////////////////////////////
             const char* FindAssetsDirectory()
             {
-                const char* assetsPath = nullptr;
-
-                const char* internalStoragePath = GetInternalStoragePath();
-                const char* externalStoragePath = GetExternalStoragePath();
-                const char* externalStorageRoot = GetExternalStorageRoot();
-
-                const char* gameProjectName = GetGameProjectName();
-
-                AZ_TracePrintf("Android::Utils", "InternalStoragePath = %s", internalStoragePath);
-                AZ_TracePrintf("Android::Utils", "ExternalStoragePath = %s", externalStoragePath);
-                AZ_TracePrintf("Android::Utils", "ExternalStorageRoot = %s", externalStorageRoot);
-
-                // Try to figure out where the PAK files are stored
-                AZStd::vector<const char*> paths = {
-                    internalStoragePath,
-                    externalStoragePath,
-                    externalStorageRoot,
-                };
-
-                AZStd::vector<const char*> validPaths;
-                for (size_t i = 0; i < paths.size(); ++i)
-                {
-                    AZStd::string path = AZStd::string::format("%s/%s/bootstrap.cfg", paths[i], gameProjectName);
-
-                    AZ_TracePrintf("Android::Utils", "Searching for %s", path.c_str());
-                    FILE* f = fopen(path.c_str(), "r");
-                    if (f != nullptr)
-                    {
-                        validPaths.push_back(paths[i]);
-                        fclose(f);
-                    #if defined(_RELEASE)
-                        break;
-                    #endif
-                    }
-                }
-
-            #if defined(_RELEASE)
-                // if we haven't found the cfg file, try looking inside the APK
-                if (validPaths.empty())
-            #endif
-                {
-                    // Try to search assets within apk package.
-                    AAssetManager* mgr = GetAssetManager();
-                    if (mgr)
-                    {
-                        AAsset* asset = AAssetManager_open(mgr, "bootstrap.cfg", AASSET_MODE_UNKNOWN);
-                        if (asset)
-                        {
-                            validPaths.push_back(GetApkAssetsPrefix());
-                            AAsset_close(asset);
-                        }
-                    }
-                }
-
-                if (validPaths.empty())
-                {
-                    AZ_Assert(false, "Failed to locate the asset path");
-                }
-                else
-                {
-                    assetsPath = validPaths.front();
-                }
-
             #if !defined(_RELEASE)
-                // Remove duplicated paths
-                auto comp = [](const char* lhs, const char* rhs) { return azstricmp(lhs, rhs) < 0; };
-                AZStd::set<const char *, decltype(comp)> validPathsSet(validPaths.begin(), validPaths.end(), comp);
-                if (validPathsSet.size() > 1)
+                // first check to see if they are in public storage (application specific)
+                const char* publicAppStorage = GetAppPublicStoragePath();
+
+                OSString path = OSString::format("%s/bootstrap.cfg", publicAppStorage);
+                AZ_TracePrintf("Android::Utils", "Searching for %s", path.c_str());
+
+                FILE* f = fopen(path.c_str(), "r");
+                if (f != nullptr)
                 {
-                    AZStd::string msg = "Found valid assets in multiple locations: \n";
-                    AZStd::for_each(validPathsSet.begin(), validPathsSet.end(), [&msg](const char* path){ msg.append(AZStd::string::format("%s \n", path)); });
-                    msg.append(AZStd::string::format("Using %s as root folder.", assetsPath));
-                    AZ_Warning("LMBR", false, "%s", msg.c_str());
+                    fclose(f);
+                    return publicAppStorage;
                 }
-            #endif
-                return assetsPath;
+            #endif // !defined(_RELEASE)
+
+                // if they aren't in public storage, they are in private storage (APK)
+                AAssetManager* mgr = GetAssetManager();
+                if (mgr)
+                {
+                    AAsset* asset = AAssetManager_open(mgr, "bootstrap.cfg", AASSET_MODE_UNKNOWN);
+                    if (asset)
+                    {
+                        AAsset_close(asset);
+                        return GetApkAssetsPrefix();
+                    }
+                }
+
+                AZ_Assert(false, "Failed to locate the bootstrap.cfg path");
+                return nullptr;
             }
         }
     }

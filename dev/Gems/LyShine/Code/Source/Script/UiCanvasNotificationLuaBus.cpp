@@ -91,10 +91,11 @@ void UiCanvasNotificationLuaProxy::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCanvasNotificationLuaBus>("UiCanvasNotificationLuaBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Handler<BehaviorUiCanvasNotificationLuaBusHandler>();
 
         behaviorContext->Class<UiCanvasNotificationLuaProxy>()
-            ->Attribute(AZ_CRC("ScriptCanvasIgnore", 0x67a88f02), true)
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             ->Method("BusConnect", &UiCanvasNotificationLuaProxy::BusConnect)
         ;

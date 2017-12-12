@@ -15,24 +15,24 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <AzCore/RTTI/RTTI.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Rule
         {
-            class IEFXMotionCompressionSettingsRule
-                : public IRule
+            class IMotionCompressionSettingsRule
+                : public AZ::SceneAPI::DataTypes::IRule
             {
             public:
-                AZ_RTTI(IEFXMotionCompressionSettingsRule, "{8BECDD88-9940-4E8E-9E5C-4E088F8D0BDC}", IRule);
+                AZ_RTTI(IMotionCompressionSettingsRule, "{8BECDD88-9940-4E8E-9E5C-4E088F8D0BDC}", AZ::SceneAPI::DataTypes::IRule);
 
-                virtual ~IEFXMotionCompressionSettingsRule() override = default;
+                virtual ~IMotionCompressionSettingsRule() override = default;
 
                 virtual float GetMaxTranslationError() const = 0;
                 virtual float GetMaxRotationError() const = 0;
                 virtual float GetMaxScaleError() const = 0;
             };
-        }  // DataTypes
-    }  // SceneAPI
-}  // AZ
+        }  // Rule
+    }  // Pipeline
+}  // EMotionFX

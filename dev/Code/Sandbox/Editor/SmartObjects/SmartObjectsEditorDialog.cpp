@@ -1549,11 +1549,12 @@ private:
 //////////////////////////////////////////////////////////////////////////
 void CSmartObjectsEditorDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(100, 250, 500, 500);
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    options.isLegacy = true;
 
-    RegisterQtViewPane<CSmartObjectsEditorDialog>(GetIEditor(), s_smartObjectsDialogName, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CSmartObjectsEditorDialog>(s_smartObjectsDialogName, LyViewPane::CategoryOther, options);
     GetIEditor()->GetSettingsManager()->AddToolName("SmartObjectsLayout", "Smart Objects");
 }
 

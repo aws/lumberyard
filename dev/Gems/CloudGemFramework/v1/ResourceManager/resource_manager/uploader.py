@@ -315,7 +315,7 @@ class Uploader(object):
 
         return key
 
-    def upload_dir(self, name, path, extraargs = None, alternate_root = None):
+    def upload_dir(self, name, path, extraargs = None, alternate_root = None, suffix = None):
         '''Creates an object in an S3 bucket using content from the specified directory.
         
         Args:
@@ -351,7 +351,8 @@ class Uploader(object):
                 key = alternate_root
             else:
                 key = alternate_root + key[i:]
-
+        if suffix is not None: 
+            key = '{}/{}'.format(key, suffix)
         self.context.view.uploading_file(bucket, key, path)        
         s3 = self.context.aws.client('s3')
     
@@ -652,13 +653,23 @@ class ResourceGroupUploader(Uploader):
 
     @staticmethod
     def get_lambda_function_code_path(context, resource_group_name, function_name):
-        return Uploader._get_lambda_function_code_path(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
-
+        try:
+            return Uploader._get_lambda_function_code_path(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
+        except HandledError as e:
+            error_message = e.msg
+            error_message = error_message + '\n\n'
+            error_message = error_message + "You can create a new folder with the default CloudCanvas Lambda code by running the following command: lmbr_aws function create-folder -r {} -f {}".format(resource_group_name, function_name)
+            raise HandledError(error_message)
 
     @staticmethod
     def get_lambda_function_code_paths(context, resource_group_name, function_name):
-        return Uploader._get_lambda_function_code_paths(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
-
+        try:
+            return Uploader._get_lambda_function_code_paths(context, function_name, ResourceGroupUploader.__get_source_directory_paths(context, resource_group_name))
+        except HandledError as e:
+            error_message = e.msg
+            error_message = error_message + '\n\n'
+            error_message = error_message + "You can create a new folder with the default CloudCanvas Lambda code by running the following command: lmbr_aws function create-folder -r {} -f {}".format(resource_group_name, function_name)
+            raise HandledError(error_message)
 
     @property
     def source_directory_paths(self):

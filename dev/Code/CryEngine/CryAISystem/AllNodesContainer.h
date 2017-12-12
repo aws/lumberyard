@@ -67,8 +67,8 @@ public:
 
     struct SGraphNodeRecord
     {
-        SGraphNodeRecord(unsigned nodeIndex)
-            : nodeIndex(nodeIndex) {}
+        SGraphNodeRecord(unsigned index)
+            : nodeIndex(index) {}
         const Vec3& GetPos(CGraphNodeManager& nodeManager) const {return nodeManager.GetNode(nodeIndex)->GetPos(); }
         bool operator==(const SGraphNodeRecord& rhs) const {return rhs.nodeIndex == nodeIndex; }
         unsigned nodeIndex;
@@ -77,8 +77,8 @@ public:
     class GraphNodeHashSpaceTraits
     {
     public:
-        GraphNodeHashSpaceTraits(CGraphNodeManager& nodeManager)
-            : nodeManager(nodeManager) {}
+        GraphNodeHashSpaceTraits(CGraphNodeManager& manager)
+            : nodeManager(manager) {}
 
         const Vec3& operator() (const SGraphNodeRecord& item) const {return item.GetPos(nodeManager); }
 
@@ -149,10 +149,10 @@ private:
 
     struct SNodeCollector
     {
-        SNodeCollector(CGraphNodeManager& nodeManager, std::vector< std::pair<float, unsigned> >& nodes, IAISystem::tNavCapMask navTypeMask)
-            : nodeManager(nodeManager)
-            , nodes(nodes)
-            , navTypeMask(navTypeMask) {}
+        SNodeCollector(CGraphNodeManager& _nodeManager, std::vector< std::pair<float, unsigned> >& _nodes, IAISystem::tNavCapMask _navTypeMask)
+            : nodeManager(_nodeManager)
+            , nodes(_nodes)
+            , navTypeMask(_navTypeMask) {}
         void operator()(const SGraphNodeRecord& record, float distSq)
         {
             GraphNode* pNode = nodeManager.GetNode(record.nodeIndex);
@@ -171,12 +171,12 @@ private:
     // as the name implies this collector just accepts one element, then returns true
     struct SOneNodeCollector
     {
-        SOneNodeCollector(CGraphNodeManager& nodeManager, CGraph* graph, const Vec3& pos, std::pair<float, unsigned>& inNode, IAISystem::tNavCapMask navTypeMask)
-            : nodeManager(nodeManager)
+        SOneNodeCollector(CGraphNodeManager& manager, CGraph* graph, const Vec3& pos, std::pair<float, unsigned>& inNode, IAISystem::tNavCapMask _navTypeMask)
+            : nodeManager(manager)
             , m_Graph(graph)
             , m_Pos(pos)
             , node(inNode)
-            , navTypeMask(navTypeMask) {}
+            , navTypeMask(_navTypeMask) {}
 
         bool operator()(const SGraphNodeRecord& record, float distSq);
 

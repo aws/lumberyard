@@ -6,6 +6,7 @@
             "ATLEntityData.h",
             "AudioAllocators.h",
             "AudioLogger.h",
+            "AudioRingBuffer.h",
             "IAudioSystemImplementation.h"
         ]
     }

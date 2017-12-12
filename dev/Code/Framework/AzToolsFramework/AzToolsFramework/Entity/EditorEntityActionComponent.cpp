@@ -15,6 +15,7 @@
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Debug/Profiler.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -468,7 +469,7 @@ namespace AzToolsFramework
 
             // Check for pending component
             AZStd::vector<AZ::Component*> pendingComponents;
-            AzToolsFramework::EditorPendingCompositionRequestBus::EventResult(pendingComponents, entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents);
+            AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
             if (AZStd::find(pendingComponents.begin(), pendingComponents.end(), componentToRemove) != pendingComponents.end())
             {
                 AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::RemovePendingComponent, componentToRemove);
@@ -480,7 +481,7 @@ namespace AzToolsFramework
 
             // Check for disabled component
             AZStd::vector<AZ::Component*> disabledComponents;
-            AzToolsFramework::EditorDisabledCompositionRequestBus::EventResult(disabledComponents, entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents);
+            AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
             if (AZStd::find(disabledComponents.begin(), disabledComponents.end(), componentToRemove) != disabledComponents.end())
             {
                 AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::RemoveDisabledComponent, componentToRemove);
@@ -695,7 +696,7 @@ namespace AzToolsFramework
 
             // Same looping algorithm as the scrubber, but we'll also get the list of added components so we can clean up the pending list if we were successful
             AZStd::vector<AZ::Component*> pendingComponents;
-            AzToolsFramework::EditorPendingCompositionRequestBus::EventResult(pendingComponents, entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents);
+            AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
 
             AZ::Entity::ComponentArrayType addedPendingComponents;
             AZ::Entity::ComponentArrayType currentComponents = entity->GetComponents();
@@ -731,7 +732,7 @@ namespace AzToolsFramework
             }
 
             AZStd::vector<AZ::Component*> pendingComponents;
-            AzToolsFramework::EditorPendingCompositionRequestBus::EventResult(pendingComponents, component->GetEntityId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents);
+            AzToolsFramework::EditorPendingCompositionRequestBus::Event(component->GetEntityId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
             auto iterPendingComponent = AZStd::find(pendingComponents.begin(), pendingComponents.end(), component);
 
             //removing assert so we can query pending info for non-pending components withut calling
@@ -792,6 +793,8 @@ namespace AzToolsFramework
 
         void EditorEntityActionComponent::OnEntityStreamLoadSuccess()
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             AZ::SliceComponent* rootSlice = nullptr;
             EBUS_EVENT_RESULT(rootSlice, EditorEntityContextRequestBus, GetEditorRootSlice);
 

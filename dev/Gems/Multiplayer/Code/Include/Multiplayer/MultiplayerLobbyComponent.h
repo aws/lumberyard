@@ -184,7 +184,7 @@ namespace Multiplayer
 
         // GridMate::GameLiftSessionServiceEventsBus::Handler
         void OnGameLiftSessionServiceReady(GridMate::GameLiftClientService*) override;
-        void OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService*) override;
+        void OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService*, const AZStd::string& message) override;
 #endif
 
         // External Configuration

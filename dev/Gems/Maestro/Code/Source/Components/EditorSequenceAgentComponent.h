@@ -12,7 +12,7 @@
 #pragma once
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-#include <LmbrCentral/Cinematics/EditorSequenceAgentComponentBus.h>
+#include <Maestro/Bus/EditorSequenceAgentComponentBus.h>
 #include "SequenceAgent.h"
 
 namespace AzToolsFramework
@@ -22,7 +22,7 @@ namespace AzToolsFramework
         class TransformComponent;
     }
 }
-namespace LmbrCentral
+namespace Maestro
 {
     class EditorSequenceAgentComponent
         : public AzToolsFramework::Components::EditorComponentBase
@@ -81,4 +81,4 @@ namespace LmbrCentral
         // set of ids of all unique Entities with SequenceComponent instances connected to this Agent
         AZStd::unordered_set<AZ::EntityId>             m_sequenceEntityIds;
     };
-} // namespace LmbrCentral
+} // namespace Maestro

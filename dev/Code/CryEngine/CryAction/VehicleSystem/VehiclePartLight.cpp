@@ -225,8 +225,8 @@ bool CVehiclePartLight::Init(IVehicle* pVehicle, const CVehicleParams& table, IV
                 const ICVar* pLightSpec = gEnv->pConsole->GetCVar("sys_spec_light");
                 int configSpec = (pLightSpec != NULL) ? pLightSpec->GetIVal() : gEnv->pSystem->GetConfigSpec(true);
 
-                // Treating consoles and custom as med spec for simplicity
-                if (configSpec == CONFIG_CUSTOM)
+                // Treating consoles and auto as med spec for simplicity
+                if (configSpec == CONFIG_AUTO_SPEC)
                 {
                     configSpec = CONFIG_MEDIUM_SPEC;
                 }

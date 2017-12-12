@@ -18,6 +18,7 @@ namespace AZ
     namespace RC
     {
         TraceDrillerHook::TraceDrillerHook()
+            : m_errorCount(0)
         {
             BusConnect();
         }
@@ -27,7 +28,69 @@ namespace AZ
             BusDisconnect();
         }
 
+        bool TraceDrillerHook::OnPreAssert(const char* fileName, int line, const char* func, const char* message)
+        {
+            AZ_UNUSED(fileName);
+            AZ_UNUSED(line);
+            AZ_UNUSED(func);
+
+            DumpContextStack();
+            m_errorCount++;
+            RCLogError("%.*s", CalculateLineLength(message), message);
+            return true;
+        }
+
+        bool TraceDrillerHook::OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message)
+        {
+            AZ_UNUSED(window);
+            AZ_UNUSED(fileName);
+            AZ_UNUSED(line);
+            AZ_UNUSED(func);
+            
+            DumpContextStack();
+            m_errorCount++;
+            RCLogError("%.*s", CalculateLineLength(message), message);
+            return true;
+        }
+
+        bool TraceDrillerHook::OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message)
+        {
+            AZ_UNUSED(window);
+            AZ_UNUSED(fileName);
+            AZ_UNUSED(line);
+            AZ_UNUSED(func);
+
+            DumpContextStack();
+            RCLogWarning("%.*s", CalculateLineLength(message), message);
+            return true;
+        }
+
         bool TraceDrillerHook::OnPrintf(const char* window, const char* message)
+        {
+            DumpContextStack();
+            
+            if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::ErrorWindow))
+            {
+                m_errorCount++;
+                RCLogError("%.*s", CalculateLineLength(message), message);
+            }
+            else if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::WarningWindow))
+            {
+                RCLogWarning("%.*s", CalculateLineLength(message), message);
+            }
+            else
+            {
+                RCLog("%.*s", CalculateLineLength(message), message);
+            }
+            return true;
+        }
+
+        size_t TraceDrillerHook::GetErrorCount() const
+        {
+            return m_errorCount;
+        }
+
+        void TraceDrillerHook::DumpContextStack() const
         {
             AZStd::shared_ptr<const AzToolsFramework::Debug::TraceContextStack> stack = m_stacks.GetCurrentStack();
             if (stack)
@@ -46,20 +109,6 @@ namespace AZ
                     RCLogContext(line.c_str());
                 }
             }
-            
-            if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::ErrorWindow))
-            {
-                RCLogError("%.*s", CalculateLineLength(message), message);
-            }
-            else if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::WarningWindow))
-            {
-                RCLogWarning("%.*s", CalculateLineLength(message), message);
-            }
-            else
-            {
-                RCLog("%.*s", CalculateLineLength(message), message);
-            }
-            return true;
         }
 
         size_t TraceDrillerHook::CalculateLineLength(const char* message) const

@@ -197,7 +197,7 @@ void EditorPreferencesDialog::OnReject()
 
 void EditorPreferencesDialog::OnManage()
 {
-    GetIEditor()->OpenView(SETTINGS_MANAGER_WINDOW_NAME);
+    GetIEditor()->OpenView(LyViewPane::EditorSettingsManager);
     OnAccept();
 }
 

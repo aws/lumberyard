@@ -28,8 +28,6 @@
 #include <QString>
 #include <QStringList>
 
-using namespace AzToolsFramework::AssetBrowser;
-
 static const int CHAR_WIDTH = 6;
 
 PreviewWidget::PreviewWidget(QWidget* parent)
@@ -62,8 +60,10 @@ void PreviewWidget::Clear() const
     m_ui->m_noPreviewWidget->show();
 }
 
-void PreviewWidget::Display(const AssetBrowserEntry* entry)
+void PreviewWidget::Display(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry)
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     if (!entry)
     {
         Clear();
@@ -82,7 +82,13 @@ void PreviewWidget::Display(const AssetBrowserEntry* entry)
         }
         else
         {
-            DisplayProduct(products.front());
+            for (auto* product : products)
+            {
+                if (DisplayProduct(product))
+                {
+                    break;
+                }
+            }
         }
         break;
     }
@@ -99,12 +105,12 @@ void PreviewWidget::resizeEvent(QResizeEvent* /*event*/)
     m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
 }
 
-void PreviewWidget::DisplayProduct(const ProductAssetBrowserEntry* product)
+bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
 {
     m_ui->m_fileInfoCtrl->show();
 
     m_fileinfo = QString::fromUtf8(product->GetName().c_str());
-    
+
     AZ::u64 fileSizeResult = 0;
     if (AZ::IO::FileIOBase::GetInstance()->Size(product->GetRelativePath().c_str(), fileSizeResult))
     {
@@ -162,8 +168,8 @@ void PreviewWidget::DisplayProduct(const ProductAssetBrowserEntry* product)
     EBusFindAssetTypeByName meshAssetTypeResult("Static Mesh");
     AZ::AssetTypeInfoBus::BroadcastResult(meshAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
 
-    QString filename(product->GetFullPath().c_str());
-    
+    QString filename(product->GetRelativePath().c_str());
+
     // Find item.
     if (product->GetAssetType() == meshAssetTypeResult.GetAssetType())
     {
@@ -182,7 +188,7 @@ void PreviewWidget::DisplayProduct(const ProductAssetBrowserEntry* product)
         }
         m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
         updateGeometry();
-        return;
+        return true;
     }
 
     EBusFindAssetTypeByName textureAssetTypeResult("Texture");
@@ -197,9 +203,7 @@ void PreviewWidget::DisplayProduct(const ProductAssetBrowserEntry* product)
         bool foundPixmap = false;
         if (!AZ::IO::FileIOBase::GetInstance()->IsDirectory(filename.toUtf8().data()))
         {
-            QString strLoadFilename;
-            strLoadFilename = Path::GamePathToFullPath(filename);
-
+            QString strLoadFilename = Path::GamePathToFullPath(filename);
             {                // scoped to control how long the file is open
                 CCryFile file;
                 if (!file.Open(strLoadFilename.toUtf8().data(), "rb"))
@@ -226,10 +230,11 @@ void PreviewWidget::DisplayProduct(const ProductAssetBrowserEntry* product)
         }
         m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
         updateGeometry();
-        return;
+        return true;
     }
 
     Clear();
+    return false;
 }
 
 void PreviewWidget::UpdateTextureType()

@@ -12,8 +12,8 @@
             <a class="brand-text" href="{{urlService.baseUrl}}" title="Cloud Gem Portal"> Cloud Gem Portal </a>
         </div>
         <div class="brand-right">
-            <p class="small" (click)="$event.preventDefault()">
-                {{nav.projectName}} <a class="share-link" href="#" title="Copy the Cloud Gem Portal shareable URL to the clipboard"><i class="fa fa-share-alt" (click)="onShare()"></i></a>
+            <p class="small">
+                {{nav.projectName}} 
             </p>
             <div ngbDropdown class="d-inline-block">
                 <div id="deploymentDropdown" dropdownToggle ngbDropdownToggle>
@@ -30,27 +30,18 @@
     </div>
     <div [ngbCollapse]="isCollapsed" class="collapse navbar-collapse" id="cgpNavbar">
         <div class="navbar-nav">
-            <a class="nav-item nav-link" title="Cloud Gems" (click)="raiseRouteEvent('cloudgems')" routerLink="cloudgems" routerLinkActive="active">
-                Cloud Gems
-            </a>
-            <a class="nav-item nav-link" title="Support" routerLink="support" routerLinkActive="active">
-                Support
-            </a>
-            <a class="nav-item nav-link" title="Analytics" routerLink="analytics" routerLinkActive="active">
-                Analytics
-            </a>
-            <a *ngIf="aws.context.authentication.isAdministrator" class="nav-item nav-link" title="Admin" routerLink="admin" routerLinkActive="active">
-                Admin
+            <a (click)="$event.preventDefault()" class="nav-item nav-link" href="#" title="Copy the Cloud Gem Portal shareable URL to the clipboard">
+                <i class="fa fa-share-square-o" (click)="onShare()"></i>
             </a>
             <div ngbDropdown class="d-inline-block">
-                <div id="deploymentDropdown" dropdownToggle ngbDropdownToggle>
+                <div id="account-dropdown" dropdownToggle ngbDropdownToggle>
                     <a title="{{nav.deploymentName}}">
                         {{ nav.username }}
                         <i aria-hidden="true" class="fa fa-caret-down"></i>
                     </a>
                 </div>
                 <div id="signout-dropdown" class="dropdown-menu" dropdownMenu aria-labelledby="deploymentDropdown">
-                    <a class="dropdown-item" (click)="signOut()"> Sign out </a>
+                    <a class="dropdown-item" id="sign-out" (click)="signOut()"> Sign out </a>
                 </div>
             </div>
         </div>

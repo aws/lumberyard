@@ -18,13 +18,14 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <GridMate/Replica/ReplicaChunkDescriptor.h>
 
 namespace AzFramework
-{
+{    
     void NetBindingComponent::Reflect(AZ::ReflectContext* reflection)
     {
         NetBindable::Reflect(reflection);
@@ -45,8 +46,25 @@ namespace AzFramework
                         ->Attribute(AZ::Edit::Attributes::Category, "Network")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NetBinding.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NetBinding.png")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-network-binding.html")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
             }
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+
+        if (behaviorContext)
+        {
+            behaviorContext->EBus<NetBindingHandlerBus>("NetBindingHandlerBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
+                ->Event("IsEntityBoundToNetwork", &NetBindingHandlerBus::Events::IsEntityBoundToNetwork)
+                ->Event("IsEntityAuthoritative", &NetBindingHandlerBus::Events::IsEntityBoundToNetwork)
+
+                // Desired, but currently unsupported events.
+                // Seems to be an unsupported type(AZ::u16)
+                //->Event("SetReplicaPriority", &NetBindingHandlerBus::Events::SetReplicaPriority)                
+                //->Event("GetReplicaPriority", &NetBindingHandlerBus::Events::GetReplicaPriority)
+            ;
         }
 
         // We also need to register the chunk type, and this would be a good time to do so.

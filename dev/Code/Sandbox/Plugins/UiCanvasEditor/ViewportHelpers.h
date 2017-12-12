@@ -31,6 +31,12 @@ namespace ViewportHelpers
     // Determines whether the element is being controlled by a layout component on its parent
     bool IsControlledByLayout(const AZ::Entity* element);
 
+    // Determines whether the element is being horizontally fit by a LayoutFitter
+    bool IsHorizontallyFit(const AZ::Entity* element);
+
+    // Determines whether the element is being vertically fit by a LayoutFitter
+    bool IsVerticallyFit(const AZ::Entity* element);
+
     // Returns a perpendicular angle between -180 and 180 degrees.
     float GetPerpendicularAngle(float angle);
 
@@ -137,7 +143,7 @@ namespace ViewportHelpers
         const AZ::Vector2& v);
 
     UiTransform2dInterface::Anchors MoveGrabbedAnchor(const UiTransform2dInterface::Anchors& anchor,
-        const ViewportHelpers::SelectedAnchors& grabbedAnchors,
+        const ViewportHelpers::SelectedAnchors& grabbedAnchors, bool keepTogetherHorizontally, bool keepTogetherVertically,
         const AZ::Vector2& v);
 
     void MoveGrabbedEdges(UiTransformInterface::RectPoints& points,

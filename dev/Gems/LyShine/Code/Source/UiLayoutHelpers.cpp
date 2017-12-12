@@ -16,6 +16,8 @@
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 #include <LyShine/Bus/UiLayoutCellBus.h>
 #include <LyShine/Bus/UiLayoutCellDefaultBus.h>
+#include <LyShine/Bus/UiEditorChangeNotificationBus.h>
+#include <LyShine/Bus/UiLayoutFitterBus.h>
 
 namespace
 {
@@ -488,7 +490,7 @@ namespace UiLayoutHelpers
                 {
                     // Add extra size to each element
                     float sizePerUnit = availableSize / totalUnits;
-                    int normalizedRatioIndex = 0;
+                    normalizedRatioIndex = 0;
                     for (auto index : needExtraSizeIndexes)
                     {
                         float sizeToAdd = normalizedExtraSizeRatios[normalizedRatioIndex] * sizePerUnit;
@@ -624,5 +626,30 @@ namespace UiLayoutHelpers
         AZ::EntityId canvasEntityId;
         EBUS_EVENT_ID_RESULT(canvasEntityId, elementId, UiElementBus, GetCanvasEntityId);
         EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, elementId, true);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool IsControlledByHorizontalFit(AZ::EntityId elementId)
+    {
+        bool isHorizontallyFit = false;
+        EBUS_EVENT_ID_RESULT(isHorizontallyFit, elementId, UiLayoutFitterBus, GetHorizontalFit);
+        return isHorizontallyFit;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool IsControlledByVerticalFit(AZ::EntityId elementId)
+    {
+        bool isVerticallyFit = false;
+        EBUS_EVENT_ID_RESULT(isVerticallyFit, elementId, UiLayoutFitterBus, GetVerticalFit);
+        return isVerticallyFit;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void CheckFitterAndRefreshEditorTransformProperties(AZ::EntityId elementId)
+    {
+        if (IsControlledByHorizontalFit(elementId) || (IsControlledByVerticalFit(elementId)))
+        {
+            EBUS_EVENT(UiEditorChangeNotificationBus, OnEditorTransformPropertiesNeedRefresh);
+        }
     }
 } // namespace UiLayoutHelpers

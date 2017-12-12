@@ -269,11 +269,7 @@ public:
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-#if defined(DURANGO)
-            p.SetValue(GridMate::Driver::BSD_AF_INET6);
-#else
             p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
         }
 
         return p;
@@ -397,11 +393,7 @@ namespace LuaTesting
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-#if defined(DURANGO)
-            p.SetValue(GridMate::Driver::BSD_AF_INET6);
-#else
             p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
         }
 
         return p;

@@ -1,11 +1,12 @@
 ﻿import { RequestOptions, Request, RequestMethod, Response, Http, Headers } from '@angular/http';
-import { Observable } from 'rxjs/rx';
+import { Observable } from 'rxjs/Observable';
 import { Router } from "@angular/router";
 import { AwsService } from "app/aws/aws.service";
+import { LyMetricService, Event } from 'app/shared/service/index';
+import 'rxjs/add/operator/concatAll'
 
 //Use AWS from JS
 declare var AWS: any;
-declare var toastr: any;
 
 declare module String {
     export var format: any;
@@ -16,11 +17,11 @@ const DEFAULT_CONTENT_TYPE = "application/json;charset=utf-8";
 const HEADER_CONTENT_TYPE = "Content-Type";
 const SIGNING_API = "execute-api"
 
-export interface Restifiable{    
+export interface Restifiable {
     get(restPath: string): Observable<any>;
     post(restPath: string, body?: any): Observable<any>;
     put(restPath: string, body: any): Observable<any>;
-    delete(restPath: string): Observable<any>
+    delete(restPath: string, body?: any): Observable<any>
 }
 
 export abstract class ApiHandler implements Restifiable {
@@ -28,79 +29,98 @@ export abstract class ApiHandler implements Restifiable {
     private _serviceAPI: string;
     private _http: Http;
     private _aws: AwsService;
+    private _identifier: string;
+    private _metric: LyMetricService;
 
-    constructor(serviceAPI: string, http: Http, aws: AwsService) {
+    constructor(serviceAPI: string, http: Http, aws: AwsService, metric: LyMetricService = null, metricIdentifier: string = "") {
         this._serviceAPI = serviceAPI;
         this._http = http;
         this._aws = aws;
+        this._identifier = metricIdentifier;
+        this._metric = metric
     }
 
-    public get(restPath: string): Observable<any> {
-        let url = this._serviceAPI + "/" + restPath;
-
-        var options = {
+    public get(restPath: string, headers: any = []): Observable<any> {        
+        let options = {
             method: RequestMethod.Get,
-            headers: [],
-            url: url
-        };
+            headers: headers,
+            url: this._serviceAPI + "/" + restPath
+        };        
 
-        var signedRequest = this.AwsSigv4Signer(options);
-        let observable = this._http.request(signedRequest);
-
-        return this.mapResponseCodes(observable);
+        return this.execute(options);
     }
 
-    public post(restPath: string, body?: any): Observable<any> {
-        let url = this._serviceAPI + "/" + restPath;
+    private sortQueryParametersByCodePoint(url: string): string {
+        let parts = url.split("?")
+        if (parts.length == 1) {
+            return url;
+        }
 
+        let questring = parts[1]
+        console.log(questring)
+
+
+        return url;
+        
+    }
+
+    public post(restPath: string, body?: any, headers: any = []): Observable<any> {
         var options = {
             method: RequestMethod.Post,
-            url: url,
-            headers: [],
+            url: this._serviceAPI + "/" + restPath,
+            headers: headers,
             body: JSON.stringify(body)
         };
         options.headers[HEADER_CONTENT_TYPE] = DEFAULT_CONTENT_TYPE
 
-        var signedRequest = this.AwsSigv4Signer(options);
-        let observable = this._http.request(signedRequest);
-
-        return this.mapResponseCodes(observable);
+        return this.execute(options)
     }
 
-    public put(restPath: string, body: any): Observable<any> {
-        let url = this._serviceAPI + "/" + restPath;
-
+    public put(restPath: string, body?: any, headers: any = []): Observable<any> {        
         var options = {
             method: RequestMethod.Put,
-            headers: [],
-            url: url,
+            headers: headers,
+            url: this._serviceAPI + "/" + restPath,
             body: JSON.stringify(body)
         };
         options.headers[HEADER_CONTENT_TYPE] = DEFAULT_CONTENT_TYPE
 
-        var signedRequest = this.AwsSigv4Signer(options);
-        let observable = this._http.request(signedRequest);
-
-        return this.mapResponseCodes(observable);
+        return this.execute(options)
     }
 
-    public delete(restPath: string): Observable<any> {
-        let url = this._serviceAPI + "/" + restPath;
-
+    public delete(restPath: string, body?: any, headers: any = []): Observable<any> {
         var options = {
             method: RequestMethod.Delete,
-            url: url
+            headers: headers,
+            url: this._serviceAPI + "/" + restPath,
+            body: JSON.stringify(body)
         };
+        options.headers[HEADER_CONTENT_TYPE] = DEFAULT_CONTENT_TYPE
+        
+        return this.execute(options)
+    }
 
-        var signedRequest = this.AwsSigv4Signer(options);
-        let observable = this._http.request(signedRequest);
+    private execute(options: any): Observable<any> {
+        let request_observable = new Observable<any>((observer) => {
+            var signedRequest = this.AwsSigv4Signer(options);
+            let http_observable = this._http.request(signedRequest);
 
-        return this.mapResponseCodes(observable);
+            this.recordEvent("ApiServiceRequested", {
+                "Identifier": this._identifier,
+                "Verb": RequestMethod[options.method]
+            }, null);
+            observer.next(this.mapResponseCodes(http_observable))
+        });
+
+        return this._aws.context.authentication.refreshSessionOrLogout(request_observable.concatAll()).concatAll();
     }
 
     private mapResponseCodes(obs: Observable<any>): Observable<any> {
         return obs.map((res: Response) => {
             if (res) {
+                this.recordEvent("ApiServiceSuccess", {
+                    "Identifier": this._identifier
+                }, null);
                 if (res.status === 201) {
                     return { status: res.status, body: res }
                 }
@@ -114,48 +134,38 @@ export abstract class ApiHandler implements Restifiable {
                 var obj = undefined;
                 try {
                     obj = JSON.parse(error_body);
-                } catch (err) {                                        
+                } catch (err) {
                 }
-                if (obj != undefined) {                    
+                if (obj != undefined) {
                     if (obj.Message != null) {
                         error.statusText += ", " + obj.Message
                     } else if (obj.errorMessage != null) {
                         error.statusText = obj.errorMessage
                     } else if (obj.message != null) {
                         error.statusText += ", " + obj.message;
-                    }
-                    if (error.code == "NotAuthorizedException" || error.code == "CredentialsError")
-                        this._aws.context.authentication.logout();
-                } else {                
-                    this._aws.context.authentication.logout();
+                    }                   
                 }
             }
+            this.recordEvent("ApiServiceError", {
+                "Code": error.status,
+                "Message": error.statusText,
+                "Identifier": this._identifier
+            }, null);
 
-            if (error.status === 500) {
-                return Observable.throw(new Error("Status: "+ error.status+", Message:"+ error.statusText));
-            }
-            else if (error.status === 400) {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            }
-            else if (error.status === 403) {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            }
-            else if (error.status === 409) {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            }
-            else if (error.status === 406) {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            } else {
-                return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
-            }
-        });
+            return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));
+            })
     }
 
-    public AwsSigv4Signer(options: any) {  
-        var parts = options.url.split('?');    
+    public recordEvent(eventName: Event, attribute: { [name: string]: string; } = {}, metric: { [name: string]: number; } = null) {
+        if (this._metric !== null)
+            this._metric.recordEvent(eventName, attribute, metric);
+    }
+      
+    public AwsSigv4Signer(options: any) {
+        var parts = options.url.split('?');
         var host = parts[0].substr(8, parts[0].indexOf("/", 8) - 8);
         var path = parts[0].substr(parts[0].indexOf("/", 8));
-        var querystring = parts[1];
+        var querystring = this.codePointSort(parts[1]);
 
         var now = new Date();
         if (!options.headers)
@@ -174,7 +184,7 @@ export abstract class ApiHandler implements Restifiable {
         options.region = AWS.config.region;
 
         var signer = new AWS.Signers.V4(options, SIGNING_API);
-
+        
         signer.addAuthorization(AWS.config.credentials, now);
         options.method = options.methodIndex;
 
@@ -183,4 +193,33 @@ export abstract class ApiHandler implements Restifiable {
         delete options.headers.host;
         return new Request(options);
     };
+
+    private codePointSort(querystring: string): string {
+        if (!querystring)
+            return undefined
+        var parts = querystring.split("&")
+        var array = []
+        parts.forEach(function (param) {
+            var key_value = param.split("=")
+            var obj = {
+                key: key_value[0],
+                val: key_value.length > 1 ? key_value[1] : undefined
+            }
+            array.push(obj)
+        });
+
+        array = array.sort((p1, p2) => {
+            return p1.key > p2.key ? 1 : p1.key < p2.key ? -1 : 0
+        })
+
+        var sorted_querystring = ""
+        var i = 0
+        array.forEach(function (obj) {
+            i++;
+            sorted_querystring += obj.key + "=" + obj.val
+            if (i < array.length)
+                sorted_querystring += "&"
+        });
+        return sorted_querystring
+    }
 }

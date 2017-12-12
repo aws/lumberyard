@@ -101,6 +101,43 @@ namespace AzToolsFramework
             AZStd::string m_jobLog;
         };
 
+        //!  Request the information for a source asset.
+        class SourceFileInfoRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SourceFileInfoRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(SourceFileInfoRequest, "{41F6AB77-D96F-4C55-B889-C31C7FFC449E}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+            bool RequireFencing() override;
+
+            SourceFileInfoRequest() = default;
+            explicit SourceFileInfoRequest(const AZ::OSString& searchTerm);
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_searchTerm;
+        };
+
+        //! This will be send in response to the SourceAssetInfoRequest request,
+        //! and will contain information for the requested source asset.
+        class SourceFileInfoResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SourceFileInfoResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(SourceFileInfoResponse, "{4194C2C4-864E-4B32-AC32-172F3203D175}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            SourceFileInfoResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_watchFolder;
+            AZ::OSString m_relativePath;
+            AZ::Uuid m_sourceGuid;
+            bool m_infoFound{ false };
+        };
+
         //! Tools side message that a source file has changed or been removed
         class SourceFileNotificationMessage
             : public AzFramework::AssetSystem::BaseAssetProcessorMessage

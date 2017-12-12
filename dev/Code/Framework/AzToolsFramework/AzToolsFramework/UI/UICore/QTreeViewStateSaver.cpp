@@ -180,6 +180,10 @@ namespace AzToolsFramework
 
             m_bApplyingState = true;
 
+            // Reset the view to the 'default'/fully negative state then we can apply our positive transforms.
+            treeView->collapseAll();
+            treeView->clearSelection();
+
             //RecurseApplySnapshot(QModelIndex(), "", treeView, expandedFunction);
 
             for (auto& expanded : m_expandedElements)

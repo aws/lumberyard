@@ -12,6 +12,7 @@
 
 #include <AzTest/AzTest.h>
 #include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/Math/Guid.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 #include <SceneAPI/SceneCore/Mocks/Events/MockAssetImportRequest.h>
@@ -145,12 +146,13 @@ namespace AZ
             */
             class AssetImporterRequestTests
                 : public ::testing::Test
-                , public AZ::Debug::TraceMessageBus::Handler
+                , public Debug::TraceMessageBus::Handler
             {
             public:
                 void SetUp() override
                 {
                     BusConnect();
+                    m_testId = Uuid::CreateString("{46CAD46C-A3CB-4E2A-A775-2ED9DCF018FC}");
                 }
 
                 void TearDown() override
@@ -163,65 +165,11 @@ namespace AZ
                     m_assertTriggered = true;
                     return true;
                 }
+                 
+                Uuid m_testId;
                 bool m_assertTriggered = false;
             };
             
-            TEST_F(AssetImporterRequestTests, LoadScene_NoManifestExtension_AssertTriggered)
-            {
-                NiceMock<MockAssetImportRequestHandler> handler;
-                ON_CALL(handler, GetSupportedFileExtensions(Matcher<AZStd::unordered_set<AZStd::string>&>(_)))
-                    .WillByDefault(Invoke(&handler, &MockAssetImportRequestHandler::DefaultGetSupportedFileExtensions));
-                
-                AssetImportRequest::LoadScene("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
-                EXPECT_TRUE(m_assertTriggered);
-            }
-
-            TEST_F(AssetImporterRequestTests, LoadScene_NoAssetExtensions_AssertTriggered)
-            {
-                NiceMock<MockAssetImportRequestHandler> handler;
-                ON_CALL(handler, GetManifestExtension(Matcher<AZStd::string&>(_)))
-                    .WillByDefault(Invoke(&handler, &MockAssetImportRequestHandler::DefaultGetManifestExtension));
-
-                AssetImportRequest::LoadScene("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
-                EXPECT_TRUE(m_assertTriggered);
-            }
-
-            TEST_F(AssetImporterRequestTests, LoadScene_InvalidExtension_NoProcessingFunctionsCalledAndReturnsNullptr)
-            {
-                StrictMock<MockAssetImportRequestHandler> handler;
-                handler.SetDefaultExtensions();
-                
-                EXPECT_CALL(handler, GetManifestExtension(_));
-                EXPECT_CALL(handler, GetSupportedFileExtensions(_));
-
-                EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(0);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(0);
-                EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(0);
-                EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
-
-                AZStd::shared_ptr<Containers::Scene> result = 
-                    AssetImportRequest::LoadScene("test.invalid", Events::AssetImportRequest::RequestingApplication::Generic);
-                EXPECT_EQ(nullptr, result);
-            }
-
-            TEST_F(AssetImporterRequestTests, LoadScene_InvalidExtensionWithValidManifestExtension_NoProcessingFunctionsCalledAndReturnsNullptr)
-            {
-                StrictMock<MockAssetImportRequestHandler> handler;
-                handler.SetDefaultExtensions();
-
-                EXPECT_CALL(handler, GetManifestExtension(_));
-                EXPECT_CALL(handler, GetSupportedFileExtensions(_));
-
-                EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(0);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(0);
-                EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(0);
-                EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
-
-                AZStd::shared_ptr<Containers::Scene> result =
-                    AssetImportRequest::LoadScene("test.invalid.manifest", Events::AssetImportRequest::RequestingApplication::Generic);
-                EXPECT_EQ(nullptr, result);
-            }
-
             TEST_F(AssetImporterRequestTests, LoadSceneFromVerifiedPath_FailureToPrepare_LoadAndFollowingStepsNotCalledAndReturnsNullptr)
             {
                 StrictMock<MockAssetImportRequestHandler> handler;
@@ -235,12 +183,12 @@ namespace AZ
                 EXPECT_CALL(handler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(0);
+                EXPECT_CALL(handler, LoadAsset(_, _, _, _)).Times(0);
                 EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(0);
                 EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
 
                 AZStd::shared_ptr<Containers::Scene> result = 
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_EQ(nullptr, result);
             }
 
@@ -251,19 +199,19 @@ namespace AZ
                 handler.SetDefaultProcessingResults(false);
 
                 ON_CALL(handler, LoadAsset(
-                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
+                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<const Uuid&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
                     .WillByDefault(Return(LoadingResult::AssetFailure));
 
                 EXPECT_CALL(handler, GetManifestExtension(_)).Times(0);
                 EXPECT_CALL(handler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(handler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
 
                 AZStd::shared_ptr<Containers::Scene> result = 
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_EQ(nullptr, result);
             }
 
@@ -274,19 +222,19 @@ namespace AZ
                 handler.SetDefaultProcessingResults(true);
 
                 ON_CALL(handler, LoadAsset(
-                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
+                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<const Uuid&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
                     .WillByDefault(Return(LoadingResult::ManifestFailure));
 
                 EXPECT_CALL(handler, GetManifestExtension(_)).Times(0);
                 EXPECT_CALL(handler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(handler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
 
                 AZStd::shared_ptr<Containers::Scene> result =
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_EQ(nullptr, result);
             }
 
@@ -297,19 +245,19 @@ namespace AZ
                 handler.SetDefaultProcessingResults(false);
 
                 ON_CALL(handler, LoadAsset(
-                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
+                    Matcher<Containers::Scene&>(_), Matcher<const AZStd::string&>(_), Matcher<const Uuid&>(_), Matcher<AssetImportRequest::RequestingApplication>(_)))
                     .WillByDefault(Return(LoadingResult::Ignored));
 
                 EXPECT_CALL(handler, GetManifestExtension(_)).Times(0);
                 EXPECT_CALL(handler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(handler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(handler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(handler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(handler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(handler, UpdateManifest(_, _, _)).Times(0);
 
                 AZStd::shared_ptr<Containers::Scene> result =
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_EQ(nullptr, result);
             }
 
@@ -332,16 +280,16 @@ namespace AZ
                 EXPECT_CALL(manifestHandler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(assetHandler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(assetHandler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(assetHandler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(assetHandler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(assetHandler, UpdateManifest(_, _, _)).Times(1);
                 EXPECT_CALL(manifestHandler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(manifestHandler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(manifestHandler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(manifestHandler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(manifestHandler, UpdateManifest(_, _, _)).Times(1);
 
                 AZStd::shared_ptr<Containers::Scene> result =
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_EQ(nullptr, result);
             }
 
@@ -360,16 +308,16 @@ namespace AZ
                 EXPECT_CALL(manifestHandler, GetSupportedFileExtensions(_)).Times(0);
 
                 EXPECT_CALL(assetHandler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(assetHandler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(assetHandler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(assetHandler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(assetHandler, UpdateManifest(_, _, _)).Times(1);
                 EXPECT_CALL(manifestHandler, PrepareForAssetLoading(_, _)).Times(1);
-                EXPECT_CALL(manifestHandler, LoadAsset(_, _, _)).Times(1);
+                EXPECT_CALL(manifestHandler, LoadAsset(_, _, _, _)).Times(1);
                 EXPECT_CALL(manifestHandler, FinalizeAssetLoading(_, _)).Times(1);
                 EXPECT_CALL(manifestHandler, UpdateManifest(_, _, _)).Times(1);
 
                 AZStd::shared_ptr<Containers::Scene> result =
-                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", Events::AssetImportRequest::RequestingApplication::Generic);
+                    AssetImportRequest::LoadSceneFromVerifiedPath("test.asset", m_testId, Events::AssetImportRequest::RequestingApplication::Generic);
                 EXPECT_NE(nullptr, result);
             }
             

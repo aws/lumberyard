@@ -10,39 +10,36 @@
 */
 
 #include "StdAfx.h"
-#include <platform_impl.h>
 
+#include <platform_impl.h> // must be included once per DLL so things from CryCommon will function
+
+#include "CloudCanvasCommonModule.h"
 #include "CloudCanvasCommonSystemComponent.h"
 
 #include <IGem.h>
 
 namespace CloudCanvasCommon
 {
-    class CloudCanvasCommonModule
-        : public CryHooksModule
-    {
-    public:
-        AZ_RTTI(CloudCanvasCommonModule, "{72F7EB98-205C-42D4-8195-94BBC350C333}", CryHooksModule);
 
-        CloudCanvasCommonModule()
+    CloudCanvasCommonModule::CloudCanvasCommonModule()
             : CryHooksModule()
-        {
-            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-            m_descriptors.insert(m_descriptors.end(), {
-                CloudCanvasCommonSystemComponent::CreateDescriptor(),
-            });
-        }
+    {
+        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+        m_descriptors.insert(m_descriptors.end(), {
+            CloudCanvasCommonSystemComponent::CreateDescriptor(),
+        });
+    }
 
-        /**
-         * Add required SystemComponents to the SystemEntity.
-         */
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            return AZ::ComponentTypeList{
-                azrtti_typeid<CloudCanvasCommonSystemComponent>(),
-            };
-        }
-    };
+    /**
+    * Add required SystemComponents to the SystemEntity.
+    */
+    AZ::ComponentTypeList CloudCanvasCommonModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList{
+            azrtti_typeid<CloudCanvasCommonSystemComponent>(),
+        };
+    }
+
 }
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM

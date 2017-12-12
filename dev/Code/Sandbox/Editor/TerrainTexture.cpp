@@ -628,12 +628,12 @@ private:
 
 void CTerrainTextureDialog::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.paneRect = QRect(QPoint(0, 0), QSize(1000, 650));
     opts.canHaveMultipleInstances = true;
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTerrainTextureDialog>(GetIEditor(), QLatin1String("Terrain Texture Layers"), LyViewPane::CategoryOther, opts);
+    AzToolsFramework::RegisterViewPane<CTerrainTextureDialog>("Terrain Texture Layers", LyViewPane::CategoryOther, opts);
 }
 
 const GUID& CTerrainTextureDialog::GetClassID()
@@ -727,6 +727,7 @@ void CTerrainTextureDialog::OnInitDialog()
     connect(m_ui->layerTableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CTerrainTextureDialog::OnReportSelChange);
 
     connect(m_ui->loadTextureAction, &QAction::triggered, this, &CTerrainTextureDialog::OnLoadTexture);
+    connect(m_ui->exportTextureAction, &QAction::triggered, this, &CTerrainTextureDialog::OnLayerExportTexture);
     connect(m_ui->importLayersAction, &QAction::triggered, this, &CTerrainTextureDialog::OnImport);
     connect(m_ui->exportLayersAction, &QAction::triggered, this, &CTerrainTextureDialog::OnExport);
     connect(m_ui->refineTerrainTextureTilesAction, &QAction::triggered, this, &CTerrainTextureDialog::OnRefineTerrainTextureTiles);
@@ -1094,21 +1095,29 @@ void CTerrainTextureDialog::OnLayerExportTexture()
 
     CLayer* layer = layers[0];
 
+    // load m_texture is needed/possible
+    layer->PrecacheTexture();
+
     // Does the current layer have texture data ?
     if (!layer->HasTexture())
     {
-        QMessageBox::warning(this, tr("Can't Export Texture"), tr("Current layer does no have a texture, can't export!"));
+        QMessageBox::warning(this, tr("Can't Export Texture"), tr("Current layer does not have a texture, can't export!"));
         return;
     }
 
-    char szFilters[] = SUPPORTED_IMAGES_FILTER_SAVE;
-    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "bmp", {}, szFilters, {}, {}, this);
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "png", {}, 
+                                        "PNG Files (*.png);;BMP Files (*.bmp);;JPEG Files (*.jpg);;PGM Files (*.pgm);;All files (*.*)", {}, {}, this);
     if (dlg.exec())
     {
         QApplication::setOverrideCursor(Qt::WaitCursor);
         // Tell the layer to export its texture
-        layer->ExportTexture(dlg.selectedFiles().first());
+        bool success = layer->ExportTexture(dlg.selectedFiles().first());
         QApplication::restoreOverrideCursor();
+        if (!success)
+        {
+            QMessageBox::warning(this, tr("Can't Export Texture"), tr("Texture failed to export successfully."));
+            return;
+        }
     }
 }
 

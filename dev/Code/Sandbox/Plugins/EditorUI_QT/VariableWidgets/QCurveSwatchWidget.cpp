@@ -39,7 +39,17 @@ SCurveEditorContent QCurveSwatchWidget::GetContent()
 void QCurveSwatchWidget::SetContent(SCurveEditorContent content)
 {
     m_content = content;
-    if (m_content.m_curves.size() == 0)
+}
+
+void QCurveSwatchWidget::showEvent(QShowEvent* event)
+{
+    // Defer initialization of content until the first showEvent
+    InitializeContent();
+}
+
+void QCurveSwatchWidget::InitializeContent()
+{
+    if (m_contentInitialized || m_content.m_curves.size() == 0)
     {
         return;
     }
@@ -93,6 +103,7 @@ void QCurveSwatchWidget::SetContent(SCurveEditorContent content)
     }
 
     m_spline->Update();
+    m_contentInitialized = true;    // only initialize content once
 }
 
 void QCurveSwatchWidget::paintEvent(QPaintEvent* event)

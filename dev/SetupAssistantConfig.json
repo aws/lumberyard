@@ -910,8 +910,8 @@
             "optional": 0,
             "description": "qtDescriptionSummary",
             "detailedInstructions": "qtDetailedInstructions",
-            "roles": [ "compileengine", "compileeditor" ],
-            "hostOS" : ["windows", "macOS"],
+            "roles": [ "compileengine", "compileeditor", "setuplinux" ],
+            "hostOS" : ["windows", "macOS", "linux"],
             "symlinks":
             [
                 {
@@ -936,116 +936,141 @@
                     "source": "Qt/5.6.2.2-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "clang_64/bin/moc"
+                },
+                {
+                    "hostOS": [ "setuplinux" ],
+                    "source": "Qt/5.6.2.2-az",
+                    "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
+                    "exampleFile": "gcc_64/bin/moc"
                 }
             ]
         },
         {
-            "identifier" : "powerVRTexTool",
-            "name" : "powerVRName",
-            "version" : "2016 r1",
-            "source" : "PVRTexTool/2016_r1",
+            "identifier": "powerVRTexTool",
+            "name": "powerVRName",
+            "version": "2016 r1",
+            "source": "PVRTexTool/2016_r1",
+            "optional": 0,
+            "description": "powerVRDescriptionSummary",
+            "detailedInstructions": "powerVRDetailedInstructions",
+            "roles": [ "compileengine", "compileeditor" ],
+            "hostOS": [ "windows", "macOS" ],
+            "symlinks": 
+            [
+                {
+                    "source": "PVRTexTool/2016_r1",
+                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
+                    "exampleFile": "Include/PVRTexture.h"
+                },
+                {
+                    "compilers": [ "vc120", "vc140" ],
+                    "source": "PVRTexTool/2016_r1",
+                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
+                    "exampleFile": "Windows_x86_64/PVRTexLib.lib"
+                },
+                {
+                    "hostOS": [ "macOS" ],
+                    "source": "PVRTexTool/2016_r1",
+                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
+                    "exampleFile": "OSX_x86/libPVRTexLib.dylib"
+                }
+            ]
+        },
+         {
+            "identifier" : "etc2comp",
+            "name" : "etc2compName",
+            "version" : "2017_04_24",
+            "source" : "etc2comp/2017_04_24",
             "optional" : 0,
-            "description" : "powerVRDescriptionSummary",
-            "detailedInstructions" : "powerVRDetailedInstructions",
+            "description" : "etc2compDescriptionSummary",
+            "detailedInstructions" : "etc2compDetailedInstructions",
             "roles" : ["compileengine", "compileeditor"],
             "hostOS" : ["windows", "macOS"],
             "symlinks" :
             [
                 {
-                    "source" : "PVRTexTool/2016_r1",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
-                    "exampleFile" : "Include/PVRTexture.h"
-                },
-                {
-                    "compilers": [ "vc120", "vc140" ],
-                    "source" : "PVRTexTool/2016_r1",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
-                    "exampleFile" : "Windows_x86_64/PVRTexLib.lib"
-                },
-                {
-                    "hostOS": [ "macOS" ],
-                    "source" : "PVRTexTool/2016_r1",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
-                    "exampleFile" : "OSX_x86/libPVRTexLib.dylib"
-                }
+                    "source" : "etc2comp/2017_04_24",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/etc2comp",
+                    "exampleFile" : "EtcLib/Etc/Etc.h"
+                }               
             ]
         },
         {
             "identifier": "AWSNativeSDK",
             "name": "AWSNativeSDKName",
-            "version": "1.0.74-pkg",
-            "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+            "version": "1.1.13",
+            "source": "AWS/AWSNativeSDK/1.1.13",
             "optional": 0,
             "description": "AWSNativeSDKDescriptionSummary",
             "detailedInstructions": "AWSNativeSDKDetailedInstructions",
             "roles": [ "compilegame", "compileengine", "compileeditor", "compileios", "compileandroid", "setuplinux" ],
             "symlinks": [
                 {
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.0.74-pkg",
+                    "source": "AWS/AWSNativeSDK/1.1.13",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 }
@@ -1054,8 +1079,8 @@
         {
            "identifier" : "GameLiftServerSDK",
             "name" : "GameLiftServerSDKName",
-            "version": "3.1.5",
-            "source":  "AWS/GameLift/3.1.5",
+            "version": "3.1.5-az.1",
+            "source":  "AWS/GameLift/3.1.5-az.1",
             "optional" : 0,
             "description" : "GameLiftServerSDKDescriptionSummary",
             "detailedInstructions" : "GameLiftServerSDKDetailedInstructions",
@@ -1064,24 +1089,24 @@
             [
                 {
                     "compilers" : ["vc120"],
-                    "source" : "AWS/GameLift/3.1.5/",
+                    "source" : "AWS/GameLift/3.1.5-az.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-gamelift-server.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source" : "AWS/GameLift/3.1.5/",
+                    "source" : "AWS/GameLift/3.1.5-az.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-gamelift-server.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "AWS/GameLift/3.1.5/",
+                    "source" : "AWS/GameLift/3.1.5-az.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "lib/linux/intel64/Release_Static/libaws-cpp-sdk-gamelift-server.a"
                 },
                 {
-                    "source" : "AWS/GameLift/3.1.5/",
+                    "source" : "AWS/GameLift/3.1.5-az.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "include/aws/gamelift/server/GameLiftServerAPI.h"
                 }
@@ -1126,8 +1151,8 @@
         {
             "identifier" : "GoogleMock",
             "name" : "googleMockName",
-            "version" : "az-1.0",
-            "source" : "GoogleMock/gmock-az-1.0",
+            "version" : "az-1.1",
+            "source" : "GoogleMock/gmock-az-1.1",
             "optional" : 0,
             "description" : "googleMockDescriptionSummary",
             "detailedInstructions" : "googleMockDetailedInstructions",
@@ -1135,30 +1160,30 @@
             "symlinks" :
             [
                 {
-                    "source" : "GoogleMock/gmock-az-1.0/googlemock/include/gmock",
+                    "source" : "GoogleMock/gmock-az-1.1/googlemock/include/gmock",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/include/gmock",
                     "exampleFile" : "gmock.h"
                 },
                 {
-                    "source" : "GoogleMock/gmock-az-1.0/googletest/include/gtest",
+                    "source" : "GoogleMock/gmock-az-1.1/googletest/include/gtest",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/include/gtest",
                     "exampleFile" : "gtest.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source": "GoogleMock/gmock-az-1.0/lib",
+                    "source": "GoogleMock/gmock-az-1.1/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile": "x64/vc120-md/LIB/Debug/gmock.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source": "GoogleMock/gmock-az-1.0/lib",
+                    "source": "GoogleMock/gmock-az-1.1/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile": "x64/vc140-md/LIB/Debug/gmock.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "GoogleMock/gmock-a2b8a8e-ly-1.0/lib",
+                    "source" : "GoogleMock/gmock-az-1.1/lib",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile" : "osx/Debug/libgmock.a"
                 }
@@ -1807,7 +1832,7 @@
             "description" : "glewDescriptionSummary",
             "detailedInstructions" : "glewDetailedInstructions",
             "roles": [ "compileeditor" ],
-            "hostOS": [ "windows" ],
+            "hostOS": [ "windows", "macOS" ],
             "symlinks" :
             [
                 {
@@ -1820,6 +1845,12 @@
                     "source" : "GLEW/1.10.0",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GLEW",
                     "exampleFile" : "lib/win64/glew32.lib"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source" : "GLEW/1.10.0",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/GLEW",
+                    "exampleFile" : "lib/mac/libGLEW.a"
                 }
             ]
         }

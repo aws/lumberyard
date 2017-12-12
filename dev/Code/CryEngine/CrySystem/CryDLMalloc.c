@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#if defined(BUCKET_SIMULATOR) || defined(_WIN32) || defined(LINUX) || defined(APPLE) || defined (ORBIS)
+#if defined(BUCKET_SIMULATOR) || defined(_WIN32) || defined(LINUX) || defined(APPLE) || defined (ORBIS) // ACCEPTED_USE
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by
   Doug Lea and released to the public domain, as explained at
@@ -1666,7 +1666,12 @@ extern size_t getpagesize();
 
 #if HAVE_MMAP
 
-#if !defined(WIN32) || defined(_XBOX_VER)
+#if   !defined(WIN32)
+#else
+#define AZ_HAVE_WIN32_MMAP
+#endif
+
+#if !defined(AZ_HAVE_WIN32_MMAP)
 #define MUNMAP_DEFAULT(a, s)  munmap((a), (s))
 #define MMAP_PROT            (PROT_READ | PROT_WRITE)
 #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
@@ -1690,7 +1695,7 @@ static int dev_zero_fd = -1; /* Cached file descriptor for /dev/zero. */
 
 #define DIRECT_MMAP_DEFAULT(s) MMAP_DEFAULT(s)
 
-#else /* WIN32 */
+#else /* AZ_HAVE_WIN32_MMAP */
 
 /* Win32 MMAP via VirtualAlloc */
 static FORCEINLINE void* win32mmap(size_t size)
@@ -1736,7 +1741,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size)
 #define MMAP_DEFAULT(s)             win32mmap(s)
 #define MUNMAP_DEFAULT(a, s)        win32munmap((a), (s))
 #define DIRECT_MMAP_DEFAULT(s)      win32direct_mmap(s)
-#endif /* WIN32 */
+#endif /* AZ_HAVE_WIN32_MMAP */
 #endif /* HAVE_MMAP */
 
 #if HAVE_MREMAP
@@ -2955,6 +2960,11 @@ static size_t traverse_and_check(mstate m);
 #define smallbin_at(M, i)   ((sbinptr)((char*)&((M)->smallbins[(i) << 1])))
 #define treebin_at(M, i)     (&((M)->treebins[i]))
 
+#if   defined(_MSC_VER) && _MSC_VER >= 1300
+#define AZ_HAS_BITSCANFORWARD
+#define AZ_HAS_BITSCANREVERSE
+#endif
+
 /* assign tree index for size S to variable I. Use x86 asm if possible  */
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 #define compute_tree_index(S, I)                                                \
@@ -2985,7 +2995,7 @@ static size_t traverse_and_check(mstate m);
         }                                                                       \
     }
 
-#elif defined(_MSC_VER) && _MSC_VER >= 1300 && !defined(_XBOX_VER)
+#elif defined(AZ_HAS_BITSCANREVERSE)
 #define compute_tree_index(S, I)                                                \
     {                                                                           \
         size_t X = S >> TREEBIN_SHIFT;                                          \
@@ -3076,7 +3086,7 @@ static size_t traverse_and_check(mstate m);
         I = (bindex_t)J;           \
     }
 
-#elif defined(_MSC_VER) && _MSC_VER >= 1300 && !defined(_XBOX_VER)
+#elif defined(AZ_HAS_BITSCANFORWARD)
 #define compute_bit2idx(X, I)            \
     {                                    \
         unsigned int J;                  \
@@ -3233,7 +3243,11 @@ int init_mparams(void)
         size_t psize;
         size_t gsize;
 
-#if (defined(WIN32) && !defined(_XBOX_VER)) || defined(WIN64) || defined(DURANGO)
+#if   defined(WIN32) || defined(WIN64)
+    #define AZ_HAS_GETSYSTEMINFO
+#endif
+
+#if defined(AZ_HAS_GETSYSTEMINFO)
         {
             SYSTEM_INFO system_info;
             GetSystemInfo(&system_info);
@@ -3244,7 +3258,7 @@ int init_mparams(void)
 #else
         psize = malloc_getpagesize;
         gsize = ((DEFAULT_GRANULARITY != 0) ? DEFAULT_GRANULARITY : psize);
-#endif //#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#endif //#if defined(AZ_HAS_GETSYSTEMINFO)
 
         /* Sanity-check configuration:
            size_t must be unsigned and as wide as pointer type.

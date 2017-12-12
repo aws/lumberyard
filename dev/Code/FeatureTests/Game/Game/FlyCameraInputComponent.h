@@ -12,7 +12,7 @@
 #pragma once
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
-#include <IInput.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include "FlyCameraInputBus.h"
 
 namespace LYGame
@@ -20,7 +20,7 @@ namespace LYGame
     class FlyCameraInputComponent
         : public AZ::Component
         , public AZ::TickBus::Handler
-        , public IInputEventListener
+        , public AzFramework::InputChannelEventListener
         , public FlyCameraInputBus::Handler
     {
     public:
@@ -39,22 +39,24 @@ namespace LYGame
         // AZ::TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
-        // IInputEventListener
-        bool OnInputEvent(const SInputEvent& inputEvent) override;
+        // AzFramework::InputChannelEventListener
+        bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
 
         // FlyCameraInputInterface
         void SetIsEnabled(bool isEnabled) override;
         bool GetIsEnabled() override;
 
     private:
-        void OnMouseEvent(const SInputEvent& inputEvent);
-        void OnKeyboardEvent(const SInputEvent& inputEvent);
-        void OnGamepadEvent(const SInputEvent& inputEvent);
-        void OnTouchEvent(const SInputEvent& inputEvent);
-        void OnVirtualLeftThumbstickEvent(const SInputEvent& inputEvent);
-        void OnVirtualRightThumbstickEvent(const SInputEvent& inputEvent);
+        void OnMouseEvent(const AzFramework::InputChannel& inputChannel);
+        void OnKeyboardEvent(const AzFramework::InputChannel& inputChannel);
+        void OnGamepadEvent(const AzFramework::InputChannel& inputChannel);
+        void OnTouchEvent(const AzFramework::InputChannel& inputChannel, const Vec2& screenPosition);
+        void OnVirtualLeftThumbstickEvent(const AzFramework::InputChannel& inputChannel, const Vec2& screenPosition);
+        void OnVirtualRightThumbstickEvent(const AzFramework::InputChannel& inputChannel, const Vec2& screenPosition);
 
     private:
+        static const AZ::Crc32 UnknownInputChannelId;
+
         // Editable Properties
         float m_moveSpeed = 20.0f;
         float m_rotationSpeed = 5.0f;
@@ -72,10 +74,10 @@ namespace LYGame
         Vec2 m_rotation = ZERO;
 
         Vec2 m_leftDownPosition = ZERO;
-        EKeyId m_leftFingerId = eKI_Unknown;
+        AZ::Crc32 m_leftFingerId = UnknownInputChannelId;
 
         Vec2 m_rightDownPosition = ZERO;
-        EKeyId m_rightFingerId = eKI_Unknown;
+        AZ::Crc32 m_rightFingerId = UnknownInputChannelId;
 
         int m_thumbstickTextureId = 0;
     };

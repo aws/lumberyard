@@ -20,9 +20,26 @@ def build(bld):
     script_canvas_dir = driver_node.path_from(gem_node)
 ########################################################################################
 
+    AZ_CODEGEN_ARGS = az_code_gen = [{
+                'files'   : ['Source/InputNode.h',],
+                'scripts' : [os.path.join(script_canvas_dir, 'CodeGen/Drivers/ScriptCanvasNode.py')],
+                'arguments' : [
+                                #'-OnlyRunDiagnosticsOnMainFile=true',
+                                #'-SuppressDiagnostics=false',
+                                #'-SuppressErrorsAsWarnings=false',
+                                #'-output-redirection=file',
+                                '-SuppressIncludeNotFoundError=false',
+                            ],
+                'options' : ['PrintOutputRedirectionFile']
+            }]
+
     bld.DefineGem(
-        use    = [ 'AzFramework', 'ScriptCanvasGem' ],
-        includes = [ bld.Path('Code/CryEngine/CryAction') ],
+        use    = [ 'AzFramework', 'ScriptCanvas' ],
+        includes = [ bld.Path('Code/CryEngine/CryAction'),
+                     bld.Path('Code/CryEngine')
+                      ],
+        export_includes = [bld.Path('Code/CryEngine')],
+
         # Suppressing level 1 warning C4351 on windows
         # new behavior: elements of array 'array' will be default initialized
         # https://msdn.microsoft.com/en-us/library/1ywe7hcy.aspx
@@ -30,19 +47,20 @@ def build(bld):
         features        = ['az_code_gen'],
         win_defines = [],
 
-        az_code_gen = [
-            {
-                'files'   : [
-                               #'Source/InputNode.h',
-                            ],
-                'scripts' : [os.path.join(script_canvas_dir, 'CodeGen/Drivers/ScriptCanvasNode.py')],
-                'arguments' : [
-                                '-OnlyRunDiagnosticsOnMainFile=true',
-                                '-SuppressDiagnostics=false',
-                                '-SuppressErrorsAsWarnings=false',
-                                '-output-redirection=file',
-                            ],
-                'options' : ['PrintOutputRedirectionFile']
-            }
-        ],
+        file_list = [ 'startingpointinput.waf_files' ],
+        test_all_file_list  = ['startingpointinput_tests.waf_files'],
+
+        az_code_gen = AZ_CODEGEN_ARGS,
+
+        ########################################
+        # Editor Gem configuration
+        editor = dict(
+
+            az_code_gen = AZ_CODEGEN_ARGS,
+            file_list = [ 'startingpointinput_editor.waf_files' ],
+
+        )
+
+        
+        ########################################
     )

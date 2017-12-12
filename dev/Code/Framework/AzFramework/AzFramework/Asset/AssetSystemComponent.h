@@ -69,6 +69,7 @@ namespace AzFramework
             void ShowAssetProcessor() override;
             float GetAssetProcessorPingTimeMilliseconds() override;
             void SetAssetProcessorPort(AZ::u16 port) override;
+            bool SaveCatalog() override;
             //////////////////////////////////////////////////////////////////////////
 
             AssetStatus SendAssetStatusRequest(const AZStd::string& assetPath, bool statusOnly);

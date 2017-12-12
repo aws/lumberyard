@@ -58,11 +58,12 @@ const GUID& CAIDebugger::GetClassID()
 //////////////////////////////////////////////////////////////////////////
 void CAIDebugger::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(10, 250, 710, 500);
+    options.showInMenu = GetIEditor()->IsLegacyUIEnabled();
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    
-    RegisterQtViewPane<CAIDebugger>(GetIEditor(), LyViewPane::AIDebugger, LyViewPane::CategoryOther, options);
+
+    AzToolsFramework::RegisterViewPane<CAIDebugger>(LyViewPane::AIDebugger, LyViewPane::CategoryOther, options);
 }
 
 //////////////////////////////////////////////////////////////////////////

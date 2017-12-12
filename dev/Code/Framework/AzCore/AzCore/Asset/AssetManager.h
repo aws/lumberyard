@@ -193,6 +193,12 @@ namespace AZ
             void ReloadAssetFromData(const Asset<AssetData>& asset);
 
             /**
+            * Assign new data for the specified asset Id. This is effectively reloading the asset
+            * with the provided data. Listeners will be notified to process the new data.
+            */
+            void AssignAssetData(const Asset<AssetData>& asset);
+
+            /**
             * Gets a pointer to an asset handler for a type.
             * Returns nullptr if a handler for that type does not exist.
             */
@@ -208,12 +214,6 @@ namespace AZ
         protected:
             AssetManager(const Descriptor& desc);
             ~AssetManager();
-
-            /**
-             * Assign new data for the specified asset Id. This is effectively reloading the asset
-             * with the provided data. Listeners will be notified to process the new data.
-             */
-            void AssignAssetData(const Asset<AssetData>& asset);
 
             void NotifyAssetReady(Asset<AssetData> asset);
             void NotifyAssetPreReload(Asset<AssetData> asset);
@@ -280,7 +280,7 @@ namespace AZ
             AssetHandler();
             virtual ~AssetHandler();
 
-            // Called by the asset manager to create a new asset. No loading should during this call
+            // Called by the asset manager to create a new asset. No loading should occur during this call
             virtual AssetPtr CreateAsset(const AssetId& id, const AssetType& type) = 0;
 
             // Called by the asset manager to perform actual asset load.
@@ -303,7 +303,7 @@ namespace AZ
             virtual void GetHandledAssetTypes(AZStd::vector<AssetType>& assetTypes) = 0;
 
             // Verify that the provided asset is of a type handled by this handler
-            virtual bool CanHandleAsset(const AssetId& /*id*/) const { return true; } 
+            virtual bool CanHandleAsset(const AssetId& /*id*/) const { return true; }
 
         private:
             AZStd::atomic_int   m_nActiveAssets;    // how many assets handled by this handler are still in existence.
@@ -313,7 +313,7 @@ namespace AZ
         /**
          * Base interface to find an asset in a catalog. By design this is not
          * performance critical code (as we use it on load only), but it is important to make sure this catalog operates
-         * in a reasonably fast way. Cache the information (if needed) about assets location (if we will 
+         * in a reasonably fast way. Cache the information (if needed) about assets location (if we will
          * do often load/unload)
          *
          * Asset catalogs functions may be called from multiple threads, so make sure your code is thread safe.
@@ -352,7 +352,7 @@ namespace AZ
             Asset<AssetData> asset = GetAsset(assetId, AzTypeInfo<AssetClass>::Uuid(), queueLoadData, assetLoadFilterCB, loadBlocking);
             return static_pointer_cast<AssetClass>(asset);
         }
-        
+
         //=========================================================================
         // AssetDatabase::FindAsset
         //=========================================================================

@@ -18,19 +18,16 @@
 
 #include <QWidget>
 #include <QString>
-#include <QAbstractNativeEventFilter>
 
 class CMaterialDialog;
 
-/////////////////////////////////////////////////////////////////////////////
-// CMatEditMainDlg dialog
 class CMatEditMainDlg
     : public QWidget
     , public QAbstractNativeEventFilter
 {
     Q_OBJECT
 public:
-    CMatEditMainDlg(const QString& title = QString(), QWidget* pParent = NULL);   // standard constructor
+    explicit CMatEditMainDlg(const QString& title = QString(), QWidget* parent = nullptr);
     ~CMatEditMainDlg();
 
 #ifdef Q_OS_WIN
@@ -38,11 +35,11 @@ public:
     bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override;
 #endif
 
-    // Implementation
 protected:
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
+private:
     void OnKickIdle();
     void OnMatEditSend(int param);
     CMaterialDialog* m_materialDialog = nullptr;

@@ -1028,10 +1028,6 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
         }
     }
 
-#if !defined(DEDICATED_SERVER)
-    Screenshot("@user@/ScreenShots/error.jpg");
-#endif // !defined(DEDICATED_SERVER)
-
     //if no crash dialog don't even submit the bug
     if (m_postBackupProcess && g_cvars.sys_no_crash_dialog == 0 && g_bUserDialog)
     {

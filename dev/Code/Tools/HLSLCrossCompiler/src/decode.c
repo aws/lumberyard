@@ -167,6 +167,8 @@ uint32_t DecodeOperand(const uint32_t *pui32Tokens, Operand* psOperand)
 	psOperand->psSubOperand[1] = 0;
 	psOperand->psSubOperand[2] = 0;
 
+	psOperand->eMinPrecision = OPERAND_MIN_PRECISION_DEFAULT;
+
 	/* Check if this instruction is extended.  If it is,
 	* we need to print the information first */
 	if (psOperand->iExtended)
@@ -1019,7 +1021,7 @@ const uint32_t* DecodeInstruction(const uint32_t* pui32Token, Instruction* psIns
 		{
 			psInst->ui32NumOperands = 4;
 
-			if(eOpcode == OPCODE_IMUL)
+			if(eOpcode == OPCODE_IMUL || eOpcode == OPCODE_UDIV)
 			{
 				psInst->ui32FirstSrc = 2;
 			}

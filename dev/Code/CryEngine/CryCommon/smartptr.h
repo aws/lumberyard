@@ -94,9 +94,9 @@ public:
         _smart_ptr<_I>().swap(*this);
     }
 
-    void reset(_I* p)
+    void reset(_I* ptr)
     {
-        _smart_ptr<_I>(p).swap(*this);
+        _smart_ptr<_I>(ptr).swap(*this);
     }
 
     void attach(_I* p_)

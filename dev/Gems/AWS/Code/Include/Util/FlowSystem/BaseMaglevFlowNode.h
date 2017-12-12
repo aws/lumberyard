@@ -19,7 +19,7 @@
 #include <aws/core/utils/memory/stl/AWSString.h>
 
 #include <Util/FlowSystem/FlowGraphContext.h>
-#include <Util/FlowSystem/AWSFlowNodePorts.h>
+
 #include <Util/FlowSystem/AsyncFlowgraphResult.h>
 
 #include "ILocalizationManager.h"

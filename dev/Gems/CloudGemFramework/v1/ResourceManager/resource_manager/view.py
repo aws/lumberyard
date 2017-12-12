@@ -102,8 +102,11 @@ class ViewContext(object):
     def creating_stack(self, stack_name):
         self._output_message('\nCreating stack {}'.format(stack_name))
 
-    def updating_stack(self, stack_name, template_url):
-        self._output_message('\nUpdating stack {} using template {}'.format(stack_name, template_url))
+    def updating_stack(self, stack_name, template_url, parameters):
+        if self.__verbose:
+            self._output_message('\nUpdating stack {} using template {} with parameters: {}'.format(stack_name, template_url, json.dumps(parameters, indent=4, sort_keys=True)))
+        else:
+            self._output_message('\nUpdating stack {} using template {}'.format(stack_name, template_url))
 
     def deleting_stack(self, stack_name, stack_id):
         self._output_message('\nDeleting stack {} ({})'.format(stack_name, stack_id))
@@ -171,9 +174,10 @@ class ViewContext(object):
         self._output_message('\nRelease deployment: {}\n'.format(release_deployment_name))
 
 
-    def retrieving_mappings(self, deployment_name, deployment_stack_id):
-        self._output_message('Loading mappings for deployment {} from stack {}.'.format(
+    def retrieving_mappings(self, deployment_name, deployment_stack_id, role):
+        self._output_message("Loading mappings for deployment '{}' with role '{}' from stack '{}'.".format(
             deployment_name,
+            role,
             util.get_stack_name_from_arn(deployment_stack_id)))
 
 
@@ -283,11 +287,11 @@ Learn more at https://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas.''')
     def parameter_not_found(self, template_path, parameter_name):
         self._output_message('WARNING: no {} parameter was found in the template {}.'.format(parameter_name, template_path))
 
-    def resource_group_added(self, resource_group_name):
-        self._output_message('\n{} resource group added to the deployment template. Use "lmbr_aws resource-group upload --deployment DEPLOYMENT" to create the group\'s resources in AWS.'.format(resource_group_name))
+    def resource_group_enabled(self, resource_group_name):
+        self._output_message('\n{} resource group has been enabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to create the resource group\'s resources in AWS.'.format(resource_group_name, resource_group_name))
 
-    def resource_group_removed(self, resource_group_name):
-        self._output_message('\n{} resource group removed from the deployment template. Use "lmbr_aws resource-group upload --deployment DEPLOYMENT" to delete the group\'s resouces from AWS.'.format(resource_group_name))
+    def resource_group_disabled(self, resource_group_name):
+        self._output_message('\n{} resource group has been disabled. Use "lmbr_aws resource-group upload --resource-group {} --deployment DEPLOYMENT" to delete the resource group\'s resouces from AWS.'.format(resource_group_name, resource_group_name))
 
     def deployment_stack_created(self, deployment_name, deployment_stack_id, deployment_access_stack_id):
         self._output_message('\n{} deployment stack {} and access stack {} have been created.'.format(
@@ -310,15 +314,20 @@ Learn more at https://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas.''')
             self._output_message('Retrieving description of stack {}.'.format(util.get_stack_name_from_arn(stack_id)))
 
     def mapping_list(self, deployment_name, mappings, protected):
-
         self._output_message('\nMapping Protected: {}'.format(protected))
-        self._output_message('\nMappings for deployment {}:\n'.format(deployment_name))
+        self._output_message('\nMappings for deployment {}:\n'.format(deployment_name))        
         self.__output_table(mappings,
             [
                 { 'Field': 'Name', 'Heading': 'Name' },
                 { 'Field': 'ResourceType', 'Heading': 'Type' },
                 { 'Field': 'PhysicalResourceId', 'Heading': 'Id' }
             ])
+
+    def mapping_update(self, deployment_name, args):        
+        self._output_message("Updating mappings for deployment '{}'. Release mode is set to '{}'".format(            
+            deployment_name,                        
+            args.release))
+        
 
     def resource_group_list(self, deployment_name, resource_groups):
 
@@ -664,6 +673,10 @@ Learn more at https://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas.''')
             { 'Field': 'Suffixes', 'Heading': 'ARN Suffixes' }
         ], sort_column_count = 3)
 
+    def calling_hook(self, module, handler_name):
+        if self.__verbose:
+            self._output_message('Calling hook function {} in module {}.'.format(handler_name, module.__file__))
+
     def calling_deprecated_hook(self, module, handler_name):
         self._output_message('WARNING: calling deprecated hook function {} in module {}.'.format(handler_name, module.__file__))
 
@@ -673,6 +686,44 @@ Learn more at https://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas.''')
     def missing_project_settings(self, bucket, key, message):
         self._output_message('\nERROR: Project settings could not be read from bucket {} object {}. Default settings will be used! {} \n'.format(
             bucket, key, message))
+            
+    def invalid_user_default_deployment_clearing(self, name):
+        self._output_message('\nWARNING: The {} user default deployment is invalid.  Setting default to none.\n'.format(name))
+        
+    def invalid_project_default_deployment_clearing(self, name):
+        self._output_message('\nWARNING: The {} project default deployment is invalid.  Setting default to none.\n'.format(name))
+        
+    def updating_framework_version(self, from_version, to_version):
+        self._output_message('Updating the CloudGemFramework used by the project from version {} to {}.'.format(from_version, to_version))
+
+    def executing_subprocess(self, args):
+        self._output_message('\nExecuting: {}'.format(' '.join(args)))
+
+    def executed_subprocess(self, args):
+        self._output_message('(end external execution)')
+
+    def copying_initial_gem_content(self, content_name):
+        self._output_message('\nCopying initial gem content: {}'.format(content_name))
+
+    def gem_created(self, gem_name, directory_path):
+        self._output_message('\nGem {} has been created in {}.'.format(gem_name, directory_path))
+
+    def gem_enabled(self, gem_name):
+        self._output_message('\nGem {} has been enabled.'.format(gem_name))
+
+    def gem_disabled(self, gem_name):
+        self._output_message('\nGem {} has been disabled.'.format(gem_name))
+
+    def backing_up_file(self, origional_file_path, backup_file_path):
+        self._output_message('Backing up {} to {}.'.format(origional_file_path, backing_up_file)) 
+
+    def using_deprecated_command(self, old, new):
+        if isinstance(new, list):
+            # ['a', 'b', 'c'] --> '"a", "b", or "c"'
+            new_msg = ', '.join([ '"' + i + '"' for i in new[:-1]]) + ', or ' + '"' + new[-1:][0] + '"'
+            self._output_message('\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the {} commands instead.\n'.format(old, new_msg))
+        else:
+            self._output_message('\nWARNING: The "{}" command has been deprecated. It still works, but its behavior may have changed. You can use the "{}" command instead.\n'.format(old, new))
 
     def __output_table(self, items, specs, sort_column_count = 1, indent = False, first_sort_column=0):
 

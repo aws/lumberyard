@@ -161,9 +161,9 @@ const GUID& CLensFlareEditor::GetClassID()
 
 void CLensFlareEditor::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CLensFlareEditor>(GetIEditor(), s_pLensFlareEditorClassName, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CLensFlareEditor>(s_pLensFlareEditorClassName, LyViewPane::CategoryOther, options);
     GetIEditor()->GetSettingsManager()->AddToolName("LensFlareEditor", "Lens Flare");
 }
 

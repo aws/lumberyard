@@ -215,11 +215,11 @@ void CD3D9Renderer::EF_InitD3DVertexDeclarations()
 
     // Custom vertex format for multiple uv sets
     AZ::Vertex::Format vertexFormat = AZ::Vertex::Format({
-        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float32_3),
-        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Color, AZ::Vertex::AttributeType::Byte_4),
-        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2),
-        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2)
-    });
+                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float32_3),
+                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Color, AZ::Vertex::AttributeType::Byte_4),
+                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2),
+                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2)
+            });
     AddVertexFormatToRenderPipeline(vertexFormat);
 
     //=============================================================================
@@ -300,7 +300,7 @@ _inline static void* sAlign0x20(byte* vrts)
 void CD3D9Renderer::EF_Init()
 {
     // Ensure only one call to EF_Init per call to FX_PipelineShutdown
-    if ( m_shaderPipelineInitialized )
+    if (m_shaderPipelineInitialized)
     {
         return;
     }
@@ -395,7 +395,7 @@ void CD3D9Renderer::EF_Init()
             }
             CryModuleMemalignFree(m_RP.m_ObjectsPool);
         }
-        
+
         // we use a plain allocation and placement new here to garantee the alignment, when using array new, the compiler can store it's size and break the alignment
         m_RP.m_ObjectsPool = (CRenderObject*)CryModuleMemalign(sizeof(CRenderObject) * (m_RP.m_nNumObjectsInPool * RT_COMMAND_BUF_COUNT), 16);
         for (int j = 0; j < (int)(m_RP.m_nNumObjectsInPool * RT_COMMAND_BUF_COUNT); j++)
@@ -560,7 +560,7 @@ void CD3D9Renderer::EF_Restore()
 // Shutdown shaders pipeline
 void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
 {
-    if ( !m_shaderPipelineInitialized )
+    if (!m_shaderPipelineInitialized)
     {
         return;
     }
@@ -583,7 +583,7 @@ void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
         crcVertexFormatPair.second.m_Declaration.clear();
     }
     m_RP.m_D3DVertexDeclarations.clear();
-    
+
     // Loop through the 2D array of hash maps
     for (auto& stream : m_RP.m_D3DVertexDeclarationCache)
     {
@@ -636,9 +636,9 @@ void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
 
     if (m_RP.m_ObjectsPool != nullptr)
     {
-        for (int j = 0; j < (int)(m_RP.m_nNumObjectsInPool * RT_COMMAND_BUF_COUNT); j++)
+        for (int objIdx = 0; objIdx < (int)(m_RP.m_nNumObjectsInPool * RT_COMMAND_BUF_COUNT); objIdx++)
         {
-            CRenderObject* pRendObj = &m_RP.m_ObjectsPool[j];
+            CRenderObject* pRendObj = &m_RP.m_ObjectsPool[objIdx];
             pRendObj->~CRenderObject();
         }
         CryModuleMemalignFree(m_RP.m_ObjectsPool);
@@ -654,15 +654,15 @@ void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
     m_DevMan.SetRasterState(nullptr);
     m_DevMan.SetDepthStencilState(nullptr, 0);
 
-    for (uint32 i = 0; i < m_StatesDP.Num(); ++i)
+    for (i = 0; i < m_StatesDP.Num(); ++i)
     {
         SAFE_RELEASE(m_StatesDP[i].pState);
     }
-    for (uint32 i = 0; i < m_StatesRS.Num(); ++i)
+    for (i = 0; i < m_StatesRS.Num(); ++i)
     {
         SAFE_RELEASE(m_StatesRS[i].pState);
     }
-    for (uint32 i = 0; i < m_StatesBL.Num(); ++i)
+    for (i = 0; i < m_StatesBL.Num(); ++i)
     {
         SAFE_RELEASE(m_StatesBL[i].pState);
     }
@@ -796,10 +796,10 @@ void CD3D9Renderer::RT_SetCameraInfo()
     CHWShader_D3D::mfSetCameraParams();
 }
 
-/* 
+/*
     Applies the correct HMD tracking pose to the camera. This is done
     on the render thread to ensure that we are rendering with the most
-    up to date poses. 
+    up to date poses.
 */
 void CD3D9Renderer::RT_SetStereoCamera()
 {
@@ -969,6 +969,7 @@ void CD3D9Renderer::CopyFramebufferDX11(CTexture* pDst, ID3D11Resource* pSrcReso
     ID3D11RenderTargetView* pNullRTV = NULL;
     GetDeviceContext().OMSetRenderTargets(1, &pNullRTV, NULL);
     pShader->FXBeginPass(0);
+    FX_SetState(GS_NODEPTHTEST);
 
     // Set shader resource
     m_DevMan.BindSRV(eHWSC_Pixel, shaderResView, 0);
@@ -1410,7 +1411,8 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
             FX_SetColorDontCareActions(nDiffuseTargetID + 1, false, false);
             // CONFETTI END
 
-            bool bUseMotionVectors = (CV_r_MotionBlur || (FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) != 0) && CV_r_MotionVectors;
+            bool takingScreenShot = (m_screenShotType != 0);
+            bool bUseMotionVectors = (CV_r_MotionBlur || (FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) != 0) && CV_r_MotionVectors && (!takingScreenShot || CV_r_MotionBlurScreenShot);
             if (bUseMotionVectors && CV_r_MotionBlurGBufferVelocity)
             {
                 m_RP.m_PersFlags2 |= RBPF2_MOTIONBLURPASS;
@@ -1510,25 +1512,25 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
                 startRT  <= endRT);
 
             for (auto rt = startRT; rt <= endRT; rt++)
-                {
+            {
                 FX_PopRenderTarget(rt);
             }
         };
 
-    auto ProcessPassesThatDontFitGMEM = [this](bool const deferredPasses)
-            {
+    auto ProcessPassesThatDontFitGMEM = [](bool const deferredPasses)
+        {
             GetUtils().DownsampleDepth(CTexture::s_ptexGmemStenLinDepth, CTexture::s_ptexZTargetScaled, true);
             GetUtils().DownsampleDepth(CTexture::s_ptexZTargetScaled, CTexture::s_ptexZTargetScaled2, false);
 
             if (deferredPasses)
-                {
+            {
                 CDeferredShading::Instance().DirectionalOcclusionPass();
                 CDeferredShading::Instance().ScreenSpaceReflectionPass();
             }
         };
 
     auto ResolveLDROutputToBackBuffer = [this](CTexture*& gmemSceneTarget)
-                    {
+        {
             assert (!gmemSceneTargetWasResolved);
 
             FX_SetDepthDontCareActions(0, true, true);
@@ -1543,13 +1545,13 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
         };
 
     auto ResetGMEMDontCareActions = [this](int const endRT)
-                    {
+        {
             assert(endRT >= 0);
 
             for (auto rt = 0; rt <= endRT; rt++)
-                {
+            {
                 FX_SetColorDontCareActions(rt, false, false);
-                }
+            }
 
             FX_SetDepthDontCareActions(0, false, false);
             FX_SetStencilDontCareActions(0, false, false);
@@ -1746,12 +1748,14 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
     }
     case eGT_POST_WATER:
     {
-        // TODO: Behavior for AW_Trans passes
-
+        // Push the depth stencil render target for the hair transparent pass
+        FX_PushRenderTarget(3, CTexture::s_ptexGmemStenLinDepth, NULL);
+        FX_SetColorDontCareActions(3, true, false);
         break;
     }
     case eGT_POST_AW_TRANS_PRE_POSTFX:
     {
+        FX_PopRenderTarget(3);
         if (!gmemSceneTargetWasResolved)
         {
             // Unbind scene target
@@ -1922,6 +1926,11 @@ void CD3D9Renderer::FX_RenderForwardOpaque(void(* RenderFunc)(), const bool bLig
         FX_ProcessRenderList(EFSLIST_DECAL, 1, RenderFunc, bLighting);
     }
 
+    {
+        PROFILE_LABEL_SCOPE("DEFERRED_EMISSIVE_DECALS");
+        FX_DeferredDecalsEmissive();
+    }
+
     if (!FX_GetEnabledGmemPath(nullptr)) // not supported in GMEM path as it resolves buffers
     {
         if (!bShadowGenSpritePasses)
@@ -2047,7 +2056,7 @@ bool CD3D9Renderer::FX_FogScene()
                 GetViewport(&dummy0, &dummy1, &oldWidth, &oldHeight);
             }
 
-            TempDynVB<SVF_P3F_T3F> vb;
+            TempDynVB<SVF_P3F_T3F> vb(gcpRendD3D);
             vb.Allocate(4);
             SVF_P3F_T3F* pQuad = vb.Lock();
 
@@ -2377,7 +2386,7 @@ bool CD3D9Renderer::FX_FogScene()
         }
 #endif
 
-        TempDynVB<SVF_P3F_T3F> vb;
+        TempDynVB<SVF_P3F_T3F> vb(gcpRendD3D);
         vb.Allocate(4);
         SVF_P3F_T3F* Verts = vb.Lock();
 
@@ -2872,7 +2881,7 @@ void CD3D9Renderer::FX_WaterVolumesPreprocess()
 
         //  Confetti BEGIN: Igor Lobanchikov :END
         PostProcessUtils().StretchRect(CTexture::s_ptexCurrSceneTarget, CTexture::s_ptexHDRTargetPrev, false, bRgbkSrc, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_FullResRect);
-        
+
         RECT rect = { 0, pCurrWaterVolRefl->GetHeight() - nHeight, nWidth, nHeight };
         FX_ClearTarget(pCurrWaterVolRefl, Clr_Transparent, 1, &rect, true);
         FX_PushRenderTarget(0, pCurrWaterVolRefl, 0);
@@ -3097,6 +3106,20 @@ void CD3D9Renderer::FX_DepthFixupMerge()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void CD3D9Renderer::FX_SRGBConversion()
+{
+    PROFILE_LABEL_SCOPE("SRGB CONVERSION");
+    CRY_ASSERT(gcpRendD3D->FX_GetCurrentRenderTarget(0) == CTexture::s_ptexHDRTarget);
+    gcpRendD3D->FX_PopRenderTarget(0);
+    CTexture* targetText = GetUtils().AcquireFinalCompositeTarget(false);
+    gcpRendD3D->RT_SetViewport(0, 0, targetText->GetWidth(), targetText->GetHeight());
+    gcpRendD3D->FX_PushRenderTarget(0, targetText, NULL);
+    GetUtils().CopyTextureToScreen(CTexture::s_ptexHDRTarget, nullptr, -1, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool CD3D9Renderer::FX_HDRScene(bool bEnableHDR, bool bClear)
 {
     SThreadInfo* const pShaderThreadInfo = &(m_RP.m_TI[m_RP.m_nProcessThreadID]);
@@ -3256,7 +3279,7 @@ void CD3D9Renderer::FX_DrawNormals()
             const size_t maxVertexCount = maxBufferSize / (2 * sizeof(SVF_P3F_C4B_T2F));
             const int numVerts = (int)(std::min)((size_t)gcpRendD3D->m_RP.m_RendNumVerts, maxVertexCount);
 
-            TempDynVB<SVF_P3F_C4B_T2F> vb;
+            TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
             vb.Allocate(numVerts * 2);
             SVF_P3F_C4B_T2F* Verts = vb.Lock();
 
@@ -3371,7 +3394,7 @@ void CD3D9Renderer::FX_DrawTangents()
             const size_t maxVertexCount = maxBufferSize / (6 * sizeof(SVF_P3F_C4B_T2F));
             const int numVerts = (int)(std::min)((size_t)gcpRendD3D->m_RP.m_RendNumVerts, maxVertexCount);
 
-            TempDynVB<SVF_P3F_C4B_T2F> vb;
+            TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
             vb.Allocate(numVerts * 6);
             SVF_P3F_C4B_T2F* Verts = vb.Lock();
 
@@ -3463,7 +3486,7 @@ void CD3D9Renderer::EF_DrawDebugTools(SViewport& VP, const SRenderingPassInfo& p
     }
 }
 
-static int __cdecl TimeProfCallback(const VOID* arg1, const VOID* arg2)
+static int __cdecl TimeProfCallback(const VOID * arg1, const VOID * arg2)
 {
     SProfInfo* pi1 = (SProfInfo*)arg1;
     SProfInfo* pi2 = (SProfInfo*)arg2;
@@ -3478,7 +3501,7 @@ static int __cdecl TimeProfCallback(const VOID* arg1, const VOID* arg2)
     return 0;
 }
 
-static int __cdecl Compare_SProfInfo(const VOID* arg1, const VOID* arg2)
+static int __cdecl Compare_SProfInfo(const VOID * arg1, const VOID * arg2)
 {
     SProfInfo* pi1 = (SProfInfo*)arg1;
     SProfInfo* pi2 = (SProfInfo*)arg2;
@@ -4880,8 +4903,8 @@ void CD3D9Renderer::FX_ProcessZPassRenderLists()
         // For GMEM paths, depth/stencil clear gets set in CD3D9Renderer::FX_GmemTransition(...).
         bClearZBuffer &= !FX_GetEnabledGmemPath(nullptr);
 
-        // Motion blur not currently supported in GMEM paths
-        if (!FX_GetEnabledGmemPath(nullptr))
+        // Motion blur not currently supported in GMEM paths or devices without floating point render targets
+        if (!FX_GetEnabledGmemPath(nullptr) && UseHalfFloatRenderTargets())
         {
             FX_ClearTarget(GetUtils().GetVelocityObjectRT(), Clr_Transparent);
         }
@@ -5330,72 +5353,72 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     // There is a slight chance of a race condition when the main thread reads from the occlusion buffer during the following update
     if (bReadZBufferDirectlyFromVMEM == false)
     {
-        CTexture::s_ptexZTargetReadBack[Idx]->GetDevTexture()->AccessCurrStagingResource(0, false, [=, &mCurProj, &nCameraID](void* pData, uint32 rowPitch, uint32 slicePitch)
-        {
-            float* pDepths = reinterpret_cast<float*>(pData);
-            const CameraViewParameters& rc = GetViewParameters();
-            float zn = rc.fNear;
-            float zf = rc.fFar;
-            const float ProjRatioX  = zf / (zf - zn);
-            const float ProjRatioY  = zn / (zn - zf);
-
-            uint32 nBufferSize = m_occlusionDownsampleSizeY * m_occlusionDownsampleSizeX;
-
-            if (bUseNativeDepth)
+        CTexture::s_ptexZTargetReadBack[Idx]->GetDevTexture()->AccessCurrStagingResource(0, false, [=, &nCameraID](void* pData, uint32 rowPitch, uint32 slicePitch)
             {
-                float x = floorf(pDepths[0] * 0.5f); // Decode the ID from the first pixel
-                m_occlusionZBuffer[0] = pDepths[0] - (x * 2.0f);
-                nCameraID  = (int)(x);
+                float* pDepths = reinterpret_cast<float*>(pData);
+                const CameraViewParameters& rc = GetViewParameters();
+                float zn = rc.fNear;
+                float zf = rc.fFar;
+                const float ProjRatioX  = zf / (zf - zn);
+                const float ProjRatioY  = zn / (zn - zf);
 
-                for (uint32 x = 1; x < nBufferSize; x++)
+                uint32 nBufferSize = m_occlusionDownsampleSizeY * m_occlusionDownsampleSizeX;
+
+                if (bUseNativeDepth)
                 {
-                    const float fDepthVal = bReverseDepth ? 1.0f - pDepths[x] : pDepths[x];
-                    if (mergePreviousBuffer)
+                    float x = floorf(pDepths[0] * 0.5f); // Decode the ID from the first pixel
+                    m_occlusionZBuffer[0] = pDepths[0] - (x * 2.0f);
+                    nCameraID  = (int)(x);
+
+                    for (uint32 idx = 1; idx < nBufferSize; idx++)
                     {
-                        if (m_occlusionZBuffer[x] == FLT_EPSILON)
+                        const float fDepthVal = bReverseDepth ? 1.0f - pDepths[idx] : pDepths[idx];
+                        if (mergePreviousBuffer)
                         {
-                            m_occlusionZBuffer[x] = max(fDepthVal, FLT_EPSILON);
+                            if (m_occlusionZBuffer[idx] == FLT_EPSILON)
+                            {
+                                m_occlusionZBuffer[idx] = max(fDepthVal, FLT_EPSILON);
+                            }
+                            else
+                            {
+                                float maxDepth = max(fDepthVal, m_occlusionZBuffer[idx]);
+                                m_occlusionZBuffer[idx] = max(maxDepth, FLT_EPSILON);
+                            }
                         }
                         else
                         {
-                            float maxDepth = max(fDepthVal, m_occlusionZBuffer[x]);
-                            m_occlusionZBuffer[x] = max(maxDepth, FLT_EPSILON);
+                            m_occlusionZBuffer[idx] = max(fDepthVal, FLT_EPSILON);
                         }
                     }
-                    else
-                    {
-                        m_occlusionZBuffer[x] = max(fDepthVal, FLT_EPSILON);
-                    }
                 }
-            }
-            else
-            {
-                for (uint32 x = 0; x < nBufferSize; x++)
+                else
                 {
-                    if (!mergePreviousBuffer)
+                    for (uint32 idx = 0; idx < nBufferSize; idx++)
                     {
-                        m_occlusionZBuffer[x] = max(ProjRatioY / max(pDepths[x], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
-                    }
-                    else
-                    {
-                        if (m_occlusionZBuffer[x] == FLT_EPSILON)
+                        if (!mergePreviousBuffer)
                         {
-                            m_occlusionZBuffer[x] = max(ProjRatioY / max(pDepths[x], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
+                            m_occlusionZBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
                         }
                         else
                         {
-                            float newDepth = ProjRatioY / max(pDepths[x], FLT_EPSILON) + ProjRatioX;
-                            float maxDepth = max(newDepth, m_occlusionZBuffer[x]);
-                            m_occlusionZBuffer[x] = max(maxDepth, FLT_EPSILON);
+                            if (m_occlusionZBuffer[idx] == FLT_EPSILON)
+                            {
+                                m_occlusionZBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
+                            }
+                            else
+                            {
+                                float newDepth = ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX;
+                                float maxDepth = max(newDepth, m_occlusionZBuffer[idx]);
+                                m_occlusionZBuffer[idx] = max(maxDepth, FLT_EPSILON);
+                            }
                         }
                     }
                 }
-            }
 
-            m_occlusionViewProj = occlusionViewProj;
+                m_occlusionViewProj = occlusionViewProj;
 
-            return true;
-        });
+                return true;
+            });
     }
 
     m_occlusionViewProjBuffer[Idx] = mCurView * mCurProj;
@@ -5495,36 +5518,53 @@ void CD3D9Renderer::FX_UpdateCharCBs()
     PROFILE_FRAME(FX_UpdateCharCBs);
     AZ_TRACE_METHOD();
     unsigned poolId = (m_nPoolIndexRT) % 3;
-    for (util::list<SCharInstCB>* iter = m_CharCBActiveList[poolId].next; iter != &m_CharCBActiveList[poolId]; iter = iter->next)
+    for (size_t boneType = 0; boneType < eBoneType_Count; ++boneType)
     {
-        SCharInstCB* cb = iter->item<& SCharInstCB::list>();
-        if (cb->updated)
+        for (util::list<SCharInstCB>* iter = m_CharCBActiveList[boneType][poolId].next; iter != &m_CharCBActiveList[boneType][poolId]; iter = iter->next)
         {
-            continue;
-        }
-        SSkinningData* pSkinningData = cb->m_pSD;
+            SCharInstCB* cb = iter->item<&SCharInstCB::list>();
+            if (cb->updated)
+            {
+                continue;
+            }
+            SSkinningData* pSkinningData = cb->m_pSD;
 
-        // make sure all sync jobs filling the buffers have finished
-        if (pSkinningData->pAsyncJobs)
-        {
-            PROFILE_FRAME(FX_UpdateCharCBs_ASYNC_WAIT);
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pAsyncJobs);
-        }
+            // make sure all sync jobs filling the buffers have finished
+            if (pSkinningData->pAsyncJobs)
+            {
+                PROFILE_FRAME(FX_UpdateCharCBs_ASYNC_WAIT);
+                gEnv->pJobManager->WaitForJob(*pSkinningData->pAsyncJobs);
+            }
 
-        cb->m_buffer->UpdateBuffer(pSkinningData->pBoneQuatsS, pSkinningData->nNumBones * sizeof(DualQuat));
-        cb->updated = true;
+            if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
+            {
+                AZ_Assert(boneType == eBoneType_Matrix, "Skinning type is Matrix but bone type is not.");
+                cb->m_buffer->UpdateBuffer(pSkinningData->pBoneMatrices, pSkinningData->nNumBones * sizeof(Matrix34));
+            }
+            else
+            {
+                AZ_Assert(boneType == eBoneType_DualQuat, "Copying DualQuat buffer but bone type is not DualQuat.");
+                cb->m_buffer->UpdateBuffer(pSkinningData->pBoneQuatsS, pSkinningData->nNumBones * sizeof(DualQuat));
+            }
+
+            cb->updated = true;
+        }
     }
-
     // free a buffer each frame if we have an over-comittment of more than 75% compared
     // to our last 2 frames of rendering
     {
         int committed = CryInterlockedCompareExchange((LONG*)&m_CharCBAllocated, 0, 0);
         int totalRequested = m_CharCBFrameRequired[poolId] + m_CharCBFrameRequired[(poolId - 1) % 3];
         WriteLock _lock(m_lockCharCB);
-        if (totalRequested * 4 > committed * 3 && m_CharCBFreeList.empty() == false)
+
+        for (size_t boneType = 0; boneType < eBoneType_Count; ++boneType)
         {
-            delete m_CharCBFreeList.prev->item<& SCharInstCB::list>();
-            CryInterlockedDecrement(&m_CharCBAllocated);
+            if (totalRequested * 4 > committed * 3 && m_CharCBFreeList[boneType].empty() == false)
+            {
+                delete m_CharCBFreeList[boneType].prev->item<&SCharInstCB::list>();
+                CryInterlockedDecrement(&m_CharCBAllocated);
+                break;
+            }
         }
     }
 }
@@ -5533,11 +5573,21 @@ void* CD3D9Renderer::FX_AllocateCharInstCB(SSkinningData* pSkinningData, uint32 
 {
     PROFILE_FRAME(FX_AllocateCharInstCB);
     SCharInstCB* cb = NULL;
+
+    size_t boneType = eBoneType_DualQuat;
+    size_t boneSize = sizeof(DualQuat);
+
+    if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
+    {
+        boneType = eBoneType_Matrix;
+        boneSize = sizeof(Matrix34);
+    }
+
     {
         WriteLock _lock(m_lockCharCB);
-        if (m_CharCBFreeList.empty() == false)
+        if (m_CharCBFreeList[boneType].empty() == false)
         {
-            cb = m_CharCBFreeList.next->item<& SCharInstCB::list>();
+            cb = m_CharCBFreeList[boneType].next->item<& SCharInstCB::list>();
             cb->list.erase();
         }
     }
@@ -5545,8 +5595,8 @@ void* CD3D9Renderer::FX_AllocateCharInstCB(SSkinningData* pSkinningData, uint32 
     {
         cb = new SCharInstCB();
         cb->m_buffer = gcpRendD3D->m_DevBufMan.CreateConstantBuffer(
-            "SkinningQuats",
-            768 * sizeof(DualQuat),
+            "SkinningBones",
+            768 * boneSize,
             AzRHI::ConstantBufferUsage::Static);
         CryInterlockedIncrement(&m_CharCBAllocated);
     }
@@ -5554,7 +5604,7 @@ void* CD3D9Renderer::FX_AllocateCharInstCB(SSkinningData* pSkinningData, uint32 
     cb->m_pSD = pSkinningData;
     {
         WriteLock _lock(m_lockCharCB);
-        cb->list.relink_tail(&m_CharCBActiveList[frameId % 3]);
+        cb->list.relink_tail(&m_CharCBActiveList[boneType][frameId % 3]);
     }
     CryInterlockedIncrement(&m_CharCBFrameRequired[frameId % 3]);
     return cb;
@@ -5566,7 +5616,11 @@ void CD3D9Renderer::FX_ClearCharInstCB(uint32 frameId)
     uint32 poolId = frameId % 3;
     WriteLock _lock(m_lockCharCB);
     m_CharCBFrameRequired[poolId] = 0;
-    m_CharCBFreeList.splice_tail(&m_CharCBActiveList[poolId]);
+
+    for (size_t boneType = 0; boneType < eBoneType_Count; ++boneType)
+    {
+        m_CharCBFreeList[boneType].splice_tail(&m_CharCBActiveList[boneType][poolId]);
+    }
 }
 
 // Render thread only scene rendering
@@ -5706,7 +5760,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
     uint32 nSaveRendFlags = m_RP.m_nRendFlags;
     m_RP.m_nRendFlags = nFlags;
     FX_ApplyThreadState(TI, &m_RP.m_OldTI[recursiveLevel]);
-    
+
     //
     // VR Tracking updates
     //
@@ -5727,9 +5781,9 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                 cause tracking to de-sync from rendering causing all frames to render with out
                 of date tracking. Updating tracking here significantly reduces GPU bubbles.
 
-                For Oculus, OSVR, PSVR etc this is still the best place to request a tracking 
+                For Oculus, OSVR, PSVR etc this is still the best place to request a tracking
                 update in a multi-threaded scenario. It ensures that any prediction will be done
-                for this frame that we want to render rather than the next frame. 
+                for this frame that we want to render rather than the next frame.
             */
             RT_UpdateTrackingStates();
         }
@@ -5743,6 +5797,11 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
     }
 
     bool bHDRRendering = (nFlags & SHDF_ALLOWHDR) && IsHDRModeEnabled();
+    //The HDR pass is in charge of doing the SRGB conversion. Since is
+    //disabled, we need to push a render target to do the SRGB conversion before the post process.
+    bool doSRGBConversionCopy = !IsHDRModeEnabled() && (m_RP.m_nRendFlags & SHDF_ALLOWHDR) &&
+                                !recursiveLevel && !m_wireframe_mode && 
+                                !FX_GetEnabledGmemPath(nullptr);
 
     if (!recursiveLevel && bHDRRendering)
     {
@@ -5765,6 +5824,11 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
         {
             m_RP.m_PersFlags2 &= ~RBPF2_HDR_FP16;
         }
+    }
+
+    if (doSRGBConversionCopy)
+    {
+        FX_PushRenderTarget(0, CTexture::s_ptexHDRTarget, &m_DepthBufferOrigMSAA, -1, true);
     }
 
     // Prepare post processing
@@ -5841,7 +5905,8 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
             FX_DeferredRainGBuffer();
             FX_DeferredSnowLayer();
 
-            const bool bMotionVectorsEnabled = (CRenderer::CV_r_MotionBlur > 1 || (gRenDev->FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) != 0) && CRenderer::CV_r_MotionVectors;
+            const bool takingScreenShot = (m_screenShotType != 0);
+            const bool bMotionVectorsEnabled = (CRenderer::CV_r_MotionBlur > 1 || (gRenDev->FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) != 0) && CRenderer::CV_r_MotionVectors && (!takingScreenShot || CRenderer::CV_r_MotionBlurScreenShot);
             if (bMotionVectorsEnabled)
             {
                 CMotionBlur* motionBlur = static_cast<CMotionBlur*>(PostEffectMgr()->GetEffect(ePFX_eMotionBlur));
@@ -5966,7 +6031,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
             {
                 FX_GmemTransition(eGT_POST_WATER);
             }
-            
+
             {
                 PROFILE_LABEL_SCOPE("TRANSPARENT_AW");
                 PROFILE_PS_TIME_SCOPE_COND(fTimeDIPs[EFSLIST_TRANSP], !bShadowGenSpritePasses);
@@ -6022,6 +6087,11 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
 
             FX_ProcessRenderList(EFSLIST_HDRPOSTPROCESS, 0, RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
             FX_ProcessRenderList(EFSLIST_HDRPOSTPROCESS, 1, RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
+            if (doSRGBConversionCopy)
+            {
+                //The HDR pass is in charge of doing the SRGB conversion but it's disabled.
+                FX_SRGBConversion();
+            }
             FX_ProcessRenderList(EFSLIST_AFTER_HDRPOSTPROCESS, 0, RenderFunc, false); // for specific cases where rendering after tone mapping is needed
             FX_ProcessRenderList(EFSLIST_AFTER_HDRPOSTPROCESS, 1, RenderFunc, false);
             FX_ProcessRenderList(EFSLIST_POSTPROCESS, 0, RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
@@ -6055,7 +6125,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
             bool bDrawAfterPostProcess = !(gcpRendD3D->m_RP.m_PersFlags1 & RBPF1_SKIP_AFTER_POST_PROCESS);
 
             RT_SetViewport(0, 0, GetWidth(), GetHeight());
-            
+
             if (bDrawAfterPostProcess)
             {
                 PROFILE_LABEL_SCOPE("AFTER_POSTPROCESS"); // for specific cases where rendering after all post effects is needed
@@ -6217,7 +6287,7 @@ void CD3D9Renderer::EF_RenderScene(int nFlags, SViewport& VP, const SRenderingPa
     m_RP.m_sExcludeShader = "";
 
     if (nFlags & SHDF_ALLOWPOSTPROCESS && gRenDev->m_CurRenderEye == 0)
-    { 
+    {
         EF_AddClientPolys(passInfo);
     }
 
@@ -6365,7 +6435,7 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
 
     EF_RenderScene(nFlags, VP, passInfo);
 
-    //Re-apply stereo camera here just so that all rendering is done based off of the correct camera instead of 
+    //Re-apply stereo camera here just so that all rendering is done based off of the correct camera instead of
     //whatever the camera is currently set to
     if (gcpRendD3D->GetIStereoRenderer()->IsRenderingToHMD())
     {
@@ -6382,12 +6452,12 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
             gEnv->pAISystem->DebugDraw();
         }
 
-        //Draws all aux geometry        
+        //Draws all aux geometry
         GetIRenderAuxGeom()->Flush();
 
         //Actually flushes and clears out aux geometry buffers
         //We need to do this so that geometry is re-processed for VR.
-        //This is because the aux geometry buffers overwrite themselves 
+        //This is because the aux geometry buffers overwrite themselves
         //as they draw. By clearing them out it means we can just re-process
         //that geometry for the 2nd eye and not draw a mangled vertex buffer.
         GetIRenderAuxGeom()->Process();

@@ -36,7 +36,7 @@ VALID_HTTP_METHODS = [
 def __get_UUID(source_file, UUID_name):
     if not os.path.isfile(source_file):
         #get new UUID
-        return "{" + str(uuid.uuid1()) + "}"
+        return "{" + str(uuid.uuid4()) + "}"
     # read UUID from file to preserve ids through regeneration of the file
     full_def = "const char* LmbrAWS_CodeGen_{}_UUID".format(UUID_name)
     with open(source_file) as file:
@@ -44,7 +44,7 @@ def __get_UUID(source_file, UUID_name):
             if full_def in line:
                 UUID = line.split('=')[1].strip()
                 return UUID[1:-2] # strip of the quotes and semicolon
-    return "{" + str(uuid.uuid1()) + "}"
+    return "{" + str(uuid.uuid4()) + "}"
 
 def get_UUIDs(source_file, jinja_json):
     # make list of the UUIDs we need
@@ -88,19 +88,41 @@ class ComponentJsonBuilder:
 
 
     def __generate_function_name(self, method, path):
-        path_name = method.selector + path.selector
-        path_name = path_name.split("/")
 
-        function_name = ""
-        for word in path_name:
-            if word[0] in string.letters:
-                word = word[0:1].upper() + word[1:]
-                function_name += word
+        # Use name specified in x-amazon-cloud-canvas-client-generation object,
+        # the operationId property or construct one from the path and method.
+
+        function_name = None
+
+        client_generation_extension_object = method.get_object('x-amazon-cloud-canvas-client-generation', default = None)
+        if not client_generation_extension_object.is_none:
+            function_name = client_generation_extension_object.get_string_value('function', default = None)
+            if function_name and not self.__is_valid_cpp_symbol(function_name):
+                raise HandledError("x-amazon-cloud-canvas-client-generation.function ({}) for method {} must be a valid C++ symbol".format(function_name, method))
+
+        if not function_name:
+            function_name = method.get_string_value('operationId', default = None)
+            if function_name and not self.__is_valid_cpp_symbol(function_name):
+                raise HandledError("operationId ({}) for method {} must be a valid C++ symbol".format(function_name, method))
+
+        if not function_name:
+
+            path_name = method.selector + path.selector
+            path_name = path_name.split("/")
+
+            function_name = ""
+            for word in path_name:
+                if word[0] in string.letters:
+                    word = word[0:1].upper() + word[1:]
+                    function_name += word
+
+            if not self.__is_valid_cpp_symbol(function_name):
+                raise HandledError("The generated function ({}) for method {} is nto a valid C++ symbol. Use an x-amazon-cloud-canvas-client-generation.function property to override the default.".format(function_name, method))
+
         return function_name
 
+
     def __check_supported_response_type(self, path, response_type):
-        if not response_type:
-            raise HandledError("{} does not have a response type".format(path))
         if not response_type in [item["name"] for item in self._component_json["otherClasses"]]:
             raise HandledError("{} does not have a object reponse type. The lmbr_aws swagger client generator only supports object response types".format(path))
         if [item for item in self._component_json["otherClasses"] if item["name"] == response_type and item["isArray"]]:
@@ -114,8 +136,6 @@ class ComponentJsonBuilder:
                 func_def = {}
 
                 function_name = self.__generate_function_name(method, path)
-                if not self.__is_valid_cpp_symbol(function_name):
-                    raise HandledError("operationId ({}) for path {} must be a valid C++ symbol".format(method.get("operationId").value, method))
                 func_def["functionName"] = function_name
 
                 param_list = [] # for method definition
@@ -151,8 +171,8 @@ class ComponentJsonBuilder:
                 func_def["typedParams"] = ", ".join(signature_params)
                 response_type = self.__get_response_type(function_name, method.get("responses"))
                 if response_type:
+                    self.__check_supported_response_type(path, response_type)
                     func_def["responseType"] = SWAGGER_TO_CPP_TYPE.get(response_type, response_type)
-                self.__check_supported_response_type(path, response_type)
 
                 self._component_json["functions"].append(func_def)
 
@@ -318,7 +338,7 @@ class ComponentJsonBuilder:
                 self.__generate_from_schema(ref_name, ref)
             prop["type"] = ref_name
         else:
-            raise HandledError("no type found for property {} in definition at {}").format(prop_name, properties)
+            raise HandledError("no type found for property {} in definition at {}".format(prop_name, properties))
         return prop
 
     def __add_struct_def(self, obj_def):

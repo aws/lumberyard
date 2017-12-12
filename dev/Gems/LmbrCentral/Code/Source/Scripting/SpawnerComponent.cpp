@@ -73,6 +73,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Spawner.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-spawner.html")
                     ->DataElement(0, &SpawnerComponent::m_sliceAsset, "Dynamic slice", "The slice to spawn")
                     ->DataElement(0, &SpawnerComponent::m_spawnOnActivate, "Spawn on activate", "Should the component spawn the selected slice upon activation?");
             }
@@ -88,13 +89,6 @@ namespace LmbrCentral
 
             behaviorContext->EBus<SpawnerComponentNotificationBus>("SpawnerComponentNotificationBus")
                 ->Handler<BehaviorSpawnerComponentNotificationBusHandler>()
-                ;
-                        
-            behaviorContext->Class<AzFramework::SliceInstantiationTicket>()
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Method("Equal", &AzFramework::SliceInstantiationTicket::operator==)
-                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
-                ->Method("IsValid", &AzFramework::SliceInstantiationTicket::operator bool)
                 ;
         }
     }

@@ -51,6 +51,7 @@ namespace GridMate
             typedef AZStd::recursive_mutex MutexType;
             typedef AZStd::recursive_mutex EventQueueMutexType;
             static const bool EnableEventQueue = true;
+            static const bool EnableQueuedReferences = true;
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 

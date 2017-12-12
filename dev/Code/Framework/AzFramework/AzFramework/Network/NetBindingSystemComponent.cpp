@@ -48,7 +48,7 @@ namespace AzFramework
                     "NetBinding System", "Performs network binding for game entities.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Engine")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System"))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
         }
@@ -56,11 +56,11 @@ namespace AzFramework
 
     void NetBindingSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("NetBindingSystemService"));
+        provided.push_back(AZ_CRC("NetBindingSystemService", 0xa0ad6656));
     }
 
     void NetBindingSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("NetBindingSystemService"));
+        incompatible.push_back(AZ_CRC("NetBindingSystemService", 0xa0ad6656));
     }
 } // namespace AzFramework

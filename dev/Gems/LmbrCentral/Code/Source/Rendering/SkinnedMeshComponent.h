@@ -23,6 +23,7 @@
 #include <IEntityRenderState.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
@@ -186,13 +187,8 @@ namespace LmbrCentral
             AZ::u32 m_lodRatio; //!< Controls LOD distance ratio.
             bool m_useVisAreas; //!< Allow VisAreas to control this component's visibility.
             bool m_castShadows; //!< Casts dynamic shadows.
-            bool m_castLightmap; //!< Casts shadows in lightmap.
             bool m_rainOccluder; //!< Occludes raindrops.
-            bool m_affectNavmesh; //!< Cuts out of the navmesh.
-            bool m_affectDynamicWater; //!< Affects dynamic water (ripples).
             bool m_acceptDecals; //!< Accepts decals.
-            bool m_receiveWind; //!< Receives wind.
-            bool m_visibilityOccluder; //!< Appropriate for visibility occluding.
 
             AZStd::function<void()> m_changeCallback;
 
@@ -258,7 +254,7 @@ namespace LmbrCentral
     class SkinnedMeshComponent
         : public AZ::Component
         , private MeshComponentRequestBus::Handler
-        , private MaterialRequestBus::Handler
+        , private MaterialOwnerRequestBus::Handler
         , private RenderNodeRequestBus::Handler
         , private SkinnedMeshComponentRequestBus::Handler
         , private SkeletalHierarchyRequestBus::Handler
@@ -295,7 +291,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MaterialRequestBus interface implementation
+        // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
         ///////////////////////////////////

@@ -20,6 +20,9 @@
 #include <IInput.h>
 #include <CryCrc32.h>
 #include "Timer.h"
+#include <AzFramework/Components/ConsoleBus.h>
+
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 //forward declaration
 struct IIpnut;
@@ -127,6 +130,7 @@ class CXConsole
     : public IConsole
     , public IInputEventListener
     , public IRemoteConsoleListener
+    , public AzFramework::ConsoleRequestBus::Handler
 {
 public:
     typedef std::deque<string> ConsoleBuffer;
@@ -185,6 +189,7 @@ public:
     virtual bool AddCommand(const char* sName, const char* sScriptFunc, int nFlags = 0, const char* sHelp = NULL);
     virtual void RemoveCommand(const char* sName);
     virtual void ExecuteString(const char* command, const bool bSilentMode, const bool bDeferExecution = false);
+    virtual void ExecuteConsoleCommand(const char* command) override;
     virtual void Exit(const char* command, ...) PRINTF_PARAMS(2, 3);
     virtual bool IsOpened();
     virtual int GetNumVars();
@@ -324,9 +329,9 @@ private: // ----------------------------------------------------------
         string  command;
         bool        silentMode;
 
-        SDeferredCommand(const string& command, bool silentMode)
-            : command(command)
-            , silentMode(silentMode)
+        SDeferredCommand(const string& _command, bool _silentMode)
+            : command(_command)
+            , silentMode(_silentMode)
         {}
     };
     typedef std::list<SDeferredCommand> TDeferredCommandList;
@@ -385,6 +390,7 @@ private: // ----------------------------------------------------------
 
     ScrollDir                                               m_sdScrollDir;
 
+    AzFramework::SystemCursorState                              m_previousSystemCursorState;
     bool                                                        m_bConsoleActive;
     bool                                                        m_bActivationKeyEnable;
     bool                                                        m_bIsProcessingGroup;

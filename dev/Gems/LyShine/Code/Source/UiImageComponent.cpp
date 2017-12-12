@@ -27,12 +27,14 @@
 #include <LyShine/Bus/UiTransformBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
+#include <LyShine/Bus/UiLayoutControllerBus.h>
 #include <LyShine/ISprite.h>
 #include <LyShine/IUiRenderer.h>
 #include <UiFaderComponent.h>
 
 #include "UiSerialize.h"
 #include "Sprite.h"
+#include "UiLayoutHelpers.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC MEMBER FUNCTIONS
@@ -50,6 +52,8 @@ UiImageComponent::UiImageComponent()
     , m_overrideColor(m_color)
     , m_overrideAlpha(m_alpha)
     , m_overrideSprite(nullptr)
+    , m_isColorOverridden(false)
+    , m_isAlphaOverridden(false)
 {
 }
 
@@ -65,18 +69,25 @@ void UiImageComponent::ResetOverrides()
     m_overrideColor = m_color;
     m_overrideAlpha = m_alpha;
     m_overrideSprite = nullptr;
+
+    m_isColorOverridden = false;
+    m_isAlphaOverridden = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiImageComponent::SetOverrideColor(const AZ::Color& color)
 {
     m_overrideColor.Set(color.GetAsVector3());
+
+    m_isColorOverridden = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiImageComponent::SetOverrideAlpha(float alpha)
 {
     m_overrideAlpha = alpha;
+
+    m_isAlphaOverridden = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,8 +165,14 @@ void UiImageComponent::SetColor(const AZ::Color& color)
 {
     m_color.Set(color.GetAsVector3());
     m_alpha = color.GetA();
-    m_overrideColor = m_color;
-    m_overrideAlpha = m_alpha;
+    if (!m_isColorOverridden)
+    {
+        m_overrideColor = m_color;
+    }
+    if (!m_isAlphaOverridden)
+    {
+        m_overrideAlpha = m_alpha;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +198,7 @@ void UiImageComponent::SetSprite(ISprite* sprite)
         m_spritePathname.SetAssetPath(m_sprite->GetPathname().c_str());
     }
 
-    InvalidateParentLayout();
+    InvalidateLayouts();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,8 +269,14 @@ void UiImageComponent::SetImageType(ImageType imageType)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiImageComponent::PropertyValuesChanged()
 {
-    m_overrideColor = m_color;
-    m_overrideAlpha = m_alpha;
+    if (!m_isColorOverridden)
+    {
+        m_overrideColor = m_color;
+    }
+    if (!m_isAlphaOverridden)
+    {
+        m_overrideAlpha = m_alpha;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -404,10 +427,12 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
                 ->EnumAttribute(UiImageInterface::SpriteType::SpriteAsset, "Sprite/Texture asset")
                 ->EnumAttribute(UiImageInterface::SpriteType::RenderTarget, "Render target")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::OnSpriteTypeChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
             editInfo->DataElement("Sprite", &UiImageComponent::m_spritePathname, "Sprite path", "The sprite path. Can be overridden by another component such as an interactable.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiImageComponent::IsSpriteTypeAsset)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::OnSpritePathnameChange);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::OnSpritePathnameChange)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(0, &UiImageComponent::m_renderTargetName, "Render target name", "The name of the render target associated with the sprite.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiImageComponent::IsSpriteTypeRenderTarget)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::OnSpriteRenderTargetNameChange);
@@ -424,7 +449,8 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
                 ->EnumAttribute(UiImageInterface::ImageType::Tiled, "Tiled")
                 ->EnumAttribute(UiImageInterface::ImageType::StretchedToFit, "Stretched To Fit")
                 ->EnumAttribute(UiImageInterface::ImageType::StretchedToFill, "Stretched To Fill")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::InvalidateLayouts)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiImageComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiImageComponent::m_blendMode, "BlendMode", "The blend mode used to draw the image")
                 ->EnumAttribute(LyShine::BlendMode::Normal, "Normal")
                 ->EnumAttribute(LyShine::BlendMode::Add, "Add")
@@ -447,6 +473,7 @@ void UiImageComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiImageInterface::SpriteType::RenderTarget>("eUiSpriteType_RenderTarget");
 
         behaviorContext->EBus<UiImageBus>("UiImageBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetColor", &UiImageBus::Events::GetColor)
             ->Event("SetColor", &UiImageBus::Events::SetColor)
             ->Event("GetSpritePathname", &UiImageBus::Events::GetSpritePathname)
@@ -907,7 +934,7 @@ void UiImageComponent::OnSpritePathnameChange()
     SAFE_RELEASE(m_sprite);
     m_sprite = newSprite;
 
-    InvalidateParentLayout();
+    InvalidateLayouts();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -923,7 +950,7 @@ void UiImageComponent::OnSpriteRenderTargetNameChange()
     SAFE_RELEASE(m_sprite);
     m_sprite = newSprite;
 
-    InvalidateParentLayout();
+    InvalidateLayouts();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -951,11 +978,18 @@ void UiImageComponent::OnColorChange()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiImageComponent::InvalidateParentLayout()
+void UiImageComponent::InvalidateLayouts()
 {
     AZ::EntityId canvasEntityId;
     EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
     EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), true);
+    EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayout, GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiImageComponent::CheckLayoutFitterAndRefreshEditorTransformProperties() const
+{
+    UiLayoutHelpers::CheckFitterAndRefreshEditorTransformProperties(GetEntityId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

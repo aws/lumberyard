@@ -23,7 +23,10 @@ def build(bld):
         vs_filter       = 'CryEngine/Audio/Implementations',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'audioimplnosound.waf_files',
-        platforms       = ['win','durango','orbis','linux','android'],
+        platforms       = ['win',
+	                    'linux',
+	                    'android'
+			  ],
         configurations  = ['all'],
 
         pch             = 'StdAfx.cpp',

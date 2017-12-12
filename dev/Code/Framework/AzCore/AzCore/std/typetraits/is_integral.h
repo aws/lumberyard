@@ -33,7 +33,7 @@ namespace AZStd
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral, bool, true)
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral, char, true)
 
-    //AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral,wchar_t,true)
+    AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral,wchar_t,true)
 
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral, ::AZ::u64, true)
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_integral, ::AZ::s64, true)

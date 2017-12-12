@@ -61,11 +61,12 @@ const GUID& CSettingsManagerDialog::GetClassID()
 
 void CSettingsManagerDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(5, 100, 210, 505);
+    options.showInMenu = GetIEditor()->IsLegacyUIEnabled();
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CSettingsManagerDialog>(GetIEditor(), SETTINGS_MANAGER_WINDOW_NAME, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CSettingsManagerDialog>(LyViewPane::EditorSettingsManager, LyViewPane::CategoryOther, options);
 }
 
 
@@ -116,7 +117,7 @@ void CSettingsManagerDialog::OnExportBtnClick()
     {
         QString file = exportFileSelectionDialog.selectedFiles().first();
         GetIEditor()->GetSettingsManager()->SetExportFileName(file);
-        QtViewPaneManager::instance()->ClosePane(SETTINGS_MANAGER_WINDOW_NAME);
+        QtViewPaneManager::instance()->ClosePane(LyViewPane::EditorSettingsManager);
         GetIEditor()->GetSettingsManager()->Export();
     }
 }

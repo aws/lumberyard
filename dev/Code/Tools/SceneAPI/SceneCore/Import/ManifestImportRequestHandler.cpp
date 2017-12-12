@@ -52,7 +52,8 @@ namespace AZ
                 result = s_extension;
             }
 
-            Events::LoadingResult ManifestImportRequestHandler::LoadAsset(Containers::Scene& scene, const AZStd::string& path, RequestingApplication /*requester*/)
+            Events::LoadingResult ManifestImportRequestHandler::LoadAsset(Containers::Scene& scene, const AZStd::string& path, 
+                const Uuid& /*guid*/, RequestingApplication /*requester*/)
             {
                 AZStd::string manifestPath = path + s_extension;
                 

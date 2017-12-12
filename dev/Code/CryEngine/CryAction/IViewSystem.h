@@ -74,16 +74,16 @@ struct SViewParams
     {
     }
 
-    void SetViewID(uint8 id, bool blend = true)
+    void SetViewID(uint8 id, bool shouldBlend = true)
     {
         viewID = id;
-        if (!blend)
+        if (!shouldBlend)
         {
             viewIDLast = id;
         }
     }
 
-    void UpdateBlending(float frameTime)
+    void UpdateBlending(float curFrameTime)
     {
         //if necessary blend the view
         if (blend)
@@ -96,9 +96,9 @@ struct SViewParams
             }
             else
             {
-                blendPosOffset -= blendPosOffset * min(1.0f, blendPosSpeed * frameTime);
-                blendRotOffset = Quat::CreateSlerp(blendRotOffset, IDENTITY, min(1.0f, frameTime * blendRotSpeed));
-                blendFOVOffset -= blendFOVOffset * min(1.0f, blendFOVSpeed * frameTime);
+                blendPosOffset -= blendPosOffset * min(1.0f, blendPosSpeed * curFrameTime);
+                blendRotOffset = Quat::CreateSlerp(blendRotOffset, IDENTITY, min(1.0f, curFrameTime * blendRotSpeed));
+                blendFOVOffset -= blendFOVOffset * min(1.0f, blendFOVSpeed * curFrameTime);
             }
 
             position += blendPosOffset;
@@ -237,6 +237,7 @@ struct IView
     virtual void LinkTo(AZ::Entity* follow) = 0;
     virtual void LinkTo(IGameObject* follow) = 0;
     virtual void LinkTo(IEntity* follow) = 0;
+    virtual void Unlink() = 0;
     virtual AZ::EntityId GetLinkedId() = 0;
     virtual CCamera& GetCamera() = 0;
     virtual const CCamera& GetCamera() const = 0;

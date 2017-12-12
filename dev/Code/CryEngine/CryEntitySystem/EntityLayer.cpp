@@ -91,15 +91,15 @@ bool CEntityLayer::IsSkippedBySpec() const
 
     switch (gEnv->pRenderer->GetRenderType())
     {
-    case eRT_PS4:
-        if (m_specs & eSpecType_PS4)
+    case eRT_PS4: // ACCEPTED_USE
+        if (m_specs & eSpecType_PS4) // ACCEPTED_USE
         {
             return false;
         }
         break;
 
-    case eRT_XboxOne:
-        if (m_specs & eSpecType_XBoxOne)
+    case eRT_XboxOne: // ACCEPTED_USE
+        if (m_specs & eSpecType_XBoxOne) // ACCEPTED_USE
         {
             return false;
         }

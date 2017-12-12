@@ -31,8 +31,8 @@
 //
 // --- Properties: ---
 // - Stores data local to worker thread to avoid thread-safety semantics
-// - Allows for a single none-worker thread to be tracked which is stored in m_workers[0]
-//      Hence: As m_workers[0] is shared between all none-worker threads, ensure that only one additional none-worker thread may access this container e.g. MainThread
+// - Allows for a single non-worker thread to be tracked which is stored in m_workers[0]
+//      Hence: As m_workers[0] is shared between all non-worker threads, ensure that only one additional non-worker thread may access this container e.g. MainThread
 // - Coalesce memory to obtain a continues memory block
 // - Coalesce memory to for faster element access to a continues memory block
 //
@@ -66,12 +66,16 @@ public:
     ~CThreadSafeWorkerContainer();
 
     void Init();
-    void SetNoneWorkerThreadID(threadID nThreadId) { m_foreignWorkerId = nThreadId; }
+    void SetNonWorkerThreadID(threadID nThreadId) { m_foreignThreadId = nThreadId; }
 
     // Safe access of elements for calling thread via operator[]
     uint32 ConvertToEncodedWorkerId_threadlocal(uint32 nIndex) const;
 
+    // Returns the number of threads that can use this container, including the one non-worker-thread.
     uint32 GetNumWorkers() const;
+
+    // Returns the Worker ID for the current thread. Ranges from 0 to GetNumWorkers()-1.
+    // Note, WorkerId is not the same thing as JobManager's WorkerThreadId.
     uint32 GetWorkerId_threadlocal() const;
 
     //NOTE: be aware that these values can potentially change if some objects are added in parallel
@@ -125,10 +129,10 @@ private:
     T* push_back_impl(size_t& nIndex);
     void ReserverCoalescedMemory(size_t n);
 
-    threadID m_foreignWorkerId; // Id of the none-job-manager-worker thread allowed to use this container, too.
+    threadID m_foreignThreadId; // OS thread ID of the non-job-manager-worker-thread allowed to use this container, too.
 
-    SWorker* m_workers;
-    uint32 m_nNumWorkers;
+    SWorker* m_workers;   // Holds data for each thread that can use this container. A non-worker-thread (Main) has data stored at 0. Actual worker threads range from 1 to m_nNumWorkers-1
+    uint32 m_nNumWorkers; // The number of threads that can use this container, including one non-worker-thread.
 
     uint32 m_coalescedArrCapacity;
     T* m_coalescedArr;
@@ -160,7 +164,7 @@ inline void CThreadSafeWorkerContainer<T>::Init()
     m_nNumWorkers = gEnv->GetJobManager()->GetNumWorkerThreads() + 1;
     m_workers = new  CThreadSafeWorkerContainer<T>::SWorker[m_nNumWorkers];
 
-    m_foreignWorkerId = THREADID_NULL;
+    m_foreignThreadId = THREADID_NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -492,9 +496,9 @@ inline void CThreadSafeWorkerContainer<T>::CoalesceMemory()
 template<typename T>
 uint32 CThreadSafeWorkerContainer<T>::ConvertToEncodedWorkerId_threadlocal(uint32 nIndex) const
 {
-    const uint32 nThreadId = GetWorkerId_threadlocal();
-    assert(nIndex < m_workers[nThreadId].m_dataSize);
-    return (uint32)((1 << 31) | (nThreadId << 24) | nIndex);
+    const uint32 workerId = GetWorkerId_threadlocal();
+    assert(nIndex < m_workers[workerId].m_dataSize);
+    return (uint32)((1 << 31) | (workerId << 24) | nIndex);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -566,19 +570,23 @@ inline T* CThreadSafeWorkerContainer<T>::push_back_impl(size_t& nIndex)
 template<typename T>
 uint32 CThreadSafeWorkerContainer<T>::GetWorkerId_threadlocal() const
 {
-    const uint32 nWorkerId =  JobManager::GetWorkerThreadId();
+    const uint32 workerThreadId =  JobManager::GetWorkerThreadId();
 
-    // Check if none-worker is valid
-    if (nWorkerId == ~0)
+    const bool isValidWorkerThread = (workerThreadId != ~0);
+    if (!isValidWorkerThread)
     {
-        if (m_foreignWorkerId != CryGetCurrentThreadId())
+        // Only one non-worker thread is allowed, so check to see if this is that thread.
+        
+        const threadID currentThreadId = CryGetCurrentThreadId();
+        if (m_foreignThreadId != currentThreadId)
         {
-            CryFatalError("Trying to access CThreadSafeWorkerContainer from an unspecified none-worker thread. Current specified none-worker threadId with access rights: %" PRI_THREADID, m_foreignWorkerId);
+            CryFatalError("Trying to access CThreadSafeWorkerContainer from an unspecified non-worker thread. The only non-worker threadId with access rights: %" PRI_THREADID ". Current threadId: %" PRI_THREADID, m_foreignThreadId, currentThreadId);
         }
     }
 
-    // None-worker has id of ~0 ... add +1 to shift to 0. Worker0 will use slot 1 etc.
-    return nWorkerId + 1;
+    // Non-worker has id of ~0 ... add +1 to shift to 0. Worker0 will use slot 1 etc.
+    return workerThreadId + 1;
 }
+
 
 #endif // CRYINCLUDE_CRYCOMMON_CRYTHREADSAFEWORKERCONTAINER_H

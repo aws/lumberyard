@@ -204,7 +204,7 @@ class StackInfo(object):
                 resources.append(ResourceInfo(self, resource_summary))
             while('NextToken' in res):
                 res = lambda : self.client.list_stack_resources(StackName=self.stack_arn, NextToken=res['NextToken'])
-                for resoruce_summary in res['StackResourceSummaries']:
+                for resource_summary in res['StackResourceSummaries']:
                     resources.append(ResourceInfo(self, resource_summary))
             self.__resources = resources
         return self.__resources

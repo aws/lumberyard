@@ -11,39 +11,65 @@
 */
 #include "StdAfx.h"
 #include "StaticPhysicsComponent.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace LmbrCentral
 {
-    void StaticPhysicsConfiguration::Reflect(AZ::ReflectContext* context)
+    void StaticPhysicsConfig::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<StaticPhysicsConfiguration>()
+            serializeContext->Class<StaticPhysicsConfig>()
                 ->Version(1)
-                ->Field("EnabledInitially", &StaticPhysicsConfiguration::m_enabledInitially)
-            ;
+                ->Field("EnabledInitially", &StaticPhysicsConfig::m_enabledInitially)
+                ;
+        }
+
+        if(auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<StaticPhysicsConfig>()
+                ->Property("EnabledInitially", BehaviorValueProperty(&StaticPhysicsConfig::m_enabledInitially))
+                ;
         }
     }
 
     void StaticPhysicsComponent::Reflect(AZ::ReflectContext* context)
     {
-        StaticPhysicsConfiguration::Reflect(context);
+        StaticPhysicsConfig::Reflect(context);
 
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<StaticPhysicsComponent, PhysicsComponent>()
                 ->Version(1)
                 ->Field("Configuration", &StaticPhysicsComponent::m_configuration)
             ;
         }
+
+        if(auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Constant("StaticPhysicsComponentTypeId", BehaviorConstant(StaticPhysicsComponentTypeId));
+        }
     }
 
-    StaticPhysicsComponent::StaticPhysicsComponent(const StaticPhysicsConfiguration& configuration)
-        : m_configuration(configuration)
+    bool StaticPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
+        if (auto config = azrtti_cast<const StaticPhysicsConfig*>(baseConfig))
+        {
+            m_configuration = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool StaticPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<StaticPhysicsConfig*>(outBaseConfig))
+        {
+            *outConfig = m_configuration;
+            return true;
+        }
+        return false;
     }
 
     void StaticPhysicsComponent::ConfigurePhysicalEntity()

@@ -55,10 +55,6 @@ namespace LmbrAWS
             EOP_NoMatches
         };
 
-        LmbrAWS::DynamoDB::TableClientInputPort m_tableClientPort {
-            EIP_TableClient
-        };
-
         void ApplyResult(const Aws::DynamoDB::Model::DeleteItemRequest& request,
             const Aws::DynamoDB::Model::DeleteItemOutcome& outcome,
             const std::shared_ptr<const Aws::Client::AsyncCallerContext>& baseContext);

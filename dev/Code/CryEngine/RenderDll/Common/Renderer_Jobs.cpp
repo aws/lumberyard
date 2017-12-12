@@ -1057,14 +1057,6 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
     }
 
     renderObject->m_ObjFlags &= ~FOB_HAS_PREVMATRIX;
-
-    // don't apply regular object motion blur to skinned objects with bending (foliage)
-    // they get their motion blur in the DrawSkinned Pass
-    if (renderObjectData->m_pSkinningData && renderObjectData->m_pSkinningData->pAsyncJobs == nullptr)
-    {
-        return;
-    }
-
     if (renderObjectData->m_uniqueObjectId != 0 && renderObject->m_fDistance < CRenderer::CV_r_MotionBlurMaxViewDist)
     {
         const AZ::u32 currentFrameId = passInfo.GetMainFrameID();

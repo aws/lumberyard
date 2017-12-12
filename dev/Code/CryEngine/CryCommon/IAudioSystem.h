@@ -54,25 +54,27 @@ namespace Audio
         eAMRT_NONE                      = 0,
         eAMRT_INIT_AUDIO_IMPL           = BIT(0),
         eAMRT_RELEASE_AUDIO_IMPL        = BIT(1),
-        eAMRT_REFRESH_AUDIO_SYSTEM      = BIT(2),
-        eAMRT_RESERVE_AUDIO_OBJECT_ID   = BIT(3),
-        eAMRT_LOSE_FOCUS                = BIT(4),
-        eAMRT_GET_FOCUS                 = BIT(5),
-        eAMRT_MUTE_ALL                  = BIT(6),
-        eAMRT_UNMUTE_ALL                = BIT(7),
-        eAMRT_STOP_ALL_SOUNDS           = BIT(8),
-        eAMRT_PARSE_CONTROLS_DATA       = BIT(9),
-        eAMRT_PARSE_PRELOADS_DATA       = BIT(10),
-        eAMRT_CLEAR_CONTROLS_DATA       = BIT(11),
-        eAMRT_CLEAR_PRELOADS_DATA       = BIT(12),
-        eAMRT_PRELOAD_SINGLE_REQUEST    = BIT(13),
-        eAMRT_UNLOAD_SINGLE_REQUEST     = BIT(14),
-        eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE = BIT(15),
-        eAMRT_DRAW_DEBUG_INFO           = BIT(16), // Only used internally!
-        eAMRT_ADD_REQUEST_LISTENER      = BIT(17),
-        eAMRT_REMOVE_REQUEST_LISTENER   = BIT(18),
-        eAMRT_CHANGE_LANGUAGE           = BIT(19),
-        eAMRT_RETRIGGER_AUDIO_CONTROLS  = BIT(20),
+        eAMRT_RESERVE_AUDIO_OBJECT_ID   = BIT(2),
+        eAMRT_ADD_REQUEST_LISTENER      = BIT(3),
+        eAMRT_REMOVE_REQUEST_LISTENER   = BIT(4),
+        eAMRT_CREATE_SOURCE             = BIT(5),
+        eAMRT_DESTROY_SOURCE            = BIT(6),
+        eAMRT_PARSE_CONTROLS_DATA       = BIT(7),
+        eAMRT_PARSE_PRELOADS_DATA       = BIT(8),
+        eAMRT_CLEAR_CONTROLS_DATA       = BIT(9),
+        eAMRT_CLEAR_PRELOADS_DATA       = BIT(10),
+        eAMRT_PRELOAD_SINGLE_REQUEST    = BIT(11),
+        eAMRT_UNLOAD_SINGLE_REQUEST     = BIT(12),
+        eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE = BIT(13),
+        eAMRT_REFRESH_AUDIO_SYSTEM      = BIT(14),
+        eAMRT_LOSE_FOCUS                = BIT(15),
+        eAMRT_GET_FOCUS                 = BIT(16),
+        eAMRT_MUTE_ALL                  = BIT(17),
+        eAMRT_UNMUTE_ALL                = BIT(18),
+        eAMRT_STOP_ALL_SOUNDS           = BIT(19),
+        eAMRT_DRAW_DEBUG_INFO           = BIT(20), // Only used internally!
+        eAMRT_CHANGE_LANGUAGE           = BIT(21),
+        eAMRT_RETRIGGER_AUDIO_CONTROLS  = BIT(22),
     };
 
     enum EAudioCallbackManagerRequestType : TATLEnumFlagsType
@@ -253,6 +255,36 @@ namespace Audio
 
         const void* const pObjectToListenTo;
         AudioRequestCallbackType func;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioManagerRequestData<eAMRT_CREATE_SOURCE>
+        : public SAudioManagerRequestDataBase
+    {
+        SAudioManagerRequestData(const SAudioInputConfig& sourceConfig)
+            : SAudioManagerRequestDataBase(eAMRT_CREATE_SOURCE)
+            , m_sourceConfig(sourceConfig)
+        {}
+
+        ~SAudioManagerRequestData<eAMRT_CREATE_SOURCE>() override {}
+
+        SAudioInputConfig m_sourceConfig;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioManagerRequestData<eAMRT_DESTROY_SOURCE>
+        : public SAudioManagerRequestDataBase
+    {
+        SAudioManagerRequestData(TAudioSourceId sourceId)
+            : SAudioManagerRequestDataBase(eAMRT_DESTROY_SOURCE)
+            , m_sourceId(sourceId)
+        {}
+
+        ~SAudioManagerRequestData<eAMRT_DESTROY_SOURCE>() override {}
+
+        const TAudioSourceId m_sourceId;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -870,6 +902,7 @@ namespace Audio
         virtual void Initialize(const char* const sObjectName, const bool bInitAsync = true) = 0;
         virtual void Release() = 0;
         virtual void Reset() = 0;
+        virtual void ExecuteSourceTrigger(const TAudioControlID nTriggerID, const Audio::TAudioControlID& sourceId, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) = 0;
         virtual void ExecuteTrigger(const TAudioControlID nTriggerID, const ELipSyncMethod eLipSyncMethod, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) = 0;
         virtual void StopAllTriggers() = 0;
         virtual void StopTrigger(const TAudioControlID nTriggerID) = 0;

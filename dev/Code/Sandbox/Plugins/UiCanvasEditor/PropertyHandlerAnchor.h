@@ -46,6 +46,7 @@ private:
     AzToolsFramework::PropertyVectorCtrl* m_propertyVectorCtrl;
     AnchorPresetsWidget* m_anchorPresetsWidget;
     QLabel* m_disabledLabel;
+    QLabel* m_controlledByFitterLabel;
     bool m_isReadOnly;
 };
 

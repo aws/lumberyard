@@ -41,12 +41,6 @@
 #define LACKS_SYS_TYPES_H
 #define LACKS_ERRNO_H
 
-#ifdef AZ_PLATFORM_WII
-#   define MALLOC_ALIGNMENT ((size_t)32U)
-
-#   include <stdlib.h> // for size_t, ptrdiff_t
-using namespace std;
-#endif //
 
 // Need to enable footers so frees lock the right mspace (we can remove in release if we use only one memory space)
 #define FOOTERS 1
@@ -69,7 +63,7 @@ void ConstuctMutex(void* address)
 {
     AZStd::mutex* mx = new(address) AZStd::mutex();
     (void)mx;
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360)
+#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) // ACCEPTED_USE
     // In memory allocation case (usually tools) we might have high contention,
     // using spin lock will improve performance.
     SetCriticalSectionSpinCount(mx->native_handle(), 4000);

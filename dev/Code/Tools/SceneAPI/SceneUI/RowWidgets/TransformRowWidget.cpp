@@ -24,6 +24,32 @@ namespace AZ
         namespace SceneUI
         {
             AZ_CLASS_ALLOCATOR_IMPL(ExpandedTransform, SystemAllocator, 0);
+
+            void PopulateVector3(AzToolsFramework::PropertyVectorCtrl* vectorProperty, AZ::Vector3& vector)
+            {
+                AZ_Assert(vectorProperty->getSize() == 3, "Trying to populate a Vector3 from an invalidly sized Vector PropertyCtrl");
+
+                if (vectorProperty->getSize() < 3)
+                {
+                    return;
+                }
+
+                AzToolsFramework::VectorElement** elements = vectorProperty->getElements();
+
+                for (int i = 0; i < vectorProperty->getSize(); ++i)
+                {
+                    AzToolsFramework::VectorElement* currentElement = elements[i];
+                    vector.SetElement(i, currentElement->GetValue());
+                }
+            }
+
+            ExpandedTransform::ExpandedTransform()
+                : m_translation(0, 0, 0)
+                , m_rotation(0, 0, 0)
+                , m_scale(1, 1, 1)
+            {
+            }
+
             ExpandedTransform::ExpandedTransform(const Transform& transform)
             {
                 SetTransform(transform);
@@ -48,14 +74,29 @@ namespace AZ
                 return m_translation;
             }
 
+            void ExpandedTransform::SetTranslation(const AZ::Vector3& translation)
+            {
+                m_translation = translation;
+            }
+
             const AZ::Vector3& ExpandedTransform::GetRotation() const
             {
                 return m_rotation;
             }
 
+            void ExpandedTransform::SetRotation(const AZ::Vector3& rotation)
+            {
+                m_rotation = rotation;
+            }
+
             const AZ::Vector3& ExpandedTransform::GetScale() const
             {
                 return m_scale;
+            }
+
+            void ExpandedTransform::SetScale(const AZ::Vector3& scale)
+            {
+                m_scale = scale;
             }
             
             
@@ -68,19 +109,26 @@ namespace AZ
                 setLayout(layout);
 
                 m_translationWidget = aznew AzToolsFramework::PropertyVectorCtrl(this, 3);
-                m_rotationWidget = aznew AzToolsFramework::PropertyVectorCtrl(this, 3);
-                m_scaleWidget = aznew AzToolsFramework::PropertyVectorCtrl(this, 3);
+                m_translationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+                m_translationWidget->setMinimum(-9999999);
+                m_translationWidget->setMaximum(9999999);
 
+                m_rotationWidget = aznew AzToolsFramework::PropertyVectorCtrl(this, 3);
+                m_rotationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
                 m_rotationWidget->setLabel(0, "P");
                 m_rotationWidget->setLabel(1, "R");
                 m_rotationWidget->setLabel(2, "Y");
                 m_rotationWidget->setLabelStyle(0, "font: bold; color: rgb(184,51,51);");
                 m_rotationWidget->setLabelStyle(1, "font: bold; color: rgb(48,208,120);");
                 m_rotationWidget->setLabelStyle(2, "font: bold; color: rgb(66,133,244);");
+                m_rotationWidget->setMinimum(0);
+                m_rotationWidget->setMaximum(360);
+                m_rotationWidget->setSuffix(" degrees");
 
-                m_translationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-                m_rotationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+                m_scaleWidget = aznew AzToolsFramework::PropertyVectorCtrl(this, 3);
                 m_scaleWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+                m_scaleWidget->setMinimum(0);
+                m_scaleWidget->setMaximum(10000);
                 
                 layout->addWidget(new QLabel("Position"), 0, 0);
                 layout->addWidget(m_translationWidget, 0, 1);
@@ -88,6 +136,46 @@ namespace AZ
                 layout->addWidget(m_rotationWidget, 1, 1);
                 layout->addWidget(new QLabel("Scale"), 2, 0);
                 layout->addWidget(m_scaleWidget, 2, 1);
+
+                QObject::connect(m_translationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                {
+                    AzToolsFramework::PropertyVectorCtrl* widget = this->GetTranslationWidget();
+                    AZ::Vector3 translation;
+
+                    PopulateVector3(widget, translation);
+
+                    m_transform.SetTranslation(translation);
+                    AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, this);
+                });
+
+                QObject::connect(m_rotationWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                {
+                    AzToolsFramework::PropertyVectorCtrl* widget = this->GetRotationWidget();
+                    AZ::Vector3 rotation;
+
+                    PopulateVector3(widget, rotation);
+
+                    m_transform.SetRotation(rotation);
+                    AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, this);
+                });
+
+                QObject::connect(m_scaleWidget, &AzToolsFramework::PropertyVectorCtrl::valueChanged, [this]
+                {
+                    AzToolsFramework::PropertyVectorCtrl* widget = this->GetScaleWidget();
+                    AZ::Vector3 scale;
+
+                    PopulateVector3(widget, scale);
+
+                    m_transform.SetScale(scale);
+                    AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, this);
+                });
+            }
+
+            void TransformRowWidget::SetEnableEdit(bool enableEdit)
+            {
+                m_translationWidget->setEnabled(enableEdit);
+                m_rotationWidget->setEnabled(enableEdit);
+                m_scaleWidget->setEnabled(enableEdit);
             }
 
             void TransformRowWidget::SetTransform(const AZ::Transform& transform)
@@ -113,7 +201,7 @@ namespace AZ
 
             void TransformRowWidget::GetTransform(AZ::Transform& transform) const
             {
-                return m_transform.GetTransform(transform);
+                m_transform.GetTransform(transform);
             }
 
             const ExpandedTransform& TransformRowWidget::GetExpandedTransform() const

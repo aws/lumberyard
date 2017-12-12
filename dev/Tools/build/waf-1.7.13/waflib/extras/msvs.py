@@ -84,77 +84,66 @@ HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl)'
 PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0"
 	xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
 	<ItemGroup Label="ProjectConfigurations">
 		${for b in project.build_properties}
-		<ProjectConfiguration Include="${b.configuration}|${b.platform}">
-			<Configuration>${b.configuration}</Configuration>
-			<Platform>${b.platform}</Platform>
-		</ProjectConfiguration>
+			<ProjectConfiguration Include="${b.configuration}|${b.platform}">
+				<Configuration>${b.configuration}</Configuration>
+				<Platform>${b.platform}</Platform>
+			</ProjectConfiguration>
 		${endfor}
 	</ItemGroup>
-
 	<PropertyGroup Label="Globals">
 		<ProjectGuid>{${project.uuid}}</ProjectGuid>
 		<Keyword>MakeFileProj</Keyword>
 		<ProjectName>${project.name}</ProjectName>
 	</PropertyGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-
 	${for b in project.build_properties}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'" Label="Configuration">
-		<ConfigurationType>Makefile</ConfigurationType>
-		<OutDir>${b.outdir}</OutDir>
-	</PropertyGroup>
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'" Label="Configuration">
+			<ConfigurationType>Makefile</ConfigurationType>
+			<OutDir>${b.outdir}</OutDir>
+		</PropertyGroup>
 	${endfor}
-
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-	<ImportGroup Label="ExtensionSettings">
-	</ImportGroup>
-
+	<ImportGroup Label="ExtensionSettings" />
 	${for b in project.build_properties}
-	<ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
-		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-	</ImportGroup>
+		<ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
+			<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+		</ImportGroup>
 	${endfor}
-
 	${for b in project.build_properties}
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
-		<NMakeBuildCommandLine>${xml:project.get_build_command(b)}</NMakeBuildCommandLine>
-		<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}</NMakeReBuildCommandLine>
-		<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}</NMakeCleanCommandLine>
-		<NMakeIncludeSearchPath>${xml:b.includes_search_path}</NMakeIncludeSearchPath>
-		<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions};$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-		<IncludePath>${xml:b.includes_search_path}</IncludePath>
-		<ExecutablePath>$(ExecutablePath)</ExecutablePath>
-
-		${if getattr(b, 'output_file', None)}
-		<NMakeOutput>${xml:b.output_file}</NMakeOutput>
-		${endif}
-		${if getattr(b, 'deploy_dir', None)}
-		<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
-		${endif}
-	</PropertyGroup>
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
+			<NMakeBuildCommandLine>${xml:project.get_build_command(b)}</NMakeBuildCommandLine>
+			<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}</NMakeReBuildCommandLine>
+			<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}</NMakeCleanCommandLine>
+			<NMakeIncludeSearchPath>${xml:b.includes_search_path}</NMakeIncludeSearchPath>
+			<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions};$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+			<IncludePath>${xml:b.includes_search_path}</IncludePath>
+			<ExecutablePath>$(ExecutablePath)</ExecutablePath>
+			${if getattr(b, 'output_file', None)}
+				<NMakeOutput>${xml:b.output_file}</NMakeOutput>
+			${endif}
+			${if getattr(b, 'deploy_dir', None)}
+				<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
+			${endif}
+		</PropertyGroup>
 	${endfor}
-
 	${for b in project.build_properties}
 		${if getattr(b, 'deploy_dir', None)}
-	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
-		<Deploy>
-			<DeploymentType>CopyToHardDrive</DeploymentType>
-		</Deploy>
-	</ItemDefinitionGroup>
+			<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration}|${b.platform}'">
+				<Deploy>
+					<DeploymentType>CopyToHardDrive</DeploymentType>
+				</Deploy>
+			</ItemDefinitionGroup>
 		${endif}
 	${endfor}
-
 	<ItemGroup>
 		${for x in project.source}
-		<${project.get_key(x)} Include='${x.abspath()}' />
+			<${project.get_key(x)} Include='${x.abspath()}' />
 		${endfor}
 	</ItemGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-	<ImportGroup Label="ExtensionTargets">
-	</ImportGroup>
+	<ImportGroup Label="ExtensionTargets" />
 </Project>
 '''
 
@@ -184,49 +173,47 @@ PROJECT_2008_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 	TargetFrameworkVersion="196613">
 	<Platforms>
 		${if project.build_properties}
-		${for b in project.build_properties}
-		   <Platform Name="${xml: b.platform}" />
-		${endfor}
+			${for b in project.build_properties}
+				<Platform Name="${xml: b.platform}" />
+			${endfor}
 		${else}
-		   <Platform Name="Win32" />
+			<Platform Name="Win32" />
 		${endif}
 	</Platforms>
-	<ToolFiles>
-	</ToolFiles>
+	<ToolFiles />
 	<Configurations>
 		${if project.build_properties}
-		${for b in project.build_properties}
-		<Configuration
-			Name="${xml: b.configuration}|${xml: b.platform}"
-			IntermediateDirectory="$ConfigurationName"
-			OutputDirectory="${xml: b.outdir}"
-			ConfigurationType="0">
-			<Tool
-				Name="VCNMakeTool"
-				BuildCommandLine="${xml: project.get_build_command(b)}"
-				ReBuildCommandLine="${xml: project.get_rebuild_command(b)}"
-				CleanCommandLine="${xml: project.get_clean_command(b)}"
-				${if getattr(b, 'output_file', None)}
-				Output="${xml: b.output_file}"
-				${endif}
-				PreprocessorDefinitions="${xml: b.preprocessor_definitions}"
-				IncludeSearchPath="${xml: b.includes_search_path}"
-				ForcedIncludes=""
-				ForcedUsingAssemblies=""
-				AssemblySearchPath=""
-				CompileAsManaged=""
-			/>
-		</Configuration>
-		${endfor}
+			${for b in project.build_properties}
+				<Configuration
+					Name="${xml: b.configuration}|${xml: b.platform}"
+					IntermediateDirectory="$ConfigurationName"
+					OutputDirectory="${xml: b.outdir}"
+					ConfigurationType="0"
+					<Tool
+						Name="VCNMakeTool"
+						BuildCommandLine="${xml: project.get_build_command(b)}"
+						ReBuildCommandLine="${xml: project.get_rebuild_command(b)}"
+						CleanCommandLine="${xml: project.get_clean_command(b)}"
+						${if getattr(b, 'output_file', None)}
+							Output="${xml: b.output_file}"
+						${endif}
+						PreprocessorDefinitions="${xml: b.preprocessor_definitions}"
+						IncludeSearchPath="${xml: b.includes_search_path}"
+						ForcedIncludes=""
+						ForcedUsingAssemblies=""
+						AssemblySearchPath=""
+						CompileAsManaged=""
+					/>
+				</Configuration>
+			${endfor}
 		${else}
 			<Configuration Name="Release|Win32" >
-		</Configuration>
+			</Configuration>
 		${endif}
 	</Configurations>
-	<References>
-	</References>
+	<References />
 	<Files>
-${project.display_filter()}
+		${project.display_filter()}
 	</Files>
 </VisualStudioProject>
 '''
@@ -239,23 +226,23 @@ EndProject${endfor}
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		${if project.all_projects}
-		${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}
-		${configuration}|${platform} = ${configuration}|${platform}
-		${endfor}
+			${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}
+				${configuration}|${platform} = ${configuration}|${platform}
+			${endfor}
 		${endif}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		${for p in project.all_projects}
 			${if hasattr(p, 'source')}
-			${for b in p.build_properties}
-		{${p.uuid}}.${b.configuration}|${b.platform}.ActiveCfg = ${b.configuration}|${b.platform}
-			${if getattr(p, 'is_active', None)}
-		{${p.uuid}}.${b.configuration}|${b.platform}.Build.0 = ${b.configuration}|${b.platform}
-			${endif}
-			${if getattr(p, 'is_deploy', None)}
-		{${p.uuid}}.${b.configuration}|${b.platform}.Deploy.0 = ${b.configuration}|${b.platform}
-			${endif}
-			${endfor}
+				${for b in p.build_properties}
+					{${p.uuid}}.${b.configuration}|${b.platform}.ActiveCfg = ${b.configuration}|${b.platform}
+					${if getattr(p, 'is_active', None)}
+						{${p.uuid}}.${b.configuration}|${b.platform}.Build.0 = ${b.configuration}|${b.platform}
+					${endif}
+					${if getattr(p, 'is_deploy', None)}
+						{${p.uuid}}.${b.configuration}|${b.platform}.Deploy.0 = ${b.configuration}|${b.platform}
+					${endif}
+				${endfor}
 			${endif}
 		${endfor}
 	EndGlobalSection
@@ -265,7 +252,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 	${for p in project.all_projects}
 		${if p.parent}
-		{${p.uuid}} = {${p.parent.uuid}}
+			{${p.uuid}} = {${p.parent.uuid}}
 		${endif}
 	${endfor}
 	EndGlobalSection

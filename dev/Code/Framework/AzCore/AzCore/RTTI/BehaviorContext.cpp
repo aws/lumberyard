@@ -12,15 +12,16 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Component/EntityBus.h>
 
 namespace AZ
 {
     //=========================================================================
     // BehaviorMethod
     //=========================================================================
-    BehaviorMethod::BehaviorMethod()
-        : m_debugDescription(nullptr)
-        , m_defaultArguments(nullptr)
+    BehaviorMethod::BehaviorMethod(BehaviorContext* context)
+        : OnDemandReflectionOwner(*context)
+        , m_debugDescription(nullptr)
     {
     }
 
@@ -29,31 +30,22 @@ namespace AZ
     //=========================================================================
     BehaviorMethod::~BehaviorMethod()
     {
-        delete m_defaultArguments;
-
         for (auto attrIt : m_attributes)
         {
             delete attrIt.second;
         }
-    }
-
-    //=========================================================================
-    // GetMinNumberOfArguments
-    //=========================================================================
-    size_t BehaviorMethod::GetMinNumberOfArguments() const
-    {
-        return GetNumArguments() - (m_defaultArguments ? m_defaultArguments->GetNumValues() : 0);
+        m_attributes.clear();
     }
 
     //=========================================================================
     // BehaviorProperty
     //=========================================================================
-    BehaviorProperty::BehaviorProperty()
-        : m_getter(nullptr)
+    BehaviorProperty::BehaviorProperty(BehaviorContext* context)
+        : OnDemandReflectionOwner(*context)
+        , m_getter(nullptr)
         , m_setter(nullptr)
     {
     }
-    
     
     //=========================================================================
     // ~BehaviorProperty
@@ -106,7 +98,13 @@ namespace AZ
     //=========================================================================
     BehaviorEBus::~BehaviorEBus()
     {
-        for (auto propertyIt : m_events)
+        // Clear all lists of things now to prevent double deleting
+        // (if they're found in the lists later, they'll be deleted again)
+        auto events = AZStd::move(m_events);
+        auto attributes = AZStd::move(m_attributes);
+
+        // Actually delete everything
+        for (auto propertyIt : events)
         {
             delete propertyIt.second.m_broadcast;
             delete propertyIt.second.m_event;
@@ -118,7 +116,7 @@ namespace AZ
             }
         }
 
-        for (auto attrIt : m_attributes)
+        for (auto attrIt : attributes)
         {
             delete attrIt.second;
         }
@@ -131,9 +129,9 @@ namespace AZ
     }
 
     //=========================================================================
-    // BehaviorContext::GlobalMethodInfo
+    // BehaviorContext::GlobalMethodBuilder
     //=========================================================================
-    BehaviorContext::GlobalMethodInfo::GlobalMethodInfo(BehaviorContext* context, const char* methodName, BehaviorMethod* method)
+    BehaviorContext::GlobalMethodBuilder::GlobalMethodBuilder(BehaviorContext* context, const char* methodName, BehaviorMethod* method)
         : Base::GenericAttributes(context)
         , m_name(methodName)
         , m_method(method)
@@ -145,16 +143,12 @@ namespace AZ
     }
 
     //=========================================================================
-    // BehaviorContext::~GlobalMethodInfo
+    // BehaviorContext::~GlobalMethodBuilder
     //=========================================================================
-    BehaviorContext::GlobalMethodInfo::~GlobalMethodInfo()
+    BehaviorContext::GlobalMethodBuilder::~GlobalMethodBuilder()
     {
         // process all on demand queued reflections
-        decltype (Base::m_context->m_toProcessOnDemandReflection) toProcess(AZStd::move(Base::m_context->m_toProcessOnDemandReflection));
-        for (auto toReflectIt : toProcess)
-        {
-            toReflectIt.second(Base::m_context);
-        }
+        m_context->ExecuteQueuedOnDemandReflections();
 
         if (m_method)
         {
@@ -163,17 +157,17 @@ namespace AZ
     }
 
     //=========================================================================
-    // BehaviorContext::GlobalMethodInfo::operator->
+    // BehaviorContext::GlobalMethodBuilder::operator->
     //=========================================================================
-    BehaviorContext::GlobalMethodInfo* BehaviorContext::GlobalMethodInfo::operator->()
+    BehaviorContext::GlobalMethodBuilder* BehaviorContext::GlobalMethodBuilder::operator->()
     {
         return this;
     }
     
     //=========================================================================
-    // BehaviorContext::GlobalPropertyInfo
+    // BehaviorContext::GlobalPropertyBuilder
     //=========================================================================
-    BehaviorContext::GlobalPropertyInfo::GlobalPropertyInfo(BehaviorContext* context, BehaviorProperty* prop)
+    BehaviorContext::GlobalPropertyBuilder::GlobalPropertyBuilder(BehaviorContext* context, BehaviorProperty* prop)
         : Base::GenericAttributes(context)
         , m_prop(prop)
     {
@@ -186,14 +180,10 @@ namespace AZ
     //=========================================================================
     // BehaviorContext::~PropertyInfo
     //=========================================================================
-    BehaviorContext::GlobalPropertyInfo::~GlobalPropertyInfo()
+    BehaviorContext::GlobalPropertyBuilder::~GlobalPropertyBuilder()
     {
         // process all on demand queued reflections
-        decltype (Base::m_context->m_toProcessOnDemandReflection) toProcess(AZStd::move(Base::m_context->m_toProcessOnDemandReflection));
-        for (auto toReflectIt : toProcess)
-        {
-            toReflectIt.second(Base::m_context);
-        }
+        m_context->ExecuteQueuedOnDemandReflections();
 
         if (m_prop)
         {
@@ -202,9 +192,9 @@ namespace AZ
     }
 
     //=========================================================================
-    // BehaviorContext::GlobalPropertyInfo::operator->
+    // BehaviorContext::GlobalPropertyBuilder::operator->
     //=========================================================================
-    BehaviorContext::GlobalPropertyInfo* BehaviorContext::GlobalPropertyInfo::operator->()
+    BehaviorContext::GlobalPropertyBuilder* BehaviorContext::GlobalPropertyBuilder::operator->()
     {
         return this;
     }
@@ -212,36 +202,38 @@ namespace AZ
     //=========================================================================
     // BehaviorContext
     //=========================================================================
-    BehaviorContext::BehaviorContext()
-    {        
-    }
+    BehaviorContext::BehaviorContext() = default;
 
     //=========================================================================
     // ~BehaviorContext
     //=========================================================================
     BehaviorContext::~BehaviorContext()
     {
-        for (auto methodIt : m_methods)
+        // Clear all lists of things now to prevent double deleting
+        // (if they're found in the lists later, they'll be deleted again)
+        auto methods = AZStd::move(m_methods);
+        auto properties = AZStd::move(m_properties);
+        auto classes = AZStd::move(m_classes);
+        auto ebuses = AZStd::move(m_ebuses);
+        m_typeToClassMap.clear();
+
+        // Actually delete everything
+        for (auto methodIt : methods)
         {
             delete methodIt.second;
         }
 
-        for (BehaviorMethod* method : m_attributeMethods)
-        {
-            delete method;
-        }
-
-        for (auto propertyIt : m_properties)
+        for (auto propertyIt : properties)
         {
             delete propertyIt.second;
         }
 
-        for (auto classIt : m_classes)
+        for (auto classIt : classes)
         {
             delete classIt.second;
         }
 
-        for (auto ebusIt : m_ebuses)
+        for (auto ebusIt : ebuses)
         {
             delete ebusIt.second;
         }
@@ -271,27 +263,30 @@ namespace AZ
     //=========================================================================
     BehaviorClass::~BehaviorClass()
     {
-        for (BehaviorMethod* constructor : m_constructors)
+        // Clear all lists of things now to prevent double deleting
+        // (if they're found in the lists later, they'll be deleted again)
+        auto constructors = AZStd::move(m_constructors);
+        auto methods = AZStd::move(m_methods);
+        auto properties = AZStd::move(m_properties);
+        auto attributes = AZStd::move(m_attributes);
+
+        // Actually delete everything
+        for (BehaviorMethod* constructor : constructors)
         {
             delete constructor;
         }
 
-        for (auto methodIt : m_methods)
+        for (auto methodIt : methods)
         {
             delete methodIt.second;
         }
 
-        for (BehaviorMethod* method : m_attributeMethods)
-        {
-            delete method;
-        }
-
-        for (auto propertyIt : m_properties)
+        for (auto propertyIt : properties)
         {
             delete propertyIt.second;
         }
 
-        for (auto attrIt : m_attributes)
+        for (auto attrIt : attributes)
         {
             delete attrIt.second;
         }
@@ -302,17 +297,17 @@ namespace AZ
     //=========================================================================
     BehaviorObject BehaviorClass::Create() const
     {
-        BehaviorObject result;
-        if (m_defaultConstructor)
+        return Create(Allocate());
+    }
+    
+    BehaviorObject BehaviorClass::Create(void* address) const
+    {
+        if (m_defaultConstructor && address)
         {
-            result.m_address = Allocate(); 
-            if (result.m_address)
-            {
-                m_defaultConstructor(result.m_address, m_userData);
-            }
-            result.m_typeId = m_typeId;
+            m_defaultConstructor(address, m_userData);
         }
-        return result;
+
+        return BehaviorObject(address, m_typeId);
     }
 
     //=========================================================================
@@ -436,6 +431,11 @@ namespace AZ
         return m_events;
     }
 
+    bool BehaviorEBusHandler::BusForwarderEvent::HasResult() const
+    {
+        return !m_parameters.empty() && m_parameters.front().m_typeId != azrtti_typeid<void>();
+    }
+
     namespace BehaviorContextHelper
     {
         AZ::BehaviorClass* GetClass(BehaviorContext* behaviorContext, const AZ::Uuid& id)
@@ -447,6 +447,78 @@ namespace AZ
             }
             return nullptr;
         }
+
+        const BehaviorClass* GetClass(const AZStd::string& classNameString)
+        {
+            const char* className = classNameString.c_str();
+            AZ::BehaviorContext* behaviorContext(nullptr);
+            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+            if (!behaviorContext)
+            {
+                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                return nullptr;
+            }
+
+            const auto classIter(behaviorContext->m_classes.find(className));
+            if (classIter == behaviorContext->m_classes.end())
+            {
+                AZ_Warning("Script Canvas", false, "No class by name of %s in the behavior context!", className);
+                return nullptr;
+            }
+
+            AZ_Assert(classIter->second, "BehaviorContext Class entry %s has no class pointer", className);
+            return classIter->second;
+        }
+
+        const BehaviorClass* GetClass(AZ::Uuid typeID)
+        {
+            AZ::BehaviorContext* behaviorContext(nullptr);
+            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+            if (!behaviorContext)
+            {
+                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                return nullptr;
+            }
+
+            const auto classIter(behaviorContext->m_typeToClassMap.find(typeID));
+            if (classIter == behaviorContext->m_typeToClassMap.end())
+            {
+                AZ_Warning("Script Canvas", false, "No class by typeID of %s in the behavior context!", typeID.ToString<AZStd::string>().c_str());
+                return nullptr;
+            }
+
+            AZ_Assert(classIter->second, "BehaviorContext class by typeID %s is nullptr in the behavior context!", typeID.ToString<AZStd::string>().c_str());
+            return classIter->second;
+        }
+    
+        AZ::Uuid GetClassType(const AZStd::string& classNameString)
+        {
+            const char* className = classNameString.c_str();
+            AZ::BehaviorContext* behaviorContext(nullptr);
+            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+            if (!behaviorContext)
+            {
+                AZ_Error("Script Canvas", false, "A behavior context is required!");
+                return AZ::Uuid::CreateNull();
+            }
+
+            const auto classIter(behaviorContext->m_classes.find(className));
+            if (classIter == behaviorContext->m_classes.end())
+            {
+                AZ_Error("Script Canvas", false, "No class by name of %s in the behavior context!", className);
+                return AZ::Uuid::CreateNull();
+            }
+
+            AZ::BehaviorClass* behaviorClass(classIter->second);
+            AZ_Assert(behaviorClass, "BehaviorContext Class entry %s has no class pointer", className);
+            return behaviorClass->m_typeId;
+        }
+
+        bool IsStringParameter(const BehaviorParameter& parameter)
+        {
+            return (parameter.m_traits & AZ::BehaviorParameter::TR_STRING) == AZ::BehaviorParameter::TR_STRING;
+        }
+
     }
 
 } // namespace AZ

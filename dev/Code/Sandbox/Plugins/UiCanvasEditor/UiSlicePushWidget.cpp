@@ -246,50 +246,11 @@ namespace UiCanvasEditor
     };
 
     //=========================================================================
-    AZ::u32 GetNodeSliceFlags(const AzToolsFramework::InstanceDataNode* node)
-    {
-        AZ_Assert(node, "Invalid data node provided to IsNodePushable");
-
-        const AZ::Edit::ElementData* editData = node->GetElementEditMetadata();
-        const AZ::Edit::ElementData* classEditData = nullptr;
-        if (node->GetClassMetadata()->m_editData)
-        {
-            classEditData = node->GetClassMetadata()->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
-        }
-
-        AZ::u32 sliceFlags = 0;
-
-        if (editData)
-        {
-            AZ::Edit::Attribute* slicePushAttribute = editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-            if (slicePushAttribute)
-            {
-                AZ::u32 elementSliceFlags = 0;
-                AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                reader.Read<AZ::u32>(elementSliceFlags);
-                sliceFlags |= elementSliceFlags;
-            }
-        }
-
-        if (classEditData)
-        {
-            AZ::Edit::Attribute* slicePushAttribute = classEditData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-            if (slicePushAttribute)
-            {
-                AZ::u32 classSliceFlags = 0;
-                AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                reader.Read<AZ::u32>(classSliceFlags);
-                sliceFlags |= classSliceFlags;
-            }
-        }
-
-        return sliceFlags;
-    }
-
-    //=========================================================================
     bool IsNodePushable(const AzToolsFramework::InstanceDataNode* node, bool isRootEntity)
     {
-        const AZ::u32 sliceFlags = GetNodeSliceFlags(node);
+        AZ_Assert(node, "Invalid instance data node");
+
+        const AZ::u32 sliceFlags = AzToolsFramework::SliceUtilities::GetNodeSliceFlags(*node);
 
         if (0 != (sliceFlags & AZ::Edit::SliceFlags::NotPushable))
         {
@@ -902,7 +863,7 @@ namespace UiCanvasEditor
                     AzToolsFramework::InstanceDataNode* node = nodeStack.back();
                     nodeStack.pop_back();
 
-                    if (!IsNodePushable(node, isRootEntity))
+                    if (!AzToolsFramework::SliceUtilities::IsNodePushable(*node, isRootEntity))
                     {
                         continue;
                     }
@@ -912,7 +873,7 @@ namespace UiCanvasEditor
                         nodeStack.push_back(&childNode);
                     }
 
-                    if (node->IsDifferentVersusComparison() || node->IsNewVersusComparison() || node->IsRemovedVersusComparison())
+                    if (node->HasChangesVersusComparison(false))
                     {
                         AZStd::vector<AzToolsFramework::InstanceDataNode*> walkStack;
                         walkStack.push_back(node);
@@ -936,37 +897,7 @@ namespace UiCanvasEditor
 
                             // Use the same visibility determination as the inspector.
                             AzToolsFramework::NodeDisplayVisibility visibility = (walkNode == node) ? 
-                                AzToolsFramework::NodeDisplayVisibility::Visible : CalculateNodeDisplayVisibility(*walkNode);
-
-                            // Components should always appear, even if they're not exposed in the inspector UI.
-                            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
-                            {
-                                const AZ::SerializeContext::ClassData* classData = walkNode->GetClassMetadata();
-                                if (classData && classData->m_azRtti && classData->m_azRtti->IsTypeOf(azrtti_typeid<AZ::Component>()))
-                                {
-                                    visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
-                                }
-                            }
-
-                            // Nodes marked PushableEvenIfInvisible should appear when their child nodes are being pushed
-                            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
-                            {
-                                const AZ::Edit::ElementData* editData = walkNode->GetElementEditMetadata();
-                                if (editData)
-                                {
-                                    AZ::Edit::Attribute* slicePushAttribute = editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-                                    if (slicePushAttribute)
-                                    {
-                                        AZ::u32 flags = 0;
-                                        AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                                        reader.Read<AZ::u32>(flags);
-                                        if (flags & AZ::Edit::UISliceFlags::PushableEvenIfInvisible)
-                                        {
-                                            visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
-                                        }
-                                    }
-                                }
-                            }
+                                AzToolsFramework::NodeDisplayVisibility::Visible : CalculateNodeDisplayVisibility(*walkNode, true);
 
                             if (visibility == AzToolsFramework::NodeDisplayVisibility::Visible)
                             {
@@ -1287,15 +1218,14 @@ namespace UiCanvasEditor
                 // Otherwise, locate the target entity in the slice asset.
                 targetEntity = UiSliceManager::FindAncestorInTargetSlice(clonedAssets[item->m_selectedAsset], item->m_entityItem->m_ancestors);
 
-                if (!targetEntity)
-                {
-                    pushError = QString("Failed to locate target entity in slice for \"%1.\"").arg(GetNodeDisplayName(*item->m_node).c_str());
-                    break;
-                }
-
                 // If this is a removal push, pluck the entity from the target slice.
                 if (item->m_isEntityRemoval)
                 {
+                    if (!targetEntity)
+                    {
+                        targetEntity = item->m_entity;
+                    }
+
                     if (!clonedAssets[item->m_selectedAsset].Get()->GetComponent()->RemoveEntity(targetEntity))
                     {
                         pushError = QString("Failed to remove entity \"%1\" [%llu] from slice.")
@@ -1305,6 +1235,18 @@ namespace UiCanvasEditor
                     }
 
                     continue;
+                }
+
+                // Check that a valid target entity was found
+                if (!targetEntity)
+                {
+                    AZStd::string nodeDisplayName;
+                    if (item->m_node)
+                    {
+                        nodeDisplayName = GetNodeDisplayName(*item->m_node);
+                    }
+                    pushError = QString("Failed to locate target entity in slice for \"%1.\"").arg(nodeDisplayName.c_str());
+                    break;
                 }
 
                 // Generate target IDH.

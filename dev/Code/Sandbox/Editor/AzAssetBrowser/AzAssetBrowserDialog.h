@@ -41,8 +41,6 @@ namespace AzToolsFramework
     class QWidgetSavedState;
 }
 
-using namespace AzToolsFramework::AssetBrowser;
-
 class SANDBOX_API AzAssetBrowserDialog
     : public QDialog
 {
@@ -50,7 +48,7 @@ class SANDBOX_API AzAssetBrowserDialog
 public:
     AZ_CLASS_ALLOCATOR(AzAssetBrowserDialog, AZ::SystemAllocator, 0);
 
-    explicit AzAssetBrowserDialog(AssetSelectionModel& selection, QWidget* parent = nullptr);
+    explicit AzAssetBrowserDialog(AzToolsFramework::AssetBrowser::AssetSelectionModel& selection, QWidget* parent = nullptr);
     virtual ~AzAssetBrowserDialog();
 
 protected:
@@ -59,9 +57,9 @@ protected:
 
 private:
     QScopedPointer<Ui::AzAssetBrowserDialogClass> m_ui;
-    AssetBrowserModel* m_assetBrowserModel;
-    QScopedPointer<AssetBrowserFilterModel> m_filterModel;
-    AssetSelectionModel& m_selection;
+    AzToolsFramework::AssetBrowser::AssetBrowserModel* m_assetBrowserModel;
+    QScopedPointer<AzToolsFramework::AssetBrowser::AssetBrowserFilterModel> m_filterModel;
+    AzToolsFramework::AssetBrowser::AssetSelectionModel& m_selection;
 
     //! Evaluate whether current selection is valid
     /*!

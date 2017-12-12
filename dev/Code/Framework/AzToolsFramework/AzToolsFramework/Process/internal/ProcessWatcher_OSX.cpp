@@ -28,7 +28,9 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h> // for iopolicy
 #include <time.h>
+
 
 namespace AzToolsFramework
 {
@@ -97,9 +99,13 @@ namespace AzToolsFramework
             {
                 case PROCESSPRIORITY_BELOWNORMAL:
                     nice(1);
+                    // also reduce disk impact:
+                    setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_PROCESS, IOPOL_UTILITY);
                     break;
                 case PROCESSPRIORITY_IDLE:
                     nice(20);
+                    // also reduce disk impact:
+                    setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_PROCESS, IOPOL_THROTTLE);
                     break;
             }
 

@@ -47,6 +47,8 @@ public:
     // Callback called when variable change. SyncReflectedVarToIVar will be called after
     virtual void OnVariableChange(IVariable* var) {};
 
+    virtual bool UpdateReflectedVarEnums() { return false; }
+
     virtual CReflectedVar* GetReflectedVar() = 0;
 
     //needed for containers that can have new values filled in
@@ -121,7 +123,7 @@ public:
 
 protected:
     //update the ReflectedVar with the allowable enum options
-    void updateReflectedVarEnums();
+    bool UpdateReflectedVarEnums() override;
     
     //virtual function to allow derived classes (AIWave and AITerritory) to update the enum list before syncing with ReflectedVar.
     virtual void updateIVariableEnumList(IVariable* pVariable) {};

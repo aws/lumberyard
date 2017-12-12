@@ -11,7 +11,8 @@
 */
 
 #include "StdAfx.h"
-#include "QtViewPane.h"
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <LyViewPaneNames.h>
 #include "IResourceSelectorHost.h"
 #include "CryExtension/ICryFactoryRegistry.h"
 
@@ -52,22 +53,22 @@ ComponentEntityEditorPlugin::ComponentEntityEditorPlugin(IEditor* editor)
     m_appListener = new SandboxIntegrationManager();
     m_appListener->Setup();
 
-    QtViewOptions inspectorOptions;
+    using namespace AzToolsFramework;
+
+    ViewPaneOptions inspectorOptions;
     inspectorOptions.canHaveMultipleInstances = true;
     inspectorOptions.preferedDockingArea = Qt::RightDockWidgetArea;
     inspectorOptions.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<QComponentEntityEditorInspectorWindow>(
-        editor,
+    RegisterViewPane<QComponentEntityEditorInspectorWindow>(
         LyViewPane::EntityInspector,
         LyViewPane::CategoryTools,
         inspectorOptions);
 
-    QtViewOptions outlinerOptions;
+    ViewPaneOptions outlinerOptions;
     outlinerOptions.canHaveMultipleInstances = true;
     outlinerOptions.preferedDockingArea = Qt::LeftDockWidgetArea;
     outlinerOptions.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<QComponentEntityEditorOutlinerWindow>(
-        editor,
+    RegisterViewPane<QComponentEntityEditorOutlinerWindow>(
         LyViewPane::EntityOutliner,
         LyViewPane::CategoryTools,
         outlinerOptions);
@@ -83,8 +84,10 @@ void ComponentEntityEditorPlugin::Release()
 {
     if (m_registered)
     {
-        UnregisterQtViewPane<QComponentEntityEditorInspectorWindow>();
-        UnregisterQtViewPane<QComponentEntityEditorOutlinerWindow>();
+        using namespace AzToolsFramework;
+
+        UnregisterViewPane(LyViewPane::EntityInspector);
+        UnregisterViewPane(LyViewPane::EntityOutliner);
 
         UnregisterSandboxObjects();
     }

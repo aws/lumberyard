@@ -176,6 +176,11 @@ org.gradle.configureondemand=true
 
 
 ################################################################
+def debug_log_value(key_word, value):
+    Logs.debug('android_studio: -- %32s: %s', key_word, value)
+
+
+################################################################
 def inject_auto_gen_header(writer):
     writer('////////////////////////////////////////////////////////////////\n')
     writer('// This file was automatically created by WAF\n')
@@ -206,7 +211,7 @@ def to_list(value):
     if isinstance(value, set):
         return list(value)
     elif isinstance(value, list):
-        return value
+        return value[:]
     else:
         return [value]
 
@@ -579,6 +584,11 @@ class Sources(GradleNode):
                 src = to_list(props['java_src'])
                 java_props.add_src_paths(*src)
 
+            if 'aidl_src' in props:
+                aidl_props = self.sets['aidl']
+                aidl_src = to_list(props['aidl_src'])
+                aidl_props.add_src_paths(*aidl_src)
+
             if 'res_src' in props:
                 android_resources = self.sets['res']
                 res = to_list(props['res_src'])
@@ -869,27 +879,34 @@ class Model(GradleNode):
             target_sdk = target_sdk
         )
 
-        Logs.debug('android_studio:    -- %s' % target_name)
+        def _defines_to_flags(defines_list):
+            return ['-D%s' % define for define in defines_list if '"' not in define]
+
         if not self.__parent.type == ModelType.Android_lib:
             # process the task specific defines
             common_defines = ctx.collect_task_gen_attrib(task_generator, 'defines')
-            flags = ['-D%s' % define for define in common_defines if '"' not in define]
+            debug_log_value('Common Defines', common_defines)
+
+            flags = _defines_to_flags(common_defines)
             android.set_ndk_properties(
                 module_name = target_name,
                 ndk_flags = flags
             )
+
             for config in proj_props.configs:
                 config_defines = ctx.collect_task_gen_attrib(task_generator, '%s_defines' % config)
+                debug_log_value('{} Defines'.format(config.title()), config_defines)
+
                 if config_defines:
-                    Logs.debug('android_studio:    -- %12s Defines: %s' % (config, config_defines))
-                    config_flags = ['-D%s' % define for define in config_defines if '"' not in define]
+                    config_flags = _defines_to_flags(config_defines)
                     android.add_build_type(config, ndk_flags = config_flags)
 
             for target in proj_props.target_abis.keys():
                 target_defines = ctx.collect_task_gen_attrib(task_generator, '%s_defines' % target)
+                debug_log_value('{} Defines'.format(target.title()), target_defines)
+
                 if target_defines:
-                    Logs.debug('android_studio:    -- %12s Defines: %s' % (target, target_defines))
-                    target_flags = ['-D%s' % define for define in target_defines if '"' not in define]
+                    target_flags = _defines_to_flags(target_defines)
                     android.add_product_flavor(target, ndk_flags = target_flags)
 
         # process the source paths and native dependencies
@@ -912,11 +929,38 @@ class Model(GradleNode):
         if export_includes and not jni_export_paths:
             jni_export_paths = jni_src_paths
 
-        # for java source
-        java_src_paths = ctx.collect_task_gen_attrib(task_generator, 'android_java_src_path')
-        Logs.debug('android_studio:    -- Java Source Paths: %s' % (java_src_paths, ))
-        manifest_path = ctx.collect_task_gen_attrib(task_generator, 'android_manifest_path')
-        resource_src_path = ctx.collect_task_gen_attrib(task_generator, 'android_res_path')
+        # android specific path handling
+        java_src_paths = []
+        aidl_src_paths = []
+        manifest_path = []
+        resource_src_path = []
+
+        # native only modules can't have any java / manifest / resources, so only gather them for
+        # applications and android libs
+        if self.__parent.type in (ModelType.Application, ModelType.Android_lib):
+            java_src_paths = ctx.collect_task_gen_attrib(task_generator, 'android_java_src_path')
+            aidl_src_paths = ctx.collect_task_gen_attrib(task_generator, 'android_aidl_src_path')
+            manifest_path = ctx.collect_task_gen_attrib(task_generator, 'android_manifest_path')
+            resource_src_path = ctx.collect_task_gen_attrib(task_generator, 'android_res_path')
+
+        # if we are a application, pull in all the java files from dependent modules so they get
+        # built correctly by android studio
+        if self.__parent.type == ModelType.Application:
+            game_project = getattr(task_generator, 'project_name', None)
+
+            for tsk_gen in ctx.project_tasks:
+                module_name = tsk_gen.target
+
+                # skip the launchers / same module, those source paths were already added above
+                if module_name.endswith('AndroidLauncher'):
+                    continue
+
+                if ctx.is_module_for_game_project(module_name, game_project, None):
+                    java_src_paths += ctx.collect_task_gen_attrib(tsk_gen, 'android_java_src_path')
+                    aidl_src_paths += ctx.collect_task_gen_attrib(tsk_gen, 'android_aidl_src_path')
+
+        debug_log_value('Source Paths (java)', java_src_paths)
+        debug_log_value('Source Paths (aidl)', aidl_src_paths)
 
         # for some reason get_module_uses doesn't work correctly on the
         # launcher tasks, so we need to maunally create the use dependecy
@@ -931,11 +975,16 @@ class Model(GradleNode):
         elif self.__parent.type == ModelType.Native_lib:
             all_native_uses = ctx.get_module_uses(target_name, proj_props.project_spec)
 
+        project_names = [ tgen.target for tgen in ctx.project_tasks ]
+        valid_deps = set(project_names).intersection(all_native_uses) # [project for project in current_deps if project[1:] in dependencies]
+        debug_log_value('Uses (native)', list(valid_deps))
+
         android.set_main_source_paths(
             java_src = java_src_paths,
+            aidl_src = aidl_src_paths,
             jni_src = jni_src_paths,
             jni_exports = jni_export_paths,
-            jni_dependencies = set(all_native_uses),
+            jni_dependencies = valid_deps,
             manifest_path = manifest_path,
             res_src = resource_src_path
         )
@@ -946,22 +995,22 @@ class Model(GradleNode):
 
 ################################
 class GradleContainer(GradleNode):
-	################################
+    ################################
     def __init__(self):
         self.nodes = {}
 
-	################################
+    ################################
     def __getattr__(self, name):
         return self.nodes[name]
 
-	################################
+    ################################
     def write(self, stream, indent = 0):
         return super(GradleContainer, self).write(stream, indent - 1)
 
 ################################
 class Module(GradleContainer):
     '''
-	Represents a Module in Android Studio
+    Represents a Module in Android Studio
     '''
     ################################
     def __init__(self, type):
@@ -985,17 +1034,53 @@ class Module(GradleContainer):
 
     ################################
     def process_module_dependencies(self, project, task_generator):
-        modules = project.ctx.collect_task_gen_attrib(task_generator, 'modules_dependency')
-        files = project.ctx.collect_task_gen_attrib(task_generator, 'files_dependency')
         deps = ModuleDependencies()
         addNode = False
+
+        modules = project.ctx.collect_task_gen_attrib(task_generator, 'modules_dependency')
         if modules:
             deps.add_compile_projects(*modules)
             addNode = True
 
+        files = project.ctx.collect_task_gen_attrib(task_generator, 'files_dependency')
         if files:
             deps.add_compile_files(*files)
             addNode = True
+
+        # Look for the android specific uses 
+        if self.__type == ModelType.Application:
+            def _get_task_gen(task_name):
+                try:
+                    return project.ctx.get_tgen_by_name(task_name)
+                except:
+                    return None
+
+            launcher_name = getattr(task_generator, 'project_name', '')
+            apk_task_name = '{}_APK'.format(launcher_name)
+
+            apk_task = _get_task_gen(apk_task_name)
+            if apk_task:
+                uses_added = []
+
+                uses = project.ctx.collect_task_gen_attrib(apk_task, 'use')
+                for use in uses:
+                    use_task_gen = _get_task_gen(use)
+                    if use_task_gen:
+                        use_task_gen.post()
+
+                        if not hasattr(use_task_gen, 'aar_task'):
+                            continue
+
+                        android_studio_name = getattr(use_task_gen, 'android_studio_name', None)
+                        if android_studio_name:
+                            deps.add_compile_libraries(android_studio_name)
+                            uses_added.append(android_studio_name)
+                        else:
+                            deps.add_compile_projects(use)
+                            uses_added.append(use)
+
+                        addNode = True
+                debug_log_value('Uses (android)', uses_added)
 
         if addNode:
             self.addNode(deps, deps.gradle_name)
@@ -1022,7 +1107,7 @@ class Module(GradleContainer):
 ################################
 class ModuleDependencies(GradleNode):
     '''
-	Represents a Module dependency
+    Represents a Module dependency
     '''
     gradle_name = 'dependencies'
 
@@ -1032,13 +1117,16 @@ class ModuleDependencies(GradleNode):
         Helper class to write the dependency in the proper way.
         '''
         ################################
-        def __init__(self, name, type):
+        def __init__(self, name, type = None):
             self.name = name
             self.type = type
 
         ################################
         def __str__(self):
-            return '{}("{}")'.format(self.type, self.name)
+            if self.type:
+                return '{}("{}")'.format(self.type, self.name)
+            else:
+                return '"{}"'.format(self.name)
 
         ################################
         def __nonzero__(self):
@@ -1053,13 +1141,18 @@ class ModuleDependencies(GradleNode):
         return True if self.compile else False
 
     ################################
+    def clear_compile_projects(self):
+        del self.compile[:]
+
+    ################################
     def add_compile_projects(self, *projects):
         deps = [self._Dependency(':' + proj, 'project') for proj in projects]
         self.compile.extend(deps)
 
     ################################
-    def clear_compile_projects(self, *projects):
-        del self.compile[:]
+    def add_compile_libraries(self, *libraries):
+        deps = [self._Dependency(lib) for lib in libraries]
+        self.compile.extend(deps)
 
     ################################
     def add_compile_files(self, *files):
@@ -1101,6 +1194,8 @@ class AndroidStudioProject:
 
     ################################
     def add_target_to_project(self, project_name, type, project_task_gen):
+        Logs.debug('android_studio: Added Module - {} - to project'.format(project_name))
+
         android_module = Module(type)
         android_model = Model(android_module)
 
@@ -1170,7 +1265,8 @@ class android_studio(Build.BuildContext):
         """
         Used in cryengine_modules get_platform_list during project generation
         """
-        return [ 'android' ]
+        android_targets = [ target for target in self.get_supported_platforms() if 'android' in target ]
+        return [ 'android' ] + android_targets
 
     ################################
     def collect_task_gen_attrib(self, task_generator, attribute, *modifiers):
@@ -1220,11 +1316,13 @@ class android_studio(Build.BuildContext):
         directory structures.
         """
         file_lists = self.collect_task_gen_attrib(task_generator, 'file_list')
+        file_lists = set(file_lists) # remove the duplicates, only seems to happen for some modules and only the file_list
+
         exec_path = task_generator.path.abspath()
 
         include_paths = []
         for file_list in file_lists:
-            Logs.debug('android_studio:    --    File List: %s' % file_list)
+            debug_log_value('File List (native)', file_list)
 
             src_files = self.collect_source_from_file_list(task_generator.path, file_list)
             paths_to_add = []
@@ -1234,7 +1332,7 @@ class android_studio(Build.BuildContext):
             normal_src = [src_path for src_path in src_files if not any(sub_dir for sub_dir in external_filter if sub_dir in src_path)]
             if normal_src:
                 common_path = find_common_path(normal_src)
-                Logs.debug('android_studio:    --     Src Path: %s' % common_path)
+                debug_log_value('Source Path (native)', common_path)
 
                 # attempt to determine which path is the narrower scope
                 if common_path in exec_path:
@@ -1247,15 +1345,14 @@ class android_studio(Build.BuildContext):
             if sdk_src:
                 common_path = find_common_path(sdk_src)
                 paths_to_add.append(common_path)
-                Logs.debug('android_studio:    --     SDK Path: %s' % common_path)
+                debug_log_value('SDK Path (native)', common_path)
 
             # same process as the SDKs for the files from Tools
             tools_src = [src_path for src_path in src_files if 'Tools' in src_path]
             if tools_src:
                 common_path = find_common_path(tools_src)
                 paths_to_add.append(common_path)
-                Logs.debug('android_studio:    --    Tool Path: %s' % common_path)
-
+                debug_log_value('Tool Path (native)', common_path)
 
             # filter the possible paths to add again to prevent adding duplicate paths
             # or sub directories to paths already added.
@@ -1269,7 +1366,7 @@ class android_studio(Build.BuildContext):
                        or any(incl for incl in include_paths if incl in add_path)):
                     include_paths.append(add_path)
 
-        Logs.debug('android_studio:    -- Common Paths: %s' % include_paths)
+        debug_log_value('Common Paths (native)', include_paths)
         return include_paths
 
     ################################
@@ -1284,7 +1381,7 @@ class android_studio(Build.BuildContext):
 
         self.load_user_settings()
         Logs.info("[WAF] Executing 'android_studio' in '%s'" % (self.variant_dir) )
-        self.recurse([self.run_dir])
+        self.recurse([ self.run_dir ])
 
         # check the apk signing environment
         if self.get_android_build_environment() == 'Distribution':
@@ -1333,7 +1430,8 @@ class android_studio(Build.BuildContext):
 
         acceptable_platforms = ['android', 'all'] + android_platforms
 
-        # process the modules to be built
+        # first find all the modules that are going to be added to the android studio project
+        tasks_to_add = []
         for group in self.groups:
             for task_generator in group:
                 if not isinstance(task_generator, TaskGen.task_gen):
@@ -1357,21 +1455,29 @@ class android_studio(Build.BuildContext):
 
                 # filter out incorrectly configured game projects and their respective launchers
                 game_project = getattr(task_generator, 'project_name', target_name)
-                module__type = ModelType.Native_lib
                 if game_project in self.get_enabled_game_project_list():
 
                     if not self.get_android_settings(game_project):
                         Logs.debug('android_studio: Skipped Module - %s - is a game project not configured for Android' % target_name)
                         continue
 
-                    if game_project is not target_name:
-                        target_name = self.get_executable_name(game_project)
-                        module__type = ModelType.Application
+                tasks_to_add.append(task_generator)
 
-                Logs.debug('android_studio: Added Module - %s - to project' % target_name)
+        self.project_tasks = tasks_to_add
 
-                task_generator.post()
-                self.process_module(project, target_name, android_root, module__type, task_generator)
+        # process the modules to be added to the project
+        for task_generator in tasks_to_add:
+            target_name = task_generator.target
+
+            game_project = getattr(task_generator, 'project_name', target_name)
+            module_type = ModelType.Native_lib
+
+            if game_project in self.get_enabled_game_project_list() and game_project is not target_name:
+                target_name = self.get_executable_name(game_project)
+                module_type = ModelType.Application
+
+            task_generator.post()
+            self.process_module(project, target_name, android_root, module_type, task_generator)
 
         project.write_project(android_root)
 
@@ -1409,8 +1515,16 @@ class android_studio(Build.BuildContext):
         local_props = android_root.make_node('local.properties')
         try:
             with open(local_props.abspath(), 'w') as props_file:
-                props_file.write('sdk.dir=%s\n' % self.get_env_file_var('LY_ANDROID_SDK'))
-                props_file.write('ndk.dir=%s\n' % self.get_env_file_var('LY_ANDROID_NDK'))
+                sdk_path = os.path.normpath(self.get_env_file_var('LY_ANDROID_SDK'))
+                ndk_path = os.path.normpath(self.get_env_file_var('LY_ANDROID_NDK'))
+
+                # windows is really picky about it's file paths
+                if Utils.unversioned_sys_platform() == "win32":
+                    sdk_path = sdk_path.replace('\\', '\\\\').replace(':', '\\:')
+                    ndk_path = ndk_path.replace('\\', '\\\\').replace(':', '\\:')
+
+                props_file.write('sdk.dir={}\n'.format(sdk_path))
+                props_file.write('ndk.dir={}\n'.format(ndk_path))
         except Exception as err:
             self.fatal(str(err))
 
@@ -1452,6 +1566,8 @@ class android_studio(Build.BuildContext):
                         lib_path = None
                         for path in value['srcDir']:
                             path = string.Template(path).substitute(self.env)
+                            path = path.replace('\\', '/')
+
                             if os.path.exists(path):
                                 lib_path = path
                                 break
@@ -1473,6 +1589,8 @@ class android_studio(Build.BuildContext):
                         files_dep = []
                         for java_lib in value['libs']:
                             file_path = string.Template(java_lib['path']).substitute(self.env)
+                            file_path = file_path.replace('\\', '/')
+
                             if os.path.exists(file_path):
                                 files_dep.append(file_path)
                             elif java_lib['required']:

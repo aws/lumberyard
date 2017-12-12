@@ -1,0 +1,21 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h",
+            "Source/Input.h",
+            "Source/Input.cpp"
+        ]
+    },
+    "auto": {
+        "Include": [
+        ],
+        "Source": [
+            "Source/InputLibrary.h",
+            "Source/InputLibrary.cpp",
+            "Source/InputNode.h",
+            "Source/InputNode.cpp",
+            "Source/StartingPointInputGem.cpp"
+        ]
+    }
+}

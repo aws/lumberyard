@@ -62,7 +62,6 @@
 #include <ICryAnimation.h>
 #include <IGame.h>
 #include <IGameFramework.h>
-#include <IHardwareMouse.h>
 #include <IDialogSystem.h>
 #include <IDynamicResponseSystem.h>
 #include <IDeferredCollisionEvent.h>
@@ -75,11 +74,13 @@
 #include <ParseEngineConfig.h>
 #include <Core/EditorFilePathManager.h>
 #include <CrySystemBus.h>
+#include <MainThreadRenderRequestBus.h>
 
 #include <LmbrCentral/Animation/SimpleAnimationComponentBus.h>
 
 #include <AzCore/base.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
@@ -87,6 +88,9 @@
 #include "MainWindow.h"
 
 #include <QMessageBox>
+
+static const char defaultFileExtension[] = ".ly";
+static const char oldFileExtension[] = ".cry";
 
 // Implementation of System Callback structure.
 struct SSystemUserCallback
@@ -352,6 +356,7 @@ CGameEngine::CGameEngine()
     m_bJustCreated = false;
     m_pGameToEditorInterface = new CGameToEditorInterface;
     m_levelName = "Untitled";
+    m_levelExtension = defaultFileExtension;
     m_playerViewTM.SetIdentity();
     GetIEditor()->RegisterNotifyListener(this);
 }
@@ -721,6 +726,16 @@ void CGameEngine::SetLevelPath(const QString& path)
 {
     m_levelPath = Path::ToUnixPath(Path::RemoveBackslash(path));
     m_levelName = m_levelPath.mid(m_levelPath.lastIndexOf('/') + 1);
+
+    // Store off if 
+    if (QFileInfo(path + oldFileExtension).exists())
+    {
+        m_levelExtension = oldFileExtension;
+    }
+    else
+    {
+        m_levelExtension = defaultFileExtension;
+    }
 
     QString relativeLevelPath = Path::GetRelativePath(m_levelPath, true);
 
@@ -1194,6 +1209,10 @@ void CGameEngine::SetGameMode(bool bInGame)
     m_bIgnoreUpdates = true;
     LockResources();
 
+    // Switching modes will destroy the current AzFramework::EntityConext which may contain
+    // data the queued events hold on to, so execute all queued events before switching.
+    ExecuteQueuedEvents();
+
     if (bInGame)
     {
         SwitchToInGame();
@@ -1220,12 +1239,12 @@ void CGameEngine::SetGameMode(bool bInGame)
 #endif // KDAB_MAC_PORT
         m_pISystem->GetIInput()->ClearKeyState();
 
-        // Julien: we now use hardware mouse, it doesn't change anything
-        // for keyboard but mouse should be fixed now.
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->SetGameMode(bInGame);
-        }
+        const AzFramework::SystemCursorState desiredState = bInGame ?
+                                                            AzFramework::SystemCursorState::ConstrainedAndHidden :
+                                                            AzFramework::SystemCursorState::UnconstrainedAndVisible;
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+                                                        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+                                                        desiredState);
 
         MainWindow::instance()->setFocus();
     }
@@ -1364,6 +1383,9 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
     }
 
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_PHYSICS_APPLYSTATE);
+
+    // Execute all queued events before switching modes.
+    ExecuteQueuedEvents();
 
     // Transition back to editor entity context.
     // Symmetry is not critical. It's okay to call this even if we never called StartPlayInEditor
@@ -2145,4 +2167,11 @@ void CGameEngine::OnAreaModified(const AABB& modifiedArea)
     {
         pNavigationSystem->WorldChanged(modifiedArea);
     }
+}
+
+void CGameEngine::ExecuteQueuedEvents()
+{
+    AZ::Data::AssetBus::ExecuteQueuedEvents();
+    AZ::TickBus::ExecuteQueuedEvents();
+    AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 }

@@ -25,6 +25,8 @@
 
 #include "QtUtil.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include <QMessageBox>
 
 //////////////////////////////////////////////////////////////////////////
@@ -130,7 +132,7 @@ void CObjectCreateTool::StartCreation(const QString& type, const QString& param)
     CObjectClassDesc* clsDesc = GetIEditor()->GetObjectManager()->FindClass(type);
     if (!clsDesc)
     {
-        QMessageBox::warning(nullptr, tr("Warning"), tr("Object creation failed, unknown object type."));
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), tr("Warning"), tr("Object creation failed, unknown object type."));
         return;
     }
     if (param.isEmpty())

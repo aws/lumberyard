@@ -26,7 +26,7 @@ namespace LmbrCentral
         , public AZ::BehaviorEBusHandler
     {
     public:
-        AZ_EBUS_BEHAVIOR_BINDER(PhysicsComponentNotificationBusHandler, "{245B5B85-533C-4A5E-B1DC-F06CAD896D37}", AZ::SystemAllocator, OnPhysicsEnabled, OnPhysicsDisabled, OnCollision);
+        AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(PhysicsComponentNotificationBusHandler, "{245B5B85-533C-4A5E-B1DC-F06CAD896D37}", AZ::SystemAllocator, OnPhysicsEnabled, (), OnPhysicsDisabled, (), OnCollision, ({"Collision", "Structure containing information about Collision"}));
 
         void OnPhysicsEnabled() override
         {
@@ -56,6 +56,17 @@ namespace LmbrCentral
             serializeContext->Class<PhysicsComponent, AZ::Component>()
                 ->Version(2)
             ;
+
+            using Collision = PhysicsComponentNotifications::Collision;
+            serializeContext->Class<Collision>()
+                ->Field("entity", &Collision::m_entity)
+                ->Field("position", &Collision::m_position)
+                ->Field("normal", &Collision::m_normal)
+                ->Field("impulse", &Collision::m_impulse)
+                ->Field("velocities", &Collision::m_velocities)
+                ->Field("masses", &Collision::m_masses)
+                ->Field("surfaces", &Collision::m_surfaces)
+                ;
         }
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
@@ -63,10 +74,10 @@ namespace LmbrCentral
             // Info about a collision event
             behaviorContext->Class<Collision>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Property("entity", BehaviorValueGetter(&Collision::m_entity), nullptr)
-                ->Property("position", BehaviorValueGetter(&Collision::m_position), nullptr)
-                ->Property("normal", BehaviorValueGetter(&Collision::m_normal), nullptr)
-                ->Property("impulse", BehaviorValueGetter(&Collision::m_impulse), nullptr)
+                ->Property("entity", BehaviorValueProperty(&Collision::m_entity))
+                ->Property("position", BehaviorValueProperty(&Collision::m_position))
+                ->Property("normal", BehaviorValueProperty(&Collision::m_normal))
+                ->Property("impulse", BehaviorValueProperty(&Collision::m_impulse))
                 ->Property("velocities", BehaviorValueGetter(&Collision::m_velocities), nullptr)
                 ->Property("masses", BehaviorValueGetter(&Collision::m_masses), nullptr)
                 ->Property("surfaces", BehaviorValueGetter(&Collision::m_surfaces), nullptr)

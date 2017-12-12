@@ -225,7 +225,7 @@ bool ScriptSystemComponent::RemoveContextWithId(ScriptContextId id)
         return false;
     }
 
-    ContextContainer* container = AZStd::find_if(m_contexts.begin(), m_contexts.end(), [&id](const ContextContainer& container) { return container.m_context->GetId() == id; });
+    ContextContainer* container = AZStd::find_if(m_contexts.begin(), m_contexts.end(), [&id](const ContextContainer& ctxContainer) { return ctxContainer.m_context->GetId() == id; });
     if (container != m_contexts.end())
     {
         delete container->m_context;
@@ -696,10 +696,8 @@ void ScriptSystemComponent::OnAssetReloaded(Data::Asset<Data::AssetData> asset)
         m_isReloadQueued = true;
         AZStd::function<void()> reloadFn = [this]()
         {
-            const Data::AssetHandler* scriptHandler = Data::AssetManager::Instance().GetHandler(azrtti_typeid<ScriptAsset>());
-
             // Collects all script assets for reloading
-            Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this, scriptHandler](const Data::AssetId id, const Data::AssetInfo& info)
+            Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this](const Data::AssetId id, const Data::AssetInfo& info)
             {
                 // Check asset type
                 if (info.m_assetType == azrtti_typeid<ScriptAsset>())
@@ -759,12 +757,25 @@ AZ::Uuid AZ::ScriptSystemComponent::GetComponentTypeId() const
 class TickBusBehaviorHandler : public TickBus::Handler, public AZ::BehaviorEBusHandler
 {
 public:
-    AZ_EBUS_BEHAVIOR_BINDER(TickBusBehaviorHandler, "{EE90D2DA-9339-4CE6-AF98-AF81E00E2AB3}", AZ::SystemAllocator, OnTick);
+    AZ_EBUS_BEHAVIOR_BINDER(TickBusBehaviorHandler, "{EE90D2DA-9339-4CE6-AF98-AF81E00E2AB3}", AZ::SystemAllocator, OnTick, GetTickOrder);
 
     void OnTick(float deltaTime, ScriptTimePoint time) override
     {
         Call(FN_OnTick,deltaTime,time);
     }
+
+    int GetTickOrder() override
+    {
+        int order = ComponentTickBus::TICK_DEFAULT;
+        CallResult(order, FN_GetTickOrder);
+        return order;
+    }
+};
+
+// Dummy class to host ComponentTickBus enums
+struct DummyTickOrder
+{
+    AZ_TYPE_INFO(DummyTickOrder, "{8F725746-A4BC-4DF7-A249-02931973C864}");
 };
 
 //=========================================================================
@@ -772,8 +783,11 @@ public:
 //=========================================================================
 void ScriptSystemComponent::Reflect(ReflectContext* reflection)
 {
+    ScriptTimePoint::Reflect(reflection);
+
     if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection))
     {
+        
         serializeContext->Class<ScriptSystemComponent, AZ::Component>()->
             Field("garbageCollectorSteps", &ScriptSystemComponent::m_defaultGarbageCollectorSteps);
 
@@ -791,19 +805,18 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
     if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(reflection))
     {
         // reflect default entity
-        Entity::Reflect(behaviorContext);
         MathReflect(behaviorContext);
-        ScriptTimePoint::Reflect(behaviorContext);
         ScriptDebug::Reflect(behaviorContext);
 
         behaviorContext->Class<PlatformID>("Platform")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Enum<PLATFORM_WINDOWS_32>("Windows32")
-            ->Enum<PLATFORM_WINDOWS_64>("Windows64")
-            ->Enum<PLATFORM_XBOX_360>("Xbox360")
-            ->Enum<PLATFORM_XBONE>("XboxOne")
-            ->Enum<PLATFORM_PS3>("PS3")
-            ->Enum<PLATFORM_PS4>("PS4")
-            ->Enum<PLATFORM_WII>("Wii")
+            ->Enum<PLATFORM_WINDOWS_64>("Windows64") 
+            ->Enum<PLATFORM_XBOX_360>("Xbox360") // ACCEPTED_USE
+            ->Enum<PLATFORM_XBONE>("XboxOne") // ACCEPTED_USE
+            ->Enum<PLATFORM_PS3>("PS3") // ACCEPTED_USE
+            ->Enum<PLATFORM_PS4>("PS4") // ACCEPTED_USE
+            ->Enum<PLATFORM_WII>("Wii") // ACCEPTED_USE
             ->Enum<PLATFORM_LINUX_64>("Linux")
             ->Enum<PLATFORM_ANDROID>("Android")
             ->Enum<PLATFORM_APPLE_IOS>("iOS")
@@ -820,6 +833,16 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
         behaviorContext->EBus<TickRequestBus>("TickRequestBus")
             ->Event("GetTickDeltaTime", &TickRequestBus::Events::GetTickDeltaTime)
             ->Event("GetTimeAtCurrentTick", &TickRequestBus::Events::GetTimeAtCurrentTick)
+            ;
+
+        behaviorContext->Class<DummyTickOrder>("TickOrder")
+            ->Enum<TICK_FIRST>("First")
+            ->Enum<TICK_PLACEMENT>("Placement")
+            ->Enum<TICK_ANIMATION>("Animation")
+            ->Enum<TICK_PHYSICS>("Physics")
+            ->Enum<TICK_DEFAULT>("Default")
+            ->Enum<TICK_UI>("UI")
+            ->Enum<TICK_LAST>("Last")
             ;
     }
 }

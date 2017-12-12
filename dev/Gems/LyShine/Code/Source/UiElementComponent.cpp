@@ -710,6 +710,29 @@ void UiElementComponent::FindDescendantElements(std::function<bool(const AZ::Ent
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiElementComponent::IsAncestor(AZ::EntityId id)
+{
+    if (m_parent != nullptr)
+    {
+        AZ::EntityId parent = m_parent->GetId();
+        while (parent.IsValid())
+        {
+            if (parent == id)
+            {
+                return true;
+            }
+            else
+            {
+                AZ::EntityId grandParent;
+                EBUS_EVENT_ID_RESULT(grandParent, parent, UiElementBus, GetParentEntityId);
+                parent = grandParent;
+            }
+        }
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiElementComponent::IsEnabled()
 {
     return m_isEnabled;
@@ -959,6 +982,7 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiElementBus>("UiElementBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetName", &UiElementBus::Events::GetName)
             ->Event("GetCanvas", &UiElementBus::Events::GetCanvasEntityId)
             ->Event("GetParent", &UiElementBus::Events::GetParentEntityId)
@@ -970,6 +994,7 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
             ->Event("Reparent", &UiElementBus::Events::ReparentByEntityId)
             ->Event("FindChildByName", &UiElementBus::Events::FindChildEntityIdByName)
             ->Event("FindDescendantByName", &UiElementBus::Events::FindDescendantEntityIdByName)
+            ->Event("IsAncestor", &UiElementBus::Events::IsAncestor)
             ->Event("IsEnabled", &UiElementBus::Events::IsEnabled)
             ->Event("SetIsEnabled", &UiElementBus::Events::SetIsEnabled);
     }

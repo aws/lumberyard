@@ -35,6 +35,39 @@ class CNULLRenderer
 {
 public:
 
+    ////---------------------------------------------------------------------------------------------------------------------
+    virtual SRenderPipeline* GetRenderPipeline() override { return nullptr; }
+    virtual SRenderThread* GetRenderThread() override { return nullptr; }
+    virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0) override;
+    void SetCull(ECull eCull, bool bSkipMirrorCull = false) override {}
+    virtual SDepthTexture* GetDepthBufferOrig() override { return nullptr; }
+    virtual uint32 GetBackBufferWidth() override { return 0; }
+    virtual uint32 GetBackBufferHeight() override { return 0; };
+    virtual const SRenderTileInfo* GetRenderTileInfo() const override { return nullptr; }
+
+    virtual void FX_CommitStates(const SShaderTechnique* pTech, const SShaderPass* pPass, bool bUseMaterialState) override {}
+    virtual void FX_Commit(bool bAllowDIP = false) override {}
+    virtual long FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat) override { return 0; }
+    virtual void FX_DrawIndexedPrimitive(const eRenderPrimitiveType eType, const int nVBOffset, const int nMinVertexIndex, const int nVerticesCount, const int nStartIndex, const int nNumIndices, bool bInstanced = false) override {}
+    virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) override { return nullptr; }
+    virtual long FX_SetIStream(const void* pB, uint32 nOffs, RenderIndexType idxType) override { return -1; }
+    virtual long FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1) override { return -1; }
+    virtual void FX_DrawPrimitive(const eRenderPrimitiveType eType, const int nStartVertex, const int nVerticesCount, const int nInstanceVertices = 0) {}
+    virtual void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color, float ftx0, float fty0, float ftx1, float fty1) override {}
+    virtual void FX_ClearTarget(CTexture* pTex) override;
+    virtual void FX_ClearTarget(SDepthTexture* pTex) override;
+
+    virtual bool FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) override;
+    virtual bool FX_PushRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount = 1) override;
+    virtual bool FX_SetRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, bool bPush = false, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
+    virtual bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
+    virtual bool FX_RestoreRenderTarget(int nTarget) override;
+    virtual bool FX_PopRenderTarget(int nTarget) override;
+    virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) override;
+    virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) override {};
+
+    ////---------------------------------------------------------------------------------------------------------------------
+
     CNULLRenderer();
     virtual ~CNULLRenderer();
 
@@ -56,7 +89,7 @@ public:
 
     virtual int  CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& cClear, ETEX_Format eTF = eTF_R8G8B8A8);
     virtual bool DestroyRenderTarget(int nHandle);
-	virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr);
+    virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr);
     virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA);
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
@@ -164,11 +197,15 @@ public:
     virtual void FX_PopWireframeMode();
     virtual void FX_SetWireframeMode(int mode);
 
+    virtual void FX_PreRender(int Stage) override {}
+    virtual void FX_PostRender() override {}
+
     virtual void ResetToDefault();
     virtual void SetDefaultRenderStates() {}
 
     virtual int  GenerateAlphaGlowTexture(float k);
 
+    virtual void ApplyViewParameters(const CameraViewParameters&) override {}
     virtual void SetMaterialColor(float r, float g, float b, float a);
 
     virtual void GetMemoryUsage(ICrySizer* Sizer);
@@ -268,8 +305,6 @@ public:
 
     virtual ITexture* EF_CreateCompositeTexture(int type, const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, ETEX_Format eTF, const STexComposition* pCompositions, size_t nCompositions, int8 nPriority = -1);
 
-
-    virtual void FX_SetState(int st, int AlphaRef = -1, int RestoreState = 0);
     void EF_Init();
 
     virtual IDynTexture* MakeDynTextureFromShadowBuffer(int nSize, IDynTexture* pDynTexture);

@@ -17,6 +17,8 @@
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/Memory/AllocationRecords.h>
 
+#include <AzCore/std/parallel/lock.h>
+
 using namespace AZ;
 
 //////////////////////////////////////////////////////////////////////////
@@ -59,6 +61,7 @@ AllocatorManager::~AllocatorManager()
 void
 AllocatorManager::RegisterAllocator(class IAllocator* alloc)
 {
+    AZStd::lock_guard<AZStd::mutex> lock(m_allocatorListMutex);
     AZ_Assert(m_numAllocators < m_maxNumAllocators, "Too many allocators %d! Max is %d", m_numAllocators, m_maxNumAllocators);
     m_allocators[m_numAllocators++] = alloc;
 }
@@ -70,6 +73,7 @@ AllocatorManager::RegisterAllocator(class IAllocator* alloc)
 void
 AllocatorManager::UnRegisterAllocator(class IAllocator* alloc)
 {
+    AZStd::lock_guard<AZStd::mutex> lock(m_allocatorListMutex);
     for (int i = 0; i < m_numAllocators; ++i)
     {
         if (m_allocators[i] == alloc)
@@ -87,6 +91,8 @@ AllocatorManager::UnRegisterAllocator(class IAllocator* alloc)
 void
 AllocatorManager::GarbageCollect()
 {
+    AZStd::lock_guard<AZStd::mutex> lock(m_allocatorListMutex);
+
     for (int i = 0; i < m_numAllocators; ++i)
     {
         m_allocators[i]->GarbageCollect();
@@ -100,8 +106,8 @@ AllocatorManager::GarbageCollect()
 bool
 AllocatorManager::AddOutOfMemoryListener(OutOfMemoryCBType& cb)
 {
-    AZ_Warning("Memory", m_outOfMemoryListener.empty(), "Out of memory listener was already installed!");
-    if (m_outOfMemoryListener.empty())
+    AZ_Warning("Memory", !m_outOfMemoryListener, "Out of memory listener was already installed!");
+    if (!m_outOfMemoryListener)
     {
         m_outOfMemoryListener = cb;
         return true;
@@ -127,6 +133,7 @@ AllocatorManager::RemoveOutOfMemoryListener()
 void
 AllocatorManager::SetTrackingMode(AZ::Debug::AllocationRecords::Mode mode)
 {
+    AZStd::lock_guard<AZStd::mutex> lock(m_allocatorListMutex);
     for (int i = 0; i < m_numAllocators; ++i)
     {
         AZ::Debug::AllocationRecords* records = m_allocators[i]->GetRecords();

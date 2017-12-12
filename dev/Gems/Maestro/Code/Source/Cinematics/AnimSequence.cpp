@@ -16,7 +16,7 @@
 
 #include "StdAfx.h"
 
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 
 #include "AnimSequence.h"
 #include "EntityNode.h"
@@ -45,6 +45,7 @@
 
 //////////////////////////////////////////////////////////////////////////
 CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceType sequenceType)
+    : m_refCount(0)
 {
     m_lastGenId = 1;
     m_pMovieSystem = pMovieSystem;
@@ -55,14 +56,19 @@ CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, ESequenceTyp
     m_bActive = false;
     m_pOwner = NULL;
     m_pActiveDirector = NULL;
-    m_fixedTimeStep = 0;
     m_precached = false;
     m_bResetting = false;
     m_sequenceType = sequenceType;
     m_time = -FLT_MAX;
     SetId(id);
 
-    m_pEventStrings = new CAnimStringTable;
+    m_pEventStrings = aznew CAnimStringTable;
+}
+
+//////////////////////////////////////////////////////////////////////////
+CAnimSequence::CAnimSequence()
+    : CAnimSequence((gEnv) ? gEnv->pMovieSystem : nullptr, 0, eSequenceType_SequenceComponent)
+{
 }
 
 CAnimSequence::~CAnimSequence()
@@ -78,12 +84,32 @@ CAnimSequence::~CAnimSequence()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CAnimSequence::add_ref()
+{
+    ++m_refCount;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimSequence::release()
+{
+    if (--m_refCount <= 0)
+    {
+        delete this;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CAnimSequence::SetName(const char* name)
 {
+    if (!m_pMovieSystem)
+    {
+        return;   // should never happen, null pointer guard
+    }
+
     string originalName = GetName();
 
     m_name = name;
-    m_pMovieSystem->OnSequenceRenamed(originalName, m_name);
+    m_pMovieSystem->OnSequenceRenamed(originalName, m_name.c_str());
 
     // the sequence named LIGHT_ANIMATION_SET_NAME is a singleton sequence to hold all light animations.
     if (m_name == LIGHT_ANIMATION_SET_NAME)
@@ -103,6 +129,17 @@ void CAnimSequence::SetName(const char* name)
 const char* CAnimSequence::GetName() const
 {
     return m_name.c_str();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimSequence::ResetId()
+{
+    if (!m_pMovieSystem)
+    {
+        return;   // should never happen, null pointer guard
+    }
+
+    SetId(m_pMovieSystem->GrabNextSequenceId());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -159,7 +196,7 @@ int CAnimSequence::GetNodeCount() const
 IAnimNode* CAnimSequence::GetNode(int index) const
 {
     assert(index >= 0 && index < (int)m_nodes.size());
-    return m_nodes[index];
+    return m_nodes[index].get();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -167,19 +204,23 @@ bool CAnimSequence::AddNode(IAnimNode* pAnimNode)
 {
     assert(pAnimNode != 0);
 
-    // Check if this node already in sequence.
-    for (int i = 0; i < (int)m_nodes.size(); i++)
-    {
-        if (pAnimNode == m_nodes[i])
-        {
-            // Fail to add node second time.
-            return false;
-        }
-    }
-
     pAnimNode->SetSequence(this);
     pAnimNode->SetTimeRange(m_timeRange);
-    m_nodes.push_back(pAnimNode);
+
+    // Check if this node already in sequence. If found, don't add it again.
+    bool found = false;
+    for (int i = 0; i < (int)m_nodes.size(); i++)
+    {
+        if (pAnimNode == m_nodes[i].get())
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+    {
+        m_nodes.push_back(AZStd::intrusive_ptr<IAnimNode>(pAnimNode));
+    }
 
     const int nodeId = static_cast<CAnimNode*>(pAnimNode)->GetId();
     if (nodeId >= (int)m_lastGenId)
@@ -204,6 +245,11 @@ bool CAnimSequence::AddNode(IAnimNode* pAnimNode)
 //////////////////////////////////////////////////////////////////////////
 IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNodeId)
 {
+    if (!m_pMovieSystem)
+    {
+        return nullptr;   // should never happen, null pointer guard
+    }
+
     CAnimNode* pAnimNode = NULL;
 
     if (nNodeId == -1)
@@ -217,7 +263,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             // legacy entities are only allowed to be added to legacy sequences
             if (m_sequenceType == eSequenceType_Legacy)
             {
-                pAnimNode = new CAnimEntityNode(nNodeId);
+                pAnimNode = aznew CAnimEntityNode(nNodeId, eAnimNodeType_Entity);
             }
             else
             {
@@ -228,7 +274,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             // AZ entities are only allowed to be added to SequenceComponent sequences
             if (m_sequenceType == eSequenceType_SequenceComponent)
             {
-                pAnimNode = new CAnimAzEntityNode(nNodeId);
+                pAnimNode = aznew CAnimAzEntityNode(nNodeId);
             }
             else
             {
@@ -239,7 +285,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             // Components are only allowed to be added to SequenceComponent sequences
             if (m_sequenceType == eSequenceType_SequenceComponent)
             {
-                pAnimNode = new CAnimComponentNode(nNodeId);
+                pAnimNode = aznew CAnimComponentNode(nNodeId);
             }
             else
             {
@@ -250,7 +296,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             // legacy cameras are only allowed to be added to legacy sequences
             if (m_sequenceType == eSequenceType_Legacy)
             {
-                pAnimNode = new CAnimCameraNode(nNodeId);
+                pAnimNode = aznew CAnimCameraNode(nNodeId);
             }
             else
             {
@@ -258,28 +304,28 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             }
             break;
         case eAnimNodeType_CVar:
-            pAnimNode = new CAnimCVarNode(nNodeId);
+            pAnimNode = aznew CAnimCVarNode(nNodeId);
             break;
         case eAnimNodeType_ScriptVar:
-            pAnimNode = new CAnimScriptVarNode(nNodeId);
+            pAnimNode = aznew CAnimScriptVarNode(nNodeId);
             break;
         case eAnimNodeType_Director:
-            pAnimNode = new CAnimSceneNode(nNodeId);
+            pAnimNode = aznew CAnimSceneNode(nNodeId);
             break;
         case eAnimNodeType_Material:
-            pAnimNode = new CAnimMaterialNode(nNodeId);
+            pAnimNode = aznew CAnimMaterialNode(nNodeId);
             break;
         case eAnimNodeType_Event:
-            pAnimNode = new CAnimEventNode(nNodeId);
+            pAnimNode = aznew CAnimEventNode(nNodeId);
             break;
         case eAnimNodeType_Group:
-            pAnimNode = new CAnimNodeGroup(nNodeId);
+            pAnimNode = aznew CAnimNodeGroup(nNodeId);
             break;
         case  eAnimNodeType_Layer:
-            pAnimNode = new CLayerNode(nNodeId);
+            pAnimNode = aznew CLayerNode(nNodeId);
             break;
         case eAnimNodeType_Comment:
-            pAnimNode = new CCommentNode(nNodeId);
+            pAnimNode = aznew CCommentNode(nNodeId);
             break;
         case eAnimNodeType_RadialBlur:
         case eAnimNodeType_ColorCorrection:
@@ -287,21 +333,21 @@ IAnimNode* CAnimSequence::CreateNodeInternal(EAnimNodeType nodeType, uint32 nNod
             pAnimNode = CAnimPostFXNode::CreateNode(nNodeId, nodeType);
             break;
         case eAnimNodeType_ShadowSetup:
-            pAnimNode = new CShadowsSetupNode(nNodeId);
+            pAnimNode = aznew CShadowsSetupNode(nNodeId);
             break;
         case eAnimNodeType_ScreenFader:
-            pAnimNode = new CAnimScreenFaderNode(nNodeId);
+            pAnimNode = aznew CAnimScreenFaderNode(nNodeId);
             break;
         case eAnimNodeType_Light:
-            pAnimNode = new CAnimLightNode(nNodeId);
+            pAnimNode = aznew CAnimLightNode(nNodeId);
             break;
 #if defined(USE_GEOM_CACHES)
         case eAnimNodeType_GeomCache:
-            pAnimNode = new CAnimGeomCacheNode(nNodeId);
+            pAnimNode = aznew CAnimGeomCacheNode(nNodeId);
             break;
 #endif
         case eAnimNodeType_Environment:
-            pAnimNode = new CAnimEnvironmentNode(nNodeId);
+            pAnimNode = aznew CAnimEnvironmentNode(nNodeId);
             break;
         default:     
             m_pMovieSystem->LogUserNotificationMsg("AnimNode cannot be added because it is an unsupported object type.");
@@ -325,6 +371,11 @@ IAnimNode* CAnimSequence::CreateNode(EAnimNodeType nodeType)
 //////////////////////////////////////////////////////////////////////////
 IAnimNode* CAnimSequence::CreateNode(XmlNodeRef node)
 {
+    if (!GetMovieSystem())
+    {
+        return 0;   // should never happen, null pointer guard
+    }
+
     EAnimNodeType type;
     GetMovieSystem()->SerializeNodeType(type, node, true, IAnimSequence::kSequenceVersion, 0);
 
@@ -356,7 +407,7 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
 
     for (int i = 0; i < (int)m_nodes.size(); )
     {
-        if (node == m_nodes[i])
+        if (node == m_nodes[i].get())
         {
             m_nodes.erase(m_nodes.begin() + i);
 
@@ -376,10 +427,13 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
     }
 
     // Request the node removal from the SequenceComponent if it's an AZ::Entity
-    AZ::EntityId removedNodeId = node->GetAzEntityId();
-    if (removedNodeId.IsValid() && m_ownerId.IsValid())
+    if (m_sequenceType == eSequenceType_SequenceComponent)
     {
-        LmbrCentral::EditorSequenceComponentRequestBus::Event(m_ownerId, &LmbrCentral::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
+        AZ::EntityId removedNodeId = node->GetAzEntityId();
+        if (removedNodeId.IsValid() && m_ownerId.IsValid())
+        {
+            Maestro::EditorSequenceComponentRequestBus::Event(m_ownerId, &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
+        }
     }
 
     // The removed one was the active director node.
@@ -390,7 +444,7 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
         // If there is another director node, set it as active.
         for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
-            IAnimNode* pNode = *it;
+            IAnimNode* pNode = it->get();
             if (pNode->GetType() == eAnimNodeType_Director)
             {
                 SetActiveDirector(pNode);
@@ -424,7 +478,7 @@ void CAnimSequence::Reset(bool bSeekToStart)
     {
         for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
-            IAnimNode* pAnimNode = *it;
+            IAnimNode* pAnimNode = it->get();
             static_cast<CAnimNode*>(pAnimNode)->OnReset();
         }
         m_bResetting = false;
@@ -453,7 +507,7 @@ void CAnimSequence::Reset(bool bSeekToStart)
     {
         for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
-            IAnimNode* pAnimNode = *it;
+            IAnimNode* pAnimNode = it->get();
             static_cast<CAnimNode*>(pAnimNode)->OnReset();
         }
     }
@@ -493,7 +547,7 @@ void CAnimSequence::ResetHard()
     {
         for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
-            IAnimNode* pAnimNode = *it;
+            IAnimNode* pAnimNode = it->get();
             static_cast<CAnimNode*>(pAnimNode)->OnResetHard();
         }
     }
@@ -514,14 +568,14 @@ void CAnimSequence::Pause()
     // Detach animation block from all nodes in this sequence.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->OnPause();
     }
 
     if (GetSequenceType() == eSequenceType_SequenceComponent)
     {
         // Notify EBus listeners
-        LmbrCentral::SequenceComponentNotificationBus::Event(GetOwnerId(), &LmbrCentral::SequenceComponentNotificationBus::Events::OnPause);
+        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnPause);
     }
 }
 
@@ -539,14 +593,14 @@ void CAnimSequence::Resume()
 
         for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
-            IAnimNode* pAnimNode = *it;
+            IAnimNode* pAnimNode = it->get();
             static_cast<CAnimNode*>(pAnimNode)->OnResume();
         }
 
         if (GetSequenceType() == eSequenceType_SequenceComponent)
         {
             // Notify EBus listeners
-            LmbrCentral::SequenceComponentNotificationBus::Event(GetOwnerId(), &LmbrCentral::SequenceComponentNotificationBus::Events::OnResume);
+            Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnResume);
         }
     }
 }
@@ -556,7 +610,7 @@ void CAnimSequence::OnLoop()
 {
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->OnLoop();
     }
 }
@@ -572,14 +626,14 @@ void CAnimSequence::OnStart()
 {
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->OnStart();
     }
 
     if (GetSequenceType() == eSequenceType_SequenceComponent)
     {
         // notify listeners
-        LmbrCentral::SequenceComponentNotificationBus::Event(GetOwnerId(), &LmbrCentral::SequenceComponentNotificationBus::Events::OnStart, m_time);
+        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnStart, m_time);
     }
 }
 
@@ -588,14 +642,14 @@ void CAnimSequence::OnStop()
 {
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->OnStop();
     }
 
     if (GetSequenceType() == eSequenceType_SequenceComponent)
     {
         // notify listeners
-        LmbrCentral::SequenceComponentNotificationBus::Event(GetOwnerId(), &LmbrCentral::SequenceComponentNotificationBus::Events::OnStop, m_time);
+        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnStop, m_time);
     }
 }
 
@@ -603,7 +657,7 @@ void CAnimSequence::TimeChanged(float newTime)
 {
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         pAnimNode->TimeChanged(newTime);
     }
 }
@@ -618,7 +672,7 @@ void CAnimSequence::StillUpdate()
 
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         pAnimNode->StillUpdate();
     }
 }
@@ -654,7 +708,7 @@ void CAnimSequence::Animate(const SAnimContext& ec)
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
         // Make sure correct animation block is binded to node.
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
 
         // All other (inactive) director nodes are skipped.
         if (pAnimNode->GetType() == eAnimNodeType_Director)
@@ -690,7 +744,7 @@ void CAnimSequence::Render()
 {
     for (AnimNodes::iterator it = m_nodesNeedToRender.begin(); it != m_nodesNeedToRender.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         pAnimNode->Render();
     }
 }
@@ -707,7 +761,8 @@ void CAnimSequence::Activate()
     // Assign animation block to all nodes in this sequence.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
+        static_cast<CAnimNode*>(pAnimNode)->OnReset();
         static_cast<CAnimNode*>(pAnimNode)->Activate(true);
     }
 }
@@ -723,14 +778,14 @@ void CAnimSequence::Deactivate()
     // Detach animation block from all nodes in this sequence.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->Activate(false);
         static_cast<CAnimNode*>(pAnimNode)->OnReset();
     }
 
     // Remove a possibly cached game hint associated with this anim sequence.
     stack_string sTemp("anim_sequence_");
-    sTemp += m_name;
+    sTemp += m_name.c_str();
     // Audio: Release precached sound
 
     m_bActive = false;
@@ -749,7 +804,7 @@ void CAnimSequence::PrecacheStatic(const float startTime)
     // pre-cache animation keys
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->PrecacheStatic(startTime);
     }
 
@@ -764,7 +819,7 @@ void CAnimSequence::PrecacheStatic(const float startTime)
 
     // Try to cache this sequence's game hint if one exists.
     stack_string sTemp("anim_sequence_");
-    sTemp += m_name;
+    sTemp += m_name.c_str();
 
     //if (gEnv->pAudioSystem)
     {
@@ -783,7 +838,7 @@ void CAnimSequence::PrecacheDynamic(float time)
     // pre-cache animation keys
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         static_cast<CAnimNode*>(pAnimNode)->PrecacheDynamic(time);
     }
 }
@@ -808,13 +863,38 @@ void CAnimSequence::PrecacheEntity(IEntity* pEntity)
 void CAnimSequence::SetId(uint32 newId)
 {
     // Notify movie system of new Id
-    GetMovieSystem()->OnSetSequenceId(newId);
+    if (GetMovieSystem())
+    {
+        GetMovieSystem()->OnSetSequenceId(newId);
+    }
     m_id = newId;
+
+    if (m_sequenceType == eSequenceType_Legacy)
+    {
+        // For legacy sequences we store the sequence ID in m_ownerId,
+        // for component entity sequences m_ownerId stores the EntityId of the component entity.
+        // The rationale for storing the sequence ID for legacy sequences is that, eventually legacy
+        // support will be dropped. For component entity sequences it makes sense that the component
+        // entity ID is the unique way to identify sequences since that works with slices. So we want
+        // to write code that gets sequences by EntityId but have that work for legacy sequences also.
+
+        // Note that this will put the sequence ID in the lower 32 bits only. If necessary IsLegacyEntityId
+        // could be used to determine if this is a valid component entity ID or a legacy sequence ID. In
+        // practice though this has not so far proved necessary because the sequence type can be used to
+        // determine that.
+        m_ownerId = AZ::EntityId(m_id);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks, uint32 overrideId, bool bResetLightAnimSet)
 {
+    if (!GetMovieSystem())
+    {
+        return;   // should never happen, null pointer guard
+    }
+
     if (bLoading)
     {
         // Load.
@@ -922,7 +1002,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         XmlNodeRef events = xmlNode->findChild("Events");
         if (events)
         {
-            string eventName;
+            AZStd::string eventName;
             for (int i = 0; i < events->getChildCount(); i++)
             {
                 XmlNodeRef xn = events->getChild(i);
@@ -932,7 +1012,7 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
                 // Added
                 for (TTrackEventListeners::iterator j = m_listeners.begin(); j != m_listeners.end(); ++j)
                 {
-                    (*j)->OnTrackEvent(this, ITrackEventListener::eTrackEventReason_Added, eventName, NULL);
+                    (*j)->OnTrackEvent(this, ITrackEventListener::eTrackEventReason_Added, eventName.c_str(), NULL);
                 }
             }
         }
@@ -982,7 +1062,37 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         for (TrackEvents::iterator iter = m_events.begin(); iter != m_events.end(); ++iter)
         {
             XmlNodeRef xn = events->newChild("Event");
-            xn->setAttr("Name", *iter);
+            xn->setAttr("Name", iter->c_str());
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimSequence>()
+        ->Version(1)
+        ->Field("Name", &CAnimSequence::m_name)
+        ->Field("SequenceEntityId", &CAnimSequence::m_ownerId)
+        ->Field("Flags", &CAnimSequence::m_flags)
+        ->Field("TimeRange", &CAnimSequence::m_timeRange)
+        ->Field("ID", &CAnimSequence::m_id)
+        ->Field("Nodes", &CAnimSequence::m_nodes)
+        ->Field("SequenceType", &CAnimSequence::m_sequenceType)
+        ->Field("Events", &CAnimSequence::m_events);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimSequence::InitPostLoad()
+{
+    int num = GetNodeCount();
+    for (int i = 0; i < num; i++)
+    {
+        IAnimNode* animNode = GetNode(i);
+        if (animNode)
+        {
+            AddNode(animNode);
+            animNode->InitPostLoad(this);
         }
     }
 }
@@ -995,7 +1105,7 @@ void CAnimSequence::SetTimeRange(Range timeRange)
     // Set time range to be in range of largest animation track.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* anode = *it;
+        IAnimNode* anode = it->get();
         anode->SetTimeRange(timeRange);
     }
 }
@@ -1011,7 +1121,7 @@ void CAnimSequence::AdjustKeysToTimeRange(const Range& timeRange)
     // Set time range to be in range of largest animation track.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
 
         int trackCount = pAnimNode->GetTrackCount();
         for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
@@ -1036,7 +1146,7 @@ void CAnimSequence::ComputeTimeRange()
     // Set time range to be in range of largest animation track.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
 
         int trackCount = pAnimNode->GetTrackCount();
         for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
@@ -1169,7 +1279,7 @@ char const* CAnimSequence::GetTrackEvent(int iIndex) const
 
     if (bValid)
     {
-        szResult = m_events[iIndex];
+        szResult = m_events[iIndex].c_str();
     }
 
     return szResult;
@@ -1188,7 +1298,7 @@ void CAnimSequence::NotifyTrackEvent(ITrackEventListener::ETrackEventReason reas
     // Notification via Event Bus
     if (GetSequenceType() == eSequenceType_SequenceComponent)
     {
-        LmbrCentral::SequenceComponentNotificationBus::Event(GetOwnerId(), &LmbrCentral::SequenceComponentNotificationBus::Events::OnTrackEventTriggered, event, param);
+        Maestro::SequenceComponentNotificationBus::Event(GetOwnerId(), &Maestro::SequenceComponentNotificationBus::Events::OnTrackEventTriggered, event, param);
     }
 }
 
@@ -1222,7 +1332,7 @@ IAnimNode* CAnimSequence::FindNodeById(int nNodeId)
 {
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         if (static_cast<CAnimNode*>(pAnimNode)->GetId() == nNodeId)
         {
             return pAnimNode;
@@ -1236,7 +1346,7 @@ IAnimNode* CAnimSequence::FindNodeByName(const char* sNodeName, const IAnimNode*
 {
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         // Case insensitive name comparison.
         if (_stricmp(((CAnimNode*)pAnimNode)->GetNameFast(), sNodeName) == 0)
         {
@@ -1258,22 +1368,22 @@ void CAnimSequence::ReorderNode(IAnimNode* pNode, IAnimNode* pPivotNode, bool bN
         return;
     }
 
-    _smart_ptr<IAnimNode> pTempHolder = pNode; // Keep reference to node so it is not deleted by erasing from list.
-    stl::find_and_erase(m_nodes, pNode);
+    AZStd::intrusive_ptr<IAnimNode> pTempHolder(pNode); // Keep reference to node so it is not deleted by erasing from list.
+    stl::find_and_erase_if(m_nodes, [pNode](const AZStd::intrusive_ptr<IAnimNode>& sp) { return sp.get() == pNode; });
 
     AnimNodes::iterator it;
     for (it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pAnimNode = *it;
+        IAnimNode* pAnimNode = it->get();
         if (pAnimNode == pPivotNode)
         {
             if (bNext)
             {
-                m_nodes.insert(it + 1, pNode);
+                m_nodes.insert(it + 1, AZStd::intrusive_ptr<IAnimNode>(pNode));
             }
             else
             {
-                m_nodes.insert(it, pNode);
+                m_nodes.insert(it, AZStd::intrusive_ptr<IAnimNode>(pNode));
             }
             break;
         }
@@ -1281,7 +1391,7 @@ void CAnimSequence::ReorderNode(IAnimNode* pNode, IAnimNode* pPivotNode, bool bN
 
     if (it == m_nodes.end())
     {
-        m_nodes.insert(m_nodes.begin(), pNode);
+        m_nodes.insert(m_nodes.begin(), AZStd::intrusive_ptr<IAnimNode>(pNode));
     }
 }
 
@@ -1369,14 +1479,14 @@ void CAnimSequence::PasteNodes(const XmlNodeRef& xmlNode, IAnimNode* pParent)
 bool CAnimSequence::AddNodeNeedToRender(IAnimNode* pNode)
 {
     assert(pNode != 0);
-    return stl::push_back_unique(m_nodesNeedToRender, pNode);
+    return stl::push_back_unique(m_nodesNeedToRender, AZStd::intrusive_ptr<IAnimNode>(pNode));
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimSequence::RemoveNodeNeedToRender(IAnimNode* pNode)
 {
     assert(pNode != 0);
-    stl::find_and_erase(m_nodesNeedToRender, pNode);
+    stl::find_and_erase_if(m_nodesNeedToRender, [pNode](const AZStd::intrusive_ptr<IAnimNode>& sp) { return sp.get() == pNode; });
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1387,6 +1497,11 @@ void CAnimSequence::SetOwner(const AZ::EntityId& entityOwnerId)
 //////////////////////////////////////////////////////////////////////////
 void CAnimSequence::SetActiveDirector(IAnimNode* pDirectorNode)
 {
+    if (!pDirectorNode)
+    {
+        return;
+    }
+
     assert(pDirectorNode->GetType() == eAnimNodeType_Director);
     if (pDirectorNode->GetType() != eAnimNodeType_Director)
     {
@@ -1416,9 +1531,14 @@ bool CAnimSequence::IsAncestorOf(const IAnimSequence* pSequence) const
         return true;
     }
 
+    if (!GetMovieSystem())
+    {
+        return false;   // should never happen, null pointer guard
+    }
+
     for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IAnimNode* pNode = *it;
+        IAnimNode* pNode = it->get();
         if (pNode->GetType() == eAnimNodeType_Director)
         {
             IAnimTrack* pSequenceTrack = pNode->GetTrackForParameter(eAnimParamType_Sequence);
@@ -1429,12 +1549,12 @@ bool CAnimSequence::IsAncestorOf(const IAnimSequence* pSequence) const
                 {
                     ISequenceKey key;
                     pSequenceTrack->GetKey(i, &key);
-                    if (_stricmp(key.szSelection, pSequence->GetName()) == 0)
+                    if (_stricmp(key.szSelection.c_str(), pSequence->GetName()) == 0)
                     {
                         return true;
                     }
 
-                    IAnimSequence* pChild = GetMovieSystem()->FindSequence(key.szSelection);
+                    IAnimSequence* pChild = GetMovieSystem()->FindSequence(key.szSelection.c_str());
                     if (pChild && pChild->IsAncestorOf(pSequence))
                     {
                         return true;

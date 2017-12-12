@@ -48,11 +48,8 @@ namespace AZ
 
             bool foundSuccess = false;
             typedef AZStd::function<void(void**, const SerializeContext::ClassData**, const Uuid&, SerializeContext*)> CreationCallback;
-            auto handler = [&targetPointer, objectClassData, &foundSuccess](void** instance, const SerializeContext::ClassData** classData, const Uuid& classId, SerializeContext* context)
+            auto handler = [&targetPointer, objectClassData, &foundSuccess](void** instance, const SerializeContext::ClassData** classData, const Uuid& classId, SerializeContext*)
                 {
-                    (void)classData;
-                    (void)context;
-
                     if (classId == objectClassData->m_typeId)
                     {
                         foundSuccess = true;
@@ -195,11 +192,17 @@ namespace AZ
             if (!context)
             {
                 EBUS_EVENT_RESULT(context, ComponentApplicationBus, GetSerializeContext);
-                AZ_Assert(context, "No serialize context");
+
+                if(!context)
+                {
+                    AZ_Assert(false, "No serialize context");
+                    return false;
+                }
             }
 
-            if (!context)
+            if (!classPtr)
             {
+                AZ_Assert(false, "SaveObjectToStream: classPtr is null, object cannot be serialized.");
                 return false;
             }
 

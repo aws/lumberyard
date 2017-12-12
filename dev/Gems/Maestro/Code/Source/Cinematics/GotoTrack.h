@@ -27,6 +27,9 @@ class CGotoTrack
     : public TAnimTrack<IDiscreteFloatKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CGotoTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CGotoTrack, "{B9A6BD22-F669-4D84-AD1D-B7BD07165C5D}", IAnimTrack);
+
     CGotoTrack();
 
     virtual EAnimValue GetValueType() { return eAnimValue_DiscreteFloat; }
@@ -37,10 +40,8 @@ public:
     void SerializeKey(IDiscreteFloatKey& key, XmlNodeRef& keyNode, bool bLoading);
     void GetKeyInfo(int key, const char*& description, float& duration);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
+
 protected:
     void SetKeyAtTime(float time, IKey* key);
 

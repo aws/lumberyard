@@ -1,20 +1,6 @@
 ﻿.container {  
   width: 100%;
 }
-/*.container:nth-child(odd) {
-  background-color: rgba(0, 0, 0, 0.2);
-}*/
-/*
- * note that styling gu-mirror directly is a bad practice because it's too generic.
- * you're better off giving the draggable elements a unique class and styling that directly!
- */
-.container > div,
-.container > div {
-  cursor: move;
-  cursor: grab;
-  cursor: -moz-grab;
-  cursor: -webkit-grab;
-}
 .ex-moved {
   background-color : rgba(78, 0, 255, 0.05);  
   -webkit-transition : background-color 500ms ease-out;

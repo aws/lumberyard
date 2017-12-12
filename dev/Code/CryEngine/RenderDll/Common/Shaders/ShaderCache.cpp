@@ -368,7 +368,7 @@ void CShaderMan::mfInitShadersCacheMissLog()
         return;
     }
 
-    // create valid path (also for xbox dvd emu)
+    // create valid path
     gEnv->pCryPak->MakeDir(g_szTestResults);
 
     m_ShaderCacheMissPath = string("@cache@\\Shaders\\ShaderCacheMisses.txt");  // do we want this here, or maybe in @log@ ?
@@ -1233,9 +1233,9 @@ void CShaderMan::mfInsertNewCombination(SShaderCombIdent& Ident, EHWShaderClass 
 string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState pipelineState) const
 {
     // NOTE: when updating remote compiler folders, please ensure folders path is matching
-    const char* pCompilerOrbis = "%s %s \"%s\" \"%s\"";
+    const char* pCompilerOrbis = "%s %s \"%s\" \"%s\""; // ACCEPTED_USE
 
-    const char* pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Fo \"%s\" \"%s\"";
+    const char* pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Fo \"%s\" \"%s\""; // ACCEPTED_USE
 
     const char* pCompilerD3D11 = "/nologo /E %s /T %s /Zpr /Gec /Fo \"%s\" \"%s\"";
 #if defined(MAC)
@@ -1249,11 +1249,11 @@ string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState
     uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
     if (glVersion == DXGLES_VERSION_30)
     {
-        pCompilerGLES3 = "-lang=es300 -flags=233217 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
+        pCompilerGLES3 = "-lang=es300 -flags=495361 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
     }
     else
     {
-        pCompilerGLES3 = "-lang=es310 -flags=102145 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
+        pCompilerGLES3 = "-lang=es310 -flags=364289 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
     }
 #endif
 
@@ -1264,13 +1264,13 @@ string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState
     {
         // Set debug information
         pCompilerD3D11 = "/nologo /E %s /T %s /Zpr /Gec /Zi /Od /Fo \"%s\" \"%s\"";
-        pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Zi /Od /Fo \"%s\" \"%s\"";
+        pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Zi /Od /Fo \"%s\" \"%s\""; // ACCEPTED_USE
     }
     else if (CRenderer::CV_r_shadersdebug == 4)
     {
         // Set debug information, optimized shaders
         pCompilerD3D11 = "/nologo /E %s /T %s /Zpr /Gec /Zi /O3 /Fo \"%s\" \"%s\"";
-        pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Zi /O3 /Fo \"%s\" \"%s\"";
+        pCompilerDurango = "/nologo /E %s /T %s /Zpr /Gec /Gis /Zi /O3 /Fo \"%s\" \"%s\""; // ACCEPTED_USE
     }
 
     if (CParserBin::m_nPlatform == SF_D3D11)
@@ -1278,14 +1278,14 @@ string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState
         return pCompilerD3D11;
     }
     else
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
-        return pCompilerOrbis;
+        return pCompilerOrbis; // ACCEPTED_USE
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
-        return pCompilerDurango;
+        return pCompilerDurango; // ACCEPTED_USE
     }
     else
     if (CParserBin::m_nPlatform == SF_GL4)
@@ -1508,14 +1508,14 @@ void CShaderMan::AddRTCombinations(FXShaderCacheCombinations& CmbsMap, CHWShader
     int nBits = 0;
 
     uint32 nBitsPlatform = 0;
-    if (CParserBin::m_nPlatform == SF_ORBIS)
+    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
-        nBitsPlatform |= SHGD_HW_ORBIS;
+        nBitsPlatform |= SHGD_HW_ORBIS; // ACCEPTED_USE
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO)
+    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
     {
-        nBitsPlatform |= SHGD_HW_DURANGO;
+        nBitsPlatform |= SHGD_HW_DURANGO; // ACCEPTED_USE
     }
     else
     if (CParserBin::m_nPlatform == SF_D3D11)
@@ -1875,7 +1875,7 @@ void CShaderMan::_PrecacheShaderList(bool bStatsOnly)
                             }
                         }
 
-                        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4)
+                        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
                         {
                             CHWShader* d3d11Shaders[] = { pPass->m_GShader, pPass->m_HShader, pPass->m_CShader, pPass->m_DShader };
                             for (int i = 0; i < 4; i++)
@@ -2050,7 +2050,7 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
 {
     CHWShader::mfFlushPendedShadersWait(-1);
 
-    if (CRenderer::CV_r_shadersorbis)
+    if (CRenderer::CV_r_shadersorbis) // ACCEPTED_USE
     {
 #ifdef WATER_TESSELLATION_RENDERER
         CRenderer::CV_r_WaterTessellationHW = 0;
@@ -2063,16 +2063,16 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
         CParserBin::m_bShaderCacheGen = true;
 
         gRenDev->m_Features |= RFT_HW_SM50;
-        CParserBin::SetupForOrbis();
-        CryLogAlways("\nStarting shader compilation for Orbis...");
+        CParserBin::SetupForOrbis(); // ACCEPTED_USE
+        CryLogAlways("\nStarting shader compilation for Orbis..."); // ACCEPTED_USE
         mfInitShadersList(NULL);
         mfPreloadShaderExts();
         _PrecacheShaderList(bStatsOnly);
 
-        _SetVar("r_ShadersOrbis", 0);
+        _SetVar("r_ShadersOrbis", 0); // ACCEPTED_USE
     }
     else
-    if (CRenderer::CV_r_shadersdurango)
+    if (CRenderer::CV_r_shadersdurango) // ACCEPTED_USE
     {
         gRenDev->m_bDeviceSupportsFP16Filter = true;
         gRenDev->m_bDeviceSupportsFP16Separate = false;
@@ -2082,8 +2082,8 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
         CParserBin::m_bShaderCacheGen = true;
 
         gRenDev->m_Features |= RFT_HW_SM50;
-        CParserBin::SetupForDurango();
-        CryLogAlways("\nStarting shader compilation for Durango...");
+        CParserBin::SetupForDurango(); // ACCEPTED_USE
+        CryLogAlways("\nStarting shader compilation for Durango..."); // ACCEPTED_USE
         mfInitShadersList(NULL);
         mfPreloadShaderExts();
         _PrecacheShaderList(bStatsOnly);

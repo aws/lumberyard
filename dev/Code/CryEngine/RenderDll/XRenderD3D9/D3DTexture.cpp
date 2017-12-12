@@ -2110,7 +2110,7 @@ bool CTexture::CreateRenderTarget(ETEX_Format eTF, const ColorF& cClear)
     PostCreate();
 
     // Assign name to RT for enhanced debugging
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
 	if (bRes)
     {
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(m_SrcName.c_str()), m_SrcName.c_str());
@@ -2839,7 +2839,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     // Notify that resource is dirty
     InvalidateDeviceResource(eDeviceResourceDirty | eDeviceResourceViewDirty);
 
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
     if (m_pDevTexture)
     {
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, m_SrcName.length(), m_SrcName.c_str());
@@ -3014,7 +3014,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateShaderResourceView(pTex, &srvDesc, &pSRV);
         pResult = pSRV;
 
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
         if (pSRV)
         {
             AZStd::string srvName = AZStd::string::format("[SRV] %s", m_SrcName.c_str());
@@ -3036,7 +3036,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateRenderTargetView(pTex, &rtvDesc, &pRTV);
         pResult = pRTV;
 
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
             if (pRTV)
             {
                 AZStd::string rtvName = AZStd::string::format("[RTV] %s", m_SrcName.c_str());
@@ -3056,7 +3056,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateDepthStencilView(pTex, &dsvDesc, &pDSV);
         pResult = pDSV;
 
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
             if (pDSV)
             {
                 AZStd::string dsvName = AZStd::string::format("[DSV] %s", m_SrcName.c_str());
@@ -3080,7 +3080,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateUnorderedAccessView(pTex, &uavDesc, &pUAV);
 
         pResult = pUAV;
-#if !defined(_RELEASE) && defined(WIN32)
+#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
             if (pUAV)
             {
                 AZStd::string uavName = AZStd::string::format("[UAV] %s", m_SrcName.c_str());

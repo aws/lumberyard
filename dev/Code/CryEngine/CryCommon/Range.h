@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <AzCore/RTTI/TypeInfo.h>
+
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -130,5 +132,10 @@ public:
 
 //! CRange if just TRange for floats..
 typedef TRange<float> Range;
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Range, "{515CF4CF-4992-4139-BDE5-42A887432B45}");
+}
 
 #endif // CRYINCLUDE_CRYCOMMON_RANGE_H

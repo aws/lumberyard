@@ -13,13 +13,18 @@
 #pragma once
 
 #include <IConvertor.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/string/string.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
-#ifdef MOTIONCANVAS_GEM_ENABLED
-#include <EMotionFX/CommandSystem/Source/CommandManager.h>
-#endif
 
 
+namespace AssetBuilderSDK
+{
+    struct ProcessJobRequest;
+    struct ProcessJobResponse;
+}
 namespace AZ
 {
     namespace SceneAPI
@@ -28,6 +33,10 @@ namespace AZ
         {
             class Scene;
             class SceneManifest;
+        }
+        namespace Events
+        {
+            struct ExportProduct;
         }
         namespace Import
         {
@@ -64,20 +73,25 @@ namespace AZ
 
         protected:
             virtual bool PrepareForExporting(RCToolApplication& application);
-            virtual bool LoadAndExportScene();
-            virtual bool ExportScene(const AZ::SceneAPI::Containers::Scene& scene, int platformId);
+            virtual bool LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
+            virtual bool ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, int platformId);
+            
+            // Several file produced by this compiler used to have their sub id automatically assigned by the AP. This was causing problems with keeping
+            //      the sub id stable and the sub id was changed to be provided by this compiler. However these new sub ids differ from the original sub id
+            //      so to be compatible with legacy sub ids, the previously automatically created sub id is calculated for all files that used to 
+            //      have them. This has to be limited to only the products that would have previously had an automated sub id assigned as some of
+            //      the automatically generated sub ids were file order depended.
+            virtual bool IsPreSubIdFile(const AZStd::string& file) const;
+            virtual void ResolvePreSubIds(AssetBuilderSDK::ProcessJobResponse& response, const AZStd::map<AZStd::string, size_t>& preSubIdFiles) const;
+            virtual u32 BuildSubId(const SceneAPI::Events::ExportProduct& product) const;
+
+            virtual AZStd::unique_ptr<AssetBuilderSDK::ProcessJobRequest> ReadJobRequest(const char* cacheFolder) const;
+            virtual bool WriteResponse(const char* cacheFolder, AssetBuilderSDK::ProcessJobResponse& response, bool success = true) const;
 
             ConvertContext m_context;
             AZStd::shared_ptr<ISceneConfig> m_config;
 
         private:
-#if defined(MOTIONCANVAS_GEM_ENABLED)
-            void InitMotionCanvasSystem();
-            void ShutdownMotionCanvasSystem();
-
-            AZStd::unique_ptr<CommandSystem::CommandManager>    m_commandManager;
-            bool                                                m_motionCanvasInited = false;
-#endif
         };
     } // namespace RC
 } // namespace AZ

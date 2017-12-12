@@ -106,8 +106,8 @@ bool CScreenFaderKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& keys)
             keyHandle.GetKey(&screenFaderKey);
 
             mv_fadeTime = screenFaderKey.m_fadeTime;
-            mv_fadeColor = Vec3(screenFaderKey.m_fadeColor.x, screenFaderKey.m_fadeColor.y, screenFaderKey.m_fadeColor.z);
-            mv_strTexture = screenFaderKey.m_strTexture;
+            mv_fadeColor = Vec3(screenFaderKey.m_fadeColor.GetR(), screenFaderKey.m_fadeColor.GetG(), screenFaderKey.m_fadeColor.GetB());
+            mv_strTexture = screenFaderKey.m_strTexture.c_str();
             mv_bUseCurColor = screenFaderKey.m_bUseCurColor;
             mv_fadeType = (int)screenFaderKey.m_fadeType;
             mv_fadechangeType = (int)screenFaderKey.m_fadeChangeType;
@@ -147,7 +147,7 @@ void CScreenFaderKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle&
             else if (pVar == mv_strTexture.GetVar())
             {
                 QString sTexture = mv_strTexture;
-                cry_strcpy(screenFaderKey.m_strTexture, sTexture.toLatin1().data());
+                screenFaderKey.m_strTexture = sTexture.toLatin1().data();
             }
             else if (pVar == mv_fadeType.GetVar())
             {
@@ -160,7 +160,7 @@ void CScreenFaderKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle&
             else if (pVar == mv_fadeColor.GetVar())
             {
                 Vec3 color = mv_fadeColor;
-                screenFaderKey.m_fadeColor = Vec4(color, screenFaderKey.m_fadeType == IScreenFaderKey::eFT_FadeIn ? 1.f : 0.f);
+                screenFaderKey.m_fadeColor = AZ::Color(color.x, color.y, color.z, screenFaderKey.m_fadeType == IScreenFaderKey::eFT_FadeIn ? 1.f : 0.f);
             }
 
             selectedKey.SetKey(&screenFaderKey);

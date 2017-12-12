@@ -8,8 +8,7 @@
 #include <AzCore/std/parallel/atomic.h>
 
 #include <ISystem.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvas.h>
 
 #include "CloudGemFrameworkSystemComponent.h"
 #include "CloudGemFramework/AwsApiJob.h"
@@ -17,6 +16,8 @@
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+
 #include <CloudGemFramework/Error.h>
 #include <CloudGemFramework/HttpClientComponent.h>
 
@@ -84,11 +85,13 @@ namespace CloudGemFramework
 
     void CloudGemFrameworkSystemComponent::Init()
     {
+
     }
 
     void CloudGemFrameworkSystemComponent::Activate()
     {
         CloudGemFrameworkRequestBus::Handler::BusConnect();
+        CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusConnect();
     }
 
 #ifdef _DEBUG
@@ -109,6 +112,7 @@ namespace CloudGemFramework
 
     void CloudGemFrameworkSystemComponent::Deactivate()
     {
+        CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusDisconnect();
         CloudGemFrameworkRequestBus::Handler::BusDisconnect();
 
         EBUS_EVENT(InternalCloudGemFrameworkNotificationBus, OnCloudGemFrameworkDeactivated);
@@ -124,14 +128,15 @@ namespace CloudGemFramework
 
     AZStd::string CloudGemFrameworkSystemComponent::GetServiceUrl(const AZStd::string& serviceName) {
         AZStd::string configName = serviceName + ".ServiceApi";
-        AZStd::string serviceUrl = gEnv->pLmbrAWS->GetClientManager()->GetConfigurationParameters().GetParameter(configName.c_str()).c_str();
+        AZStd::string serviceUrl;
+        EBUS_EVENT_RESULT(serviceUrl, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, configName);
         AZ_Error(COMPONENT_DISPLAY_NAME, !serviceUrl.empty(), "No mapping provided for the %s service.", serviceName.c_str());
         return serviceUrl;
     }
 
-    LmbrAWS::RequestRootCAFileResult CloudGemFrameworkSystemComponent::GetRootCAFile(AZStd::string& filePath)
+    CloudCanvas::RequestRootCAFileResult CloudGemFrameworkSystemComponent::GetRootCAFile(AZStd::string& filePath)
     {
-        LmbrAWS::RequestRootCAFileResult requestResult;
+        CloudCanvas::RequestRootCAFileResult requestResult;
         EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus,RequestRootCAFile, filePath);
         return requestResult;
     }
@@ -172,9 +177,17 @@ namespace CloudGemFramework
         }
     }
 
-    std::shared_ptr<Aws::Auth::AWSCredentialsProvider> CloudGemFrameworkSystemComponent::GetPlayerCredentialsProvider()
+    AwsApiJobConfig* CloudGemFrameworkSystemComponent::GetDefaultConfig()
     {
-        return gEnv->pLmbrAWS->GetClientManager()->GetDefaultClientSettings().credentialProvider;
+        return AwsApiJob::GetDefaultConfig();
     }
 
+    void CloudGemFrameworkSystemComponent::RootCAFileSet(const AZStd::string& caPath)
+    {
+        AwsApiJobConfig* defaultConfig = GetDefaultConfig();
+        if (defaultConfig)
+        {
+            defaultConfig->caFile = caPath.c_str();
+        }
+    }
 }

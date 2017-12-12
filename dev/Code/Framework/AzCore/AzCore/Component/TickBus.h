@@ -102,7 +102,7 @@ namespace AZ
         struct BusHandlerOrderCompare
             : public AZStd::binary_function<TickEvents*, TickEvents*, bool>                           
         {
-            AZ_FORCE_INLINE bool operator()(const TickEvents* left, const TickEvents* right) const { return left->m_tickOrder < right->m_tickOrder; }
+            AZ_FORCE_INLINE bool operator()(TickEvents* left, TickEvents* right) const { return left->GetTickOrder() < right->GetTickOrder(); }
         };
         //////////////////////////////////////////////////////////////////////////
 
@@ -113,12 +113,26 @@ namespace AZ
          */
         virtual void    OnTick(float deltaTime, ScriptTimePoint time) = 0;
 
+        /**
+         * Specifies The order in which a handler receives tick events relative to other handlers.
+         * This value should not be changed while the handler is connected.
+         * See the ComponentTickBus enum for recommended values.
+         * @return a value specifying this handler's relative order.
+         */
+        virtual int     GetTickOrder()
+        {
+            // m_tickOrder is deprecated, respect it for the time being but warn if it's used.
+            AZ_Warning("TickBus", m_tickOrder == TICK_DEFAULT, "TickBus::Handler::m_tickOrder has been deprecated, implement GetTickOrder() instead.");
+            return m_tickOrder;
+        }
+
     protected:
         // Only the component application is allowed to issue ticks.
         friend class ComponentApplication;
 
         /**
-         * The order in which a handler receives tick events relative to other handlers.
+         * Deprecated.
+         * @deprecated Override GetTickOrder() to specify the order in which the handler receives tick events.
          */
         int     m_tickOrder;
     };

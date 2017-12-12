@@ -36,12 +36,13 @@ namespace LmbrCentral
                     "Environment Probe", "The Environment Probe component is used to achieve the right visual quality for a space and help determine proper reflections, ambient diffuse values, particle diffuse values, and shadow colors")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/EnvrionmentProbe.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/EnvrionmentProbe.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/EnvironmentProbe.png")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/EnvironmentProbe.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                ;
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-environment-probe.html")
+                    ;
             }
         }
 

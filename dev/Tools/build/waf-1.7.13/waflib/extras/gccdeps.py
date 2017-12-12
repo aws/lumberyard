@@ -17,7 +17,8 @@ lock = threading.Lock()
 preprocessor_flag = '-MD'
 
 # Third-party tools are allowed to add extra names in here with append()
-supported_compilers = ['gcc', 'icc', 'orbis-clang']
+supported_compilers = ['gcc', 'icc',
+]
 
 @feature('c')
 @before_method('process_source')

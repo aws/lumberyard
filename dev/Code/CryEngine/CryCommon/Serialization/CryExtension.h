@@ -30,8 +30,8 @@ namespace Serialization
     {
         boost::shared_ptr<TPointer>& ptr;
 
-        CryExtensionPointer(boost::shared_ptr<TPointer>& ptr)
-            : ptr(ptr) {}
+        CryExtensionPointer(boost::shared_ptr<TPointer>& _ptr)
+            : ptr(_ptr) {}
         void Serialize(Serialization::IArchive& ar);
     };
 }

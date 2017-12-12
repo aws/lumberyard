@@ -11,40 +11,41 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneCore/DataTypes/Rules/IEFXMotionScaleRule.h>
 #include <AzCore/Memory/Memory.h>
+#include <SceneAPIExt/Rules/IMotionScaleRule.h>
 
 namespace AZ
 {
     class ReflectContext;
+}
 
-    namespace SceneAPI
+namespace EMotionFX
+{
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
-            class EFXMotionScaleRule
-                : public DataTypes::IEFXMotionScaleRule
+            class MotionScaleRule
+                : public IMotionScaleRule
             {
             public:
-                AZ_RTTI(EFXMotionScaleRule, "{5C0B0CD3-5CC8-42D0-99EC-FD5744B11B95}", DataTypes::IEFXMotionScaleRule);
+                AZ_RTTI(MotionScaleRule, "{5C0B0CD3-5CC8-42D0-99EC-FD5744B11B95}", IMotionScaleRule);
                 AZ_CLASS_ALLOCATOR_DECL
 
-                EFXMotionScaleRule();
-                ~EFXMotionScaleRule() override = default;
+                MotionScaleRule();
+                ~MotionScaleRule() override = default;
 
                 void SetScaleFactor(float value);
 
-                // IIEFXMotionScaleRule overrides
+                // IMotionScaleRule overrides
                 virtual float GetScaleFactor() const;
 
-                static void Reflect(ReflectContext* context);
+                static void Reflect(AZ::ReflectContext* context);
 
             protected:
                 float m_scaleFactor;
             };
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Rule
+    } // Pipeline
+} // EMotionFX

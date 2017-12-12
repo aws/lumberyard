@@ -40,23 +40,23 @@ def get_identity_pool_client():
     return get_identity_pool_client.identity_pool_client
 
 def get_account_table():
-    if not hasattr(get_account_table, 'message_table'):
+    if not hasattr(get_account_table, 'account_table'):
         account_table_name = CloudCanvas.get_setting('PlayerAccounts')
         get_account_table.account_table = boto3.resource('dynamodb').Table(account_table_name)
         if get_account_table.account_table is None:
-            raise errors.InternalRequestError('No Message Table')
+            raise RuntimeError('Unable to create client for the account table.')
     return get_account_table.account_table
 
 def get_name_sort_key_count():
     sortKeyCount = int(CloudCanvas.get_setting('PlayerAccountNameSortKeyCount'))
     if sortKeyCount < 1:
-        raise errors.InternalRequestError('PlayerAccountNameSortKeyCount must be at least one')
+        raise RuntimeError('PlayerAccountNameSortKeyCount must be at least one')
     return sortKeyCount
 
 def get_user_pool_id():
     pool_id = CloudCanvas.get_setting('UserPool')
     if not pool_id:
-        raise errors.InternalRequestError("Missing setting 'UserPool'")
+        raise RuntimeError("Missing setting 'UserPool'")
     return pool_id
 
 def get_identity_pool_id():
@@ -65,18 +65,22 @@ def get_identity_pool_id():
         return identity_pool_id
 
     if not hasattr(get_identity_pool_id, 'identity_pool_id'):
+        # TODO: switch this over to using service iterfaces and the service directory once available.
+        # Currently we invoke a service api lambda directly.
         lambda_client = boto3.client('lambda')
         response = lambda_client.invoke(
-            FunctionName = CloudCanvas.get_setting('CloudCanvas::ProjectServiceLambda'),
+            FunctionName = CloudCanvas.get_setting('CloudCanvas::ServiceLambda'),
             Payload = json.dumps({
-                'function': 'get_resource_physical_id',
-                'deployment_name': CloudCanvas.get_setting('CloudCanvas::DeploymentName'),
-                'stack': 'Access',
-                'resource_name': 'PlayerAccessIdentityPool'
+                'function': 'get_deployment_access_resource_info',
+                'module': 'resource_info',
+                'parameters': {
+                    'deployment_name': CloudCanvas.get_setting('CloudCanvas::DeploymentName'),
+                    'resource_name': 'PlayerAccessIdentityPool'
+                }
             })
         )
-        payload = response['Payload'].read()
-        get_identity_pool_id.identity_pool_id = json.loads(payload).get('physical_id')
+        resource_info = json.loads(response['Payload'].read())
+        get_identity_pool_id.identity_pool_id = resource_info['PhysicalId']
 
     return get_identity_pool_id.identity_pool_id
 
@@ -227,10 +231,10 @@ def create_or_update_account(item, deleteKeys=set()):
 
 def logging_filter(value_to_filter):
     result = deepcopy(value_to_filter)
-    __apply_logging_filter(result)
+    apply_logging_filter(result)
     return result
 
-def __apply_logging_filter(value_to_update):
+def apply_logging_filter(value_to_update):
     if type(value_to_update) == types.DictType:
         if 'email' in value_to_update:
             value_to_update['email'] = '<redacted>'
@@ -239,10 +243,10 @@ def __apply_logging_filter(value_to_update):
         if value_to_update.get('Name') == 'email':
             value_to_update['Value'] = '<redacted>'
         for key,value in value_to_update.iteritems():
-            __apply_logging_filter(value)
+            apply_logging_filter(value)
     if type(value_to_update) == types.ListType:
         for value in value_to_update:
-            __apply_logging_filter(value)
+            apply_logging_filter(value)
 
 def validate_account_update_request(account):
     if len(account.get('PlayerName', '')) > MAX_PLAYER_NAME_LENGTH:

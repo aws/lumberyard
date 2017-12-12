@@ -39,38 +39,7 @@ bool CCryDXGLGIAdapter::Initialize()
     memset(&m_kDesc1, 0, sizeof(m_kDesc1));
     Unicode::Convert(m_kDesc.Description, m_spGLAdapter->m_strRenderer);
     memcpy(m_kDesc1.Description, m_kDesc.Description, sizeof(m_kDesc1.Description));
-
-    struct
-    {
-        uint16 m_uPCIID;
-        const char* m_szName;
-    } akKnownVendors[] =
-    {
-        {RenderCapabilities::s_gpuVendorIdNVIDIA, "NVIDIA Corporation" },
-        {RenderCapabilities::s_gpuVendorIdNVIDIA, "Nouveau"},
-        {RenderCapabilities::s_gpuVendorIdNVIDIA, "nouveau"},
-        {RenderCapabilities::s_gpuVendorIdAMD, "ATI Technologies Inc."},
-        {RenderCapabilities::s_gpuVendorIdAMD, "Advanced Micro Devices, Inc."},
-        {RenderCapabilities::s_gpuVendorIdIntel, "Intel"},
-        {RenderCapabilities::s_gpuVendorIdIntel, "Intel Inc."},
-        {RenderCapabilities::s_gpuVendorIdIntel, "Intel Corporation"},
-        {RenderCapabilities::s_gpuVendorIdIntel, "Intel Open Source Technology Center"},
-        {RenderCapabilities::s_gpuVendorIdQualcomm, "Qualcomm"},
-        //  Confetti BEGIN: Igor Lobanchikov :END
-        {RenderCapabilities::s_gpuVendorIdARM, "ARM"},
-        // Rally US2888 - VendorID detection for Imagination, Samsung, etc.
-    };
-
-    m_kDesc1.VendorId = 0;
-    for (uint32 uVendor = 0; uVendor < DXGL_ARRAY_SIZE(akKnownVendors); ++uVendor)
-    {
-        if (strcmp(m_spGLAdapter->m_strVendor.c_str(), akKnownVendors[uVendor].m_szName) == 0)
-        {
-            m_kDesc1.VendorId = akKnownVendors[uVendor].m_uPCIID;
-            break;
-        }
-    }
-
+    m_kDesc1.VendorId = m_spGLAdapter->m_eDriverVendor;
     std::vector<NCryOpenGL::SOutputPtr> kGLOutputs;
     if (!NCryOpenGL::DetectOutputs(*m_spGLAdapter, m_spGLAdapter->m_kOutputs))
     {

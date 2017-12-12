@@ -91,6 +91,16 @@ EditorWindow* EditorWrapper::CreateEditorWindow(const QString& canvasFilename)
 
 void EditorWrapper::Restart(const QString& pathname)
 {
+    // Don't allow a restart if there is a context menu up. Restarting doesn't delete the
+    // context menu, so it would be referencing an invalid window. Another option is to
+    // close the context menu on restart, but the main editor's behavior seems to be to ignore
+    // the main keyboard shortcuts if a context menu is up
+    QWidget* widget = QApplication::activePopupWidget();
+    if (widget)
+    {
+        return;
+    }
+
     // Save the current state. It is safest to do this before destroying the canvas
     m_editor->SaveEditorWindowSettings();
 

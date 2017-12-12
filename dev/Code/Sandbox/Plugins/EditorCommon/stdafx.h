@@ -25,7 +25,6 @@
 #include <afxwin.h>
 #include <afxdlgs.h>
 #endif // KDAB_MAC_PORT
-#include "CryModuleDefs.h"
 #include "platform.h"
 
 #include "ISystem.h"

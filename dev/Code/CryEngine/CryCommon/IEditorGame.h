@@ -17,6 +17,8 @@
 
 #include <AzCore/EBus/EBus.h>
 
+#include <ISystem.h>
+
 struct IFlowSystem;
 struct IGameTokenSystem;
 namespace Telemetry {
@@ -151,9 +153,6 @@ public:
 
     //! Create the IEditorGame interface handle for the current game module for Editor mode
     virtual IEditorGame* CreateEditorGame() = 0;
-
-    //! Get the name of the current game module
-    virtual const char* GetGameName() const = 0;
 };
 
 typedef AZ::EBus<EditorGameEvents> EditorGameRequestBus;

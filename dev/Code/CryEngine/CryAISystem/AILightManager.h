@@ -46,17 +46,17 @@ private:
 
     struct SAIDynLightSource
     {
-        SAIDynLightSource(const Vec3& pos, const Vec3& dir, float radius, float fov, EAILightLevel level, EAILightEventType type, CWeakRef<CAIActor> _refShooter, CCountedRef<CAIObject> _refAttrib, float t)
-            : pos(pos)
-            , dir(dir)
-            , radius(radius)
-            , fov(fov)
-            , level(level)
-            , type(type)
+        SAIDynLightSource(const Vec3& _pos, const Vec3& _dir, float _radius, float _fov, EAILightLevel _level, EAILightEventType _type, CWeakRef<CAIActor> _refShooter, CCountedRef<CAIObject> _refAttrib, float _t)
+            : pos(_pos)
+            , dir(_dir)
+            , radius(_radius)
+            , fov(_fov)
+            , level(_level)
+            , type(_type)
             , refShooter(_refShooter)
             , refAttrib(_refAttrib)
             , t(0)
-            , tmax((int)(t * 1000.0f)) {}
+            , tmax((int)(_t * 1000.0f)) {}
         SAIDynLightSource()
             : pos(ZERO)
             , dir(Vec3_OneY)
@@ -96,10 +96,10 @@ private:
 
     struct SAILightSource
     {
-        SAILightSource(const Vec3& pos, float radius, EAILightLevel level)
-            : pos(pos)
-            , radius(radius)
-            , level(level)
+        SAILightSource(const Vec3& _pos, float _radius, EAILightLevel _level)
+            : pos(_pos)
+            , radius(_radius)
+            , level(_level)
         {
             // Empty
         }

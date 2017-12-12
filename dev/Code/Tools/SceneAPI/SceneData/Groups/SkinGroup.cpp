@@ -31,6 +31,11 @@ namespace AZ
         {
             AZ_CLASS_ALLOCATOR_IMPL(SkinGroup, AZ::SystemAllocator, 0)
 
+            SkinGroup::SkinGroup()
+                : m_id(Uuid::CreateRandom())
+            {
+            }
+
             const AZStd::string& SkinGroup::GetName() const
             {
                 return m_name;
@@ -44,6 +49,16 @@ namespace AZ
             void SkinGroup::SetName(AZStd::string&& name)
             {
                 m_name = AZStd::move(name);
+            }
+
+            const Uuid& SkinGroup::GetId() const
+            {
+                return m_id;
+            }
+
+            void SkinGroup::OverrideId(const Uuid& id)
+            {
+                m_id = id;
             }
 
             Containers::RuleContainer& SkinGroup::GetRuleContainer()
@@ -74,10 +89,11 @@ namespace AZ
                     return;
                 }
 
-                serializeContext->Class<SkinGroup, DataTypes::ISkinGroup>()->Version(2, VersionConverter)
+                serializeContext->Class<SkinGroup, DataTypes::ISkinGroup>()->Version(3, VersionConverter)
                     ->Field("name", &SkinGroup::m_name)
                     ->Field("nodeSelectionList", &SkinGroup::m_nodeSelectionList)
-                    ->Field("rules", &SkinGroup::m_rules);
+                    ->Field("rules", &SkinGroup::m_rules)
+                    ->Field("id", &SkinGroup::m_id);
 
                 EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
@@ -102,13 +118,22 @@ namespace AZ
             {
                 const unsigned int version = classElement.GetVersion();
 
+                bool result = true;
+
                 // Replaced vector<IRule> with RuleContainer.
                 if (version == 1)
                 {
-                    return Containers::RuleContainer::VectorToRuleContainerConverter(context, classElement);
+                    result = result && Containers::RuleContainer::VectorToRuleContainerConverter(context, classElement);
                 }
 
-                return true;
+                // Added a uuid "id" as the unique identifier to replace the file name.
+                // Setting it to null by default and expecting a behavior to patch this when additional information is available.
+                if (version <= 2)
+                {
+                    result = result && classElement.AddElementWithData<AZ::Uuid>(context, "id", AZ::Uuid::CreateNull()) != -1;
+                }
+
+                return result;
             }
 
         } // namespace SceneData

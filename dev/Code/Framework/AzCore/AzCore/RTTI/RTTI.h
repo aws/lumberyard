@@ -45,7 +45,7 @@ namespace AZ
     #define azrtti_typeid   AZ::RttiTypeId
 
     /// RTTI typeId
-    typedef void (* RTTI_EnumCallback)(const AZ::Uuid& /*typeId*/, void* /*userData*/);
+    typedef void (* RTTI_EnumCallback)(const AZ::TypeId& /*typeId*/, void* /*userData*/);
 
     // Disabling missing override warning because we intentionally want to allow for declaring RTTI base classes that don't impelment RTTI.
 #if defined(AZ_COMPILER_CLANG)
@@ -63,11 +63,11 @@ namespace AZ
     #define AZ_RTTI_COMMON()                                                                                                       \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                                                               \
     void RTTI_Enable();                                                                                                            \
-    virtual inline const AZ::Uuid&  RTTI_GetType() const { return RTTI_Type(); }                                                   \
+    virtual inline const AZ::TypeId& RTTI_GetType() const { return RTTI_Type(); }                                                  \
     virtual inline const char*      RTTI_GetTypeName() const { return RTTI_TypeName(); }                                           \
-    virtual inline bool             RTTI_IsTypeOf(const AZ::Uuid & typeId) const { return RTTI_IsContainType(typeId); }            \
+    virtual inline bool             RTTI_IsTypeOf(const AZ::TypeId & typeId) const { return RTTI_IsContainType(typeId); }          \
     virtual void                    RTTI_EnumTypes(AZ::RTTI_EnumCallback cb, void* userData) { RTTI_EnumHierarchy(cb, userData); } \
-    static inline const AZ::Uuid&   RTTI_Type() { return TYPEINFO_Uuid(); }                                                        \
+    static inline const AZ::TypeId& RTTI_Type() { return TYPEINFO_Uuid(); }                                                        \
     static inline const char*       RTTI_TypeName() { return TYPEINFO_Name(); }                                                    \
     AZ_POP_DISABLE_OVERRIDE_WARNING
 
@@ -75,31 +75,31 @@ namespace AZ
 
     /// AZ_RTTI()
     #define AZ_RTTI_1()             AZ_RTTI_COMMON()                                                                        \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) { return id == RTTI_Type(); }                       \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) { return id == RTTI_Type(); }                      \
     static void                 RTTI_EnumHierarchy(AZ::RTTI_EnumCallback cb, void* userData) { cb(RTTI_Type(), userData); } \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const { return (id == RTTI_Type()) ? this : nullptr; }  \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id) { return (id == RTTI_Type()) ? this : nullptr; }
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const { return (id == RTTI_Type()) ? this : nullptr; } \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) { return (id == RTTI_Type()) ? this : nullptr; }
 
     /// AZ_RTTI(BaseClass)
     #define AZ_RTTI_2(_1)           AZ_RTTI_COMMON()                                           \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) {                      \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) {                     \
         if (id == RTTI_Type()) { return true; }                                                \
         return AZ::Internal::RttiCaller<_1>::RTTI_IsContainType(id); }                         \
     static void                 RTTI_EnumHierarchy(AZ::RTTI_EnumCallback cb, void* userData) { \
         cb(RTTI_Type(), userData);                                                             \
         AZ::Internal::RttiCaller<_1>::RTTI_EnumHierarchy(cb, userData); }                      \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                           \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const    {                 \
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const {                   \
         if (id == RTTI_Type()) { return this; }                                                \
         return AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); }                       \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id)  {                         \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) {                         \
         if (id == RTTI_Type()) { return this; }                                                \
         return AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); }                       \
     AZ_POP_DISABLE_OVERRIDE_WARNING
 
     /// AZ_RTTI(BaseClass1,BaseClass2)
     #define AZ_RTTI_3(_1, _2)        AZ_RTTI_COMMON()                                                \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) {                            \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) {                           \
         if (id == RTTI_Type()) { return true; }                                                      \
         if (AZ::Internal::RttiCaller<_1>::RTTI_IsContainType(id)) { return true; }                   \
         return AZ::Internal::RttiCaller<_2>::RTTI_IsContainType(id); }                               \
@@ -108,11 +108,11 @@ namespace AZ
         AZ::Internal::RttiCaller<_1>::RTTI_EnumHierarchy(cb, userData);                              \
         AZ::Internal::RttiCaller<_2>::RTTI_EnumHierarchy(cb, userData); }                            \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                                 \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const {                          \
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const {                         \
         if (id == RTTI_Type()) { return this; }                                                      \
         const void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; } \
         return AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); }                             \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id) {                                \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) {                               \
         if (id == RTTI_Type()) { return this; }                                                      \
         void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; }       \
         return AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); }                             \
@@ -120,7 +120,7 @@ namespace AZ
 
     /// AZ_RTTI(BaseClass1,BaseClass2,BaseClass3)
     #define AZ_RTTI_4(_1, _2, _3)    AZ_RTTI_COMMON()                                                \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) {                            \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) {                           \
         if (id == RTTI_Type()) { return true; }                                                      \
         if (AZ::Internal::RttiCaller<_1>::RTTI_IsContainType(id)) { return true; }                   \
         if (AZ::Internal::RttiCaller<_2>::RTTI_IsContainType(id)) { return true; }                   \
@@ -131,12 +131,12 @@ namespace AZ
         AZ::Internal::RttiCaller<_2>::RTTI_EnumHierarchy(cb, userData);                              \
         AZ::Internal::RttiCaller<_3>::RTTI_EnumHierarchy(cb, userData); }                            \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                                 \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const {                          \
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const {                         \
         if (id == RTTI_Type()) { return this; }                                                      \
         const void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; } \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
         return AZ::Internal::RttiCaller<_3>::RTTI_AddressOf(this, id); }                             \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id) {                                \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) {                               \
         if (id == RTTI_Type()) { return this; }                                                      \
         void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; }       \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
@@ -145,7 +145,7 @@ namespace AZ
 
     /// AZ_RTTI(BaseClass1,BaseClass2,BaseClass3,BaseClass4)
     #define AZ_RTTI_5(_1, _2, _3, _4)  AZ_RTTI_COMMON()                                              \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) {                            \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) {                           \
         if (id == RTTI_Type()) { return true; }                                                      \
         if (AZ::Internal::RttiCaller<_1>::RTTI_IsContainType(id)) { return true; }                   \
         if (AZ::Internal::RttiCaller<_2>::RTTI_IsContainType(id)) { return true; }                   \
@@ -158,13 +158,13 @@ namespace AZ
         AZ::Internal::RttiCaller<_3>::RTTI_EnumHierarchy(cb, userData);                              \
         AZ::Internal::RttiCaller<_4>::RTTI_EnumHierarchy(cb, userData); }                            \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                                 \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const {                          \
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const {                         \
         if (id == RTTI_Type()) { return this; }                                                      \
         const void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; } \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
         r = AZ::Internal::RttiCaller< _3>::RTTI_AddressOf(this, id); if (r) { return r; }            \
         return AZ::Internal::RttiCaller<_4>::RTTI_AddressOf(this, id); }                             \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id) {                                \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) {                               \
         if (id == RTTI_Type()) { return this; }                                                      \
         void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; }       \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
@@ -174,7 +174,7 @@ namespace AZ
 
     /// AZ_RTTI(BaseClass1,BaseClass2,BaseClass3,BaseClass4,BaseClass5)
     #define AZ_RTTI_6(_1, _2, _3, _4, _5)  AZ_RTTI_COMMON()                                          \
-    static bool                 RTTI_IsContainType(const AZ::Uuid & id) {                            \
+    static bool                 RTTI_IsContainType(const AZ::TypeId& id) {                           \
         if (id == RTTI_Type()) { return true; }                                                      \
         if (AZ::Internal::RttiCaller<_1>::RTTI_IsContainType(id)) { return true; }                   \
         if (AZ::Internal::RttiCaller<_2>::RTTI_IsContainType(id)) { return true; }                   \
@@ -189,14 +189,14 @@ namespace AZ
         AZ::Internal::RttiCaller<_4>::RTTI_EnumHierarchy(cb, userData);                              \
         AZ::Internal::RttiCaller<_5>::RTTI_EnumHierarchy(cb, userData); }                            \
     AZ_PUSH_DISABLE_OVERRIDE_WARNING                                                                 \
-    virtual inline const void*  RTTI_AddressOf(const AZ::Uuid & id) const {                          \
+    virtual inline const void*  RTTI_AddressOf(const AZ::TypeId& id) const {                         \
         if (id == RTTI_Type()) { return this; }                                                      \
         const void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; } \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
         r = AZ::Internal::RttiCaller<_3>::RTTI_AddressOf(this, id); if (r) { return r; }             \
         r = AZ::Internal::RttiCaller<_4>::RTTI_AddressOf(this, id); if (r) { return r; }             \
         return AZ::Internal::RttiCaller<_5>::RTTI_AddressOf(this, id); }                             \
-    virtual inline void*        RTTI_AddressOf(const AZ::Uuid & id) {                                \
+    virtual inline void*        RTTI_AddressOf(const AZ::TypeId& id) {                               \
         if (id == RTTI_Type()) { return this; }                                                      \
         void* r = AZ::Internal::RttiCaller<_1>::RTTI_AddressOf(this, id); if (r) { return r; }       \
         r = AZ::Internal::RttiCaller<_2>::RTTI_AddressOf(this, id); if (r) { return r; }             \
@@ -245,13 +245,13 @@ namespace AZ
      * AZ_RTTI includes the functionality of AZ_TYPE_INFO, so you don't have to declare TypeInfo it if you use AZ_RTTI
      * The syntax is AZ_RTTI(ClassName,ClassUuid,(BaseClass1..N)) you can have 0 to N base classes this will allow us
      * to perform dynamic casts and query about types.
-     * A more complex use case is when you use templates, the you have to group the parameters for the TypeInfo call.
-     * ex. AZ_RTTI((ClassName,ClassUuid, Template1, ...),BaseClass1...)
+     * 
+     *  \note A more complex use case is when you use templates, the you have to group the parameters for the TypeInfo call.
+     * ex. AZ_RTTI( ( (ClassName<TemplateArg1, TemplateArg2, ...>), ClassUuid, TemplateArg1, TemplateArg2, ...), BaseClass1...)
+     *
+     * Take care with the parentheses, excruciatingly explicitly delineated here: AR_RTTI (3 (2 (1 fully templated class name 1), Uuid, template args... 2), base classes... 3)
      */
     #define AZ_RTTI(...)  AZ_RTTI_MACRO_SPECIALIZE(AZ_RTTI_HELPER_, AZ_VA_NUM_ARGS(AZ_INTERNAL_REMOVE_PARENTHESIS(AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__))), (__VA_ARGS__))
-
-    /// Rtti macro helper which assumes that the user will implement AZ_TYPE_INFO or specialize AzTypeInfo<T> prior to calling to using RTTI as RTTI needs TypeInfo.
-    #define AZ_RTTI_NO_TYPE_INFO(...) AZ_RTTI_MACRO_SPECIALIZE(AZ_RTTI_, AZ_VA_NUM_ARGS(__VA_ARGS__, Dummy), (__VA_ARGS__))
 
     namespace Internal
     {
@@ -301,7 +301,7 @@ namespace AZ
         };
 
         template<class U>
-        inline typename AddressTypeHelper<U>::type RttiAddressOfHelper(U ptr, const AZ::Uuid& id, const AZStd::true_type& /* HasAZRtti<U> */)
+        inline typename AddressTypeHelper<U>::type RttiAddressOfHelper(U ptr, const AZ::TypeId& id, const AZStd::true_type& /* HasAZRtti<U> */)
         {
             if (ptr)
             {
@@ -314,7 +314,7 @@ namespace AZ
         }
 
         template<class U>
-        inline typename AddressTypeHelper<U>::type  RttiAddressOfHelper(U ptr, const AZ::Uuid& id, const AZStd::false_type& /* HasAZRtti<U> */)
+        inline typename AddressTypeHelper<U>::type  RttiAddressOfHelper(U ptr, const AZ::TypeId& id, const AZStd::false_type& /* HasAZRtti<U> */)
         {
             typedef typename AZStd::remove_pointer<U>::type CastType;
             if (id == AzTypeInfo<CastType>::Uuid())
@@ -381,12 +381,12 @@ namespace AZ
         template<class U>
         struct RttiIsTypeOfIdHelper
         {
-            static inline bool  Check(const Uuid& id, const U& ref, const AZStd::true_type& /* HasAZRtti<U> */)
+            static inline bool  Check(const AZ::TypeId& id, const U& ref, const AZStd::true_type& /* HasAZRtti<U> */)
             {
                 return ref.RTTI_IsTypeOf(id);
             }
 
-            static inline bool  Check(const Uuid& id, const U&, const AZStd::false_type& /* HasAZRtti<U> */)
+            static inline bool  Check(const AZ::TypeId& id, const U&, const AZStd::false_type& /* HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
                 if (id == AzTypeInfo<SrcType>::Uuid())
@@ -396,12 +396,12 @@ namespace AZ
                 return false;
             }
 
-            static inline const Uuid& Type(const U& ref, const AZStd::true_type& /* HasAZRtti<U> */)
+            static inline const AZ::TypeId& Type(const U& ref, const AZStd::true_type& /* HasAZRtti<U> */)
             {
                 return ref.RTTI_GetType();
             }
 
-            static inline const Uuid& Type(const U&, const AZStd::false_type& /* HasAZRtti<U> */)
+            static inline const AZ::TypeId& Type(const U&, const AZStd::false_type& /* HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
                 return AzTypeInfo<SrcType>::Uuid();
@@ -411,7 +411,7 @@ namespace AZ
         template<class U>
         struct RttiIsTypeOfIdHelper<U*>
         {
-            static inline bool Check(const Uuid& id, U* ptr, const AZStd::true_type& /* HasAZRtti<U> */)
+            static inline bool Check(const AZ::TypeId& id, U* ptr, const AZStd::true_type& /* HasAZRtti<U> */)
             {
                 if (ptr)
                 {
@@ -423,7 +423,7 @@ namespace AZ
                 }
             }
 
-            static inline bool  Check(const Uuid& id, U*, const AZStd::false_type& /* HasAZRtti<U> */)
+            static inline bool  Check(const AZ::TypeId& id, U*, const AZStd::false_type& /* HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
                 if (id == AzTypeInfo<SrcType>::Uuid())
@@ -433,7 +433,7 @@ namespace AZ
                 return false;
             }
 
-            static inline const Uuid& Type(U* ptr, const AZStd::true_type& /* HasAZRtti<U> */)
+            static inline const AZ::TypeId& Type(U* ptr, const AZStd::true_type& /* HasAZRtti<U> */)
             {
                 if (ptr)
                 {
@@ -441,12 +441,12 @@ namespace AZ
                 }
                 else
                 {
-                    static Uuid s_invalidUuid = Uuid::CreateNull();
+                    static AZ::TypeId s_invalidUuid = AZ::TypeId::CreateNull();
                     return s_invalidUuid;
                 }
             }
 
-            static inline const Uuid& Type(U*, const AZStd::false_type& /* HasAZRtti<U> */)
+            static inline const AZ::TypeId& Type(U*, const AZStd::false_type& /* HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
                 return AzTypeInfo<SrcType>::Uuid();
@@ -469,7 +469,7 @@ namespace AZ
         template<class T, bool isRtti = HasAZRtti<T>::value >
         struct RttiCaller
         {
-            AZ_FORCE_INLINE static bool RTTI_IsContainType(const AZ::Uuid& id)
+            AZ_FORCE_INLINE static bool RTTI_IsContainType(const AZ::TypeId& id)
             {
                 return T::RTTI_IsContainType(id);
             }
@@ -479,12 +479,12 @@ namespace AZ
                 T::RTTI_EnumHierarchy(cb, userData);
             }
 
-            AZ_FORCE_INLINE static const void* RTTI_AddressOf(const T* obj, const AZ::Uuid& id)
+            AZ_FORCE_INLINE static const void* RTTI_AddressOf(const T* obj, const AZ::TypeId& id)
             {
                 return obj->T::RTTI_AddressOf(id);
             }
 
-            AZ_FORCE_INLINE static void* RTTI_AddressOf(T* obj, const AZ::Uuid& id)
+            AZ_FORCE_INLINE static void* RTTI_AddressOf(T* obj, const AZ::TypeId& id)
             {
                 return obj->T::RTTI_AddressOf(id);
             }
@@ -494,7 +494,7 @@ namespace AZ
         template<class T>
         struct RttiCaller<T, false>
         {
-            AZ_FORCE_INLINE static bool RTTI_IsContainType(const AZ::Uuid&)
+            AZ_FORCE_INLINE static bool RTTI_IsContainType(const AZ::TypeId&)
             {
                 return false;
             }
@@ -503,12 +503,12 @@ namespace AZ
             {
             }
 
-            AZ_FORCE_INLINE static const void* RTTI_AddressOf(const T*, const AZ::Uuid&)
+            AZ_FORCE_INLINE static const void* RTTI_AddressOf(const T*, const AZ::TypeId&)
             {
                 return nullptr;
             }
 
-            AZ_FORCE_INLINE static void* RTTI_AddressOf(T*, const AZ::Uuid&)
+            AZ_FORCE_INLINE static void* RTTI_AddressOf(T*, const AZ::TypeId&)
             {
                 return nullptr;
             }
@@ -574,7 +574,7 @@ namespace AZ
 
     /// Gets address of a contained type or NULL. Safe to call for type not supporting AZRtti (returns 0 unless type fully match).
     template<class T>
-    inline typename Internal::AddressTypeHelper<T>::type RttiAddressOf(T ptr, const Uuid& id)
+    inline typename Internal::AddressTypeHelper<T>::type RttiAddressOf(T ptr, const AZ::TypeId& id)
     {
         // we can support references (as not exception is needed), but pointer should be sufficient when it comes to addresses!
         AZ_STATIC_ASSERT(AZStd::is_pointer<T>::value, "RttiAddressOf supports only pointer types");
@@ -590,19 +590,19 @@ namespace AZ
 
     /// Returns true if the type (by id) is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
     template<class U>
-    inline bool     RttiIsTypeOf(const Uuid& id, U data)
+    inline bool     RttiIsTypeOf(const AZ::TypeId& id, U data)
     {
         return Internal::RttiIsTypeOfIdHelper<U>::Check(id, data, typename HasAZRtti<typename AZStd::remove_pointer<U>::type>::type());
     }
 
     template<class U>
-    inline const Uuid& RttiTypeId()
+    inline const AZ::TypeId& RttiTypeId()
     {
         return AzTypeInfo<U>::Uuid();
     }
 
     template<class U>
-    inline const Uuid& RttiTypeId(const U& data)
+    inline const AZ::TypeId& RttiTypeId(const U& data)
     {
         return Internal::RttiIsTypeOfIdHelper<U>::Type(data, typename HasAZRtti<typename AZStd::remove_pointer<U>::type>::type());
     }
@@ -616,13 +616,13 @@ namespace AZ
     {
     public:
         virtual ~IRttiHelper() = default;
-        virtual const Uuid& GetActualUuid(const void* p) const = 0;
-        virtual const char* GetActualTypeName(const void* p) const = 0;
-        virtual const void* Cast(const void* p, const Uuid& asType) const = 0;
-        virtual void*       Cast(void* p, const Uuid& asType) const = 0;
-        virtual const Uuid& GetTypeId() const = 0;
-        virtual bool        IsTypeOf(const Uuid& id) const = 0;
-        virtual void        EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const = 0;
+        virtual const AZ::TypeId& GetActualUuid(const void* p) const = 0;
+        virtual const char*       GetActualTypeName(const void* p) const = 0;
+        virtual const void*       Cast(const void* p, const AZ::TypeId& asType) const = 0;
+        virtual void*             Cast(void* p, const AZ::TypeId& asType) const = 0;
+        virtual const AZ::TypeId& GetTypeId() const = 0;
+        virtual bool              IsTypeOf(const AZ::TypeId& id) const = 0;
+        virtual void              EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const = 0;
 
         // Template helpers
         template <typename TargetType>
@@ -647,7 +647,7 @@ namespace AZ
     namespace Internal
     {
         /*
-         * Helper class to retrieve Uuids and perform AZRtti queries.
+         * Helper class to retrieve AZ::TypeIds and perform AZRtti queries.
          * This helper uses AZRtti when available, and does what it can when not.
          * It automatically resolves pointer-to-pointers to their value types
          * and supports queries without type information through the IRttiHelper
@@ -666,7 +666,7 @@ namespace AZ
 
             //////////////////////////////////////////////////////////////////////////
             // IRttiHelper
-            const Uuid& GetActualUuid(const void* p) const override
+            const AZ::TypeId& GetActualUuid(const void* p) const override
             {
                 return p
                     ? reinterpret_cast<const T*>(p)->RTTI_GetType()
@@ -678,23 +678,23 @@ namespace AZ
                     ? reinterpret_cast<const T*>(p)->RTTI_GetTypeName()
                     : T::RTTI_TypeName();
             }
-            const void* Cast(const void* p, const Uuid& asType) const override
+            const void* Cast(const void* p, const AZ::TypeId& asType) const override
             {
                 return p
                     ? reinterpret_cast<const T*>(p)->RTTI_AddressOf(asType)
                     : nullptr;
             }
-            void* Cast(void* p, const Uuid& asType) const override
+            void* Cast(void* p, const AZ::TypeId& asType) const override
             {
                 return p
                     ? reinterpret_cast<T*>(p)->RTTI_AddressOf(asType)
                     : nullptr;
             }
-            const Uuid& GetTypeId() const override
+            const AZ::TypeId& GetTypeId() const override
             {
                 return T::RTTI_Type();
             }
-            bool IsTypeOf(const Uuid& id) const override
+            bool IsTypeOf(const AZ::TypeId& id) const override
             {
                 return T::RTTI_IsContainType(id);
             }

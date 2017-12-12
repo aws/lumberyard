@@ -299,6 +299,7 @@ void UiMaskComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiMaskBus>("UiMaskBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetIsMaskingEnabled", &UiMaskBus::Events::GetIsMaskingEnabled)
             ->Event("SetIsMaskingEnabled", &UiMaskBus::Events::SetIsMaskingEnabled)
             ->Event("GetIsInteractionMaskingEnabled", &UiMaskBus::Events::GetIsInteractionMaskingEnabled)

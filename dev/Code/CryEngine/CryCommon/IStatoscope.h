@@ -40,10 +40,10 @@ struct IStatoscopeDataGroup
         {
         }
 
-        SDescription(char key, const char* name, const char* format)
-            : key(key)
-            , name(name)
-            , format(format)
+        SDescription(char _key, const char* _name, const char* _format)
+            : key(_key)
+            , name(_name)
+            , format(_format)
         {
         }
 

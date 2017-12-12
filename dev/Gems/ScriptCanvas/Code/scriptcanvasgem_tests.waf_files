@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/EntityRefTests.h",
+            "Tests/ScriptCanvasTest.cpp"
+        ]
+    }
+}

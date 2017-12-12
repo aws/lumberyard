@@ -34,6 +34,7 @@
 
 #include <Editor/StringDlg.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 //////////////////////////////////////////////////////////////////////////
 //! Undo Delete Layer
@@ -429,7 +430,7 @@ bool CObjectLayerManager::PromptForLayerName(QString& layerName) const
     {
         if (dlg.GetString().isEmpty())
         {
-            QMessageBox::critical(nullptr, QObject::tr("Invalid name"), QObject::tr("Please pick a new name for the imported layer"));
+            QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Invalid name"), QObject::tr("Please pick a new name for the imported layer"));
             dlgResult = dlg.exec();
             continue;
         }
@@ -438,7 +439,7 @@ bool CObjectLayerManager::PromptForLayerName(QString& layerName) const
         if (FindLayerByName(fullName))
         {
             QString message = QObject::tr("Item with name %1 already exists").arg(fullName);
-            QMessageBox::critical(nullptr, QObject::tr("Invalid name"), message);
+            QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Invalid name"), message);
             dlgResult = dlg.exec();
             continue;
         }

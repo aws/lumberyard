@@ -15,6 +15,9 @@
 #include <aws/core/utils/Outcome.h>
 #include <memory>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 
 namespace LmbrAWS
@@ -32,7 +35,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("DeleteItem", _HELP("Activate this to delete a record from dynamo db")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to delete from use")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to delete from use")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("Key name used in this table")),
             InputPortConfig<string>("Key", _HELP("The key you wish to delete"), "KeyValue")
         };
@@ -53,19 +56,13 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_StartDelete))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto& tableName = client.GetTableName();
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
             auto& keyName = GetPortString(pActInfo, EIP_KeyName);
             auto& key = GetPortString(pActInfo, EIP_Key);
 
             Aws::DynamoDB::Model::DeleteItemRequest deleteRequest;
-            deleteRequest.SetTableName(tableName);
+            deleteRequest.SetTableName(tableName.c_str());
             AttributeValue hashKey;
             hashKey.SetS(key.c_str());
             deleteRequest.AddKey(keyName, hashKey);

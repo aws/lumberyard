@@ -1,0 +1,249 @@
+{
+	"swagger": "2.0",
+	"info": {
+		"version": "1.0.0",
+		"title": "$RestApiResourceName$",
+		"description": "API for the $ResourceGroupName$ service ($DeploymentName$ deployment)."
+	},
+	"schemes": [
+		"https"
+	],
+	"consumes": [
+		"application/json"
+	],
+	"produces": [
+		"application/json"
+	],
+	"x-amazon-cloud-canvas-lambda-dispatch": {
+		"lambda": "$ServiceLambdaArn$"
+	},
+	"paths": {
+		"/service/status": {
+			"get": {
+				"description": "Returns the service's status. Useful for testing connectivity.",
+				"responses": {
+					"200": {
+						"description": "A successful service status response.",
+						"schema": {
+							"$ref": "#/definitions/ServiceStatus"
+						}
+					}
+				}
+			}
+		},
+		"/example/data": {
+			"get": {
+				"description": "Lists available data.",
+				"parameters": [
+                    {
+						"description": "Starts listing with the specified key. Use with count parameter for paging through the results.",
+						"name": "start",
+						"in": "query",
+						"required": false,
+						"type": "string"
+					}, 
+                    {
+						"description": "Maximum number of results returned. Use with start parameter for paging through the results.",
+						"name": "count",
+						"in": "query",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List of available data, with optional filtering applied.",
+						"schema": {
+							"$ref": "#/definitions/ExampleList"
+						}
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "list"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "ListExampleData"
+				}
+			},
+			"post": {
+				"description": "Saves data and returns its key.",
+				"parameters": [
+                    {
+						"name": "data",
+						"in": "body",
+						"required": true,
+						"schema": {
+							"$ref": "#/definitions/ExampleData"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The key of the saved data.",
+						"schema": {
+							"$ref": "#/definitions/ExampleInfo"
+						}
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "create"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "CreateExampleData"
+				}
+			}
+		},
+		"/example/data/{key}": {
+			"put": {
+				"description": "Sets data with specified key.",
+				"parameters": [
+                    {
+						"name": "key",
+						"in": "path",
+						"required": true,
+						"type": "string"
+					}, 
+                    {
+						"name": "data",
+						"in": "body",
+						"required": true,
+						"schema": {
+							"$ref": "#/definitions/ExampleData"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Indicates the data was set successfully."
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "update"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "UpdateExampleData"
+				}
+			},
+			"get": {
+				"description": "Get data with specified key.",
+				"parameters": [
+                    {
+						"name": "key",
+						"in": "path",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "A successful data get response.",
+						"schema": {
+							"$ref": "#/definitions/ExampleData"
+						}
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "read"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "ReadExampleData"
+				}
+			},
+			"delete": {
+				"description": "Delete data with specified key.",
+				"parameters": [
+                    {
+						"name": "key",
+						"in": "path",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "A successful data delete response."
+					}
+				},
+				"x-amazon-cloud-canvas-lambda-dispatch": {
+					"module": "example_data",
+					"function": "delete"
+				},
+				"x-amazon-cloud-canvas-client-generation": {
+					"function": "DeleteExampleData"
+				}
+			}
+		}
+	},
+	"definitions": {
+		"ServiceStatus": {
+			"type": "object",
+			"properties": {
+				"status": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"status"
+			]
+		},
+		"Error": {
+			"type": "object",
+			"properties": {
+				"errorCode": {
+					"type": "string"
+				},
+				"errorMessage": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"errorCode",
+				"errorMessage"
+			]
+		},
+		"ExampleData": {
+			"type": "object",
+			"properties": {
+				"ExamplePropertyA": {
+					"type": "string"
+				},
+				"ExamplePropertyB": {
+					"type": "integer"
+				}
+			},
+			"required": [
+				"ExamplePropertyA",
+				"ExamplePropertyB"
+			]
+		},
+		"ExampleList": {
+			"type": "object",
+			"properties": {
+				"Keys": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/ExampleInfo"
+					}
+				}
+			},
+			"required": [
+				"Keys"
+			]
+		},
+		"ExampleInfo": {
+			"type": "object",
+			"properties": {
+				"Key": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"Key"
+			]
+		}
+	}
+}

@@ -19,6 +19,8 @@
 
 #include <Include/IEditorParticleManager.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 namespace LmbrCentral
 {
 
@@ -48,10 +50,11 @@ namespace LmbrCentral
 
                     ClassElement(AZ::Edit::ClassElements::EditorData, "")->
                     Attribute(AZ::Edit::Attributes::Category, "Rendering")->
-                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Particle")->
+                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Particle.png")->
                     Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::ParticleAsset>::Uuid())->
                     Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Particle.png")->
                     Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+                    Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-particle.html")->
                     Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))->
 
                     DataElement(0, &EditorParticleComponent::m_visible, "Visible", "Whether or not the particle emitter is currently visible")->
@@ -73,7 +76,7 @@ namespace LmbrCentral
 
                     // add audio settings here so we can have proper layout
                     ClassElement(AZ::Edit::ClassElements::Group, "Audio Settings")->
-                        Attribute(AZ::Edit::Attributes::AutoExpand, false)->
+                    Attribute(AZ::Edit::Attributes::AutoExpand, false)->
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorParticleComponent::m_enableAudio, "Enable audio", "Used by particle effect instances to indicate whether audio should be updated or not.")->
                     Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorParticleComponent::OnAudioChanged)->
                     DataElement("AudioControl", &EditorParticleComponent::m_rtpc, "Audio RTPC", "Indicates what audio RTPC this particle effect instance drives.")->
@@ -146,6 +149,43 @@ Negative values will be ignored.\n")->
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
                 ;
             }
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<EditorParticleComponent>()
+                ->RequestBus("EditorParticleComponentRequestBus");
+
+            behaviorContext->EBus<EditorParticleComponentRequestBus>("EditorParticleComponentRequestBus")
+                ->Event("SetVisibility", &EditorParticleComponentRequestBus::Events::SetVisibility)
+                ->Event("GetVisibility", &EditorParticleComponentRequestBus::Events::GetVisibility)
+                ->VirtualProperty("Visible", "GetVisibility", "SetVisibility")
+                ->Event("Enable", &EditorParticleComponentRequestBus::Events::Enable)
+                ->Event("GetEnable", &EditorParticleComponentRequestBus::Events::GetEnable)
+                ->VirtualProperty("Enable", "GetEnable", "Enable")
+                ->Event("SetColorTint", &EditorParticleComponentRequestBus::Events::SetColorTint)
+                ->Event("GetColorTint", &EditorParticleComponentRequestBus::Events::GetColorTint)
+                ->VirtualProperty("ColorTint", "GetColorTint", "SetColorTint")
+                ->Event("SetCountScale", &EditorParticleComponentRequestBus::Events::SetCountScale)
+                ->Event("GetCountScale", &EditorParticleComponentRequestBus::Events::GetCountScale)
+                ->VirtualProperty("CountScale", "GetCountScale", "SetCountScale")
+                ->Event("SetTimeScale", &EditorParticleComponentRequestBus::Events::SetTimeScale)
+                ->Event("GetTimeScale", &EditorParticleComponentRequestBus::Events::GetTimeScale)
+                ->VirtualProperty("TimeScale", "GetTimeScale", "SetTimeScale")
+                ->Event("SetSpeedScale", &EditorParticleComponentRequestBus::Events::SetSpeedScale)
+                ->Event("GetSpeedScale", &EditorParticleComponentRequestBus::Events::GetSpeedScale)
+                ->VirtualProperty("SpeedScale", "GetSpeedScale", "SetSpeedScale")
+                ->Event("SetGlobalSizeScale", &EditorParticleComponentRequestBus::Events::SetGlobalSizeScale)
+                ->Event("GetGlobalSizeScale", &EditorParticleComponentRequestBus::Events::GetGlobalSizeScale)
+                ->VirtualProperty("GlobalSizeScale", "GetGlobalSizeScale", "SetGlobalSizeScale")
+                ->Event("SetParticleSizeScaleX", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleX)
+                ->Event("GetParticleSizeScaleX", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleX)
+                ->VirtualProperty("ParticleSizeScaleX", "GetParticleSizeScaleX", "SetParticleSizeScaleX")
+                ->Event("SetParticleSizeScaleY", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleY)
+                ->Event("GetParticleSizeScaleY", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleY)
+                ->VirtualProperty("ParticleSizeScaleY", "GetParticleSizeScaleY", "SetParticleSizeScaleY")
+                ;
         }
     }
 
@@ -448,19 +488,19 @@ Negative values will be ignored.\n")->
         return settingsForEmitter;
     }
 
-    void EditorParticleComponent::SetEmitter(const AZStd::string& emitterFullName, const AZStd::string& libName)
+    void EditorParticleComponent::SetEmitter(const AZStd::string& emitterFullName, const AZStd::string& libPath)
     {      
         m_librarySource = LibrarySource::File;
 
         //set selected emitter
         m_emitterFullNameToSelect = emitterFullName;        
-
+        
         //find the asset
         AZ::Data::AssetId cmAssetId;
-        EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, libName.c_str(), azrtti_typeid<ParticleAsset>(), false);
+        EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, libPath.c_str(), azrtti_typeid<ParticleAsset>(), false);
         if (!cmAssetId.IsValid())
         {   //asset does not exist, listen to the asset add event from AssetCatalogEventBus
-            m_libNameToLoad = libName;
+            m_libNameToLoad = libPath;
             AzFramework::AssetCatalogEventBus::Handler::BusConnect();
         }
         else
@@ -486,5 +526,134 @@ Negative values will be ignored.\n")->
         }
     }
 
+    void EditorParticleComponent::Enable(bool enable)
+    {
+        m_settings.m_enable = enable;
+        m_emitter.Enable(enable);
+    }
+
+    void EditorParticleComponent::SetVisibility(bool visible)
+    {
+        m_settings.m_visible = visible;
+        m_emitter.SetVisibility(visible);
+    }
+
+    bool EditorParticleComponent::GetVisibility()
+    {
+        return m_settings.m_visible;
+    }
+
+    void EditorParticleComponent::SetColorTint(const AZ::Color& tint)
+    {
+        m_settings.m_color = tint;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetCountScale(float scale)
+    {
+        if (ParticleEmitterSettings::MaxCountScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_countScale = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetTimeScale(float scale)
+    {
+        if (ParticleEmitterSettings::MaxTimeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_timeScale = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+
+    }
+
+    void EditorParticleComponent::SetSpeedScale(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSpeedScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_speedScale = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetGlobalSizeScale(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_sizeScale = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetParticleSizeScaleX(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleX = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetParticleSizeScaleY(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleY = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    bool EditorParticleComponent::GetEnable()
+    {
+        return m_settings.m_enable;
+    }
+
+    AZ::Color EditorParticleComponent::GetColorTint()
+    {
+        return m_settings.m_color;
+    }
+
+    float EditorParticleComponent::GetCountScale()
+    {
+        return m_settings.m_countScale;
+    }
+
+    float EditorParticleComponent::GetTimeScale()
+    {
+        return m_settings.m_timeScale;
+    }
+
+    float EditorParticleComponent::GetSpeedScale()
+    {
+        return m_settings.m_speedScale;
+    }
+
+    float EditorParticleComponent::GetGlobalSizeScale()
+    {
+        return m_settings.m_sizeScale;
+    }
+
+    float EditorParticleComponent::GetParticleSizeScaleX()
+    {
+        return m_settings.m_particleSizeScaleX;
+    }
+
+    float EditorParticleComponent::GetParticleSizeScaleY()
+    {
+        return m_settings.m_particleSizeScaleY;
+    }
 
 } // namespace LmbrCentral

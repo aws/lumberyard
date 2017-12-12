@@ -35,6 +35,7 @@
 
 // The following definitions are used by Sandbox and RC to determine which platform support is needed
 #define TOOLS_SUPPORT_POWERVR
+#define TOOLS_SUPPORT_ETC2COMP
 
 // Type used for vertex indices
 // WARNING: If you change this typedef, you need to update AssetProcessorPlatformConfig.ini to convert cgf and abc files to the proper index format.
@@ -83,8 +84,10 @@ typedef uint32 vtx_idx;
     #define USE_HTTP_WEBSOCKETS 0
 #endif
 
-#if (defined(WIN32) || defined(ORBIS) || defined(DURANGO)) && !defined(RESOURCE_COMPILER)
-  #define CAPTURE_REPLAY_LOG 1
+#if !defined(RESOURCE_COMPILER)
+    #if defined(WIN32)
+        #define CAPTURE_REPLAY_LOG 1
+    #endif
 #endif
 
 #if defined(RESOURCE_COMPILER) || defined(_RELEASE)
@@ -95,7 +98,7 @@ typedef uint32 vtx_idx;
   #define CAPTURE_REPLAY_LOG 0
 #endif
 
-#if (defined(LINUX) || defined(ANDROID) || defined(APPLE) ||  defined(WIN32) || defined(DURANGO) || defined(ORBIS))
+#if (defined(LINUX) || defined(ANDROID) || defined(APPLE) ||  defined(WIN32) || defined(DURANGO) || defined(ORBIS)) // ACCEPTED_USE
     #define USE_GLOBAL_BUCKET_ALLOCATOR
 #endif
 
@@ -141,7 +144,7 @@ typedef uint32 vtx_idx;
 #ifndef ENABLE_PROFILING_CODE
     #define ENABLE_PROFILING_CODE
 #endif
-#if !(defined(SANDBOX_EXPORTS) || defined(PLUGIN_EXPORTS) || (defined(AZ_MONOLITHIC_BUILD) && !defined(__ORBIS__)))
+#if !(defined(SANDBOX_EXPORTS) || defined(PLUGIN_EXPORTS) || (defined(AZ_MONOLITHIC_BUILD) && !defined(__ORBIS__))) // ACCEPTED_USE
     #define ENABLE_PROFILING_MARKERS
 #endif
 
@@ -188,7 +191,7 @@ typedef uint32 vtx_idx;
 #define CRY_ENABLE_RC_HELPER 1
 #endif
 
-#if !defined(_RELEASE) && !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS)
+#if !defined(_RELEASE) && !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS) // ACCEPTED_USE
     #define SOFTCODE_SYSTEM_ENABLED
 #endif
 
@@ -282,11 +285,11 @@ typedef uint32 vtx_idx;
 //------------------------------------------------------
 // Modules   : Renderer, Engine
 // Platform  : DX11
-#if !defined(RENDERNODES_LEAN_AND_MEAN) && (defined(WIN32) || defined(DURANGO) /*|| defined(ORBIS)*/)
-#define FEATURE_SVO_GI
-#if defined(WIN32)
-    #define FEATURE_SVO_GI_ALLOW_HQ
-#endif
+#if !defined(RENDERNODES_LEAN_AND_MEAN)
+    #if defined(WIN32)
+        #define FEATURE_SVO_GI // Separated for ease of scrubbing and validation
+        #define FEATURE_SVO_GI_ALLOW_HQ
+    #endif
 #endif
 
 #if defined(ENABLE_PROFILING_CODE)
@@ -319,7 +322,7 @@ typedef uint32 vtx_idx;
 
 // Disabled - needs fixing with April XDK
 
-#if (defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(ORBIS)) && !defined(NULL_RENDERER)
+#if (defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(ORBIS)) && !defined(NULL_RENDERER) // ACCEPTED_USE
 #define GPU_PARTICLES 1
 #else
 #define GPU_PARTICLES 0

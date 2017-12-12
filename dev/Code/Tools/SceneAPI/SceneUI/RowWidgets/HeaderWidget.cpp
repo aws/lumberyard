@@ -88,6 +88,9 @@ namespace AZ
                         if (root->RemoveObject(m_sceneManifest->GetValue(index)) && m_sceneManifest->RemoveEntry(m_target))
                         {
                             m_target = nullptr;
+                            // Hide and disable the button so when users spam the delete button only a single click is recorded.
+                            ui->m_deleteButton->hide();
+                            ui->m_deleteButton->setEnabled(false);
                             return;
                         }
                         else
@@ -106,6 +109,9 @@ namespace AZ
                         if (manifestVectorWidget->RemoveManifestObject(m_target))
                         {
                             m_target = nullptr;
+                            // Hide and disable the button so when users spam the delete button only a single click is recorded.
+                            ui->m_deleteButton->hide();
+                            ui->m_deleteButton->setEnabled(false);
                         }
                         else
                         {

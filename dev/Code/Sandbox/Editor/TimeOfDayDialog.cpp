@@ -390,12 +390,12 @@ const GUID& CTimeOfDayDialog::GetClassID()
 
 void CTimeOfDayDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(100, 100, 1000, 800);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTimeOfDayDialog>(GetIEditor(), "Time Of Day", LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CTimeOfDayDialog>("Time Of Day", LyViewPane::CategoryOther, options);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -462,8 +462,8 @@ void CTimeOfDayDialog::Init()
     m_ui->outTangentToLinearButton->setIcon(QIcon(":/Common/spline_edit-06.png"));
     m_ui->fitSplinesHorizontalButton->setIcon(QIcon(":/Common/spline_edit-07.png"));
     m_ui->fitSplinesVerticalButton->setIcon(QIcon(":/Common/spline_edit-08.png"));
-    m_ui->unifyOrBreakTangentHandlesButton->setIcon(QIcon(":/Common/spline_edit-09.png"));
-    m_ui->toggleKeyFreezeButton->setIcon(QIcon(":/Common/spline_edit-10.png"));
+    m_ui->splineSnapGridX->setIcon(QIcon(":/Common/spline_edit-09.png"));
+    m_ui->splineSnapGridY->setIcon(QIcon(":/Common/spline_edit-10.png"));
     m_ui->previousKeyButton->setIcon(QIcon(":/Common/spline_edit-14.png"));
     m_ui->nextKeyButton->setIcon(QIcon(":/Common/spline_edit-15.png"));
     m_ui->removeAllExceptSelectedButton->setIcon(QIcon(":/Common/spline_edit-16.png"));
@@ -571,8 +571,8 @@ void CTimeOfDayDialog::Init()
     connect(m_ui->outTangentToLinearButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_TANGENT_OUT_LINEAR); });
     connect(m_ui->fitSplinesHorizontalButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_X); });
     connect(m_ui->fitSplinesVerticalButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FIT_Y); });
-    connect(m_ui->unifyOrBreakTangentHandlesButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_X); });
-    connect(m_ui->toggleKeyFreezeButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_Y); });
+    connect(m_ui->splineSnapGridX, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_X); });
+    connect(m_ui->splineSnapGridY, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_SNAP_GRID_Y); });
     connect(m_ui->previousKeyButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_PREVIOUS_KEY); });
     connect(m_ui->nextKeyButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_NEXT_KEY); });
     connect(m_ui->removeAllExceptSelectedButton, &QAbstractButton::clicked, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FLATTEN_ALL); });
@@ -1132,7 +1132,6 @@ void CTimeOfDayDialog::OnResetToDefaultValues()
         if (root)
         {
             pTimeOfDay->Serialize(root, true);
-            pTimeOfDay->SetTime(12.0f, true); // Set to 12:00.
         }
         else
         {
@@ -1143,7 +1142,9 @@ void CTimeOfDayDialog::OnResetToDefaultValues()
             pTimeOfDay->ResetVariables();
         }
 
-        SetTimeRange(0.0f, 0.0f, 0.0f);
+        ITimeOfDay::SAdvancedInfo advInfo;
+        pTimeOfDay->GetAdvancedInfo(advInfo);
+        SetTimeRange(advInfo.fStartTime, advInfo.fEndTime, advInfo.fAnimSpeed);
         RefreshPropertiesValues();
         
         m_pHDRPane->properties().ClearSelection();

@@ -1,0 +1,279 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include "StdAfx.h"
+#include "UiRadioButtonGroupComponent.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
+
+#include <LyShine/Bus/UiCanvasBus.h>
+#include <LyShine/Bus/UiElementBus.h>
+#include <LyShine/Bus/UiRadioButtonBus.h>
+#include <LyShine/Bus/UiRadioButtonCommunicationBus.h>
+
+#include <LyShine/UiSerializeHelpers.h>
+#include "UiSerialize.h"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! UiRadioButtonGroupNotificationBus Behavior context handler class 
+class UiRadioButtonGroupNotificationBusBehaviorHandler : public UiRadioButtonGroupNotificationBus::Handler, public AZ::BehaviorEBusHandler
+{
+public:
+    AZ_EBUS_BEHAVIOR_BINDER(UiRadioButtonGroupNotificationBusBehaviorHandler, "{A8D1A53C-7419-4EBA-8B73-EA4C5F6ED2DA}", AZ::SystemAllocator,
+        OnRadioButtonGroupStateChange);
+
+    void OnRadioButtonGroupStateChange(AZ::EntityId checked) override
+    {
+        Call(FN_OnRadioButtonGroupStateChange, checked);
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PUBLIC MEMBER FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiRadioButtonGroupComponent::UiRadioButtonGroupComponent()
+    : m_allowUncheck(false)
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiRadioButtonGroupComponent::~UiRadioButtonGroupComponent()
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::EntityId UiRadioButtonGroupComponent::GetCheckedRadioButton()
+{
+    return m_checkedEntity;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::SetState(AZ::EntityId radioButton, bool isOn)
+{
+    // First check if the button is actually in the group
+    if (radioButton.IsValid() && ContainsRadioButton(radioButton))
+    {
+        // If this is a request to be checked
+        if (isOn)
+        {
+            // Check if we currently have a checked radio button
+            if (m_checkedEntity.IsValid())
+            {
+                EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
+                m_checkedEntity.SetInvalid();
+            }
+
+            m_checkedEntity = radioButton;
+            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, true);
+        }
+        else if (m_allowUncheck && radioButton == m_checkedEntity) // && isOn == false
+        {
+            EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
+            m_checkedEntity.SetInvalid();
+        }
+        else // we didn't change anything, don't send events
+        {
+            return;
+        }
+
+        if (!m_changedActionName.empty())
+        {
+            AZ::EntityId canvasEntityId;
+            EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+            EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_changedActionName);
+        }
+        EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiRadioButtonGroupComponent::GetAllowUncheck()
+{
+    return m_allowUncheck;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::SetAllowUncheck(bool allowUncheck)
+{
+    m_allowUncheck = allowUncheck;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::AddRadioButton(AZ::EntityId radioButton)
+{
+    if (RegisterRadioButton(radioButton))
+    {
+        // Let it know it is now in the group
+        EBUS_EVENT_ID(radioButton, UiRadioButtonCommunicationBus, SetGroup, GetEntityId());
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::RemoveRadioButton(AZ::EntityId radioButton)
+{
+    EBUS_EVENT_ID(radioButton, UiRadioButtonCommunicationBus, SetGroup, AZ::EntityId());
+    UnregisterRadioButton(radioButton);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiRadioButtonGroupComponent::ContainsRadioButton(AZ::EntityId radioButton)
+{
+    return m_radioButtons.find(radioButton) != m_radioButtons.end();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+const LyShine::ActionName& UiRadioButtonGroupComponent::GetChangedActionName()
+{
+    return m_changedActionName;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::SetChangedActionName(const LyShine::ActionName& actionName)
+{
+    m_changedActionName = actionName;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiRadioButtonGroupComponent::RegisterRadioButton(AZ::EntityId radioButton)
+{
+    // Check if the given entity actually has the radio button component on it
+    bool isRadioButton = UiRadioButtonBus::FindFirstHandler(radioButton) != nullptr;
+
+    // Check that the button is actually a radio button before adding it to the group
+    if (isRadioButton)
+    {
+        // Try adding the button to the group, and if it wasn't in the group before then
+        if (m_radioButtons.insert(radioButton).second)
+        {
+            // If the button that is getting added is already checked, uncheck the currently checked one
+            bool isOn;
+            EBUS_EVENT_ID_RESULT(isOn, radioButton, UiRadioButtonBus, GetState);
+            if (isOn)
+            {
+                if (m_checkedEntity.IsValid())
+                {
+                    // Uncheck our currently checked entity
+                    EBUS_EVENT_ID(m_checkedEntity, UiRadioButtonCommunicationBus, SetState, false);
+                    m_checkedEntity.SetInvalid();
+                }
+                m_checkedEntity = radioButton;
+                EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::UnregisterRadioButton(AZ::EntityId radioButton)
+{
+    m_radioButtons.erase(radioButton);
+
+    // If the button that is getting removed was the checked entity, send a notification out that we do not have
+    // a checked entity anymore
+    if (radioButton == m_checkedEntity)
+    {
+        m_checkedEntity.SetInvalid();
+        EBUS_EVENT_ID(GetEntityId(), UiRadioButtonGroupNotificationBus, OnRadioButtonGroupStateChange, m_checkedEntity);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PROTECTED MEMBER FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::Activate()
+{
+    UiRadioButtonGroupBus::Handler::BusConnect(GetEntityId());
+    UiRadioButtonGroupCommunicationBus::Handler::BusConnect(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiRadioButtonGroupComponent::Deactivate()
+{
+    UiRadioButtonGroupBus::Handler::BusDisconnect(GetEntityId());
+    UiRadioButtonGroupCommunicationBus::Handler::BusDisconnect(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PROTECTED STATIC MEMBER FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UiRadioButtonGroupComponent::Reflect(AZ::ReflectContext* context)
+{
+    AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+
+    if (serializeContext)
+    {
+        serializeContext->Class<UiRadioButtonGroupComponent, AZ::Component>()
+            ->Version(1)
+        // Settings group
+            ->Field("AllowRestoreUnchecked", &UiRadioButtonGroupComponent::m_allowUncheck)
+        // Actions group
+            ->Field("ChangedActionName", &UiRadioButtonGroupComponent::m_changedActionName);
+
+        AZ::EditContext* ec = serializeContext->GetEditContext();
+        if (ec)
+        {
+            auto editInfo = ec->Class<UiRadioButtonGroupComponent>("RadioButtonGroup", "A component for RadioButtonGroup behavior.");
+
+            editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiRadioButtonGroup.png")
+                ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiRadioButtonGroup.png")
+                ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+
+            // Settings group
+            {
+                editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Settings")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+
+                editInfo->DataElement(0, &UiRadioButtonGroupComponent::m_allowUncheck, "Allow uncheck", "Allow clicking on the selected radio button to uncheck it.");
+            }
+
+            // Actions group
+            {
+                editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Actions")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+
+                editInfo->DataElement(0, &UiRadioButtonGroupComponent::m_changedActionName, "Change", "The action triggered when value changes.");
+            }
+        }
+    }
+
+    AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
+    if (behaviorContext)
+    {
+        behaviorContext->EBus<UiRadioButtonGroupBus>("UiRadioButtonGroupBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+            ->Event("GetState", &UiRadioButtonGroupBus::Events::GetCheckedRadioButton)
+            ->Event("SetState", &UiRadioButtonGroupBus::Events::SetState)
+            ->Event("GetAllowUncheck", &UiRadioButtonGroupBus::Events::GetAllowUncheck)
+            ->Event("SetAllowUncheck", &UiRadioButtonGroupBus::Events::SetAllowUncheck)
+            ->Event("AddRadioButton", &UiRadioButtonGroupBus::Events::AddRadioButton)
+            ->Event("RemoveRadioButton", &UiRadioButtonGroupBus::Events::RemoveRadioButton)
+            ->Event("ContainsRadioButton", &UiRadioButtonGroupBus::Events::ContainsRadioButton)
+            ->Event("GetChangedActionName", &UiRadioButtonGroupBus::Events::GetChangedActionName)
+            ->Event("SetChangedActionName", &UiRadioButtonGroupBus::Events::SetChangedActionName);
+
+        behaviorContext->EBus<UiRadioButtonGroupNotificationBus>("UiRadioButtonGroupNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+            ->Handler<UiRadioButtonGroupNotificationBusBehaviorHandler>();
+    }
+}

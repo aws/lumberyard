@@ -1,0 +1,21 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FX_CloudDistance02MAT" MtlFlags="524416" Shader="Distanceclouds" GenMask="1" StringGenMask="" SurfaceType="" Diffuse="1,1,1" Specular="0,0,0" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_clouddistance_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.001" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+   </Textures>
+   <PublicParams StepSize="0.0040000002" Attenuation="0.37400001" AlphaSaturation="1.941" SkyColorMultiplier="0.57999998" SunColorMultiplier="0.54000002"/>
+  </Material>
+  <Material Name="FX_CloudDistanceSecondary01MAT" MtlFlags="524416" Shader="Distanceclouds" GenMask="1" StringGenMask="" SurfaceType="" Diffuse="1,1,1" Specular="0,0,0" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_clouddistancesecondary_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.0022" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+   </Textures>
+   <PublicParams StepSize="0.0040000002" Attenuation="0.37400001" AlphaSaturation="1.941" SkyColorMultiplier="0.57999998" SunColorMultiplier="0.54000002"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

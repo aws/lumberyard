@@ -17,6 +17,7 @@
 
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/EBus/EBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,4 +132,71 @@ namespace AzFramework
         InputDeviceRequestBus::EventResult(inputDevice, deviceId, &InputDeviceRequests::GetInputDevice);
         return inputDevice;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Templated EBus interface used to create a custom implementation for a specific device type
+    template<class InputDeviceType>
+    class InputDeviceImplementationRequest : public AZ::EBusTraits
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Alias for the EBus implementation of this interface
+        using Bus = AZ::EBus<InputDeviceImplementationRequest<InputDeviceType>>;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Alias for the function type used to create the custom implementations
+        using CreateFunctionType = typename InputDeviceType::Implementation*(*)(InputDeviceType&);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Create a custom implementation for all the existing instances of this input device type.
+        //! Passing InputDeviceType::Implementation::Create as the argument will create the default
+        //! device implementation, while passing nullptr will delete any existing implementation.
+        //! \param[in] createFunction Pointer to the function that will create the implementation.
+        virtual void CreateCustomImplementation(CreateFunctionType createFunction) = 0;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Templated EBus handler class that implements the InputDeviceImplementationRequest interface.
+    //! To use this helper class your InputDeviceType class must posses all of the following traits,
+    //! and they must all be accessible (either by being public or by making this helper a friend):
+    //! - A nested InputDeviceType::Implementation class
+    //! - A SetImplementation(AZStd::unique_ptr<InputDeviceType::Implementation>) function
+    template<class InputDeviceType>
+    class InputDeviceImplementationRequestHandler
+        : public InputDeviceImplementationRequest<InputDeviceType>::Bus::Handler
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Constructor
+        //! \param[in] inputDevice Reference to the input device that owns this handler
+        AZ_INLINE InputDeviceImplementationRequestHandler(InputDeviceType& inputDevice)
+            : m_inputDevice(inputDevice)
+        {
+            InputDeviceImplementationRequest<InputDeviceType>::Bus::Handler::BusConnect();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Disable copying
+        AZ_DISABLE_COPY_MOVE(InputDeviceImplementationRequestHandler);
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Alias for the function type used to create the custom implementations
+        using CreateFunctionType = typename InputDeviceType::Implementation*(*)(InputDeviceType&);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref InputDeviceImplementationRequest<InputDeviceType>::CreateCustomImplementation
+        AZ_INLINE void CreateCustomImplementation(CreateFunctionType createFunction) override
+        {
+            AZStd::unique_ptr<typename InputDeviceType::Implementation> newImplementation;
+            if (createFunction)
+            {
+                newImplementation.reset(createFunction(m_inputDevice));
+            }
+            m_inputDevice.SetImplementation(AZStd::move(newImplementation));
+        }
+
+    private:
+        InputDeviceType& m_inputDevice; //!< Reference to the input device that owns this handler
+    };
 } // namespace AzFramework

@@ -119,6 +119,7 @@ namespace
             lightParams.m_fRadius = configuration.m_areaMaxDistance;
             lightParams.m_fAreaWidth = configuration.m_areaWidth;
             lightParams.m_fAreaHeight = configuration.m_areaHeight;
+            lightParams.m_fLightFrustumAngle = configuration.m_areaFOV;
             lightParams.m_Flags |= DLF_AREA_LIGHT;
         }
         break;
@@ -354,14 +355,24 @@ namespace LmbrCentral
 
     void LightInstance::UpdateRenderLight(const LightConfiguration& configuration)
     {
+        unsigned int rndFlags = m_renderLight ? m_renderLight->GetRndFlags() : 0;
         DestroyRenderLight();
         CreateRenderLight(configuration);
+        if (m_renderLight)
+        {
+            m_renderLight->SetRndFlags(rndFlags);
+        }
     }
 
     void LightInstance::UpdateRenderLight(const LensFlareConfiguration& configuration)
     {
+        unsigned int rndFlags = m_renderLight ? m_renderLight->GetRndFlags() : 0;
         DestroyRenderLight();
         CreateRenderLight(configuration);
+        if (m_renderLight)
+        {
+            m_renderLight->SetRndFlags(rndFlags);
+        }
     }
 
     void LightInstance::DestroyRenderLight()

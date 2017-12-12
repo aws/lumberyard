@@ -82,6 +82,7 @@ namespace LmbrCentral
         float m_areaWidth;
         float m_areaHeight;
         float m_areaMaxDistance;
+        float m_areaFOV;
 
         //! Settings for projector lights
         float m_projectorRange;
@@ -215,6 +216,9 @@ namespace LmbrCentral
         void SetAreaHeight(float newHeight) override;
         float GetAreaHeight() override;
 
+        void SetAreaFOV(float newFOV) override;
+        float GetAreaFOV() override;
+
         void SetProjectorMaxDistance(float newMaxDistance) override;
         float GetProjectorMaxDistance() override;
 
@@ -231,8 +235,8 @@ namespace LmbrCentral
         void SetProbeAreaDimensions(const AZ::Vector3& newDimensions) override;
         const AZ::Vector3 GetProbeAreaDimensions() override;
 
-        void SetProbeSortPriority(float newPriority) override;
-        float GetProbeSortPriority() override;
+        void SetProbeSortPriority(AZ::u32 newPriority) override;
+        AZ::u32 GetProbeSortPriority() override;
 
         void SetProbeBoxProjected(bool isProbeBoxProjected) override;
         bool GetProbeBoxProjected() override;
@@ -270,6 +274,11 @@ namespace LmbrCentral
 
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& /*dependent*/)
         {
+        }
+
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("LightService", 0xfd7fa928));
         }
 
         static void Reflect(AZ::ReflectContext* context);

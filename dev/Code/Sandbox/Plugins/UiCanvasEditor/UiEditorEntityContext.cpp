@@ -335,6 +335,38 @@ bool UiEditorEntityContext::HasPendingRequests()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiEditorEntityContext::DetachSliceEntities(const AzToolsFramework::EntityIdList& entities)
+{
+    if (entities.empty())
+    {
+        return;
+    }
+
+    for (const AZ::EntityId& entityId : entities)
+    {
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+        EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+        AZ::SliceComponent::SliceReference* sliceReference = sliceAddress.first;
+        AZ::SliceComponent::SliceInstance* sliceInstance = sliceAddress.second;
+        if (sliceReference && sliceInstance)
+        {
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+            AZ_Error("EditorEntityContext", entity, "Unable to find entity for EntityID %llu", entityId);
+
+            if (entity)
+            {
+                if (sliceReference->GetSliceComponent()->RemoveEntity(entityId, false)) // Remove from current slice instance without deleting
+                {
+                    GetRootSlice()->AddEntity(entity); // Add back as loose entity
+                }
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiEditorEntityContext::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
 {
     if (m_queuedSliceReplacement.IsValid())

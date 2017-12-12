@@ -11,12 +11,13 @@
 import os
 import re
 import uuid
-import json
+import glob
 from ConfigParser import RawConfigParser
-from waflib.Configure import conf
+from waflib.Configure import conf, ConfigurationContext
 from waflib import Logs
-from cry_utils import append_to_unique_list
+from cry_utils import append_unique_kw_entry, append_to_unique_list
 from waflib.Build import Context
+from waflib.TaskGen import feature, before_method, after_method
 
 
 GEMS_UUID_KEY = "Uuid"
@@ -89,7 +90,6 @@ def _create_field_reader(ctx, obj, parse_context):
 
 
 GEM_NAME_BY_ID = {}     # Cache of the gem name by its id
-GEM_ID_BY_PATH = {}     # Cache of gem ids by the absolute path of the gem.json file
 BAD_GEM_PATH = "____"   # Special case to handle caching of bad gem.json config files
 GEM_NAME_SEARCH_SUBFOLDERS = ('Gems','Code')   # The subfolders under the root folder to search for gems
 
@@ -106,44 +106,35 @@ def find_gem_name_by_id(ctx, input_gem_id):
     """
 
     global GEM_NAME_BY_ID
-    global GEM_ID_BY_PATH
 
-    # Check the cache first
+    if not GEM_NAME_BY_ID:
+        # populate the cache once
+        for search_subfolder in GEM_NAME_SEARCH_SUBFOLDERS:
+            # Glob through each folder to search for the gem definition file (gem.json).
+            # This is a potentially expensive file search so limit the scope of this search as much
+            # as possible
+            gems_search_node = ctx.srcnode.find_node(search_subfolder)
+            if gems_search_node is None:
+                continue
+
+            gem_definitions = gems_search_node.ant_glob('**/gem.json')
+            for gem_def in gem_definitions:
+                try:
+                    gem_json = ctx.parse_json_file(gem_def)
+                    reader = _create_field_reader(ctx, gem_json, 'Gem in ' + gem_def.abspath())
+                    gem_name = reader.field_req('Name')
+                    gem_id = reader.uuid()
+
+                    GEM_NAME_BY_ID[gem_id] = gem_name
+                except:
+                    # This is a bad config file
+                    Logs.warn('[WARN] invalid config file {}'.format(gem_def))
+
+    # return result from the cache
     if input_gem_id in GEM_NAME_BY_ID:
         return GEM_NAME_BY_ID[input_gem_id]
 
-    for search_subfolder in GEM_NAME_SEARCH_SUBFOLDERS:
-        # Glob through each folder to search for the gem definition file (gem.json).
-        # This is a potentially expensive file search so limit the scope of this search as much
-        # as possible
-        gems_search_node = ctx.srcnode.find_node(search_subfolder)
-        if gems_search_node is None:
-            continue
-
-        gem_definitions = gems_search_node.ant_glob('**/gem.json')
-        for gem_def in gem_definitions:
-            # Check the id against any of the cached results first before attempting to actually
-            # read from the json files again
-            if gem_def.abspath() in GEM_ID_BY_PATH:
-                cached_id_by_path = GEM_ID_BY_PATH[gem_def.abspath()]
-                if cached_id_by_path in GEM_NAME_BY_ID and input_gem_id == cached_id_by_path:
-                    return GEM_NAME_BY_ID[cached_id_by_path]
-                continue
-            try:
-                gem_json = ctx.parse_json_file(gem_def)
-                reader = _create_field_reader(ctx, gem_json, 'Gem in ' + gem_def.abspath())
-                gem_name = reader.field_req('Name')
-                gem_id = reader.uuid()
-
-                GEM_NAME_BY_ID[gem_id] = gem_name
-                GEM_ID_BY_PATH[gem_def.abspath()] = gem_id
-                if input_gem_id == gem_id:
-                    return gem_name
-            except:
-                # This is a bad config file, so mark it so it wont try to parse it again
-                GEM_ID_BY_PATH[gem_def.abspath()] = BAD_GEM_PATH
-
-        return None
+    return None
 
 
 @conf
@@ -154,7 +145,7 @@ def add_gems_to_specs(conf):
     # Add Gems to the specs
     manager.add_to_specs()
 
-    conf.env['REQUIRED_GEMS'] = conf.scan_required_gems()
+    conf.env['REQUIRED_GEMS'] = conf.scan_required_gems_paths()
 
 @conf
 def process_gems(self):
@@ -164,16 +155,45 @@ def process_gems(self):
     manager.recurse()
 
 @conf
-def GetEnabledGemUUIDs(ctx):
-    return [gem.id for gem in GemManager.GetInstance(ctx).gems]
-
-@conf
 def GetGemsOutputModuleNames(ctx):
-    return [gem.dll_file for gem in GemManager.GetInstance(ctx).gems]
+    target_names = []
+    for gem in GemManager.GetInstance(ctx).gems:
+        for module in gem.modules:
+            target_names.append(module.file_name)
+    return target_names
 
-@conf
-def GetGemsModuleNames(ctx):
-    return [gem.name for gem in GemManager.GetInstance(ctx).gems]
+def apply_gem_to_kw(ctx, kw, gem):
+    """
+    Apply a gem to the kw
+    """
+    gem_include_path = gem.get_include_path()
+    if os.path.exists(gem_include_path):
+        append_unique_kw_entry(kw,'includes',gem_include_path)
+
+    for module in gem.modules:
+        if module.requires_linking(ctx):
+            append_unique_kw_entry(kw, 'use', module.target_name)
+
+    if (gem.export_uselibs or ctx.is_monolithic_build()) and len(gem.local_uselibs)>0:
+        configuration = ctx.env['CONFIGURATION']
+        if not (gem.local_uselib_non_release and configuration.lower() in ["release", "release_dedicated", "performance", "performance_dedicated"]):
+            append_unique_kw_entry(kw, 'uselib', gem.local_uselibs)
+
+def apply_gems_to_kw(ctx, kw, gems, game_name):
+    """
+    Apply gems to the kw
+    """
+    for gem in gems:
+        gem_include_path = gem.get_include_path()
+        if os.path.exists(gem_include_path):
+            append_unique_kw_entry(kw,'includes',gem_include_path)
+
+        if (gem.export_uselibs or ctx.is_monolithic_build()) and len(gem.local_uselibs)>0:
+            configuration = ctx.env['CONFIGURATION']
+            if not (gem.local_uselib_non_release and configuration.lower() in ["release", "release_dedicated", "performance", "performance_dedicated"]):
+                append_unique_kw_entry(kw, 'uselib', gem.local_uselibs)
+
+    append_unique_kw_entry(kw, 'use', _get_linked_module_targets(gems, game_name, ctx))
 
 @conf
 def DefineGem(ctx, *k, **kw):
@@ -186,140 +206,10 @@ def DefineGem(ctx, *k, **kw):
     if not gem:
         ctx.cry_error("DefineGem must be called by a wscript file in a Gem's 'Code' folder. Called from: {}".format(ctx.path.abspath()))
 
-    # Detect any 3rd party libs in this GEM
-    detected_uselib_names = []
-    if ctx.cmd.startswith('build_'):
-
-        platform = ctx.env['PLATFORM']
-        configuration = ctx.env['CONFIGURATION']
-        reported_errors = set()
-
-        path_alias_map = {'ROOT': ctx.root.make_node(Context.launch_dir).abspath(),
-                          'GEM': ctx.path.parent.abspath()}
-        config_3rdparty_folder = ctx.path.parent.make_node('3rdParty')
-        thirdparty_error_msgs, detected_uselib_names = ctx.detect_all_3rd_party_libs(config_3rdparty_folder, platform, configuration, path_alias_map, False)
-        for thirdparty_error_msg in thirdparty_error_msgs:
-            if thirdparty_error_msg not in reported_errors:
-                reported_errors.add(thirdparty_error_msg)
-                Logs.warn('[WARN] {}'.format(thirdparty_error_msg))
-
-    # Set default properties
-    default_settings = {
-        'target': gem.name,
-        'output_file_name': gem.dll_file,
-        'vs_filter': gem.name if gem.is_game_gem else 'Gems',
-        'file_list': ["{}.waf_files".format(gem.name.lower())],
-        'platforms': ['all'],
-        'configurations' : ['all'],
-        'defines': [],
-        'includes': [],
-        'export_includes': [],
-        'lib': [],
-        'libpath': [],
-        'features': [],
-        'use': [],
-        'uselib': []
-    }
-
-    for key, value in default_settings.iteritems():
-        if key not in kw:
-            kw[key] = value
-
-    # If the Gem is a game gem, we may need to apply enabled gems for all of the enabled game projects so it will build
-    if gem.is_game_gem:
-        # The gem only builds once, so we need apply the union of all non-game-gem gems enabled for all enabled game projects
-        unique_gems = set()
-        enabled_projects = ctx.get_enabled_game_project_list()
-        for enabled_project in enabled_projects:
-            gems_for_project = ctx.get_game_gems(enabled_project)
-            for gem_for_project in gems_for_project:
-                if gem_for_project.name != gem.name and not gem_for_project.is_game_gem:
-                    unique_gems.add(gem_for_project)
-
-        is_android = ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang')
-
-        for unique_gem in unique_gems:
-            if unique_gem.id in gem.dependencies or unique_gem.is_required or is_android:
-                if os.path.exists(unique_gem.get_include_path().abspath()):
-                    kw['includes'] += [unique_gem.get_include_path()]
-                if Gem.LinkType.requires_linking(ctx, unique_gem.link_type):
-                    kw['use'] += [unique_gem.name]
-
-    working_path = ctx.path.abspath()
-    dir_contents = os.listdir(working_path)
-
-    # Setup PCH if disable_pch is false (default), and pch is not set (default)
-    if not kw.get('disable_pch', False) and kw.get('pch', None) == None:
-
-        # default casing for the relative path to the pch file
-        source_dir = 'Source'
-        pch_file = 'StdAfx.cpp'
-
-        for entry in dir_contents:
-            if entry.lower() == 'source':
-                source_dir = entry
-                break
-
-        source_contents = os.listdir(os.path.join(working_path, source_dir))
-        for entry in source_contents:
-            if entry.lower() == 'stdafx.cpp':
-                pch_file = entry
-                break
-
-        # has to be forward slash because the pch is string compared with files
-        # in the waf_files which use forward slashes
-        kw['pch'] = "{}/{}".format(source_dir, pch_file)
-
-    # Apply any additional 3rd party uselibs
-    if len(detected_uselib_names)>0:
-        append_to_unique_list(kw['uselib'], list(detected_uselib_names))
-
-    # Link the auto-registration symbols so that Flow Node registration will work
-    append_to_unique_list(kw['use'], ['CryAction_AutoFlowNode', 'AzFramework'])
-    
-    # Make it so gems can be replaced while executable is still running
-    append_to_unique_list(kw['features'], ['link_running_program'])
-
-    # Setup includes
-    include_paths = []
-
-    # Most gems use the upper case directories, however some have lower case source directories.
-    # This will add the correct casing of those include directories
-    local_includes = [ entry for entry in dir_contents if entry.lower() in [ 'include', 'source' ] ]
-
-    # If disable_tests=False or disable_tests isn't specified, enable Google test
-    disable_test_settings = ctx.GetPlatformSpecificSettings(kw, 'disable_tests', ctx.env['PLATFORM'], ctx.env['CONFIGURATION'])
-    disable_tests = kw.get('disable_tests', False) or any(disable_test_settings)
-    # Disable tests when doing monolithic build, except when doing project generation (which is always monolithic)
-    disable_tests = disable_tests or (ctx.env['PLATFORM'] != 'project_generator' and ctx.spec_monolithic_build())
-    # Disable tests on non-test configurations, except when doing project generation
-    disable_tests = disable_tests or (ctx.env['PLATFORM'] != 'project_generator' and 'test' not in ctx.env['CONFIGURATION'])
-    if not disable_tests:
-        append_to_unique_list(kw['use'], 'AzTest')
-        test_waf_files = "{}_tests.waf_files".format(gem.name.lower())
-        if ctx.path.find_node(test_waf_files):
-            append_to_unique_list(kw['file_list'], test_waf_files)
-
-    # Add local includes
-    for local_path in local_includes:
-        node = ctx.path.find_node(local_path)
-        if node:
-            include_paths.append(node)
-
-    # if the gem includes aren't already in the list, ensure they are prepended in order
-    gem_includes = []
-    for include_path in include_paths:
-        if not include_path in kw['includes']:
-            gem_includes.append(include_path)
-    kw['includes'] = gem_includes + kw['includes']
-
-    # Take the gems include folder if it exists and add it to the export_includes in case the gem is being 'used'
-    export_include_node = ctx.path.find_node('Include')
-    if export_include_node:
-        kw['export_includes'] = [export_include_node.abspath()] + kw['export_includes']
+    manager.current_gem = gem
 
     # Generate list of resolved dependencies
-    dependency_objects = [ ]
+    dependency_objects = []
     for dep_id in gem.dependencies:
         dep = manager.get_gem_by_spec(dep_id)
         if not dep:
@@ -331,75 +221,234 @@ def DefineGem(ctx, *k, **kw):
 
             continue
         dependency_objects.append(dep)
+
     # Applies dependencies to args list
     def apply_dependencies(args):
         for dep in dependency_objects:
             dep_include = dep.get_include_path()
-            if os.path.exists(dep_include.abspath()):
+            if os.path.exists(dep_include):
                 append_to_unique_list(args['includes'], dep_include)
-            if Gem.LinkType.requires_linking(ctx, dep.link_type):
-                append_to_unique_list(args['use'], dep.name)
+            for module in dep.modules:
+                if module.requires_linking(ctx):
+                    append_to_unique_list(args['use'], module.target_name)
 
-    apply_dependencies(kw)
+    # Iterate over each module and setup build
+    for module in gem.modules:
+        if module.name:
+            module_kw = kw.get(module.name, None)
 
-    if gem.is_game_gem and ctx.is_monolithic_build() and ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang'):
+            # If no based on name, try lowercasing
+            if module_kw == None:
+                module_kw = kw.get(module.name.lower(), None)
 
-        # Special case for android & monolithic builds.  If this is the game gem for the project, it needs to apply the
-        # enabled gems here instead of the launcher where its normally applied.  (see cryengine_modules.CryLauncher_Impl
-        # for details).  In legacy game projects, this the game dll is declared as a CryEngineModule
-        setattr(ctx,'game_project',gem.name)
-        ctx.CryEngineModule(ctx, *k, **kw)
-    else:
-        ctx.CryEngineSharedLibrary(ctx, *k, **kw)
+            # If still no kw, error
+            if module_kw == None:
+                ctx.cry_error("Gem {0}'s wscript missing definition for module {1} (valid dict names are {1} and {2}.".format(gem.name, module.name, module.name.lower()))
+        else:
+            module_kw = kw
 
-    # If Gem is marked for having editor module, add it
-    if gem.editor_module and ctx.editor_gems_enabled():
-        # If 'editor' object is added to the wscript, ensure it's settings are kept
-        editor_kw = kw.get('editor', { })
+        module_file_list_base = module.target_name.replace('.', '_').lower()
 
-        # Overridable settings, not to be combined with Game version
-        editor_default_settings = {
-            'target': gem.editor_module,
-            'output_file_name': gem.editor_dll_file,
-            'vs_filter': 'Gems',
-            'platforms': ['win', 'darwin'],
-            'configurations' : ['debug', 'debug_test', 'profile', 'profile_test'],
-            'file_list': kw['file_list'] + ["{}_editor.waf_files".format(gem.name.lower())],
-            'pch':       kw['pch'],
-            'defines':   list(kw['defines']),
-            'includes':  list(kw['includes']),
-            'export_includes':  list(kw['export_includes']),
-            'lib':       list(kw['lib']),
-            'libpath':   list(kw['libpath']),
-            'features':  list(kw['features']),
-            'use':       list(kw['use']),
-            'uselib':    list(kw['uselib']),
+        # Set default properties
+        default_settings = {
+            'target': module.target_name,
+            'output_file_name': module.file_name,
+            'vs_filter': gem.name if gem.is_game_gem else 'Gems',
+            'file_list': ["{}.waf_files".format(module_file_list_base)],
+            'platforms': ['all'],
+            'configurations': ['all'],
+            'defines': [],
+            'includes': [],
+            'export_includes': [],
+            'lib': [],
+            'libpath': [],
+            'features': [],
+            'use': [],
+            'uselib': []
         }
 
-        for key, value in editor_default_settings.iteritems():
-            if key not in editor_kw:
-                editor_kw[key] = value
+        # Builders have some special settings
+        if module.type in [Gem.Module.Type.Builder, Gem.Module.Type.EditorModule]:
+            default_settings['platforms'] = ['win', 'darwin']
+            default_settings['configurations'] = ['debug', 'debug_test', 'profile', 'profile_test']
 
-        # Include required settings
-        append_to_unique_list(editor_kw['features'], ['qt5', 'link_running_program'])
-        append_to_unique_list(editor_kw['use'], ['AzToolsFramework', 'AzQtComponents'])
-        append_to_unique_list(editor_kw['uselib'], ['QT5CORE', 'QT5QUICK', 'QT5GUI', 'QT5WIDGETS'])
+        if module.parent:
+            parent_module = None
+            for parent_module_itr in gem.modules:
+                if (parent_module_itr.name == module.parent or
+                    (module.parent == 'GameModule' and parent_module_itr.type == Gem.Module.Type.GameModule and
+                    parent_module_itr.name == None)):
+                    parent_module = parent_module_itr
+                    break
+            if not parent_module:
+                ctx.cry_error('{}\'s Gem.json Module "{}" "Extends" non-existent module {}.'.format(gem.name, module.name, module.parent))
 
-        # Set up for testing
+            parent_kw = getattr(parent_module, 'kw', None)
+            if not parent_kw:
+                ctx.cry_error('{}\'s wscript defines module {} before parent {}, please reverse the order.'.format(gem.name, module.name, module.parent))
+
+            EXTENDABLE_FIELDS = [
+                'file_list',
+                'defines',
+                'includes',
+                'features',
+                'lib',
+                'libpath',
+                'use',
+                'uselib'
+            ]
+
+            INHERITABLE_FIELDS = [
+                'pch',
+            ]
+
+            for field in EXTENDABLE_FIELDS:
+                default_settings[field].extend(parent_kw.get(field, []))
+
+            for field in INHERITABLE_FIELDS:
+                parent_value = parent_kw.get(field, None)
+                if parent_value:
+                    default_settings[field] = parent_value
+
+        # Apply defaults to the project
+        for key, value in default_settings.iteritems():
+            if key not in module_kw:
+                module_kw[key] = value
+
+    	# Make it so gems can be replaced while executable is still running
+    	append_to_unique_list(module_kw['features'], ['link_running_program'])
+
+        # Add tools stuff to the editor modules
+        if module.type == Gem.Module.Type.EditorModule:
+            append_unique_kw_entry(module_kw, 'features', ['qt5'])
+            append_unique_kw_entry(module_kw, 'use', ['AzToolsFramework', 'AzQtComponents'])
+            append_unique_kw_entry(module_kw, 'uselib', ['QT5CORE', 'QT5QUICK', 'QT5GUI', 'QT5WIDGETS'])
+
+        # If the Gem is a game gem, we may need to apply enabled gems for all of the enabled game projects so it will build
+        if gem.is_game_gem and module.type != Gem.Module.Type.Builder:
+
+            # We need to let cryengine_modules.RunTaskGenerator know that this is a game gem and must be built always
+            setattr(ctx, 'is_game_gem', True)
+
+            # The gem only builds once, so we need apply the union of all non-game-gem gems enabled for all enabled game projects
+            unique_gems = []
+            enabled_projects = ctx.get_enabled_game_project_list()
+            for enabled_project in enabled_projects:
+                gems_for_project = ctx.get_game_gems(enabled_project)
+                for gem_for_project in gems_for_project:
+                    if gem_for_project.name != gem.name and not gem_for_project.is_game_gem:
+                        append_to_unique_list(unique_gems, gem_for_project)
+
+            is_android = ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang')
+
+            for unique_gem in unique_gems:
+                if unique_gem.id in gem.dependencies or unique_gem.is_required or is_android:
+                    apply_gem_to_kw(ctx, kw, unique_gem)
+
+        working_path = ctx.path.abspath()
+        dir_contents = os.listdir(working_path)
+
+        # Setup PCH if disable_pch is false (default), and pch is not set (default)
+        if not module_kw.get('disable_pch', False) and module_kw.get('pch', None) == None:
+
+            # default casing for the relative path to the pch file
+            source_dir = 'Source'
+            pch_file = 'StdAfx.cpp'
+
+            for entry in dir_contents:
+                if entry.lower() == 'source':
+                    source_dir = entry
+                    break
+
+            source_contents = os.listdir(os.path.join(working_path, source_dir))
+            for entry in source_contents:
+                if entry.lower() == 'stdafx.cpp':
+                    pch_file = entry
+                    break
+
+            # has to be forward slash because the pch is string compared with files
+            # in the waf_files which use forward slashes
+            module_kw['pch'] = "{}/{}".format(source_dir, pch_file)
+
+        # Apply any additional 3rd party uselibs
+        if len(gem.local_uselibs) > 0:
+            append_unique_kw_entry(module_kw, 'uselib', gem.local_uselibs)
+
+        # Link the auto-registration symbols so that Flow Node registration will work
+        if module.type in [Gem.Module.Type.GameModule, Gem.Module.Type.EditorModule]:
+            append_unique_kw_entry(module_kw, 'use', ['CryAction_AutoFlowNode', 'AzFramework'])
+
+        append_unique_kw_entry(module_kw, 'features', ['link_running_program'])
+
+        # If disable_tests=False or disable_tests isn't specified, enable Google test
+        disable_test_settings = ctx.GetPlatformSpecificSettings(module_kw, 'disable_tests', ctx.env['PLATFORM'], ctx.env['CONFIGURATION'])
+        disable_tests = module_kw.get('disable_tests', False) or any(disable_test_settings)
+        # Disable tests when doing monolithic build, except when doing project generation (which is always monolithic)
+        disable_tests = disable_tests or (ctx.env['PLATFORM'] != 'project_generator' and ctx.spec_monolithic_build())
+        # Disable tests on non-test configurations, except when doing project generation
+        disable_tests = disable_tests or (ctx.env['PLATFORM'] != 'project_generator' and 'test' not in ctx.env['CONFIGURATION'])
         if not disable_tests:
-            append_to_unique_list(editor_kw['use'], 'AzTest')
-            test_waf_files = "{}_editor_tests.waf_files".format(gem.name.lower())
+            append_unique_kw_entry(module_kw, 'use', 'AzTest')
+            test_waf_files = "{}_tests.waf_files".format(module_file_list_base)
             if ctx.path.find_node(test_waf_files):
-                append_to_unique_list(editor_kw['file_list'], test_waf_files)
+                append_unique_kw_entry(module_kw, 'file_list', test_waf_files)
 
-        apply_dependencies(editor_kw)
+        # Setup includes
+        include_paths = []
 
-        ctx.CryEngineModule(ctx, *k, **editor_kw)
+        # Most gems use the upper case directories, however some have lower case source directories.
+        # This will add the correct casing of those include directories
+        local_includes = [ entry for entry in dir_contents if entry.lower() in [ 'include', 'source' ] ]
+
+        # Add local includes
+        for local_path in local_includes:
+            node = ctx.path.find_node(local_path)
+            if node:
+                include_paths.append(node)
+
+        # if the gem includes aren't already in the list, ensure they are prepended in order
+        gem_includes = []
+        for include_path in include_paths:
+            if not include_path in module_kw['includes']:
+                gem_includes.append(include_path)
+        module_kw['includes'] = gem_includes + module_kw['includes']
+
+        # Take the gems include folder if it exists and add it to the export_includes in case the gem is being 'used'
+        export_include_node = ctx.path.find_node('Include')
+        if export_include_node:
+            module_kw['export_includes'] = [export_include_node.abspath()] + module_kw['export_includes']
+
+        apply_dependencies(module_kw)
+
+        # Save the build settings so we can access them later
+        module.kw = module_kw
+
+        if gem.is_game_gem and ctx.is_monolithic_build() and ctx.env['PLATFORM'] in ('android_armv7_gcc', 'android_armv7_clang') and module.type == Gem.Module.Type.GameModule:
+
+            # Special case for android & monolithic builds.  If this is the game gem for the project, it needs to apply the
+            # enabled gems here instead of the launcher where its normally applied.  (see cryengine_modules.CryLauncher_Impl
+            # for details).  In legacy game projects, this the game dll is declared as a CryEngineModule
+            setattr(ctx,'game_project',gem.name)
+            ctx.CryEngineModule(**module_kw)
+        else:
+            if module.type in [Gem.Module.Type.GameModule, Gem.Module.Type.EditorModule]:
+                ctx.CryEngineSharedLibrary(**module_kw)
+            elif module.type == Gem.Module.Type.StaticLib:
+                ctx.CryEngineStaticLibrary(**module_kw)
+            elif module.type == Gem.Module.Type.Builder:
+                ctx.BuilderPlugin(**module_kw)
+
+        # INTERNAL USE ONLY
+        # Apply export_defines to ENTIRE BUILD. USE LIGHTLY.
+        if module.type == Gem.Module.Type.GameModule:
+            export_defines = module_kw.get('export_defines', []) + ctx.GetPlatformSpecificSettings(module_kw, 'export_defines', ctx.env['PLATFORM'], ctx.env['CONFIGURATION'])
+            append_to_unique_list(ctx.env['DEFINES'], export_defines)
+
+    manager.current_gem = None
 
 
 #############################################################################
 ##
-from waflib.TaskGen import feature, before_method, after_method
 @feature('cxxshlib', 'cxxprogram')
 @after_method('process_use')
 def add_gem_dependencies(self):
@@ -412,12 +461,14 @@ def add_gem_dependencies(self):
         return
 
     for dep_id in gem.dependencies:
-        dep_gem_name = find_gem_name_by_id(self.bld, dep_id)
-        dep_gem_task_gen = self.bld.get_tgen_by_name(dep_gem_name)
-        if not getattr(dep_gem_task_gen, 'link_task', None):
-            dep_gem_task_gen.post()
-        if getattr(dep_gem_task_gen, 'link_task', None):
-            self.link_task.set_run_after(dep_gem_task_gen.link_task)
+        dep_gem = manager.get_gem_by_spec(dep_id)
+        for module in dep_gem.modules:
+            if module.requires_linking(self.bld):
+                dep_gem_task_gen = self.bld.get_tgen_by_name(module.target_name)
+                if not getattr(dep_gem_task_gen, 'link_task', None):
+                    dep_gem_task_gen.post()
+                if getattr(dep_gem_task_gen, 'link_task', None):
+                    self.link_task.set_run_after(dep_gem_task_gen.link_task)
 
 class Version(object):
     def __init__(self, ctx, ver_str = None):
@@ -458,17 +509,45 @@ class Gem(object):
 
         Types           = [Dynamic, DynamicStatic, NoCode]
 
-        @classmethod
-        def requires_linking(cls, ctx, link_type):
+    class Module(object):
+        class Type(object):
+            GameModule      = 'GameModule'
+            EditorModule    = 'EditorModule'
+            StaticLib       = 'StaticLib'
+            Builder         = 'Builder'
+
+            Types           = [GameModule, EditorModule, StaticLib, Builder]
+
+        def requires_linking(self, ctx):
             # If NoCode, never link for any reason
-            if link_type == cls.NoCode:
+            if self.link_type == Gem.LinkType.NoCode:
+                return False
+
+            # Always link static libs
+            if self.type == Gem.Module.Type.StaticLib:
+                return True
+
+            # Never link in Builders
+            if self.type == Gem.Module.Type.Builder:
+                return False
+
+            # Don't link in EditorModules if doing a monolithic build
+            if self.type == Gem.Module.Type.EditorModule and ctx.is_monolithic_build():
                 return False
 
             # When doing monolithic builds, always link (the module system will not do that for us)
             if ctx.spec_monolithic_build():
                 return True
 
-            return link_type in [cls.DynamicStatic]
+            return self.link_type in [Gem.LinkType.DynamicStatic]
+
+        def __init__(self):
+            self.type = Gem.Module.Type.GameModule
+            self.name = None
+            self.target_name = None
+            self.link_type = Gem.LinkType.Dynamic
+            self.file_name = None
+            self.parent = None
 
     def __init__(self, ctx):
         self.name = ""
@@ -477,16 +556,15 @@ class Gem(object):
         self.abspath = ""
         self.version = Version(ctx)
         self.dependencies = []
-        self.dll_file = ""
-        self.waf_files = ""
-        self.link_type = Gem.LinkType.Dynamic
         self.ctx = ctx
         self.games_enabled_in = []
         self.editor_targets = []
+        self.modules = []
         self.is_legacy_igem = False
-        self.editor_module = None
         self.is_game_gem = False
         self.is_required = False
+        self.export_uselibs = False
+        self.local_uselibs = []
 
     def load_from_json(self, gem_def):
         '''
@@ -500,26 +578,74 @@ class Gem(object):
         self.name = reader.field_req('Name')
         self.version = reader.version()
         self.id = reader.uuid()
-        self.dll_file = reader.field_opt('DllFile', self._get_output_name())
-        self.editor_dll_file = self._get_editor_output_name()
         self.editor_targets = reader.field_opt('EditorTargets', [])
         self.is_legacy_igem = reader.field_opt('IsLegacyIGem', False)
-
-        # If EditorModule specified, provide name of name + Editor
-        if reader.field_opt('EditorModule', False):
-            self.editor_module = self.name + '.Editor'
-            self.editor_targets.append(self.editor_module)
+        self.export_uselibs = self.ctx.get_export_internal_3rd_party_lib(self.name, None)
 
         for dep_obj in reader.field_opt('Dependencies', list()):
             dep_reader = _create_field_reader(self.ctx, dep_obj, '"Dependencies" field in Gem in ' + self.path)
             self.dependencies.append(dep_reader.uuid())
 
-        self.link_type = reader.field_req('LinkType')
-        if self.link_type not in Gem.LinkType.Types:
-            self.ctx.cry_error('Gem.json file\'s "LinkType" value "{}" is invalid, please supply one of:\n{}'.format(self.link_type, Gem.LinkType.Types))
-
         self.is_game_gem = reader.field_opt('IsGameGem', False)
         self.is_required = reader.field_opt('IsRequired', False)
+
+        # There is a special flag for 3rd party configurations that will prevent the libs to be considered when we are building in performance/release mode
+        # We need to make sure to take this into consideration
+        self.local_uselib_non_release = False
+
+        # If this gem has its own 3rd party configs, then read the 3rd party config records
+        # to get the uselib names of the libraries being defined
+        gem_3p_base_node = self.ctx.path.make_node(self.path).find_node('3rdParty')
+        if gem_3p_base_node:
+            gem_3p_base_search_pattern = os.path.join(gem_3p_base_node.abspath(), '*.json')
+            gem_3p_config_files = glob.glob(gem_3p_base_search_pattern)
+            for gem_3p_config_file in gem_3p_config_files:
+                gem_3p_config_node = gem_3p_base_node.make_node(os.path.basename(gem_3p_config_file));
+                lib_config, uselib_names,_ = self.ctx.get_3rd_party_config_record(gem_3p_config_node)
+                for uselib_name in uselib_names:
+                    self.local_uselibs.append(uselib_name)
+                if "non_release_only" in lib_config:
+                    self.local_uselib_non_release = lib_config["non_release_only"].lower() == 'true'
+
+        found_default_module = False
+        modules_list = reader.field_opt('Modules', [])
+        for module_obj in modules_list:
+            module_reader = _create_field_reader(self.ctx, module_obj, '"Modules" field in Gem in ' + self.path)
+
+            # Read type, branch reading based on that
+            module = Gem.Module()
+            module.type = module_reader.field_req('Type')
+
+            # No Editor modules unless they are enabled
+            if module.type == Gem.Module.Type.EditorModule and (not self.ctx.editor_gems_enabled()):
+                continue
+
+            if module.type not in Gem.Module.Type.Types:
+                self.ctx.cry_error(self.path + '/Gem.json file\'s "Modules" value "{}" is invalid, please supply one of:\n{}'.format(module.type, Gem.Module.Type.Types))
+            if module.type == Gem.Module.Type.GameModule:
+                module.link_type = module_reader.field_opt('LinkType', Gem.LinkType.Dynamic)
+            else:
+                module.parent = module_reader.field_opt('Extends', None)
+
+            # Name is optional in Modules (assuming there's only 1 default), but no where else
+            if module.type == Gem.Module.Type.GameModule:
+                if not found_default_module:
+                    module.name = module_reader.field_opt('Name', None)
+                    found_default_module = True
+                else:
+                    self.ctx.cry_error('Gem.json file\'s "Modules" list can only contain one module without a name.')
+            else:
+                module.name = module_reader.field_req('Name')
+
+
+            if module.name:
+                module.target_name = '{}.{}'.format(self.name, module.name)
+            else:
+                module.target_name = self.name
+
+            module.file_name = 'Gem.{}.{}.v{}'.format(module.target_name, self.id.hex, str(self.version))
+
+            self.modules.append(module)
 
     def _upgrade_gem_json(self, gem_def):
         """
@@ -527,7 +653,7 @@ class Gem(object):
         """
         reader = _create_field_reader(self.ctx, gem_def, 'Gem in ' + self.path)
 
-        latest_format_version = 3
+        latest_format_version = 4
         gem_format_version = reader.field_int('GemFormatVersion')
 
         # Can't upgrade ancient versions or future versions
@@ -540,30 +666,62 @@ class Gem(object):
         if (gem_format_version < 3):
             gem_def['IsLegacyIGem'] = True
 
+        # v3 -> v4
+        if (gem_format_version < 4):
+            # Get generally helpful fields
+            name = reader.field_req('Name')
+            version = reader.version()
+            gem_id = reader.uuid()
+
+            # Get old required fields, and remove them
+            link_type = reader.field_req('LinkType')
+            if link_type not in Gem.LinkType.Types:
+                self.ctx.cry_error('Gem.json file\'s "LinkType" value "{}" is invalid, please supply one of:\n{}'.format(link_type, Gem.LinkType.Types))
+
+            has_editor_module = reader.field_opt('EditorModule', False)
+
+            # Generate module list
+            if link_type != Gem.LinkType.NoCode:
+                game_module = dict(
+                    Type     = Gem.Module.Type.GameModule,
+                    LinkType = link_type,
+                )
+                modules = [game_module]
+
+                if has_editor_module:
+                    editor_module = dict(
+                        Name    = 'Editor',
+                        Type    = Gem.Module.Type.EditorModule,
+                        Extends = 'GameModule',
+                    )
+                    modules.append(editor_module)
+
+                gem_def['Modules'] = modules
+
         # File is now up to date
         gem_def['GemFormatVersion'] = latest_format_version
 
-    def _get_output_name(self):
-        return 'Gem.{}.{}.v{}'.format(self.name, self.id.hex, str(self.version))
-
-    def _get_editor_output_name(self):
-        return 'Gem.{}.Editor.{}.v{}'.format(self.name, self.id.hex, str(self.version))
-
     def get_include_path(self):
-        code_root_node = self.ctx.srcnode.make_node(self.path).make_node(GEMS_CODE_FOLDER)
-        cased_include_dir = 'Include' # default casing is upper
-
-        # some gems have lower case include directories
-        if os.path.exists(code_root_node.abspath()):
-            dir_contents = os.listdir(code_root_node.abspath())
-            if 'include' in dir_contents:
-                cased_include_dir = 'include'
-
-        return code_root_node.make_node(cased_include_dir)
+        # The default casing is upper case 'I' include for the folder name
+        abs_include = os.path.join(self.abspath, GEMS_CODE_FOLDER, 'Include')
+        if os.path.exists(abs_include):
+            return abs_include
+        # In case 'I'nclude is not found, fall back to all lowercase (legacy)
+        abs_include = os.path.join(self.abspath, GEMS_CODE_FOLDER, 'include')
+        return abs_include
 
     def _get_spec(self):
         return (self.id, self.version, self.path)
     spec = property(_get_spec)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+            and self.id == other.id
+            and self.version == other.version
+            and self.path == other.path)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class GemManager(object):
     """This class loads all gems for all enabled game projects
@@ -578,7 +736,11 @@ class GemManager(object):
         self.gems = []
         self.required_gems = []
         self.search_paths = set()
+        # Keeps track of Gem currently being defined to avoid recursive 'use's
+        self.current_gem = None
         self.ctx = ctx
+        if not ctx.is_engine_local():
+            self.search_paths.add(os.path.normpath(os.path.realpath(ctx.engine_path)))
 
     def get_gem_by_path(self, path):
         """
@@ -607,7 +769,7 @@ class GemManager(object):
         check_funs = [
             lambda gem: gem.id == spec[0],
             lambda gem: check_funs[0](gem) and gem.version == spec[1],
-            lambda gem: check_funs[1](gem) and gem.path == spec[2],
+            lambda gem: check_funs[1](gem) and os.path.normcase(gem.path) == os.path.normcase(spec[2]),
             ]
 
         for gem in self.gems:
@@ -630,7 +792,7 @@ class GemManager(object):
 
         this_path = self.ctx.path
 
-        self.search_paths.add(this_path.abspath())
+        self.search_paths.add(os.path.normpath(this_path.abspath()))
         # Parse Gems search path
         config = RawConfigParser()
         if config.read(this_path.make_node('SetupAssistantUserPreferences.ini').abspath()):
@@ -641,7 +803,7 @@ class GemManager(object):
                     new_path = config.get(GEMS_FOLDER, 'SearchPaths\\{}\\Path'.format(i + 1))
                     new_path = os.path.normpath(new_path)
                     Logs.debug('gems: Adding search path {}'.format(new_path))
-                    self.search_paths.add(new_path)
+                    self.search_paths.add(os.path.normpath(new_path))
 
         # Load all the gems under the Gems folder to search for required gems
         self.required_gems = self.ctx.load_required_gems()
@@ -737,9 +899,9 @@ class GemManager(object):
         if 'modules' not in spec_dict:
             spec_dict['modules'] = []
         spec_list = spec_dict['modules']
-        if gem.name not in spec_list:
-            spec_list.append(gem.name)
-
+        for module in gem.modules:
+            if module.target_name not in spec_list:
+                spec_list.append(module.target_name)
         if gem.editor_targets and self.ctx.editor_gems_enabled():
             for editor_target in gem.editor_targets:
                 Logs.debug('gems: adding editor target of gem %s - %s to spec %s' % (gem.name, editor_target, spec_name))
@@ -803,6 +965,9 @@ class GemManager(object):
 
 @conf
 def editor_gems_enabled(ctx):
+    if ctx.is_monolithic_build():
+        return False
+
     capabilities = ctx.get_enabled_capabilities()
     
     return (("compileengine" in capabilities) or ("compilesandbox" in capabilities))
@@ -815,6 +980,21 @@ def get_game_gems(ctx, game_project):
 def get_required_gems(ctx):
     return [gem for gem in GemManager.GetInstance(ctx).required_gems if gem.is_required]
 
+def _get_linked_module_targets(gem_list, game_name, ctx):
+    modules = list()
+    current_gem = ctx.gem_manager.current_gem
+    for gem in gem_list:
+        # Don't add the Gem currently being defined as a dependency of itself
+        if gem == current_gem:
+            continue
+
+        for module in gem.modules:
+            # Link against the module if it requires linking, and it isn't the game itself
+            # (unless in monolithic builds, in which case game_name is irrelevant beacuse we're actaully linking against the launcher)
+            if module.requires_linking(ctx) and (module.target_name != game_name or ctx.is_monolithic_build()):
+                modules.append(module.target_name)
+    return modules
+
 @conf
 def apply_gems_to_context(ctx, game_name, k, kw):
 
@@ -823,51 +1003,51 @@ def apply_gems_to_context(ctx, game_name, k, kw):
 
     Logs.debug('gems: adding gems to %s (%s_%s) : %s' % (game_name, ctx.env['CONFIGURATION'], ctx.env['PLATFORM'], [gem.name for gem in game_gems]))
 
-    kw['includes']   += [gem.get_include_path() for gem in game_gems]
-    kw['use']        += [gem.name for gem in game_gems if Gem.LinkType.requires_linking(ctx, gem.link_type)]
-
+    apply_gems_to_kw(ctx, kw, game_gems, game_name)
 
 @conf
 def apply_required_gems_to_context(ctx, target, kw):
 
     required_gems = ctx.get_required_gems()
 
-    Logs.debug('gems: adding required gems to target {} : %s'.format(target, ','.join([gem.name for gem in required_gems])))
+    Logs.debug('gems: adding required gems to target {} : {}'.format(target, ','.join([gem.name for gem in required_gems])))
 
-    for gem in required_gems:
-        if gem.name != target:
-            append_to_unique_list(kw['includes'], gem.get_include_path().abspath())
-            if Gem.LinkType.requires_linking(ctx, gem.link_type):
-                append_to_unique_list(kw['use'], gem.name)
+    apply_gems_to_kw(ctx, kw, required_gems, target)
 
 @conf
 def is_gem(ctx, module_name):
     for gem in GemManager.GetInstance(ctx).gems:
-        if module_name == gem.name or module_name == gem.editor_module:
-            return True
+        for module in gem.modules:
+            if module.target_name == module_name:
+                return True
     return False
 
 
 @conf
-def scan_required_gems(ctx):
+def scan_required_gems_paths(ctx):
     """
     Scan the folder for any required gems
 
     :param ctx: Configuration Context
     """
 
-    required_gems = []
+    required_gems = {}
 
     def _search_for_gem(base_path, folder):
         content_path = base_path.make_node(folder)
         if os.path.exists(os.path.join(content_path.abspath(), GEMS_DEFINITION_FILE)):
             # Use the standard gem config loader to determine if the gem is required or not
             gem = Gem(ctx)
-            gem.path = '{}/{}'.format(base_path,folder)
+            gem.path = os.path.join(str(base_path), folder)
             gems_config_file = content_path.make_node(GEMS_DEFINITION_FILE)
             gem.load_from_json(ctx.parse_json_file(gems_config_file))
+            gem.abspath = content_path.abspath()
             if gem.is_required:
-                required_gems.append(gem.path)
+                if gem.path in required_gems:
+                    ctx.cry_error('[ERROR] Duplicate required gems path ({}) found in the gems search paths for gem locations "{}" and "{}".'.format(gem.path,
+                                                                                                                     required_gems[gem.path],
+                                                                                                                     content_path.abspath()))
+                required_gems[gem.path] = content_path.abspath()
             # Return true if a gem folder was processed (ie contains a gem.json, regardless of whether its required or not)
             return True
         else:
@@ -877,14 +1057,20 @@ def scan_required_gems(ctx):
     def _search_for_gem_folders(base_path):
         gem_folders = base_path.listdir()
         for gem_folder in gem_folders:
-            if not _search_for_gem(base_path, gem_folder) and os.path.isdir(gem_folder):
-                _search_for_gem_folders(base_path.make_node(gem_folder))
+            if os.path.isdir(base_path.make_node(gem_folder).abspath()):
+                if not _search_for_gem(base_path, gem_folder):
+                    _search_for_gem_folders(base_path.make_node(gem_folder))
 
     # Build search paths (which include config search paths, and root/Gems)
     manager = GemManager.GetInstance(ctx)
     search_paths = set(manager.search_paths)
-    search_paths.remove(ctx.path.abspath())
-    search_paths.add(ctx.path.find_node('Gems').abspath())
+
+    # Remove the engine path from the search path
+    engine_path = os.path.normpath(os.path.realpath(ctx.engine_path))
+    if engine_path in search_paths:
+        search_paths.remove(engine_path)
+
+    search_paths.add(os.path.normpath(ctx.engine_node.find_node('Gems').abspath()))
     for search_path in search_paths:
         current_base_path = ctx.root.find_node(search_path)
         _search_for_gem_folders(current_base_path)
@@ -907,17 +1093,22 @@ def load_required_gems(ctx):
     if REQUIRED_GEMS_CACHE is None:
         try:
             required_gems = []
-            required_gems_location = ctx.scan_required_gems()
+            required_gems_location = ctx.scan_required_gems_paths()
             for required_gem_location in required_gems_location:
-                required_gem_path = ctx.path.make_node(str(required_gem_location))
-                required_gem_def_file_path = required_gem_path.make_node(GEMS_DEFINITION_FILE)
+
+                required_gem_abs_path = required_gems_location[required_gem_location]
+
+                required_gem_def_file_path = ctx.root.make_node(required_gem_abs_path).make_node(GEMS_DEFINITION_FILE)
+
                 gem = Gem(ctx)
                 gem.path = str(required_gem_location)
                 gem.load_from_json(ctx.parse_json_file(required_gem_def_file_path))
+                gem.abspath = required_gem_abs_path
                 if gem.is_required:
                     required_gems.append(gem)
             REQUIRED_GEMS_CACHE = required_gems
         except Exception as e:
-            Logs.error('[ERROR] Unable to determine any required Gems ({})'.format(e.message))
+            ctx.fatal('[WARN] Unable to determine any required Gems ({})'.format(e.message))
+            REQUIRED_GEMS_CACHE = []
 
     return REQUIRED_GEMS_CACHE

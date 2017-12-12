@@ -12,6 +12,7 @@
 #pragma once
 
 #include <LyShine/Bus/UiLayoutBus.h>
+#include <LyShine/Bus/UiLayoutControllerBus.h>
 #include <LyShine/Bus/UiLayoutGridBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 #include <LyShine/Bus/UiLayoutCellDefaultBus.h>
@@ -27,6 +28,7 @@
 //! This component overrides the transforms of immediate children to organize them into a grid
 class UiLayoutGridComponent
     : public AZ::Component
+    , public UiLayoutControllerBus::Handler
     , public UiLayoutBus::Handler
     , public UiLayoutGridBus::Handler
     , public UiLayoutCellDefaultBus::Handler
@@ -39,9 +41,12 @@ public: // member functions
     UiLayoutGridComponent();
     ~UiLayoutGridComponent() override;
 
-    // UiLayoutInterface
+    // UiLayoutControllerInterface
     virtual void ApplyLayoutWidth() override;
     virtual void ApplyLayoutHeight() override;
+    // ~UiLayoutControllerInterface
+
+    // UiLayoutInterface
     virtual bool IsUsingLayoutCellsToCalculateLayout() override;
     virtual bool GetIgnoreDefaultLayoutCells() override;
     virtual void SetIgnoreDefaultLayoutCells(bool ignoreDefaultLayoutCells) override;
@@ -118,6 +123,9 @@ protected: // member functions
 
     //! Called when a property that is used to calculate default layout cell values has changed
     void InvalidateParentLayout();
+
+    //! Refresh the transform properties in the editor's properties pane
+    void CheckLayoutFitterAndRefreshEditorTransformProperties() const;
 
 private: // static member functions
 

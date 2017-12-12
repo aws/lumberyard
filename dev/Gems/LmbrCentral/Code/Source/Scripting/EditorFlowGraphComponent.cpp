@@ -88,13 +88,14 @@ namespace LmbrCentral
             if (editContext)
             {
                 editContext->Class<EditorFlowGraphComponent>(
-                    "Flow Graph", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
+                    "Flow Graph (LEGACY)", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FlowGraph.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Flowgraph.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-flowgraph.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorFlowGraphComponent::m_flowGraphs, "Flow graphs", "Flow graphs attached to this entity.")
                         ->Attribute(AZ::Edit::Attributes::AddNotify, &EditorFlowGraphComponent::OnGraphAdded)
                     ;
@@ -340,7 +341,7 @@ namespace LmbrCentral
             if (editContext)
             {
                 editContext->Class<FlowGraphWrapper>(
-                    "Flow Graph", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
+                    "Flow Graph (LEGACY)", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &FlowGraphWrapper::m_flowGraphName, "Name", "Name of graph")
@@ -352,7 +353,7 @@ namespace LmbrCentral
                     ;
 
                 editContext->Class<SerializedFlowGraph>(
-                    "Flow Graph", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
+                    "Flow Graph (LEGACY)", "The Flow Graph component allows an entity to reference a Flow Graph file to define gameplay behavior or events")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)

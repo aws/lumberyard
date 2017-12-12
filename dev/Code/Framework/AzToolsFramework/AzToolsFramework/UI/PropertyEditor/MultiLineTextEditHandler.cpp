@@ -40,10 +40,31 @@ namespace AzToolsFramework
     {
         AZ_TraceContext("Attribute name", debugName);
 
-        AZStd::string placeholderText;
-        if (attrib == AZ_CRC("PlaceholderText", 0xa23ec278) && attrValue->Read<AZStd::string>(placeholderText))
+        if (attrib == AZ_CRC("PlaceholderText", 0xa23ec278))
         {
-            GUI->setPlaceholderText(placeholderText.c_str());
+            AZStd::string placeholderText;
+            if (attrValue->Read<AZStd::string>(placeholderText))
+            {
+                GUI->setPlaceholderText(placeholderText.c_str());
+            }
+            else
+            {
+                AZ_WarningOnce("AzToolsFramework", false, 
+                    "Failed to read 'PlaceholderText' attribute from property '%s' into multi-line text field.", debugName);
+            }
+        }
+        else if (attrib == AZ::Edit::Attributes::ReadOnly)
+        {
+            bool value;
+            if (attrValue->Read<bool>(value))
+            {
+                GUI->setReadOnly(value);
+            }
+            else
+            {
+                AZ_WarningOnce("AzToolsFramework", false, 
+                    "Failed to read 'ReadOnly' attribute from property '%s' into multi-line text field.", debugName);
+            }
         }
     }
 

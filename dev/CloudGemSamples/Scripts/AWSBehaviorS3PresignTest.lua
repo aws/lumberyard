@@ -4,14 +4,14 @@ local AWSBehaviorS3PresignTest = {}
 
 function AWSBehaviorS3PresignTest:OnActivate()
     -- Listen for the master entity events.
-    local runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.GamePlayHandler = GameplayNotificationBus.Connect(self, runTestsEventId)
 
     -- Listen for the AWS behavior notification.
     self.S3PresignHandler = AWSBehaviorS3PresignNotificationsBus.Connect(self, self.entityId)
 end
 
-function AWSBehaviorS3PresignTest:OnEventBegin()
+function AWSBehaviorS3PresignTest:OnEventBegin(message)
     if isActive == false then
         Debug.Log("AWSBehaviorS3PresignTest not active")
         self:NotifyMainEntity("success")
@@ -44,7 +44,7 @@ end
 
 function AWSBehaviorS3PresignTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 return AWSBehaviorS3PresignTest

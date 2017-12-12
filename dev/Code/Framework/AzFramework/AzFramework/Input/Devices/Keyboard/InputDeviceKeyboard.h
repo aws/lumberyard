@@ -13,16 +13,16 @@
 #pragma once
 
 #include <AzFramework/Input/Buses/Requests/InputTextEntryRequestBus.h>
-#include <AzFramework/Input/Channels/InputChannelDigital.h>
+#include <AzFramework/Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.h>
 #include <AzFramework/Input/Devices/InputDevice.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
     // Ideally, we would only dispatch text input while it has been explicitly enabled by a call to
-    // TextEntryStarted (paired with a call to TextEntryStopped), but to maintain compatibility with
-    // existing behaviour we must always dispatch keyboard text input by default. Remove this define
-    // if you want to control text input event dispatch using TextEntryStarted and TextEntryStopped.
+    // TextEntryStart (paired with a call to TextEntryStop), but to maintain compatibility with the
+    // existing behavior we must always dispatch keyboard text input by default. Remove this define
+    // if you want to control text input event dispatch using TextEntryStart and TextEntryStop.
     #define ALWAYS_DISPATCH_KEYBOARD_TEXT_INPUT
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,14 +160,14 @@ namespace AzFramework
             static const InputChannelId Function20; //!< The F20 key
 
             // Modifier Keys
-            static const InputChannelId ModifierAltL;     //!< The left alt/option key
-            static const InputChannelId ModifierAltR;     //!< The right alt/option key
-            static const InputChannelId ModifierControlL; //!< The left control key
-            static const InputChannelId ModifierControlR; //!< The right control key
-            static const InputChannelId ModifierShiftL;   //!< The left shift key
-            static const InputChannelId ModifierShiftR;   //!< The right shift key
-            static const InputChannelId ModifierSuperL;   //!< The left super (windows or apple) key
-            static const InputChannelId ModifierSuperR;   //!< The right super (windows or apple) key
+            static const InputChannelId ModifierAltL;   //!< The left alt/option key
+            static const InputChannelId ModifierAltR;   //!< The right alt/option key
+            static const InputChannelId ModifierCtrlL;  //!< The left control key
+            static const InputChannelId ModifierCtrlR;  //!< The right control key
+            static const InputChannelId ModifierShiftL; //!< The left shift key
+            static const InputChannelId ModifierShiftR; //!< The right shift key
+            static const InputChannelId ModifierSuperL; //!< The left super (windows or apple) key
+            static const InputChannelId ModifierSuperR; //!< The right super (windows or apple) key
 
             // Navigation Keys
             static const InputChannelId NavigationArrowDown;  //!< The down arrow key
@@ -254,26 +254,31 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::HasTextEntryStarted
+        bool HasTextEntryStarted() const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::TextEntryStart
+        void TextEntryStart(const VirtualKeyboardOptions& options) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputTextEntryRequests::TextEntryStop
+        void TextEntryStop() override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::TickInputDevice
         void TickInputDevice() override;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEntryRequests::TextEntryStarted
-        void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) override;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputTextEntryRequests::TextEntryStopped
-        void TextEntryStopped() override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Alias for verbose container class
-        using KeyChannelByIdMap = AZStd::unordered_map<InputChannelId, InputChannelDigital*>;
+        using KeyChannelByIdMap = AZStd::unordered_map<InputChannelId, InputChannelDigitalWithSharedModifierKeyStates*>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        InputChannelByIdMap m_allChannelsById; //!< All keyboard channels by id
-        KeyChannelByIdMap   m_keyChannelsById; //!< All keyboard key channels by id
+        SharedModifierKeyStates m_modifierKeyStates; //!< Shared modifier key states
+        InputChannelByIdMap     m_allChannelsById;   //!< All keyboard channels by id
+        KeyChannelByIdMap       m_keyChannelsById;   //!< All keyboard key channels by id
 
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,11 +294,6 @@ namespace AzFramework
             //! Default factory create function
             //! \param[in] inputDevice Reference to the input device being implemented
             static Implementation* Create(InputDeviceKeyboard& inputDevice);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Custom factory create function
-            using CustomCreateFunctionType = Implementation*(*)(InputDeviceKeyboard&);
-            static CustomCreateFunctionType CustomCreateFunctionPointer;
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
@@ -314,18 +314,24 @@ namespace AzFramework
             virtual bool IsConnected() const = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Enable text input
-            //! \param[in] activeTextFieldNormalizedBottomY The active field's normalized bottom y
-            virtual void TextEntryStarted(float activeTextFieldNormalizedBottomY = 0.0f) = 0;
+            //! Query whether text entry has already been started
+            //! \return True if text entry has already been started, false otherwise
+            virtual bool HasTextEntryStarted() const = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Disable text input
-            virtual void TextEntryStopped() = 0;
+            //! Inform input device that text input is expected to start (pair with StopTextInput)
+            //! \param[in] options Used to specify the appearance/behavior of any virtual keyboard
+            virtual void TextEntryStart(const VirtualKeyboardOptions& options) = 0;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Inform input device that text input is expected to stop (pair with StartTextInput)
+            virtual void TextEntryStop() = 0;
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Tick/update the input device to broadcast all input events since the last frame
             virtual void TickInputDevice() = 0;
 
+        protected:
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Queue raw key events to be processed in the next call to ProcessRawEventQueues.
             //! This function is not thread safe and so should only be called from the main thread.
@@ -339,7 +345,6 @@ namespace AzFramework
             //! \param[in] textUTF8 The text to queue (encoded using UTF-8)
             void QueueRawTextEvent(const AZStd::string& textUTF8);
 
-        protected:
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Process raw input events that have been queued since the last call to this function.
             //! This function is not thread safe, and so should only be called from the main thread.
@@ -360,9 +365,18 @@ namespace AzFramework
             AZStd::vector<AZStd::string> m_rawTextEventQueue;     //!< Raw text event queue
         };
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Set the implementation of this input device
+        //! \param[in] implementation The new implementation
+        void SetImplementation(AZStd::unique_ptr<Implementation> impl) { m_pimpl = AZStd::move(impl); }
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Private pointer to the platform specific implementation
-        Implementation* m_pimpl;
+        AZStd::unique_ptr<Implementation> m_pimpl;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Helper class that handles requests to create a custom implementation for this device
+        InputDeviceImplementationRequestHandler<InputDeviceKeyboard> m_implementationRequestHandler;
     };
 } // namespace AzFramework

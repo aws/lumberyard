@@ -36,6 +36,7 @@ namespace AZ
                 ~IGroup() override = default;
 
                 virtual const AZStd::string& GetName() const = 0;
+                virtual const Uuid& GetId() const = 0;
 
                 virtual Containers::RuleContainer& GetRuleContainer() = 0;
                 virtual const Containers::RuleContainer& GetRuleContainerConst() const = 0;

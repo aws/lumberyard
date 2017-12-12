@@ -423,8 +423,8 @@ namespace LuaRemoteDebugger
 			{
 				// Request the module information if necessary
 
-                // removed old xbox code - keeping it commented as we add new platforms which have remote symbols
-				/*if (mode != CppCallStackMode.Disabled && /*hostPlatform == Platform.Xbox && symbolsManager == null)
+                // removed old code - keeping it commented as we add new platforms which have remote symbols
+				/*if (mode != CppCallStackMode.Disabled && /*hostPlatform == Platform.??? && symbolsManager == null) // ACCEPTED_USE
 				{
 					sendBufferWriter.Write((byte)PacketType.ModulesInformation);
 					SendPacket();
@@ -524,7 +524,7 @@ namespace LuaRemoteDebugger
 					}
 				}
                 // the following is removed until we have other non-pc platforms - for example, android with remote symbols:
-				/*else if (hostPlatform == Platform.Xbox || hostPlatform == Platform.PS3)
+				/*else if (hostPlatform == Platform.Xbox || hostPlatform == Platform.PS3) // ACCEPTED_USE
 				{
 					// For consoles we need to resolve the symbols using the symbols manager
 					if (symbolsManager != null)
@@ -697,10 +697,10 @@ namespace LuaRemoteDebugger
 		{
 			switch (hostPlatform)
 			{
-                    // removed for now - but when we have android or IOS we'll need this back:
+                    // removed for now - but when we have android or IOS we'll need this back: // ACCEPTED_USE
                     /*
-				case Platform.Xbox:
-					XboxSymbolsManager xboxSymbolsManager = new XboxSymbolsManager();
+				case Platform.Xbox: // ACCEPTED_USE
+					XboxSymbolsManager xboxSymbolsManager = new XboxSymbolsManager(); // ACCEPTED_USE
 					int numModules = reader.ReadInt32();
 					for (int i = 0; i < numModules; ++i)
 					{
@@ -715,14 +715,14 @@ namespace LuaRemoteDebugger
 						UInt32 age = reader.ReadUInt32();
 						try
 						{
-							xboxSymbolsManager.AddModuleInformation(path, baseAddress, size, guid, age);
+							xboxSymbolsManager.AddModuleInformation(path, baseAddress, size, guid, age); // ACCEPTED_USE
 						}
 						catch (System.IO.FileNotFoundException)
 						{
 							// This can happen if Dia2Lib.dll cannot be found
 						}
 					}
-					symbolsManager = xboxSymbolsManager;
+					symbolsManager = xboxSymbolsManager; // ACCEPTED_USE
 					break;*/
 				default:
 					LogMessage("Received module information for platform {0} but this is not interpreted yet", hostPlatform);

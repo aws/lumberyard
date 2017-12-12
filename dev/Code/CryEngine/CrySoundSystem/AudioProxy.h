@@ -29,6 +29,7 @@ namespace Audio
         void Initialize(const char* const sObjectName, const bool bInitAsync = true) override;
         void Release() override;
         void Reset() override;
+        void ExecuteSourceTrigger(const TAudioControlID nTriggerID, const Audio::TAudioControlID& sourceId, const SAudioCallBackInfos & rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
         void ExecuteTrigger(TAudioControlID const nTriggerID, ELipSyncMethod const eLipSyncMethod, SAudioCallBackInfos const& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
         void StopAllTriggers() override;
         void StopTrigger(const TAudioControlID nTriggerID) override;
@@ -69,6 +70,7 @@ namespace Audio
         {
             eQACT_NONE                      = 0,
             eQACT_EXECUTE_TRIGGER,
+            eQACT_EXECUTE_SOURCE_TRIGGER,
             eQACT_STOP_TRIGGER,
             eQACT_SET_SWITCH_STATE,
             eQACT_SET_RTPC_VALUE,
@@ -100,6 +102,7 @@ namespace Audio
                 , pUserData(nullptr)
                 , pUserDataOwner(nullptr)
                 , nRequestFlags(eARF_NONE)
+                , nSourceID(INVALID_AUDIO_SOURCE_ID)
             {}
 
             SQueuedAudioCommand& operator=(const SQueuedAudioCommand& refOther)
@@ -119,6 +122,7 @@ namespace Audio
                 nRequestFlags = refOther.nRequestFlags;
                 sValue = refOther.sValue;
                 oPosition = refOther.oPosition;
+                nSourceID = refOther.nSourceID;
                 return *this;
             }
 
@@ -137,6 +141,7 @@ namespace Audio
             TATLEnumFlagsType nRequestFlags;
             string sValue;
             SATLWorldPosition oPosition;
+            TAudioSourceId nSourceID;
         };
 
         ///////////////////////////////////////////////////////////////////////////////////////////////

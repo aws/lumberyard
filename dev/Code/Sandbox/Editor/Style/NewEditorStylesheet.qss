@@ -31,6 +31,11 @@ QLabel
 	background-color: @WindowBackgroundColor;
 }
 
+QToolBar > QLabel
+{
+	background: transparent;
+}
+
 QTextEdit
 {
 	color: @TextColor;
@@ -45,6 +50,14 @@ QGroupBox::title
 	font-size: 16pt;
 }
 
+QListView[class="SingleRequiredSelection"]::item:selected {
+    border: 1px solid rgba(255, 153, 0, 255);
+}
+
+QListView[class="SingleRequiredSelection"]::item {
+    margin: 1px 0px;
+}
+
 NetPromoterScoreDialog QDialog
 {
 	background: #333333;
@@ -54,21 +67,30 @@ NetPromoterScoreDialog QPushButton[RatingButton="true"], QPushButton[class="Rati
 {
 	background-color: #f6f6f6;
 	color: black;
-	border: none;
+	border-right: 1px solid black;
+	border-left: 1px #333333;	
+	border-top: 1px #333333;	
+	border-bottom: 1px #333333;		
 }
 
 NetPromoterScoreDialog QPushButton[class="RatingButtonHover"]
 {
 	background-color: #FFC400;
 	color: black;
-	border: none;
+	border-right: 1px solid black;
+	border-left: 1px #333333;	
+	border-top: 1px #333333;	
+	border-bottom: 1px #333333;	
 }
 
 NetPromoterScoreDialog QPushButton[class="RatingButtonPress"]
 {
 	background-color: #FFA724;
 	color: black;
-	border: none;
+	border-right: 1px solid black;
+	border-left: 1px #333333;	
+	border-top: 1px #333333;	
+	border-bottom: 1px #333333;	
 }
 
 NetPromoterScoreDialog QTextEdit, QTextEdit[class="CommentBoxBefore"]
@@ -94,6 +116,90 @@ NetPromoterScoreDialog QLabel[NPSMessage="true"]
 {
 	font-family: "Open Sans";
 	font-size: 13px;
+}
+
+QTreeView[class="DuplicateAssetImporterTreeView"]::branch
+{
+	border-image: url(none.png);
+}
+
+QLabel[class="AssetImporterLabel"]
+{
+	font-family: "Open Sans";
+	font-size: 14px;
+	color: #EEEEEE;
+}
+
+QLabel[class="AssetImporterFilesMessage"]
+{
+	font-family: "Open Sans";
+	font: bold 14px;
+	color: #EEEEEE;
+}
+
+QWidget[class="AssetImporterDialog"] QPushButton[class="AssetImporterButton"]
+{
+	font-family: "Open Sans Semibold";
+	font-size: 14px;
+	color: #999999;
+	text-shadow: 0 0.5px 1px;
+	width: 76px;
+	height: 28px;
+	padding: 1px;
+}
+
+QWidget[class="AssetImporterDialog"] QPushButton[class="Primary"],
+QDialog[class="AssetImporterDialog"] QDialogButtonBox[class="AssetImporterDialog"] QPushButton[class="Primary"],
+QDialogButtonBox[class="AssetImporterDialog"] QPushButton[class="Primary"]
+{
+	font-family: "Open Sans Semibold";
+	font-size: 14px;
+	text-shadow: 0 0.5px 1px;
+	width: 96px;
+	height: 28px;
+	padding: 1px;
+	color: white;
+}
+
+QWidget[class="AssetImporterDialog"] QPushButton[class="Primary"]:disabled,
+QDialog[class="AssetImporterDialog"] QDialogButtonBox[class="AssetImporterDialog"] QPushButton[class="Primary"]:disabled,
+QDialogButtonBox[class="AssetImporterDialog"] QPushButton[class="Primary"]:disabled
+{
+	font-family: "Open Sans Semibold";
+	font-size: 14px;
+	text-shadow: 0 0.5px 1px;
+	width: 96px;
+	height: 28px;
+	padding: 1px;
+	color: #999999;
+}
+
+QWidget[class="AssetImporterDialog"] QPushButton[class="AssetImporterLargerButton"]
+{
+	font-family: "Open Sans Semibold";
+	font-size: 14px;
+	color: #999999;
+	text-shadow: 0 0.5px 1px;
+	
+	width: 85px;
+	height: 28px;
+	padding: 1px;
+}
+
+SelectFilesDialogPage QLabel[SelectFileMessage="true"]
+{
+	font-family: "Open Sans";
+	font-size: 14px;
+	color: #EEEEEE;
+	letter-spacing: 0.47px;
+}
+
+SelectFilesDialogPage QLabel[DragAndDropMessage="true"]
+{
+	font-family: "Open Sans";
+	font-size: 14px;
+	color: #FFFFFF;
+	letter-spacing: 0.41px;
 }
 
 StatusBarItem
@@ -321,24 +427,6 @@ AzToolsFramework--ComponentEditorHeader
     background-color: #222222;
 }
 
-AzToolsFramework--ComponentEditorHeader[selected=false]
-{
-    margin: 0px;
-    padding: 0px;
-    border: none;
-    border-radius: 2px;
-    background-color: #222222;
-}
-
-AzToolsFramework--ComponentEditorHeader[selected=true]
-{
-    margin: 0px;
-    padding: 0px;
-    border: none;
-    border-radius: 2px;
-    background-color: #555555;
-}
-
 AzToolsFramework--ComponentEditorHeader #Background
 {
     margin: 2px;
@@ -358,24 +446,6 @@ AzToolsFramework--ComponentEditorHeader #Background[readOnly=true]
 AzToolsFramework--ComponentEditorHeader #Background[readOnly=false]
 {
     background-image: none;
-}
-
-AzToolsFramework--ComponentEditorHeader #Background[selected=false]
-{
-    margin: 2px;
-    padding: 0px;
-    border: none;
-    border-radius: 2px;
-    background-color: #222222;
-}
-
-AzToolsFramework--ComponentEditorHeader #Background[selected=true]
-{
-    margin: 2px;
-    padding: 0px;
-    border: none;
-    border-radius: 2px;
-    background-color: #555555;
 }
 
 AzToolsFramework--ComponentEditorHeader #Title
@@ -432,6 +502,51 @@ AzToolsFramework--ComponentEditorHeader #ContextMenu
     selection-color: transparent;
     selection-background-color: transparent;
     image: url(:/PropertyEditor/Resources/menu_ico.png);
+}
+
+AzToolsFramework--ComponentEditorHeader #Help
+{
+    qproperty-flat: true;
+    border: none;
+    color: transparent;
+    background-color: transparent;
+    selection-color: transparent;
+    selection-background-color: transparent;
+    image: url(:/PropertyEditor/Resources/help.png);
+}
+
+QLabel #NumOverrides 
+{
+    color: @MenuItemSelectedColor;
+    font-size:30px; 
+}
+
+QWidget#QuickPushOption
+{
+    background-color: transparent;
+}
+
+QWidget#QuickPushOption QLabel
+{
+    background-color: transparent;
+    color: @MenuEnabledTextColor;
+}
+
+QWidget#QuickPushOption QLabel:disabled
+{
+    background-color: transparent;
+    color: @MenuDisabledTextColor;
+}
+
+QWidget#QuickPushOption QLabel#NumOverrides
+{
+    background-color: transparent;
+    color: @MenuItemSelectedColor;;
+}
+
+QWidget#QuickPushOption QLabel:hover
+{
+    color: @LinkColor;
 }
 
 MessageDetailWidget
@@ -815,9 +930,8 @@ QPushButton[class='Link'] { color: @LinkColor; }
 
 #ResourceManagement #ResourceImporter #SelectionTable::item
 {
-    padding-right: 12px;
-    padding-top: 3px;
-    padding-bottom: 3px;
+    padding: 1px 1px 1px 1px;
+
 }
 
 #ResourceManagement #ResourceImporter #LoadingLabel
@@ -913,12 +1027,12 @@ QPushButton[class='Link'] { color: @LinkColor; }
     x-background-color: purple;
 }
 
-Amazon--LoginDialog
+#LoginDialog
 {
     background-color: #F8F8F8;
 }
 
-Amazon--LoginWelcomeTitle
+#LoginDialog Amazon--LoginWelcomeTitle
 {
     color: #444444;
     background-color: #F8F8F8;
@@ -927,7 +1041,7 @@ Amazon--LoginWelcomeTitle
     font-family: "Open Sans Semibold";
 }
 
-Amazon--LoginWelcomeText
+#LoginDialog Amazon--LoginWelcomeText
 {
     color: #444444;
     background-color: #F8F8F8;
@@ -936,7 +1050,7 @@ Amazon--LoginWelcomeText
     font-family: "Open Sans";
 }
 
-Amazon--LoginFooterText
+#LoginDialog Amazon--LoginFooterText
 {
     color: #999999;
     background-color: #F8F8F8;
@@ -945,17 +1059,17 @@ Amazon--LoginFooterText
     font-family: "Open Sans";
 }
 
-Amazon--LoginWebViewFrame
+#LoginDialog Amazon--LoginWebViewFrame
 {
     border: 2px solid #EEEEEE;
 }
 
-Amazon--LoginWebView
+#LoginDialog Amazon--LoginWebView
 {
     background-color: #F8F8F8;
 }
 
-ValidatingLineEditWidget[inputValid="false"]
+QLineEdit[inputValid="false"]
 {
     font: bold;
     border-style: solid;
@@ -967,7 +1081,7 @@ ValidatingLineEditWidget[inputValid="false"]
     background-color: rgb(250, 163, 160);
 }
 
-ValidatingLineEditWidget[inputValid="false"]:focus
+QLineEdit[inputValid="false"]:focus
 {
     background-color: rgb(253, 218, 217);
 }
@@ -1051,11 +1165,11 @@ QPushButton:disabled {
 
 
 QPushButton[class="Primary"] {
-    color: white;
+	color: white;
 }
 
 QPushButton[class="Primary"]:disabled {
-    color: rgb(126, 119, 116);
+    color: #999999;
 }
 
 QPushButton[class="tiny"] {
@@ -1469,8 +1583,19 @@ QHeaderView::section::horizontal:last, QHeaderView::section:horizontal:only-one 
 	border-right: none;
 }
 
+AzQtComponents--StyledDetailsTableView {
+    color: rgb(255, 255, 255);
+    selection-color: rgb(255, 255, 255);
+    selection-background-color: rgba(255, 255, 255, 41);
+}
+
 AzQtComponents--StyledDetailsTableView QHeaderView::section {
 	padding: 0px;
+}
+
+AzQtComponents--StyledDetailsTableView::item {
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 QTableView {
@@ -1795,15 +1920,12 @@ QLabel[class="addDeployment"]:hover
     font-weight: bold;
 }
 
-#m_clearAllButton
+#m_clearFiltersButton
 {
     color: @LinkColor;
-    font-size: 13px;
-    font-weight: bold;
-    padding: 6 6 6 6;
 }
 
-#m_clearAllButton:hover
+#m_clearFiltersButton:hover
 {
     color: rgb(145, 189, 255);
 }
@@ -1992,4 +2114,102 @@ QWidget[tableRow="Odd"]
 QWidget[tableRow="Even"]
 {
   background: @CTableRowEven;
+}
+
+/* ============================================================= */
+/* Style specific to the outliner visibility and lock icons      */
+/* ============================================================= */
+
+AzToolsFramework--OutlinerVisibilityCheckBox
+{
+    border: 0px solid transparent;
+    border-radius: 0px;
+    spacing: 0px;
+    padding: 0px;
+    line-height: 0px;
+    font-size: 0px;
+    margin: 2px;
+}
+
+AzToolsFramework--OutlinerVisibilityCheckBox::indicator:checked
+, AzToolsFramework--OutlinerVisibilityCheckBox::indicator:unchecked
+, AzToolsFramework--OutlinerVisibilityCheckBox::indicator:indeterminate
+{
+    width: 20px;
+    height: 20px;
+    image-position:center;
+
+    border: 1px solid transparent;
+    border-radius: 3px;
+    image: none;
+    spacing: 0px;
+    padding: 0px;
+    line-height: 0px;
+    font-size: 0px;
+    margin: 0px;
+}
+
+AzToolsFramework--OutlinerVisibilityCheckBox::indicator:checked
+{
+    image: url(:/Icons/Eye_Open.tif);
+}
+
+AzToolsFramework--OutlinerVisibilityCheckBox::indicator:unchecked
+{
+    image: url(:/Icons/Eye_Slash.tif);
+}
+
+AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:checked
+, AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:unchecked 
+, AzToolsFramework--OutlinerVisibilityCheckBox#bordered::indicator:indeterminate
+{
+    border: 1px solid rgb(240, 195, 45);
+    border-radius: 3px;
+}
+
+AzToolsFramework--OutlinerLockCheckBox
+{
+    border: 0px solid transparent;
+    border-radius: 0px;
+    spacing: 0px;
+    padding: 0px;
+    line-height: 0px;
+    font-size: 0px;
+    margin: 2px;
+}
+
+AzToolsFramework--OutlinerLockCheckBox::indicator:checked
+, AzToolsFramework--OutlinerLockCheckBox::indicator:unchecked
+, AzToolsFramework--OutlinerLockCheckBox::indicator:indeterminate
+{
+    width: 20px;
+    height: 20px;
+    image-position:center;
+
+    border: 1px solid transparent;
+    border-radius: 3px;
+    image: none;
+    spacing: 0px;
+    padding: 0px;
+    line-height: 0px;
+    font-size: 0px;
+    margin: 0px;
+}
+
+AzToolsFramework--OutlinerLockCheckBox::indicator:unchecked
+{
+    image: url(:/Icons/Padlock_Disabled.tif);
+}
+
+AzToolsFramework--OutlinerLockCheckBox::indicator:checked
+{
+    image: url(:/Icons/Padlock_Enabled_Hover.tif);
+}
+
+AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:checked
+, AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:unchecked
+, AzToolsFramework--OutlinerLockCheckBox#bordered::indicator:indeterminate
+{
+    border: 1px solid rgb(240, 195, 45);
+    border-radius: 3px;
 }

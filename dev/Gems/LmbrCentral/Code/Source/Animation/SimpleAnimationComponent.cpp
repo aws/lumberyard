@@ -57,7 +57,7 @@ namespace LmbrCentral
                 ->Field("Playback Speed", &AnimatedLayer::m_playbackSpeed)
                 ->Field("Layer Weight", &AnimatedLayer::m_layerWeight)
                 ->Field("AnimDrivenMotion", &AnimatedLayer::m_animDrivenRootMotion);
-
+#ifdef ENABLE_LEGACY_ANIMATION
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -65,7 +65,7 @@ namespace LmbrCentral
                 editContext->Class<AnimatedLayer>(
                     "Animated Layer", "Allows the configuration of one animation on one layer")->
                     ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                     DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimatedLayer::m_animationName, "Animation name",
                     "Indicates the animation played by this component on this layer in absence of an overriding animation. ")
@@ -81,6 +81,7 @@ namespace LmbrCentral
                     ->DataElement(0, &AnimatedLayer::m_animDrivenRootMotion, "Animate root",
                     "Enables animation-driven root motion during playback of this animation.");
             }
+#endif
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
@@ -88,15 +89,15 @@ namespace LmbrCentral
         {
             behaviorContext->Class<AnimatedLayer>()
                 ->Constructor<AZ::ScriptDataContext&>()
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Property("layerId", BehaviorValueGetter(&AnimatedLayer::m_layerId), BehaviorValueSetter(&AnimatedLayer::m_layerId))
-                ->Property("animationName", BehaviorValueGetter(&AnimatedLayer::m_animationName), BehaviorValueSetter(&AnimatedLayer::m_animationName))
-                ->Property("looping", BehaviorValueGetter(&AnimatedLayer::m_looping), BehaviorValueSetter(&AnimatedLayer::m_looping))
-                ->Property("playbackSpeed", BehaviorValueGetter(&AnimatedLayer::m_playbackSpeed), BehaviorValueSetter(&AnimatedLayer::m_playbackSpeed))
-                ->Property("transitionTime", BehaviorValueGetter(&AnimatedLayer::m_transitionTime), BehaviorValueSetter(&AnimatedLayer::m_transitionTime))
-                ->Property("layerWeight", BehaviorValueGetter(&AnimatedLayer::m_layerWeight), BehaviorValueSetter(&AnimatedLayer::m_layerWeight));
+                ->Property("layerId", BehaviorValueProperty(&AnimatedLayer::m_layerId))
+                ->Property("animationName", BehaviorValueProperty(&AnimatedLayer::m_animationName))
+                ->Property("looping", BehaviorValueProperty(&AnimatedLayer::m_looping))
+                ->Property("playbackSpeed", BehaviorValueProperty(&AnimatedLayer::m_playbackSpeed))
+                ->Property("transitionTime", BehaviorValueProperty(&AnimatedLayer::m_transitionTime))
+                ->Property("layerWeight", BehaviorValueProperty(&AnimatedLayer::m_layerWeight));
         }
-
     }
 
     AZStd::vector<AZStd::string> AnimatedLayer::GetAvailableAnims()
@@ -530,9 +531,11 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<SimpleAnimationComponentNotificationBus>("SimpleAnimationComponentNotificationBus")->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
                 Handler<BehaviorSimpleAnimationComponentNotificationBus>();
 
             behaviorContext->EBus<SimpleAnimationComponentRequestBus>("SimpleAnimationComponentRequestBus")->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
                 Event("StartDefaultAnimations", &SimpleAnimationComponentRequestBus::Events::StartDefaultAnimations)->
                 Event("StartAnimation", &SimpleAnimationComponentRequestBus::Events::StartAnimation)->
                 Event("StartAnimationByName", &SimpleAnimationComponentRequestBus::Events::StartAnimationByName)->

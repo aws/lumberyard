@@ -232,4 +232,124 @@ namespace LmbrCentral
         virtual void OnCollision(const Collision& collision) { }
     };
     using PhysicsComponentNotificationBus = AZ::EBus<PhysicsComponentNotifications>;
+
+    /**
+     * The type ID of RigidPhysicsComponent
+     */
+    static const AZ::Uuid RigidPhysicsComponentTypeId = "{BF2ED241-6364-4D78-8008-498EF2A2659C}";
+
+    /**
+     * The type ID of EditorRigidPhysicsComponent
+     */
+    static const AZ::Uuid EditorRigidPhysicsComponentTypeId = "{BD17E257-BADB-45D7-A8BA-16D6B0BE0881}";
+
+    /**
+    * The type ID of StaticPhysicsComponent
+    */
+    static const AZ::Uuid StaticPhysicsComponentTypeId = "{95D89791-6397-41BC-AAC5-95282C8AD9D4}";
+
+    /**
+    * The type ID of EditorStaticPhysicsComponent
+    */
+    static const AZ::Uuid EditorStaticPhysicsComponentTypeId = "{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}";
+
+    /**
+     * Configuration data for RigidPhysicsComponent.
+     */
+    class RigidPhysicsConfig
+        : public AZ::ComponentConfig
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(RigidPhysicsConfig, AZ::SystemAllocator, 0);
+        AZ_RTTI(RigidPhysicsConfig, "{4D4211C2-4539-444F-A8AC-B0C8417AA579}", AZ::ComponentConfig);
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        //! Whether total mass is specified, or calculated at spawn time based on density and volume
+        enum class MassOrDensity : uint32_t
+        {
+            Mass,
+            Density,
+        };
+
+        bool UseMass() const
+        {
+            return m_specifyMassOrDensity == MassOrDensity::Mass;
+        }
+
+        bool UseDensity() const
+        {
+            return m_specifyMassOrDensity == MassOrDensity::Density;
+        }
+
+        //! Whether the entity is initially enabled in the physics simulation.
+        //! Entities can be enabled later via PhysicsComponentRequests::Enable(true).
+        bool m_enabledInitially = true;
+
+        //! Whether total mass is specified, or calculated at spawn time based on density and volume
+        MassOrDensity m_specifyMassOrDensity = MassOrDensity::Density;
+
+        //! Total mass of entity, in kg
+        float m_mass = 10.f; // 10kg would be a cube of water with 10cm sides.
+
+        //! Density of the entity, in kg per cubic meter.
+        //! The total mass of entity will be calculated at spawn,
+        //! based on density and the volume of its geometry.
+        //! Mass = Density * Volume
+        float m_density = 500.f; // 1000 kg/m^3 is density of water. Oak is 600 kg/m^3.
+
+        //! Whether the entity is initially considered at-rest in the physics simulation.
+        //! True: Entity remains still until agitated.
+        //! False: Entity will be fall if nothing is below it.
+        bool m_atRestInitially = false;
+
+        //! Entity will physically react to collisions, rather than only report them.
+        bool m_enableCollisionResponse = true;
+
+        //! Indicates whether this component can interact with proximity triggers
+        bool m_interactsWithTriggers = true;
+
+        //! Damping value applied while in water.
+        float m_buoyancyDamping = 0.f;
+
+        //! Water density strength.
+        float m_buoyancyDensity = 1.f;
+
+        //! Water resistance strength.
+        float m_buoyancyResistance = 1.f;
+
+        //! Movement damping.
+        float m_simulationDamping = 0.f;
+
+        //! Minimum energy under which object will sleep.
+        float m_simulationMinEnergy = 0.002f;
+
+        //! Whether or not to record collisions on this entity.
+        bool m_recordCollisions = true;
+
+        //! Maximum number of collisions to be recorded per frame.
+        int m_maxRecordedCollisions = 1;
+    };
+
+    /*!
+     * Configuration data for StaticPhysicsComponent.
+     */
+    class StaticPhysicsConfig
+        : public AZ::ComponentConfig
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(StaticPhysicsConfig, AZ::SystemAllocator, 0);
+        AZ_RTTI(StaticPhysicsConfig, "{2129576B-A548-4F3E-A2A1-87851BF48838}", AZ::ComponentConfig);
+        static void Reflect(AZ::ReflectContext* context);
+
+        //! Whether the entity is initially enabled in the physics simulation.
+        //! Entities can be enabled later via PhysicsComponentRequests::Enable(true).
+        bool m_enabledInitially = true;
+    };
+
 } // namespace LmbrCentral
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(LmbrCentral::RigidPhysicsConfig::MassOrDensity, "{0F5DBFB3-FD9A-4E83-B9B3-4713AB2241B4}");
+}

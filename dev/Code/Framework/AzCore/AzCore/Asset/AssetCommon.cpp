@@ -84,6 +84,21 @@ namespace AZ
                 }
                 return assetHint;
             }
+
+            AssetId ResolveAssetId(const AssetId& id)
+            {
+                AZ::Data::AssetInfo assetInfo;
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, id);
+                if (assetInfo.m_assetId.IsValid())
+                {
+                    return assetInfo.m_assetId;
+                }
+                else
+                {
+                    return id;
+                }
+
+            }
         }
         //=========================================================================
         // RemoveFromDB

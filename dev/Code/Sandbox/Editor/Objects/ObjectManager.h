@@ -22,8 +22,11 @@
 #include "BaseObject.h"
 #include "SelectionGroup.h"
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 // forward declarations.
+class CAITerritoryObject;
+class CAIWaveObject;
 class CGizmoManager;
 class CCameraObject;
 class CEntityObject;
@@ -31,6 +34,15 @@ class CObjectArchive;
 class CObjectLayer;
 class CObjectClassDesc;
 enum class ImageRotationDegrees;
+
+
+namespace AZ
+{
+    namespace LegacyConversion
+    {
+        class Converter;
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Helper class to signal when we are exportin a level to game
@@ -447,6 +459,10 @@ private:
 
     bool m_bExiting;
 
+    // Convenience access to territory and wave objects in m_objects
+    std::set<CAITerritoryObject*>   m_aiTerritoryObjects;
+    std::set<CAIWaveObject*>        m_aiWaveObjects;
+
     std::set<CEntityObject*> m_setEntitiesAssignedToSelectedTerritory;
     std::set<CEntityObject*> m_setEntitiesAssignedToSelectedWave;
     void RefreshEntitiesAssignedToSelectedTnW();
@@ -458,6 +474,8 @@ private:
     bool m_bInReloading;
     bool m_bSkipObjectUpdate;
     bool m_bLevelExporting;
+
+    AZStd::unique_ptr<AZ::LegacyConversion::Converter> m_converter;
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_OBJECTMANAGER_H

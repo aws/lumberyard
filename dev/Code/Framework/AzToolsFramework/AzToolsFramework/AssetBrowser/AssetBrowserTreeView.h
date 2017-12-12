@@ -12,20 +12,23 @@
 
 #pragma once
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
-
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Asset/AssetCommon.h>
 
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
+
 #include <QMimeData>
 #include <QModelIndex>
 #include <QPointer>
 
 namespace AzToolsFramework
 {
+    namespace Thumbnailer
+    {
+        class ThumbnailDelegate;
+    }
+
     namespace AssetBrowser
     {
         class AssetBrowserEntry;
@@ -33,8 +36,7 @@ namespace AzToolsFramework
         class AssetBrowserFilterModel;
 
         class AssetBrowserTreeView
-            : public AzToolsFramework::QTreeViewWithStateSaving
-            , public AssetBrowserModelNotificationsBus::Handler
+            : public QTreeViewWithStateSaving
         {
             Q_OBJECT
         public:
@@ -48,13 +50,14 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             void startDrag(Qt::DropActions supportedActions) override;
             void setModel(QAbstractItemModel* model) override;
-
-
+            
             void LoadState(const QString& name);
             void SaveState() const;
 
             AZStd::vector<AssetBrowserEntry*> GetSelectedAssets() const;
             void SelectProduct(AZ::Data::AssetId assetID);
+
+            void SetThumbnailContext(const char* context) const;
 
         Q_SIGNALS:
             void selectionChangedSignal(const QItemSelection& selected, const QItemSelection& deselected);
@@ -66,6 +69,7 @@ namespace AzToolsFramework
             QMimeData m_mimeDataContainer;
             QPointer<AssetBrowserModel> m_assetBrowserModel;
             QPointer<AssetBrowserFilterModel> m_assetBrowserSortFilterProxyModel;
+            QScopedPointer<Thumbnailer::ThumbnailDelegate> m_delegate;
 
             bool SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID);
             bool ExpandSourceFiles(const QModelIndex& idx);

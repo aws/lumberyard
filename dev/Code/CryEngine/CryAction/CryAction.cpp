@@ -32,7 +32,7 @@
 
 //#define CRYACTION_DEBUG_MEM   // debug memory usage
 
-#if (defined(WIN32) || defined(WIN64)) && !defined(DURANGO)
+#if   defined(WIN32) || defined(WIN64)
 #include <CryWindows.h>
 #include <ShellApi.h>
 #endif
@@ -152,10 +152,9 @@
 #undef GetUserName
 #endif
 
-#include "TestSystem/TimeDemoRecorder.h"
+#include "ITimeDemoRecorder.h"
 #include "INetworkService.h"
 #include "IPlatformOS.h"
-#include "IHardwareMouse.h"
 
 #include "Serialization/XmlSerializeHelper.h"
 #include "Serialization/XMLCPBin/BinarySerializeHelper.h"
@@ -187,6 +186,7 @@
 #include "Prefabs/PrefabManager.h"
 #include "Prefabs/ScriptBind_PrefabManager.h"
 #include <Graphics/ColorGradientManager.h>
+#include <Graphics/ScreenFader.h>
 
 #define DEFAULT_BAN_TIMEOUT (30.0f)
 
@@ -333,7 +333,6 @@ CCryAction::CCryAction()
     , m_pCallbackTimer(0)
     , m_pLanQueryListener(0)
     , m_pDevMode(0)
-    , m_pTimeDemoRecorder(0)
     , m_pRuntimeAreaManager(NULL)
     , m_pVisualLog(0)
     , m_pScriptA(0)
@@ -372,6 +371,8 @@ CCryAction::CCryAction()
     , m_pAIProxyManager(0)
     , m_pCustomActionManager(0)
     , m_pCustomEventManager(0)
+    , m_colorGradientManager(nullptr)
+    , m_screenFaderManager(nullptr)
     , m_pPhysicsQueues(0)
     , m_PreUpdateTicks(0)
     , m_levelPrecachingDone(false)
@@ -397,16 +398,6 @@ CCryAction::~CCryAction()
 {
     Shutdown();
 }
-
-#if 0
-// TODO: REMOVE: Temporary for testing (Craig)
-void CCryAction::FlowTest(IConsoleCmdArgs* args)
-{
-    IFlowGraphPtr pFlowGraph = GetCryAction()->m_pFlowSystem->CreateFlowGraph();
-    pFlowGraph->SerializeXML(::GetISystem()->LoadXmlFromFile("Libs/FlowNodes/testflow.xml"), true);
-    GetCryAction()->m_pFlowSystem->SetActiveFlowGraph(pFlowGraph);
-}
-#endif
 
 //------------------------------------------------------------------------
 void CCryAction::DumpMapsCmd(IConsoleCmdArgs* args)
@@ -988,10 +979,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
 
     IComponentFactoryRegistry::RegisterAllComponentFactoryNodes(*m_pSystem->GetIEntitySystem()->GetComponentFactoryRegistry());
 
-    //#if defined(MAC) || defined(LINUX)
-    //   gEnv = m_pSystem->GetGlobalEnvironment();
-    //#endif
-
     // fill in interface pointers
     m_pNetwork = gEnv->pNetwork;
     m_p3DEngine = gEnv->p3DEngine;
@@ -1014,15 +1001,11 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     {
         m_pDevMode = new CDevMode();
     }
-
-    m_pTimeDemoRecorder = new CTimeDemoRecorder();
-
+    
     CGameObject::CreateCVars();
 
     CScriptRMI::RegisterCVars();
     m_pScriptRMI = new CScriptRMI();
-
-    //  gEnv->pFrameProfileSystem->Enable( true, false );
 
     // initialize subsystems
     m_pGameTokenSystem = new CGameTokenSystem;
@@ -1054,7 +1037,7 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     m_pGamePhysicsSettings = new GameConfigPhysicsSettings();
     m_pGamePhysicsSettings->Init();
 
-    //-- Network Stall ticker thread - PS3 only
+    //-- Network Stall ticker thread - PS3 only // ACCEPTED_USE
     if (m_pCryActionCVars->g_gameplayAnalyst)
     {
         m_pGameplayAnalyst = new CGameplayAnalyst();
@@ -1139,14 +1122,8 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
 
     InitScriptBinds();
 
-    ///Disabled as we now use the communication manager exclusively for readabilities
-    //CAIHandler::s_ReadabilityManager.Reload();
     CAIFaceManager::LoadStatic();
 
-    // m_pGameRulesSystem = new CGameRulesSystem(m_pSystem, this);
-
-    // TODO: temporary testing stuff
-    //  REGISTER_COMMAND( "flow_test", FlowTest,VF_nullptr,"" );
 
     m_pLocalAllocs = new SLocalAllocs();
 
@@ -1298,10 +1275,7 @@ bool CCryAction::CompleteInit()
     InlineInitializationProcessing("CCryAction::CompleteInit");
 
     REGISTER_FACTORY((IGameFramework*)this, "AnimatedCharacter", CAnimatedCharacter, false);
-#if 0 // TODO-MERGE-RESOLVE: 20141022 - Disabling lip sync items
-      //  REGISTER_FACTORY((IGameFramework*)this, "LipSync_TransitionQueue", CLipSync_TransitionQueue, false);
-      //  REGISTER_FACTORY((IGameFramework*)this, "LipSync_FacialInstance", CLipSync_FacialInstance, false);
-#endif // #if 0
+
     gs_lipSyncExtensionNamesForExposureToEditor.clear();
     gs_lipSyncExtensionNamesForExposureToEditor.push_back("LipSync_TransitionQueue");
     gs_lipSyncExtensionNamesForExposureToEditor.push_back("LipSync_FacialInstance");
@@ -1424,6 +1398,8 @@ bool CCryAction::CompleteInit()
     {
         m_pRuntimeAreaManager = new CRuntimeAreaManager();
     }
+
+    m_screenFaderManager = new Graphics::ScreenFaderManager();
 
     InlineInitializationProcessing("CCryAction::CompleteInit End");
     return true;
@@ -1555,7 +1531,6 @@ void CCryAction::Shutdown()
     SAFE_DELETE(m_pAnimationGraphCvars);
     SAFE_DELETE(m_pGameObjectSystem);
     SAFE_DELETE(m_pMannequin);
-    SAFE_DELETE(m_pTimeDemoRecorder);
     SAFE_RELEASE(m_pFlowSystem);
     SAFE_DELETE(m_pGameSerialize);
     SAFE_DELETE(m_pPersistentDebug);
@@ -1572,6 +1547,7 @@ void CCryAction::Shutdown()
 
     SAFE_DELETE(m_pRuntimeAreaManager);
     SAFE_DELETE(m_colorGradientManager);
+    SAFE_DELETE(m_screenFaderManager);
 
     ReleaseScriptBinds();
     ReleaseCVars();
@@ -1636,13 +1612,10 @@ void CCryAction::Shutdown()
 #endif // AZ_MONOLITHIC_BUILD
 }
 
-//------------------------------------------------------------------------
-f32 g_fPrintLine = 0.0f;
 
 bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
 {
     LOADING_TIME_PROFILE_SECTION(gEnv->pSystem);
-    g_fPrintLine = 10.0f;
 
     if (updateFlags & ESYSUPDATE_UPDATE_VIEW_ONLY)
     {
@@ -1666,20 +1639,14 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
         pTextModeConsole->BeginDraw();
     }
 
-    /*
-        IRenderer * pRend = gEnv->pRenderer;
-        float white[4] = {1,1,1,1};
-        pRend->Draw2dLabel( 10, 10, 3, white, false, "TIME: %f", gEnv->pTimer->GetFrameStartTime().GetSeconds() );
-    */
     bool gameRunning = IsGameStarted();
 
     bool bGameIsPaused = !gameRunning || IsGamePaused(); // slightly different from m_paused (check's gEnv->pTimer as well)
-    if (m_pTimeDemoRecorder && !IsGamePaused())
+    if (!IsGamePaused())
     {
-        m_pTimeDemoRecorder->PreUpdate();
+        TimeDemoRecorderBus::Broadcast(&TimeDemoRecorderBus::Events::PreUpdate);
     }
 
-    // TODO: Craig - this probably needs to be updated after CSystem::Update
     // update the callback system
     if (!bGameIsPaused)
     {
@@ -1889,8 +1856,6 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         return;
     }
 
-    float delta = gEnv->pTimer->GetFrameTime();
-
     if (gEnv->pLyShine)
     {
         // Tell the UI system the size of the viewport we are rendering to - this drives the
@@ -1904,9 +1869,11 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         bool isUiPaused = gEnv->pTimer->IsTimerPaused(ITimer::ETIMER_UI);
         if (!isUiPaused)
         {
-            gEnv->pLyShine->Update(delta);
+            gEnv->pLyShine->Update(gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI));
         }
     }
+
+    float delta = gEnv->pTimer->GetFrameTime();
 
     const bool bGameIsPaused = IsGamePaused(); // slightly different from m_paused (check's gEnv->pTimer as well)
     if (!bGameIsPaused)
@@ -1939,11 +1906,6 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
 
     // Begin occlusion job after setting the correct camera.
     gEnv->p3DEngine->PrepareOcclusion(m_pSystem->GetViewCamera());
-
-    if (gEnv->pHardwareMouse)
-    {
-        gEnv->pHardwareMouse->Update();
-    }
 
     CALL_FRAMEWORK_LISTENERS(OnPreRender());
 
@@ -1985,9 +1947,9 @@ void CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         }
     }
 
-    if (m_pTimeDemoRecorder && !IsGamePaused())
+    if (!IsGamePaused())
     {
-        m_pTimeDemoRecorder->PostUpdate();
+        TimeDemoRecorderBus::Broadcast(&TimeDemoRecorderBus::Events::PostUpdate);
     }
 
     if (!(updateFlags & ESYSUPDATE_EDITOR))
@@ -2059,6 +2021,7 @@ void CCryAction::PauseGame(bool pause, bool force, unsigned int nFadeOutInMS)
 
         // no game input should happen during pause
         // LEAVE THIS COMMENTED CODE IN - we might still need to uncommented it if this would give any issues
+        // This has been commented out since 8/22/2014.
         //m_pActionMapManager->Enable(!pause);
 
         // Audio: notify the audio system!
@@ -2199,10 +2162,6 @@ bool CCryAction::StartGameContext(const SGameStartParams* pGameStartParams)
     }
     else
     {
-        // game context should already be delete here, because start game context
-        // is not supposed to end the previous game context (level heap issues)
-        //EndGameContext();
-
         m_pGame = new CActionGame(m_pScriptRMI);
     }
 
@@ -2253,13 +2212,10 @@ void CCryAction::CloneBrokenObjectsAndRevertToStateAtTime(int32 iFirstBreakEvent
 {
     if (m_pGame)
     {
-        //CryLogAlways(">> Cloning objects broken during killcam and reverting to unbroken state");
         m_pGame->CloneBrokenObjectsByIndex(pBreakEventIndices, iNumBreakEvents, outClonedNodes, iNumClonedNodes, renderNodeLookup);
 
-        //CryLogAlways(">> Hiding original versions of objects broken during killcam");
         m_pGame->HideBrokenObjectsByIndex(pBreakEventIndices, iNumBreakEvents);
 
-        //CryLogAlways(">> Applying breaks up to start of killcam to cloned objects");
         m_pGame->ApplyBreaksUntilTimeToObjectList(iFirstBreakEventIndex, renderNodeLookup);
     }
 }
@@ -2565,6 +2521,10 @@ void CCryAction::GetEditorLevel(char** levelName, char** levelFolder)
 //------------------------------------------------------------------------
 const char* CCryAction::GetStartLevelSaveGameName()
 {
+    // GetStartLevelSaveGameName is deprecated because it is used in only one place in the engine,
+    // and it is not a useful place. In TimeDemoRecorder, when playback of a session loops, it attempts to
+    // load a file with this name. Nothing in the engine ever actually saves a file with this name.
+    AZ_Warning("Deprecation", false, "CCryAction::GetStartLevelSaveGameName is deprecated.");
     static string levelstart;
 #if defined(CONSOLE)
     levelstart = LY_SAVEGAME_FILENAME;
@@ -2575,7 +2535,22 @@ const char* CCryAction::GetStartLevelSaveGameName()
         levelstart = mappedName;
     }
     levelstart.append("_");
-    levelstart.append(gEnv->pGame->GetName());
+    // IGame::GetName is deprecated.
+    const char *gameName = gEnv->pGame->GetName();
+    if (gameName == nullptr)
+    {
+        // Using sys_dll_game instead of sys_game_name because dll_game should be safe to use as a file name,
+        // but sys_game_name can have invalid characters for file names.
+        ICVar* gameNameCVar = gEnv->pConsole->GetCVar("sys_dll_game");
+        if (gameNameCVar)
+        {
+            gameName = gameNameCVar->GetString();
+        }
+        if (gameName == nullptr)
+        {
+            gameName = LY_SAVEGAME_FILENAME;
+        }
+    }
 #endif
     levelstart.append(LY_SAVEGAME_FILE_EXT);
     return levelstart.c_str();
@@ -2624,7 +2599,13 @@ bool CCryAction::SaveGame(const char* path, bool bQuick, bool bForceImmediate, E
     if (CanSave() == false)
     {
         // When in time demo but not chain loading we need to allow the level start save
-        bool bIsInTimeDemoButNotChainLoading = IsInTimeDemo() && !m_pTimeDemoRecorder->IsChainLoading();
+        bool timeDemoChainLoading = false;
+        TimeDemoRecorderBus::BroadcastResult(timeDemoChainLoading, &TimeDemoRecorderBus::Events::IsChainLoading);
+
+        bool isTimeDemoActive = false;
+        TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+
+        bool bIsInTimeDemoButNotChainLoading = isTimeDemoActive && !timeDemoChainLoading;
         if (!(reason == eSGR_LevelStart && bIsInTimeDemoButNotChainLoading))
         {
             ICVar* saveLoadEnabled = gEnv->pConsole->GetCVar("g_EnableLoadSave");
@@ -2890,15 +2871,10 @@ void CCryAction::OnEditorSetGameMode(int iMode)
 {
     if (iMode < 2)
     {
-        /* AlexL: for now don't set time to 0.0
-           (because entity timers might still be active and getting confused)
-        if (iMode == 1)
-            gEnv->pTimer->SetTimer(ITimer::ETIMER_GAME, 0.0f);
-        */
 
         if (iMode == 0)
         {
-            m_pTimeDemoRecorder->Reset();
+            TimeDemoRecorderBus::Broadcast(&TimeDemoRecorderBus::Events::Reset);
         }
 
         if (m_pGame)
@@ -3191,13 +3167,16 @@ IEntity* CCryAction::GetClientEntity() const
     return nullptr;
 }
 
-void CCryAction::SetClientActor(EntityId id)
+void CCryAction::SetClientActor(EntityId id, bool setupActionMaps)
 {
     if (CGameContext* pGameContext = GetGameContext())
     {
         pGameContext->PlayerIdSet(id);
 
-        SetupActionMaps();
+        if (setupActionMaps)
+        {
+            SetupActionMaps();
+        }
         SetupLocalView();
     }
 }
@@ -3391,11 +3370,6 @@ IVisualLog* CCryAction::GetIVisualLog()
 IRealtimeRemoteUpdate* CCryAction::GetIRealTimeRemoteUpdate()
 {
     return &CRealtimeRemoteUpdateListener::GetRealtimeRemoteUpdateListener();
-}
-
-ITimeDemoRecorder* CCryAction::GetITimeDemoRecorder() const
-{
-    return m_pTimeDemoRecorder;
 }
 
 IGamePhysicsSettings* CCryAction::GetIGamePhysicsSettings()
@@ -3794,9 +3768,9 @@ bool CCryAction::SaveServerConfig(const char* path)
         : public ICVarListProcessorCallback
     {
     public:
-        CConfigWriter(const char* path)
+        CConfigWriter(const char* configPath)
         {
-            m_fileHandle = gEnv->pCryPak->FOpen(path, "wb");
+            m_fileHandle = gEnv->pCryPak->FOpen(configPath, "wb");
         }
         ~CConfigWriter()
         {
@@ -3876,10 +3850,7 @@ void  CCryAction::OnActionEvent(const SActionEvent& ev)
         {
             m_pCallbackTimer = new CallbackTimer();
         }
-        if (m_pTimeDemoRecorder)
-        {
-            m_pTimeDemoRecorder->Reset();
-        }
+        TimeDemoRecorderBus::Broadcast(&TimeDemoRecorderBus::Events::Reset);
     }
     break;
     case eAE_unloadLevel:
@@ -3987,7 +3958,6 @@ void CCryAction::GetMemoryUsage(ICrySizer* s) const
     CHILD_STATISTICS(m_pGameSerialize);
     CHILD_STATISTICS(m_pCallbackTimer);
     CHILD_STATISTICS(m_pDevMode);
-    CHILD_STATISTICS(m_pTimeDemoRecorder);
     CHILD_STATISTICS(m_pGameplayRecorder);
     CHILD_STATISTICS(m_pGameplayAnalyst);
     CHILD_STATISTICS(m_pTimeOfDayScheduler);
@@ -4030,21 +4000,23 @@ bool CCryAction::IsImmersiveMPEnabled()
 //////////////////////////////////////////////////////////////////////////
 bool CCryAction::IsInTimeDemo()
 {
-    if (m_pTimeDemoRecorder && m_pTimeDemoRecorder->IsTimeDemoActive())
-    {
-        return true;
-    }
-    return false;
+    AZ_Warning("Deprecation", 
+        false, 
+        "CCryAction::IsInTimeDemo is deprecated. Call IsTimeDemoActive on the TimeDemoRecorder EBus directly.");
+    bool isTimeDemoActive = false;
+    TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+    return isTimeDemoActive;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CCryAction::IsTimeDemoRecording()
 {
-    if (m_pTimeDemoRecorder && m_pTimeDemoRecorder->IsRecording())
-    {
-        return true;
-    }
-    return false;
+    AZ_Warning("Deprecation",
+        false,
+        "CCryAction::IsTimeDemoRecording is deprecated. Call IsRecording on the TimeDemoRecorder EBus directly.");
+    bool isRecording = false;
+    TimeDemoRecorderBus::BroadcastResult(isRecording, &TimeDemoRecorderBus::Events::IsRecording);
+    return isRecording;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4054,7 +4026,10 @@ bool CCryAction::CanSave()
     bool enabled = saveLoadEnabled->GetIVal() == 1;
 
     const bool bViewSystemAllows = m_pViewSystem ? m_pViewSystem->IsPlayingCutScene() == false : true;
-    return enabled && bViewSystemAllows && m_bAllowSave && !IsInTimeDemo();
+
+    bool isTimeDemoActive = false;
+    TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+    return enabled && bViewSystemAllows && m_bAllowSave && !isTimeDemoActive;
 }
 
 //////////////////////////////////////////////////////////////////////////

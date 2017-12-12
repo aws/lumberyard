@@ -35,6 +35,8 @@ namespace AZ
             void ActivateSceneModules() override;
             void DeactivateSceneModules() override;
 
+            size_t GetErrorCount() const override;
+
         protected:
             virtual void LoadSceneLibrary(const char* name);
             

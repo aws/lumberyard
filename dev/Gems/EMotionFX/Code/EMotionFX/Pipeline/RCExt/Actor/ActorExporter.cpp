@@ -10,49 +10,55 @@
 *
 */
 
-#ifdef MOTIONCANVAS_GEM_ENABLED
-
-#include <RC/ResourceCompilerScene/MotionCanvasPipeline/ActorExporter.h>
-#include <RC/ResourceCompilerScene/MotionCanvasPipeline/ExportContexts.h>
-
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IActorGroup.h>
+
+#include <SceneAPIExt/Groups/IActorGroup.h>
+#include <RCExt/Actor/ActorExporter.h>
+#include <RCExt/ExportContexts.h>
 
 #include <AzToolsFramework/Debug/TraceContext.h>
 
-namespace MotionCanvasPipeline
+namespace EMotionFX
 {
-
-    namespace SceneContainers = AZ::SceneAPI::Containers;
-    namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
-
-    ActorExporter::ActorExporter()
-        : CallProcessorBinder()
+    namespace Pipeline
     {
-        BindToCall(&ActorExporter::ProcessContext);
-        ActivateBindings();
-    }
+        namespace SceneContainers = AZ::SceneAPI::Containers;
+        namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
+        namespace SceneEvents = AZ::SceneAPI::Events;
 
-    SceneEvents::ProcessingResult ActorExporter::ProcessContext(SceneEvents::ExportEventContext& context) const
-    {
-        const SceneContainers::SceneManifest& manifest = context.GetScene().GetManifest();
-
-        auto valueStorage = manifest.GetValueStorage();
-        auto view = SceneContainers::MakeDerivedFilterView<SceneDataTypes::IActorGroup>(valueStorage);
-
-        SceneEvents::ProcessingResultCombiner result;
-        for (const SceneDataTypes::IActorGroup& actorGroup : view)
+        ActorExporter::ActorExporter()
         {
-            AZ_TraceContext("Actor group", actorGroup.GetName());
-            result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Construction);
-            result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Filling);
-            result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Finalizing);
+            BindToCall(&ActorExporter::ProcessContext);
+            ActivateBindings();
         }
-        return result.GetResult();
+
+        void ActorExporter::Reflect(AZ::ReflectContext* context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serializeContext)
+            {
+                serializeContext->Class<ActorExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+            }
+        }
+
+        SceneEvents::ProcessingResult ActorExporter::ProcessContext(SceneEvents::ExportEventContext& context) const
+        {
+            const SceneContainers::SceneManifest& manifest = context.GetScene().GetManifest();
+
+            auto valueStorage = manifest.GetValueStorage();
+            auto view = SceneContainers::MakeDerivedFilterView<Group::IActorGroup>(valueStorage);
+
+            SceneEvents::ProcessingResultCombiner result;
+            for (const Group::IActorGroup& actorGroup : view)
+            {
+                AZ_TraceContext("Actor group", actorGroup.GetName());
+                result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Construction);
+                result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Filling);
+                result += SceneEvents::Process<ActorGroupExportContext>(context, actorGroup, AZ::RC::Phase::Finalizing);
+            }
+            return result.GetResult();
+        }
     }
-
-} // MotionCanvasPipeline
-
-#endif // MOTIONCANVAS_GEM_ENABLED
+}

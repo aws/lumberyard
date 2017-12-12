@@ -15,21 +15,27 @@
 #define COLOR_GRADIENT_MANAGER_H_INCLUDED
 
 #include <IColorGradingController.h>
-
-
+#include <ISerialize.h>
+#include <ColorGradingBus.h>
 
 namespace Graphics
 {
-    class CColorGradientManager
+    class CColorGradientManager : public AZ::ColorGradingRequestBus::Handler
     {
     public:
         CColorGradientManager();
+        virtual ~CColorGradientManager();
 
         void TriggerFadingColorGradient(const string& filePath, const float fadeInTimeInSeconds);
 
         void UpdateForThisFrame(const float frameTimeInSeconds);
-        void Reset();
         void Serialize(TSerialize serializer);
+
+        //////////////////////////////////////////////////////////////////////////
+        // ColorGradingRequestBus::Handler implementation
+        void FadeInColorChart(const AZStd::string& colorChartTextureName, float fadeTime) override;
+        void Reset() override;
+        //////////////////////////////////////////////////////////////////////////
 
     private:
         void FadeInLastLayer(const float frameTimeInSeconds);

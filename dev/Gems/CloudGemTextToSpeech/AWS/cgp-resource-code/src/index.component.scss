@@ -1,0 +1,171 @@
+﻿@import "../../../styles/variables";
+
+.loading-spinner-container {
+    clear: both;
+    text-align: center;
+}
+
+.number{
+    margin-top: 8px;
+    margin-right: 5px;
+}
+
+.no-pending-jobs, .pending-jobs-exist {
+    margin: 8px 3px 0px 5px;
+}
+
+.pending-jobs-exist {
+    color: $primary-color;
+}
+
+.download-succeeded{
+    color: $green;
+}
+
+.download-failed{
+    color:$red;
+}
+
+.clear-pending-jobs {
+    text-align:center;
+    .clear-button{
+        width:170px;
+        padding-left: 70px;
+    }
+}
+
+.preview-icon{
+    margin-top: 8px;
+    color: $primary-color;
+}
+
+.preview-label{
+    color: $primary-color;
+}
+
+.edit-button {
+    margin-left: 2px;
+}
+
+.delete-icon {
+    margin-top: 8px;
+    margin-left: 2px;
+}
+
+.filtered {
+    color: $primary-color;
+}
+
+.fa-filter:hover {
+    cursor:pointer;
+}
+
+.speech-lib {
+    width:80%;
+}
+.web-gl {
+    margin-top: 10px;
+    width:15%;
+    .rectangular-box {
+        border: 1px solid black;
+        padding: 20px 10px 20px 10px;
+        .fbx-view{
+            height:300px;
+            width:100%;
+        }
+    }
+}
+
+.page {
+    clear: both;
+}
+
+table.table {
+    margin-bottom: 30px;
+    thead {
+        display:table-header-group;
+    }
+    input:focus {
+        outline: none;
+    }
+    tr {
+        .select-column {
+            width: 5%;
+        }
+        .character-column {
+            width: 20%;
+        }
+        .line-column {
+            width: 20%;
+        }
+        .preview-column {
+            width: 10%;
+        }
+        .speechmark-column {
+            width: 20%;
+        }
+        .voice-column {
+            width: 20%;
+        }
+        .language-column {
+            width: 20%;
+        }
+        .tags-column {
+            width: 30%;
+        }
+        .csv-header-column {
+            width: 30%;
+        }
+        .csv-value-column {
+            width: 30%;
+        }
+        .mappings-column {
+            width: 30%;
+        }
+        .package-name-column {
+             width: 25%;
+        }
+        .last-modified-column {
+             width: 25%;
+        }
+        .size-column {
+             width: 25%;
+        }
+        .valid-selection {
+            color: black;
+        }
+        .invalid-selection {
+            color: red;
+        }
+    }
+    th {
+        .dropdown-menu {
+            padding: 10px 10px;
+            display: block;
+        }
+        .dropdown-menu-hide {
+            display: none;
+        }
+        .filter-parting-line {
+            margin-top: 5px;
+            margin-bottom: 0px;
+        }
+    }
+}
+
+.content-container {
+	margin-bottom: 30px;
+}
+
+.settings-label {
+    width: 150px;
+    margin-bottom: 30px;
+}
+
+.import {
+    display:none;
+}
+
+.capitalize {
+    text-transform: capitalize;
+}

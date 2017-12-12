@@ -123,7 +123,7 @@ struct STerrainTextureFileHeader
 {
     uint16  LayerCount;
     uint16  Flags;
-    float   ColorMultiplier;
+    float   ColorMultiplier_deprecated;
 
     AUTO_STRUCT_INFO
 };

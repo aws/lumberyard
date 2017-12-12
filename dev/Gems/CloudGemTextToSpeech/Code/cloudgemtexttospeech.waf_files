@@ -1,0 +1,28 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/CloudGemTextToSpeech/CloudGemTextToSpeechBus.h",
+            "Include/CloudGemTextToSpeech/TextToSpeech.h",
+            "Include/CloudGemTextToSpeech/TextToSpeechRequestBus.h",
+            "Include/CloudGemTextToSpeech/TextToSpeechPlaybackBus.h",
+            "Include/CloudGemTextToSpeech/TextToSpeechClosedCaptionBus.h",
+            "Include/CloudGemTextToSpeech/SpeechComponent.h",
+            "AWS/ServiceAPI/CloudGemTextToSpeechClientComponent.h"
+
+        ],
+        "Source": [
+            "Source/CloudGemTextToSpeechModule.cpp",
+            "Source/CloudGemTextToSpeechSystemComponent.cpp",
+            "Source/CloudGemTextToSpeechSystemComponent.h",
+            "Source/TextToSpeech.cpp",
+            "Source/SpeechComponent.cpp",
+            "AWS/ServiceAPI/CloudGemTextToSpeechClientComponent.cpp"
+        ]
+    }
+}

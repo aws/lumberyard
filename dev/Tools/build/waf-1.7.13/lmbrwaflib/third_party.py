@@ -15,6 +15,7 @@ from waflib.Configure import conf, Logs
 
 from cry_utils import get_configuration
 from collections import OrderedDict
+from gems import GemManager
 
 import os
 import glob
@@ -30,8 +31,6 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     # win_x64 host platform
                                     'win_x64_vs2013'     : 'win_x64/vc120',
                                     'win_x64_vs2015'     : 'win_x64/vc140',
-                                    'durango'            : 'win_x64/durango_xdk_03_2016_qfe3',
-                                    'orbis'              : 'win_x64/orbis_sdk_3.5',
                                     'android_armv7_gcc'  : 'win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9',
                                     'android_armv7_clang': 'win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8',
 
@@ -137,8 +136,8 @@ def evaluate_node_alias_map(lib_root, lib_name):
 
 CACHE_JSON_MODEL_AND_ALIAS_MAP = {}
 
-# Keep track of all of the 3rd party uselibs that was processed
-CONFIGURED_3RD_PARTY_USELIBS = set()
+# Keep a cache of the 3rd party uselibs mappings to a tuple of the config file and the alias root map that applies to it
+CONFIGURED_3RD_PARTY_USELIBS = {}
 
 @conf
 def get_3rd_party_config_record(ctx, lib_config_file):
@@ -165,24 +164,72 @@ def get_3rd_party_config_record(ctx, lib_config_file):
 @conf
 def read_and_mark_3rd_party_libs(ctx):
 
-    config_3rdparty_folder = ctx.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
-    config_3rdparty_folder_path = config_3rdparty_folder.abspath()
-    config_files = glob.glob(os.path.join(config_3rdparty_folder_path, '*.json'))
+    def _process(config_folder_node, config_file_abs, path_alias_map):
 
-    for config_file in config_files:
-
-        filename = os.path.basename(config_file)
-        lib_key = os.path.splitext(filename)[0]
+        filename = os.path.basename(config_file_abs)
 
         # Attempt to load the 3rd party configuration
-        lib_config_file = config_3rdparty_folder.make_node(filename)
+        lib_config_file = config_folder_node.make_node(filename)
         config, uselib_names, alias_map = get_3rd_party_config_record(ctx, lib_config_file)
 
         # Mark all the uselib names as processed
         for uselib_name in uselib_names:
-            CONFIGURED_3RD_PARTY_USELIBS.add(uselib_name)
+            CONFIGURED_3RD_PARTY_USELIBS[uselib_name] = (lib_config_file, path_alias_map)
+
+    config_3rdparty_folder = ctx.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
+    config_3rdparty_folder_path = config_3rdparty_folder.abspath()
+    config_files = glob.glob(os.path.join(config_3rdparty_folder_path, '*.json'))
+
+    root_alias_map = {'ROOT' : ctx.srcnode.abspath()}
+
+    for config_file in config_files:
+        _process(config_3rdparty_folder, config_file, root_alias_map)
+
+    # Read the 3rd party configs with export 3rd party set to true
+    all_gems = GemManager.GetInstance(ctx).gems
+    for gem in all_gems:
+        ctx.root.make_node(gem.abspath).make_node('3rdParty')
+        gem_3p_abspath = os.path.join(gem.abspath, '3rdParty', '*.json')
+        gem_3p_config_files = glob.glob(gem_3p_abspath)
+        gem_3p_node = ctx.root.make_node(gem.abspath).make_node('3rdParty')
+        gem_alias_map = {'ROOT' : ctx.srcnode.abspath(),
+                         'GEM'  : gem.abspath }
+        for gem_3p_config_file in gem_3p_config_files:
+            _process(gem_3p_node, gem_3p_config_file, gem_alias_map)
 
     return CONFIGURED_3RD_PARTY_USELIBS
+
+@conf
+def read_3rd_party_config(ctx, config_file_path_node, platform_key, configuration_key, path_prefix_map, warn_on_collision=False):
+
+    error_messages = set()
+    all_uselib_names = set()
+
+    filename = os.path.basename(config_file_path_node.abspath())
+    lib_key = os.path.splitext(filename)[0]
+
+    # Attempt to load the 3rd party configuration
+    try:
+        config, uselib_names, alias_map, = get_3rd_party_config_record(ctx, config_file_path_node)
+
+        if config is not None:
+            result, err_msg = ThirdPartyLibReader(ctx, config_file_path_node, config, lib_key, platform_key, configuration_key,
+                                                  alias_map, path_prefix_map, warn_on_collision).detect_3rd_party_lib()
+            if not result and err_msg is not None:
+                if err_msg is not None:
+                    error_messages.add(err_msg)
+            elif not result:
+                pass
+            else:
+                for uselib_name in uselib_names:
+                    if uselib_name in all_uselib_names:
+                        Logs.warn('[WARN] Duplicate 3rd party definition detected : {}'.format(uselib_name))
+                    else:
+                        all_uselib_names.add(uselib_name)
+    except Exception as err:
+        error_messages.add('[3rd Party] {}'.format(err.message))
+
+    return error_messages, all_uselib_names
 
 @conf
 def detect_all_3rd_party_libs(ctx, config_path_node, platform_key, configuration_key, path_prefix_map, warn_on_collision=False):
@@ -196,29 +243,11 @@ def detect_all_3rd_party_libs(ctx, config_path_node, platform_key, configuration
     for config_file in config_files:
 
         filename = os.path.basename(config_file)
-        lib_key = os.path.splitext(filename)[0]
+        lib_config_file = config_path_node.make_node(filename)
 
-        # Attempt to load the 3rd party configuration
-        try:
-            lib_config_file = config_path_node.make_node(filename)
-            config, uselib_names, alias_map, = get_3rd_party_config_record(ctx, lib_config_file)
-        except Exception as err:
-            error_messages.add('[3rd Party] {}'.format(err.message))
-            continue
-
-        if config is not None:
-            result, err_msg = ThirdPartyLibReader(ctx, lib_config_file, config, lib_key, platform_key, configuration_key, alias_map, path_prefix_map, warn_on_collision).detect_3rd_party_lib()
-            if not result and err_msg is not None:
-                if err_msg is not None:
-                    error_messages.add(err_msg)
-            elif not result:
-                pass
-            else:
-                for uselib_name in uselib_names:
-                    if uselib_name in all_uselib_names:
-                        Logs.warn('[WARN] Duplicate 3rd party definition detected : {}'.format(uselib_name))
-                    else:
-                        all_uselib_names.add(uselib_name)
+        lib_error_messages, lib_uselib_names = read_3rd_party_config(ctx, lib_config_file, platform_key, configuration_key, path_prefix_map,warn_on_collision)
+        error_messages = error_messages.union(lib_error_messages)
+        all_uselib_names = all_uselib_names.union(all_uselib_names)
 
     return error_messages, all_uselib_names
 
@@ -700,8 +729,6 @@ class ThirdPartyLibReader:
             """
             if platform.startswith('win_x64'):
                 return lib_name
-            if platform == 'durango':
-                return lib_name
             if not lib_name.startswith('lib'):
                 return lib_name
             return lib_name[3:]
@@ -734,10 +761,11 @@ class ThirdPartyLibReader:
                     platform_config_lib_map[library_plat_conf_key].append(lib_found_fullpath)
 
             # the windows linker is different in the sense it only takes in .libs regardless of the library type
-            if uselib_var == 'LIB' and (self.platform_key.startswith('win_x64') or self.platform_key == 'durango'):
-                import_lib_path = "{}.lib".format(os.path.splitext(lib_file_path)[0])
-                if not os.path.exists(import_lib_path):
-                    continue
+            if uselib_var == 'LIB':
+                if self.platform_key.startswith('win_x64'):
+                    import_lib_path = "{}.lib".format(os.path.splitext(lib_file_path)[0])
+                    if not os.path.exists(import_lib_path):
+                        continue
 
             if fullpath:
                 self.ctx.env.append_unique(uselib_key, lib_found_fullpath)
@@ -1004,8 +1032,6 @@ THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
     'win_x64': 100,
     'win_x64_vs2013': 101,
     'win_x64_vs2015': 102,
-    'durango': 103,
-    'orbis': 104,
     'darwin_x64': 105,
     'ios': 106,
     'appletv': 107,

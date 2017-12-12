@@ -1,101 +1,61 @@
-﻿import {
+﻿import 'reflect-metadata';
+import {
     Component,
     Directive,
-    NgModule,
     Input,
     ViewContainerRef,
-    ContentChild,
-    Compiler,        
+    Compiler,
     ModuleWithComponentFactories,
     ComponentRef,
     ReflectiveInjector,
-    ResolvedReflectiveProvider,
-    TemplateRef,
-    EmbeddedViewRef,
     ComponentFactory,
     Type,
-    ViewEncapsulation,
     OnInit
 } from '@angular/core';
-import { CompileMetadataResolver } from '@angular/compiler'
-import { Observable } from 'rxjs/Observable'
-import { RouterModule } from '@angular/router';
-import { GameSharedModule } from 'app/view/game/module/shared/shared.module';
-import { Gemifiable } from '../class/gem-interfaces';
+import { Gemifiable, Tackable } from '../class/index';
+import { UrlService, GemService } from "app/shared/service/index";
 
-export function createComponentFactory(compiler: Compiler, gem: Gemifiable, template: string, style?: string): Promise<ComponentFactory<any>> {
-        
-    let componentDefinition = new Component({
-        selector: 'dcg-' + gem.identifier,
-        template: template        
-    });
-    
-    if (style) {
-        componentDefinition.styles = [style];
-        componentDefinition.encapsulation = ViewEncapsulation.None;
-    }
-    
-    const decoratedCmp = Component(componentDefinition)(gem.classType()); 
+export function createComponentFactory(compiler: Compiler, cloudgem: Gemifiable, thumbnailonly: boolean): Promise<ComponentFactory<any>> {
+    let component = thumbnailonly ? cloudgem.thumbnail : cloudgem.index;
 
-    //No factory exists....create one
-    @NgModule({
-        imports: [GameSharedModule],        
-        declarations: [decoratedCmp]        
-    })
-    class DynamicCloudGemModule { }    
-    
-    return compiler.compileModuleAndAllComponentsAsync(DynamicCloudGemModule)
+    return compiler.compileModuleAndAllComponentsAsync(cloudgem.module)
         .then((moduleWithComponentFactory: ModuleWithComponentFactories<any>) => {
-            return moduleWithComponentFactory.componentFactories.find(x => x.componentType === decoratedCmp);
+            return moduleWithComponentFactory.componentFactories.find(x => x.componentType === component);
         });
 }
 
 @Directive({ selector: 'gem-factory' })
 export class GemFactory {
-    @Input() gem: Gemifiable;
+    @Input() cloudGem: Gemifiable;
+    @Input() thumbnailOnly: boolean = false;
     @Input() refreshContent: boolean;
     private cmpRef: ComponentRef<any>;
     private _loading: boolean = false;
     public static DynamicGemFactories: Map<string, ComponentFactory<any>> = new Map<string, ComponentFactory<any>>();
-   
+
     constructor(private vcRef: ViewContainerRef,
-        private compiler: Compiler
-    ) {     
-        
+        private compiler: Compiler,
+        private urlService: UrlService,
+        private gemService: GemService
+    ) {
+
     }
 
     ngOnInit() {
-     
-    }
+        if (!this.cloudGem || this._loading) return;
 
-    ngOnChanges() {        
-        const gem = this.gem;
-        if (!gem || this._loading) return;
-        
         if (this.cmpRef) {
             this.cmpRef.destroy();
         }
-        
-        let dynamicGemFactory = GemFactory.DynamicGemFactories[gem.identifier];
-        if (dynamicGemFactory) {
-            this.addToView(gem, dynamicGemFactory);         
-        } else {
-            //Wait for both the style url and template url to load before creating the component.
-            //can't use the component system to do this because it escapes the presigned urls which causes a problem
-            this._loading = true;
-            gem.template.subscribe(template => {
-                if (template) {
-                    if (gem.hasStyle) {
-                        gem.styles.subscribe(style => {
-                            if(style)
-                                this.createComponent(gem, template, style);
-                        });
-                    } else {                        
-                        this.createComponent(gem, template);
-                    }
-                }
-            });            
-        }
+        this._loading = true;
+        let component = Reflect.getMetadata('annotations', this.thumbnailOnly ? this.cloudGem.thumbnail : this.cloudGem.index)[0];
+        this.urlService.signUrls(component, this.cloudGem.context.bucketId, 60)
+
+        this.createComponent(this.cloudGem, this.thumbnailOnly);
+    }
+
+    ngOnChanges() {
+        this.ngOnInit();
     }
 
     ngOnDestroy() {
@@ -104,18 +64,28 @@ export class GemFactory {
         }
     }
 
-    createComponent(gem: Gemifiable, template: string, style?: string) {
-        createComponentFactory(this.compiler, gem, template, style)
+    createComponent(cloudgem: Gemifiable, thumbnailonly: boolean) {
+        createComponentFactory(this.compiler, cloudgem, thumbnailonly)
             .then(factory => {
-                this.addToView(gem, factory);
-                GemFactory.DynamicGemFactories[gem.identifier] = factory;
+                this.addToView(cloudgem, factory, thumbnailonly);
+               // GemFactory.DynamicGemFactories[cloudgem.identifier] = factory;
                 this._loading = false;
             });
     }
 
-    addToView(gem, factory) {
+    addToView(gem: Gemifiable, factory: ComponentFactory<any>, thumbnailonly: boolean) {
         const injector = ReflectiveInjector.fromResolvedProviders([], this.vcRef.parentInjector);
-        this.cmpRef = this.vcRef.createComponent(factory, 0, injector, [[{ model: { id: "factory" } }]]);
-        this.cmpRef.instance.initialize(gem.context);
+        //create the component in the vcRef DOM
+        this.cmpRef = this.vcRef.createComponent(factory, 0, injector, []);
+        (<any>this.cmpRef.instance).context = gem.context;
+
+        if (!thumbnailonly)
+            return;
+
+        gem.displayName = (<Tackable>this.cmpRef.instance).displayName
+        gem.srcIcon = (<Tackable>this.cmpRef.instance).srcIcon;
+
+        // store in the gem service for keeping track of the current gems
+        this.gemService.addGem(gem);
     }
 }

@@ -168,9 +168,9 @@ bool CTerrainTexGen::GenerateSurfaceTexture(int flags, CImageEx& surfaceTexture)
 
                         CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
                         pRGBLayer->GetSubImageStretched(fMinX, fMinY, fMinX + fInvSectorCnt, fMinY + fInvSectorCnt, sectorDiffuseImage);
+                        sectorDiffuseImage.SwapRedAndBlue(); // The RGBLayer is stored in BGR format, so swap it since we need RGB here.
 
-
-                        bool dumpToFile = false;
+                        static bool dumpToFile = false;
                         if (dumpToFile)
                         {
                             // to take a look at the result of the calculation

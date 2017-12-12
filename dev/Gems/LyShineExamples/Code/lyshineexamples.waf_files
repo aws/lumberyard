@@ -7,12 +7,20 @@
     },
     "auto": {
         "Include": [
-            "Include/LyShineExamples/LyShineExamplesBus.h"
+            "Include/LyShineExamples/LyShineExamplesBus.h",
+            "Include/LyShineExamples/LyShineExamplesCppExampleBus.h",
+            "Include/LyShineExamples/UiCustomImageBus.h"
         ],
         "Source": [
+            "Source/LyShineExamplesCppExample.cpp",
+            "Source/LyShineExamplesCppExample.h",
             "Source/LyShineExamplesModule.cpp",
+            "Source/LyShineExamplesSerialize.cpp",
+            "Source/LyShineExamplesSerialize.h",
             "Source/LyShineExamplesSystemComponent.cpp",
             "Source/LyShineExamplesSystemComponent.h",
+            "Source/UiCustomImageComponent.cpp",
+            "Source/UiCustomImageComponent.h",
             "Source/UiDynamicContentDatabase.cpp",
             "Source/UiDynamicContentDatabase.h",
             "Source/UiDynamicContentDatabaseFlowNodes.cpp",

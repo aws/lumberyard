@@ -1,0 +1,6 @@
+<download name="GettingStarted_01" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="16644" md5="2f17fe863feb1f0e1a98a9f96a0fbaf9"/>
+ </files>
+</download>

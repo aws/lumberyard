@@ -1,0 +1,19 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "869a0d0ec11a45c299917d45c81555e6",
+    "Name": "ScriptCanvasGem",
+    "DisplayName": "Script Canvas",
+    "Version": "0.1.0",
+    "LinkType": "DynamicStatic",
+    "EditorModule": true,
+    "Summary": "Script Canvas is Lumberyard's visual game authoring environment.",
+    "Tags": ["Scripting", "Game"],
+    "IconPath": "preview.png",
+    "Dependencies" : [
+        {
+            "Uuid" : "875b6fcbdeea44deaae7984ad9bb6cdc",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "GraphCanvas"
+        }
+    ]
+}

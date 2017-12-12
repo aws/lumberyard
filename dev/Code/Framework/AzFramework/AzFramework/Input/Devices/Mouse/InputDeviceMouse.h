@@ -137,11 +137,11 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        InputChannelByIdMap                             m_allChannelsById;       //!< All channels
-        ButtonChannelByIdMap                            m_buttonChannelsById;    //!< Mouse buttons
-        MovementChannelByIdMap                          m_movementChannelsById;  //!< Mouse movement
-        InputChannelDeltaWithSharedPosition2D*          m_cursorPositionChannel; //!< Cursor channel
-        AZStd::shared_ptr<InputChannel::PositionData2D> m_cursorPositionData2D;  //!< Cursor data 2D
+        InputChannelByIdMap                    m_allChannelsById;       //!< All mouse channels
+        ButtonChannelByIdMap                   m_buttonChannelsById;    //!< Mouse button channels
+        MovementChannelByIdMap                 m_movementChannelsById;  //!< Mouse movement channels
+        InputChannelDeltaWithSharedPosition2D* m_cursorPositionChannel; //!< Cursor position channel
+        InputChannel::SharedPositionData2D     m_cursorPositionData2D;  //!< Shared cursor position
 
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,11 +157,6 @@ namespace AzFramework
             //! Default factory create function
             //! \param[in] inputDevice Reference to the input device being implemented
             static Implementation* Create(InputDeviceMouse& inputDevice);
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            //! Custom factory create function
-            using CustomCreateFunctionType = Implementation*(*)(InputDeviceMouse&);
-            static CustomCreateFunctionType CustomCreateFunctionPointer;
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
@@ -248,9 +243,18 @@ namespace AzFramework
             RawMovementEventQueueByIdMap m_rawMovementEventQueuesById; //!< Raw movement events by id
         };
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Set the implementation of this input device
+        //! \param[in] implementation The new implementation
+        void SetImplementation(AZStd::unique_ptr<Implementation> impl) { m_pimpl = AZStd::move(impl); }
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Private pointer to the platform specific implementation
-        Implementation* m_pimpl;
+        AZStd::unique_ptr<Implementation> m_pimpl;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Helper class that handles requests to create a custom implementation for this device
+        InputDeviceImplementationRequestHandler<InputDeviceMouse> m_implementationRequestHandler;
     };
 } // namespace AzFramework

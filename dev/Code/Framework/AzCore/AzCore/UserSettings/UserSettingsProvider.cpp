@@ -124,6 +124,20 @@ namespace AZ
         UserSettingsContainer* container = sc->Cast<UserSettingsContainer*>(classPtr, classId);
         AZ_Assert(container, "Failed to cast classPtr to UserSettingsContainter*!");
         m_settings.m_map.swap(container->m_map);
+
+        // If any nullptrs ended up in the map, remove them
+        for (auto it = m_settings.m_map.begin(); it != m_settings.m_map.end();)
+        {
+            if (!it->second)
+            {
+                it = m_settings.m_map.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         delete container;
     }
     //-----------------------------------------------------------------------------

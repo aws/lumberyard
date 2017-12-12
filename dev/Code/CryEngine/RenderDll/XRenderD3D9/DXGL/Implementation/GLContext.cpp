@@ -628,7 +628,7 @@ namespace NCryOpenGL
     // CContext implementation
     ////////////////////////////////////////////////////////////////////////////
 
-    CContext::CContext(CDevice* pDevice, const TRenderingContext& kRenderingContext, const TWindowContext& kDefaultWindowContext, uint32 uIndex)
+    CContext::CContext(CDevice* pDevice, const TRenderingContext& kRenderingContext, const TWindowContext& kDefaultWindowContext, uint32 uIndex, ContextType type)
         : m_pDevice(pDevice)
         , m_kRenderingContext(kRenderingContext)
         , m_kWindowContext(kDefaultWindowContext)
@@ -653,6 +653,8 @@ namespace NCryOpenGL
         , m_eStageTracing(eST_NUM)
         , m_uShaderTraceCount(0)
 #endif //DXGL_ENABLE_SHADER_TRACING
+        , m_type(type)
+        , m_blitHelper(*this)
     {
         for (uint32 uUnitType = 0; uUnitType < eRUT_NUM; ++uUnitType)
         {
@@ -793,7 +795,7 @@ namespace NCryOpenGL
                 GetStateVari(GL_BLEND_DST_RGB,        uTarget, &kRTCache.m_kRGB.m_kFunction.m_eDst);
                 GetStateVari(GL_BLEND_DST_ALPHA,      uTarget, &kRTCache.m_kAlpha.m_kFunction.m_eDst);
 
-                kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB == kRTCache.m_kAlpha; // Disabled if the rgb and alpha parameters are the same
+                kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
 
                 if (uTarget > 0 && kCache.m_kTargets[0].m_bEnable)
                 {
@@ -828,7 +830,7 @@ namespace NCryOpenGL
             GetStateVar(GL_BLEND_DST_RGB,        &kRTCache.m_kRGB.m_kFunction.m_eDst);
             GetStateVar(GL_BLEND_DST_ALPHA,      &kRTCache.m_kAlpha.m_kFunction.m_eDst);
 
-            kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB == kRTCache.m_kAlpha; // Disabled if the rgb and alpha parameters are the same
+            kRTCache.m_bSeparateAlpha = kRTCache.m_kRGB != kRTCache.m_kAlpha; // Enable separate alpha blending if the rgb and alpha parameters are different
         }
 
         for (uint32 uOverriddenTarget = 1; uOverriddenTarget < DXGL_ARRAY_SIZE(kCache.m_kTargets); ++uOverriddenTarget)
@@ -1160,8 +1162,13 @@ namespace NCryOpenGL
         uint32 uNumUniformBuffers = kCapabilities.m_akResourceUnits[eRUT_UniformBuffer].m_aiMaxTotal;
         for (uint32 uIndex = 0; uIndex < uNumUniformBuffers; ++uIndex)
         {
-            GLuint uBufferBound(0);
-            GetStateVari(GL_UNIFORM_BUFFER_BINDING, uIndex, &uBufferBound);
+            GLint uBufferBound(0);
+            // Qualcomm driver crash when calling glGetIntegeri_v with GL_UNIFORM_BUFFER_BINDING.
+            // We use the initial value specified by the OpenGLES standard (0)
+            if (m_pDevice->GetAdapter()->m_sVersion.ToUint() != DXGLES_VERSION_30)
+            {
+                GetStateVari(GL_UNIFORM_BUFFER_BINDING, uIndex, &uBufferBound);
+            }
             kCache.m_akUniformBuffersBound[uIndex] = uBufferBound == 0 ? CResourceName() : m_pDevice->GetBufferNamePool().Create(uBufferBound);
         }
 
@@ -1468,7 +1475,6 @@ namespace NCryOpenGL
             SetEnabledState(GL_SCISSOR_TEST, kState.m_bScissorEnabled);
         }
 
-        bool bDepthClamp(!kState.m_bDepthClipEnabled);
 #if !DXGLES
         if (CACHE_FIELD(kCache, kState, m_bMultisampleEnabled))
         {
@@ -1476,6 +1482,8 @@ namespace NCryOpenGL
         }
 #endif
 
+        bool bDepthClamp(!kState.m_bDepthClipEnabled);
+        AZ_Assert(!(bDepthClamp && !GetDevice()->IsFeatureSupported(eF_DepthClipping)), "DepthClipping is not supported on this device");
 #if DXGL_SUPPORT_DEPTH_CLAMP
         if (CACHE_FIELD(kCache, kState, m_bDepthClipEnabled))
         {
@@ -1984,14 +1992,9 @@ namespace NCryOpenGL
 
         //  Igor: discard the data of the old frame buffer if any.
         {
-            GLenum aeDrawBuffers[SFrameBufferConfiguration::MAX_COLOR_ATTACHMENTS];
-            GLuint uNumDrawBuffers = 0;
-
-            GLenum depthBuffer = GL_NONE;
-            GLenum stencilBuffer = GL_NONE;
-
-            uint32 uAttachment;
-            for (uAttachment = 0; uAttachment < SFrameBufferConfiguration::MAX_ATTACHMENTS; ++uAttachment)
+            AZStd::vector<GLenum> drawBuffers;
+            drawBuffers.reserve(SFrameBufferConfiguration::MAX_ATTACHMENTS);
+            for (uint32 uAttachment = 0; uAttachment < SFrameBufferConfiguration::MAX_ATTACHMENTS; ++uAttachment)
             {
                 SOutputMergerView* pAttachedView(m_spFrameBuffer->m_kConfiguration.m_akAttachments[uAttachment]);
                 if (pAttachedView != nullptr)
@@ -2007,8 +2010,7 @@ namespace NCryOpenGL
 
                         if (bOnBind ? tex->m_bColorLoadDontCare : tex->m_bColorStoreDontCareWhenUnbound)
                         {
-                            aeDrawBuffers[uNumDrawBuffers] = eAttachmentID;
-                            ++uNumDrawBuffers;
+                            drawBuffers.push_back(eAttachmentID);
                         }
                         else
                         {
@@ -2028,12 +2030,12 @@ namespace NCryOpenGL
 
                             if (bOnBind ? tex->m_bDepthLoadDontCare : tex->m_bDepthStoreDontCareWhenUnbound)
                             {
-                                depthBuffer = eAttachmentID;
+                                drawBuffers.push_back(eAttachmentID);
                             }
 
                             if (bOnBind ? tex->m_bStencilLoadDontCare : tex->m_bStencilStoreDontCareWhenUnbound)
                             {
-                                stencilBuffer = eAttachmentID;
+                                drawBuffers.push_back(eAttachmentID);
                             }
                         }
 
@@ -2049,24 +2051,66 @@ namespace NCryOpenGL
                 }
             }
 
-            if (gRenDev->GetFeatures() & RFT_HW_ARM_MALI) // Mali has driver issues with glInvalidateFramebuffer
+            if (drawBuffers.empty())
             {
                 return;
             }
 
-            if (uNumDrawBuffers)
+            if (bOnBind)
             {
-                glInvalidateFramebuffer(GL_FRAMEBUFFER, uNumDrawBuffers, aeDrawBuffers);
-            }
+                // In OpenGL(ES) there's no way to tell the driver that we don't want to restore the framebuffer attachments.
+                // Fortunately we can give the driver a hint by doing a clear operation.
+                // https://community.arm.com/graphics/b/blog/posts/mali-performance-2-how-to-correctly-handle-framebuffers
 
-            if (depthBuffer)
-            {
-                glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &depthBuffer);
-            }
+                if (gRenDev->GetFeatures() & RFT_HW_NVIDIA) // Immediate mode rendering doesn't benefit from clearing the buffer
+                {
+                    return;
+                }
 
-            if (stencilBuffer)
+                // Make sure that scissor test is disabled as glClearBufferfv is affected as well
+                if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)
+                {
+                    SetEnabledState(GL_SCISSOR_TEST, false);
+                }
+
+                for (const GLenum buffer : drawBuffers)
+                {
+                    if (buffer == GL_DEPTH_ATTACHMENT)
+                    {
+                        GLfloat depthValue = 0.f;
+                        glClearBufferfv(GL_DEPTH, 0, &depthValue);
+                    }
+                    else if (buffer == GL_STENCIL_ATTACHMENT)
+                    {
+                        GLint stencialValue = 0;
+                        glClearBufferiv(GL_STENCIL, 0, &stencialValue);
+                    }
+                    else if(buffer == GL_DEPTH_STENCIL_ATTACHMENT)
+                    {
+                        glClearBufferfi(GL_DEPTH_STENCIL, 0, 0.f, 0);
+                    }
+                    else
+                    {
+                        GLfloat colorValue[4] = { 0 };
+                        glClearBufferfv(GL_COLOR, buffer - GL_COLOR_ATTACHMENT0, colorValue);
+                    }
+                }
+
+                // Restore that scissor test switch as specified by the rasterizer state
+                if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)
+                {
+                    SetEnabledState(GL_SCISSOR_TEST, true);
+                }
+            }
+            else
             {
-                glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &stencilBuffer);
+                if (gRenDev->GetFeatures() & RFT_HW_ARM_MALI) // Mali has driver issues with glInvalidateFramebuffer
+                {
+                    return;
+                }
+
+                // Tell the driver that it doesn't need to resolve certain framebuffer attachments into memory.
+                glInvalidateFramebuffer(GL_FRAMEBUFFER, drawBuffers.size(), drawBuffers.data());
             }
         }
     }

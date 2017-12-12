@@ -317,6 +317,34 @@ namespace ResourceParsing
         }
     }
 
+    void RemoveResourceDependency(QJsonObject& resourcesObject, const QString& resourceName)
+    {
+        for (auto iter = resourcesObject.begin(); iter != resourcesObject.end(); ++iter)
+        {
+            QJsonValueRef resourceObjectRef = *iter;
+            if (resourceObjectRef.isObject())
+            {
+                QJsonObject resourceObject = resourceObjectRef.toObject();
+                if (resourceObject["Type"] == QJsonValue("Custom::LambdaConfiguration") && resourceObject.find("Properties") != resourceObject.end())
+                {
+                    QJsonObject propertiesObject = resourceObject["Properties"].toObject();
+                    if (propertiesObject.find("Settings") != propertiesObject.end())
+                    {
+                        QJsonObject settingsIterObject = propertiesObject["Settings"].toObject();
+                        QJsonObject::iterator dependencyIter = settingsIterObject.find(resourceName);
+                        if (dependencyIter != settingsIterObject.end())
+                        {
+                            settingsIterObject.erase(dependencyIter);
+                            propertiesObject["Settings"] = settingsIterObject;
+                            resourceObject["Properties"] = propertiesObject;
+                            resourceObjectRef = resourceObject;
+                        }
+                    } 
+                }
+            }
+        }
+    }
+
     QString DeleteResource(const QString& baseContent, const QString& resourceName)
     {
         QJsonDocument jsonDoc(QJsonDocument::fromJson(baseContent.toUtf8()));
@@ -352,6 +380,8 @@ namespace ResourceParsing
         }
 
         resourcesObject.erase(thisIter);
+
+        RemoveResourceDependency(resourcesObject, resourceName);
 
         RemoveResourceFromAccessControl(resourcesObject, resourceName);
 

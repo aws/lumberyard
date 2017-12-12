@@ -419,6 +419,729 @@ AZ::Intersect::IntersectRayAABB2(const Vector3& rayStart, const Vector3& dirRCP,
     return ISECT_RAY_AABB_ISECT;
 }
 
+// Reference: Real-Time Collision Detection - 5.3.7 Intersecting Ray or Segment Against Cylinder, and the book's errata.
+int AZ::Intersect::IntersectRayCappedCylinder(const Vector3& rayOrigin, const Vector3& rayDir,
+                                              const Vector3& cylinderEnd1, const Vector3& cylinderDir, float cylinderHeight, float cylinderRadius,
+                                              float &t1, float &t2)
+{
+    // dr = rayDir
+    // dc = cylinderDir
+    // r = cylinderRadius
+    // Vector3 cylinderEnd2 = cylinderEnd1 + cylinderHeight * cylinderDir;
+    Vector3 m = rayOrigin - cylinderEnd1; // vector from cylinderEnd1 to rayOrigin
+    float dcm = cylinderDir.Dot(m); // projection of m on cylinderDir
+    float dcdr = cylinderDir.Dot(rayDir); // projection of rayDir on cylinderDir
+    float drm = rayDir.Dot(m); // projection of m on rayDir
+    float r2 = cylinderRadius * cylinderRadius;
+
+    if (dcm < 0.0f && dcdr <= 0.0f)
+    {
+        return 0; // rayOrigin is outside cylinderEnd1 and rayDir is pointing away from cylinderEnd1
+    }
+    if (dcm > cylinderHeight && dcdr >= 0.0f)
+    {
+        return 0; // rayOrigin is outside cylinderEnd2 and rayDir is pointing away from cylinderEnd2
+    }
+
+    // point RP on the ray: RP(t) = rayOrigin + t * rayDir
+    // point CP on the cylinder surface: |(CP - cylinderEnd1) - cylinderDir.Dot(cp - cylinderEnd1) * cylinderDir|^2 = cylinderRadius^2
+    // substitute RP(t) for CP: a*t^2 + 2b*t + c = 0, solving for t = [-2b +/- sqrt(4b^2 - 4ac)] / 2a
+    float a = 1.0f - dcdr * dcdr; // always greater than or equal to 0
+    float b = drm - dcm * dcdr;
+    float c = m.Dot(m) - dcm * dcm - r2;
+
+    const float EPSILON = 0.00001f;
+
+    if (fabsf(a) < EPSILON) // the ray is parallel to the cylinder
+    {
+        if (c > EPSILON) // the ray is outside the cylinder
+        {
+            return 0;
+        }
+        else if (dcm < 0.0f) // the ray origin is on cylinderEnd1 side and ray is pointing to cylinderEnd2
+        {
+            t1 = -dcm;
+            t2 = -dcm + cylinderHeight;
+            return 2;
+        }
+        else if (dcm > cylinderHeight) // the ray origin is on cylinderEnd2 side and ray is pointing to cylinderEnd1
+        {
+            t1 = dcm - cylinderHeight;
+            t2 = dcm;
+            return 2;
+        }
+        else // (dcm > 0.0f && dcm < cylinderHeight) // the ray origin is inside the cylinder
+        {
+            if (dcdr > 0.0f) // the ray is pointing to cylinderEnd2
+            {
+                t1 = cylinderHeight - dcm;
+                return 1;
+            }
+            else if (dcdr < 0.0f) // the ray is pointing to cylinderEnd1
+            {
+                t2 = dcm;
+                return 1;
+            }
+            else // impossible in theory        
+            {
+                return 0;
+            }
+        }
+    }
+
+    float discr = b * b - a * c;
+    if (discr < 0.0f)
+    {
+        return 0;
+    }
+
+    float sqrt_discr = sqrt(discr);
+    float tt1 = (-b - sqrt_discr) / a;
+    float tt2 = (-b + sqrt_discr) / a;
+
+    if (tt2 < 0.0f) // both intersections are behind the ray origin
+    {
+        return 0;
+    }
+
+    // Vector3 AP2 = (rayOrigin + tt2 * rayDir) - cylinderEnd1; // vector from cylinderEnd1 to the intersecting point of parameter tt2
+    // float s2 = cylinderDir.Dot(AP2);
+    float s2 = dcm + tt2 * dcdr;
+
+    if (discr < EPSILON) // tt1 == tt2
+    {
+        if (s2 >= 0.0f && s2 <= cylinderHeight)
+        {
+            t1 = tt1;
+            return 1;
+        }
+    }
+
+    // Vector3 AP1 = (rayOrigin + tt1 * rayDir) - cylinderEnd1; // vector from cylinderEnd1 to the intersecting point of parameter tt1
+    // float s1 = cylinderDir.Dot(AP1);
+    float s1 = dcm + tt1 * dcdr;
+
+    if (s1 < 0.0f) // intersecting point of parameter tt1 is outside on cylinderEnd1 side
+    {
+        if (s2 < 0.0f) // intersecting point of parameter tt2 is outside on cylinderEnd1 side
+        {
+            return 0;
+        }
+        else if (s2 == 0.0f) // ray touching the brim of the cylinderEnd1
+        {
+            t1 = tt2;
+            return 1;
+        }
+        else
+        {
+            if (s2 > cylinderHeight) // intersecting point of parameter tt2 is outside on cylinderEnd2 side
+            {
+                // t2 can be computed from the equation: dot(rayOrigin + t2 * rayDir - cylinderEnd1, cylinderDir) = cylinderHeight
+                t2 = (cylinderHeight - dcm) / dcdr; 
+            }
+            else
+            {
+                t2 = tt2;
+            }
+            if (dcm > 0.0f) // ray origin inside cylinder
+            {
+                t1 = t2;
+                return 1;
+            }
+            else
+            {
+                // t1 can be computed from the equation: dot(rayOrigin + t1 * rayDir - cylinderEnd1, cylinderDir) = 0
+                t1 = -dcm / dcdr;
+                return 2;
+            }
+        }
+    }
+    else if (s1 > cylinderHeight) // intersecting point of parameter tt1 is outside on cylinderEnd2 side
+    {
+        if (s2 > cylinderHeight) // intersecting point of parameter tt2 is outside on cylinderEnd2 side
+        {
+            return 0;
+        }
+        else if (s2 == cylinderHeight)
+        {
+            t1 = tt2;
+            return 1;
+        }
+        else
+        {
+            if (s2 < 0.0f)
+            {
+                t2 = -dcm / dcdr;
+            }
+            else
+            {
+                t2 = tt2;
+            }
+            if (dcm < cylinderHeight)
+            {
+                t1 = t2;
+                return 1;
+            }
+            else
+            {
+                t1 = (cylinderHeight - dcm) / dcdr;
+                return 2;
+            }
+        }
+    }
+    else // intersecting point of parameter tt1 is in between two cylinder ends
+    {
+        if (s2 < 0.0f)
+        {
+            t2 = -dcm / dcdr;
+        }
+        else if (s2 > cylinderHeight)
+        {
+            t2 = (cylinderHeight - dcm) / dcdr;
+        }
+        else
+        {
+            t2 = tt2;
+        }
+        if (tt1 > 0.0f)
+        {
+            t1 = tt1;
+            return 2;
+        }
+        else
+        {
+            t1 = t2;
+            return 1;
+        }
+    }
+}
+
+int AZ::Intersect::IntersectRayCone(const Vector3& rayOrigin, const Vector3& rayDir,
+                                    const Vector3& coneApex, const Vector3& coneDir, float coneHeight, float coneBaseRaidus,
+                                    float& t1, float& t2)
+{
+    // Q = rayOrgin, A = coneApex
+    Vector3 AQ = rayOrigin - coneApex;
+    float m = coneDir.Dot(AQ); // projection of m on cylinderDir
+    float k = coneDir.Dot(rayDir); // projection of rayDir on cylinderDir
+    
+    if (m < 0.0f && k <= 0.0f)
+    {
+        // rayOrigin is outside the cone on coneApex side and rayDir is pointing away
+        return 0; 
+    }
+    if (m > coneHeight && k >= 0.0f)
+    {
+        // rayOrigin is outside the cone on coneBase side and rayDir is pointing away
+        return 0;
+    }
+
+    float r2 = coneBaseRaidus * coneBaseRaidus;
+    float h2 = coneHeight * coneHeight;
+
+    float m2 = m * m;
+    float k2 = k * k;
+    float q2 = AQ.Dot(AQ);
+    
+    float n = rayDir.Dot(AQ);
+
+    const float EPSILON = 0.00001f;
+
+    // point RP on the ray: RP(t) = rayOrigin + t * rayDir
+    // point CP on the cone surface: similar triangle property
+    //     |dot(CP - A, coneDir) * coneDir| / coneHeight = |(CP - A) - (dot(CP - A, coneDir) * coneDir)| coneRadius
+    // substitute RP(t) for CP: a*t^2 + 2b*t + c = 0, solving for t
+    float a = (r2 + h2) * k2 - h2;
+    float b = (r2 + h2) * m * k - h2 * n;
+    float c = (r2 + h2) * m2 - h2 * q2;
+
+    float discriminant = b * b - a * c;
+    if (discriminant < 0.0f)
+    {
+        return 0;
+    }
+
+    if (fabsf(a) < EPSILON) // the ray is parallel to the cone surface's tangent line
+    {
+        if (b < EPSILON && fabsf(c) < EPSILON) // ray overlapping with cone surface
+        { 
+            t1 = rayDir.Dot(coneApex - rayOrigin);
+        }
+        else // ray has only one intersecting point with the cone
+        {
+            t1 = -c / (2 * b);
+        }
+
+        t2 = (coneHeight - m) / k; // t2 can be computed from the equation: dot(Q + t2 * rayDir - A, coneDir) = coneHeight
+
+        if (t1 < 0.0f && t2 < 0.0f)
+        {
+            return 0;
+        }
+
+        if (fabsf(t1 - t2) < EPSILON) // the ray intersects the brim of the circumference of the cone base
+        {
+            return 1;
+        }
+
+        float s1 = m + t1 * k; // coneDir.Dot(rayOrigin + t1 * rayDir - coneApex);
+        if (s1 < 0.0f || s1 > coneHeight)
+        {
+            return 0;
+        }
+        else
+        {
+            if (k < 0.0f) // ray shooting from base to apex
+            {
+                if (m >= coneHeight) // ray origin outside cone
+                {
+                    float temp = t1;
+                    t1 = t2;
+                    t2 = temp;
+                    return 2;
+                }
+                else if (t1 >= 0.0f) // ray origin inside cone
+                {
+                    t1 = t2;
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                if (m > coneHeight)
+                {
+                    return 0;
+                }
+                if (t1 >= 0.0f) // ray origin outside cone
+                {
+                    return 2;
+                }
+                else
+                {
+                    t1 = t2;
+                    return 1;
+                }
+            }
+        }
+    }
+
+    if (discriminant < EPSILON) // two intersecting points coincide
+    {
+        if (fabsf(n * n - q2) < EPSILON) // the ray is through the apex
+        {
+            float cosineA2 = h2 / (r2 + h2);
+            float cosineAQ2 = cosineA2 * q2;
+
+            if (m2 > cosineAQ2) // the ray origin is inside the cone or its mirroring counterpart
+            {
+                if (m <= 0.0f) // the ray origin outside the cone on the apex side, shooting towards the base
+                {
+                    t1 = -b / a;
+                    t2 = (coneHeight - m) / k;
+                    return 2;
+                }
+                else if (m >= coneHeight) // the ray origin is outside the cone on the base side, shooting towards towards the apex
+                {
+                    t1 = (coneHeight - m) / k;
+                    t2 = -b / a;
+                    return 2;
+                }
+                else
+                {
+                    if (k > 0.0f) // the ray origin is inside the cone, shooting towards the base
+                    {
+                        t1 = (coneHeight - m) / k;
+                        return 1;
+                    }
+                    else // the ray origin is inside the cone, shooting towards the apex
+                    {
+                        t1 = -b / a;
+                        return 1;
+                    }
+                }
+            }
+            else // the ray origin is outside the cone
+            {
+                t1 = -b / a;
+                if (t1 > 0.0f)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
+        else // the ray is touching the cone surface but not through the apex
+        {
+            t1 = -b / a;
+            if (t1 > 0.0f)
+            {
+                float s1 = m + t1 * k; // projection length of the line segment from the apex to intersection_t1 onto the coneDir
+                if (s1 >= 0.0f && s1 <= coneHeight)
+                {
+                    return 1;
+                }
+            }
+            return 0;
+        }
+    }
+    
+    float sqrtDiscr = sqrt(discriminant);
+    float tt1 = (-b - sqrtDiscr) / a;
+    float tt2 = (-b + sqrtDiscr) / a;
+
+    /* Test s1 and s2 to see the positions of the intersecting points relative to the cylinder's two ends. */
+
+    // s1 = coneDir.Dot(rayOrigin + tt1 * rayDir - coneApex), which expands into the following
+    float s1 = m + tt1 * k; 
+    // s2 = coneDir.Dot(rayOrigin + tt2 * rayDir - coneApex), which expands into the following
+    float s2 = m + tt2 * k; 
+
+    if (s1 < 0.0f)
+    {
+        if (s2 < 0.0f || s2 > coneHeight)
+        {
+            return 0;
+        }
+        else
+        {
+            if (tt2 >= 0.0f) // ray origin outside cone
+            {
+                t1 = tt2;
+                t2 = (coneHeight - m) / k;
+                return 2;
+            }
+            else if (m > coneHeight) // ray origin outside cone on the base side, the 
+            {
+                return 0;
+            }
+            else
+            {
+                t1 = (coneHeight - m) / k;
+                return 1;
+            }
+        }
+    }
+    else if (s1 > coneHeight)
+    {
+        if (s2 < 0.0f || s2 > coneHeight )
+        {
+            return 0;
+        }
+        else
+        {
+            if (tt2 < 0.0f)
+            {
+                return 0;
+            }
+            else if (m >= coneHeight)
+            {
+                t1 = (coneHeight - m) / k;
+                t2 = tt2;
+                return 2;
+            }
+            else // ray origin inside cone
+            {
+                t1 = tt2;
+                return 1;
+            }
+        }
+    }
+    else
+    {
+        if (s2 < 0.0f)
+        {
+            if (m >= coneHeight)
+            {
+                t1 = (coneHeight - m) / k;
+                t2 = tt1;
+                return 2;
+            }
+            else if (tt1 >= 0.0f) // ray origin inside cone
+            {
+                t1 = tt1;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (s2 > coneHeight)
+        {
+            if (tt1 >= 0.0f)
+            {
+                t1 = tt1;
+                t2 = (coneHeight - m) / k;
+                return 2;
+            }
+            else if (m <= coneHeight)
+            {
+                t1 = (coneHeight - m) / k;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            if (tt1 >= 0.0f)
+            {
+                t1 = tt1;
+                t2 = tt2;
+                return 2;
+            }
+            else if (tt2 >= 0.0f)
+            {
+                t1 = tt2;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+}
+
+int AZ::Intersect::IntersectRayPlane(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& planePos, const Vector3& planeNormal, float& t)
+{
+    // (rayOrigin + t * rayDir - planePos).dot(planeNormal) = 0
+
+    const float EPSILON = 0.00001f;
+
+    float n = rayDir.Dot(planeNormal);
+    if (fabsf(n) < EPSILON)
+    {
+        return 0;
+    }
+
+    t = planeNormal.Dot(planePos - rayOrigin) / n;
+    if (t < 0.0f)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+int AZ::Intersect::IntersectRayQuad(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& vertexA,
+    const Vector3& vertexB, const Vector3& vertexC, const Vector3& vertexD, float& t)
+{
+    const float EPSILON = 0.0001f;
+
+    Vector3 AC = vertexC - vertexA;
+    Vector3 AB = vertexB - vertexA;
+    Vector3 QA = vertexA - rayOrigin;
+
+    float da = rayDir.Dot(QA);
+    if (da < 0.0f)
+    {
+        return 0;
+    }
+
+    Vector3 triN = AB.Cross(AC); // the normal of the triangle ABC
+    float dn = rayDir.Dot(triN);
+    Vector3 E = rayDir.Cross(QA);
+    float dnAbs = 0.0f;
+
+    if (dn < -EPSILON) // vertices have counter-clock wise winding when looking at the quad from rayOrigin
+    {
+        dnAbs = -dn;
+    }
+    else if (dn > EPSILON)
+    {
+        E = -E;
+        dnAbs = dn;
+    }
+    else // the ray is parallel to the quad plane
+    {
+        return 0;
+    }
+
+    /* compute barycentric coordinates */
+
+    float v = E.Dot(AC);
+
+    if (v >= 0.0f && v < dnAbs)
+    {
+        float w = -E.Dot(AB);
+        if (w < 0.0f || v + w > dnAbs)
+        {
+            return 0;
+        }
+    }
+    else if (v < 0.0f && v > -dnAbs)
+    {
+        Vector3 DA = vertexA - vertexD;
+        float w = E.Dot(DA);
+        if (w > 0.0f || v + w < -dnAbs) // v, w are negative
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+
+    t = triN.Dot(QA) / dn;
+    return 1;
+}
+
+// reference: Real-Time Collision Detection, 5.3.3 Intersecting Ray or Segment Against Box
+int AZ::Intersect::IntersectRayBox(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& boxCenter, const Vector3& boxAxis1,
+    const Vector3& boxAxis2, const Vector3& boxAxis3, float boxHalfExtent1, float boxHalfExtent2, float boxHalfExtent3, float& t)
+{
+    const float EPSILON = 0.00001f;
+
+    float tmin = 0.0f; // the nearest to the ray origin
+    float tmax = AZ::g_fltMax; // the farthest from the ray origin
+
+    Vector3 P = boxCenter - rayOrigin; // precomputed variable for calculating the vector from rayOrigin to a point on each box facet
+    Vector3 QAp; // vector from rayOrigin to the center of the facet of boxAxis
+    Vector3 QAn; // vector from rayOrigin to the center of the facet of -boxAxis
+    float tp = 0.0f;
+    float tn = 0.0f;
+    bool isRayOriginInsideBox = true;
+    
+    /* Test the slab_1 formed by the planes with normals boxAxis1 and -boxAxis1. */
+
+    Vector3 axis1 = boxHalfExtent1 * boxAxis1;
+
+    QAp = P + axis1;
+    tp = QAp.Dot(boxAxis1);
+
+    QAn = P - axis1;
+    tn = -QAn.Dot(boxAxis1);
+
+    float n = rayDir.Dot(boxAxis1);
+    if (fabsf(n) < EPSILON)
+    {
+        // If the ray is parallel to the slab and the ray origin is outside, return no intersection.
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            isRayOriginInsideBox = false;
+        }
+
+        float div = 1.0f / n;
+        float t1 = tp * div;
+        float t2 = tn * (-div);
+        if (t1 > t2)
+        {
+            AZStd::swap(t1, t2);
+        }
+        tmin = AZ::GetMax(tmin, t1);
+        tmax = AZ::GetMin(tmax, t2);
+        if (tmin > tmax)
+        {
+            return 0;
+        }
+    }
+
+    /* test the slab_2 formed by plane with normals boxAxis2 and -boxAxis2 */
+
+    Vector3 axis2 = boxHalfExtent2 * boxAxis2;
+
+    QAp = P + axis2;
+    tp = QAp.Dot(boxAxis2);
+
+    QAn = P - axis2;
+    tn = -QAn.Dot(boxAxis2);
+
+    n = rayDir.Dot(boxAxis2);
+    if (fabsf(n) < EPSILON)
+    {
+        // If the ray is parallel to the slab and the ray origin is outside, return no intersection.
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            isRayOriginInsideBox = false;
+        }
+
+        float div = 1.0f / n;
+        float t1 = tp * div;
+        float t2 = tn * (-div);
+        if (t1 > t2)
+        {
+            AZStd::swap(t1, t2);
+        }
+        tmin = AZ::GetMax(tmin, t1);
+        tmax = AZ::GetMin(tmax, t2);
+        if (tmin > tmax)
+        {
+            return 0;
+        }
+    }
+
+    /* test the slab_3 formed by plane with normals boxAxis3 and -boxAxis3 */
+
+    Vector3 axis3 = boxHalfExtent3 * boxAxis3;
+
+    QAp = P + axis3;
+    tp = QAp.Dot(boxAxis3);
+
+    QAn = P - axis3;
+    tn = -QAn.Dot(boxAxis3);
+
+    n = rayDir.Dot(boxAxis3);
+    if (fabsf(n) < EPSILON)
+    {
+        // If the ray is parallel to the slab and the ray origin is outside, return no intersection.
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if (tp < 0.0f || tn < 0.0f)
+        {
+            isRayOriginInsideBox = false;
+        }
+
+        float div = 1.0f / n;
+        float t1 = tp * div;
+        float t2 = tn * (-div);
+        if (t1 > t2)
+        {
+            AZStd::swap(t1, t2);
+        }
+        tmin = AZ::GetMax(tmin, t1);
+        tmax = AZ::GetMin(tmax, t2);
+        if (tmin > tmax)
+        {
+            return 0;
+        }
+    }
+
+    t = (isRayOriginInsideBox ? tmax : tmin);
+    return 1;
+}
+
 //=========================================================================
 // IntersectSegmentCylinder
 // [10/21/2009]
@@ -696,80 +1419,114 @@ AZ::Intersect::IntersectSegmentPolyhedron(const Vector3& sa, const Vector3& sBA,
 // [10/21/2009]
 //=========================================================================
 void
-AZ::Intersect::ClosestSegmentSegment(const Vector3& s1, const Vector3& s2, const Vector3& s3, const Vector3& s4, Vector3& v1, Vector3& v2)
+AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End,
+                                     const Vector3& segment2Start, const Vector3& segment2End,
+                                     VectorFloat& segment1Proportion, VectorFloat& segment2Proportion, 
+                                     Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+                                     VectorFloat epsilon /*= VectorFloat(1e-4f)*/)
 {
-    VectorFloat ua, ub;
-
-    Vector3 v21 = s2 - s1; // Direction vector of segment S1
-    Vector3 v43 = s4 - s3; // Direction vector of segment S2
-    Vector3 r = s1 - s3;
-    VectorFloat a = v21.Dot(v21); // Squared length of segment S1, always nonnegative
-    VectorFloat e = v43.Dot(v43); // Squared length of segment S2, always nonnegative
-    VectorFloat f = v43.Dot(r);
-
     VectorFloat zero = VectorFloat::CreateZero();
     VectorFloat one = VectorFloat::CreateOne();
+    
+    Vector3 segment1 = segment1End - segment1Start;
+    Vector3 segment2 = segment2End - segment2Start;
+    Vector3 segmentStartsVector = segment1Start - segment2Start;
+    VectorFloat segment1LengthSquared = segment1.Dot(segment1);
+    VectorFloat segment2LengthSquared = segment2.Dot(segment2);
 
-    AZ_Assert(a >= VectorFloat(1e-5f) && (float)e >= 1e-5f, "We agreed that we should NOT pass invalid segments");
-
-    // Check if either or both segments degenerate into points
-    //if (a <= EPSILON && e <= EPSILON) {
-    //  // Both segments degenerate into points
-    //  s = t = 0.0f;
-    //  c1 = p1;
-    //  c2 = p2;
-    //  return Dot(c1 - c2, c1 - c2);
-    //}
-
-    //if (a <= EPSILON) {
-    //  // First segment degenerates into a point
-    //  s = 0.0f;
-    //  t = f / e; // s = 0 => t = (b*s + f) / e = f / e
-    //  t = Clamp(t, 0.0f, 1.0f);
-    //} else {
-    VectorFloat c = v21.Dot(r);
-    //  if (e <= EPSILON) {
-    //      // Second segment degenerates into a point
-    //      t = 0.0f;
-    //      s = Clamp(-c / a, 0.0f, 1.0f); // t = 0 => s = (b*t - c) / a = -c / a
-    //  } else {
-    // The general non-degenerate case starts here
-    VectorFloat b = v21.Dot(v43);
-    VectorFloat denom = a * e - b * b; // Always nonnegative
-
-    // If segments not parallel, compute closest point on L1 to L2, and
-    // clamp to segment S1. Else pick arbitrary ua (here 0)
-    if (denom != zero)
+    // Check if both segments degenerate into points
+    if (segment1LengthSquared.IsLessEqualThan(epsilon) && segment2LengthSquared.IsLessEqualThan(epsilon))
     {
-        ua = ((b * f - c * e) / denom).GetClamp(zero, one);
+        segment1Proportion = zero;
+        segment2Proportion = zero;
+        closestPointSegment1 = segment1Start;
+        closestPointSegment2 = segment2Start;
+        return;
+    }
+
+    VectorFloat projSegment2SegmentStarts = segment2.Dot(segmentStartsVector);
+
+    // Check if segment 1 degenerates into a point
+    if (segment1LengthSquared.IsLessEqualThan(epsilon))
+    {
+        segment1Proportion = zero;
+        segment2Proportion = (projSegment2SegmentStarts / segment2LengthSquared).GetClamp(zero, one);
     }
     else
     {
-        ua = zero;
+        VectorFloat projSegment1SegmentStarts = segment1.Dot(segmentStartsVector);
+        // Check if segment 2 degenerates into a point
+        if (segment2LengthSquared.IsLessEqualThan(epsilon))
+        {
+            segment1Proportion = (-projSegment1SegmentStarts / segment1LengthSquared).GetClamp(zero, one);
+            segment2Proportion = zero;
+        }
+        else
+        {
+            // The general non-degenerate case starts here
+            VectorFloat projSegment1Segment2 = segment1.Dot(segment2);
+            VectorFloat denom = segment1LengthSquared * segment2LengthSquared - projSegment1Segment2 * projSegment1Segment2; // Always nonnegative
+
+            // If segments not parallel, compute closest point on segment1 to segment2, and
+            // clamp to segment1. Else pick arbitrary segment1Proportion (here 0)
+            if (denom != zero)
+            {
+                segment1Proportion = ((projSegment1Segment2 * projSegment2SegmentStarts - projSegment1SegmentStarts * segment2LengthSquared) / denom).GetClamp(zero, one);
+            }
+            else
+            {
+                segment1Proportion = zero;
+            }
+
+            // Compute point on segment2 closest to segment1 using
+            segment2Proportion = (projSegment1Segment2 * segment1Proportion + projSegment2SegmentStarts) / segment2LengthSquared;
+
+            // If segment2Proportion in [0,1] done. Else clamp segment2Proportion, recompute segment1Proportion for the new value of segment2Proportion
+            // and clamp segment1Proportion to [0, 1]
+            if (segment2Proportion.IsLessThan(zero))
+            {
+                segment2Proportion = zero;
+                segment1Proportion = (-projSegment1SegmentStarts / segment1LengthSquared).GetClamp(zero, one);
+            }
+            else if (segment2Proportion.IsGreaterThan(one))
+            {
+                segment2Proportion = one;
+                segment1Proportion = ((projSegment1Segment2 - projSegment1SegmentStarts) / segment1LengthSquared).GetClamp(zero, one);
+            }
+        }
     }
 
-    // Compute point on L2 closest to S1(s) using
-    // ub = Dot((s1+v21*ua)-s3,s43) / Dot(v43,v43) = (b*ua + f) / e
-    ub = (b * ua + f) / e;
+    closestPointSegment1 = segment1Start + segment1 * segment1Proportion;
+    closestPointSegment2 = segment2Start + segment2 * segment2Proportion;
+}
 
-    // If ub in [0,1] done. Else clamp ub, recompute ua for the new value
-    // of ub using ua = Dot((s3+v43*ub)-s1,v21) / Dot(v21,v31)= (ub*b - c) / a
-    // and clamp ua to [0, 1]
-    if (ub.IsLessThan(zero))
+void AZ::Intersect::ClosestPointSegment(const Vector3& point, const Vector3& segmentStart, const Vector3& segmentEnd, VectorFloat& proportion, Vector3& closestPointOnSegment)
+{
+    Vector3 segment = segmentEnd - segmentStart;
+    // Project point onto segment, but deferring divide by segment.Dot(segment)
+    proportion = (point - segmentStart).Dot(segment);
+    if (proportion <= 0.0f)
     {
-        ub = zero;
-        ua = (-c / a).GetClamp(zero, one);
+        // Point projects outside the [segmentStart, segmentEnd] interval, on the segmentStart side, clamp to segmentStart
+        proportion = VectorFloat(0.0f);
+        closestPointOnSegment = segmentStart;
     }
-    else if (ub.IsGreaterThan(one))
+    else
     {
-        ub = one;
-        ua = ((b - c) / a).GetClamp(zero, one);
+        float segmentLengthSquared = segment.Dot(segment);
+        if (proportion >= segmentLengthSquared)
+        {
+            // Point projects outside the [segmentStart, segmentEnd] interval, on the segmentEnd side, clamp to segmentEnd
+            proportion = 1.0f;
+            closestPointOnSegment = segmentEnd;
+        }
+        else
+        {
+            // Point projects inside the [segmentStart, segmentEnd] interval, must do deferred divide now
+            proportion = proportion / segmentLengthSquared;
+            closestPointOnSegment = segmentStart + (proportion * segment);
+        }
     }
-    //      }
-    //  }
-
-    v1 = s1 + v21 * ua;
-    v2 = s3 + v43 * ub;
 }
 
 #if 0

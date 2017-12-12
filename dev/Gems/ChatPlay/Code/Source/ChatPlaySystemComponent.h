@@ -23,9 +23,9 @@
 #include "ChatPlay/ChatPlayCVars.h"
 #include "Broadcast/BroadcastAPI.h"
 
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
 #include "JoinIn/JoinInCVars.h"
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
 
 namespace ChatPlay
 {

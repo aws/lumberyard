@@ -17,3 +17,4 @@ PROJECT_DEPLOYMENT_TEMPLATE_FILENAME = "deployment-template.json"
 ## Gem
 GEM_RESOURCE_GROUP_TEMPLATE_FILENAME = "resource-template.json"
 AUTH_SETTINGS_FILENAME = "auth-settings.json"
+

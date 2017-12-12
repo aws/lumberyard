@@ -83,8 +83,6 @@ void CObjectCloneTool::CloneSelection()
     // This is the legacy case. We're not cloning AZ entities, so abandon the AZ undo batch.
     EndUndoBatch();
 
-    EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntitiesCloned);
-
     CSelectionGroup selObjects;
     CSelectionGroup sel;
 

@@ -27,26 +27,39 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <LyMetricsProducer/LyMetricsAPI.h>
 #include <QMap>
 
 using namespace AZ;
+using namespace AzToolsFramework;
 
-static const char* g_menuSwitchSettingName = "MainMenuMode";
 static const char* g_LUAEditorName = "Lua Editor";
 
 static const char* g_netPromoterScore = "NetPromoterScore";
 static const char* g_shortTimeInterval = "debug";
+
+static const char* g_assetImporterMetricsIdentifier = "AssetImporter";
 
 static bool CompareLayoutNames(const QString& name1, const QString& name2)
 {
     return name1.compare(name2, Qt::CaseInsensitive) > 0;
 }
 
+static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
+{
+    QAction* action = menu->addAction(QObject::tr(name));
+    QObject::connect(action, &QAction::triggered, [name]() {
+        QtViewPaneManager::instance()->OpenPane(name);
+    });
+}
+
 LevelEditorMenuHandler::LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings)
-: m_mainWindow(mainWindow)
+    : QObject(mainWindow)
+    , m_mainWindow(mainWindow)
     , m_viewPaneManager(viewPaneManager)
     , m_actionManager(mainWindow->GetActionManager())
     , m_settings(settings)
+    , m_enableLegacyCryEntities(false)
 {
 #if defined(AZ_PLATFORM_APPLE_OSX)
     // Hide the non-native toolbar, then setNativeMenuBar to ensure it is always visible on macOS.
@@ -55,8 +68,14 @@ LevelEditorMenuHandler::LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPan
 #endif
 }
 
+LevelEditorMenuHandler::~LevelEditorMenuHandler()
+{
+}
+
 void LevelEditorMenuHandler::Initialize()
 {
+    m_enableLegacyCryEntities = GetIEditor()->IsLegacyUIEnabled();
+
     // make sure we can fix the view menus
     connect(m_viewPaneManager, &QtViewPaneManager::registeredPanesChanged, this, &LevelEditorMenuHandler::ResetToolsMenus);
 
@@ -70,27 +89,13 @@ void LevelEditorMenuHandler::Initialize()
 
     // have to do this after creating the AWS Menu for the first time
     ResetToolsMenus();
-}
 
-void LevelEditorMenuHandler::ShowMenus()
-{
-    ShowMenus(true);
-}
-
-void LevelEditorMenuHandler::ShowMenus(bool updateRegistryKey)
-{
+    // Add our menus to the main window menu bar
     QMenuBar* menuBar = m_mainWindow->menuBar();
-
     menuBar->clear();
-
     for (QMenu* menu : m_topLevelMenus)
     {
         menuBar->addMenu(menu);
-    }
-
-    if (updateRegistryKey)
-    {
-        m_mainWindow->m_settings.setValue(GetSwitchMenuSettingName(), 1);
     }
 }
 
@@ -108,11 +113,6 @@ bool LevelEditorMenuHandler::MRUEntryIsValid(const QString& entry, const QString
     }
 
     return info.absolutePath().startsWith(gameFolderPath);
-}
-
-const char* LevelEditorMenuHandler::GetSwitchMenuSettingName()
-{
-    return g_menuSwitchSettingName;
 }
 
 void LevelEditorMenuHandler::IncrementViewPaneVersion()
@@ -137,12 +137,18 @@ void LevelEditorMenuHandler::UpdateViewLayoutsMenu(ActionManager::MenuWrapper& l
     layoutsMenu->clear();
     const int MAX_LAYOUTS = ID_VIEW_LAYOUT_LAST - ID_VIEW_LAYOUT_FIRST;
 
-    QAction* componentLayoutAction = layoutsMenu->addAction(tr("Component Entity Layout"));
+    // Component entity layout is just the default if we are in Cry-Free mode
+    QString componentLayoutLabel = m_enableLegacyCryEntities ? tr("Component Entity Layout") : tr("Default Layout");
+    QAction* componentLayoutAction = layoutsMenu->addAction(componentLayoutLabel);
     connect(componentLayoutAction, &QAction::triggered, this, &LevelEditorMenuHandler::LoadComponentLayout);
 
-    // Load Legacy Layout
-    QAction* legacyLayoutAction = layoutsMenu->addAction(tr("Legacy Layout"));
-    connect(legacyLayoutAction, &QAction::triggered, this, &LevelEditorMenuHandler::LoadLegacyLayout);
+    // Only show legacy layout if we're in legacy mode
+    if (m_enableLegacyCryEntities)
+    {
+        // Load Legacy Layout
+        QAction* legacyLayoutAction = layoutsMenu->addAction(tr("Legacy Layout"));
+        connect(legacyLayoutAction, &QAction::triggered, this, &LevelEditorMenuHandler::LoadLegacyLayout);
+    }
 
     layoutsMenu.AddSeparator();
 
@@ -209,7 +215,7 @@ void LevelEditorMenuHandler::ResetToolsMenus()
 
     // set up the cloud canvas menu, which is slightly different than the other menus because it
     // goes somewhere else
-    CopyActionWithoutIcon(m_cloudMenu, ID_AWS_ACTIVE_DEPLOYMENT, "Select a Deployment", false);
+    m_cloudMenu.AddAction(ID_AWS_ACTIVE_DEPLOYMENT);
     CreateMenuOptions(&menuMap, m_cloudMenu, LyViewPane::CategoryCloudCanvas);
 
     // Optional Sub Menus
@@ -243,6 +249,10 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
 
     OnUpdateOpenRecent();
 
+    // Import...
+    auto assetImporterMenu = fileMenu.Get()->addAction(tr("Import..."));
+    connect(assetImporterMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateAssetImporter);
+    EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::RegisterAction, assetImporterMenu, g_assetImporterMetricsIdentifier);
 
     fileMenu.AddSeparator();
 
@@ -250,23 +260,24 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     fileMenu.AddAction(ID_FILE_SAVE_LEVEL);
 
     // Save As...
-    CopyActionWithoutIcon(fileMenu, ID_FILE_SAVE_AS, "Save as...");
+    fileMenu.AddAction(ID_FILE_SAVE_AS);
 
     // Save Level Resources...
-    fileMenu.AddAction(ID_FILE_SAVELEVELRESOURCES);
+    if (m_enableLegacyCryEntities)
+    {
+        fileMenu.AddAction(ID_FILE_SAVELEVELRESOURCES);
+    }
 
     // Save Level Statistics
     fileMenu.AddAction(ID_TOOLS_LOGMEMORYUSAGE);
 
     // Save Modified External Layers
-    fileMenu.AddAction(ID_PANEL_LAYERS_SAVE_EXTERNAL_LAYERS);
+    if (m_enableLegacyCryEntities)
+    {
+        fileMenu.AddAction(ID_PANEL_LAYERS_SAVE_EXTERNAL_LAYERS);
+    }
 
     fileMenu.AddSeparator();
-
-    // NEWMENUS: NEEDS IMPLEMENTATION
-    //m_mostRecentProjectsMenu = fileMenu.AddMenu(tr("Recent Projects"));
-    //connect(m_mostRecentProjectsMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::UpdateMRUProjects);
-    //fileMenu.AddSeparator();
 
     // Project Settings
     auto projectSettingMenu = fileMenu.AddMenu(tr("Project Settings"));
@@ -278,9 +289,15 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     auto configureGemSubMenu = projectSettingMenu.Get()->addAction(tr("Configure Gems"));
     connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
 
-    // Input Mapping
-    auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
-    connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+    if (m_enableLegacyCryEntities)
+    {
+        // Input Mapping
+        auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
+        connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+    }
+
+    // Deployment Tool
+    AddOpenViewPaneAction(projectSettingMenu, LyViewPane::DeploymentTool);
 
     fileMenu.AddSeparator();
 
@@ -294,12 +311,9 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     // Show Log File
     fileMenu.AddAction(ID_FILE_EDITLOGFILE);
 
-    // Quit - Mac for quit, Window for exit
-#if defined(AZ_PLATFORM_WINDOWS)
+    fileMenu.AddAction(ID_CONVERT_LEGACY_ENTITIES);
+
     fileMenu.AddAction(ID_APP_EXIT);
-#elif defined(AZ_PLATFORM_APPLE)
-    QAction* quitAction = CopyActionWithoutIcon(fileMenu, ID_APP_EXIT, "&Quit", false);
-#endif
 
     return fileMenu;
 }
@@ -309,10 +323,10 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     auto editMenu = m_actionManager->AddMenu(tr("&Edit"));
 
     // Undo
-    CopyActionWithoutIcon(editMenu, ID_UNDO, "Undo");
+    editMenu.AddAction(ID_UNDO);
 
     // Redo
-    CopyActionWithoutIcon(editMenu, ID_REDO, "Redo");
+    editMenu.AddAction(ID_REDO);
 
     editMenu.AddSeparator();
 
@@ -332,31 +346,34 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddSeparator();
 
     // Select All
-    CopyActionWithoutIcon(editMenu, ID_EDIT_SELECTALL, "Select &All");
+    editMenu.AddAction(ID_EDIT_SELECTALL);
 
     // Deselect All
-    CopyActionWithoutIcon(editMenu, ID_EDIT_SELECTNONE, "Deselect All");
+    editMenu.AddAction(ID_EDIT_SELECTNONE);
 
     // Next Selection Mask
-    editMenu.AddAction(ID_EDIT_NEXTSELECTIONMASK);
+    if (m_enableLegacyCryEntities)
+    {
+        editMenu.AddAction(ID_EDIT_NEXTSELECTIONMASK);
+    }
 
     // Invert Selection
-    CopyActionWithoutIcon(editMenu, ID_EDIT_INVERTSELECTION, "Invert Selection");
+    editMenu.AddAction(ID_EDIT_INVERTSELECTION);
 
     editMenu.AddSeparator();
 
     // Hide Selection
-    CopyActionWithoutIcon(editMenu, ID_EDIT_HIDE, "Hide Selection");
+    editMenu.AddAction(ID_EDIT_HIDE);
 
     // Show Selection
     auto showSelectionMenu = editMenu.Get()->addAction(tr("Show Selection"));
     connect(showSelectionMenu, &QAction::triggered, [this]() {ToggleSelection(false); });
 
     // Show Last Hidden
-    CopyActionWithoutIcon(editMenu, ID_EDIT_SHOW_LAST_HIDDEN, "Show Last Hidden");
+    editMenu.AddAction(ID_EDIT_SHOW_LAST_HIDDEN);
 
     // Unhide All
-    CopyActionWithoutIcon(editMenu, ID_EDIT_UNHIDEALL, "Unhide All");
+    editMenu.AddAction(ID_EDIT_UNHIDEALL);
 
     /*
      * The following block of code is part of the feature "Isolation Mode" and is temporarily 
@@ -395,33 +412,36 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddSeparator();
 
     // Group Sub Menu
-    auto groupSubMenu = editMenu.AddMenu(tr("Group"));
+    if (m_enableLegacyCryEntities)
+    {
+        auto groupSubMenu = editMenu.AddMenu(tr("Group"));
 
-    // Group
-    groupSubMenu.AddAction(ID_GROUP_MAKE);
+        // Group
+        groupSubMenu.AddAction(ID_GROUP_MAKE);
 
-    // Ungroup
-    groupSubMenu.AddAction(ID_GROUP_UNGROUP);
+        // Ungroup
+        groupSubMenu.AddAction(ID_GROUP_UNGROUP);
 
-    // Open Group
-    groupSubMenu.AddAction(ID_GROUP_OPEN);
+        // Open Group
+        groupSubMenu.AddAction(ID_GROUP_OPEN);
 
-    // Close Group
-    groupSubMenu.AddAction(ID_GROUP_CLOSE);
+        // Close Group
+        groupSubMenu.AddAction(ID_GROUP_CLOSE);
 
-    // Attach to Group
-    groupSubMenu.AddAction(ID_GROUP_ATTACH);
+        // Attach to Group
+        groupSubMenu.AddAction(ID_GROUP_ATTACH);
 
-    // Detach from Group
-    groupSubMenu.AddAction(ID_GROUP_DETACH);
+        // Detach from Group
+        groupSubMenu.AddAction(ID_GROUP_DETACH);
 
-    groupSubMenu.AddSeparator();
+        groupSubMenu.AddSeparator();
 
-    // Hold
-    groupSubMenu.AddAction(ID_EDIT_HOLD);
+        // Hold
+        groupSubMenu.AddAction(ID_EDIT_HOLD);
 
-    // Fetch
-    groupSubMenu.AddAction(ID_EDIT_FETCH);
+        // Fetch
+        groupSubMenu.AddAction(ID_EDIT_FETCH);
+    }
 
     // Modify Menu
     auto modifyMenu = editMenu.AddMenu(tr("&Modify"));
@@ -445,6 +465,12 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     snapMenu.AddAction(ID_SNAP_TO_GRID);
     snapMenu.AddAction(ID_SNAPANGLE);
 
+    auto fastRotateMenu = modifyMenu.AddMenu(tr("Fast Rotate"));
+    fastRotateMenu.AddAction(ID_ROTATESELECTION_XAXIS);
+    fastRotateMenu.AddAction(ID_ROTATESELECTION_YAXIS);
+    fastRotateMenu.AddAction(ID_ROTATESELECTION_ZAXIS);
+    fastRotateMenu.AddAction(ID_ROTATESELECTION_ROTATEANGLE);
+
     auto transformModeMenu = modifyMenu.AddMenu(tr("Transform Mode"));
     transformModeMenu.AddAction(ID_EDITMODE_SELECT);
     transformModeMenu.AddAction(ID_EDITMODE_MOVE);
@@ -452,38 +478,35 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     transformModeMenu.AddAction(ID_EDITMODE_SCALE);
     transformModeMenu.AddAction(ID_EDITMODE_SELECTAREA);
 
-    auto convertToMenu = modifyMenu.AddMenu(tr("Convert to"));
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TOBRUSHES);
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TOSIMPLEENTITY);
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TODESIGNEROBJECT);
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TOSTATICENTITY);
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TOGAMEVOLUME);
-    convertToMenu.AddAction(ID_CONVERTSELECTION_TOCOMPONENTENTITY);
+    if (m_enableLegacyCryEntities)
+    {
+        auto convertToMenu = modifyMenu.AddMenu(tr("Convert to"));
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TOBRUSHES);
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TOSIMPLEENTITY);
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TODESIGNEROBJECT);
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TOSTATICENTITY);
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TOGAMEVOLUME);
+        convertToMenu.AddAction(ID_CONVERTSELECTION_TOCOMPONENTENTITY);
 
-    auto fastRotateMenu = modifyMenu.AddMenu(tr("Fast Rotate"));
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_XAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_YAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_ZAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_ROTATEANGLE);
+        auto subObjectModeMenu = modifyMenu.AddMenu(tr("Sub Object Mode"));
+        subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_EDGE);
+        subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_FACE);
+        subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_PIVOT);
+        subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_VERTEX);
 
-    auto subObjectModeMenu = modifyMenu.AddMenu(tr("Sub Object Mode"));
-    subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_EDGE);
-    subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_FACE);
-    subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_PIVOT);
-    subObjectModeMenu.AddAction(ID_SUBOBJECTMODE_VERTEX);
+        modifyMenu.AddSeparator();
 
-    modifyMenu.AddSeparator();
+        modifyMenu.AddAction(ID_SELECTION_SAVE);
+        modifyMenu.AddAction(ID_SELECTION_LOAD);
+        modifyMenu.AddSeparator();
 
-    modifyMenu.AddAction(ID_SELECTION_SAVE);
-    modifyMenu.AddAction(ID_SELECTION_LOAD);
-    modifyMenu.AddSeparator();
-
-    modifyMenu.AddAction(ID_TOOLS_UPDATEPROCEDURALVEGETATION);
+        modifyMenu.AddAction(ID_TOOLS_UPDATEPROCEDURALVEGETATION);
+    }
 
     editMenu.AddSeparator();
 
     // Lock Selection
-    CopyActionWithoutIcon(editMenu, ID_EDIT_FREEZE, "Lock Selection", false);
+    editMenu.AddAction(ID_EDIT_FREEZE);
 
     // NEWMENUS: NEEDS IMPLEMENTATION
     //// Unlock Selection 
@@ -493,13 +516,16 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     //auto unlockLastLockedMenu = editMenu.Get()->addAction(tr("Unlock Last Locked"));
 
     // Unlock All 
-    CopyActionWithoutIcon(editMenu, ID_EDIT_UNFREEZEALL, "Unlock All", false);
+    editMenu.AddAction(ID_EDIT_UNFREEZEALL);
 
-    // Rename Object(s)...
-    editMenu.AddAction(ID_EDIT_RENAMEOBJECT);
+    if (m_enableLegacyCryEntities)
+    {
+        // Rename Object(s)...
+        editMenu.AddAction(ID_EDIT_RENAMEOBJECT);
 
-    // Set Object(s) Height...
-    editMenu.AddAction(ID_MODIFY_OBJECT_HEIGHT);
+        // Set Object(s) Height...
+        editMenu.AddAction(ID_MODIFY_OBJECT_HEIGHT);
+    }
 
     editMenu.AddSeparator();
 
@@ -507,18 +533,49 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     auto editorSettingsMenu = editMenu.AddMenu(tr("Editor Settings"));
 
     // Global Preferences...
-    CopyActionWithoutIcon(editorSettingsMenu, ID_TOOLS_PREFERENCES, "Global Preferences...", false);
+    editorSettingsMenu.AddAction(ID_TOOLS_PREFERENCES);
+
+    // Editor Settings Manager (only shown here in Cry-Free mode)
+    if (!m_enableLegacyCryEntities)
+    {
+        AddOpenViewPaneAction(editorSettingsMenu, LyViewPane::EditorSettingsManager);
+    }
 
     // Graphics Performance
     auto graphicPerformanceSubMenu = editorSettingsMenu.AddMenu(QObject::tr("Graphics Performance"));
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEVERYHIGHSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEHIGHSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEMEDIUMSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLELOWSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEDURANGOSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEORBISSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEANDROIDSPEC);
-    graphicPerformanceSubMenu.AddAction(ID_GAME_ENABLEIOSSPEC);
+
+    auto pcMenu = graphicPerformanceSubMenu.AddMenu(tr("PC"));
+    pcMenu.AddAction(ID_GAME_PC_ENABLEVERYHIGHSPEC);
+    pcMenu.AddAction(ID_GAME_PC_ENABLEHIGHSPEC);
+    pcMenu.AddAction(ID_GAME_PC_ENABLEMEDIUMSPEC);
+    pcMenu.AddAction(ID_GAME_PC_ENABLELOWSPEC);
+
+    graphicPerformanceSubMenu.AddAction(ID_GAME_OSXGL_ENABLESPEC);
+    graphicPerformanceSubMenu.AddAction(ID_GAME_OSXMETAL_ENABLESPEC);
+
+    auto androidMenu = graphicPerformanceSubMenu.AddMenu(tr("Android"));
+    androidMenu.AddAction(ID_GAME_ANDROID_ENABLEVERYHIGHSPEC);
+    androidMenu.AddAction(ID_GAME_ANDROID_ENABLEHIGHSPEC);
+    androidMenu.AddAction(ID_GAME_ANDROID_ENABLEMEDIUMSPEC);
+    androidMenu.AddAction(ID_GAME_ANDROID_ENABLELOWSPEC);
+
+    auto iosMenu = graphicPerformanceSubMenu.AddMenu(tr("iOS"));
+    iosMenu.AddAction(ID_GAME_IOS_ENABLEVERYHIGHSPEC);
+    iosMenu.AddAction(ID_GAME_IOS_ENABLEHIGHSPEC);
+    iosMenu.AddAction(ID_GAME_IOS_ENABLEMEDIUMSPEC);
+    iosMenu.AddAction(ID_GAME_IOS_ENABLELOWSPEC);
+
+    auto xboneMenu = graphicPerformanceSubMenu.AddMenu(tr("Xbox One")); // ACCEPTED_USE
+    xboneMenu.AddAction(ID_GAME_XBONE_ENABLEHIGHSPEC); // ACCEPTED_USE
+    xboneMenu.AddAction(ID_GAME_XBONE_ENABLEMEDIUMSPEC); // ACCEPTED_USE
+    xboneMenu.AddAction(ID_GAME_XBONE_ENABLELOWSPEC); // ACCEPTED_USE
+
+    auto ps4Menu = graphicPerformanceSubMenu.AddMenu(tr("PS4")); // ACCEPTED_USE
+    ps4Menu.AddAction(ID_GAME_PS4_ENABLEHIGHSPEC); // ACCEPTED_USE
+    ps4Menu.AddAction(ID_GAME_PS4_ENABLEMEDIUMSPEC); // ACCEPTED_USE
+    ps4Menu.AddAction(ID_GAME_PS4_ENABLELOWSPEC); // ACCEPTED_USE
+
+    graphicPerformanceSubMenu.AddAction(ID_GAME_APPLETV_ENABLESPEC);
 
     // Keyboard Customization
     auto keyboardCustomizationMenu = editorSettingsMenu.AddMenu(tr("Keyboard Customization"));
@@ -537,7 +594,7 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     connect(gameMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::OnUpdateMacrosMenu);
 
     // Play Game
-    CopyActionWithoutIcon(gameMenu, ID_VIEW_SWITCHTOGAME, "Play Game");
+    gameMenu.AddAction(ID_VIEW_SWITCHTOGAME);
 
     // Enable Physics/AI
     gameMenu.AddAction(ID_SWITCH_PHYSICS);
@@ -557,11 +614,14 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     // Terrain Collision
     gameMenu.AddAction(ID_TERRAIN_COLLISION);
 
-    // Edit Equipment-Packs...
-    gameMenu.AddAction(ID_TOOLS_EQUIPPACKSEDIT);
+    if (m_enableLegacyCryEntities)
+    {
+        // Edit Equipment-Packs...
+        gameMenu.AddAction(ID_TOOLS_EQUIPPACKSEDIT);
 
-    // Toggle SP/MP GameRules
-    gameMenu.AddAction(ID_TOGGLE_MULTIPLAYER);
+        // Toggle SP/MP GameRules
+        gameMenu.AddAction(ID_TOGGLE_MULTIPLAYER);
+    }
 
     // Synchronize Player with Camera
     gameMenu.AddAction(ID_GAME_SYNCPLAYER);
@@ -569,32 +629,35 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     //AI
     auto aiMenu = gameMenu.AddMenu(tr("AI"));
 
-    // Generate All AI
-    aiMenu.AddAction(ID_AI_GENERATEALL);
+    if (m_enableLegacyCryEntities)
+    {
+        // Generate All AI
+        aiMenu.AddAction(ID_AI_GENERATEALL);
 
-    // Generate Triangulation
-    aiMenu.AddAction(ID_AI_GENERATETRIANGULATION);
+        // Generate Triangulation
+        aiMenu.AddAction(ID_AI_GENERATETRIANGULATION);
 
-    // Generate 3D Navigation Volumes
-    aiMenu.AddAction(ID_AI_GENERATE3DVOLUMES);
+        // Generate 3D Navigation Volumes
+        aiMenu.AddAction(ID_AI_GENERATE3DVOLUMES);
 
-    // Generate Flight Navigation
-    aiMenu.AddAction(ID_AI_GENERATEFLIGHTNAVIGATION);
+        // Generate Flight Navigation
+        aiMenu.AddAction(ID_AI_GENERATEFLIGHTNAVIGATION);
 
-    // Generate Waypoints
-    aiMenu.AddAction(ID_AI_GENERATEWAYPOINT);
+        // Generate Waypoints
+        aiMenu.AddAction(ID_AI_GENERATEWAYPOINT);
 
-    // Validate Navigation
-    aiMenu.AddAction(ID_AI_VALIDATENAVIGATION);
+        // Validate Navigation
+        aiMenu.AddAction(ID_AI_VALIDATENAVIGATION);
 
-    // Clear All Navigation
-    aiMenu.AddAction(ID_AI_CLEARALLNAVIGATION);
+        // Clear All Navigation
+        aiMenu.AddAction(ID_AI_CLEARALLNAVIGATION);
 
-    // Generate Spawner Entity Code
-    aiMenu.AddAction(ID_AI_GENERATESPAWNERS);
+        // Generate Spawner Entity Code
+        aiMenu.AddAction(ID_AI_GENERATESPAWNERS);
 
-    // Generate 3D Debug Voxels
-    aiMenu.AddAction(ID_AI_GENERATE3DDEBUGVOXELS);
+        // Generate 3D Debug Voxels
+        aiMenu.AddAction(ID_AI_GENERATE3DDEBUGVOXELS);
+    }
 
     // Create New Navigation Area
     aiMenu.AddAction(ID_AI_NAVIGATION_NEW_AREA);
@@ -614,17 +677,20 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     // Visualize Navigation Accessibility
     aiMenu.AddAction(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY);
 
-    // Medium Sized Characters (Use the old version for now)
-    aiMenu.AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT);
+    if (m_enableLegacyCryEntities)
+    {
+        // Medium Sized Characters (Use the old version for now)
+        aiMenu.AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT);
 
-    // Generate Cover Surfaces
-    aiMenu.AddAction(ID_AI_GENERATECOVERSURFACES);
+        // Generate Cover Surfaces
+        aiMenu.AddAction(ID_AI_GENERATECOVERSURFACES);
 
-    // AIPoint Pick Link
-    aiMenu.AddAction(ID_MODIFY_AIPOINT_PICKLINK);
+        // AIPoint Pick Link
+        aiMenu.AddAction(ID_MODIFY_AIPOINT_PICKLINK);
 
-    // AIPoint Pick Impass Link
-    aiMenu.AddAction(ID_MODIFY_AIPOINT_PICKIMPASSLINK);
+        // AIPoint Pick Impass Link
+        aiMenu.AddAction(ID_MODIFY_AIPOINT_PICKIMPASSLINK);
+    }
 
     gameMenu.AddSeparator();
 
@@ -660,11 +726,14 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     // Physics
     auto physicsMenu = gameMenu.AddMenu(tr("Physics"));
 
-    // Get Physics State
-    physicsMenu.AddAction(ID_PHYSICS_GETPHYSICSSTATE);
+    if (m_enableLegacyCryEntities)
+    {
+        // Get Physics State
+        physicsMenu.AddAction(ID_PHYSICS_GETPHYSICSSTATE);
 
-    // Reset Physics State
-    physicsMenu.AddAction(ID_PHYSICS_RESETPHYSICSSTATE);
+        // Reset Physics State
+        physicsMenu.AddAction(ID_PHYSICS_RESETPHYSICSSTATE);
+    }
 
     // Simulate Objects
     physicsMenu.AddAction(ID_PHYSICS_SIMULATEOBJECTS);
@@ -672,20 +741,23 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     gameMenu.AddSeparator();
 
     // Prefabs
-    auto prefabsMenu = gameMenu.AddMenu(tr("Prefabs"));
+    if (m_enableLegacyCryEntities)
+    {
+        auto prefabsMenu = gameMenu.AddMenu(tr("Prefabs"));
 
-    prefabsMenu.AddAction(ID_PREFABS_MAKEFROMSELECTION);
-    prefabsMenu.AddAction(ID_PREFABS_ADDSELECTIONTOPREFAB);
-    prefabsMenu.AddSeparator();
-    prefabsMenu.AddAction(ID_PREFABS_CLONESELECTIONFROMPREFAB);
-    prefabsMenu.AddAction(ID_PREFABS_EXTRACTSELECTIONFROMPREFAB);
-    prefabsMenu.AddSeparator();
-    prefabsMenu.AddAction(ID_PREFABS_OPENALL);
-    prefabsMenu.AddAction(ID_PREFABS_CLOSEALL);
-    prefabsMenu.AddSeparator();
-    prefabsMenu.AddAction(ID_PREFABS_REFRESHALL);
+        prefabsMenu.AddAction(ID_PREFABS_MAKEFROMSELECTION);
+        prefabsMenu.AddAction(ID_PREFABS_ADDSELECTIONTOPREFAB);
+        prefabsMenu.AddSeparator();
+        prefabsMenu.AddAction(ID_PREFABS_CLONESELECTIONFROMPREFAB);
+        prefabsMenu.AddAction(ID_PREFABS_EXTRACTSELECTIONFROMPREFAB);
+        prefabsMenu.AddSeparator();
+        prefabsMenu.AddAction(ID_PREFABS_OPENALL);
+        prefabsMenu.AddAction(ID_PREFABS_CLOSEALL);
+        prefabsMenu.AddSeparator();
+        prefabsMenu.AddAction(ID_PREFABS_REFRESHALL);
 
-    gameMenu.AddSeparator();
+        gameMenu.AddSeparator();
+    }
 
     // Terrain
     auto terrainMenu = gameMenu.AddMenu(tr("&Terrain"));
@@ -734,6 +806,8 @@ QMenu* LevelEditorMenuHandler::CreateAWSMenu()
 {
     // AWS
     auto awsMenu = m_actionManager->AddMenu(tr("&AWS"));
+    connect(awsMenu, &QMenu::aboutToShow,
+        this, &LevelEditorMenuHandler::AWSMenuClicked);
     awsMenu.AddAction(ID_AWS_CREDENTIAL_MGR);
 
     // Cloud Canvas
@@ -778,13 +852,19 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     viewMenu.AddAction(ID_VIEW_CYCLE2DVIEWPORT);
 
     // Center on Selection
-    CopyActionWithoutIcon(viewMenu, ID_MODIFY_GOTO_SELECTION, "Center on Selection");
+    viewMenu.AddAction(ID_MODIFY_GOTO_SELECTION);
 
     // Show Quick Access Bar
-    CopyActionWithoutIcon(viewMenu, ID_OPEN_QUICK_ACCESS_BAR, "Show Quick Access Bar");
+    viewMenu.AddAction(ID_OPEN_QUICK_ACCESS_BAR);
 
     // Enter Full Screen Mode
-    CopyActionWithoutIcon(viewMenu, ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW, "Enter Full Screen Mode", false);
+    viewMenu.AddAction(ID_DISPLAY_TOGGLEFULLSCREENMAINWINDOW);
+
+    // Error Report (In legacy mode, this is in the View menu)
+    if (m_enableLegacyCryEntities)
+    {
+        AddOpenViewPaneAction(viewMenu, LyViewPane::ErrorReport);
+    }
 
     // Layouts
     m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
@@ -811,7 +891,7 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     viewportViewsMenuWrapper.AddSeparator();
 
     // Ruler
-    CopyActionWithoutIcon(viewportViewsMenuWrapper, ID_RULER, "Ruler", false);
+    viewportViewsMenuWrapper.AddAction(ID_RULER);
 
     viewportViewsMenuWrapper.AddAction(ID_VIEW_GRIDSETTINGS);
     viewportViewsMenuWrapper.AddSeparator();
@@ -881,7 +961,7 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     auto helpMenu = m_actionManager->AddMenu(tr("&Help"));
 
     // Getting Started
-    CopyActionWithoutIcon(helpMenu, ID_DOCUMENTATION_GETTINGSTARTEDGUIDE, "Getting Started", false);
+    helpMenu.AddAction(ID_DOCUMENTATION_GETTINGSTARTEDGUIDE);
 
     // Tutorials
     helpMenu.AddAction(ID_DOCUMENTATION_TUTORIALS);
@@ -927,40 +1007,11 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     // About Lumberyard
     helpMenu.AddAction(ID_APP_ABOUT);
 
-    // NEWMENUS: Remove after sufficient QA/Usertesting and feedback
-    /* helpMenu->addSeparator();
-    QAction* switchMenus = helpMenu->addAction("Switch to Old Menus");
-    connect(switchMenus, &QAction::triggered, m_mainWindow, &MainWindow::ShowOldMenus);*/
-
     LoadNetPromoterScoreDialog(helpMenu);
 
     return helpMenu;
 }
 
-QAction* LevelEditorMenuHandler::CopyActionWithoutIcon(ActionManager::MenuWrapper& menu, QAction* originalAction, const char* menuOptionName, bool copyShortcut /*= true*/)
-{
-    QAction* newAction = menu.Get()->addAction(menuOptionName);
-
-    if (copyShortcut)
-    {
-        newAction->setShortcut(originalAction->shortcut());
-
-        // Remove the shortcut on the original action once it's copied so that
-        // it doesn't remain functional after being removed or re-assigned from
-        // the wrapper action
-        originalAction->setShortcut(QKeySequence());
-    }
-
-    connect(newAction, &QAction::triggered, originalAction, &QAction::trigger);
-
-    return newAction;
-}
-
-QAction* LevelEditorMenuHandler::CopyActionWithoutIcon(ActionManager::MenuWrapper& menu, int actionId, const char* menuOptionName, bool copyShortcut /*= true*/)
-{
-    QAction* originalAction = m_actionManager->GetAction(actionId);
-    return CopyActionWithoutIcon(menu, originalAction, menuOptionName, copyShortcut);
-}
 
 QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 {
@@ -968,10 +1019,16 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 
     if (!action)
     {
-        action = new QAction(view->m_name, this);
+        QString menuText = view->m_options.optionalMenuText.length() > 0 ? view->m_options.optionalMenuText : view->m_name;
+        action = new QAction(menuText, this);
         action->setObjectName(view->m_name);
         action->setCheckable(view->IsViewportPane());
         m_actionManager->AddAction(view->m_id, action);
+
+        if (!view->m_options.shortcut.isEmpty())
+        {
+            action->setShortcut(view->m_options.shortcut);
+        }
 
         // copy this so that it's still valid when the lambda executes
         QString viewPaneName = view->m_name;
@@ -1007,18 +1064,7 @@ QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(ActionManager* actionMan
 {
     QAction* action = CreateViewPaneAction(view);
 
-    if (!view->m_options.shortcut.isEmpty())
-    {
-        QAction* wrappedAction = CopyActionWithoutIcon(menu, action, view->m_name.toUtf8(), true);
-        wrappedAction->setShortcut(view->m_options.shortcut);
-
-        // Remove the shortcut from the original action being wrapped
-        action->setShortcut(QKeySequence());
-    }
-    else
-    {
         menu->addAction(action);
-    }
 
     return action;
 }
@@ -1099,17 +1145,23 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
     // name as a key, functionality as a value
     for (QtViewPane* viewpane : menuList)
     {
-        // Console  
         if (viewpane->m_options.builtInActionId != LyViewPane::NO_BUILTIN_ACTION)
         {
             sortMenuMap[viewpane->m_name] = [&menu, viewpane]() -> void
             {
-                menu.AddAction(viewpane->m_options.builtInActionId);
+                // Handle shortcuts for actions with a built-in ID since they
+                // bypass our CreateViewPaneMenuItem method
+                QAction* action = menu.AddAction(viewpane->m_options.builtInActionId);
+                if (action && !viewpane->m_options.shortcut.isEmpty())
+                {
+                    action->setShortcut(viewpane->m_options.shortcut);
+                }
             };
         }
         else
         {
-            sortMenuMap[viewpane->m_name] = [this, viewpane, &menu]() -> void
+            QString menuText = viewpane->m_options.optionalMenuText.length() > 0 ? viewpane->m_options.optionalMenuText : viewpane->m_name;
+            sortMenuMap[menuText] = [this, viewpane, &menu]() -> void
             {
                 CreateViewPaneMenuItem(m_actionManager, menu, viewpane);
             };
@@ -1118,7 +1170,7 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
 
     if (category == LyViewPane::CategoryTools)
     {
-        // add LUA Editor into the tools map
+        // Add LUA Editor into the Tools map
         sortMenuMap[g_LUAEditorName] = [this, &menu]()->void
         {
             auto luaEditormenu = menu->addAction(tr(g_LUAEditorName));
@@ -1126,6 +1178,14 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
             connect(luaEditormenu, &QAction::triggered, this, []() {
                 EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, LaunchLuaEditor, nullptr);
             });
+        };
+
+        // Add Input Editor into the Tools map
+        static const char* inputEditorName = "Input Editor";
+        sortMenuMap[inputEditorName] = [this, &menu]()->void
+        {
+            QAction* inputEditorAction = menu->addAction(tr(inputEditorName));
+            connect(inputEditorAction, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
         };
     }
 
@@ -1142,61 +1202,77 @@ void LevelEditorMenuHandler::CreateDebuggingSubMenu(ActionManager::MenuWrapper g
     // DebuggingSubMenu
     auto debuggingSubMenu = gameMenu.AddMenu(QObject::tr("Debugging"));
 
-    // Reload Script
-    auto reloadScriptsMenu = debuggingSubMenu.AddMenu(tr("Reload Scripts (LEGACY)"));
-    reloadScriptsMenu.AddAction(ID_RELOAD_ALL_SCRIPTS);
-    reloadScriptsMenu.AddSeparator();
-    reloadScriptsMenu.AddAction(ID_RELOAD_ACTOR_SCRIPTS);
-    reloadScriptsMenu.AddAction(ID_RELOAD_AI_SCRIPTS);
-    reloadScriptsMenu.AddAction(ID_RELOAD_ENTITY_SCRIPTS);
-    reloadScriptsMenu.AddAction(ID_RELOAD_ITEM_SCRIPTS);
-    reloadScriptsMenu.AddAction(ID_RELOAD_UI_SCRIPTS);
+    if (m_enableLegacyCryEntities)
+    {
+        // Reload Script
+        auto reloadScriptsMenu = debuggingSubMenu.AddMenu(tr("Reload Scripts (LEGACY)"));
+        reloadScriptsMenu.AddAction(ID_RELOAD_ALL_SCRIPTS);
+        reloadScriptsMenu.AddSeparator();
+        reloadScriptsMenu.AddAction(ID_RELOAD_ACTOR_SCRIPTS);
+        reloadScriptsMenu.AddAction(ID_RELOAD_AI_SCRIPTS);
+        reloadScriptsMenu.AddAction(ID_RELOAD_ENTITY_SCRIPTS);
+        reloadScriptsMenu.AddAction(ID_RELOAD_ITEM_SCRIPTS);
+        reloadScriptsMenu.AddAction(ID_RELOAD_UI_SCRIPTS);
 
-    // Reload Textures/Shaders
-    debuggingSubMenu.AddAction(ID_RELOAD_TEXTURES);
+        // Reload Textures/Shaders
+        debuggingSubMenu.AddAction(ID_RELOAD_TEXTURES);
 
-    // Reload Geometry
-    debuggingSubMenu.AddAction(ID_RELOAD_GEOMETRY);
+        // Reload Geometry
+        debuggingSubMenu.AddAction(ID_RELOAD_GEOMETRY);
 
-    // Reload Terrain
-    debuggingSubMenu.AddAction(ID_RELOAD_TERRAIN);
+        // Reload Terrain
+        debuggingSubMenu.AddAction(ID_RELOAD_TERRAIN);
 
-    // Resolve Missing Objects/Materials
-    CopyActionWithoutIcon(debuggingSubMenu, ID_TOOLS_RESOLVEMISSINGOBJECTS, "Resolve Missing Objects/Materials", false);
+        // Resolve Missing Objects/Materials
+        debuggingSubMenu.AddAction(ID_TOOLS_RESOLVEMISSINGOBJECTS);
 
-    // Enable File Change Monitoring
-    CopyActionWithoutIcon(debuggingSubMenu, ID_TOOLS_ENABLEFILECHANGEMONITORING, "Enable File Change Monitoring", false);
+        // Enable File Change Monitoring
+        debuggingSubMenu.AddAction(ID_TOOLS_ENABLEFILECHANGEMONITORING);
 
-    // Check Object Positions
-    debuggingSubMenu.AddAction(ID_TOOLS_VALIDATEOBJECTPOSITIONS);
+        // Check Object Positions
+        debuggingSubMenu.AddAction(ID_TOOLS_VALIDATEOBJECTPOSITIONS);
 
-    // Clear Registry Data
-    debuggingSubMenu.AddAction(ID_CLEAR_REGISTRY);
+        // Clear Registry Data
+        debuggingSubMenu.AddAction(ID_CLEAR_REGISTRY);
 
-    // Check Level for Errors
-    debuggingSubMenu.AddAction(ID_VALIDATELEVEL);
+        // Check Level for Errors
+        debuggingSubMenu.AddAction(ID_VALIDATELEVEL);
 
-    // Save Level Statistics
-    debuggingSubMenu.AddAction(ID_TOOLS_LOGMEMORYUSAGE);
+        // Save Level Statistics
+        debuggingSubMenu.AddAction(ID_TOOLS_LOGMEMORYUSAGE);
 
-    // Compile Scripts
-    debuggingSubMenu.AddAction(ID_SCRIPT_COMPILESCRIPT);
+        // Compile Scripts
+        debuggingSubMenu.AddAction(ID_SCRIPT_COMPILESCRIPT);
 
-    // Reduce Working Set
-    debuggingSubMenu.AddAction(ID_RESOURCES_REDUCEWORKINGSET);
+        // Reduce Working Set
+        debuggingSubMenu.AddAction(ID_RESOURCES_REDUCEWORKINGSET);
 
-    // Update Procedural Vegetation
-    debuggingSubMenu.AddAction(ID_TOOLS_UPDATEPROCEDURALVEGETATION);
+        // Update Procedural Vegetation
+        debuggingSubMenu.AddAction(ID_TOOLS_UPDATEPROCEDURALVEGETATION);
+    }
+    else
+    {
+        // AI Debugger
+        AddOpenViewPaneAction(debuggingSubMenu, LyViewPane::AIDebugger);
+
+        // Error Report
+        AddOpenViewPaneAction(debuggingSubMenu, LyViewPane::ErrorReport);
+
+        debuggingSubMenu.AddSeparator();
+    }
 
     // Configure Toolbox Marcos
-    CopyActionWithoutIcon(debuggingSubMenu, ID_TOOLS_CONFIGURETOOLS, "Configure ToolBox Macros", false);
+    debuggingSubMenu.AddAction(ID_TOOLS_CONFIGURETOOLS);
 
     // Toolbox Macros
     m_macrosMenu = debuggingSubMenu.AddMenu(tr("ToolBox Macros"));
     connect(m_macrosMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::UpdateMacrosMenu, Qt::UniqueConnection);
 
-    // Script Help
-    debuggingSubMenu.AddAction(ID_TOOLS_SCRIPTHELP);
+    if (m_enableLegacyCryEntities)
+    {
+        // Script Help
+        debuggingSubMenu.AddAction(ID_TOOLS_SCRIPTHELP);
+    }
 }
 
 void LevelEditorMenuHandler::UpdateMRUFiles()
@@ -1210,20 +1286,11 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
         return;
     }
 
-    static QString s_lastMru;
-    QString currentMru = numMru > 0 ? (*mruList)[0] : QString();
-    if (s_lastMru == currentMru) // Protect against flickering if we're updating the menu every time
-    {
-        return;
-    }
-
-    s_lastMru = currentMru;
-
     // Remove most recent items
     m_mostRecentLevelsMenu->clear();
 
     // Insert mrus
-    QString sCurDir = Path::GetEditingGameDataFolder().c_str() + QDir::separator().toLatin1();
+    QString sCurDir = QString(Path::GetEditingGameDataFolder().c_str()) + QDir::separator();
 
     QFileInfo gameDir(sCurDir); // Pass it through QFileInfo so it comes out normalized
     const QString gameDirPath = gameDir.absolutePath();
@@ -1373,3 +1440,11 @@ void LevelEditorMenuHandler::UpdateOpenViewPaneMenu()
         action->setChecked(action->objectName() == activeViewportName);
     }
 }
+
+void LevelEditorMenuHandler::AWSMenuClicked()
+{
+    auto metricId = LyMetrics_CreateEvent("AWSMenuClickedEvent");
+    LyMetrics_SubmitEvent(metricId);
+}
+
+#include <Core/LevelEditorMenuHandler.moc>

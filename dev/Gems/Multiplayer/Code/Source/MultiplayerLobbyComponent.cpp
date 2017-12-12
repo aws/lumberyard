@@ -24,6 +24,7 @@
 #include <GridMate/NetworkGridMate.h>
 
 #include <LyShine/Bus/UiButtonBus.h>
+#include <LyShine/Bus/UiCursorBus.h>
 #include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiTextBus.h>
@@ -31,11 +32,8 @@
 
 #include "Multiplayer/MultiplayerLobbyComponent.h"
 
-#include "IHardwareMouse.h"
 #include "Multiplayer/IMultiplayerGem.h"
 #include "Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.h"
-#include "Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyXboneServiceWrapper.h"
-#include "Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyPSNServiceWrapper.h"
 #include "Multiplayer/MultiplayerUtils.h"
 
 
@@ -137,8 +135,8 @@ namespace Multiplayer
     // Lobby Selection
     static const char* k_lobbySelectionLANButton = "LANButton";
     static const char* k_lobbySelectionGameliftButton = "GameliftButton";
-    static const char* k_lobbySelectionXboxButton = "XboxLiveButton";
-    static const char* k_lobbySelectionPSNButton = "PSNButton";
+    static const char* k_lobbySelectionXboxButton = "XboxLiveButton"; // ACCEPTED_USE
+    static const char* k_lobbySelectionPSNButton = "PSNButton"; // ACCEPTED_USE
     static const char* k_lobbySelectionErrorWindow = "ErrorWindow";
     static const char* k_lobbySelectionErrorMessage = "ErrorMessage";
     static const char* k_lobbySelectionBusyScreen = "BusyScreen";
@@ -270,19 +268,16 @@ namespace Multiplayer
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
         SetElementInputEnabled(m_selectionLobbyID,k_lobbySelectionGameliftButton,true);
 #else
-		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionGameliftButton, false);
+        SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionGameliftButton, false);
 #endif
 
-		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionXboxButton, false);
+		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionXboxButton, false); // ACCEPTED_USE
 
-		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionPSNButton, false);
+		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionPSNButton, false); // ACCEPTED_USE
 
         ShowSelectionLobby();
 
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->IncrementCounter();
-        }
+        UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
 
         if (gEnv->pNetwork)
         {
@@ -319,10 +314,7 @@ namespace Multiplayer
             actionMapManager->RemoveExtraActionListener(this, "lobby");
         }
 
-        if (gEnv->pHardwareMouse)
-        {
-            gEnv->pHardwareMouse->DecrementCounter();
-        }
+        UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
 
         ClearSearches();
 
@@ -406,13 +398,13 @@ namespace Multiplayer
             RegisterServiceWrapper<MultiplayerLobbyLANServiceWrapper>();
             ShowLobby(LobbyMode::ServiceWrapperLobby);
         }
-        else if (actionName == "OnListXboxServers")
+        else if (actionName == "OnListXboxServers") // ACCEPTED_USE
         {
-            AZ_Assert(false,"Trying to use XBox Session Services without compiling for Durango.");
+            AZ_Assert(false,"Trying to use XBox Session Services without compiling for Durango."); // ACCEPTED_USE
         }
-        else if (actionName == "OnListPSNServers")
+        else if (actionName == "OnListPSNServers") // ACCEPTED_USE
         {
-            AZ_Assert(false,"Trying to use PSN Session services without compiling for Orbis");
+            AZ_Assert(false,"Trying to use PSN Session services without compiling for Orbis"); // ACCEPTED_USE
         }
         else if (actionName == "OnDismissErrorMessage")
         {
@@ -740,7 +732,7 @@ namespace Multiplayer
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
             startedService = StartGameLiftSession();
 #else
-			startedService = false;
+            startedService = false;
 #endif
         }
 
@@ -1456,20 +1448,25 @@ namespace Multiplayer
 
     void MultiplayerLobbyComponent::OnGameLiftSessionServiceReady(GridMate::GameLiftClientService* service)
     {
+        AZ_UNUSED(service);
         DismissBusyScreen();
 
         m_hasGameliftSession = true;
         ShowLobby(LobbyMode::GameliftLobby);
     }
 
-    void MultiplayerLobbyComponent::OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService* service)
+    void MultiplayerLobbyComponent::OnGameLiftSessionServiceFailed(GridMate::GameLiftClientService* service, const AZStd::string& message)
     {
+        AZ_UNUSED(service);
+
         DismissBusyScreen();
 
         m_hasGameliftSession = false;
-
         m_unregisterGameliftServiceOnErrorDismiss = true;
-        ShowError("GameLift Service Failed");
+
+        AZStd::string errorMessage("GameLift Error: ");
+        errorMessage += message;
+        ShowError(errorMessage.c_str());
     }
 #endif
 }

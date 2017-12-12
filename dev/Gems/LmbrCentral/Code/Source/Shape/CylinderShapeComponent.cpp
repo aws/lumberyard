@@ -12,20 +12,67 @@
 
 #include "StdAfx.h"
 #include "CylinderShapeComponent.h"
-#include <Cry_GeoOverlap.h>
-#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace LmbrCentral
 {
     namespace ClassConverters
     {
+        static bool DeprecateCylinderColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         static bool DeprecateCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+    }
+
+    void CylinderShapeConfig::Reflect(AZ::ReflectContext* context)
+    {
+        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            // Deprecate: CylinderColliderConfiguration -> CylinderShapeConfig
+            serializeContext->ClassDeprecate(
+                "CylinderColliderConfiguration",
+                "{E1DCB833-EFC4-43AC-97B0-4E07AA0DFAD9}",
+                &ClassConverters::DeprecateCylinderColliderConfiguration
+            );
+
+            serializeContext->Class<CylinderShapeConfig>()
+                ->Version(1)
+                ->Field("Height", &CylinderShapeConfig::m_height)
+                ->Field("Radius", &CylinderShapeConfig::m_radius)
+                ;
+
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<CylinderShapeConfig>("Configuration", "Cylinder shape configuration parameters")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_height, "Height", "Height of cylinder")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " m")
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_radius, "Radius", "Radius of cylinder")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " m")
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
+                    ;
+            }
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<CylinderShapeConfig>()
+                ->Property("Height", BehaviorValueProperty(&CylinderShapeConfig::m_height))
+                ->Property("Radius", BehaviorValueProperty(&CylinderShapeConfig::m_radius));
+        }
+
     }
 
     void CylinderShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        CylinderShapeConfiguration::Reflect(context);
+        CylinderShapeConfig::Reflect(context);
 
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -45,6 +92,8 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
+            behaviorContext->Constant("CylinderShapeComponentTypeId", BehaviorConstant(CylinderShapeComponentTypeId));
+
             behaviorContext->EBus<CylinderShapeComponentRequestsBus>("CylinderShapeComponentRequestsBus")
                 ->Event("GetCylinderConfiguration", &CylinderShapeComponentRequestsBus::Events::GetCylinderConfiguration)
                 ->Event("SetHeight", &CylinderShapeComponentRequestsBus::Events::SetHeight)
@@ -55,116 +104,89 @@ namespace LmbrCentral
 
     void CylinderShapeComponent::Activate()
     {
-        AZ::Transform currentEntityTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(currentEntityTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-        m_currentWorldTransform = currentEntityTransform;
-        m_intersectionDataCache.SetCacheStatus(CylinderShapeComponent::CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
-        CylinderShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
+        CylinderShape::Activate(GetEntityId());
     }
 
     void CylinderShapeComponent::Deactivate()
     {
-        CylinderShapeComponentRequestsBus::Handler::BusDisconnect();
-        ShapeComponentRequestsBus::Handler::BusDisconnect();
-        AZ::TransformNotificationBus::Handler::BusDisconnect();
+        CylinderShape::Deactivate();
     }
 
-    void CylinderShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    bool CylinderShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        m_currentWorldTransform = world;
-        m_intersectionDataCache.SetCacheStatus(CylinderShapeComponent::CylinderIntersectionDataCache::CacheStatus::Obsolete_TransformChange);
-        EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::TransformChanged);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-
-    void CylinderShapeComponent::SetHeight(float newHeight)
-    {
-        m_configuration.SetHeight(newHeight);
-        m_intersectionDataCache.SetCacheStatus(CylinderShapeComponent::CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-        EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
-    }
-
-    void CylinderShapeComponent::SetRadius(float newRadius)
-    {
-        m_configuration.SetRadius(newRadius);
-        m_intersectionDataCache.SetCacheStatus(CylinderShapeComponent::CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-        EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-
-    AZ::Aabb CylinderShapeComponent::GetEncompassingAabb()
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentWorldTransform, m_configuration);
-        AZ::Vector3 axisUnitVector = m_currentWorldTransform.GetBasisZ();
-        AZ::Vector3 lowerAABBCenter = m_intersectionDataCache.m_baseCenterPoint + axisUnitVector * m_configuration.GetRadius();
-        AZ::Aabb baseAabb(AZ::Aabb::CreateCenterRadius(lowerAABBCenter, m_configuration.GetRadius()));
-
-        AZ::Vector3 topAABBCenter = m_intersectionDataCache.m_baseCenterPoint + axisUnitVector * (m_configuration.GetHeight() - m_configuration.GetRadius());
-        AZ::Aabb topAabb(AZ::Aabb::CreateCenterRadius(topAABBCenter, m_configuration.GetRadius()));
-
-        baseAabb.AddAabb(topAabb);
-        return baseAabb;
-    }
-
-
-    bool CylinderShapeComponent::IsPointInside(const AZ::Vector3& point)
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentWorldTransform, m_configuration);
-
-        return Overlap::Point_Cylinder(
-            m_intersectionDataCache.m_baseCenterPoint,
-            m_intersectionDataCache.m_axisVector,
-            m_intersectionDataCache.m_axisLengthSquared,
-            m_intersectionDataCache.m_radiusSquared,
-            point
-            );
-    }
-
-    float CylinderShapeComponent::DistanceSquaredFromPoint(const AZ::Vector3& point)
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentWorldTransform, m_configuration);
-
-        float distanceSquared = Distance::Point_CylinderSq(
-            point,
-            m_intersectionDataCache.m_baseCenterPoint,
-            m_intersectionDataCache.m_baseCenterPoint + m_intersectionDataCache.m_axisVector,
-            m_configuration.GetRadius()
-            );
-        return distanceSquared;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void CylinderShapeComponent::CylinderIntersectionDataCache::UpdateIntersectionParams(const AZ::Transform& currentTransform, const CylinderShapeConfiguration& configuration)
-    {
-        if (m_cacheStatus > CacheStatus::Current)
+        if (auto config = azrtti_cast<const CylinderShapeConfig*>(baseConfig))
         {
-            m_axisVector = currentTransform.GetBasisZ();
-
-            AZ::Vector3 CurrentPositionToBaseVector = -1 * m_axisVector * (configuration.GetHeight() / 2);
-            m_baseCenterPoint = currentTransform.GetPosition() + CurrentPositionToBaseVector;
-
-            m_axisVector = m_axisVector * configuration.GetHeight();
-
-            if (m_cacheStatus == CacheStatus::Obsolete_ShapeChange)
-            {
-                m_radiusSquared = pow(configuration.GetRadius(), 2);
-                m_axisLengthSquared = pow(configuration.GetHeight(), 2);
-            }
-
-            SetCacheStatus(CacheStatus::Current);
+            m_configuration = *config;
+            return true;
         }
+        return false;
     }
 
+    bool CylinderShapeComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<CylinderShapeConfig*>(outBaseConfig))
+        {
+            *outConfig = m_configuration;
+            return true;
+        }
+        return false;
+    }
 
     //////////////////////////////////////////////////////////////////////////
     namespace ClassConverters
     {
+        static bool DeprecateCylinderColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            /*
+            Old:
+            <Class name="CylinderColliderConfiguration" field="Configuration" version="1" type="{E1DCB833-EFC4-43AC-97B0-4E07AA0DFAD9}">
+             <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+             <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            </Class>
+
+            New:
+            <Class name="CylinderShapeConfig" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
+             <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+             <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            </Class>
+            */
+
+            // Cache the Height and Radius
+            float oldHeight = 0.f;
+            float oldRadius = 0.f;
+
+            int oldIndex = classElement.FindElement(AZ_CRC("Height", 0xf54de50f));
+            if (oldIndex != -1)
+            {
+                classElement.GetSubElement(oldIndex).GetData<float>(oldHeight);
+            }
+
+            oldIndex = classElement.FindElement(AZ_CRC("Radius", 0x3b7c6e5a));
+            if (oldIndex != -1)
+            {
+                classElement.GetSubElement(oldIndex).GetData<float>(oldRadius);
+            }
+
+            // Convert to CylinderShapeConfig
+            bool result = classElement.Convert<CylinderShapeConfig>(context);
+            if (result)
+            {
+                int newIndex = classElement.AddElement<float>(context, "Height");
+                if (newIndex != -1)
+                {
+                    classElement.GetSubElement(newIndex).SetData<float>(context, oldHeight);
+                }
+
+                newIndex = classElement.AddElement<float>(context, "Radius");
+                if (newIndex != -1)
+                {
+                    classElement.GetSubElement(newIndex).SetData<float>(context, oldRadius);
+                }
+                return true;
+            }
+            return false;
+        }
+
         static bool DeprecateCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
         {
             /*
@@ -178,7 +200,7 @@ namespace LmbrCentral
 
             New:
             <Class name="CylinderShapeComponent" version="1" type="{B0C6AA97-E754-4E33-8D32-33E267DB622F}">
-             <Class name="CylinderShapeConfiguration" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
+             <Class name="CylinderShapeConfig" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
               <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
               <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
              </Class>
@@ -186,21 +208,21 @@ namespace LmbrCentral
             */
 
             // Cache the Configuration
-            CylinderShapeConfiguration configuration;
-            int configIndex = classElement.FindElement(AZ_CRC("Configuration"));
+            CylinderShapeConfig configuration;
+            int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<CylinderShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<CylinderShapeConfig>(configuration);
             }
 
             // Convert to CylinderShapeComponent
-            bool result = classElement.Convert(context, "{B0C6AA97-E754-4E33-8D32-33E267DB622F}");
+            bool result = classElement.Convert<CylinderShapeComponent>(context);
             if (result)
             {
-                configIndex = classElement.AddElement<CylinderShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<CylinderShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<CylinderShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<CylinderShapeConfig>(context, configuration);
                 }
                 return true;
             }

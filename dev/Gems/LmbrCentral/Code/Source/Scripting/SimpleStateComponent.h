@@ -13,6 +13,7 @@
 
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityBus.h>
 #include <LmbrCentral/Scripting/SimpleStateComponentBus.h>
 
 namespace LmbrCentral
@@ -23,6 +24,7 @@ namespace LmbrCentral
     * Structure describing a single state
     */
     class State
+        : private AZ::EntityBus::MultiHandler
     {
     public:
         AZ_TYPE_INFO(State, "{97BCF9D8-A76D-456F-A4B8-98EFF6897CE7}");
@@ -47,6 +49,12 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+
+        //////////////////////////////////////////////////////////////////////////
+        // EntityBus::Handler
+        void OnEntityExists(const AZ::EntityId& entityId) override;
+        //////////////////////////////////////////////////////////////////////////
+
         AZ::Crc32 OnStateNameChanged();
         void UpdateNameCrc();
 
@@ -103,7 +111,7 @@ namespace LmbrCentral
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("SimpleStateService"));
+            provided.push_back(AZ_CRC("SimpleStateService", 0xbfba531e));
         }
 
         //////////////////////////////////////////////////////////////////////////

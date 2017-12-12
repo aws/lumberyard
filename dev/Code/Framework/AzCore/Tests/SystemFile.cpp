@@ -134,7 +134,7 @@ namespace UnitTest
 
             //File should exist now, and be writable
             AZ_TEST_ASSERT(SystemFile::IsWritable(testFile.c_str()) == true);
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
             SystemFile::SetWritable(testFile.c_str(), false);
             AZ_TEST_ASSERT(SystemFile::IsWritable(testFile.c_str()) == false);
             SystemFile::SetWritable(testFile.c_str(), true);

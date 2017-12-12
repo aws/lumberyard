@@ -102,11 +102,11 @@ namespace AssetProcessor
     public:
         explicit PlatformConfiguration(QObject* pParent = nullptr);
         virtual ~PlatformConfiguration();
-
+        void PopulateEnabledPlatforms(QString fileSource);
         void ReadPlatformsFromConfigFile(QString fileSource);
         bool ReadRecognizersFromConfigFile(QString fileSource);
         void ReadMetaDataFromConfigFile(QString fileSource);
-        void ReadGemsConfigFile(QString gemsFile);
+        void ReadGemsConfigFile(QString gemsFile, QStringList& gemConfigFiles);
 
         QString PlatformName(unsigned int platformCrc) const;
         QString RendererName(unsigned int rendererCrc) const;
@@ -192,7 +192,7 @@ namespace AssetProcessor
         const AssetProcessor::ScanFolderInfo* GetScanFolderForFile(const QString& fullFileName) const;
 
         // returns the number of gems successfully read.
-        int ReadGems(QString gemsConfigName);
+        int ReadGems(QString gemsConfigName, QStringList& gemConfigFiles);
 
         const RecognizerContainer& GetAssetRecognizerContainer() const override;
 

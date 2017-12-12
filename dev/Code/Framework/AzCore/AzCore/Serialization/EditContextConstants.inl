@@ -43,6 +43,7 @@ namespace AZ
 
             //! Used to bind either a callback or a refresh mode to the changing of a particular property.
             const static AZ::Crc32 AddNotify = AZ_CRC("AddNotify", 0x16f00b95);
+            const static AZ::Crc32 RemoveNotify = AZ_CRC("RemoveNotify", 0x16ec95f5);
             const static AZ::Crc32 ChangeNotify = AZ_CRC("ChangeNotify", 0xf793bc19);
 
             const static AZ::Crc32 NameLabelOverride = AZ_CRC("NameLabelOverride", 0x9ff79cab);
@@ -53,6 +54,7 @@ namespace AZ
 
             //! Component icon attributes
             const static AZ::Crc32 Icon = AZ_CRC("Icon", 0x659429db);
+            const static AZ::Crc32 CategoryStyle = AZ_CRC("CategoryStyle", 0xe503b236);
             const static AZ::Crc32 ViewportIcon = AZ_CRC("ViewportIcon", 0xe7f19a70);
             const static AZ::Crc32 HideIcon = AZ_CRC("HideIcon", 0xfe652ee7);
             const static AZ::Crc32 PreferNoViewportIcon = AZ_CRC("PreferNoViewportIcon", 0x04ae9cb2);
@@ -80,6 +82,26 @@ namespace AZ
             const static AZ::Crc32 RequiredService = AZ_CRC("RequiredService", 0x4d7d0865);
             const static AZ::Crc32 IncompatibleService = AZ_CRC("IncompatibleService", 0x06a52aa9);
 
+            /**
+            * Specifies the URL to load for a component
+            *
+            * **Element type to use this with:**   AZ::Edit::ClassElements::EditorData, which you reflect using
+            *                                      AZ::EditContext::ClassInfo::ClassElement().
+            *
+            * **Expected value type:**             `AZStd::string`
+            *
+            * **Default value:**                   None
+            *
+            * **Example:**                         The following example shows how to specify a help URL for a given component
+            *
+            * @code{.cpp}
+            * editContext->Class<ScriptEditorComponent>("Lua Script", "The Lua Script component allows you to add arbitrary Lua logic to an entity in the form of a Lua script")
+            *   ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            *   ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/lumberyard/latest/userguide/component-lua-script.html")
+            * @endcode
+            */
+            const static AZ::Crc32 HelpPageURL = AZ_CRC("HelpPageURL", 0xa344d681);
+
             //! Combobox parameters.
             const static AZ::Crc32 ComboBoxEditable = AZ_CRC("ComboBoxEditable", 0x7ee76669);
 
@@ -91,6 +113,8 @@ namespace AZ
             const static AZ::Crc32 PropertyRotation = AZ_CRC("Rotation", 0x297c98f1);
             const static AZ::Crc32 PropertyScale = AZ_CRC("Scale", 0xec462584);
 
+            // Attribute for storing a Id Generator function used by GenerateNewIdsAndFixRefs to remapping old id's to new id's
+            const static AZ::Crc32 IdGeneratorFunction = AZ_CRC("IdGeneratorFunction", 0x4269a3fd);
         }
 
 

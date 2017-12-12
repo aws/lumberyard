@@ -44,18 +44,18 @@ class CSoundTrack
     : public TAnimTrack<ISoundKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CSoundTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CSoundTrack, "{B87D8805-F583-4154-B554-45518BC487F4}", IAnimTrack);
+
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(ISoundKey& key, XmlNodeRef& keyNode, bool bLoading);
 
     //! Check if track is masked
     virtual bool IsMasked(const uint32 mask) const { return (mask & eTrackMask_MaskSound) != 0; }
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
-
     bool UsesMute() const override { return true; }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_SOUNDTRACK_H

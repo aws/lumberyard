@@ -73,11 +73,11 @@ void CFullscreenPass::Execute()
     // dummy PushRenderTarget here so we can directly set the target via the command list
     rd->FX_PushRenderTarget(0, m_pRenderTargets[0], NULL);
 
+    // unmap constant buffers and mark as bound
+    SDeviceObjectHelpers::EndUpdateConstantBuffers(m_ReflectedConstantBuffers);
+
     if (m_dirtyMask == 0)
     {
-        // unmap constant buffers and mark as bound
-        SDeviceObjectHelpers::EndUpdateConstantBuffers(m_ReflectedConstantBuffers);
-
         // update vertex buffer if required
         if (m_bRequireWPos)
         {

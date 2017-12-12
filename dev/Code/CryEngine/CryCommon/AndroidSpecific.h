@@ -167,6 +167,26 @@ extern char* stpcpy(char* dest, const char* str);
 #define _A_HIDDEN (0x02)
 
 
+#include <android/api-level.h>
+
+#if __ANDROID_API__ == 19 
+    // The following were apparently introduced in API 21, however in earlier versions of the 
+    // platform specific headers they were defines.  In the move to unified headers, the follwoing
+    // defines were removed from stat.h
+    #ifndef stat64
+        #define stat64 stat
+    #endif
+
+    #ifndef fstat64
+        #define fstat64 fstat
+    #endif
+
+    #ifndef lstat64
+        #define lstat64 lstat
+    #endif
+#endif // __ANDROID_API__ == 19
+
+
 // std::stoull deosn't exist on android, so we need to define it
 namespace std
 {

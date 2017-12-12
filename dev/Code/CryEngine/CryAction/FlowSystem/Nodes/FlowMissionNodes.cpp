@@ -16,6 +16,7 @@
 #include "CryAction.h"
 #include <IConsole.h>
 
+#include <ITimeDemoRecorder.h>
 #include <LoadScreenBus.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,10 @@ public:
     void ProcessEvent(EFlowEvent event, SActivationInfo* pActInfo) override
     {
         CCryAction* pCryAction = CCryAction::GetCryAction();
-        if (!pCryAction->IsInTimeDemo() && event == eFE_Activate && IsPortActive(pActInfo, InputPorts::Activate))
+        bool isTimeDemoActive = false;
+        TimeDemoRecorderBus::BroadcastResult(isTimeDemoActive, &TimeDemoRecorderBus::Events::IsTimeDemoActive);
+
+        if (!isTimeDemoActive && event == eFE_Activate && IsPortActive(pActInfo, InputPorts::Activate))
         {
 #if AZ_LOADSCREENCOMPONENT_ENABLED
             gEnv->pConsole->GetCVar("level_load_screen_uicanvas_path")->Set(GetPortString(pActInfo, InputPorts::LoadScreenUiCanvasPath));

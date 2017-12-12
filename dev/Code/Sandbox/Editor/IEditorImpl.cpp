@@ -109,15 +109,21 @@
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include "AssetDatabase/AssetDatabaseLocationListener.h"
 #include "AzAssetBrowser/AzAssetBrowserRequestHandler.h"
+#include <Editor/Thumbnails/TextureThumbnailRenderer.h>
+#include <Editor/Thumbnails/StaticMeshThumbnailRenderer.h>
+#include <Editor/Thumbnails/MaterialThumbnailRenderer.h>
 
 #include "aws/core/utils/crypto/Factories.h"
 #include <AzCore/JSON/document.h>
 #include <AzCore/Math/Uuid.h>
 
 #include <QDir>
+
+#include <CloudCanvas/ICloudCanvas.h>
 
 LINK_SYSTEM_LIBRARY(version.lib)
 
@@ -131,7 +137,6 @@ LINK_SYSTEM_LIBRARY(version.lib)
 #include "Core/QtEditorApplication.h"
 #include "../Plugins/EditorCommon/EditorCommonAPI.h"
 #include "QtViewPaneManager.h"
-#include "../Plugins/EditorUI_QT/EditorUI_QTAPI.h"
 
 #include <AzCore/Math/Crc.h>
 #include <AzCore/IO/SystemFile.h>
@@ -245,6 +250,7 @@ CEditorImpl::CEditorImpl()
     , m_pAssetBrowser(nullptr)
     , m_pImageUtil(nullptr)
     , m_pLogFile(nullptr)
+    , m_isLegacyUIEnabled(true)
 {
     // note that this is a call into EditorCore.dll, which stores the g_pEditorPointer for all shared modules that share EditorCore.dll
     // this means that they don't need to do SetIEditor(...) themselves and its available immediately
@@ -310,9 +316,9 @@ CEditorImpl::CEditorImpl()
     ZeroStruct(m_lastCoordSys);
     m_lastCoordSys[eEditModeSelect] = COORDS_LOCAL;
     m_lastCoordSys[eEditModeSelectArea] = COORDS_LOCAL;
-    m_lastCoordSys[eEditModeMove] = COORDS_LOCAL;
-    m_lastCoordSys[eEditModeRotate] = COORDS_LOCAL;
-    m_lastCoordSys[eEditModeScale] = COORDS_LOCAL;
+    m_lastCoordSys[eEditModeMove] = COORDS_WORLD;
+    m_lastCoordSys[eEditModeRotate] = COORDS_WORLD;
+    m_lastCoordSys[eEditModeScale] = COORDS_WORLD;
     DetectVersion();
     RegisterTools();
 
@@ -339,22 +345,42 @@ void CEditorImpl::Initialize()
     // on Windows 10
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
+    // Prevents (native) sibling widgets from causing problems with docked QOpenGLWidgets on Windows
+    // The problem is due to native widgets ending up with pixel formats that are incompatible with the GL pixel format
+    // (generally due to a lack of an alpha channel). This blocks the creation of a shared GL context.
+    QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+
     // Activate QT immediately so that its available as soon as CEditorImpl is (and thus GetIEditor())
     InitializeEditorCommon(GetIEditor());
+
+    LoadSettings();
+}
+
+//The only purpose of that function is to be called at the very begining of the shutdown sequence so that we can instrument and track
+//how many crashes occur while shutting down
+void CEditorImpl::OnBeginShutdownSequence()
+{
+    LogStartingShutdown();
+}
+
+void CEditorImpl::OnEarlyExitShutdownSequence()
+{
+    LogEarlyShutdownExit();
 }
 
 void CEditorImpl::Uninitialize()
 {
+    SaveSettings();
+
     if (m_pSystem)
     {
         UninitializeEditorCommonISystem(m_pSystem);
-        UninitializeEditorUIQTISystem(m_pSystem);
     }
     UninitializeEditorCommon();
     ShutdownCrashLog();
 }
 
-void CEditorImpl::UnloadPlugins()
+void CEditorImpl::UnloadPlugins(bool shuttingDown/* = false*/)
 {
     CryAutoLock<CryMutex> lock(m_pluginMutex);
 
@@ -377,8 +403,11 @@ void CEditorImpl::UnloadPlugins()
     m_QtApplication->UninitializeQML(); // destroy QML first since it will hang onto memory inside the DLLs
     GetPluginManager()->UnloadAllPlugins();
 
-    // since we mean to continue, so need to bring QML back up again in case someone needs it.
-    m_QtApplication->InitializeQML();
+    if (!shuttingDown)
+    {
+        // since we mean to continue, so need to bring QML back up again in case someone needs it.
+        m_QtApplication->InitializeQML();
+    }
 }
 
 void CEditorImpl::LoadPlugins()
@@ -524,13 +553,16 @@ void CEditorImpl::SetGameEngine(CGameEngine* ge)
     m_pGameEngine = ge;
 
     InitializeEditorCommonISystem(m_pSystem);
-    InitializeEditorUIQTISystem(m_pSystem);
 
     m_templateRegistry.LoadTemplates("Editor");
     m_pObjectManager->LoadClassTemplates("Editor");
 
     m_pMaterialManager->Set3DEngine();
     m_pAnimationContext->Init();
+
+    m_thumbnailRenderers.push_back(AZStd::make_unique<TextureThumbnailRenderer>());
+    m_thumbnailRenderers.push_back(AZStd::make_unique<StaticMeshThumbnailRenderer>());
+    m_thumbnailRenderers.push_back(AZStd::make_unique<MaterialThumbnailRenderer>());
 }
 
 void CEditorImpl::RegisterTools()
@@ -1152,7 +1184,14 @@ void CEditorImpl::SetReferenceCoordSys(RefCoordSys refCoords)
     CViewport* pViewport = GetActiveView();
     if (pViewport)
     {
+        //Pre and Post widget rendering calls are made here to make sure that the proper camera state is set.
+        //MakeConstructionPlane will make a call to ViewToWorldRay which needs the correct camera state 
+        //in the CRenderViewport to be set. 
+        pViewport->PreWidgetRendering();
+
         pViewport->MakeConstructionPlane(GetIEditor()->GetAxisConstrains());
+
+        pViewport->PostWidgetRendering();
     }
 
     Notify(eNotify_OnRefCoordSysChange);
@@ -1308,10 +1347,11 @@ bool CEditorImpl::IsSelectionLocked()
 void CEditorImpl::PickObject(IPickObjectCallback* callback, const QMetaObject* targetClass, const char* statusText, bool bMultipick)
 {
     m_pPickTool = new CPickObjectTool(callback, targetClass);
-    ((CPickObjectTool*)m_pPickTool)->SetMultiplePicks(bMultipick);
+
+    static_cast<CPickObjectTool*>(m_pPickTool.get())->SetMultiplePicks(bMultipick);
     if (statusText)
     {
-        m_pPickTool->SetStatusText(statusText);
+        m_pPickTool.get()->SetStatusText(statusText);
     }
 
     SetEditTool(m_pPickTool);
@@ -1606,11 +1646,17 @@ void CEditorImpl::SetInGameMode(bool inGame)
         bWasInSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
         GetIEditor()->GetGameEngine()->SetSimulationMode(false);
         GetIEditor()->GetCommandManager()->Execute("general.enter_game_mode");
+
+        // remove the fps forcing when going into game mode
+        m_pSystem->ForceMaxFps(false, 0);
     }
     else
     {
         GetIEditor()->GetCommandManager()->Execute("general.exit_game_mode");
         GetIEditor()->GetGameEngine()->SetSimulationMode(bWasInSimulationMode);
+
+        // re-enable the fps forcing in editor mode
+        m_pSystem->ForceMaxFps(true, 60);
     }
 }
 
@@ -1721,9 +1767,11 @@ void CEditorImpl::InitMetrics()
         azstrcat(statusFilePath, _MAX_PATH, m_crashLogFileName);
     }
 
-    const bool doSDKInitShutdown = false;
+    bool cloudCanvasInitializedMetrics{ false };
+    EBUS_EVENT_RESULT(cloudCanvasInitializedMetrics, CloudCanvas::AwsApiInitRequestBus, IsAwsApiInitialized);
+
     Aws::Utils::Crypto::InitCrypto();
-    LyMetrics_Initialize("Editor.exe", 2, doSDKInitShutdown, projectId, statusFilePath);
+    LyMetrics_Initialize("Editor.exe", 2, !cloudCanvasInitializedMetrics, projectId, statusFilePath);
 }
 
 void CEditorImpl::DetectVersion()
@@ -1999,7 +2047,7 @@ void CEditorImpl::RecordUndo(IUndoObject* obj)
 
 bool CEditorImpl::FlushUndo(bool isShowMessage)
 {
-    if (isShowMessage && m_pUndoManager && m_pUndoManager->IsHaveUndo() && QMessageBox::question(nullptr, QString(), QObject::tr("After this operation undo will not be available! Are you sure you want to continue?")) != QMessageBox::Yes)
+    if (isShowMessage && m_pUndoManager && m_pUndoManager->IsHaveUndo() && QMessageBox::question(AzToolsFramework::GetActiveWindow(), QObject::tr("Flush Undo"), QObject::tr("After this operation undo will not be available! Are you sure you want to continue?")) != QMessageBox::Yes)
     {
         return false;
     }
@@ -2008,6 +2056,17 @@ bool CEditorImpl::FlushUndo(bool isShowMessage)
     {
         m_pUndoManager->Flush();
     }
+    return true;
+}
+
+bool CEditorImpl::ClearLastUndoSteps(int steps)
+{
+    if (!m_pUndoManager || !m_pUndoManager->IsHaveUndo())
+    {
+        return false;
+    }
+
+    m_pUndoManager->ClearUndoStack(steps);
     return true;
 }
 
@@ -2104,7 +2163,6 @@ const char* GetMetricNameForEvent(EEditorNotifyEvent aEventId)
         {eNotify_OnTerrainRebuild, "OnTerrainRebuild"},
         {eNotify_OnBeginTerrainRebuild, "OnBeginTerrainRebuild"},
         {eNotify_OnEndTerrainRebuild, "OnEndTerrainRebuild"},
-        {eNotify_OnDisplayRenderUpdate, "OnDisplayRenderUpdate"},
         {eNotify_OnLayerImportBegin, "OnLayerImportBegin"},
         {eNotify_OnLayerImportEnd, "OnLayerImportEnd"},
         {eNotify_OnAddAWSProfile, "OnAddAWSProfile"},
@@ -2150,19 +2208,6 @@ void CEditorImpl::NotifyExcept(EEditorNotifyEvent event, IEditorNotifyListener* 
         (*it++)->OnEditorNotifyEvent(event);
     }
 
-    if (event == eNotify_OnSelectionChange)
-    {
-        bool isEditorInGameMode = false;
-        EBUS_EVENT_RESULT(isEditorInGameMode, AzToolsFramework::EditorEntityContextRequestBus, IsEditorRunningGame);
-        if (isEditorInGameMode)
-        {
-            if (SelectionContainsComponentEntities())
-            {
-                SetEditMode(eEditModeSelect);
-            }
-        }
-    }
-
     if (event == eNotify_OnBeginNewScene)
     {
         if (m_pAxisGizmo)
@@ -2183,6 +2228,9 @@ void CEditorImpl::NotifyExcept(EEditorNotifyEvent event, IEditorNotifyListener* 
     if (event == eNotify_OnInit)
     {
         REGISTER_COMMAND("py", CmdPy, 0, "Execute a Python code snippet.");
+
+        // Force the max fps to 60 when in the editor; will disable when game mode is toggled
+        m_pSystem->ForceMaxFps(true, 60);
     }
 
     GetPluginManager()->NotifyPlugins(event);
@@ -2377,12 +2425,12 @@ void CEditorImpl::AddUIEnums()
     m_pUIEnumsDatabase->SetEnumStrings("ShadowMinResPercent", types);
 }
 
-void CEditorImpl::SetEditorConfigSpec(ESystemConfigSpec spec)
+void CEditorImpl::SetEditorConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform)
 {
     gSettings.editorConfigSpec = spec;
-    if (m_pSystem->GetConfigSpec(true) != spec)
+    if (m_pSystem->GetConfigSpec(true) != spec || m_pSystem->GetConfigPlatform() != platform)
     {
-        m_pSystem->SetConfigSpec(spec, true);
+        m_pSystem->SetConfigSpec(spec, platform, true);
         gSettings.editorConfigSpec = m_pSystem->GetConfigSpec(true);
         GetObjectManager()->SendEvent(EVENT_CONFIG_SPEC_CHANGE);
         AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::OnEditorSpecChange);
@@ -2396,6 +2444,11 @@ void CEditorImpl::SetEditorConfigSpec(ESystemConfigSpec spec)
 ESystemConfigSpec CEditorImpl::GetEditorConfigSpec() const
 {
     return (ESystemConfigSpec)gSettings.editorConfigSpec;
+}
+
+ESystemConfigPlatform CEditorImpl::GetEditorConfigPlatform() const
+{
+    return m_pSystem->GetConfigPlatform();
 }
 
 void CEditorImpl::InitFinished()
@@ -2518,6 +2571,16 @@ CBaseObject* CEditorImpl::BaseObjectFromEntityId(EntityId id)
     return CEntityObject::FindFromEntityId(id);
 }
 
+bool CEditorImpl::IsLegacyUIEnabled()
+{
+    return m_isLegacyUIEnabled;
+}
+
+void CEditorImpl::SetLegacyUIEnabled(bool enabled)
+{
+    m_isLegacyUIEnabled = enabled;
+}
+
 void CEditorImpl::OnStartPlayInEditor()
 {
     if (SelectionContainsComponentEntities())
@@ -2544,6 +2607,16 @@ void CEditorImpl::ShutdownCrashLog()
     LyMetrics_UpdateCurrentProcessStatus(EESS_EditorShutdown);
 }
 
+void CEditorImpl::LogStartingShutdown()
+{
+    LyMetrics_UpdateCurrentProcessStatus(EESS_StartingEditorShutdown);
+}
+
+void CEditorImpl::LogEarlyShutdownExit()
+{
+    LyMetrics_UpdateCurrentProcessStatus(EESS_EarlyShutdownExit);
+}
+
 void CEditorImpl::LogBeginGameMode()
 {
     LyMetrics_UpdateCurrentProcessStatus(EESS_InGame);
@@ -2561,4 +2634,50 @@ void CEditorImpl::LogEndGameMode()
 #endif
 
     LyMetrics_UpdateCurrentProcessStatus(sessionStatus);
+}
+
+namespace
+{
+    const std::vector<std::pair<EEditMode, QString>> s_editModeNames = {
+        { eEditModeSelect, QStringLiteral("Select") },
+        { eEditModeSelectArea, QStringLiteral("SelectArea") },
+        { eEditModeMove, QStringLiteral("Move") },
+        { eEditModeRotate, QStringLiteral("Rotate") },
+        { eEditModeScale, QStringLiteral("Scale") }
+    };
+}
+
+void CEditorImpl::LoadSettings()
+{
+    QSettings settings(QStringLiteral("Amazon"), QStringLiteral("Lumberyard"));
+
+    settings.beginGroup(QStringLiteral("Editor"));
+    settings.beginGroup(QStringLiteral("CoordSys"));
+
+    for (const auto& editMode : s_editModeNames)
+    {
+        if (settings.contains(editMode.second))
+        {
+            m_lastCoordSys[editMode.first] = static_cast<RefCoordSys>(settings.value(editMode.second).toInt());
+        }
+    }
+
+    settings.endGroup(); // CoordSys
+    settings.endGroup(); // Editor
+}
+
+void CEditorImpl::SaveSettings() const
+{
+    QSettings settings(QStringLiteral("Amazon"), QStringLiteral("Lumberyard"));
+
+    settings.beginGroup(QStringLiteral("Editor"));
+    settings.beginGroup(QStringLiteral("CoordSys"));
+
+    for (const auto& editMode : s_editModeNames)
+    {
+        settings.setValue(editMode.second, static_cast<int>(m_lastCoordSys[editMode.first]));
+    }
+
+    settings.endGroup(); // CoordSys
+    settings.endGroup(); // Editor
 }

@@ -117,8 +117,9 @@ private:
     std::vector <std::function<void()> > m_updateCallbacks;
     IFileUtil::FileArray m_files;
     std::map<QString, int> m_pathToIndex;
-#ifdef _DEBUG
-    // In debug, the validation phase of the pool allocator when destructed takes so much time.
+#if defined(_DEBUG) || defined(AZ_COMPILER_CLANG)
+    // In debug, the validation phase of the pool allocator when destructed takes so much time,
+    // and using the STLPoolAllocator causes a strange issue when compiling with clang
     typedef std::set<int, std::less<int> > int_set;
     typedef std::map<QString, int_set, std::less<QString> > TagTable;
 #else

@@ -34,21 +34,21 @@ namespace AZ
             {
                 Q_OBJECT
             public:
-                explicit ProcessingHandler(QObject* parent = nullptr);
+                // The traceTag uuid is added to the trace context stack before work is done. This allows
+                //      for filtering messages that are send by this processing handler.
+                explicit ProcessingHandler(Uuid traceTag, QObject* parent = nullptr);
                 ~ProcessingHandler() override = default;
                 virtual void BeginProcessing() = 0;
 
             signals:
-                void AddInfo(const AZStd::string& infoMessage);
-                void AddWarning(const AZStd::string& warningMessage);
-                void AddError(const AZStd::string& errorMessage);
-                void AddAssert(const AZStd::string& assertMessage);
                 void AddLogEntry(const AzToolsFramework::Logging::LogEntry& entry);
 
-                void UserMessageUpdated(const AZStd::string& userMessage);
-                void SubtextUpdated(const AZStd::string& userMessage);
-
+                void StatusMessageUpdated(const AZStd::string& message);
+                
                 void ProcessingComplete();
+
+            protected:
+                Uuid m_traceTag;
             };
         }
     }

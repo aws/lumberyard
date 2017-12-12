@@ -1,0 +1,106 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+
+#pragma once
+
+#include <AzCore/Component/Component.h>
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <Integration/AnimationBus.h>
+#include <Integration/EMotionFXBus.h>
+
+#include <CrySystemBus.h> // Immediate-mode CryRendering only
+
+#if defined (EMOTIONFXANIMATION_EDITOR)
+#   include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#endif // EMOTIONFXANIMATION_EDITOR
+
+namespace AZ
+{
+    namespace Data
+    {
+        class AssetHandler;
+    }
+}
+
+namespace EMotionFX
+{
+    namespace Integration
+    {
+        class SystemComponent
+            : public AZ::Component
+            , private SystemRequestBus::Handler
+            , private AZ::TickBus::Handler
+            , private CrySystemEventBus::Handler
+            , private EMotionFXRequestBus::Handler
+#if defined (EMOTIONFXANIMATION_EDITOR)
+            , private AzToolsFramework::EditorEvents::Bus::Handler
+#endif // EMOTIONFXANIMATION_EDITOR
+        {
+        public:
+            AZ_COMPONENT(SystemComponent, "{7AE4102B-387C-4157-B8C7-8D1EA3BCFD60}");
+
+            SystemComponent();
+            ~SystemComponent() override = default;
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
+
+        private:
+            //unique_ptr cannot be copied -> vector of unique_ptrs cannot be copied -> class cannot be copied
+            SystemComponent(const SystemComponent&) = delete;
+
+            ////////////////////////////////////////////////////////////////////////
+            // AZ::Component interface implementation
+            void Init() override;
+            void Activate() override;
+            void Deactivate() override;
+            ////////////////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////////////////
+            // AZ::TickBus::Handler
+            void OnTick(float delta, AZ::ScriptTimePoint timePoint) override;
+            ////////////////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////////////////
+            // CrySystemEventBus
+            void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
+            void OnCrySystemShutdown(ISystem&) override;
+            void OnCryEditorInitialized() override;
+            ////////////////////////////////////////////////////////////////////////
+
+            ////////////////////////////////////////////////////////////////////////
+            // EMotionFXBus
+            void RegisterAnimGraphNodeType(EMotionFX::AnimGraphNode* nodeTemplate) override;
+            ////////////////////////////////////////////////////////////////////////
+
+            void RegisterAssetTypesAndHandlers();
+            void SetMediaRoot(const char* alias);
+
+#if defined (EMOTIONFXANIMATION_EDITOR)
+            void NotifyRegisterViews() override;
+#endif // EMOTIONFXANIMATION_EDITOR
+
+            AZ::u32 m_numThreads;
+
+        private:
+
+            AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
+        };
+    }
+}

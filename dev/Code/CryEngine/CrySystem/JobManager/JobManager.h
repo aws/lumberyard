@@ -26,6 +26,7 @@
 
 #include <map>
 
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 namespace JobManager
@@ -107,7 +108,7 @@ namespace JobManager
     // singleton managing the job queues
     class CJobManager
         : public IJobManager
-        , public IInputEventListener
+        , public AzFramework::InputChannelEventListener
     {
     public:
         // singleton stuff
@@ -252,7 +253,7 @@ namespace JobManager
 
         virtual void DumpJobList();
 
-        virtual bool OnInputEvent(const SInputEvent& event);
+        bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
 
         void IncreaseRunJobs();
         void IncreaseRunFallbackJobs();
@@ -274,7 +275,8 @@ namespace JobManager
         bool     m_Initialized;                                                                 //true if JobManager have been initialized
 
         IBackend*               m_pFallBackBackEnd;             // Backend for development, jobs are executed in their calling thread
-        IBackend*               m_pThreadBackEnd;                   // Backend for regular jobs, available on PC/XBOX. on Xbox threads are polling with a low priority
+	// Backend for regular jobs, available on PC
+        IBackend*               m_pThreadBackEnd;
         IBackend*               m_pBlockingBackEnd;             // Backend for tasks which can block to prevent stalling regular jobs in this case
 
         uint16                  m_nJobIdCounter;                    // JobId counter for jobs dynamically allocated at runtime

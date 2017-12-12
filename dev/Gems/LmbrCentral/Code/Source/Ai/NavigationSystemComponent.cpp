@@ -39,18 +39,27 @@ namespace LmbrCentral
                 ->Version(1)
                 ->SerializerForEmptyClass()
                 ;
+
+            serializeContext->Class<NavRayCastResult>()
+                ->Version(1)
+                ->Field("collision", &NavRayCastResult::m_collision)
+                ->Field("position", &NavRayCastResult::m_position)
+                ->Field("meshId", &NavRayCastResult::m_meshId)
+                ;
         }
 
         if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
         {
             // RayCastWorld return type
             behaviorContext->Class<NavRayCastResult>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Property("collision", BehaviorValueGetter(&NavRayCastResult::m_collision), nullptr)
                 ->Property("position", BehaviorValueGetter(&NavRayCastResult::m_position), nullptr)
                 ->Property("meshId", BehaviorValueGetter(&NavRayCastResult::m_meshId), nullptr)
                 ;
 
             behaviorContext->EBus<NavigationSystemRequestBus>("NavigationSystemRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("RayCast", &NavigationSystemRequestBus::Events::RayCast)
                 ;
         }

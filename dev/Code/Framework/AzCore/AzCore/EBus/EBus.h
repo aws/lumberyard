@@ -131,7 +131,7 @@ namespace AZ
          * bool Compare(const Interface* other) const; 
          * @endcode
          */
-        using BusHandlerOrderCompare = BusHandlerCompareDefault;
+        using BusHandlerOrderCompare = Internal::BusHandlerCompareDefault;
 
         /**
          * Locking primitive that is used when connecting handlers to the EBus or executing events.
@@ -153,6 +153,15 @@ namespace AZ
         static const bool EnableEventQueue = false;
 
         /**
+         * Specifies whether the EBus supports queueing functions which take reference
+         * arguments. This means that the sender is responsible for the lifetime of the
+         * arguments (they should be static or class members or otherwise persistently stored).
+         * You should only use this if you know that the data being passed as arguments will
+         * outlive the dispatch of the queued event.
+         */
+        static const bool EnableQueuedReferences = false;
+
+        /**
          * Locking primitive that is used when adding and removing 
          * events from the queue.
          * Not used for connection or event execution.
@@ -169,22 +178,31 @@ namespace AZ
          * EBusConnectionPolicy of the bus.
          * By default, no extra logic is run.
          */
-        template<class Bus>
+        template <class Bus>
         using ConnectionPolicy = EBusConnectionPolicy<Bus>;
+
+        /**
+        * Determines whether the bus will lock during dispatch
+        * On buses where handlers are attached at startup and removed at shutdown,
+        * or where connect/disconnect are not done from within handlers, this is safe
+        * to do.
+        * By default, the standard policy is used, which locks around all dispatches
+        */
+        static const bool LocklessDispatch = false;
 
         /**
          * Specifies where EBus data is stored. 
          * This drives how many instances of this EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy – %EBus data is stored 
+         * - (Default) EBusEnvironmentStoragePolicy ï¿½ %EBus data is stored 
          * in the AZ::Environment. With this policy, a single %EBus instance 
          * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy – %EBus data is stored in a global static variable. 
+         * - EBusGlobalStoragePolicy ï¿½ %EBus data is stored in a global static variable. 
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy – %EBus data is stored in a thread_local static 
+         * - EBusThreadLocalStoragePolicy ï¿½ %EBus data is stored in a thread_local static 
          * variable. With this policy, each thread has its own instance of the %EBus.
          */
-        template<class Context>
+        template <class Context>
         using StoragePolicy = EBusEnvironmentStoragePolicy<Context>;
 
         /**
@@ -196,7 +214,7 @@ namespace AZ
          * `EBusRouterNode` before sending the event to the normal handlers. Each   
          * node can stop the event or let it continue.
          */
-        template<class Bus>
+        template <class Bus>
         using RouterPolicy = EBusRouterPolicy<Bus>;
     };
 
@@ -315,6 +333,11 @@ namespace AZ
     {
         struct CallstackEntry;
     public:
+        template <class Iterator>
+        struct MultiThreadCallstackEntryIterator;
+        template <class Iterator>
+        struct CallstackEntryIterator;
+
         /**
          * Contains data about EBusTraits.
          */
@@ -438,6 +461,16 @@ namespace AZ
          * By default, no extra logic is run.
          */
         using ConnectionPolicy = typename Traits::template ConnectionPolicy<ThisType>;
+
+        /**
+         * The scoped lock guard to use (either AZStd::lock_guard<MutexType> or NullLockGuard<MutexType>
+         * during broadcast/event dispatch. 
+         * @see EBusTraits::LocklessDispatch
+         */
+        using DispatchLockGuard = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch || AZStd::is_same<MutexType, NullMutex>::value, Internal::NullLockGuard<MutexType>, AZStd::lock_guard<MutexType>>::type;
+
+        using CallstackForwardIterator = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch, MultiThreadCallstackEntryIterator<typename EBNode::iterator>, CallstackEntryIterator<typename EBNode::iterator>>::type;
+        using CallstackReverseIterator = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch, MultiThreadCallstackEntryIterator<typename EBNode::reverse_iterator>, CallstackEntryIterator<typename EBNode::reverse_iterator>>::type;
 
         /**
          * Specifies whether the %EBus supports an event queue.
@@ -641,12 +674,12 @@ namespace AZ
          * Specifies where %EBus data is stored.
          * This drives how many instances of this %EBus exist at runtime.
          * Available storage policies include the following:
-         * - (Default) EBusEnvironmentStoragePolicy – %EBus data is stored
+         * - (Default) EBusEnvironmentStoragePolicy ï¿½ %EBus data is stored
          * in the AZ::Environment. With this policy, a single %EBus instance
          * is shared across all modules (DLLs) that attach to the AZ::Environment.
-         * - EBusGlobalStoragePolicy – %EBus data is stored in a global static variable.
+         * - EBusGlobalStoragePolicy ï¿½ %EBus data is stored in a global static variable.
          * With this policy, each module (DLL) has its own instance of the %EBus.
-         * - EBusThreadLocalStoragePolicy – %EBus data is stored in a thread_local static
+         * - EBusThreadLocalStoragePolicy ï¿½ %EBus data is stored in a thread_local static
          * variable. With this policy, each thread has its own instance of the %EBus.
          */
         typedef typename Traits::template StoragePolicy<Context> StoragePolicy;
@@ -662,33 +695,21 @@ namespace AZ
             return StoragePolicy::Get();
         }
 
+        static bool IsInDispatch(Context& context=GetContext())
+        {
+            return context.m_callstack != nullptr;
+        }
+
     private:
         struct CallstackEntry
         {
-            CallstackEntry(const BusIdType* busId)
-                : m_busId(busId)
-            {
-                Context& context = GetContext();
-                m_prevCall = context.m_callstack;
-                context.m_callstack = this;
-            }
+            CallstackEntry(const BusIdType* id)
+                : m_busId(id)
+            {}
 
-            virtual ~CallstackEntry()
-            {
-                Context& context = GetContext();
-                context.m_callstack = m_prevCall;
-                if (context.m_callstack == nullptr && context.m_buses.IsKeepIteratorsStable())
-                {
-                    context.m_buses.AllowUnstableIterators();
-                }
-            }
-            
             virtual void OnRemoveHandler(InterfaceType* handler) = 0;
 
-            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState state)
-            {
-                (void)state; 
-            }
+            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */) {}
 
             virtual bool IsRoutingQueuedEvent() const
             {
@@ -700,17 +721,102 @@ namespace AZ
                 return false;
             }
 
+            virtual CallstackEntry* Next() const = 0;
+
             const BusIdType* m_busId;
+        };
+
+        struct CallstackEntryBasic
+            : public CallstackEntry
+        {
+            CallstackEntryBasic(const BusIdType* busId)
+                : CallstackEntry(busId)
+                , m_threadId(AZStd::this_thread::get_id().m_id)
+            {
+                Context& context = GetContext();
+                AZ_Assert(!context.m_callstack || static_cast<CallstackEntryBasic*>(context.m_callstack)->m_threadId == m_threadId, 
+                    "Bus has multiple threads in its callstack records. Configure MutexType on the bus, or don't send to it from multiple threads");
+                m_prevCall = context.m_callstack;
+                context.m_callstack = this;
+            }
+
+            virtual ~CallstackEntryBasic()
+            {
+                Context& context = GetContext();
+                context.m_callstack = m_prevCall;
+                if (context.m_callstack == nullptr && context.m_buses.IsKeepIteratorsStable())
+                {
+                    context.m_buses.AllowUnstableIterators();
+                }
+            }
+
+            CallstackEntry* Next() const override { return m_prevCall; }
+
             CallstackEntry* m_prevCall;
+            AZStd::native_thread_id_type m_threadId;
         };
 
     public:
         /// @cond EXCLUDE_DOCS
-        template<class Iterator>
-        struct CallstackEntryIterator : public CallstackEntry
+        template <class Iterator>
+        struct MultiThreadCallstackEntryIterator
+            : public CallstackEntry
+        {
+            MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id)
+                : CallstackEntry(id)
+                , m_iterator(it)
+                , m_prev(nullptr)
+            {
+                Context& context = GetContext();
+                AZStd::lock_guard<MutexType> lock(context.m_mutex);
+                if (context.m_callstack)
+                {
+                    static_cast<MultiThreadCallstackEntryIterator*>(context.m_callstack)->m_prev = this;
+                }
+                m_next = static_cast<MultiThreadCallstackEntryIterator*>(context.m_callstack);
+                context.m_callstack = this;
+            }
+
+            virtual ~MultiThreadCallstackEntryIterator()
+            {
+                Context& context = GetContext();
+                AZStd::lock_guard<MutexType> lock(context.m_mutex);
+                if (context.m_callstack == this)
+                {
+                    context.m_callstack = m_next;
+                    if (m_next)
+                    {
+                        m_next->m_prev = nullptr;
+                    }
+                }
+                else
+                {
+                    if (m_prev)
+                    {
+                        m_prev->m_next = m_next;
+                    }
+                    if (m_next)
+                    {
+                        m_next->m_prev = m_prev;
+                    }
+                }
+            }
+
+            void OnRemoveHandler(InterfaceType*) override {}
+
+            CallstackEntry* Next() const override { return m_next; }
+
+            Iterator m_iterator;
+            MultiThreadCallstackEntryIterator* m_next;
+            MultiThreadCallstackEntryIterator* m_prev;
+        };
+
+        template <class Iterator>
+        struct CallstackEntryIterator 
+            : public CallstackEntryBasic
         {
             CallstackEntryIterator(Iterator it, const BusIdType* busId)
-                : CallstackEntry(busId)
+                : CallstackEntryBasic(busId)
                 , m_iterator(it)
             {
             }
@@ -726,13 +832,12 @@ namespace AZ
             Iterator m_iterator;
         };
 
-        template<class Iterator>
-        struct CallstackEntryIterator< AZStd::reverse_iterator<Iterator> > : public CallstackEntry
+        template <class Iterator>
+        struct CallstackEntryIterator<AZStd::reverse_iterator<Iterator>> 
+            : public CallstackEntryBasic
         {
-            typedef AZStd::reverse_iterator<Iterator> ReverseIterator;
-
-            CallstackEntryIterator(ReverseIterator it, const BusIdType* busId)
-                : CallstackEntry(busId)
+            CallstackEntryIterator(AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
                 , m_iterator(it)
             {
             }
@@ -748,16 +853,16 @@ namespace AZ
                 }
             }
 
-            ReverseIterator m_iterator;
+            AZStd::reverse_iterator<Iterator> m_iterator;
         };
 
         struct RouterCallstackEntry
-            : public CallstackEntry
+            : public CallstackEntryBasic
         {
             typedef typename RouterPolicy::Container::iterator Iterator;
 
             RouterCallstackEntry(Iterator it, const BusIdType* busId, bool isQueued, bool isReverse)
-                : CallstackEntry(busId)
+                : CallstackEntryBasic(busId)
                 , m_iterator(it)
                 , m_processingState(RouterPolicy::EventProcessingState::ContinueProcess)
                 , m_isQueued(isQueued)
@@ -796,8 +901,6 @@ namespace AZ
     // The macros below correspond to functions in BusImpl.h. 
     // The macros enable you to write shorter code, but don't work as well for code completion.
 
-#if defined(AZ_HAS_VARIADIC_TEMPLATES)
-    
     /// Dispatches an event to handlers at a cached address.
 #   define EBUS_EVENT_PTR(_BusPtr, _EBUS, /*EventName,*/ ...)  _EBUS::Event(_BusPtr, &_EBUS::Events::__VA_ARGS__)
 
@@ -854,222 +957,6 @@ namespace AZ
 
     /// Enqueues an arbitrary callable function to be executed asynchronously.
 #   define EBUS_QUEUE_FUNCTION(_EBUS, /*Function pointer, params*/ ...)       _EBUS::QueueFunction(__VA_ARGS__)
-
-    //!AZ_HAS_VARIADIC_TEMPLATES
-#else
-
-/// @cond EXCLUDE_DOCS
-
-    //////////////////////////////////////////////////////////////////////////
-    // Call Macros
-    // Signals an event on a specific bus that is defined by its cached pointer. Use EBus<EventGroup>::Bind to obtain the cached pointer.
-
-    /// Signals an event on a specific bus that is defined by its cached pointer.
-#   define AZ_EBUS_NORESULT_PREFIX
-
-    /// Signals an event on a specific bus that is defined by its cached pointer and uses a forward iterator.
-#   define AZ_EBUS_FORWARD_ITERATOR_PREFIX
-
-    /// Signals an event on a specific bus that is defined by its cached pointer and uses a backward iterator.
-#   define AZ_EBUS_BACKWARD_ITERATOR_PREFIX reverse_
-
-    /// Signals an event on a specific bus that is defined by its cached pointer and traverses forward over addresses.
-#   define AZ_EBUS_FORWARD_BEGINEND_PREFIX
-
-    /// Signals an event on a specific bus that is defined by its cached pointer and traverses backward over addresses.
-#   define AZ_EBUS_BACKWARD_BEGINEND_PREFIX r
-    
-    /// Code common to signaling an event on a bus address that is referenced by a pointer.
-#   define AZ_EBUS_EVENT_PTR_COMMON(_ResultPrefix, _IteratorPrefix, _BeginEndPrefix, _BusPtr, _EBUS, ...)                                                     \
-    if (_BusPtr->size()) {                                                                                                                                    \
-        _BusPtr->lock();                                                                                                                                      \
-        _EBUS::CallstackEntryIterator<_EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator)> ebCurrentEvent(_BusPtr->AZ_JOIN(_BeginEndPrefix, begin)(), _BusPtr); \
-        _EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator) ebLastEvent = _BusPtr->AZ_JOIN(_BeginEndPrefix, end)();                                             \
-        for (; ebCurrentEvent.m_iterator != ebLastEvent; ) {                                                                                                  \
-            _EBUS::InterfaceType* handler = *ebCurrentEvent.m_iterator++;                                                                                     \
-            _ResultPrefix handler->AZ_FUNCTION_CALL(/*EventName,*/ __VA_ARGS__);                                                                              \
-        }                                                                                                                                                     \
-        _BusPtr->unlock();                                                                                                                                    \
-    }
-
-    /// Code common to signaling an event on a bus address that is specified by ID.
-#   define AZ_EBUS_EVENT_ID_COMMON(_ResultPrefix, _IteratorPrefix, _BeginEndPrefix, _BusId, _EBUS, ...)                                                            \
-    if (_EBUS::GetContext().m_buses.size()) {                                                                                                                      \
-        _EBUS::GetContext().m_mutex.lock();                                                                                                                        \
-        _EBUS::BusesContainer::iterator ebIter = _EBUS::GetContext().m_buses.find(_BusId);                                                                         \
-        if (ebIter != _EBUS::GetContext().m_buses.end()) {                                                                                                         \
-            _EBUS::EBNode* ebBusPtr = _EBUS::BusesContainer::toNodePtr(ebIter);                                                                                    \
-            _EBUS::CallstackEntryIterator<_EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator)> ebCurrentEvent(ebBusPtr->AZ_JOIN(_BeginEndPrefix, begin)(), _BusPtr); \
-            _EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator) ebLastEvent = ebBusPtr->AZ_JOIN(_BeginEndPrefix, end)();                                             \
-            for (; ebCurrentEvent.m_iterator != ebLastEvent; ) {                                                                                                   \
-                _EBUS::InterfaceType* handler = *ebCurrentEvent.m_iterator++;                                                                                      \
-                _ResultPrefix handler->AZ_FUNCTION_CALL(/*EventName,*/ __VA_ARGS__);                                                                               \
-            }                                                                                                                                                      \
-        }                                                                                                                                                          \
-        _EBUS::GetContext().m_mutex.unlock();                                                                                                                      \
-    }
-
-    /// Code common to signaling an event across all addresses on a bus.
-#   define AZ_EBUS_EVENT_COMMON(_ResultPrefix, _IteratorPrefix, _BeginEndPrefix, _EBUS, ...)                                                                     \
-    if (_EBUS::GetContext().m_buses.size()) {                                                                                                                    \
-        _EBUS::GetContext().m_mutex.lock();                                                                                                                      \
-        _EBUS::BusesContainer::AZ_JOIN(_IteratorPrefix, iterator) ebFirstBus = _EBUS::GetContext().m_buses.AZ_JOIN(_BeginEndPrefix, begin)();                    \
-        _EBUS::BusesContainer::AZ_JOIN(_IteratorPrefix, iterator) ebLastBus = _EBUS::GetContext().m_buses.AZ_JOIN(_BeginEndPrefix, end)();                       \
-        for (; ebFirstBus != ebLastBus; ) {                                                                                                                      \
-            _EBUS::EBNode& ebusPtr = *ebFirstBus;                                                                                                                \
-            _EBUS::CallstackEntryIterator<_EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator)> ebCurrentEvent(ebusPtr.AZ_JOIN(_BeginEndPrefix, begin)(), _BusPtr); \
-            _EBUS::EBNode::AZ_JOIN(_IteratorPrefix, iterator) ebLastEvent = ebusPtr.AZ_JOIN(_BeginEndPrefix, end)();                                             \
-            ebusPtr.add_ref();                                                                                                                                   \
-            for (; ebCurrentEvent.m_iterator != ebLastEvent; ) {                                                                                                 \
-                _EBUS::InterfaceType* handler = *ebCurrentEvent.m_iterator++;                                                                                    \
-                _ResultPrefix handler->AZ_FUNCTION_CALL(/*EventName,*/ __VA_ARGS__);                                                                             \
-            }                                                                                                                                                    \
-            ++ebFirstBus;                                                                                                                                        \
-            ebusPtr.release();                                                                                                                                   \
-        }                                                                                                                                                        \
-        _EBUS::GetContext().m_mutex.unlock();                                                                                                                    \
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Queue event macros
-    // We implement functions for up to 10 parameters.
-
-#   define AZ_EVENT_QUEUE_BIND_1(_a1)                                           & _a1
-#   define AZ_EVENT_QUEUE_BIND_2(_a1, _a2)                                       AZStd::bind(&_a1, AZStd::placeholders::_1, _a2)
-#   define AZ_EVENT_QUEUE_BIND_3(_a1, _a2, _a3)                                  AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3)
-#   define AZ_EVENT_QUEUE_BIND_4(_a1, _a2, _a3, _a4)                              AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4)
-#   define AZ_EVENT_QUEUE_BIND_5(_a1, _a2, _a3, _a4, _a5)                          AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5)
-#   define AZ_EVENT_QUEUE_BIND_6(_a1, _a2, _a3, _a4, _a5, _a6)                      AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5, _a6)
-#   define AZ_EVENT_QUEUE_BIND_7(_a1, _a2, _a3, _a4, _a5, _a6, _a7)                  AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5, _a6, _a7)
-#   define AZ_EVENT_QUEUE_BIND_8(_a1, _a2, _a3, _a4, _a5, _a6, _a7, _a8)              AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5, _a6, _a7, _a8)
-#   define AZ_EVENT_QUEUE_BIND_9(_a1, _a2, _a3, _a4, _a5, _a6, _a7, _a8, _a9)          AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5, _a6, _a7, _a8, _a9)
-#   define AZ_EVENT_QUEUE_BIND_10(_a1, _a2, _a3, _a4, _a5, _a6, _a7, _a8, _a9, _a10)    AZStd::bind(&_a1, AZStd::placeholders::_1, _a2, _a3, _a4, _a5, _a6, _a7, _a8, _a9, _a10)
-
-    // We require at least one parameter, the function name.
-#   define AZ_EVENT_QUEUE_BIND(...)         AZ_MACRO_SPECIALIZE(AZ_EVENT_QUEUE_BIND_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
-
-    /// Code common to queueing an event across all addresses on a bus.
-#   define EBUS_QUEUE_EVENT_COMMON(_IsForward, _EBUS, /*EventName,*/ ...)                                                                                                                                                       \
-    if (_EBUS::GetContext().m_buses.size()) {                                                                                                                                                                                   \
-        AZ_STATIC_ASSERT((AZStd::is_same<typename _EBUS::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false), "This EBus doesn't support queued events! Check 'EnableEventQueue'"); \
-        _EBUS::GetContext().m_queue.m_messagesMutex.lock();                                                                                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messages.push();                                                                                                                                                                          \
-        _EBUS::MessageQueuePolicy::BusMessage& ebMsg = _EBUS::GetContext().m_queue.m_messages.back();                                                                                                                           \
-        ebMsg.m_ptr = nullptr;                                                                                                                                                                                                  \
-        ebMsg.m_isUseId = false;                                                                                                                                                                                                \
-        ebMsg.m_isForward = _IsForward;                                                                                                                                                                                         \
-        ebMsg.m_invoke = _EBUS::MessageQueuePolicy::BusMessageCall(AZ_EVENT_QUEUE_BIND(_EBUS::InterfaceType::__VA_ARGS__));                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messagesMutex.unlock(); }
-
-    /// Code common to queuing an event on a bus address that is referenced by a pointer.
-#   define EBUS_QUEUE_EVENT_PTR_COMMON(_IsForward, _BusPtr, _EBUS, /*EventName,*/ ...)                                                                                                                                          \
-    if (_EBUS::GetContext().m_buses.size()) {                                                                                                                                                                                   \
-        AZ_STATIC_ASSERT((AZStd::is_same<typename _EBUS::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false), "This EBus doesn't support queued events! Check 'EnableEventQueue'"); \
-        _EBUS::GetContext().m_queue.m_messagesMutex.lock();                                                                                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messages.push();                                                                                                                                                                          \
-        _EBUS::MessageQueuePolicy::BusMessage& ebMsg = _EBUS::GetContext().m_queue.m_messages.back();                                                                                                                           \
-        ebMsg.m_isUseId = false;                                                                                                                                                                                                \
-        ebMsg.m_isForward = _IsForward;                                                                                                                                                                                         \
-        ebMsg.m_ptr = _BusPtr;                                                                                                                                                                                                  \
-        ebMsg.m_invoke = _EBUS::MessageQueuePolicy::BusMessageCall(AZ_EVENT_QUEUE_BIND(_EBUS::InterfaceType::__VA_ARGS__));                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messagesMutex.unlock(); }
-
-    /// Code common to queueing an event on a bus address that is specified by ID.
-#   define EBUS_QUEUE_EVENT_ID_COMMON(_IsForward, _BusId, _EBUS, /*EventName,*/ ...)                                                                                                                                            \
-    if (_EBUS::GetContext().m_buses.size()) {                                                                                                                                                                                   \
-        AZ_STATIC_ASSERT((AZStd::is_same<typename _EBUS::MessageQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false), "This EBus doesn't support queued events! Check 'EnableEventQueue'"); \
-        _EBUS::GetContext().m_queue.m_messagesMutex.lock();                                                                                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messages.push();                                                                                                                                                                          \
-        _EBUS::MessageQueuePolicy::BusMessage& ebMsg = _EBUS::GetContext().m_queue.m_messages.back();                                                                                                                           \
-        ebMsg.m_id = _BusId;                                                                                                                                                                                                    \
-        ebMsg.m_isUseId = true;                                                                                                                                                                                                 \
-        ebMsg.m_isForward = _IsForward;                                                                                                                                                                                         \
-        ebMsg.m_invoke = _EBUS::MessageQueuePolicy::BusMessageCall(AZ_EVENT_QUEUE_BIND(_EBUS::InterfaceType::__VA_ARGS__));                                                                                                     \
-        _EBUS::GetContext().m_queue.m_messagesMutex.unlock(); }
-
-/// @endcond
-
-    /// Dispatches an event to handlers at a cached address.
-#   define EBUS_EVENT_PTR(_BusPtr, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_PTR_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _BusPtr, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a cached address and receives results.
-#   define EBUS_EVENT_PTR_RESULT(_Result, _BusPtr, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_PTR_COMMON(_Result =, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _BusPtr, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a specific address.
-#   define EBUS_EVENT_ID(_BusId, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_ID_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a specific address and receives results.
-#   define EBUS_EVENT_ID_RESULT(_Result, _BusId, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_ID_COMMON(_Result =, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to all handlers.
-#   define EBUS_EVENT(_EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to all handlers and receives results.
-#   define EBUS_EVENT_RESULT(_Result, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_COMMON(_Result =, AZ_EBUS_FORWARD_ITERATOR_PREFIX, AZ_EBUS_FORWARD_BEGINEND_PREFIX, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a cached address in reverse order.
-#   define EBUS_EVENT_PTR_REVERSE(_BusPtr, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_PTR_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _BusPtr, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a cached address in reverse order and receives results.
-#   define EBUS_EVENT_PTR_RESULT_REVERSE(_Result, _BusPtr, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_PTR_COMMON(_Result =, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _BusPtr, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a specific address in reverse order.
-#   define EBUS_EVENT_ID_REVERSE(_BusId, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_ID_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to handlers at a specific address in reverse order and receives results. 
-#   define EBUS_EVENT_ID_RESULT_REVERSE(_Result, _BusId, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_ID_COMMON(_Result =, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to all handlers in reverse order.
-#   define EBUS_EVENT_REVERSE(_EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_COMMON(AZ_EBUS_NORESULT_PREFIX, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _EBUS, __VA_ARGS__)
-
-    /// Dispatches an event to all handlers in reverse order and receives results.
-#   define EBUS_EVENT_RESULT_REVERSE(_Result, _EBUS, /*EventName,*/ ...) \
-    AZ_EBUS_EVENT_COMMON(_Result =, AZ_EBUS_BACKWARD_ITERATOR_PREFIX, AZ_EBUS_BACKWARD_BEGINEND_PREFIX, _EBUS, __VA_ARGS__)
-
-    /// Enqueues an asynchronous event to dispatch to all handlers.
-#   define EBUS_QUEUE_EVENT(_EBUS, /*EventName,*/ ...)                EBUS_QUEUE_EVENT_COMMON(true, _EBUS, __VA_ARGS__)
-
-    /// Enqueues an asynchronous event to dispatch to handlers at a cached address.
-#   define EBUS_QUEUE_EVENT_PTR(_BusPtr, _EBUS, /*EventName,*/ ...)    EBUS_QUEUE_EVENT_PTR_COMMON(true, _BusPtr, _EBUS, __VA_ARGS__)
-    
-    /// Enqueues an asynchronous event to dispatch to handlers at a specific address.
-#   define EBUS_QUEUE_EVENT_ID(_BusId, _EBUS, /*EventName,*/ ...)      EBUS_QUEUE_EVENT_ID_COMMON(true, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Enqueues an asynchronous event to dispatch to all handlers in reverse order.
-#   define EBUS_QUEUE_EVENT_REVERSE(_EBUS, /*EventName,*/ ...)                EBUS_QUEUE_EVENT_COMMON(false, _EBUS, __VA_ARGS__)
-    
-    /// Enqueues an asynchronous event to dispatch to handlers at a cached address in reverse order.
-#   define EBUS_QUEUE_EVENT_PTR_REVERSE(_BusPtr, _EBUS, /*EventName,*/ ...)    EBUS_QUEUE_EVENT_PTR_COMMON(false, _BusPtr, _EBUS, __VA_ARGS__)
-    
-    /// Enqueues an asynchronous event to dispatch to handlers at a specific address in reverse order.
-#   define EBUS_QUEUE_EVENT_ID_REVERSE(_BusId, _EBUS, /*EventName,*/ ...)      EBUS_QUEUE_EVENT_ID_COMMON(false, _BusId, _EBUS, __VA_ARGS__)
-
-    /// Enqueues an arbitrary callable function to be executed asynchronously.
-#   define EBUS_QUEUE_FUNCTION(_EBUS, /*Function pointer, params*/ ...) {                                                                                                                                                        \
-        AZ_STATIC_ASSERT((AZStd::is_same<typename _EBUS::FunctionQueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false), "This EBus doesn't support queued events! Check 'EnableEventQueue'"); \
-        if (_EBUS::GetContext().m_functionQueue.IsActive()) {                                                                                                                                                                    \
-            _EBUS::GetContext().m_functionQueue.m_messagesMutex.lock();                                                                                                                                                          \
-            _EBUS::GetContext().m_functionQueue.m_messages.push(_EBUS::FunctionQueuePolicy::BusMessageCall(AZStd::bind(__VA_ARGS__), _EBUS::AllocatorType()));                                                                   \
-            _EBUS::GetContext().m_functionQueue.m_messagesMutex.unlock();                                                                                                                                                        \
-        } else {                                                                                                                                                                                                                 \
-            AZ_Warning("System", false, "You are trying to queue function on an EBus "#_EBUS ", but function queuing is NOT enabled! The function will not be executed/called!");                                                \
-        }                                                                                                                                                                                                                        \
-}
-    //////////////////////////////////////////////////////////////////////////
-
-
-#endif // AZ_HAS_VARIADIC_TEMPLATES
 
     //////////////////////////////////////////////////////////////////////////
     // Debug events active only when AZ_DEBUG_BUILD is defined
@@ -1207,10 +1094,16 @@ namespace AZ
     inline void EBus<Interface, Traits>::Bind(BusPtr& ptr, const BusIdType& id)
     {
         Context& context = GetContext();
-        context.m_mutex.lock();
+
+        // scoped lock guard in case of exception / other odd situation
+        AZStd::lock_guard<MutexType> lock(context.m_mutex);
         ConnectionPolicy::Bind(ptr, context, id);
-        context.m_mutex.unlock();
     }
+
+#ifdef AZ_COMPILER_MSVC
+#pragma warning(push)
+#pragma warning(disable: 4127) // conditional expression is constant (for Traits::LocklessDispatch in asserts)
+#endif
 
     //=========================================================================
     // Connect
@@ -1218,15 +1111,17 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::Connect(BusPtr& ptr, HandlerNode& handler, const BusIdType& id)
     {
-        // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         Context& context = GetContext();
-        context.m_mutex.lock();
+        // scoped lock guard in case of exception / other odd situation
+        AZStd::lock_guard<MutexType> lock(context.m_mutex);
+
+        // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
         if (context.m_callstack) // Make sure we don't change the iterator order because we are in the middle of a message.
         {
             context.m_buses.KeepIteratorsStable();
         }
         ConnectionPolicy::Connect(ptr, context, handler, id);
-        context.m_mutex.unlock();
     }
 
     //=========================================================================
@@ -1237,14 +1132,17 @@ namespace AZ
     {
         // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         Context& context = GetContext();
-        context.m_mutex.lock();
+
+        // scoped lock guard in case of exception / other odd situation
+        AZStd::lock_guard<MutexType> lock(context.m_mutex);
+
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
         if (context.m_callstack)
         {
             DisconnectCallstackFix(handler, ptr->m_busId);
         }
         ConnectionPolicy::Disconnect(context, handler, ptr);
         ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
-        context.m_mutex.unlock();
     }
 
     //=========================================================================
@@ -1253,16 +1151,23 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::DisconnectId(HandlerNode& handler, const BusIdType& id)
     {
-        // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         Context& context = GetContext();
-        context.m_mutex.lock();
+
+        // scoped lock guard in case of exception / other odd situation
+        AZStd::lock_guard<MutexType> lock(context.m_mutex);
+            
+        // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
         if (context.m_callstack)
         {
             DisconnectCallstackFix(handler, id);
         }
         ConnectionPolicy::DisconnectId(context, handler, id);
-        context.m_mutex.unlock();
     }
+
+#ifdef AZ_COMPILER_MSVC
+#pragma warning(pop)
+#endif
 
     //=========================================================================
     // DisconnectCallstackFix
@@ -1279,7 +1184,7 @@ namespace AZ
             {
                 entry->OnRemoveHandler(handler);
             }
-            entry = entry->m_prevCall;
+            entry = entry->Next();
         }
     }
 
@@ -1360,97 +1265,36 @@ namespace AZ
         return false;
     }
 
-    template<class Interface, class Traits>
-    void EBECSingle<Interface, Traits>::add_ref()
-    {
-        ++m_refCount;
-    }
-
-    template<class Interface, class Traits>
-    void EBECSingle<Interface, Traits>::release()
-    {
-        auto& context = EBus<Interface, Traits>::GetContext();
-        if (--m_refCount == 0)
-        {
-            context.m_buses.erase(*this);
-            // If this is the last handler, clear all events.
-            if (context.m_buses.size() == 0)
-            {
-                context.m_queue.Clear();
-            }
-        }
-    }
-    template<class Interface, class Traits>
-    void EBECSingle<Interface, Traits>::lock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.lock();
-    }
-    template<class Interface, class Traits>
-    void EBECSingle<Interface, Traits>::unlock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.unlock();
-    }
-    template<class Interface, class Traits>
-    void EBECMulti<Interface, Traits>::add_ref()
-    {
-        ++m_refCount;
-    }
-    template<class Interface, class Traits>
-    void EBECMulti<Interface, Traits>::release()
-    {
-        auto& context = EBus<Interface, Traits>::GetContext();
-        if (--m_refCount == 0)
-        {
-            context.m_buses.erase(*this);
-            // If this is the last handler, clear all events.
-            if (context.m_buses.size() == 0)
-            {
-                context.m_queue.Clear();
-            }
-        }
-    }
-    template<class Interface, class Traits>
-    void EBECMulti<Interface, Traits>::lock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.lock();
-    }
-    template<class Interface, class Traits>
-    void EBECMulti<Interface, Traits>::unlock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.unlock();
-    }
-    template<class Interface, class Traits>
-    void EBECMultiOrdered<Interface, Traits>::add_ref()
-    {
-        ++m_refCount;
-    }
-    template<class Interface, class Traits>
-    void EBECMultiOrdered<Interface, Traits>::release()
-    {
-        auto& context = EBus<Interface, Traits>::GetContext();
-        if (--m_refCount == 0)
-        {
-            context.m_buses.erase(*this);
-            // If this is the last handler, clear all events.
-            if (context.m_buses.size() == 0)
-            {
-                context.m_queue.Clear();
-            }
-        }
-    }
-    template<class Interface, class Traits>
-    void EBECMultiOrdered<Interface, Traits>::lock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.lock();
-    }
-    template<class Interface, class Traits>
-    void EBECMultiOrdered<Interface, Traits>::unlock()
-    {
-        EBus<Interface, Traits>::GetContext().m_mutex.unlock();
-    }
-
     namespace Internal
     {
+        // Handler container code which requires access to the bus
+        template <class ContainerImpl, class Interface, class Traits>
+        void HandlerContainerBase<ContainerImpl, Interface, Traits>::release()
+        {
+            if (--m_refCount == 0)
+            {
+                auto& context = EBus<Interface, Traits>::GetContext();
+                context.m_buses.erase(*static_cast<ContainerImpl*>(this));
+                // If this is the last handler, clear all events.
+                if (context.m_buses.size() == 0)
+                {
+                    context.m_queue.Clear();
+                }
+            }
+        }
+
+        template <class ContainerImpl, class Interface, class Traits>
+        void HandlerContainerBase<ContainerImpl, Interface, Traits>::lock()
+        {
+            EBus<Interface, Traits>::GetContext().m_mutex.lock();
+        }
+
+        template <class ContainerImpl, class Interface, class Traits>
+        void HandlerContainerBase<ContainerImpl, Interface, Traits>::unlock()
+        {
+            EBus<Interface, Traits>::GetContext().m_mutex.unlock();
+        }
+
         /**
          * A single event handler, which supports handling one bus at a time. 
          * Minimal memory footprint, optimal performance.
@@ -1554,6 +1398,7 @@ namespace AZ
                     {
                         return;
                     }
+                    AZ_Assert(false, "Connecting to a different id on this bus without disconnecting first! Please ensure you call BusDisconnect before calling BusConnect again, or if multiple connections are desired you must use a MultiHandler instead.");
                     EBus::Disconnect(m_handlerNode, m_busPtr);
                 }
                 m_handlerNode = this;
@@ -1597,7 +1442,7 @@ namespace AZ
         /**
          * Same as EBusEventHandler with support for attaching to multiple buses (based on ID).
          */
-        template<class EBus>
+        template <class EBus>
         class EBusMultiEventHandler
             : public EBus::InterfaceType
         {

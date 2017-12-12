@@ -24,6 +24,8 @@ const char* g_isReadyToBeRated = "IsRated";
 const char* g_dayCount = "DayCount";
 const char* g_previousVersionUsed = "PreviousVersionUsed";
 const char* g_previousRateStatus = "PreviousRateStatus";
+const char* g_previousSecondRateStatus = "PreviousSecondRateStatus";
+const char* g_ratingInterval = "RatingInterval";
 
 const char* g_shortTimeInterval = "debug";
 
@@ -95,6 +97,8 @@ bool DayCountManager::InitializeVersionInfo()
 {
     QSettings settings("Amazon", "Lumberyard");
     AzQtComponents::AutoSettingsGroup settingsGroupGuard(&settings, g_netPromoterScore);
+    
+    settings.setValue(g_previousSecondRateStatus, false);
 
     // Version group
     AzQtComponents::AutoSettingsGroup versionSettingsGroupGuard(&settings, m_versionNumber);
@@ -218,7 +222,11 @@ bool DayCountManager::ShouldShowNetPromoterScoreDialog()
 
     bool result = false;
     bool isPreviouslyRated = settings.value(g_previousRateStatus).toBool();
+    bool isPreviouslyRatedForSecondPopUp = settings.value(g_previousSecondRateStatus).toBool();
     bool isReadyToBeRated = false;
+    bool isReadyToBeRatedSecondTime = false;
+
+    int ratingInterval = 0;
 
     if (IsLatestVersion())
     {
@@ -230,19 +238,39 @@ bool DayCountManager::ShouldShowNetPromoterScoreDialog()
         {
             isReadyToBeRated = true;
             settings.setValue(g_isReadyToBeRated, isReadyToBeRated);
+
+            if (dayCount >= 30 && isPreviouslyRated)
+            {
+                ratingInterval = 30; 
+                isReadyToBeRatedSecondTime = true;
+
+            }
+            else if (dayCount >= 5)
+            {
+                ratingInterval = 5;
+            }
+            
+            settings.setValue(g_ratingInterval, ratingInterval);
         }
 
-        if (isReadyToBeRated && !isPreviouslyRated)
-        {
-            result = true;
-        }
-        else
-        {
-            result = false;
-        }
+        result = ((isReadyToBeRatedSecondTime && !isPreviouslyRatedForSecondPopUp) || (isReadyToBeRated && !isPreviouslyRated));
+    }
+
+    if (isReadyToBeRatedSecondTime && !isPreviouslyRatedForSecondPopUp)
+    {
+        settings.setValue(g_previousSecondRateStatus, true);
     }
 
     return result;
 }
 
+int DayCountManager::GetRatingInterval()
+{
+    QSettings settings("Amazon", "Lumberyard");
+    AzQtComponents::AutoSettingsGroup settingsGroupGuard(&settings, g_netPromoterScore);
+    AzQtComponents::AutoSettingsGroup versionSettingsGroupGuard(&settings, METRICS_VERSION);
+
+    int ratingInterval = settings.value(g_ratingInterval).toInt();
+    return ratingInterval;
+}
 #include <NetPromoterScore/DayCountManager.moc>

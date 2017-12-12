@@ -22,8 +22,11 @@
 #include <MultiThread_Containers.h>
 
 //////////////////////////////////////////////////////////////////////
-#define MAX_TEMP_LENGTH_SIZE    2048
-
+#if defined(ANDROID)
+    #define MAX_TEMP_LENGTH_SIZE    4098
+#else
+    #define MAX_TEMP_LENGTH_SIZE    8196
+#endif // defined(ANDROID)
 #define MAX_FILENAME_SIZE           256
 
 #define KEEP_LOG_FILE_OPEN
@@ -35,7 +38,7 @@ class CLog
 {
 public:
     typedef std::list<ILogCallback*> Callbacks;
-    typedef CryFixedStringT<MAX_TEMP_LENGTH_SIZE> LogStringType;
+    typedef CryStackStringT<char, MAX_TEMP_LENGTH_SIZE> LogStringType;
 
     // constructor
     CLog(ISystem* pSystem);

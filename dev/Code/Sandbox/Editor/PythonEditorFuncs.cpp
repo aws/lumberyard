@@ -23,6 +23,8 @@
 #include "UndoCVar.h"
 #include "DisplaySettings.h"
 
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+
 #include <QFileDialog>
 
 namespace
@@ -526,7 +528,7 @@ namespace
             }
             else
             {
-                QMessageBox::critical(nullptr, QString(), QObject::tr("Invalid data type."));
+                QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Invalid Data"), QObject::tr("Invalid data type."));
                 isValidDataType = false;
             }
         }

@@ -32,15 +32,18 @@ namespace Gems
         , m_summary()
         , m_iconPath()
         , m_tags()
-        , m_linkType(LinkType::Dynamic)
-        , m_dllFileName()
-        , m_editorDllFileName()
+        , m_modules()
+        , m_modulesByType()
         , m_engineModuleClass()
         , m_gemDependencies()
         , m_gameGem(false)
         , m_required(false)
         , m_engineDependency(nullptr)
     {
+        m_modulesByType.emplace(ModuleDefinition::Type::GameModule);
+        m_modulesByType.emplace(ModuleDefinition::Type::EditorModule);
+        m_modulesByType.emplace(ModuleDefinition::Type::StaticLib);
+        m_modulesByType.emplace(ModuleDefinition::Type::Builder);
     }
 
     GemDescription::GemDescription(const GemDescription& rhs)
@@ -53,9 +56,8 @@ namespace Gems
         , m_summary(rhs.m_summary)
         , m_iconPath(rhs.m_iconPath)
         , m_tags(rhs.m_tags)
-        , m_linkType(rhs.m_linkType)
-        , m_dllFileName(rhs.m_dllFileName)
-        , m_editorDllFileName(rhs.m_editorDllFileName)
+        , m_modules(rhs.m_modules)
+        , m_modulesByType(rhs.m_modulesByType)
         , m_engineModuleClass(rhs.m_engineModuleClass)
         , m_gemDependencies(rhs.m_gemDependencies)
         , m_gameGem(rhs.m_gameGem)
@@ -75,9 +77,8 @@ namespace Gems
         , m_iconPath(AZStd::move(rhs.m_iconPath))
         , m_tags(AZStd::move(rhs.m_tags))
         , m_version(rhs.m_version)
-        , m_linkType(rhs.m_linkType)
-        , m_dllFileName(AZStd::move(rhs.m_dllFileName))
-        , m_editorDllFileName(AZStd::move(rhs.m_editorDllFileName))
+        , m_modules(AZStd::move(rhs.m_modules))
+        , m_modulesByType(AZStd::move(rhs.m_modulesByType))
         , m_engineModuleClass(AZStd::move(rhs.m_engineModuleClass))
         , m_gemDependencies(AZStd::move(rhs.m_gemDependencies))
         , m_gameGem(AZStd::move(rhs.m_gameGem))
@@ -86,23 +87,46 @@ namespace Gems
     {
         rhs.m_id = AZ::Uuid::CreateNull();
         rhs.m_version = GemVersion { 0, 0, 0 };
-        rhs.m_linkType = LinkType::Dynamic;
     }
 
     // returns whether conversion was successful
-    static bool LinkTypeFromString(const char* value, IGemDescription::LinkType& linkTypeOut)
+    static bool LinkTypeFromString(const char* value, LinkType& linkTypeOut)
     {
         // static map for lookups
-        static const std::unordered_map<std::string, IGemDescription::LinkType> linkNameToType = {
-            { GPF_TAG_LINK_TYPE_DYNAMIC,        IGemDescription::LinkType::Dynamic },
-            { GPF_TAG_LINK_TYPE_DYNAMIC_STATIC, IGemDescription::LinkType::DynamicStatic },
-            { GPF_TAG_LINK_TYPE_NO_CODE,        IGemDescription::LinkType::NoCode },
+        static const std::unordered_map<std::string, LinkType> linkNameToType = {
+            { GPF_TAG_LINK_TYPE_DYNAMIC,        LinkType::Dynamic },
+            { GPF_TAG_LINK_TYPE_DYNAMIC_STATIC, LinkType::DynamicStatic },
+            { GPF_TAG_LINK_TYPE_NO_CODE,        LinkType::NoCode },
         };
 
         auto found = linkNameToType.find(value);
         if (found != linkNameToType.end())
         {
             linkTypeOut = found->second;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    
+    static bool ModuleTypeFromString(const char* value, ModuleDefinition::Type& moduleTypeOut)
+    {
+        static const std::unordered_map<const char*, ModuleDefinition::Type> moduleNameToType = {
+            { GPF_TAG_MODULE_TYPE_GAME_MODULE,      ModuleDefinition::Type::GameModule },
+            { GPF_TAG_MODULE_TYPE_EDITOR_MODULE,    ModuleDefinition::Type::EditorModule },
+            { GPF_TAG_MODULE_TYPE_STATIC_LIB,       ModuleDefinition::Type::StaticLib },
+            { GPF_TAG_MODULE_TYPE_BUILDER,          ModuleDefinition::Type::Builder },
+        };
+
+        auto found = AZStd::find_if(moduleNameToType.begin(), moduleNameToType.end(), [&value](decltype(moduleNameToType)::const_reference pair) {
+            return strcmp(pair.first, value) == 0;
+        });
+
+        if (found != moduleNameToType.end())
+        {
+            moduleTypeOut = found->second;
             return true;
         }
         else
@@ -134,6 +158,56 @@ namespace Gems
         {
             // beginning in v3 Gems contain an AZ::Module, in the past they contained an IGem
             descNode.AddMember("IsLegacyIGem", true, descNode.GetAllocator());
+        }
+
+        // upgrade v3 -> v4
+        if (gemFormatVersion < 4)
+        {
+            // read link type, if not NoCode, migrate to GameModule
+            if (!RAPIDJSON_IS_VALID_MEMBER(descNode, GPF_TAG_LINK_TYPE, IsString))
+            {
+                return AZ::Failure(AZStd::string(GPF_TAG_LINK_TYPE " string must not be empty."));
+            }
+            // Explicitly copy string so we can remove it from the object
+            AZStd::string linkTypeString = descNode[GPF_TAG_LINK_TYPE].GetString();
+            descNode.RemoveMember(GPF_TAG_LINK_TYPE);
+
+            LinkType linkType;
+            if (!LinkTypeFromString(linkTypeString.c_str(), linkType))
+            {
+                return AZ::Failure(AZStd::string(GPF_TAG_LINK_TYPE " string is invalid."));
+            }
+
+            // If no-code, don't make module definitions
+            if (linkType != LinkType::NoCode)
+            {
+                // Create modules list
+                rapidjson::Value modulesList{ rapidjson::kArrayType };
+
+                // Create module definition
+                {
+                    rapidjson::Value gameModule{ rapidjson::kObjectType };
+                    gameModule.AddMember(GPF_TAG_MODULE_TYPE, GPF_TAG_MODULE_TYPE_GAME_MODULE, descNode.GetAllocator());
+                    gameModule.AddMember(GPF_TAG_LINK_TYPE, rapidjson::Value(linkTypeString.c_str(), descNode.GetAllocator()), descNode.GetAllocator());
+
+                    modulesList.PushBack(AZStd::move(gameModule), descNode.GetAllocator());
+                }
+
+                // Create editor module definition
+                if (RAPIDJSON_IS_VALID_MEMBER(descNode, GPF_TAG_EDITOR_MODULE, IsBool) && descNode[GPF_TAG_EDITOR_MODULE].GetBool())
+                {
+                    rapidjson::Value editorModule{ rapidjson::kObjectType };
+                    editorModule.AddMember(GPF_TAG_MODULE_TYPE, GPF_TAG_MODULE_TYPE_EDITOR_MODULE, descNode.GetAllocator());
+                    editorModule.AddMember(GPF_TAG_MODULE_NAME, "Editor", descNode.GetAllocator());
+                    editorModule.AddMember(GPF_TAG_MODULE_EXTENDS, "GameModule", descNode.GetAllocator());
+
+                    modulesList.PushBack(AZStd::move(editorModule), descNode.GetAllocator());
+                }
+                descNode.RemoveMember(GPF_TAG_EDITOR_MODULE);
+
+                // Add modules list to 
+                descNode.AddMember(GPF_TAG_MODULES, modulesList, descNode.GetAllocator());
+            }
         }
 
         // file is now up to date
@@ -210,16 +284,6 @@ namespace Gems
         else
         {
             return AZ::Failure(AZStd::string(GPF_TAG_VERSION " string is required."));
-        }
-
-        // read link type
-        if (!RAPIDJSON_IS_VALID_MEMBER(descNode, GPF_TAG_LINK_TYPE, IsString))
-        {
-            return AZ::Failure(AZStd::string(GPF_TAG_LINK_TYPE " string must not be empty."));
-        }
-        if (!LinkTypeFromString(descNode[GPF_TAG_LINK_TYPE].GetString(), gem.m_linkType))
-        {
-            return AZ::Failure(AZStd::string(GPF_TAG_LINK_TYPE " string is invalid."));
         }
 
         // To reduce the potential for user error, a Gem depending on the Lumberyard engine version
@@ -316,10 +380,10 @@ namespace Gems
 
                 AZStd::vector<AZStd::string> versionConstraints;
                 const auto& constraints = depNode[GPF_TAG_VERSION_CONSTRAINTS];
-                const auto& end = constraints.End();
-                for (auto it = constraints.Begin(); it != end; ++it)
+                const auto& constraintsEnd(constraints.End());
+                for (auto constraintIt = constraints.Begin(); constraintIt != constraintsEnd; ++constraintIt)
                 {
-                    const auto& constraint = *it;
+                    const auto& constraint = *constraintIt;
                     if (!constraint.IsString())
                     {
                         return AZ::Failure(AZStd::string(GPF_TAG_VERSION_CONSTRAINTS " array for dependency must contain strings."));
@@ -397,18 +461,137 @@ namespace Gems
         gem.GetID().ToString(idStr, UUID_STR_BUF_LEN, false, false);
         AZStd::to_lower(idStr, idStr + strlen(idStr));
 
-        // Dll file name is Gem.[NAME].[ID].v[VERSION]
-        gem.m_dllFileName = AZStd::string::format("Gem.%s.%s.v%s", gem.GetName().c_str(), idStr, gem.GetVersion().ToString().c_str());
+        // Read the modules list
+        if (RAPIDJSON_IS_VALID_MEMBER(descNode, GPF_TAG_MODULES, IsArray))
+        {
+            bool foundDefaultModule = false;
+            AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<ModuleDefinition>> modulesByName;
+            AZStd::vector<AZStd::pair<AZStd::shared_ptr<ModuleDefinition>, AZStd::string>> dependencies;
 
-        // If EditorModule is specified and is true, generate dll file name. Otherwise, fallback on default file name.
-        if (RAPIDJSON_IS_VALID_MEMBER(descNode, GPF_TAG_EDITOR_MODULE, IsBool) && descNode[GPF_TAG_EDITOR_MODULE].GetBool())
-        {
-            // Dll file name is Gem.[NAME].Editor.[ID].v[VERSION]
-            gem.m_editorDllFileName = AZStd::string::format("Gem.%s.Editor.%s.v%s", gem.GetName().c_str(), idStr, gem.GetVersion().ToString().c_str());
-        }
-        else
-        {
-            gem.m_editorDllFileName = gem.m_dllFileName;
+            const rapidjson::Value& modulesNode = descNode[GPF_TAG_MODULES];
+            for (auto moduleObjPtr = modulesNode.Begin(); moduleObjPtr != modulesNode.End(); ++moduleObjPtr)
+            {
+                const rapidjson::Value& moduleObj = *moduleObjPtr;
+                if (!moduleObj.IsObject())
+                {
+                    return AZ::Failure(AZStd::string("Each object in " GPF_TAG_MODULES " must be an object!"));
+                }
+
+                auto modulePtr = AZStd::make_shared<ModuleDefinition>();
+                gem.m_modules.emplace_back(modulePtr);
+
+                // Get the module type
+                if (!RAPIDJSON_IS_VALID_MEMBER(moduleObj, GPF_TAG_MODULE_TYPE, IsString))
+                {
+                    return AZ::Failure(AZStd::string("Each module requires a " GPF_TAG_MODULE_TYPE " field."));
+                }
+                const char* moduleTypeStr = moduleObj[GPF_TAG_MODULE_TYPE].GetString();
+                if (!ModuleTypeFromString(moduleTypeStr, modulePtr->m_type))
+                {
+                    return AZ::Failure(AZStd::string::format("Module type %s is invalid!", moduleTypeStr));
+                }
+
+                // Get the module name (default to the type)
+                if (RAPIDJSON_IS_VALID_MEMBER(moduleObj, GPF_TAG_MODULE_NAME, IsString))
+                {
+                    modulePtr->m_name = moduleObj[GPF_TAG_MODULE_NAME].GetString();
+                }
+                else if (modulePtr->m_type == ModuleDefinition::Type::GameModule)
+                {
+                    modulePtr->m_name = moduleTypeStr;
+                }
+                else
+                {
+                    return AZ::Failure(AZStd::string::format("Default \"" GPF_TAG_MODULE_NAME "\" field is only supported for modules of type \"GameModule\", not %s.", moduleTypeStr));
+                }
+
+                // Check for duplicate names
+                if (modulesByName.find(modulePtr->m_name) != modulesByName.end())
+                {
+                    return AZ::Failure(AZStd::string::format("Module name \"%s\" is used more than once!", modulePtr->m_name.c_str()));
+                }
+
+                // If the type is GameModule, omit name from file name (maintains functionality of v3)
+                if (modulePtr->m_type == ModuleDefinition::Type::GameModule)
+                {
+                    if (!foundDefaultModule)
+                    {
+                        modulePtr->m_fileName = AZStd::string::format("Gem.%s.%s.v%s", gem.GetName().c_str(), idStr, gem.GetVersion().ToString().c_str());
+                        foundDefaultModule = true;
+                    }
+
+                    // If LinkType is specified, read and validate it.
+                    if (RAPIDJSON_IS_VALID_MEMBER(moduleObj, GPF_TAG_LINK_TYPE, IsString))
+                    {
+                        const char* linkTypeStr = moduleObj[GPF_TAG_LINK_TYPE].GetString();
+                        if (!LinkTypeFromString(linkTypeStr, modulePtr->m_linkType))
+                        {
+                            return AZ::Failure(AZStd::string::format(GPF_TAG_LINK_TYPE " specified (\"%s\") is invalid", linkTypeStr));
+                        }
+                    }
+                }
+
+                // If the module needs a file name, populate it.
+                if (modulePtr->m_fileName.empty() && modulePtr->m_type != ModuleDefinition::Type::StaticLib)
+                {
+                    modulePtr->m_fileName = AZStd::string::format("Gem.%s.%s.%s.v%s", gem.GetName().c_str(), modulePtr->m_name.c_str(), idStr, gem.GetVersion().ToString().c_str());
+                }
+
+                modulesByName.emplace(modulePtr->m_name, modulePtr);
+
+                // Populate extensions
+                if (modulePtr->m_type != ModuleDefinition::Type::StaticLib &&
+                    RAPIDJSON_IS_VALID_MEMBER(moduleObj, GPF_TAG_MODULE_EXTENDS, IsString))
+                {
+                    dependencies.emplace_back(modulePtr, AZStd::string(moduleObj[GPF_TAG_MODULE_EXTENDS].GetString()));
+                }
+            }
+
+            // Populate dependencies
+            for (const auto& dependencyPair : dependencies)
+            {
+                auto dependencyIterator = modulesByName.find(dependencyPair.second);
+                if (dependencyIterator == modulesByName.end())
+                {
+                    return AZ::Failure(AZStd::string::format("Module \"%s\" depends on \"" GPF_TAG_MODULE_EXTENDS "\" invalid module \"%s\"", dependencyPair.first->m_name.c_str(), dependencyPair.second.c_str()));
+                }
+
+                if (dependencyIterator->second->m_type != ModuleDefinition::Type::GameModule)
+                {
+                    return AZ::Failure(AZStd::string::format("Modules may only \"" GPF_TAG_MODULE_EXTENDS "\" modules of type \"" GPF_TAG_MODULE_TYPE_GAME_MODULE "\"."));
+                }
+
+                dependencyPair.first->m_parent = dependencyIterator->second;
+                dependencyIterator->second->m_children.emplace_back(dependencyPair.first);
+            }
+
+            // Populate modulesByType
+            for (const auto& modulePtr : gem.m_modules)
+            {
+                gem.m_modulesByType[modulePtr->m_type].emplace_back(modulePtr);
+
+                // If this module is a GameModule, and there is no Editor override, apply it to Editor as well.
+                if (modulePtr->m_type == ModuleDefinition::Type::GameModule)
+                {
+                    bool foundEditorModule = false;
+                    // Check children for editor modules
+                    for (const auto& childWeak : modulePtr->m_children)
+                    {
+                        auto child = childWeak.lock();
+                        AZ_Assert(child, "Child somehow out of scope already!");
+                        if (child->m_type == ModuleDefinition::Type::EditorModule)
+                        {
+                            foundEditorModule = true;
+                            break;
+                        }
+                    }
+                    if (!foundEditorModule)
+                    {
+                        // If no children are for editor, add module to editor list
+                        gem.m_modulesByType[ModuleDefinition::Type::EditorModule].emplace_back(modulePtr);
+                    }
+                }
+            }
         }
 
         return AZ::Success(AZStd::move(gem));

@@ -25,8 +25,9 @@ def build(bld):
         includes    = [ '.' , 
                         '..', 
                         bld.Path('Code/CryEngine/CryAction'),
-                        bld.Path('Code/CryEngine/LmbrAWS')],
+                        bld.Path('Code/CryEngine/CryCommon')],
         uselib      = ['AWS_CPP_SDK_ALL'],
+        use         = ['CloudGemFrameworkStaticLibrary'],
         file_list   = file_list,
         shared_settings = ['awsgem.json']
     )

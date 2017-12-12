@@ -12,7 +12,8 @@
 #include "StdAfx.h"
 #include "EditorCapsuleShapeComponent.h"
 
-#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Math/IntersectPoint.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "CapsuleShapeComponent.h"
 
 namespace LmbrCentral
@@ -49,8 +50,10 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Capsule_Shape.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(0, &EditorCapsuleShapeComponent::m_configuration, "Configuration", "Capsule Shape Configuration")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCapsuleShapeComponent::ConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
@@ -66,12 +69,41 @@ namespace LmbrCentral
         }
     }
 
+    void EditorCapsuleShapeComponent::Activate()
+    {
+        EditorBaseShapeComponent::Activate();
+        CapsuleShape::Activate(GetEntityId());        
+    }
+
+    void EditorCapsuleShapeComponent::Deactivate()
+    {        
+        CapsuleShape::Deactivate();
+        EditorBaseShapeComponent::Deactivate();
+    }
+
+    void EditorCapsuleShapeComponent::ConfigurationChanged()
+    {        
+        InvalidateCache(CapsuleShapeComponent::CapsuleIntersectionDataCache::Obsolete_ShapeChange);
+    }
+
+    AZ::Crc32 EditorCapsuleShapeComponent::OnConfigurationChanged()
+    {
+        // if radius is large enough that shape is essentially a sphere, ensure height remains accurate
+        if ((m_configuration.m_height - 2 * m_configuration.m_radius) < std::numeric_limits<float>::epsilon())
+        {
+            m_configuration.m_height = 2 * m_configuration.m_radius;
+            return AZ::Edit::PropertyRefreshLevels::EntireTree;
+        }
+
+        return AZ::Edit::PropertyRefreshLevels::None;
+    }
+
     void EditorCapsuleShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         auto component = gameEntity->CreateComponent<CapsuleShapeComponent>();
         if (component)
         {
-            component->m_configuration = m_configuration;
+            component->SetConfiguration(m_configuration);
         }
     }
 
@@ -96,7 +128,7 @@ namespace LmbrCentral
 
             New:
             <Class name="EditorCapsuleShapeComponent" field="element" version="1" type="{06B6C9BE-3648-4DA2-9892-755636EF6E19}">
-             <Class name="CapsuleShapeConfiguration" field="Configuration" version="1" type="{00931AEB-2AD8-42CE-B1DC-FA4332F51501}">
+             <Class name="CapsuleShapeConfig" field="Configuration" version="1" type="{00931AEB-2AD8-42CE-B1DC-FA4332F51501}">
               <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
               <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
              </Class>
@@ -104,21 +136,21 @@ namespace LmbrCentral
             */
 
             // Cache the Configuration
-            CapsuleShapeConfiguration configuration;
+            CapsuleShapeConfig configuration;
             int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<CapsuleShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<CapsuleShapeConfig>(configuration);
             }
 
             // Convert to EditorCapsuleShapeComponent
-            bool result = classElement.Convert(context, "{06B6C9BE-3648-4DA2-9892-755636EF6E19}");
+            bool result = classElement.Convert<EditorCapsuleShapeComponent>(context);
             if (result)
             {
-                configIndex = classElement.AddElement<CapsuleShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<CapsuleShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<CapsuleShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<CapsuleShapeConfig>(context, configuration);
                 }
                 return true;
             }

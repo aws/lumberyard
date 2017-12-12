@@ -495,7 +495,16 @@ ILINE float approxOneExp(float x) {     return x * fres(1.f + x); }
 
 ILINE int ilog2(uint64 x)   // if x==1<<i (i=0..63), returns i
 {
-#if defined(CRY_PLATFORM_X64)   && !defined(CRY_PLATFORM_ORBIS) && !defined(CRY_PLATFORM_LINUX)
+// TODO: Hoist this to a trait definition somewhere else
+#if defined(CRY_PLATFORM_X64)
+# if   defined(CRY_PLATFORM_LINUX)
+#  define HAS_BIT_SCAN_FORWARD64 0
+# else
+#  define HAS_BIT_SCAN_FORWARD64 1
+# endif
+#endif
+
+#if HAS_BIT_SCAN_FORWARD64
     unsigned long i;
     _BitScanForward64(&i, x);
     return i;

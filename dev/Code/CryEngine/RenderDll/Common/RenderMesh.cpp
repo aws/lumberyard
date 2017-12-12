@@ -2805,7 +2805,7 @@ bool CRenderMesh::RT_CheckUpdate(CRenderMesh* pVContainer, uint32 nStreamMask, b
         bool bFound = false;
         SBoneIndexStreamRequest& rBoneIndexStreamRequest = pVContainer->m_CreatedBoneIndices[threadId][i];
         const uint32 guid = rBoneIndexStreamRequest.guid;
-        for (size_t j = 0, end = m_RemappedBoneIndices.size(); j < end; ++j)
+        for (size_t j = 0, numIndices = m_RemappedBoneIndices.size(); j < numIndices; ++j)
         {
             if (m_RemappedBoneIndices[j].guid == guid && m_RemappedBoneIndices[j].refcount)
             {
@@ -3911,35 +3911,47 @@ void CRenderMesh::UpdateBBoxFromMesh()
     }
 }
 
-static void BlendWeights(DualQuat& dq, Array<const DualQuat> aBoneLocs, const JointIdType* aBoneRemap, const uint16* indices, UCol weights)
+static void ExtractBoneIndicesAndWeights(uint16* outIndices, Vec4& outWeights, const JointIdType* aBoneRemap, const uint16* indices, UCol weights)
 {
     // Get 8-bit weights as floats
-    f32 w0 = weights.bcolor[0];
-    f32 w1 = weights.bcolor[1];
-    f32 w2 = weights.bcolor[2];
-    f32 w3 = weights.bcolor[3];
+    outWeights[0] = weights.bcolor[0];
+    outWeights[1] = weights.bcolor[1];
+    outWeights[2] = weights.bcolor[2];
+    outWeights[3] = weights.bcolor[3];
 
     // Get bone indices
-    uint16 auBones[4];
     if (aBoneRemap)
     {
-        auBones[0] = aBoneRemap[indices[0]];
-        auBones[1] = aBoneRemap[indices[1]];
-        auBones[2] = aBoneRemap[indices[2]];
-        auBones[3] = aBoneRemap[indices[3]];
+        outIndices[0] = aBoneRemap[indices[0]];
+        outIndices[1] = aBoneRemap[indices[1]];
+        outIndices[2] = aBoneRemap[indices[2]];
+        outIndices[3] = aBoneRemap[indices[3]];
     }
     else
     {
-        auBones[0] = indices[0];
-        auBones[1] = indices[1];
-        auBones[2] = indices[2];
-        auBones[3] = indices[3];
+        outIndices[0] = indices[0];
+        outIndices[1] = indices[1];
+        outIndices[2] = indices[2];
+        outIndices[3] = indices[3];
     }
+}
 
-    // Blend dual quats
-    dq = aBoneLocs[auBones[0]] * w0 + aBoneLocs[auBones[1]] * w1 + aBoneLocs[auBones[2]] * w2 + aBoneLocs[auBones[3]] * w3;
+static void BlendDualQuats(DualQuat& outBone, Array<const DualQuat> aBoneLocs, const uint16* indices, const Vec4 outWeights)
+{
+    outBone = aBoneLocs[indices[0]] * outWeights[0] +
+              aBoneLocs[indices[1]] * outWeights[1] +
+              aBoneLocs[indices[2]] * outWeights[2] +
+              aBoneLocs[indices[3]] * outWeights[3];
 
-    dq.Normalize();
+    outBone.Normalize();
+}
+
+static void BlendMatrices(Matrix34& outBone, Array<const Matrix34> aBoneLocs, const uint16* indices, const Vec4 outWeights)
+{
+    outBone = (aBoneLocs[indices[0]] * outWeights[0]) + 
+              (aBoneLocs[indices[1]] * outWeights[1]) + 
+              (aBoneLocs[indices[2]] * outWeights[2]) + 
+              (aBoneLocs[indices[3]] * outWeights[3]);
 }
 
 struct PosNormData
@@ -4019,15 +4031,31 @@ struct SkinnedPosNormData
         // Skinning
         if (pSkinningData)
         {
-            // Transform the vertex with skinning.
-            DualQuat dq;
-            BlendWeights(
-                dq,
-                ArrayT(pSkinningData->pBoneQuatsS, (int)pSkinningData->nNumBones),
-                pSkinningData->pRemapTable,
-                &aSkinning[nV].indices[0],
-                aSkinning[nV].weights);
-            ran <<= dq;
+            uint16 indices[4];
+            Vec4 weights;
+            ExtractBoneIndicesAndWeights(indices, weights, pSkinningData->pRemapTable, &aSkinning[nV].indices[0], aSkinning[nV].weights);
+
+            if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
+            {
+                Matrix34 m;
+                BlendMatrices(
+                    m,
+                    ArrayT(pSkinningData->pBoneMatrices, (int)pSkinningData->nNumBones),
+                    indices,
+                    weights);
+                ran <<= m;
+            }
+            else
+            {
+                // Transform the vertex with skinning.
+                DualQuat dq;
+                BlendDualQuats(
+                    dq,
+                    ArrayT(pSkinningData->pBoneQuatsS, (int)pSkinningData->nNumBones),
+                    indices,
+                    weights);
+                ran <<= dq;
+            }
         }
     }
 };

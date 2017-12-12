@@ -18,11 +18,12 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/base.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchWidgetTypes.hxx>
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
 
 #pragma once
 
@@ -55,7 +56,7 @@ namespace AzToolsFramework
             OutlinerWidget(QWidget* pParent = NULL, Qt::WindowFlags flags = 0);
         virtual ~OutlinerWidget();
 
-    private Q_SLOTS:
+        private Q_SLOTS:
         void OnSelectionChanged(const QItemSelection&, const QItemSelection&);
         void OnSearchCriteriaChanged(QStringList& criteriaList, AzToolsFramework::FilterOperatorType filterOperator);
         void OnOpenTreeContextMenu(const QPoint& pos);
@@ -82,15 +83,9 @@ namespace AzToolsFramework
         void EntityCreated(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        // AzToolsFramework::OutlinerModelNotificationBus::Handler
-        // Receive notification from the outliner model that a list of entities
-        // have been selected
-        //////////////////////////////////////////////////////////////////////////
-        void ModelEntitySelectionChanged(const AZStd::unordered_set<AZ::EntityId>& selectedEntityIdList, const AZStd::unordered_set<AZ::EntityId>& deselectedEntityIdList) override;
-
         // Build a selection object from the given entities. Entities already in the Widget's selection buffers are ignored.
-        QItemSelection BuildSelectionFromEntities(const AZStd::unordered_set<AZ::EntityId>& entityIds);
+        template <class EntityIdCollection>
+        QItemSelection BuildSelectionFromEntities(const EntityIdCollection& entityIds);
 
         Ui::OutlinerWidgetUI* m_gui;
         OutlinerListModel* m_listModel;
@@ -109,6 +104,8 @@ namespace AzToolsFramework
         void DoDeleteSelectionAndDescendants();
         void DoRenameSelection();
         void DoReparentSelection();
+        void DoMoveEntityUp();
+        void DoMoveEntityDown();
         void SetupActions();
 
         QAction* m_actionToShowSlice;
@@ -118,18 +115,41 @@ namespace AzToolsFramework
         QAction* m_actionToDeleteSelectionAndDescendants;
         QAction* m_actionToRenameSelection;
         QAction* m_actionToReparentSelection;
+        QAction* m_actionToMoveEntityUp;
+        QAction* m_actionToMoveEntityDown;
 
         void OnTreeItemClicked(const QModelIndex &index);
+        void OnTreeItemExpanded(const QModelIndex &index);
+        void OnTreeItemCollapsed(const QModelIndex &index);
+        void OnExpandEntity(const AZ::EntityId& entityId, bool expand);
+        void OnSelectEntity(const AZ::EntityId& entityId, bool selected);
+        void OnEnableSelectionUpdates(bool enable);
         bool m_inObjectPickMode;
         bool m_initiatedObjectPickMode;
 
         AZ::EntityId GetEntityIdFromIndex(const QModelIndex& index) const;
         QModelIndex GetIndexFromEntityId(const AZ::EntityId& entityId) const;
 
+        //////////////////////////////////////////////////////////////////////////
+        // AzToolsFramework::OutlinerModelNotificationBus::Handler
+        // Receive notification from the outliner model that we should scroll
+        // to a given entity
+        //////////////////////////////////////////////////////////////////////////
+        void QueueScrollToNewContent(const AZ::EntityId& entityId) override;
+
         void ScrollToNewContent();
-        void QueueScrollToNewContent(const AZ::EntityId& entityId);
         bool m_scrollToNewContentQueued;
         AZ::EntityId m_scrollToEntityId;
+
+        void QueueUpdateSelection();
+        void UpdateSelection();
+        AZStd::unordered_set<AZ::EntityId> m_entitiesToSelect;
+        AZStd::unordered_set<AZ::EntityId> m_entitiesToDeselect;
+        AZStd::unordered_set<AZ::EntityId> m_entitiesSelectedByOutliner;
+        AZStd::unordered_set<AZ::EntityId> m_entitiesDeselectedByOutliner;
+        bool m_selectionChangeQueued;
+        bool m_selectionChangeInProgress;
+        bool m_enableSelectionUpdates;
     };
 
 } // WorldEditor

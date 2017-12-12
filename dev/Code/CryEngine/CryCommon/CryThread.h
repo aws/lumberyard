@@ -579,13 +579,13 @@ public:
     { m_lock.UnlockModify(); }
 };
 
-#define AUTO_READLOCK(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockRead<CryReadModifyLock> __readlock##__LINE__(p, __FUNC__)
-#define AUTO_READLOCK_PROT(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockRead<CryReadModifyLock> __readlock_prot##__LINE__(p, __FUNC__)
-#define AUTO_MODIFYLOCK(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockModify<CryReadModifyLock> __modifylock##__LINE__(p, __FUNC__)
+#define AUTO_READLOCK(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockRead<CryReadModifyLock> AZ_JOIN(__readlock, __LINE__)(p, __FUNC__)
+#define AUTO_READLOCK_PROT(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockRead<CryReadModifyLock> AZ_JOIN(__readlock_prot, __LINE__)(p, __FUNC__)
+#define AUTO_MODIFYLOCK(p) PREFAST_SUPPRESS_WARNING(6246) AutoLockModify<CryReadModifyLock> AZ_JOIN(__modifylock, __LINE__)(p, __FUNC__)
 
 #if defined(_DEBUG)
-    #define DEBUG_READLOCK(p) AutoLockRead<CryReadModifyLock> __readlock##__LINE__(p, __FUNC__)
-    #define DEBUG_MODIFYLOCK(p) AutoLockModify<CryReadModifyLock> __modifylock##__LINE__(p, __FUNC__)
+    #define DEBUG_READLOCK(p) AutoLockRead<CryReadModifyLock> AZ_JOIN(__readlock, __LINE__)(p, __FUNC__)
+    #define DEBUG_MODIFYLOCK(p) AutoLockModify<CryReadModifyLock> AZ_JOIN(__modifylock, __LINE__)(p, __FUNC__)
 #else
     #define DEBUG_READLOCK(p)
     #define DEBUG_MODIFYLOCK(p)

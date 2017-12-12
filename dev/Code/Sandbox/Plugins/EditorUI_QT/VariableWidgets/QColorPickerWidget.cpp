@@ -29,6 +29,8 @@
 #include "QColorEyeDropper.h"
 #include "../Utils.h"
 
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
+
 QColorPickerWidget::QColorPickerWidget(QWidget* parent)
     : QWidget(parent)
     , colorPickerBackground(this)
@@ -605,7 +607,7 @@ void QColorPickerWidget::OnColorPickerMove()
     {
         QPoint lockedPos = colorPickerBackground.mapToGlobal(QPoint(max(0, min(cursorPos.x(), colorPicker.width())), max(0, min(cursorPos.y(),
                             colorPicker.height()))));
-        QCursor::setPos(lockedPos);
+        AzQtComponents::SetCursorPos(lockedPos);
     }
 
     int h = selectedHue;

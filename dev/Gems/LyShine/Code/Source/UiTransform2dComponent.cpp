@@ -1007,6 +1007,7 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::Suffix, "%")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show) // needed because sub-elements are hidden
                 ->Attribute(AZ::Edit::Attributes::ReadOnly, &UiTransform2dComponent::IsControlledByParent)
+                ->Attribute(AZ_CRC("LayoutFitterType", 0x7c009203), &UiTransform2dComponent::GetLayoutFitterType)
                 ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &UiTransform2dComponent::GetAnchorPropertyLabel);
 
             editInfo->DataElement("Offset", &UiTransform2dComponent::m_offsets, "Offsets",
@@ -1014,7 +1015,8 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 "When anchors are together, the offset to the pivot plus the size is displayed.\n"
                 "When they are apart, the offsets to each edge of the element's rect are displayed")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
-                ->Attribute(AZ::Edit::Attributes::Visibility, &UiTransform2dComponent::IsNotControlledByParent);
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiTransform2dComponent::IsNotControlledByParent)
+                ->Attribute(AZ_CRC("LayoutFitterType", 0x7c009203), &UiTransform2dComponent::GetLayoutFitterType);
 
             editInfo->DataElement("Pivot", &UiTransform2dComponent::m_pivot, "Pivot",
                 "Rotation and scaling happens around the pivot point.\n"
@@ -1034,8 +1036,7 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement("CheckBox", &UiTransform2dComponent::m_scaleToDevice, "Scale to device",
                 "If checked, at runtime, this element and all its children will be scaled to allow for\n"
-                "the difference between the authored canvas size and the actual viewport size")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &UiTransform2dComponent::IsNotControlledByParent);
+                "the difference between the authored canvas size and the actual viewport size");
         }
     }
 
@@ -1043,6 +1044,7 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiTransformBus>("UiTransformBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetZRotation", &UiTransformBus::Events::GetZRotation)
             ->Event("SetZRotation", &UiTransformBus::Events::SetZRotation)
             ->Event("GetScale", &UiTransformBus::Events::GetScale)
@@ -1062,6 +1064,7 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("MoveLocalPositionBy", &UiTransformBus::Events::MoveLocalPositionBy);
 
         behaviorContext->EBus<UiTransform2dBus>("UiTransform2dBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetAnchors", &UiTransform2dBus::Events::GetAnchors)
             ->Event("SetAnchors", &UiTransform2dBus::Events::SetAnchors)
             ->Event("GetOffsets", &UiTransform2dBus::Events::GetOffsets)
@@ -1103,6 +1106,15 @@ bool UiTransform2dComponent::IsControlledByParent() const
     }
 
     return isControlledByParent;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiLayoutFitterInterface::FitType UiTransform2dComponent::GetLayoutFitterType() const
+{
+    UiLayoutFitterInterface::FitType fitType = UiLayoutFitterInterface::FitType::None;
+    EBUS_EVENT_ID_RESULT(fitType, GetEntityId(), UiLayoutFitterBus, GetFitType);
+
+    return fitType;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

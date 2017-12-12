@@ -22,6 +22,7 @@ namespace
     const char* s_telemetryAddress;
     int s_telemetryPort;
     int s_telemetryCaptureMask;
+    int s_memCaptureEnabled;
 
     void CmdTelemetryToggleEnabled(IConsoleCmdArgs* args)
     {
@@ -29,7 +30,10 @@ namespace
         using TelemetryRequests = RADTelemetry::ProfileTelemetryRequests;
 
         TelemetryRequestBus::Broadcast(&TelemetryRequests::SetAddress, s_telemetryAddress, s_telemetryPort);
-        TelemetryRequestBus::Broadcast(&TelemetryRequests::SetCaptureMask, static_cast<AZ::u32>(s_telemetryCaptureMask));
+
+        const AZ::u32 fullCaptureMask = static_cast<AZ::u32>(s_telemetryCaptureMask) | (s_memCaptureEnabled ? AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(AZ::Debug::ProfileCategory::MemoryReserved) : 0);
+        TelemetryRequestBus::Broadcast(&TelemetryRequests::SetCaptureMask, fullCaptureMask);
+
         TelemetryRequestBus::Broadcast(&TelemetryRequests::ToggleEnabled);
     }
 }
@@ -78,6 +82,7 @@ namespace RADTelemetry
 
             REGISTER_CVAR2("radtm_Address", &s_telemetryAddress, "localhost", VF_NULL, "The IP address for the telemetry server");
             REGISTER_CVAR2("radtm_Port", &s_telemetryPort, 4719, VF_NULL, "The port for the RAD telemetry server");
+            REGISTER_CVAR2("radtm_MemoryCaptureEnabled", &s_memCaptureEnabled, 0, VF_NULL, "Toggle for telemetry memory capture");
 
             const int defaultCaptureMask = static_cast<int>((1 << static_cast<AZ::u32>(AZ::Debug::ProfileCategory::FirstDetailedCategory)) - 1); // Set all the category bits "below" Detailed by default
             REGISTER_CVAR2("radtm_CaptureMask", &s_telemetryCaptureMask, defaultCaptureMask, VF_NULL, "The bit mask for the categories to be captured, 0 for all");

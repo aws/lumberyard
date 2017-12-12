@@ -31,6 +31,7 @@ namespace AzToolsFramework
     };
 
     struct ProcessData;
+    class ProcessOutput;
     class ProcessCommunicator;
     class ProcessCommunicatorForChildProcess;
     class StdProcessCommunicator;

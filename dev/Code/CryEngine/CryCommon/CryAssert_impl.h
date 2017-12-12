@@ -34,7 +34,7 @@
 #endif
 #endif
 
-#if defined(USE_CRY_ASSERT) && defined(WIN32) && !defined(DURANGO)
+#if   defined(USE_CRY_ASSERT) && defined(WIN32)
 
 //-----------------------------------------------------------------------------------------------------
 

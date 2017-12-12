@@ -1,0 +1,8 @@
+<Material MtlFlags="524544">
+	<SubMaterials>
+		<Material Name="lambert1" Shininess="10" Opacity="1" MtlFlags="524416" Shader="Illum" GenMask="100000000" Diffuse="1,1,1" Specular="0,0,0">
+			<Textures/>
+		</Material>
+	</SubMaterials>
+</Material>
+

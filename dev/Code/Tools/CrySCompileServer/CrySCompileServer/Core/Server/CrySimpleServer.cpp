@@ -61,9 +61,6 @@
 
 volatile AtomicCountType CCrySimpleServer::ms_ExceptionCount    = 0;
 
-const static std::string SHADER_STRIPPER            =   "sce-cgcstrip" EXTENSION;
-const static std::string SHADER_COMPILER            =   "sce-cgc" EXTENSION;
-const static std::string SHADER_DISASSEMBLER        =   "sce-cgcdisasm" EXTENSION;
 const static std::string SHADER_PROFILER            =   "NVShaderPerf" EXTENSION;
 
 const static std::string SHADER_PATH_SOURCE         =   "Source";
@@ -516,11 +513,6 @@ void CCrySimpleServer::Init()
     AZ::IO::SystemFile::CreateDir(SEnviropment::Instance().m_Temp.c_str());
     AZ::IO::SystemFile::CreateDir(SEnviropment::Instance().m_Cache.c_str());
     AZ::IO::SystemFile::CreateDir(SEnviropment::Instance().m_Shader.c_str());
-
-
-    //  CShaderList::Instance().m_PC.Load( (SEnviropment::Instance().m_Cache+"ShaderList_PC.txt").c_str() );
-    //  CShaderList::Instance().m_X360.Load( (SEnviropment::Instance().m_Cache+"ShaderList_X360.txt").c_str() );
-    //  CShaderList::Instance().m_PS3.Load( (SEnviropment::Instance().m_Cache+"ShaderList_PS3.txt").c_str() );
 
 
     if (SEnviropment::Instance().m_Caching)

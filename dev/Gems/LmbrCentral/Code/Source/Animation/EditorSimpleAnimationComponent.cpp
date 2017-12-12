@@ -28,6 +28,7 @@ namespace LmbrCentral
                 ->Version(1)
                 ->Field("Playback Settings", &EditorSimpleAnimationComponent::m_defaultAnimationSettings);
 
+#ifdef ENABLE_LEGACY_ANIMATION
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -35,15 +36,17 @@ namespace LmbrCentral
                 editContext->Class<EditorSimpleAnimationComponent>(
                     "Simple Animation", "The Simple Animation component provides basic animation functionality for the entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SimpleAnimation.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Animation.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-simpleanimation.html")
                     ->DataElement(0, &EditorSimpleAnimationComponent::m_defaultAnimationSettings,
                     "Playback Settings", "A set of configured animation layers that can be played on this entity")
                         ->Attribute(AZ::Edit::Attributes::AddNotify, &EditorSimpleAnimationComponent::OnLayersChanged);
             }
+#endif
         }
     }
 

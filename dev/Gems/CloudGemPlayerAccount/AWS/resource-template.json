@@ -299,15 +299,26 @@
         "ServiceApi": {
             "Metadata": {
                 "CloudCanvas": {
-                    "Permissions": {
-                        "AbstractRole": "Player",
-                        "Action": "execute-api:Invoke",
-                        "ResourceSuffix": [
-                            "/api/GET/account",
-                            "/api/PUT/account",
-                            "/api/GET/service/status"
-                        ]
-                    }
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/account",
+                                "/api/PUT/account",
+                                "/api/GET/service/status"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "Server",
+                            "Action": "execute-api:Invoke",
+                            "ResourceSuffix": [
+                                "/api/GET/account",
+                                "/api/PUT/account",
+                                "/api/GET/service/status"
+                            ]
+                        }
+                    ]
                 }
             },
             "Properties": {

@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 from errors import HandledError
 import os
@@ -34,27 +34,19 @@ from uploader import ProjectUploader, ResourceGroupUploader, Phase
 
 class ResourceGroup(object):
 
-    def __init__(self, context, resource_group_name):
+    def __init__(self, context, resource_group_name, directory_path, cpp_base_directory_path, cpp_aws_directory_path, gem = None):
         '''Initialize an ResourceGroup object.'''
 
         self.__context = context
         self.__name = resource_group_name
-
-        gem = self.__context.gem.get_by_name(resource_group_name)
-        
-        if gem:
-            self.__gem = gem
-            self.__directory_path = gem.aws_directory_path
-            self.__game_cpp_code_path = gem.cpp_directory_path
-        else: # project local resource group
-            self.__gem = None
-            self.__directory_path = os.path.join(self.__context.config.base_resource_group_directory_path, resource_group_name)
-            self.__game_cpp_code_path = os.path.join(self.__context.config.root_directory_path, constant.PROJECT_CODE_DIRECTORY_NAME, self.__context.config.game_directory_name, constant.GEM_AWS_DIRECTORY_NAME, resource_group_name)
-
+        self.__directory_path = directory_path
+        self.__cpp_aws_directory_path = cpp_aws_directory_path
+        self.__cpp_base_directory_path = cpp_base_directory_path
+        self.__gem = gem
         self.__template_path = os.path.join(self.__directory_path, constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
         self.__template = None
         self.__cli_plugin_code_path = os.path.join(self.__directory_path, 'cli-plugin-code')
-        self.__cgp_code_path = os.path.join(self.__directory_path, 'cgp-resource-code')
+        self.__cgp_code_path = os.path.join(self.__directory_path, constant.GEM_CGP_DIRECTORY_NAME)
         self.__base_settings_file_path = os.path.join(self.__directory_path, constant.RESOURCE_GROUP_SETTINGS)
         self.__game_settings_file_path = os.path.join(self.__context.config.game_directory_path, 'AWS', 'resource-group', self.__name, constant.RESOURCE_GROUP_SETTINGS)
         self.__base_settings = None
@@ -66,12 +58,34 @@ class ResourceGroup(object):
         return self.__name
 
     @property
+    def is_enabled(self):
+        return self.name not in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []);
+
+    def enable(self):
+        if not self.is_enabled:
+            list = self.__context.config.local_project_settings.setdefault(constant.DISABLED_RESOURCE_GROUPS_KEY, [])
+            if self.name in list:
+                list.remove(self.name)
+                self.__context.config.local_project_settings.save()
+
+    def disable(self):
+        if self.is_enabled:
+            list = self.__context.config.local_project_settings.setdefault(constant.DISABLED_RESOURCE_GROUPS_KEY, [])
+            if self.name not in list:
+                list.append(self.name)
+                self.__context.config.local_project_settings.save()
+
+    @property
     def directory_path(self):
         return self.__directory_path
 
     @property
-    def game_cpp_code_path(self):
-        return self.__game_cpp_code_path
+    def cpp_aws_directory_path(self):
+        return self.__cpp_aws_directory_path
+
+    @property
+    def cpp_base_directory_path(self):
+        return self.__cpp_base_directory_path
 
     @property
     def is_gem(self):
@@ -162,11 +176,11 @@ class ResourceGroup(object):
 
     def update_cgp_code(self, resource_group_uploader):
 
-        content_path = self.cgp_code_path
+        content_path = os.path.join(self.cgp_code_path,  "dist")
         if not os.path.isdir(content_path):
             return
 
-        resource_group_uploader.upload_dir(None, content_path, alternate_root=constant.GEM_CGP_DIRECTORY_NAME)
+        resource_group_uploader.upload_dir(None, content_path, alternate_root=constant.GEM_CGP_DIRECTORY_NAME, suffix='dist')
 
     @property
     def base_settings_file_path(self):
@@ -203,6 +217,7 @@ class ResourceGroup(object):
             resource_group_stack_id = None
 
         template = self.get_template_with_parameters(deployment_name)
+
         parameters = self.get_stack_parameters(deployment_name, uploader = None)
 
         lambda_function_content_paths = []
@@ -231,7 +246,8 @@ class ResourceGroup(object):
             new_content_paths = {
                 'AWS::Lambda::Function': lambda_function_content_paths,
                 'Custom::ServiceApi': service_api_content_paths
-            }
+            },
+            is_enabled = self.is_enabled
         )
 
 
@@ -547,67 +563,65 @@ class ResourceGroup(object):
 
         return setting
 
+
+def enable(context, args):
+
+    group = context.resource_groups.get(args.resource_group)
+    if group.is_enabled:
+        raise HandledError('The {} resource group is not disabled.'.format(group.name))
+
+    util.validate_writable_list(context, [ context.config.local_project_settings.path ])
+
+    group.enable()
+    context.view.resource_group_enabled(group.name)
+
+
+def disable(context, args):
+
+    group = context.resource_groups.get(args.resource_group)
+    if not group.is_enabled:
+        raise HandledError('The {} resource group is not enabled.'.format(group.name))
+
+    util.validate_writable_list(context, [ context.config.local_project_settings.path ])
+
+    group.disable()
+    context.view.resource_group_disabled(group.name)
+
+
 def add(context, args):
 
-    if args.resource_group in context.resource_groups:
-        raise HandledError('The project already has a {} resource group.'.format(args.resource_group))
+    # Old functionality, which created project local resource group directories, was deprcated 
+    # in Lumberyard 1.11 (CGF 1.1.1). The new "gem create" or "resource-group enable" commands 
+    # should be used instead.
+    #
+    # This command approximates the old behavior by either executing gem create or enabling
+    # a resource group if it exists but was disabled.
 
-    util.validate_stack_name(args.resource_group)
+    if not args.is_gui:
+        context.view.using_deprecated_command('resource-group add', ['cloud-gem create', 'cloud-gem enable'])
 
-    context.config.validate_writable(context.config.local_project_settings.path)
-
-    # Get resource group path. If --gem was specified, it identifies the directory
-    # that contains the gem which defines the resource group. 
-    if args.gem is not None:
-
-        if args.gem == '': # --gem was provided with no argument
-            gem_path = os.path.join('Gems', args.resource_group)
-        else: # --gem PATH was provided
-            gem_path = args.gem
-
-        gem_path = os.path.abspath(os.path.join(context.config.root_directory_path, gem_path))
-        gem = context.gem.get_by_root_directory_path(gem_path)
-
-        if gem is None:
-            raise HandledError('The gem at {} is not enabled for the project or does not exist.'.format(gem_path))
-
-        # is OK If it doesn't exist, it will be populated below (same as for 
-        # project local resource groups)
-        resource_group_path = gem.aws_directory_path
-
-        # Only include gem name in metrics for the gems that ship with Lumberyard.
-        if args.resource_group in ['CloudGemFramework', 'CloudGemDynamicContent', 'CloudGemMessageOfTheDay', 'CloudGemLeaderboard', 'CloudGemPlayerAccount']:
-            context.metrics.add_attribute('gem', args.resource_group)
-
+    if args.resource_group in context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []):
+        enable(context, util.Args(resource_group = args.resource_group))
     else:
-
-        resource_group_path = os.path.join(context.config.base_resource_group_directory_path, args.resource_group)
-
-    if args.include_example_resources:
-        context.config.copy_example_resource_group_content(resource_group_path)
-    else:
-        context.config.copy_default_resource_group_content(resource_group_path)
-
-    resource_group_list = context.config.local_project_settings.setdefault(constant.ENABLED_RESOURCE_GROUPS_KEY, [])
-    if args.resource_group not in resource_group_list:
-        resource_group_list.append(args.resource_group)
-        context.config.local_project_settings.save()
-
-    context.view.resource_group_added(args.resource_group)
+        context.gem.create_gem(
+            gem_name = args.resource_group,
+            initial_content = 'api-lambda-dynamodb' if args.include_example_resources else 'no-resources',
+            enable = True,
+            asset_only = True)
 
 
 def remove(context, args):
 
-    resource_group = context.resource_groups.get(args.resource_group)
+    # Deprecated in Lumberyard 1.11 (CGF 1.1.1).
 
-    context.config.validate_writable(context.config.local_project_settings.path)
+    if not args.is_gui:
+        context.view.using_deprecated_command('resource-group remove', 'cloud-gem disable')
 
-    resource_group_list = context.config.local_project_settings.setdefault(constant.ENABLED_RESOURCE_GROUPS_KEY, [])
-    if args.resource_group in resource_group_list:
-        resource_group_list.remove(args.resource_group)
-        context.config.local_project_settings.save()
-
-    context.view.resource_group_removed(args.resource_group)
+    group = context.resource_groups.get(args.resource_group)
+    if group.is_gem:
+        context.gem.disable_gem(gem_name = args.resource_group)
+    else:
+        disable(context, args)
 
 
 def update_stack(context, args):
@@ -930,7 +944,7 @@ def before_update(deployment_uploader, resource_group_name):
 
     group = context.resource_groups.get(resource_group_name)
 
-    context.view.processing_template('{} resoruce group'.format(resource_group_name))
+    context.view.processing_template('{} resource group'.format(resource_group_name))
 
     resource_group_template_with_parameters = group.get_template_with_parameters(deployment_name)
 
@@ -1030,13 +1044,15 @@ def list(context, args):
     resource_groups = []
 
     for group in context.resource_groups.values():
+        
         resource_group_description = {
                 'Name': group.name,
                 'ResourceGroupTemplateFilePath': group.template_path,
                 'CliPluginCodeDirectoryPath': group.cli_plugin_code_path,
                 'CGPResourceCodePath': group.cgp_code_path,
                 'BaseSettingsFilePath': group.base_settings_file_path,
-                'GameSettingsFilePath': group.game_settings_file_path
+                'GameSettingsFilePath': group.game_settings_file_path,
+                'Enabled': group.is_enabled
             }
         resource_group_description['LambdaFunctionCodeDirectoryPaths'] = __gather_additional_code_directories(context, group)
 
@@ -1055,17 +1071,29 @@ def list(context, args):
                 resources = context.stack.describe_resources(deployment_stack_id, recursive=False)
             except NoCredentialsError:
                 resources = {}
-                pass
 
             for resource_group in resource_groups:
                 resource = resources.get(resource_group['Name'], None)
                 if resource is None:
-                    resource = {
-                        'ResourceStatus': '',
-                        'PendingAction': context.stack.PENDING_CREATE,
-                        'PendingReason': context.stack.PENDING_CREATE_REASON
-                    }
+                    if resource_group['Enabled']:
+                        resource = {
+                            'ResourceStatus': '',
+                            'PendingAction': context.stack.PENDING_CREATE,
+                            'PendingReason': context.stack.PENDING_CREATE_REASON
+                        }
+                    else:
+                        resource = {
+                            'ResourceStatus': 'DISABLED'
+                        }
+                else:
+                    if not resource_group['Enabled']:
+                        resource.update(
+                            {
+                                'PendingAction': context.stack.PENDING_DELETE,
+                                'PendingReason': 'The resource group is not enabled.'
+                            })
                 resource_group.update(resource)
+
 
             # find stack resources in deployment stack that don't exist in the template
             for name, resource in resources.iteritems():
@@ -1081,7 +1109,7 @@ def list(context, args):
                             {
                                 'Name': name,
                                 'PendingAction': context.stack.PENDING_DELETE,
-                                'PendingReason': context.stack.PENDING_DELETE_REASON
+                                'PendingReason': context.stack.PENDING_DELETE_REASON 
                             }
                         )
                         resource_groups.append(resource)
@@ -1090,11 +1118,16 @@ def list(context, args):
 
     if not stack_checked:
         for resource_group in resource_groups:
-            resource = {
-                'ResourceStatus': '',
-                'PendingAction': context.stack.PENDING_CREATE,
-                'PendingReason': context.stack.PENDING_CREATE_REASON
-            }
+            if resource_group['Enabled']:
+                resource = {
+                    'ResourceStatus': '',
+                    'PendingAction': context.stack.PENDING_CREATE,
+                    'PendingReason': context.stack.PENDING_CREATE_REASON
+                }
+            else:
+                resource = {
+                    'ResourceStatus': 'DISABLED',
+                }
             resource_group.update(resource)
 
     context.view.resource_group_list(deployment_name, resource_groups)
@@ -1122,24 +1155,46 @@ def __gather_additional_code_directories(context, group):
 def describe_stack(context, args):
 
     stack_id = context.config.get_resource_group_stack_id(args.deployment, args.resource_group, optional=True)
-
     group = context.resource_groups.get(args.resource_group, optional=True)
+
     if(stack_id is None):
-        stack_description = {
-            'StackStatus': '',
-            'PendingAction': context.stack.PENDING_CREATE,
-            'PendingReason': context.stack.PENDING_CREATE_REASON
-        }
+
+        if group.is_enabled:
+
+            stack_description = {
+                'StackStatus': '',
+                'PendingAction': context.stack.PENDING_CREATE,
+                'PendingReason': context.stack.PENDING_CREATE_REASON
+            }
+
+        else:
+
+            stack_description = {
+                'StackStatus': 'DISABLED'
+            }
+
     else:
+
         stack_description = context.stack.describe_stack(stack_id)
 
         if not group:
+
             stack_description.update(
                 {
                     'PendingAction': context.stack.PENDING_DELETE,
                     'PendingReason': context.stack.PENDING_DELETE_REASON
                 }
             )
+
+        else:
+
+            if not group.is_enabled:
+                stack_description.update(
+                    {
+                        'PendingAction': context.stack.PENDING_DELETE,
+                        'PendingReason': 'The resource group is not enabled.'
+                    }
+                )
 
     user_defined_resource_count = 0
 
@@ -1296,6 +1351,14 @@ def add_player_access(context, args):
 def create_function_folder(context, args):
     group = context.resource_groups.get(args.resource_group)
     function_path = os.path.join(group.directory_path, 'lambda-code', args.function)
+
+    if not args.force:
+        function_template_definition = util.dict_get_or_add(group.template, 'Resources', {}).get(args.function, {})
+        if not function_template_definition:
+            raise HandledError("Function {} does not exist in Resource group {}. Not adding lambda-code folder".format(args.function, args.resource_group))
+        if not function_template_definition['Type'] == 'AWS::Lambda::Function':
+            raise HandledError("{} is not a Lambda Function resource in Resource group {}. Not adding lambda-code folder".format(args.function, args.resource_group))
+
     if not os.path.exists(function_path):
         # if function folder does not already exist add it
         context.config.copy_default_lambda_code_content(function_path)

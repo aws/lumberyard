@@ -53,9 +53,6 @@ namespace LmbrAWS
             EOP_SignedUrl = EOP_StartIndex
         };
 
-        LmbrAWS::S3::BucketClientInputPort m_bucketClientPort {
-            EIP_BucketClient
-        };
     };
 } // namespace Amazon
 

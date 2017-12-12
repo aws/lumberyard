@@ -178,11 +178,6 @@ namespace AzFramework
             static Implementation* Create(InputDeviceMotion& inputDevice);
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Custom factory create function
-            using CustomCreateFunctionType = Implementation*(*)(InputDeviceMotion&);
-            static CustomCreateFunctionType CustomCreateFunctionPointer;
-
-            ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
             //! \param[in] inputDevice Reference to the input device being implemented
             Implementation(InputDeviceMotion& inputDevice);
@@ -248,9 +243,18 @@ namespace AzFramework
             InputDeviceMotion& m_inputDevice; //!< Reference to the input device
         };
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Set the implementation of this input device
+        //! \param[in] implementation The new implementation
+        void SetImplementation(AZStd::unique_ptr<Implementation> impl) { m_pimpl = AZStd::move(impl); }
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Private pointer to the platform specific implementation
-        Implementation* m_pimpl;
+        AZStd::unique_ptr<Implementation> m_pimpl;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Helper class that handles requests to create a custom implementation for this device
+        InputDeviceImplementationRequestHandler<InputDeviceMotion> m_implementationRequestHandler;
     };
 } // namespace AzFramework

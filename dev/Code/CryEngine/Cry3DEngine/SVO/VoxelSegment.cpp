@@ -2890,7 +2890,6 @@ ColorF CVoxelSegment::ProcessMaterial(const SRayHitTriangleIndexed& tr, const Ve
                     pTexRgb, nTexWidth, nTexHeight, 1.f / 255.f);
 
             colTex.srgb2rgb();
-            colTex *= GetTerrain()->GetTerrainTextureMultiplier();
 
             colTex.r = max(colTex.r, .02f);
             colTex.g = max(colTex.g, .02f);

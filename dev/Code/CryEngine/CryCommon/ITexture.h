@@ -19,7 +19,7 @@
 #include "Cry_Math.h"
 #include "Cry_Color.h"
 #include "Tarray.h"
-
+#include <CryEngineAPI.h>
 class CTexture;
 
 #ifndef COMPILER_SUPPORTS_ENUM_SPECIFICATION
@@ -196,7 +196,7 @@ enum ETextureFlags
     FT_KEEP_LOWRES_SYSCOPY     = 0x04000000, // keep low res copy in system memory for voxelization on CPU
     FT_SPLITTED                = 0x08000000, // for split dds files
     FT_USE_HTILE               = 0x10000000,
-    FT_IGNORE_PRECACHE         = 0x20000000,    
+    FT_IGNORE_PRECACHE         = 0x20000000,
     FT_COMPOSITE               = 0x40000000,
     FT_USAGE_UAV_RWTEXTURE     = 0x80000000,
 };
@@ -234,6 +234,7 @@ struct STextureStreamingStats
     const bool bComputeReuquiredTexturesPerFrame;
 };
 
+
 //////////////////////////////////////////////////////////////////////
 // Texture object interface
 class ITexture
@@ -241,11 +242,13 @@ class ITexture
 protected:
     virtual ~ITexture() {}
 public:
+
     // <interfuscator:shuffle>
     virtual int AddRef() = 0;
     virtual int Release() = 0;
     virtual int ReleaseForce() = 0;
 
+    virtual void ApplyTexture(int nTUnit, int nState = -1) = 0;
     virtual const char* GetName() const = 0;
     virtual const int GetWidth() const = 0;
     virtual const int GetHeight() const = 0;

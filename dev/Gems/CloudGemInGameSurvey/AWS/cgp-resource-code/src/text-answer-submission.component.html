@@ -1,0 +1,39 @@
+<div *ngIf="!isLoading && textAnswerSubmissionUIModels.length == 0" class="no-submission-text">
+    No submission
+</div>
+
+<div *ngIf="textAnswerSubmissionUIModels.length > 0">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th> ANSWER </th>
+                <th>
+                    SUBMITTED
+                    <div class="fa fa-caret-down" (click)="onReverseSubmissionTimeSortOrder()"></div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let submission of textAnswerSubmissionUIModels">
+                <td> {{submission.answer}} </td>
+                <td> {{epochToString(submission.creationTime)}} </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div *ngIf="isLoading">
+    <loading-spinner></loading-spinner>
+</div>    
+
+<div *ngIf="textAnswerSubmissionUIModels.length > 0 && !hasMoreSubmissionToLoad" class="no-more-submission-text">
+    No more answer submission to load
+</div>
+
+<ng-container [ngSwitch]="hasMoreSubmissionToLoad">
+    <button *ngSwitchCase="true" class="btn l-primary" (click)="loadNextPageOfAnswerSubmissions()">
+        Load next {{loadSubmissionBatchSize}} submissions
+    </button>
+    <button *ngSwitchCase="false" class="btn l-primary" (click)="loadNextPageOfAnswerSubmissions()" disabled>
+        Load next {{loadSubmissionBatchSize}} submissions
+    </button>
+</ng-container>

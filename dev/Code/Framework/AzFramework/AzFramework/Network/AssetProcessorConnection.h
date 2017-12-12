@@ -58,10 +58,14 @@ namespace AzFramework
                 AZStd::thread_desc m_desc;
                 AZStd::thread m_thread;
                 AZStd::atomic_bool m_join;
+                AZStd::recursive_mutex m_mutex;
+                AZStd::atomic_bool m_running;// Indicates whether the thread is either starting or running
+                bool m_skipStartingIfRunning = false; // Indicates whether we should skip joining and starting the thread if it is already running
 
                 ThreadState()
                 {
                     m_join = false;
+                    m_running = false;
                 }
             };
 
@@ -137,6 +141,9 @@ namespace AzFramework
 
             void DebugMessage(const char* format, ...); //shim to intercept debug messages
 
+            void FlushResponseHandlers();
+
+
         private:
 
             AZSOCKET m_socket;//the socket for our connection
@@ -153,7 +160,7 @@ namespace AzFramework
             AZStd::string m_assetPlatform;//which platforms assets we want
             AZStd::string m_identifier;
             bool m_negotiationFailed = false;//holds if the last negotiation attempt failed or not
-            bool m_retryAfterDisconnect = false;//if true, it will constantly try to reconnect or listen after a disconnect
+            AZStd::atomic_bool m_retryAfterDisconnect;//if true, it will constantly try to reconnect or listen after a disconnect
             bool m_listening = false;//controls whether we want to connect or listen after the disconnect
 
             // RecvThread
@@ -167,7 +174,8 @@ namespace AzFramework
 
             // SendThread
             typedef AZStd::vector<char, AZ::OSStdAllocator> MessageBuffer;
-            AZStd::queue<MessageBuffer, AZStd::deque<MessageBuffer, AZ::OSStdAllocator> > m_sendQueue;
+            typedef AZStd::queue<MessageBuffer, AZStd::deque<MessageBuffer, AZ::OSStdAllocator> > SendQueueType;
+            SendQueueType m_sendQueue;
             AZStd::semaphore m_sendEvent;
 
             ThreadState m_sendThread;
@@ -181,9 +189,25 @@ namespace AzFramework
         typedef AZStd::vector<AZ::u8, AZ::OSStdAllocator> MessageBuffer;
 
         template <class Request>
-        static bool SendRequest(const Request& request)
+        static bool SendRequest(const Request& request, SocketConnection* connection = nullptr)
         {
-            SocketConnection* connection = SocketConnection::GetInstance();
+            if (!connection)
+            {
+                connection = SocketConnection::GetInstance();
+            }
+
+            AZ_Assert(connection, "SendRequest requires a valid SocketConnection");
+            if (!connection)
+            {
+                return false;
+            }
+
+            return SendRequestToConnection(request, connection);
+        }
+
+        template <class Request>
+        static bool SendRequestToConnection(const Request& request, SocketConnection* connection)
+        {
             AZ_Assert(connection, "SendRequest requires a valid SocketConnection");
             if (!connection)
             {
@@ -201,9 +225,25 @@ namespace AzFramework
         }
 
         template <class Request, class Response>
-        static bool SendRequest(const Request& request, Response& response)
+        static bool SendRequest(const Request& request, Response& response, SocketConnection* connection = nullptr)
         {
-            SocketConnection* connection = SocketConnection::GetInstance();
+            if (!connection)
+            {
+                connection = SocketConnection::GetInstance();
+            }
+
+            AZ_Assert(connection, "SendRequest requires a valid SocketConnection");
+            if (!connection)
+            {
+                return false;
+            }
+
+            return SendRequestToConnection(request, response, connection);
+        }
+
+        template <class Request, class Response>
+        static bool SendRequestToConnection(const Request& request, Response& response, SocketConnection* connection)
+        {
             AZ_Assert(connection, "SendRequest requires a valid SocketConnection");
             if (!connection)
             {

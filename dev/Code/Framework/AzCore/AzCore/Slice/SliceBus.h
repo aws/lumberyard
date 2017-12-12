@@ -9,27 +9,45 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_SLICE_BUS_H
-#define AZCORE_SLICE_BUS_H
+#pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Component/EntityId.h>
+#include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/std/parallel/mutex.h>
 
 namespace AZ
 {
-    class SliceComponent;
+    class Entity;
 
     /**
      */
     class SliceEvents
-        : public ComponentBus
+        : public AZ::EBusTraits
     {
     public:
+        using MutexType = AZStd::recursive_mutex;
+
         virtual ~SliceEvents() {}
     };
 
     typedef EBus<SliceEvents> SliceBus;
 
+    /**
+    * Events dispatched during the creation, modification, and destruction of a slice instance
+    */
+    class SliceInstanceEvents
+        : public AZ::EBusTraits
+    {
+    public:
+        using MutexType = AZStd::recursive_mutex;
+
+        /// Called when a slice metadata entity has been destroyed.
+        virtual void OnMetadataEntityCreated(const SliceComponent::SliceInstanceAddress& /*sliceAddress*/, AZ::Entity& /*entity*/) {}
+
+        virtual void OnMetadataEntityDestroyed(AZ::EntityId /*entityId*/) {}
+    };
+    using SliceInstanceNotificationBus = AZ::EBus<SliceInstanceEvents>;
 
     /**
      * Dispatches events at key points of SliceAsset serialization.
@@ -38,11 +56,7 @@ namespace AZ
         : public AZ::EBusTraits
     {
     public:
-        ////////////////////////////////////////////////////////////////////////
-        // EBusTraits
-        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Multiple;
-        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::Single;
-        ////////////////////////////////////////////////////////////////////////
+        using MutexType = AZStd::recursive_mutex;
 
         /// Called after writing deserialized data to a SliceAsset instance.
         virtual void OnWriteDataToSliceAssetEnd(AZ::SliceComponent& /*sliceAsset*/) {}
@@ -57,7 +71,4 @@ namespace AZ
 
     /// @deprecated Use SliceBus.
     using PrefabBus = SliceBus;
-}
-
-#endif // AZCORE_SLICE_BUS_H
-#pragma once
+} // namespace AZ

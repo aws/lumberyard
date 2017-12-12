@@ -296,7 +296,7 @@ namespace AzQtComponents
                         : normal).append(line);
                 }
             }
-            return (prioritized + normal + deprioritized).join(QStringLiteral("\n\n"));
+            return (prioritized + normal + deprioritized).join(QStringLiteral("\n"));
         }
 
         switch (column.style)

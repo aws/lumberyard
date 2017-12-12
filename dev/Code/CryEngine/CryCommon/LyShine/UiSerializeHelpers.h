@@ -237,6 +237,48 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Helper function to VersionConverter to convert a char to a uint32_t
+    // Inline to avoid DLL linkage issues
+    inline bool ConvertSubElementFromCharToUInt32(
+        AZ::SerializeContext& context,
+        AZ::SerializeContext::DataElementNode& classElement,
+        const char* subElementName)
+    {
+        int index = classElement.FindElement(AZ_CRC(subElementName));
+        if (index != -1)
+        {
+            AZ::SerializeContext::DataElementNode& elementNode = classElement.GetSubElement(index);
+
+            char oldData;
+
+            if (!elementNode.GetData(oldData))
+            {
+                // Error, old subElement was not a CryString
+                AZ_Error("Serialization", false, "Element %s is not a char.", subElementName);
+                return false;
+            }
+
+            // Remove old version.
+            classElement.RemoveElement(index);
+
+            // Add a new element for the new data.
+            int newElementIndex = classElement.AddElement<uint32_t>(context, subElementName);
+            if (newElementIndex == -1)
+            {
+                // Error adding the new sub element
+                AZ_Error("Serialization", false, "AddElement failed for converted element %s", subElementName);
+                return false;
+            }
+
+            uint32_t newData = oldData;
+            classElement.GetSubElement(newElementIndex).SetData(context, newData);
+        }
+
+        // if the field did not exist then we do not report an error
+        return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     // Helper function to get the value for a named sub element
     template<typename T>
     inline bool GetSubElementValue(

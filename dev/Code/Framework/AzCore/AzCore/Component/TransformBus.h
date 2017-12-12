@@ -11,7 +11,7 @@
 */
 
 /** @file
- * Header file for buses that dispatch and receive events related to positioning, 
+ * Header file for buses that dispatch and receive events related to positioning,
  * rotating, scaling, and parenting an entity.
  */
 
@@ -19,21 +19,21 @@
 #define AZCORE_TRANSFORM_BUS_H
 
 #include <AzCore/Component/ComponentBus.h>
-#include <AzCore/Math/Vector3.h>
-#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/InterpolationSample.h>
+#include <AzCore/Math/Transform.h>
 
 namespace AZ
 {
     class Transform;
 
     /**
-     * Interface for AZ::TransformBus, which is an EBus that receives requests 
-     * to translate (position), rotate, and scale an entity in 3D space. It 
-     * also receives requests to get and set the parent of an entity and get 
+     * Interface for AZ::TransformBus, which is an EBus that receives requests
+     * to translate (position), rotate, and scale an entity in 3D space. It
+     * also receives requests to get and set the parent of an entity and get
      * the descendants of an entity.
      *
-     * An entity's local transform is the entity's position relative to its 
-     * parent entity. An entity's world transform is the entity's position 
+     * An entity's local transform is the entity's position relative to its
+     * parent entity. An entity's world transform is the entity's position
      * within the entire game space.
      */
     class TransformInterface
@@ -46,7 +46,7 @@ namespace AZ
          * Overrides the default AZ::EBusTraits handler policy to allow one
          * listener only.
          */
-        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;  
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
         /**
@@ -59,14 +59,14 @@ namespace AZ
 
         /**
          * Returns the entity's local transform, not including the parent transform.
-         * @return A reference to a transform that represents the entity's position 
+         * @return A reference to a transform that represents the entity's position
          * relative to its parent entity.
          */
         virtual const Transform& GetLocalTM() = 0;
 
         /**
          * Sets the entity's local transform and notifies all listeners.
-         * @param tm A reference to a transform for positioning the entity 
+         * @param tm A reference to a transform for positioning the entity
          * relative to its parent entity.
          */
         virtual void SetLocalTM(const Transform& /*tm*/) {}
@@ -87,9 +87,9 @@ namespace AZ
 
         /**
          * Retrieves the entity's local and world transforms.
-         * @param[out] localTM A reference to a transform that represents the entity's  
+         * @param[out] localTM A reference to a transform that represents the entity's
          * position relative to its parent entity.
-         * @param[out] worldTM A reference to a transform that represents the entity's 
+         * @param[out] worldTM A reference to a transform that represents the entity's
          * position within the world.
          */
         virtual void GetLocalAndWorld(Transform& /*localTM*/, Transform& /*worldTM*/) {}
@@ -100,14 +100,14 @@ namespace AZ
         // Translation modifiers
 
         /**
-         * Sets the entity's world space translation, which represents how 
+         * Sets the entity's world space translation, which represents how
          * to move the entity to a new position within the world.
          * @param newPosition A three-dimensional translation vector.
          */
         virtual void SetWorldTranslation(const AZ::Vector3& /*newPosition*/) {}
 
         /**
-         * Sets the entity's local space translation, which represents how to move the 
+         * Sets the entity's local space translation, which represents how to move the
          * entity to a new position relative to its parent.
          * @param newPosition A three-dimensional translation vector.
          */
@@ -127,7 +127,7 @@ namespace AZ
 
         /**
          * Moves the entity within world space.
-         * @param offset A three-dimensional vector that contains the offset 
+         * @param offset A three-dimensional vector that contains the offset
          * to apply to the entity.
          */
         virtual void MoveEntity(const AZ::Vector3& /*offset*/) {}
@@ -171,7 +171,7 @@ namespace AZ
         /**
          * Sets the entity's X coordinate in local space.
          * @param x A new value for the entity's X coordinate in local space.
-         */ 
+         */
         virtual void SetLocalX(float /*x*/) {}
 
         /**
@@ -211,16 +211,16 @@ namespace AZ
 
         /**
          * @deprecated Use SetLocalRotation()
-         * Sets the entity's rotation in the world. The origin of the axes  
+         * Sets the entity's rotation in the world. The origin of the axes
          * is the entity's position in world space.
-         * @param eulerAnglesRadians A three-dimensional vector, containing Euler 
+         * @param eulerAnglesRadians A three-dimensional vector, containing Euler
          * angles in radians, to rotate the entity by.
          */
         virtual void SetRotation(const AZ::Vector3& /*eulerAnglesRadians*/) {}
 
         /**
          * @deprecated Use SetLocalRotation()
-         * Sets the entity's rotation around the world's X axis.  
+         * Sets the entity's rotation around the world's X axis.
          * The origin of the axis is the entity's position in world space.
          * @param eulerAngleRadians The X coordinate Euler angle in radians to use
          * for the entity's rotation.
@@ -247,7 +247,7 @@ namespace AZ
 
         /**
          * @deprecated Use SetLocalRotationQuaternion()
-         * Sets the entity's rotation in the world in quaternion notation. 
+         * Sets the entity's rotation in the world in quaternion notation.
          * The orgin of the axes is the entity's position in world space.
          * @param quaternion A quaternion that represents the rotation to
          * use for the entity.
@@ -256,9 +256,9 @@ namespace AZ
 
         /**
          * @deprecated Use RotateAroundLocalX()
-         * Rotates the entity around the world's X axis.  
+         * Rotates the entity around the world's X axis.
          * The origin of the axis is the entity's position in world space.
-         * @param eulerAngleRadians The Euler angle in radians by which to rotate 
+         * @param eulerAngleRadians The Euler angle in radians by which to rotate
          * the entity around the X axis.
          */
         virtual void RotateByX(float /*eulerAngleRadian*/) {}
@@ -283,7 +283,7 @@ namespace AZ
 
         /**
          * @deprecated Use GetLocalRotation()
-         * Gets the entity's rotation in the world in Euler angles 
+         * Gets the entity's rotation in the world in Euler angles
          * notation in radians.
          * @return A three-dimensional vector, containing Euler
          * angles in radians, that represents the entity's rotation.
@@ -300,7 +300,7 @@ namespace AZ
         /**
          * @deprecated Use GetLocalRotation()
          * Gets the entity's rotation around the world's X axis.
-         * @return The Euler angle in radians by which the the entity is rotated 
+         * @return The Euler angle in radians by which the the entity is rotated
          * around the X axis in world space.
          */
         virtual float GetRotationX() { return FLT_MAX; }
@@ -323,7 +323,7 @@ namespace AZ
 
 
         /**
-         * Get angles in radian for each principle axis around which the world transform is 
+         * Get angles in radian for each principle axis around which the world transform is
          * rotated in the order of z-axis and y-axis and then x-axis.
          * @return The Euler angles in radian indicating how much is rotated around each principle axis.
          */
@@ -367,7 +367,7 @@ namespace AZ
         virtual void RotateAroundLocalZ(float /*eulerAngleRadian*/) {}
 
         /**
-         * Get angles in radian for each principle axis around which the local transform is 
+         * Get angles in radian for each principle axis around which the local transform is
          * rotated in the order of z-axis and y-axis and then x-axis.
          * @return A value of type Vector3 indicating how much in radian is rotated around each principle axis.
          */
@@ -382,12 +382,12 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // Scale Modifiers
-        
+
         /**
          * @deprecated Use SetLocalScale()
-         * Scales the entity along the world's axes. The origin of the axes  
+         * Scales the entity along the world's axes. The origin of the axes
          * is the entity's position in the world.
-         * @param scale A three-dimensional vector that represents the 
+         * @param scale A three-dimensional vector that represents the
          * multipliers with which to scale the entity in world space.
          */
         virtual void SetScale(const AZ::Vector3& /*scale*/) {}
@@ -396,7 +396,7 @@ namespace AZ
          * @deprecated Use SetLocalScaleX()
          * Scales the entity along the world's X axis. The origin of the axis
          * is the entity's position in the world.
-         * @param scaleX The multiplier by which to scale the entity 
+         * @param scaleX The multiplier by which to scale the entity
          * along the X axis in world space.
          */
         virtual void SetScaleX(float /*scaleX*/) {}
@@ -429,9 +429,9 @@ namespace AZ
 
         /**
          * @deprecated Use GetLocalScale()
-         * Gets the amount by which an entity is scaled along the  
+         * Gets the amount by which an entity is scaled along the
          * world's X axis.
-         * @return The amount by which an entity is scaled along the 
+         * @return The amount by which an entity is scaled along the
          * X axis in world space.
          */
         virtual float GetScaleX() { return FLT_MAX; }
@@ -494,56 +494,56 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
 
         /**
-         * Returns the entity ID of the entity's parent. 
-         * @return The entity ID of the parent. The entity ID is invalid if the  
-         * entity does not have a parent with a valid entity ID. 
+         * Returns the entity ID of the entity's parent.
+         * @return The entity ID of the parent. The entity ID is invalid if the
+         * entity does not have a parent with a valid entity ID.
          */
         virtual EntityId GetParentId() { return EntityId(); }
 
         /**
          * Returns the transform interface of the parent entity.
-         * @return A pointer to the transform interface of the parent. 
-         * Returns a null pointer if no parent is set or the parent 
+         * @return A pointer to the transform interface of the parent.
+         * Returns a null pointer if no parent is set or the parent
          * entity is not currently activated.
          */
         virtual TransformInterface* GetParent() { return nullptr; }
-        
+
         /**
-         * Sets the entity's parent entity and notifies all listeners. 
-         * The entity's local transform is moved into the parent entity's space 
+         * Sets the entity's parent entity and notifies all listeners.
+         * The entity's local transform is moved into the parent entity's space
          * to preserve the entity's world transform.
          * @param id The ID of the entity to set as the parent.
          */
         virtual void SetParent(EntityId /*id*/) {}
 
         /**
-         * Sets the entity's parent entity, moves the transform relative to the 
-         * parent entity, and notifies all listeners. 
-         * This function uses the world transform as a local transform and moves the  
+         * Sets the entity's parent entity, moves the transform relative to the
+         * parent entity, and notifies all listeners.
+         * This function uses the world transform as a local transform and moves the
          * transform relative to the parent entity.
          * @param id The ID of the entity to set as the parent.
          */
         virtual void SetParentRelative(EntityId /*id*/) {}
-        
+
         /**
          * Returns the entity IDs of the entity's immediate children.
          * @return A vector that contains the entity IDs of the entity's immediate children.
          */
         virtual AZStd::vector<AZ::EntityId> GetChildren() { return AZStd::vector<AZ::EntityId>(); };
-        
+
         /**
-         * Returns the entity IDs of all descendants of the entity. The descendants 
+         * Returns the entity IDs of all descendants of the entity. The descendants
          * are the entity's children, the children's children, and so on.
-         * The entity IDs are ordered breadth-first. 
+         * The entity IDs are ordered breadth-first.
          * @return A vector that contains the entity IDs of the descendants.
          */
         virtual AZStd::vector<AZ::EntityId> GetAllDescendants() { return AZStd::vector<AZ::EntityId>(); };
 
         /**
-         * Returns the entity ID of the entity and all its descendants. The descendants 
-         * are the entity's children, the children's children, and so on. The entity IDs 
-         * are ordered breadth-first and this entity's ID is the first in the list. 
-         * @return A vector that contains the entity ID of the entity followed by the entity 
+         * Returns the entity ID of the entity and all its descendants. The descendants
+         * are the entity's children, the children's children, and so on. The entity IDs
+         * are ordered breadth-first and this entity's ID is the first in the list.
+         * @return A vector that contains the entity ID of the entity followed by the entity
          * IDs of its descendants.
          */
         virtual AZStd::vector<AZ::EntityId> GetEntityAndAllDescendants() { return AZStd::vector<AZ::EntityId>(); }
@@ -554,6 +554,18 @@ namespace AZ
          * @return True if the transform is static, false if the transform is movable.
          */
         virtual bool IsStaticTransform() = 0;
+
+        /**
+         * Returns whether position of transform is interpolated via network sync.
+         * @return True if position of transform is interpolated via network sync.
+         */
+        virtual bool IsPositionInterpolated() = 0;
+
+        /**
+        * Returns whether rotation of transform is interpolated via network sync.
+        * @return True if rotation of transform is interpolated via network sync.
+        */
+        virtual bool IsRotationInterpolated() = 0;
     };
 
 
@@ -565,7 +577,7 @@ namespace AZ
 
 
     /**
-     * Interface for AZ::TransformNotificationBus, which is the EBus that 
+     * Interface for AZ::TransformNotificationBus, which is the EBus that
      * dispatches transform changes to listeners.
      */
     class TransformNotification
@@ -580,14 +592,21 @@ namespace AZ
 
 
         /**
-         * Signals that the local or world transform of the entity changed. 
+         * Signals that the local or world transform of the entity changed.
          * @param local A reference to the new local transform of the entity.
          * @param world A reference to the new world transform of the entity.
          */
         virtual void OnTransformChanged(const Transform& /*local*/, const Transform& /*world*/)     { }
 
         /**
-         * Signals that the parent of the entity changed. 
+        * Signals that the static flag on the transfrom has changed. This should only be needed during editing.
+        * @param isStatic A boolean that indicates whether the transfrom is static or not.
+        */
+        virtual void OnStaticChanged( bool /*isStatic*/) { }
+
+
+        /**
+         * Signals that the parent of the entity changed.
          * To find if an entity ID is valid, use AZ::EntityId::IsValid().
          * @param oldParent The entity ID of the old parent. The entity ID is invalid if there was no old parent.
          * @param newParent The entity ID of the new parent. The entity ID is invalid if there is no new parent.
@@ -607,18 +626,121 @@ namespace AZ
         virtual void OnChildRemoved(EntityId child) { (void)child; }
     };
 
-
     /**
      * The EBus for transform notification events.
      * The events are defined in the AZ::TransformNotification class.
      */
     typedef AZ::EBus<TransformNotification> TransformNotificationBus;
 
+    /**
+     * The type ID of game component AzFramework::TransformComponent.
+     */
+    static const TypeId TransformComponentTypeId = "{22B10178-39B6-4C12-BB37-77DB45FDD3B6}";
+
+    /**
+     * The type ID of editor component AzToolsFramework::Components::TransformComponent.
+     */
+    static const TypeId EditorTransformComponentTypeId = "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}";
+
+    /**
+     * Component configuration for the transform component.
+     */
+    class TransformConfig
+        : public ComponentConfig
+    {
+    public:
+        AZ_RTTI(TransformConfig, "{B3AAB26D-D075-4E2B-9653-9527EE363DF8}", ComponentConfig);
+        AZ_CLASS_ALLOCATOR(TransformConfig, SystemAllocator, 0);
+
+        /**
+         * Behavior when a parent entity activates.
+         * A parent may activate before or after its children have activated.
+         */
+        enum class ParentActivationTransformMode : u32
+        {
+            MaintainOriginalRelativeTransform,  ///< Child will snap to originally-configured parent-relative transform when parent is activated.
+            MaintainCurrentWorldTransform,      ///< Child will still follow parent, but will maintain its current world transform when parent is activated.
+        };
+
+        /**
+         * Set the 3D transform.
+         * Sets both the local and world transform to the same value.
+         * SetLocalAndWorldTransform() is suggested when a parent is assigned.
+         * @param transform The entity's position, rotation, and scale in 3D.
+         */
+        void SetTransform(const Transform& transform)
+        {
+            m_localTransform = transform;
+            m_worldTransform = transform;
+        }
+
+        /**
+         * Set the local and world 3D transform.
+         * This function is suggested over SetTransform() when a parent is assigned.
+         * @param localTransform The local transform, as an offset from its parent.
+         * @param worldTransform The world transform.
+         */
+        void SetLocalAndWorldTransform(const Transform& localTransform, const Transform& worldTransform)
+        {
+            m_localTransform = localTransform;
+            m_worldTransform = worldTransform;
+        }
+
+        const Transform& GetLocalTransform() const { return m_localTransform; }
+        const Transform& GetWorldTransform() const { return m_worldTransform; }
+
+        /**
+         * ID of parent entity.
+         * When the parent entity moves, this transform will follow.
+         */
+        EntityId m_parentId;
+
+        /**
+         * Behavior when the parent entity activates.
+         */
+        ParentActivationTransformMode m_parentActivationTransformMode = ParentActivationTransformMode::MaintainOriginalRelativeTransform;
+
+        /**
+         * Whether the transform can be synced over the network.
+         */
+        bool m_netSyncEnabled = true;
+
+        /**
+         * Behavior for smoothing of position between network updates.
+         */
+        InterpolationMode m_interpolatePosition = InterpolationMode::NoInterpolation;
+
+        /**
+         * Behavior for smoothing of rotation between network updates.
+         */
+        InterpolationMode m_interpolateRotation = InterpolationMode::NoInterpolation;
+
+        /**
+         * Whether the transform is static.
+         * A static transform will never move.
+         */
+        bool m_isStatic = false;
+
+    protected:
+
+        /**
+         * Local 3D transform.
+         */
+        Transform m_localTransform = Transform::Identity();
+
+        /**
+         * World 3D transform.
+         */
+        Transform m_worldTransform = Transform::Identity();
+    };
+
+    AZ_TYPE_INFO_SPECIALIZE(TransformConfig::ParentActivationTransformMode, "{03FD8A24-CE8F-4651-A3CC-09F40D36BC2C}");
+
     /// @cond EXCLUDE_DOCS
     /**
-     * Interface for AZ::TransformHierarchyInformationBus, which the transform components 
-     * of parent entities use to get their children's entity IDs. 
-     * Only children of a particular entity connect to this bus because they use the 
+     * Interface for AZ::TransformHierarchyInformationBus, which the transform components
+     * of parent entities use to get their children's entity IDs.
+     * Only children of a particular entity connect to this bus because they use the
      * parent's entity ID to connect to the bus.
      */
     class TransformHierarchyInformation
@@ -660,11 +782,8 @@ namespace AZ
     /// @endcond
 }
 
-/**
- * The type ID of AzToolsFramework::Components::TransformComponent, which is the 
- * TransformComponent used by the editor.
- */
-#define ToolsTransformComponentTypeId "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}"
+/// @deprecated Use AZ::EditorTransformComponentTypeId.
+#define ToolsTransformComponentTypeId AZ::EditorTransformComponentTypeId
 
 #endif // AZCORE_TRANSFORM_BUS_H
 #pragma once

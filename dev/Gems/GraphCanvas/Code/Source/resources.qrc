@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/GraphCanvas">
+        <file alias="Styling/default_style.json">Styling/default_style.json</file>
+    </qresource>
+</RCC>

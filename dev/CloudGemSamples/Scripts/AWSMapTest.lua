@@ -10,11 +10,11 @@ local testData = {
 }
 
 function AWSBehaviorMapTest:OnActivate()
-    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    local runTestEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.GamePlayHandler = GameplayNotificationBus.Connect(self, runTestEventId)
 end
 
-function AWSBehaviorMapTest:OnEventBegin()
+function AWSBehaviorMapTest:OnEventBegin(message)
     if isActive == false then
         Debug.Log("AWSBehaviorMapTest not active")
         self:NotifyMainEntity("success")
@@ -108,7 +108,7 @@ end
 
 function AWSBehaviorMapTest:NotifyMainEntity(message)
     local entities = {TagGlobalRequestBus.Event.RequestTaggedEntities(Crc32("Main"))}
-    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests"), message)
+    GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entities[1], "Run Tests", typeid("")), message)
 end
 
 

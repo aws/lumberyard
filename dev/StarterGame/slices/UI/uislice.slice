@@ -1,0 +1,607 @@
+<ObjectStream version="2">
+	<Class name="AZ::Entity" type="{75651658-8663-478D-9090-2432DFCAFA44}" version="2" specializationTypeId="{75651658-8663-478D-9090-2432DFCAFA44}">
+		<Class name="EntityId" field="Id" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+			<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="42891937545" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		</Class>
+		<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="42891937545" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+		<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+			<Class name="SliceComponent" field="element" type="{AFD304E4-1773-47C8-855A-8B622398934F}" version="1" specializationTypeId="{AFD304E4-1773-47C8-855A-8B622398934F}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="14453048706719014882" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="AZStd::vector" field="Entities" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{56942E81-55BE-53E7-BAC4-0F567BCA3863}">
+					<Class name="AZ::Entity" field="element" type="{75651658-8663-478D-9090-2432DFCAFA44}" version="2" specializationTypeId="{75651658-8663-478D-9090-2432DFCAFA44}">
+						<Class name="EntityId" field="Id" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+							<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16644810449017182510" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+						</Class>
+						<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="UISlice" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}" specializationTypeId="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="9940738517140145880" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="TransformComponent" field="element" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}" version="7" specializationTypeId="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2839086748749521647" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="EntityId" field="Parent Entity" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="4294967295" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EditorTransform" field="Transform Data" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}" version="1" specializationTypeId="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
+									<Class name="Vector3" field="Translate" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="0.0000000 0.0000000 0.0000000" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Rotate" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="0.0000000 0.0000000 170.9999695" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="0.9999999 0.9999999 1.0000000" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+								</Class>
+								<Class name="Transform" field="Cached World Transform" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" specializationTypeId="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
+								<Class name="EntityId" field="Cached World Transform Parent" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="4294967295" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="bool" field="Sync Enabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								<Class name="unsigned int" field="Parent Activation Transform Mode" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								<Class name="bool" field="IsStatic" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}" specializationTypeId="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="5330334798922821705" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="VisibilityFlag" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorPendingCompositionComponent" field="element" type="{D40FCB35-153D-45B3-AF6D-7BA576D8AFBB}" specializationTypeId="{D40FCB35-153D-45B3-AF6D-7BA576D8AFBB}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2972192919023217833" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="PendingComponents" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}"/>
+							</Class>
+							<Class name="EditorInspectorComponent" field="element" type="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}" specializationTypeId="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="14437805738867425442" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="ComponentOrderArray" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E7781CB0-E712-5E6A-948D-92FD4FE87F0D}"/>
+							</Class>
+							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}" specializationTypeId="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16398156508821534936" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="Locked" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+						</Class>
+					</Class>
+					<Class name="AZ::Entity" field="element" type="{75651658-8663-478D-9090-2432DFCAFA44}" version="2" specializationTypeId="{75651658-8663-478D-9090-2432DFCAFA44}">
+						<Class name="EntityId" field="Id" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+							<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16851543880866326769" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+						</Class>
+						<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="UIPlayerHUD" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="bool" field="IsDependencyReady" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}" specializationTypeId="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2111809261928763684" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="VisibilityFlag" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="TransformComponent" field="element" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}" version="7" specializationTypeId="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1975350942173282726" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="EntityId" field="Parent Entity" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16644810449017182510" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="EditorTransform" field="Transform Data" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}" version="1" specializationTypeId="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
+									<Class name="Vector3" field="Translate" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="0.0000000 0.0000000 0.0000000" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Rotate" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="0.0000000 0.0000000 0.0000000" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}" value="1.0000000 1.0000000 1.0000000" specializationTypeId="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+								</Class>
+								<Class name="Transform" field="Cached World Transform" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" specializationTypeId="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
+								<Class name="EntityId" field="Cached World Transform Parent" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}" version="1" specializationTypeId="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="4294967295" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="bool" field="Sync Enabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+								<Class name="unsigned int" field="Parent Activation Transform Mode" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								<Class name="bool" field="IsStatic" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}" specializationTypeId="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="8565217078241382040" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="ScriptEditorComponent" field="element" type="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}" specializationTypeId="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3439307482982101349" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AzFramework::ScriptComponent" field="ScriptComponent" type="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}" version="3" specializationTypeId="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="0" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="NetBindable" field="BaseClass2" type="{80206665-D429-4703-B42E-94434F82F381}" specializationTypeId="{80206665-D429-4703-B42E-94434F82F381}">
+										<Class name="bool" field="m_isSyncEnabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									</Class>
+									<Class name="unsigned int" field="ContextID" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+									<Class name="ScriptPropertyGroup" field="Properties" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+										<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Properties" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+										<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+											<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2833218729" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="MapEntityTag" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="PlayerCamera" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Messages" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3521248628" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetEnergyEventIn" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetEnergyEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2403313410" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HideUIEventIn" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HideUIEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3623390631" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnableUIEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnableUIEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3773721224" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnableCrosshairEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnableCrosshairEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="669810469" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HealthChangedEventIn" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HealthChanged" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2030778901" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetRedKeyVisible" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetRedKeyVisibleEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="4109441245" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetRedKeyCollected" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetRedKeyCollectedEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2245115498" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetBlueKeyCollected" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetBlueKeyCollectedEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1046079835" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetBlueKeyVisible" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetBlueKeyVisibleEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2380484767" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenIDOut" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenIDEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+											</Class>
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ScreenHookup" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3468067086" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="AllUIFaderID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="62.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
+													<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+														<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="MapBar" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2542085643" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SliderBackgroundAID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="72.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2512623698" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SliderBackgroundBID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="76.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+														</Class>
+														<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+													</Class>
+													<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+														<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="StatusBars" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2447178517" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnergyLowFlasherID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="102.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1297612321" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnergyFlasherID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="99.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1333734755" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HealthBarID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="2.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="613002152" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HealthFlasherID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="98.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3651112369" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="HealthLowFlasherID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="103.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3597319915" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="EnergyBarID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="6.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+														</Class>
+														<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+													</Class>
+													<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+														<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Objectives" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2840893615" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="RedKeyCollectedID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="140.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3322307300" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="BlueKeyVisibleID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="130.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3960897809" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="BlueKeyCollectedID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="145.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+															<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+																<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+																	<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1371201633" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+																	<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="RedKeyVisibleID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+																</Class>
+																<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="141.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+															</Class>
+														</Class>
+														<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+													</Class>
+												</Class>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="Asset" field="Script" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={FBE655CF-6244-5223-AA2A-6DF07F337F34}:2,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiplayerhud.lua}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+								</Class>
+								<Class name="Asset" field="ScriptAsset" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={FBE655CF-6244-5223-AA2A-6DF07F337F34}:2,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiplayerhud.lua}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+							</Class>
+							<Class name="EditorTagComponent" field="element" type="{5272B56C-6CCC-4118-8539-D881F463ACD1}" version="1" specializationTypeId="{5272B56C-6CCC-4118-8539-D881F463ACD1}">
+								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+									<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="8833127189032341636" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+								<Class name="AZStd::vector" field="Tags" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{99DAD0BC-740E-5E82-826B-8FC7968CC02C}">
+									<Class name="AZStd::string" field="element" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="UIPlayer" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+								</Class>
+							</Class>
+							<Class name="EditorInspectorComponent" field="element" type="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}" specializationTypeId="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="6570181475211545385" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="ComponentOrderArray" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E7781CB0-E712-5E6A-948D-92FD4FE87F0D}">
+									<Class name="AZ::u64" field="element" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3439307482982101349" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="element" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="8833127189032341636" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="element" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16467430566318633333" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="element" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="8336159088028328899" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}" specializationTypeId="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="18405384246307666700" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="bool" field="Locked" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+							</Class>
+							<Class name="EditorPendingCompositionComponent" field="element" type="{D40FCB35-153D-45B3-AF6D-7BA576D8AFBB}" specializationTypeId="{D40FCB35-153D-45B3-AF6D-7BA576D8AFBB}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2052874413446477267" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="PendingComponents" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}"/>
+							</Class>
+							<Class name="ScriptEditorComponent" field="element" type="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}" specializationTypeId="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="16467430566318633333" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AzFramework::ScriptComponent" field="ScriptComponent" type="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}" version="3" specializationTypeId="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="0" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="NetBindable" field="BaseClass2" type="{80206665-D429-4703-B42E-94434F82F381}" specializationTypeId="{80206665-D429-4703-B42E-94434F82F381}">
+										<Class name="bool" field="m_isSyncEnabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									</Class>
+									<Class name="unsigned int" field="ContextID" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+									<Class name="ScriptPropertyGroup" field="Properties" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+										<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Properties" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+										<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3797639323" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveWaitCycleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="0.5000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyBoolean" field="element" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}" version="1" specializationTypeId="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3821602166" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="DebugStateMachine" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="bool" field="value" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="257674815" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveWaitText" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="..." specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3431439822" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveCharScrambleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="0.0500000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2685170141" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveShownCycleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="1.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Messages" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3004586467" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenIDEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="898380539" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveText" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetPrimaryObjectiveTextEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+											</Class>
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ScreenHookup" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1932536601" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="TextID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="125.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="Asset" field="Script" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={3A53B241-FF7A-53C1-A268-A33B4BA05030}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiobjectivecontroller.luac}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+								</Class>
+								<Class name="Asset" field="ScriptAsset" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={3A53B241-FF7A-53C1-A268-A33B4BA05030}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiobjectivecontroller.luac}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+							</Class>
+							<Class name="ScriptEditorComponent" field="element" type="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}" specializationTypeId="{B5FC8679-FA2A-4C7C-AC42-DCC279EA613A}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="8336159088028328899" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AzFramework::ScriptComponent" field="ScriptComponent" type="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}" version="3" specializationTypeId="{8D1BC97E-C55D-4D34-A460-E63C57CD0D4B}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="0" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+									<Class name="NetBindable" field="BaseClass2" type="{80206665-D429-4703-B42E-94434F82F381}" specializationTypeId="{80206665-D429-4703-B42E-94434F82F381}">
+										<Class name="bool" field="m_isSyncEnabled" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="true" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+									</Class>
+									<Class name="unsigned int" field="ContextID" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+									<Class name="ScriptPropertyGroup" field="Properties" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+										<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Properties" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+										<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3797639323" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveWaitCycleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="0.5000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyBoolean" field="element" type="{EA7335F8-5B9F-4744-B805-FEF9240451BD}" version="1" specializationTypeId="{EA7335F8-5B9F-4744-B805-FEF9240451BD}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3821602166" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="DebugStateMachine" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="bool" field="value" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="257674815" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveWaitText" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="..." specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3431439822" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveCharScrambleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="0.0500000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+											<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+												<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+													<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="2685170141" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+													<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ObjectiveShownCycleTime" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												</Class>
+												<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="1.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Messages" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3004586467" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveScreenIDEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+													<Class name="AzFramework::ScriptPropertyString" field="element" type="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}" version="1" specializationTypeId="{A0229C6D-B010-47E7-8985-EE220FC7BFAF}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="898380539" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetObjectiveText" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="AZStd::string" field="value" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="SetSecondaryObjectiveTextEvent" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+											</Class>
+											<Class name="ScriptPropertyGroup" field="element" type="{79682522-2F81-4B36-9FC2-A091C7504F7F}" specializationTypeId="{79682522-2F81-4B36-9FC2-A091C7504F7F}">
+												<Class name="AZStd::string" field="Name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="ScreenHookup" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+												<Class name="AZStd::vector" field="Properties" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{199BF315-BCCA-5268-971A-D03666AE3B04}">
+													<Class name="AzFramework::ScriptPropertyNumber" field="element" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}" version="1" specializationTypeId="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
+														<Class name="AzFramework::ScriptProperty" field="BaseClass1" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}" version="2" specializationTypeId="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
+															<Class name="AZ::u64" field="id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="1932536601" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+															<Class name="AZStd::string" field="name" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="TextID" specializationTypeId="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+														</Class>
+														<Class name="double" field="value" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}" value="126.0000000" specializationTypeId="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+													</Class>
+												</Class>
+												<Class name="AZStd::vector" field="Groups" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}"/>
+											</Class>
+										</Class>
+									</Class>
+									<Class name="Asset" field="Script" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={3A53B241-FF7A-53C1-A268-A33B4BA05030}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiobjectivecontroller.luac}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+								</Class>
+								<Class name="Asset" field="ScriptAsset" type="{77A19D40-8731-4D3C-9041-1B43047366A4}" value="id={3A53B241-FF7A-53C1-A268-A33B4BA05030}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/ui/uiobjectivecontroller.luac}" version="1" specializationTypeId="{F0CB5839-52FC-5B3B-83F2-6EAFCD6DDE06}"/>
+							</Class>
+							<Class name="EditorDisabledCompositionComponent" field="element" type="{E77AE6AC-897D-4035-8353-637449B6DCFB}" specializationTypeId="{E77AE6AC-897D-4035-8353-637449B6DCFB}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="929717364481994868" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="DisabledComponents" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}"/>
+							</Class>
+							<Class name="EditorEntityIconComponent" field="element" type="{E15D42C2-912D-466F-9547-E7E948CE2D7D}" specializationTypeId="{E15D42C2-912D-466F-9547-E7E948CE2D7D}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="3277243021704696659" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AssetId" field="EntityIconAssetId" type="{652ED536-3402-439B-AEBE-4A5DBC554085}" version="1" specializationTypeId="{652ED536-3402-439B-AEBE-4A5DBC554085}">
+									<Class name="AZ::Uuid" field="guid" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}" value="{00000000-0000-0000-0000-000000000000}" specializationTypeId="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									<Class name="unsigned int" field="subId" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}" value="0" specializationTypeId="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+								</Class>
+							</Class>
+							<Class name="EditorEntitySortComponent" field="element" type="{6EA1E03D-68B2-466D-97F7-83998C8C27F0}" specializationTypeId="{6EA1E03D-68B2-466D-97F7-83998C8C27F0}">
+								<Class name="EditorComponentBase" field="BaseClass1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}" version="1" specializationTypeId="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}" specializationTypeId="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+										<Class name="AZ::u64" field="Id" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}" value="7717902065930385335" specializationTypeId="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									</Class>
+								</Class>
+								<Class name="AZStd::vector" field="ChildEntityOrderArray" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{4841CFF0-7A5C-519C-BD16-D3625E99605E}"/>
+							</Class>
+						</Class>
+					</Class>
+				</Class>
+				<Class name="AZStd::list" field="Prefabs" type="{B845AD64-B5A0-4CCD-A86B-3477A36779BE}" specializationTypeId="{DAD45EB6-5853-5645-B762-3A37F8775E12}"/>
+				<Class name="bool" field="IsDynamic" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}" value="false" specializationTypeId="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			</Class>
+		</Class>
+	</Class>
+</ObjectStream>
+

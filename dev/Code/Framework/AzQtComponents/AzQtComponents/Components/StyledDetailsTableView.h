@@ -15,6 +15,8 @@
 
 #include <QTableView>
 
+class QTimer;
+
 namespace AzQtComponents
 {
     class StyledDetailsTableModel;
@@ -40,5 +42,6 @@ namespace AzQtComponents
 
     private:
         bool m_scrollOnInsert = false;
+        QTimer* m_resizeTimer;
     };
 } // namespace AzQtComponents

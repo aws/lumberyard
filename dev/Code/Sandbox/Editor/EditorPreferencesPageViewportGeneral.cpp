@@ -77,6 +77,13 @@ void CEditorPreferencesPage_ViewportGeneral::Reflect(AZ::SerializeContext& seria
     AZ::EditContext* editContext = serialize.GetEditContext();
     if (editContext)
     {
+        // Check if we should show legacy properties
+        AZ::Crc32 shouldShowLegacyItems = AZ::Edit::PropertyVisibility::Hide;
+        if (GetIEditor()->IsLegacyUIEnabled())
+        {
+            shouldShowLegacyItems = AZ::Edit::PropertyVisibility::Show;
+        }
+
         editContext->Class<General>("General Viewport Settings", "")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &General::m_sync2DViews, "Synchronize 2D Viewports", "Synchronize 2D Viewports")
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &General::m_defaultFOV, "Perspective View FOV", "Perspective View FOV")
@@ -97,7 +104,9 @@ void CEditorPreferencesPage_ViewportGeneral::Reflect(AZ::SerializeContext& seria
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_displayTracks, "Display Animation Tracks", "Display Animation Tracks")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_alwaysShowRadii, "Always Show Radii", "Always Show Radii")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_alwaysShowPrefabBox, "Always Show Prefab Bounds", "Always Show Prefab Bounds")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_alwaysShowPrefabObjects, "Always Show Prefab Objects", "Always Show Prefab Objects")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_showBBoxes, "Show Bounding Boxes", "Show Bounding Boxes")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_drawEntityLabels, "Always Draw Entity Labels", "Always Draw Entity Labels")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Display::m_showTriggerBounds, "Always Show Trigger Bounds", "Always Show Trigger Bounds")
@@ -120,6 +129,7 @@ void CEditorPreferencesPage_ViewportGeneral::Reflect(AZ::SerializeContext& seria
 
         editContext->Class<SelectionPreviewColor>("Selection Preview Color Settings", "")
             ->DataElement(AZ::Edit::UIHandlers::Color, &SelectionPreviewColor::m_colorPrefabBBox, "Prefab Bounding Box", "Prefab Bounding Box")
+                ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
             ->DataElement(AZ::Edit::UIHandlers::Color, &SelectionPreviewColor::m_colorGroupBBox, "Group Bounding Box", "Group Bounding Box")
             ->DataElement(AZ::Edit::UIHandlers::Color, &SelectionPreviewColor::m_colorEntityBBox, "Entity Bounding Box", "Entity Bounding Box")
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &SelectionPreviewColor::m_fBBoxAlpha, "Bounding Box Highlight Alpha", "Bounding Box Highlight Alpha")

@@ -52,12 +52,12 @@ const QString EDITOR_OBJECTS_PATH("Objects\\Editor\\");
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::RegisterViewClass()
 {
-    QtViewOptions opts;
+    AzToolsFramework::ViewPaneOptions opts;
     opts.shortcut = QKeySequence(Qt::Key_M);
     opts.canHaveMultipleInstances = true;
     opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CMaterialDialog>(GetIEditor(), MATERIAL_EDITOR_NAME, LyViewPane::CategoryTools, opts);
+    AzToolsFramework::RegisterViewPane<CMaterialDialog>(MATERIAL_EDITOR_NAME, LyViewPane::CategoryTools, opts);
 
     GetIEditor()->GetSettingsManager()->AddToolVersion(MATERIAL_EDITOR_NAME, MATERIAL_EDITOR_VER);
 }
@@ -421,13 +421,17 @@ public:
 
         surfaceType->SetEnumList(enumSurfaceTypes);
 
+        // Properties that use this scriptingDescription are based on what's available in MaterialHelpers::SetGetMaterialParamVec3 and MaterialHelpers::SetGetMaterialParamFloat.
+        // This should match what's done in MaterialHelpers.cpp AddRealNameToDescription().
+        auto scriptingDescription = [](const AZStd::string& scriptAccessibleName, const AZStd::string& description) { return description + "\n(Script Param Name = " + scriptAccessibleName + ")"; };
+
         //////////////////////////////////////////////////////////////////////////
         // Opacity.
         //////////////////////////////////////////////////////////////////////////
         AddVariable(tableOpacity, opacity, "Opacity", 
-            "Sets the transparency amount. Uses 0-99 to set Alpha Blend and 100 for Opaque and Alpha Test.", IVariable::DT_PERCENT);
+            scriptingDescription("opacity", "Sets the transparency amount. Uses 0-99 to set Alpha Blend and 100 for Opaque and Alpha Test.").c_str(), IVariable::DT_PERCENT);
         AddVariable(tableOpacity, alphaTest, "AlphaTest",
-            "Uses the alpha mask and refines the transparent edge. Uses 0-50 to bias toward white or 50-100 to bias toward black.", IVariable::DT_PERCENT);
+            scriptingDescription("alpha", "Uses the alpha mask and refines the transparent edge. Uses 0-50 to bias toward white or 50-100 to bias toward black.").c_str(), IVariable::DT_PERCENT);
         AddVariable(tableOpacity, bAdditive, "Additive", "Adds material color to the background color resulting in a brighter transparent surface");
         opacity->SetLimits(0, 100, 1, true, true);
         alphaTest->SetLimits(0, 100, 1, true, true);
@@ -435,11 +439,11 @@ public:
         //////////////////////////////////////////////////////////////////////////
         // Lighting.
         //////////////////////////////////////////////////////////////////////////
-        AddVariable(tableLighting, diffuse, "Diffuse Color (Tint)", "Tints the material diffuse color. Physically based materials should be left at white", IVariable::DT_COLOR);
-        AddVariable(tableLighting, specular, "Specular Color", "Reflective and shininess intensity and color of reflective highlights", IVariable::DT_COLOR);
-        AddVariable(tableLighting, smoothness, "Smoothness", "Smoothness or glossiness simulating how light bounces off the surface");
-        AddVariable(tableLighting, emissiveIntensity, "Emissive Intensity (kcd/m2)", "Brightness simulating light emitting from the surface making an object glow");
-        AddVariable(tableLighting, emissiveCol, "Emissive Color", "Tints the emissive color", IVariable::DT_COLOR);
+        AddVariable(tableLighting, diffuse,             "Diffuse Color (Tint)",         scriptingDescription("diffuse",             "Tints the material diffuse color. Physically based materials should be left at white").c_str(), IVariable::DT_COLOR);
+        AddVariable(tableLighting, specular,            "Specular Color",               scriptingDescription("specular",            "Reflective and shininess intensity and color of reflective highlights").c_str(), IVariable::DT_COLOR);
+        AddVariable(tableLighting, smoothness,          "Smoothness",                   scriptingDescription("shininess",           "Smoothness or glossiness simulating how light bounces off the surface").c_str());
+        AddVariable(tableLighting, emissiveIntensity,   "Emissive Intensity (kcd/m2)",  scriptingDescription("emissive_intensity",  "Brightness simulating light emitting from the surface making an object glow").c_str());
+        AddVariable(tableLighting, emissiveCol,         "Emissive Color",               scriptingDescription("emissive_color",      "Tints the emissive color").c_str(), IVariable::DT_COLOR);
         emissiveIntensity->SetLimits(0, EMISSIVE_INTENSITY_SOFT_MAX, 1, true, false);
         smoothness->SetLimits(0, 255, 1, true, true);
 
@@ -1317,6 +1321,7 @@ CMaterialDialog::CMaterialDialog(QWidget* parent /* = 0 */)
     m_propsCtrl = new TwoColumnPropertyControl;
     m_propsCtrl->Setup(true, 150);
     m_propsCtrl->SetSavedStateKey("MaterialDialog");
+    m_propsCtrl->setMinimumWidth(460);
 
     m_placeHolderLabel = new QLabel(tr("Select a material in the Material Editor hierarchy to view properties"));
     m_placeHolderLabel->setMinimumHeight(250);
@@ -2135,7 +2140,7 @@ void CMaterialDialog::OnPaste()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnMaterialPreview()
 {
-    m_pPreviewDlg = new CMatEditPreviewDlg();
+    m_pPreviewDlg = new CMatEditPreviewDlg(this);
     m_pPreviewDlg->show();
 }
 

@@ -27,6 +27,10 @@ namespace CloudGemPlayerAccount
 
         static void Reflect(AZ::ReflectContext* context);
 
+        // Most calls to CloudGemPlayerAccountRequestBus will return the requestId for the background task that was created.
+        // This requestId field can be used to correlate the response to the request that created it.
+        AZ::u32 requestId;
+
         bool wasSuccessful;
         AZStd::string username;
 

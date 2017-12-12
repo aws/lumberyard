@@ -13,7 +13,6 @@
 
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
-#include <Gestures/GesturesBus.h>
 #include <Gestures/GestureRecognizerPinch.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +164,7 @@ namespace Gestures
             if (!m_enabled)
             {
                 m_enabled = true;
-                EBUS_EVENT(GesturesBus, Register, m_recognizer);
+                m_recognizer.BusConnect();
             }
         }
 
@@ -175,7 +174,7 @@ namespace Gestures
             if (m_enabled)
             {
                 m_enabled = false;
-                EBUS_EVENT(GesturesBus, Deregister, m_recognizer);
+                m_recognizer.BusDisconnect();
             }
         }
 

@@ -101,7 +101,7 @@ namespace CloudCanvas
             bool RequestFileStatus(const char* fileName, const char* writeFile, bool manifestRequest);
             bool RequestFileStatus(FileTransferSupport::FileRequestMap& requestVec, bool manifestRequest);
 
-            virtual void GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString) override;
+            virtual void GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile) override;
 
             void OnDownloadSuccess(DynamicFileInfoPtr requestPtr);
             void OnDownloadFailure(DynamicFileInfoPtr requestPtr);
@@ -192,6 +192,7 @@ namespace CloudCanvas
             AZStd::unordered_map<AZStd::string, DynamicFileInfoPtr> m_bucketKeyToFileInfo;
             AZStd::unordered_map<AZStd::string, DynamicFileInfoPtr> m_presignedURLToFileInfo;
 
+            static AZ::EntityId m_moduleEntity;
         };
     }
 }

@@ -47,7 +47,7 @@ public:
     // Required override.
     void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
 
-    // you are required to implement this to satisfy the unregister/registerclass requirements on "RegisterQtViewPane"
+    // you are required to implement this to satisfy the unregister/registerclass requirements on "AzToolsFramework::RegisterViewPane"
     // make sure you pick a unique GUID
     static const GUID& GetClassID()
     {

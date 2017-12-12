@@ -27,6 +27,8 @@
 #include "StreamIOThread.h"
 #include "StreamReadStream.h"
 
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
+
 enum EIOThread
 {
     eIOThread_HDD = 0,
@@ -39,7 +41,7 @@ enum EIOThread
 class CStreamEngine
     : public IStreamEngine
     , public ISystemEventListener
-    , public IInputEventListener
+    , public AzFramework::InputChannelEventListener
 {
 public:
     CStreamEngine();
@@ -117,9 +119,9 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    // IInputEventListener
+    // AzFramework::InputChannelEventListener
     //////////////////////////////////////////////////////////////////////////
-    virtual bool OnInputEvent(const SInputEvent& event);
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
     //////////////////////////////////////////////////////////////////////////
 
     bool StartFileRequest(CAsyncIOFileRequest* pFileRequest);

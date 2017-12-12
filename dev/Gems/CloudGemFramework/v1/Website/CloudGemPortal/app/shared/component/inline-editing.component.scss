@@ -1,0 +1,44 @@
+﻿@import "../../../styles/variables";
+
+.editable-content{   
+    width:100%;
+    height: 30px;
+    line-height: 26px;   
+    padding-left: 2px;
+    overflow: hidden;   
+}
+
+.editable-content.view-mode {
+    background: transparent;
+    border:transparent;
+    cursor:pointer;
+    resize: none;
+}
+
+.editable-content.view-mode:hover{
+    background: $light-yellow;
+    border: 1px solid $gray;
+}
+
+.editable-content.edit-mode{
+    background: white;
+    border: 1px solid $gray;
+}
+
+.new-tag{
+    background: transparent;
+    border:transparent;
+    margin-left: 2px;
+}
+
+.new-tag:hover {
+    cursor: pointer;
+}
+
+.edit-mode:focus, .new-tag:focus {
+    outline: none;
+}
+
+.new-tag-hide{
+    display: none;
+}

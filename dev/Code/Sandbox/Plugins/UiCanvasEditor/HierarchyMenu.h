@@ -42,7 +42,7 @@ public:
     HierarchyMenu(HierarchyWidget* hierarchy,
         size_t showMask,
         bool addMenuForNewElement,
-        const AZ::Component* optionalOnlyThisComponentType,
+        AZ::Component* componentToRemove,
         const QPoint* optionalPos = nullptr);
 
 private:
@@ -81,5 +81,5 @@ private:
 
     void RemoveComponents(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* optionalOnlyThisComponentType);
+        const AZ::Component* componentToRemove);
 };

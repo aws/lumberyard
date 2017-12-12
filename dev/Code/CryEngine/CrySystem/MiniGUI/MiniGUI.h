@@ -21,7 +21,6 @@
 
 #include "ICryMiniGUI.h"
 #include <Cry_Color.h>
-#include <IHardwareMouse.h>
 #include "IInput.h"
 
 #include <CryExtension/Impl/ClassWeaver.h>

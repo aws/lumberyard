@@ -16,6 +16,7 @@ local DynamicLayoutGrid =
 {
 	Properties = 
 	{
+		FirstScrollBox = {default = EntityId()},
 		AddColorsButton = {default = EntityId()},
 		DynamicLayouts = { default = { EntityId(), EntityId() } },
 	},
@@ -43,6 +44,9 @@ function DynamicLayoutGrid:OnButtonClick()
 		self:InitContent("StaticData/LyShineExamples/uiTestMoreFreeColors.json")
 
 		UiInteractableBus.Event.SetIsHandlingEvents(self.Properties.AddColorsButton, false)
+		
+		local canvas = UiElementBus.Event.GetCanvas(self.entityId)
+		UiCanvasBus.Event.ForceHoverInteractable(canvas, self.Properties.FirstScrollBox)		
 	end	
 end
 

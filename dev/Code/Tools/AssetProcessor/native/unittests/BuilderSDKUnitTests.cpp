@@ -43,7 +43,7 @@ namespace
     static AZ::Data::AssetType skinnedMeshLodsAssetType("{58E5824F-C27B-46FD-AD48-865BA41B7A51}");
     static AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
     static AZ::Data::AssetType textureAssetType("{59D5E20B-34DB-4D8E-B867-D33CC2556355}"); // from MaterialAsset.h
-    static AZ::Data::AssetType staticMeshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
+    static AZ::Data::AssetType meshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
     static AZ::Data::AssetType skinnedMeshAssetType("{C5D443E1-41FF-4263-8654-9438BC888CB7}"); // from MeshAsset.h
     static AZ::Data::AssetType sliceAssetType("{C62C7A87-9C09-4148-A985-12F2C99C0A45}"); // from SliceAsset.h
     static AZ::Data::AssetType mannequinControllerDefinitionAssetType("{49375937-7F37-41B1-96A5-B099A8657DDE}"); // from MannequinAsset.h
@@ -89,7 +89,7 @@ public:
 
         // .cgf should show up as staticmesh
         // .cgf.x should static mesh lods
-        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("mesh.cgf") == AZ::Data::AssetType(staticMeshAssetType));
+        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("mesh.cgf") == AZ::Data::AssetType(meshAssetType));
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("mesh.cgf.1") == AZ::Data::AssetType(staticMeshLodsAssetType));
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("mesh.cgf.2") == AZ::Data::AssetType(staticMeshLodsAssetType));
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("mesh.cgf.3") == AZ::Data::AssetType(staticMeshLodsAssetType));
@@ -115,7 +115,7 @@ public:
         // now try to trick it with a simple mixture (complex, evil mixtures such as .skin.cgf.dds.tif.1a are not supported and not expected to function)
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("something_cgf.skin") == AZ::Data::AssetType(skinnedMeshAssetType));
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("something_skin.dds") == AZ::Data::AssetType(textureAssetType));
-        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("something_dds.cgf") == AZ::Data::AssetType(staticMeshAssetType));
+        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferAssetTypeByProductFileName("something_dds.cgf") == AZ::Data::AssetType(meshAssetType));
 
         Q_EMIT UnitTestPassed();
     }
@@ -323,7 +323,7 @@ public:
 
         // standard skins, meshes have 0
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferSubIDFromProductFileName(skinnedMeshAssetType, "doesntmatter.whatever") == 0);
-        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferSubIDFromProductFileName(staticMeshAssetType, "doesntmatter.whatever") == 0);
+        UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::JobProduct::InferSubIDFromProductFileName(meshAssetType, "doesntmatter.whatever") == 0);
 
         // _diff textures have that bit set
         UNIT_TEST_EXPECT_TRUE((AssetBuilderSDK::JobProduct::InferSubIDFromProductFileName(textureAssetType, "whatever_diff.dds") & AssetBuilderSDK::SUBID_FLAG_DIFF) == AssetBuilderSDK::SUBID_FLAG_DIFF);

@@ -33,10 +33,11 @@
 #include "shlwapi.h"
 #pragma comment(lib, "shlwapi.lib")
 
+#define ERROR_MESSAGE_BUF_SIZE      512
+
 static unsigned key[4] = {1339822019, 3471820962, 4179589276, 4119647811};
 static unsigned text[4] = {4114048726, 1217549643, 1454516917, 859556405};
 static unsigned hash[4] = {324609294, 3710280652, 1292597317, 513556273};
-
 #ifdef AZ_MONOLITHIC_BUILD
 extern "C" IGameStartup * CreateGameStartup();
 extern "C" void CreateStaticModules(AZStd::vector<AZ::Module*>&);
@@ -209,7 +210,6 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg)
     return 0;
 }
 
-
 ///////////////////////////////////////////////
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -231,13 +231,18 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
         if (strcmp(engineCfg.m_gameFolder.c_str(), launcherGameFolder) != 0)
         {
-            fprintf(stderr, errorMessageFormat, "sys_game_folder", engineCfg.m_gameFolder.c_str(), launcherGameFolder);
+            char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
+            azsnprintf(msg, sizeof(msg), errorMessageFormat, "sys_game_folder", engineCfg.m_gameFolder.c_str(), launcherGameFolder);
+            MessageBox(0, msg, "Invalid Bootstrap settings", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
         }
+
         const char* launcherDllName = LY_GAMEDLL;
         if (strcmp(engineCfg.m_gameDLL.c_str(), launcherDllName) != 0)
         {
-            fprintf(stderr, errorMessageFormat, "sys_dll_game", engineCfg.m_gameDLL.c_str(), launcherDllName);
+            char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
+            azsnprintf(msg, sizeof(msg), errorMessageFormat, "sys_dll_game", engineCfg.m_gameDLL.c_str(), launcherDllName);
+            MessageBox(0, msg, "Invalid Bootstrap settings", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
         }
 #endif

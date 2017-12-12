@@ -61,7 +61,7 @@ namespace AZ
             void RecordSlice(
                 const char* name,
                 const char* category,
-                const AZStd::thread_id& threadId,
+                const AZStd::thread_id threadId,
                 AZ::u64 timestamp,
                 AZ::u32 duration) override;
 
@@ -73,7 +73,7 @@ namespace AZ
             void RecordInstantThread(
                 const char* name,
                 const char* category,
-                const AZStd::thread_id& threadId,
+                const AZStd::thread_id threadId,
                 AZ::u64 timestamp) override;
 
             void RecordThreads();

@@ -57,6 +57,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/TriggerArea.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Trigger.png")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-triggerarea.html")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTriggerAreaComponent::m_gameComponent, "Trigger Area", "Activate/deactivate external entities when trigger is entered/exited.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))

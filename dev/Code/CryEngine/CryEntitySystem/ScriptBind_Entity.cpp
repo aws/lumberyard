@@ -8039,7 +8039,7 @@ bool CScriptBind_Entity::ParseLightParams(IScriptTable* pLightTable, CDLight& li
         {
             int configSpec = CVar::pSysSpecLight ? CVar::pSysSpecLight->GetIVal() : gEnv->pSystem->GetConfigSpec(true);
 
-            if (configSpec == CONFIG_CUSTOM) // TODO: improve this case (is there a shadow/light spec to check? )
+            if (configSpec == CONFIG_AUTO_SPEC) // TODO: improve this case (is there a shadow/light spec to check? )
             {
                 configSpec = CONFIG_MEDIUM_SPEC;
             }

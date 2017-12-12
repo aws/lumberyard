@@ -38,12 +38,12 @@ public:
     float duration;         // in milliseconds
     float currentTime;  // in milliseconds
 
-    void init(T start, T end, float duration, Interpolator<T>* interp)
+    void init(T start, T end, float _duration, Interpolator<T>* interp)
     {
         SetInterpolationRange(start, end);
         prevYValue = start;
         prevXValue = 0;
-        this->duration = duration;
+        this->duration = _duration;
         loopMode = NORMAL;
 
         pInterp = interp;
@@ -95,10 +95,10 @@ protected:
 public:
 
     virtual ~Timeline() {}
-    Timeline(T start, T end, float duration, Interpolator<T>* interp)
+    Timeline(T start, T end, float _duration, Interpolator<T>* interp)
     {
         currentTime = 0;
-        init(start, end, duration, interp);
+        init(start, end, _duration, interp);
     }
 
     Timeline(Interpolator<T>* interp)

@@ -27,15 +27,14 @@ class QSettings;
 class LevelEditorMenuHandler
     : public QObject
 {
+    Q_OBJECT
 public:
     LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings);
+    ~LevelEditorMenuHandler();
 
     void Initialize();
-    void ShowMenus();
-    void ShowMenus(bool updateRegistryKey);
 
     static bool MRUEntryIsValid(const QString& entry, const QString& gameFolderPath);
-    static const char* GetSwitchMenuSettingName();
 
     void IncrementViewPaneVersion();
     int GetViewPaneVersion() const;
@@ -45,6 +44,12 @@ public:
     void ResetToolsMenus();
 
     QAction* CreateViewPaneAction(const QtViewPane* view);
+
+Q_SIGNALS:
+    void ActivateAssetImporter();
+
+private slots:
+    void AWSMenuClicked();
 
 private:
     QMenu* CreateFileMenu();
@@ -61,7 +66,6 @@ private:
     void CreateDebuggingSubMenu(ActionManager::MenuWrapper gameMenu);
 
     void UpdateMRUFiles();
-    //void UpdateMRUProjects();
 
     void ActivateGemConfiguration();
     void ClearAll();
@@ -73,11 +77,6 @@ private:
     void OnUpdateMacrosMenu();
     
     void UpdateOpenViewPaneMenu();
-
-    void CreateDisabledPlaceholderAction(ActionManager::MenuWrapper& menu, int id);
-
-    QAction* CopyActionWithoutIcon(ActionManager::MenuWrapper& menu, QAction* originalAction, const char* menuOptionName, bool copyShortcut /*= true*/);
-    QAction* CopyActionWithoutIcon(ActionManager::MenuWrapper& menu, int actionId, const char* menuOptionName, bool copyShortcut = true);
 
     QAction* CreateViewPaneMenuItem(ActionManager* actionManager, ActionManager::MenuWrapper& menu, const QtViewPane* view);
 
@@ -111,6 +110,7 @@ private:
 
     QList<QMenu*> m_topLevelMenus;
     QSettings& m_settings;
+    bool m_enableLegacyCryEntities;
 };
 
 

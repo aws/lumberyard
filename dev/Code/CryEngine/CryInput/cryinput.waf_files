@@ -1,12 +1,4 @@
 {
-    "none":
-    {
-        "Root":
-        [
-            "StdAfx.cpp",
-            "CryInput.cpp"
-        ]
-    },
     "auto":
     {
         "AzToLyInput":
@@ -30,103 +22,26 @@
         ],
         "Root":
         [
+            "BaseInput.cpp",
+            "BaseInput.h",
+            "CryInput.cpp",
             "CryInput.h",
+            "InputDevice.cpp",
+            "InputDevice.h",
             "InputCVars.cpp",
             "InputCVars.h",
-            "resource.h",
+            "StdAfx.cpp",
             "StdAfx.h"
-        ],
-        "DX":
-        [
-            "DXInput.cpp",
-            "DXInputDevice.cpp",
-            "Keyboard.cpp",
-            "Mouse.cpp",
-            "DXInput.h",
-            "DXInputDevice.h",
-            "Keyboard.h",
-            "Mouse.h"
-        ],
-        "Linux":
-        [
-            "LinuxInput.cpp",
-            "LinuxInput.h"
-        ],
-        "Shared":
-        [
-            "BaseInput.cpp",
-            "InputDevice.cpp",
-            "XInputDevice.cpp",
-            "BaseInput.h",
-            "InputDevice.h",
-            "XInputDevice.h"
-        ],
-        "Kinect":
-        [
-            "KinectInput.cpp",
-            "KinectXboxSyncThread.cpp",
-            "KinectInput.h",
-            "KinectInputNULL.h",
-            "KinectXboxSyncThread.h"
-        ],
-        "Kinect/Filters":
-        [
-            "Filters/JointFilter.cpp",
-            "Filters/JointFilter.h"
-        ],
-        "TrackIR":
-        [
-            "NaturalPointInputNULL.h"
-        ],
-        "Orbis":
-        [
-            "OrbisInput.cpp",
-            "OrbisInputDevice.cpp",
-            "OrbisKeyboard.cpp",
-            "OrbisPad.cpp",
-            "OrbisInput.h",
-            "OrbisInputDevice.h",
-            "OrbisKeyboard.h",
-            "OrbisPad.h",
-            "OrbisPadWin.h",
-            "OrbisPadWin.cpp"
-        ],
-        "Durango":
-        [
-            "DurangoInput.cpp",
-            "DurangoInputDevice.cpp",
-            "DurangoInputKeyboard.cpp",
-            "DurangoInput.h",
-            "DurangoInputDevice.h",
-            "DurangoInputKeyboard.h"
-        ],
-        "Durango/Kinect":
-        [
-            "KinectAudioWinRT.h",
-            "KinectAudioWinRT.cpp",
-            "KinectInputWinRT.h",
-            "KinectInputWinRT.cpp"
         ],
         "Synergy":
         [
             "Synergy/RawInputNotificationBus_synergy.h",
             "Synergy/SynergyContext.cpp",
-            "Synergy/SynergyKeyboard.cpp",
-            "Synergy/SynergyMouse.cpp",
             "Synergy/SynergyContext.h",
+            "Synergy/SynergyKeyboard.cpp",
             "Synergy/SynergyKeyboard.h",
+            "Synergy/SynergyMouse.cpp",
             "Synergy/SynergyMouse.h"
-        ],
-        "SDL":
-        [
-            "SDLInput.h",
-            "SDLInput.cpp",
-            "SDLPad.cpp",
-            "SDLPad.h",
-            "SDLMouse.cpp",
-            "SDLMouse.h",
-            "SDLKeyboard.cpp",
-            "SDLKeyboard.h"
         ]
     }
 }

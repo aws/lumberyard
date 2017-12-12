@@ -1,0 +1,116 @@
+{
+  "slot_types": [
+    {
+      "enumerationValues": [
+        {
+          "value": "middle"
+        },
+        {
+          "value": "bottom"
+        },
+        {
+          "value": "top"
+        },
+        {
+          "value": "top lane"
+        },
+        {
+          "value": "middle lane"
+        },
+        {
+          "value": "bottom lane"
+        },
+        {
+          "value": "myself"
+        },
+        {
+          "value": "me"
+        }
+      ],
+      "name": "MapLocation",
+      "description": "Where on the map to click"
+    }
+  ],
+  "intents": [
+    {
+      "name": "RequestHelp",
+      "sampleUtterances": [
+        "help",
+        "help me",
+        "I need help",
+        "send help"
+      ],
+      "slots": [],
+      "fulfillmentActivity": {
+        "type": "ReturnIntent"
+      }
+    },
+    {
+      "name": "Ping",
+      "sampleUtterances": [
+        "ping",
+        "ping map",
+        "ping map at {MapLocation}",
+        "ping at {MapLocation}",
+        "ping {MapLocation}",
+        "ping map {MapLocation}"
+      ],
+      "slots": [
+        {
+          "slotType": "MapLocation",
+          "name": "MapLocation",
+          "slotConstraint": "Required",
+          "valueElicitationPrompt": {
+            "maxAttempts": 2,
+            "messages": [
+              {
+                "content": "Where should I ping?",
+                "contentType": "PlainText"
+              }
+            ]
+          },
+          "priority": 1,
+          "slotTypeVersion": "$LATEST",
+          "sampleUtterances": []
+        }
+      ],
+      "fulfillmentActivity": {
+        "type": "ReturnIntent"
+      }
+    }
+  ],
+  "bot": {
+    "intents": [
+      {
+        "intentVersion": "$LATEST",
+        "intentName": "RequestHelp"
+      },
+      {
+        "intentVersion": "$LATEST",
+        "intentName": "Ping"
+      }
+    ],
+    "name": "LYTestBot",
+    "locale": "en-US",
+    "abortStatement": {
+      "messages": [
+        {
+          "content": "Sorry, I could not understand. Goodbye.",
+          "contentType": "PlainText"
+        }
+      ]
+    },
+    "clarificationPrompt": {
+      "maxAttempts": 5,
+      "messages": [
+        {
+          "content": "Sorry, can you please repeat that?",
+          "contentType": "PlainText"
+        }
+      ]
+    },
+    "voiceId": "Joanna",
+    "childDirected": false,
+    "idleSessionTTLInSeconds": 300
+  }
+}

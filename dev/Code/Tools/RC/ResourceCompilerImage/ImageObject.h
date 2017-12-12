@@ -340,7 +340,7 @@ public:
         assert(mip < (uint32)m_mips.size());
         assert(m_mips[mip]);
         assert(x < m_mips[mip]->m_width);
-        assert(x < m_mips[mip]->m_height);
+        assert(y < m_mips[mip]->m_height);
 
         return ((T*)(m_mips[mip]->m_pData))[y * m_mips[mip]->m_width + x];
     }
@@ -724,6 +724,8 @@ private:
     // Convert to/from POWERVR PVRTC (2bpp or 4bpp) format
     EResult ConvertFormatWithPVRTCCompressor(const CImageProperties* pProps, EPixelFormat fmtDst, EQuality quality);
 
+    // Convert to/from ETC2 format
+    EResult ConvertFormatWithETC2Compressor(const CImageProperties* pProps, EPixelFormat fmtDst, EQuality quality);
 public:
     // ---------------------------------------------------------------------------------
     //! can be used to compress, requires a preset

@@ -629,9 +629,7 @@ namespace UnitTest
     {
     public:
         ConcurrentVectorTest()
-#if !defined(AZ_PLATFORM_WII)
             : AllocatorsFixture(50)
-#endif
         {}
 
         void SetUp() override

@@ -231,9 +231,9 @@ namespace NCryOpenGL
             if (kRTState.m_bEnable)
             {
                 kRTState.m_bSeparateAlpha =
-                    (kRTDesc.BlendOp == kRTDesc.BlendOpAlpha) &&
-                    (kRTDesc.SrcBlend == kRTDesc.SrcBlendAlpha) &&
-                    (kRTDesc.DestBlend == kRTDesc.DestBlendAlpha);
+                    (kRTDesc.BlendOp != kRTDesc.BlendOpAlpha) ||
+                    (kRTDesc.SrcBlend != kRTDesc.SrcBlendAlpha) ||
+                    (kRTDesc.DestBlend != kRTDesc.DestBlendAlpha);
 
                 if (!InitializeChannelBlendState(kRTDesc.BlendOp, kRTDesc.SrcBlend, kRTDesc.DestBlend, kRTState.m_kRGB))
                 {
@@ -512,5 +512,27 @@ case _D3D11FilterID:                                                            
         return
             CreateSamplerObject(kDesc, &kSamplerState.m_uSamplerObjectMip, true, pContext) &&
             CreateSamplerObject(kDesc, &kSamplerState.m_uSamplerObjectNoMip, false, pContext);
+    }
+
+    void ResetSamplerState(SSamplerState& kSamplerState)
+    {
+        AZStd::vector<GLuint> samplers;
+        if (kSamplerState.m_uSamplerObjectMip)
+        {
+            samplers.push_back(kSamplerState.m_uSamplerObjectMip);
+        }
+
+        if (kSamplerState.m_uSamplerObjectNoMip)
+        {
+            samplers.push_back(kSamplerState.m_uSamplerObjectNoMip);
+        }
+
+        if (!samplers.empty())
+        {
+            glDeleteSamplers(samplers.size(), samplers.data());
+        }
+
+        kSamplerState.m_uSamplerObjectMip = 0;
+        kSamplerState.m_uSamplerObjectNoMip = 0;
     }
 }

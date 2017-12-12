@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "SequenceTrack.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -21,7 +22,7 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
     {
         const char* szSelection;
         szSelection = keyNode->getAttr("node");
-        cry_strcpy(key.szSelection, szSelection);
+        key.szSelection = szSelection;
 
         if (!keyNode->getAttr("overridetimes", key.bOverrideTimes))
         {
@@ -47,7 +48,7 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
     }
     else
     {
-        keyNode->setAttr("node", key.szSelection);
+        keyNode->setAttr("node", key.szSelection.c_str());
 
         if (key.bOverrideTimes == true)
         {
@@ -65,8 +66,29 @@ void CSequenceTrack::GetKeyInfo(int key, const char*& description, float& durati
     CheckValid();
     description = 0;
     duration = m_keys[key].fDuration;
-    if (strlen(m_keys[key].szSelection) > 0)
+    if (m_keys[key].szSelection.size() > 0)
     {
-        description = m_keys[key].szSelection;
+        description = m_keys[key].szSelection.c_str();
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ISequenceKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ISequenceKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ISequenceKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ISequenceKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ISequenceKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ISequenceKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CSequenceTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ISequenceKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CSequenceTrack, TAnimTrack<ISequenceKey> >()
+        ->Version(1);
 }

@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <QtWidgets/QLabel>
 
@@ -36,15 +37,15 @@ namespace AzToolsFramework
         explicit EntityIdQLabel(QWidget* parent = 0);
         ~EntityIdQLabel() override;
 
-        void SetEntityId(AZ::EntityId newId);
+        void SetEntityId(AZ::EntityId newId, const AZStd::string_view& nameOverride);
         AZ::EntityId GetEntityId() const { return m_entityId; }
 
     signals:
         void RequestPickObject();
 
     protected:
-        virtual void mousePressEvent(QMouseEvent* e) override;
-        virtual void mouseDoubleClickEvent(QMouseEvent* e) override;
+        void mousePressEvent(QMouseEvent* e) override;
+        void mouseDoubleClickEvent(QMouseEvent* e) override;
 
     private:
         AZ::EntityId m_entityId;

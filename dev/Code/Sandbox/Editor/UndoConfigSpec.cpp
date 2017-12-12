@@ -39,10 +39,10 @@ void CUndoConficSpec::Undo(bool bUndo)
     {
         m_redo = GetIEditor()->GetEditorConfigSpec();
     }
-    GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)m_undo);
+    GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)m_undo, GetIEditor()->GetEditorConfigPlatform());
 }
 
 void CUndoConficSpec::Redo()
 {
-    GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)m_redo);
+    GetIEditor()->SetEditorConfigSpec((ESystemConfigSpec)m_redo, GetIEditor()->GetEditorConfigPlatform());
 }

@@ -473,11 +473,11 @@ void CBreakableManager::BreakIntoPieces(GeomRef& geoOrig, const Matrix34& mxSrcT
 
     struct MFXExec
     {
-        MFXExec(GeomRef& geoOrig, const Matrix34& mxSrcTM, const BreakageParams& Breakage, const int& nMatLayers)
-            : geoOrig(geoOrig)
-            , mxSrcTM(mxSrcTM)
-            , Breakage(Breakage)
-            , nMatLayers(nMatLayers)
+        MFXExec(GeomRef& _geoOrig, const Matrix34& _mxSrcTM, const BreakageParams& breakage, const int& matLayers)
+            : geoOrig(_geoOrig)
+            , mxSrcTM(_mxSrcTM)
+            , Breakage(breakage)
+            , nMatLayers(matLayers)
             , vLinVel(ZERO)
             , fTotalMass(0.0f)
         {

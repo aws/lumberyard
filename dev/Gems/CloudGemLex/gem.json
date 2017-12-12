@@ -1,0 +1,32 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "6f2e05e82d6f4b76abaa18a70f25d7fe",
+    "Name": "CloudGemLex",
+    "DisplayName": "Cloud Gem Speech Recognition [PREVIEW]",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Enable your project with speech recognition and natural language understanding via the Amazon Lex API.",
+    "Tags": ["AWS", "Cloud Canvas", "Lambda", "Lex", "Speech", "Speech Recognition"],
+    "IconPath": "Speech_Recognition_ProjConfig_icon_01.png",
+    "Dependencies": [
+        {
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "CloudGemFramework"
+        },
+        {
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        },
+        {
+            "Uuid": "e70dd59f02f14ea49e6b38434e86ebf1",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "Microphone"
+        }
+    ]
+}

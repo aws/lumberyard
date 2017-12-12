@@ -18,10 +18,6 @@
 #include "D3DPostProcess.h"
 #include "D3DHMDRenderer.h"
 
-#if defined(AZ_PLATFORM_WINDOWS) && !defined(OPENGL)
-#include "IHardwareMouse.h"
-#endif
-
 #if defined(USE_NV_API)
 #pragma warning(push)
 #pragma warning(disable:4819)   // Invalid character not in default code page

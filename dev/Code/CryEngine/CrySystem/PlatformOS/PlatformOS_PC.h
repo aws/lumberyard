@@ -65,10 +65,6 @@ public:
     virtual IPlatformOS::ISaveReaderPtr SaveGetReader(const char* fileName, unsigned int user);
     virtual IPlatformOS::ISaveWriterPtr SaveGetWriter(const char* fileName, unsigned int user);
 
-    virtual bool KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback);
-    virtual bool KeyboardIsRunning();
-    virtual bool KeyboardCancel();
-
     virtual bool StringVerifyStart(const char* inString, IStringVerifyEvents* pInCallback);
     virtual bool IsVerifyingString();
 

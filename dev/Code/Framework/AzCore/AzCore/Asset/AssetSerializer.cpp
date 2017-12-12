@@ -169,20 +169,6 @@ namespace AZ {
         return bytesWritten;
     }
 
-    void AssetSerializer::RemapLegacyIds(AZ::Data::Asset<AZ::Data::AssetData>* asset)
-    {
-        using namespace AZ::Data;
-
-        AssetInfo assetInfo;
-        AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, asset->GetId());
-        
-        if (assetInfo.m_assetId.IsValid())
-        {
-            asset->m_assetId = assetInfo.m_assetId;
-            asset->m_assetHint = assetInfo.m_relativePath;
-        }
-    }
-
     bool AssetSerializer::CompareValueData(const void* lhs, const void* rhs)
     {
         return SerializeContext::EqualityCompareHelper<Data::Asset<Data::AssetData>>::CompareValues(lhs, rhs);
@@ -192,6 +178,15 @@ namespace AZ {
     {
         // Once the asset is read, if possible, resolve the asset data
         Data::Asset<Data::AssetData>* asset = reinterpret_cast<decltype(asset)>(assetAddress);
+        
+        AZ::Data::AssetInfo assetInfo;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, asset->GetId());
+        if (assetInfo.m_assetId.IsValid())
+        {
+            asset->m_assetId = assetInfo.m_assetId;
+            asset->m_assetHint = assetInfo.m_relativePath;
+        }
+
         Data::AssetId assetId = asset->GetId();
         if (assetId.IsValid() && asset->GetType() != Data::s_invalidAssetType)
         {

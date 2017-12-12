@@ -28,17 +28,6 @@ namespace UiAnimSerialize
 {
     void ReflectUiAnimTypes(AZ::SerializeContext* context)
     {
-        context->Class<Range>()
-            ->Field("Start", &Range::start)
-            ->Field("End", &Range::end);
-
-        context->Class<IKey>()
-            ->Field("Time", &IKey::time)
-            ->Field("Flags", &IKey::flags);
-
-        context->Class<IBoolKey, IKey>()
-            ->SerializerForEmptyClass();
-
         TUiAnimSplineTrack<Vec2>::Reflect(context);
         UiCompoundSplineTrack::Reflect(context);
         UiBoolTrack::Reflect(context);

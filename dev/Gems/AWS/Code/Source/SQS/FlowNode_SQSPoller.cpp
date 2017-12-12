@@ -12,9 +12,12 @@
 #include <StdAfx.h>
 #include <SQS/FlowNode_SQSPoller.h>
 #include <aws/sqs/model/GetQueueAttributesRequest.h>
-#include <aws/core/utils/threading/Executor.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
+#include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Jobs/JobManagerBus.h>
 
 namespace LmbrAWS
 {
@@ -39,7 +42,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("Start"),
-            m_queueClientPort.GetConfiguration("QueueName", _HELP("Name of the SQS queue that has already been created")),
+            InputPortConfig<string>("QueueName", _HELP("Name of the SQS queue that has already been created")),
         };
 
         return inputPorts;
@@ -61,24 +64,23 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(activationInfo, EIP_Start))
         {
-            auto client = m_queueClientPort.GetClient(activationInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(activationInfo->pGraph, activationInfo->myID, "Client configuration not ready.");
-                return;
-            }
+            AZStd::string queueUrl = GetPortString(activationInfo, EIP_QueueClient).c_str();
+            EBUS_EVENT_RESULT(queueUrl, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, queueUrl);
 
             m_flowGraph = activationInfo->pGraph;
             m_flowNodeId = activationInfo->myID;
-            auto queueUrl = client.GetQueueName();
-
+ 
             auto name = GetNameFromUrl(queueUrl.c_str());
             if (name.empty())
             {
                 ErrorNotify(activationInfo->pGraph, activationInfo->myID, "Could not get SQS name from URL");
                 return;
             }
-            m_sqsQueue = Aws::MakeShared<Aws::Queues::Sqs::SQSQueue>(CLIENT_CLASS_TAG, client.GetUnmanagedClient(), name.c_str(), 30, 1);
+
+            CloudGemFramework::AwsApiClientJobConfig<Aws::SQS::SQSClient> clientConfig;
+            auto sqsClient = clientConfig.GetClient();
+
+            m_sqsQueue = Aws::MakeShared<Aws::Queues::Sqs::SQSQueue>(CLIENT_CLASS_TAG, sqsClient, name.c_str(), 30, 1);
 
             m_sqsQueue->SetMessageReceivedEventHandler(std::bind(&FlowNode_SQSPoller::OnMessageReceivedHandler, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
             m_sqsQueue->SetQueueArnSuccessEventHandler(std::bind(&FlowNode_SQSPoller::OnArnReceivedHandler, this, std::placeholders::_1, std::placeholders::_2));
@@ -86,7 +88,9 @@ namespace LmbrAWS
             // Ideally we'd pull the executor off the sqsClient, but we can't do that atm
             // I've added a task that will let us do that, but since it requires a full release, I'd like to put it off for a while
             // See https://issues.labcollab.net/browse/LMBR-9010
-            auto executor = gEnv->pLmbrAWS->GetClientManager()->GetDefaultClientSettings().executor;
+            CloudGemFramework::AwsApiJob::Config* clientSettings{ nullptr };
+            EBUS_EVENT_RESULT(clientSettings, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultConfig);
+            auto executor = clientSettings->executor;
 
             auto lambda = [=]()
                 {
@@ -95,7 +99,11 @@ namespace LmbrAWS
                     m_sqsQueue->RequestArn();
                 };
 
-            executor->Submit(std::move(lambda));
+            AZ::JobContext* jobContext{ nullptr };
+            EBUS_EVENT_RESULT(jobContext, AZ::JobManagerBus, GetGlobalContext);
+
+            auto job = AZ::CreateJobFunction(lambda, true, jobContext);
+            job->Start();
         }
         else if (event == eFE_Initialize || event == eFE_Suspend)
         {
@@ -120,7 +128,7 @@ namespace LmbrAWS
     {
         string messageBody = message.GetBody().c_str();
 
-        if (!messageBody.empty() && gEnv->pLmbrAWS)
+        if (!messageBody.empty())
         {
             auto lambda = [=]()
                 {
@@ -131,7 +139,10 @@ namespace LmbrAWS
                     m_flowGraph->ActivatePort(successAddr, true);
                 };
 
-            gEnv->pLmbrAWS->PostToMainThread(lambda);
+            AZ::JobContext* jobContext{ nullptr };
+            EBUS_EVENT_RESULT(jobContext, AZ::JobManagerBus, GetGlobalContext);
+            auto job = AZ::CreateJobFunction(lambda, true, jobContext);
+            job->Start();
         }
 
         m_sqsQueue->Delete(message);
@@ -141,7 +152,7 @@ namespace LmbrAWS
     {
         string arnStr = arn.c_str();
 
-        if (!arn.empty() && gEnv->pLmbrAWS)
+        if (!arn.empty())
         {
             auto lambda = [=]()
                 {
@@ -149,7 +160,10 @@ namespace LmbrAWS
                     m_flowGraph->ActivatePort(arnAddr, arnStr);
                 };
 
-            gEnv->pLmbrAWS->PostToMainThread(lambda);
+            AZ::JobContext* jobContext{ nullptr };
+            EBUS_EVENT_RESULT(jobContext, AZ::JobManagerBus, GetGlobalContext);
+            auto job = AZ::CreateJobFunction(lambda, true, jobContext);
+            job->Start();
         }
     }
 

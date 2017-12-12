@@ -20,6 +20,8 @@
 #include <IJobManager_JobDelegator.h>
 #include "IStereoRenderer.h" //For IsRenderingToHMD
 
+#include <LmbrCentral/Ai/NavigationSeedBus.h>
+
 #define BAI_NAVIGATION_FILE_VERSION 7
 #define MAX_NAME_LENGTH 512
 #define BAI_NAVIGATION_GUID_FLAG (1 << 30)
@@ -1754,6 +1756,12 @@ void NavigationSystem::CalculateAccessibility()
                 ComputeAccessibility(itNavSeeds->GetObject(), GetAgentTypeID(it->name));
             }
         }
+    }
+
+    // Filtering accessibility with Navigation Seed Components
+    {
+        using LmbrCentral::NavigationSeedRequestsBus;
+        NavigationSeedRequestsBus::Broadcast(&NavigationSeedRequestsBus::Events::RecalculateReachabilityAroundSelf);
     }
 #endif
 }

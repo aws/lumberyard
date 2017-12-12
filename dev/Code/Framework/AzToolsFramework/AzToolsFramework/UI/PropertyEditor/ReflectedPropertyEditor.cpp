@@ -430,7 +430,7 @@ namespace AzToolsFramework
 
         for (auto& instance : m_instances)
         {
-            instance.Build(m_context, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+            instance.Build(m_context, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
             AddProperty(instance.GetRootNode(), NULL, 0);
         }
 
@@ -501,7 +501,7 @@ namespace AzToolsFramework
     {
         for (InstanceDataHierarchy& instance : m_instances)
         {
-            instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+            instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
         }
 
         for (auto it = m_widgets.begin(); it != m_widgets.end(); ++it)
@@ -526,7 +526,7 @@ namespace AzToolsFramework
     {
         for (InstanceDataHierarchy& instance : m_instances)
         {
-            instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+            instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
         }
 
         for (auto it = m_userWidgetsToData.begin(); it != m_userWidgetsToData.end(); ++it)
@@ -832,7 +832,7 @@ namespace AzToolsFramework
                 {
                     for (InstanceDataHierarchy& instance : m_instances)
                     {
-                        instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+                        instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
                         rowWidget->second->OnValuesUpdated();
                     }
                 }
@@ -865,7 +865,7 @@ namespace AzToolsFramework
             {
                 for (InstanceDataHierarchy& instance : m_instances)
                 {
-                    instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+                    instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
                     rowWidget->second->OnValuesUpdated();
                 }
             }
@@ -897,7 +897,7 @@ namespace AzToolsFramework
         }
     }
 
-    void ReflectedPropertyEditor::OnPropertyRowRequestClear(PropertyRowWidget* /*widget*/, InstanceDataNode* node)
+    void ReflectedPropertyEditor::OnPropertyRowRequestClear(PropertyRowWidget* widget, InstanceDataNode* node)
     {
         // get the property editor
         if (m_ptrNotify)
@@ -914,6 +914,12 @@ namespace AzToolsFramework
             container->ClearElements(node->GetInstance(instanceIndex), node->GetSerializeContext());
         }
 
+        // Fire general change notifications for the container widget.
+        if (widget)
+        {
+            widget->DoPropertyNotify();
+        }
+
         if (m_ptrNotify)
         {
             m_ptrNotify->AfterPropertyModified(node);
@@ -923,7 +929,7 @@ namespace AzToolsFramework
         QueueInvalidation(Refresh_EntireTree);
     }
 
-    void ReflectedPropertyEditor::OnPropertyRowRequestContainerRemoveItem(PropertyRowWidget* /*widget*/, InstanceDataNode* node)
+    void ReflectedPropertyEditor::OnPropertyRowRequestContainerRemoveItem(PropertyRowWidget* widget, InstanceDataNode* node)
     {
         // Locate the owning container. There may be a level of indirection due to wrappers, such as DynamicSerializableField.
         InstanceDataNode* pContainerNode = node->GetParent();
@@ -942,17 +948,44 @@ namespace AzToolsFramework
             m_ptrNotify->BeforePropertyModified(pContainerNode);
         }
 
-        void* elementPtr = (node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) ? node->GetInstanceAddress(0) : node->FirstInstance();
-
-
         AZ::SerializeContext::IDataContainer* container = pContainerNode->GetClassMetadata()->m_container;
         AZ_Assert(container->IsFixedSize() == false ||
             container->IsSmartPointer(), "We can't remove elements from a fixed size container!");
 
+        size_t elementIndex = 0;
+        {
+            void* elementPtr = (node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) 
+                ? node->GetInstanceAddress(0) 
+                : node->FirstInstance();
+                
+            // find the index of the element we are about to remove
+            container->EnumElements(pContainerNode->GetInstance(0), [&elementIndex, elementPtr](void* instancePointer, const AZ::Uuid& /*elementClassId*/,
+                const AZ::SerializeContext::ClassData* /*elementGenericClassData*/,
+                const AZ::SerializeContext::ClassElement* /*genericClassElement*/)
+            {
+                if (instancePointer == elementPtr)
+                {
+                    return false;
+                }
+
+                elementIndex++;
+                return true;
+            });
+        }
+
         // pass the context as the last parameter to actually delete the related data.
         for (AZStd::size_t instanceIndex = 0; instanceIndex < pContainerNode->GetNumInstances(); ++instanceIndex)
         {
+            void* elementPtr = (node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) 
+                ? node->GetInstanceAddress(instanceIndex) 
+                : node->GetInstance(instanceIndex);
             container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
+        }
+
+        // Fire general change notifications for the container widget.
+        if (widget)
+        {
+            widget->DoPropertyNotify();
         }
 
         if (m_ptrNotify)
@@ -963,17 +996,23 @@ namespace AzToolsFramework
 
         for (const AZ::Edit::AttributePair& attribute : pContainerNode->GetElementEditMetadata()->m_attributes)
         {
-            if (attribute.first == AZ_CRC("RemoveNotify", 0x16ec95f5))
+            if (attribute.first == AZ::Edit::Attributes::RemoveNotify)
             {
-                AZ::Edit::AttributeFunction<void()>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second);
-                if (func)
+                if (InstanceDataNode* pParent = pContainerNode->GetParent())
                 {
-                    InstanceDataNode* pParent = pContainerNode->GetParent();
-                    if (pParent)
+                    if (AZ::Edit::AttributeFunction<void()>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second))
                     {
-                        for (size_t idx = 0; idx < pParent->GetNumInstances(); ++idx)
+                        for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
                         {
-                            func->Invoke(pParent->GetInstance(idx));
+                            func->Invoke(pParent->GetInstance(instanceIndex));
+                        }
+                    }
+                    else if (AZ::Edit::AttributeFunction<void(size_t)>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void(size_t)>*>(attribute.second))
+                    {
+                        for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
+                        {
+                            size_t tempElementIndex = elementIndex;
+                            func->Invoke(pParent->GetInstance(instanceIndex), std::move(tempElementIndex));
                         }
                     }
                 }
@@ -1162,6 +1201,11 @@ namespace AzToolsFramework
         }
     }
 
+    void ReflectedPropertyEditor::ForceQueuedInvalidation()
+    {
+        DoRefresh();
+    }
+
     void ReflectedPropertyEditor::DoRefresh()
     {
         if (m_queuedRefreshLevel == Refresh_None)
@@ -1333,6 +1377,11 @@ namespace AzToolsFramework
     QSize ReflectedPropertyEditor::sizeHint() const
     {
         return m_containerWidget->sizeHint() + QSize(5,5);
+    }
+
+    void ReflectedPropertyEditor::SetDynamicEditDataProvider(DynamicEditDataProvider provider)
+    {
+        m_dynamicEditDataProvider = provider;
     }
 }
 

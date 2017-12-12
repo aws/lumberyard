@@ -62,8 +62,8 @@ private:
     struct SmartContentCGF
     {
         CContentCGF* pCGF;
-        SmartContentCGF(CContentCGF* pCGF)
-            : pCGF(pCGF) {}
+        SmartContentCGF(CContentCGF* cgf)
+            : pCGF(cgf) {}
         ~SmartContentCGF()
         {
             if (pCGF)

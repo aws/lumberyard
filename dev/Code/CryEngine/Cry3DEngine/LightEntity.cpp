@@ -44,7 +44,7 @@ void CLightEntity::InitEntityShadowMapInfoStructure()
 }
 
 CLightEntity::CLightEntity()
-    : m_VoxelGIMode{ VM_None }
+    : m_VoxelGIMode{VM_None}
 {
     m_layerId = ~0;
 
@@ -393,6 +393,11 @@ int CLightEntity::UpdateGSMLightSourceCachedShadowFrustum(int nFirstLod, int nLo
         {
             ShadowMapFrustum*& pFr = m_pShadowMapInfo->pGSM[firstCachedFrustumIndex + nLod];
             shadowCache.InitShadowFrustum(pFr, nFirstLod + nLod, nFirstLod, fDistFromViewDynamicLod, fRadiusDynamicLod, passInfo);
+            if (!pFr)
+            {
+                continue;
+            }
+
             CalculateShadowBias(pFr, nFirstLod + nLod, fRadiusDynamicLod);
             pFr->bIsMGPUCopy = false;
 
@@ -427,7 +432,14 @@ int CLightEntity::UpdateGSMLightSourceCachedShadowFrustum(int nFirstLod, int nLo
             GetCVars()->e_ShadowsCacheUpdate = 0;
         }
 
-        Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate;
+        if (GetCVars()->e_ShadowsCacheRequireManualUpdate == 1)
+        {
+            Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eManualUpdate;
+        }
+        else
+        {
+            Get3DEngine()->m_nCachedShadowsUpdateStrategy = ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate;
+        }
 
         int nActiveGPUCount = GetRenderer()->GetActiveGPUCount();
         pFrustumCache->nUpdateMaskMT = (1 << nActiveGPUCount) - 1;
@@ -1236,7 +1248,7 @@ int CLightEntity::MakeShadowCastersHullSun(PodArray<SPlaneObject>& lstCastersHul
     // 0 to 5 are the camera frustum vertices
     for (int v = 0; v < 4; v++)
     {
-        arrFrustVerts[v] = vCamPos + (arrFrustVerts[v] - vCamPos).normalized() * GetObjManager()->m_fGSMMaxDistance * 1.3f; //0.2f;
+        arrFrustVerts[v] = vCamPos + (arrFrustVerts[v] - vCamPos).normalized() * GetObjManager()->GetGSMMaxDistance() * 1.3f; //0.2f;
     }
     arrFrustVerts[4] = passInfo.GetCamera().GetPosition();
 

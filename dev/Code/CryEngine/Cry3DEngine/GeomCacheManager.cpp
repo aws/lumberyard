@@ -482,9 +482,9 @@ void CGeomCacheManager::RetireRemovedStreams()
         }
     }
 
-    for (TGeomCacheMap::iterator iter = m_nameToGeomCacheMap.begin(); iter != m_nameToGeomCacheMap.end(); ++iter)
+    for (TGeomCacheMap::iterator it = m_nameToGeomCacheMap.begin(); it != m_nameToGeomCacheMap.end(); ++it)
     {
-        CGeomCache* pGeomCache = iter->second;
+        CGeomCache* pGeomCache = it->second;
         if (pGeomCache->GetNumStreams() == 0)
         {
             pGeomCache->UnloadData();

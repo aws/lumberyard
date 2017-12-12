@@ -113,7 +113,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         self.verify_stack("deployment access stack", deployment_access_stack_arn, mock_specification.ok_deployment_access_stack())
 
         self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, [])
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [])
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [], 'Player')
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [], 'Server')
 
 
     def __220_list_deployments(self):
@@ -126,15 +127,16 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
 
     def __240_add_resource_group(self):     
         self.lmbr_aws(
-            'resource-group', 'add',
-            '--resource-group', self.TEST_RESOURCE_GROUP_NAME, 
-            '--include-example-resources'
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME, 
+            '--initial-content', 'api-lambda-dynamodb',
+            '--enable'
         )
         self.add_bucket_to_resource_group(self.TEST_RESOURCE_GROUP_NAME, 'TestBucket1')
         self.add_bucket_to_resource_group(self.TEST_RESOURCE_GROUP_NAME, 'TestBucket2')
-        resource_group_path = os.path.join(self.AWS_DIR, 'resource-group', self.TEST_RESOURCE_GROUP_NAME)
+        resource_group_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME)
         self.assertTrue(os.path.isfile(os.path.join(resource_group_path, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)))
-        self.assertTrue(os.path.isdir(os.path.join(resource_group_path, 'lambda-code', 'SayHello')))
+        self.assertTrue(os.path.isdir(os.path.join(resource_group_path, 'lambda-code', 'ServiceLambda')))
 
 
     def __250_list_resource_groups_no_deployment(self):
@@ -142,7 +144,31 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
             'resource-group', 'list'
         )
         self.assertIn(self.TEST_RESOURCE_GROUP_NAME, self.lmbr_aws_stdout)
+        self.assertNotIn('DISABLED', self.lmbr_aws_stdout)
 
+
+    def __255_disable_resource_group(self):
+        self.lmbr_aws(
+            'resource-group', 'disable',
+            '--resource-group', self.TEST_RESOURCE_GROUP_NAME
+        )
+        self.lmbr_aws(
+            'resource-group', 'list'
+        )
+        self.assertIn(self.TEST_RESOURCE_GROUP_NAME, self.lmbr_aws_stdout)
+        self.assertIn('DISABLED', self.lmbr_aws_stdout)
+
+
+    def __260_enable_resource_group(self):
+        self.lmbr_aws(
+            'resource-group', 'enable',
+            '--resource-group', self.TEST_RESOURCE_GROUP_NAME
+        )
+        self.lmbr_aws(
+            'resource-group', 'list'
+        )
+        self.assertIn(self.TEST_RESOURCE_GROUP_NAME, self.lmbr_aws_stdout)
+        self.assertNotIn('DISABLED', self.lmbr_aws_stdout)
 
     def __270_update_deployment_stack_to_create_resource_group(self):
         self.lmbr_aws(
@@ -165,18 +191,18 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                         'ResourceType': 'AWS::CloudFormation::Stack',
                         'StackStatus': 'CREATE_COMPLETE',
                         'StackResources': {
-                            'Messages': {
+                            'Table': {
                                 'ResourceType': 'AWS::DynamoDB::Table'
                             },
-                            'SayHelloConfiguration': {
+                            'ServiceLambdaConfiguration': {
                                 'ResourceType': 'Custom::LambdaConfiguration'
                             },
-                            'SayHello': {
+                            'ServiceLambda': {
                                 'ResourceType': 'AWS::Lambda::Function',
                                 'Permissions': [
                                     {
                                         'Resources': [
-                                            '$Messages$'
+                                            '$Table$'
                                         ],
                                         'Allow': [
                                             'dynamodb:PutItem'
@@ -192,15 +218,19 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                             },
                             'AccessControl': {
                                 'ResourceType': 'Custom::AccessControl'
+                            },
+                            'ServiceApi': {
+                                'ResourceType': 'Custom::ServiceApi'
                             }
                         }
                     }
                 }
             })
 
-        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.SayHello' ]
+        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi' ]
         self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids, 'Player')
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [], 'Server')
 
 
     def __290_list_resource_groups_for_deployment(self):
@@ -219,7 +249,9 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         )
         self.assertIn('TestBucket1', self.lmbr_aws_stdout)
         self.assertIn('TestBucket2', self.lmbr_aws_stdout)
-        self.assertIn('SayHello', self.lmbr_aws_stdout)
+        self.assertIn('ServiceLambda', self.lmbr_aws_stdout)
+        self.assertIn('ServiceApi', self.lmbr_aws_stdout)
+        self.assertIn('Table', self.lmbr_aws_stdout)
 
 
     def __330_update_deployment_stack_when_no_changes(self):
@@ -231,8 +263,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
 
     def __410_add_empty_resource_group(self):
         self.lmbr_aws(
-            'resource-group', 'add',
-            '--resource-group', self.TEST_RESOURCE_GROUP_2_NAME
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_2_NAME,
+            '--initial-content', 'no-resources',
+            '--enable'
         )
 
 
@@ -257,18 +291,18 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                         'ResourceType': 'AWS::CloudFormation::Stack',
                         'StackStatus': 'CREATE_COMPLETE',
                         'StackResources': {
-                            'Messages': {
+                            'Table': {
                                 'ResourceType': 'AWS::DynamoDB::Table'
                             },
-                            'SayHelloConfiguration': {
+                            'ServiceLambdaConfiguration': {
                                 'ResourceType': 'Custom::LambdaConfiguration'
                             },
-                            'SayHello': {
+                            'ServiceLambda': {
                                 'ResourceType': 'AWS::Lambda::Function',
                                 'Permissions': [
                                     {
                                         'Resources': [
-                                            '$Messages$'
+                                            '$Table$'
                                         ],
                                         'Allow': [
                                             'dynamodb:PutItem'
@@ -284,6 +318,9 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
                             },
                             'AccessControl': {
                                 'ResourceType': 'Custom::AccessControl'
+                            },
+                            'ServiceApi': {
+                                'ResourceType': 'Custom::ServiceApi'
                             }
                         }
                     },
@@ -303,9 +340,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
             })
 
         # check that adding the deployment didn't change the mappings, the old deployment should still be used
-        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.SayHello' ]
+        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi' ]
         self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids, 'Player')
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [], 'Server')
 
 
     def __470_add_test_bucket_to_resource_group_2(self):
@@ -536,8 +574,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         self.assertFalse('ProjectStackId' in settings)
 
 
-    def add_bucket_to_resource_group(self, resource_group_name, bucket_name):
-        with self.edit_resource_group_document(resource_group_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+    def add_bucket_to_resource_group(self, gem_name, bucket_name):
+        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             template['Resources'][bucket_name] = {
                 'Type': 'AWS::S3::Bucket'
             }
@@ -551,8 +589,8 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         self.aws_s3.put_object(Bucket=bucket_id, Key='TestObject', Body='TestBody')
 
 
-    def remove_resource(self, resource_group_name, resource_name):
-        with self.edit_resource_group_document(resource_group_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+    def remove_resource(self, gem_name, resource_name):
+        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             template['Resources'].pop(resource_name, None)
 
 

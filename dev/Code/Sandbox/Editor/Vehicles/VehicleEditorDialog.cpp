@@ -75,12 +75,13 @@ static QDockWidget* findDockWidget(QWidget* widget)
 //////////////////////////////////////////////////////////////////////////
 void CVehicleEditorDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(200, 200, 600, 500);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    options.isLegacy = true;
 
-    RegisterQtViewPane<CVehicleEditorDialog>(GetIEditor(), "Vehicle Editor", LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CVehicleEditorDialog>("Vehicle Editor", LyViewPane::CategoryOther, options);
 }
 
 const GUID& CVehicleEditorDialog::GetClassID()

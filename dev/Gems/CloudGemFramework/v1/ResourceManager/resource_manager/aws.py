@@ -49,7 +49,7 @@ class AwsCredentials(object):
     """Wraps a RawConfigParser to treat a section named 'default' as a nomral section."""
 
     __REAL_DEFAULT_SECTION_NAME = 'default'
-    __TEMP_DEFAULT_SECTION_NAME = '__default__'
+    __TEMP_DEFAULT_SECTION_NAME = constant.DEFAULT_SECTION_NAME
     __REAL_DEFAULT_SECTION_HEADING = '[' + __REAL_DEFAULT_SECTION_NAME + ']'
     __TEMP_DEFAULT_SECTION_HEADING = '[' + __TEMP_DEFAULT_SECTION_NAME + ']'
 
@@ -255,7 +255,7 @@ class CloudFormationClientWrapper(ClientWrapper):
                         return orig_attr(*args, **kwargs)
                     except (ClientError,EndpointConnectionError,IncompleteReadError,ConnectionError,BotoCoreError,UnknownEndpointError) as e:
                         if count == self.BACKOFF_MAX_TRYS or (hasattr(e, 'response') and e.response and e.response['Error']['Code'] != 'Throttling'):
-                            raise e
+                            raise
 
                         backoff = min(self.BACKOFF_MAX_SECONDS, random.uniform(self.BACKOFF_BASE_SECONDS, backoff * 3.0))
                         if self.verbose:
@@ -302,8 +302,11 @@ class AWSContext(object):
             
             if self.__args.verbose:
                 self.__context.view.using_profile(profile)
-
-            self.__session = Session(profile_name = profile)
+            
+            try:
+                self.__session = Session(profile_name = profile)
+            except (ProfileNotFound) as e:
+                raise HandledError('The AWS session failed to locate AWS credentials. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(e.message))
 
         self.__add_cloud_canvas_attribution(self.__session)
 

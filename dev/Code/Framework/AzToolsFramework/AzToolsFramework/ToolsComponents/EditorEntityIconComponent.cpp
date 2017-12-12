@@ -188,7 +188,7 @@ namespace AzToolsFramework
                 AZ::Entity* entity = GetEntity();
                 AZ::Component* component = entity->FindComponent(firstComponentId);
                 AZ::Uuid componentType = AzToolsFramework::GetUnderlyingComponentType(*component);
-                AzToolsFramework::EditorRequestBus::BroadcastResult(entityIconPath, &AzToolsFramework::EditorRequestBus::Events::GetComponentIconPath, componentType, AZ::Edit::Attributes::ViewportIcon);
+                AzToolsFramework::EditorRequestBus::BroadcastResult(entityIconPath, &AzToolsFramework::EditorRequestBus::Events::GetComponentIconPath, componentType, AZ::Edit::Attributes::ViewportIcon, component);
             }
 
             if (entityIconPath.empty())
@@ -214,7 +214,15 @@ namespace AzToolsFramework
             }
             else
             {
-                if (m_firstComponentIdCache != componentOrderArray.front())
+                if (componentOrderArray.size() > 1)
+                {
+                    if (m_firstComponentIdCache != componentOrderArray[1])
+                    {
+                        m_firstComponentIdCache = componentOrderArray[1];
+                        firstComponentIdChanged = true;
+                    }
+                }
+                else if(m_firstComponentIdCache != componentOrderArray.front())
                 {
                     m_firstComponentIdCache = componentOrderArray.front();
                     firstComponentIdChanged = true;

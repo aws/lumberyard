@@ -20,8 +20,8 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <CloudGemFramework/AwsApiRequestJob.h>
-#include <LmbrAWS/IAWSClientManager.h>
-#include <LmbrAWS/ILmbrAWS.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 #include <ISystem.h>
 
 #include <ctime>
@@ -58,70 +58,77 @@
 
 #pragma warning(pop)
 
-#define ENSURE_SIGNED_IN(_EVENT_NAME, _USERNAME)                                                \
-    if (GetUserAuthDetails(username).refreshToken.empty())                                      \
-    {                                                                                           \
-        BasicResultInfo resultInfo                                                              \
-        {                                                                                       \
-            false,                                                                              \
-            _USERNAME,                                                                          \
-            NOT_SIGNED_IN_ERROR_TYPE,                                                           \
-            NON_STANDARD_ERROR_TYPE,                                                            \
-            NOT_SIGNED_IN_ERROR_MSG                                                             \
-        };                                                                                      \
-        EBUS_EVENT(CloudGemPlayerAccountNotificationBus, _EVENT_NAME, resultInfo);              \
-        return;                                                                                 \
+// This is used to queue response events so that they happen after the requestId is returned to the caller.
+#define QUEUE_EBUS_EVENT_ON_TICKBUS(_EBUS, _EVENT_NAME, ...)                    \
+    EBUS_QUEUE_FUNCTION(AZ::TickBus, (AZStd::function<void()>) [__VA_ARGS__]{   \
+        EBUS_EVENT(_EBUS, _EVENT_NAME, __VA_ARGS__);                            \
+    });
+
+#define ENSURE_SIGNED_IN(_EVENT_NAME, _REQUEST_ID, _USERNAME)                                       \
+    if (GetUserAuthDetails(username).refreshToken.empty())                                          \
+    {                                                                                               \
+        BasicResultInfo resultInfo                                                                  \
+        {                                                                                           \
+            _REQUEST_ID,                                                                            \
+            false,                                                                                  \
+            _USERNAME,                                                                              \
+            NOT_SIGNED_IN_ERROR_TYPE,                                                               \
+            NON_STANDARD_ERROR_TYPE,                                                                \
+            NOT_SIGNED_IN_ERROR_MSG                                                                 \
+        };                                                                                          \
+        QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, _EVENT_NAME, resultInfo); \
+        return _REQUEST_ID;                                                                         \
     }
 
-#define ENSURE_SIGNED_IN_WITH_ARGS(_EVENT_NAME, _USERNAME, ...)                                 \
-    if (GetUserAuthDetails(username).refreshToken.empty())                                      \
-    {                                                                                           \
-        BasicResultInfo resultInfo                                                              \
-        {                                                                                       \
-            false,                                                                              \
-            _USERNAME,                                                                          \
-            NOT_SIGNED_IN_ERROR_TYPE,                                                           \
-            NON_STANDARD_ERROR_TYPE,                                                            \
-            NOT_SIGNED_IN_ERROR_MSG                                                             \
-        };                                                                                      \
-        EBUS_EVENT(CloudGemPlayerAccountNotificationBus, _EVENT_NAME, resultInfo, __VA_ARGS__); \
-        return;                                                                                 \
+#define ENSURE_SIGNED_IN_WITH_ARGS(_EVENT_NAME, _REQUEST_ID, _USERNAME, ...)                                        \
+    if (GetUserAuthDetails(username).refreshToken.empty())                                                          \
+    {                                                                                                               \
+        BasicResultInfo resultInfo                                                                                  \
+        {                                                                                                           \
+            _REQUEST_ID,                                                                                            \
+            false,                                                                                                  \
+            _USERNAME,                                                                                              \
+            NOT_SIGNED_IN_ERROR_TYPE,                                                                               \
+            NON_STANDARD_ERROR_TYPE,                                                                                \
+            NOT_SIGNED_IN_ERROR_MSG                                                                                 \
+        };                                                                                                          \
+        QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, _EVENT_NAME, resultInfo, __VA_ARGS__);    \
+        return _REQUEST_ID;                                                                                         \
     }
 
-#define BASIC_RESULT_INITIALIZER(_JOB, _USERNAME)       \
-    {                                                   \
-        _JOB->WasSuccess(),                             \
-        _USERNAME,                                      \
-        _JOB->error.GetExceptionName().c_str(),         \
-        static_cast<int>(_JOB->error.GetErrorType()),   \
-        _JOB->error.GetMessage().c_str()                \
+#define BASIC_RESULT_INITIALIZER(_JOB, _REQUEST_ID, _USERNAME)  \
+    {                                                           \
+        _REQUEST_ID,                                            \
+        _JOB->WasSuccess(),                                     \
+        _USERNAME,                                              \
+        _JOB->error.GetExceptionName().c_str(),                 \
+        static_cast<int>(_JOB->error.GetErrorType()),           \
+        _JOB->error.GetMessage().c_str()                        \
     }
 
-#define SUCCESSFUL_RESULT_INITIALIZER(_USERNAME)        \
-    {                                                   \
-        true,                                           \
-        _USERNAME,                                      \
-        "",                                             \
-        0,                                              \
-        ""                                              \
+#define SUCCESSFUL_RESULT_INITIALIZER(_REQUEST_ID, _USERNAME)   \
+    {                                                           \
+        _REQUEST_ID,                                            \
+        true,                                                   \
+        _USERNAME,                                              \
+        "",                                                     \
+        0,                                                      \
+        ""                                                      \
     }
 
-#define FAILED_RESULT_INITIALIZER(_USERNAME, _ERROR_TYPE, _MESSAGE) \
-    {                                                               \
-        false,                                                      \
-        _USERNAME,                                                  \
-        _ERROR_TYPE,                                                \
-        NON_STANDARD_ERROR_TYPE,                                    \
-        _MESSAGE                                                    \
+#define FAILED_RESULT_INITIALIZER(_REQUEST_ID, _USERNAME, _ERROR_TYPE, _MESSAGE)    \
+    {                                                                               \
+        _REQUEST_ID,                                                                \
+        false,                                                                      \
+        _USERNAME,                                                                  \
+        _ERROR_TYPE,                                                                \
+        NON_STANDARD_ERROR_TYPE,                                                    \
+        _MESSAGE                                                                    \
     }
 
 namespace
 {
     const char* ALLOC_TAG = "CloudGemPlayerAccount::CloudGemPlayerAccountSystemComponent";
-
-    // Used when comparing against the expiration time so that we give requests enough time to complete.
-    // Note that this is used on top of the built-in cusion that AuthTokenGroup uses when calculating expiration.
-    const long long EXPIRATION_CUSHION_IN_SECONDS = 30LL;
 
     // Cognito IDP provider names are of the form "cognito-idp.us-east-1.amazonaws.com/us-east-1_123456789"
     const AZStd::string PROVIDER_NAME_USER_POOL_START = "cognito-idp.";
@@ -236,21 +243,18 @@ namespace CloudGemPlayerAccount
     void CloudGemPlayerAccountSystemComponent::Activate()
     {
         CloudGemPlayerAccountRequestBus::Handler::BusConnect();
-        LmbrAWS::ClientManagerNotificationBus::Handler::BusConnect();
+        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();
     }
 
     void CloudGemPlayerAccountSystemComponent::Deactivate()
     {
         CloudGemPlayerAccountRequestBus::Handler::BusDisconnect();
-        LmbrAWS::ClientManagerNotificationBus::Handler::BusDisconnect();
+        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusDisconnect();
 
-        if (gEnv)
-        {
-            gEnv->pLmbrAWS->GetClientManager()->RemoveTokenRetrievalStrategy(m_userPoolProviderName.c_str());
-        }
+        EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, RemoveTokenRetrievalStrategy, m_userPoolProviderName.c_str());
     }
 
-    void CloudGemPlayerAccountSystemComponent::OnBeforeConfigurationChange()
+    void CloudGemPlayerAccountSystemComponent::OnBeforeIdentityUpdate()
     {
         if (m_userPoolLogicalName.empty()) {
             gEnv->pLog->LogWarning("CloudGemPlayerAccountSystemComponent: The user pool logical name has not been set.");
@@ -272,7 +276,7 @@ namespace CloudGemPlayerAccount
         m_userPoolProviderName.append(poolId);                         // us-east-1_123456789
 
         auto strategy = Aws::MakeShared<UserPoolTokenRetrievalStrategy>(ALLOC_TAG, this);
-        gEnv->pLmbrAWS->GetClientManager()->AddTokenRetrievalStrategy(m_userPoolProviderName.c_str(), strategy);
+        EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, AddTokenRetrievalStrategy, m_userPoolProviderName.c_str(), strategy);
     }
 
     bool CloudGemPlayerAccountSystemComponent::HasCachedCredentials(const AZStd::string& username)
@@ -283,25 +287,29 @@ namespace CloudGemPlayerAccount
 
     //////////////////////////////// Start Public User Pool Wrapper Functions ////////////////////////////////////////////
 
-    void CloudGemPlayerAccountSystemComponent::GetCurrentUser()
+    AZ::u32 CloudGemPlayerAccountSystemComponent::GetCurrentUser()
     {
-        string refreshToken;
-        if (!gEnv->pLmbrAWS->GetClientManager()->GetRefreshTokenForProvider(refreshToken, m_userPoolProviderName.c_str()))
+        AZ::u32 requestId = m_nextRequestId++;
+
+        AZStd::string refreshToken;
+        bool refreshResult{ false };
+        EBUS_EVENT_RESULT(refreshResult, CloudGemFramework::CloudCanvasPlayerIdentityBus, GetRefreshTokenForProvider, refreshToken, m_userPoolProviderName.c_str());
+        if (!refreshResult)
         {
-            BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER("", NOT_SIGNED_IN_ERROR_TYPE, "The user is not logged into the Cognito user pool");
-            EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, resultInfo);
-            return;
+            BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(requestId, "", NOT_SIGNED_IN_ERROR_TYPE, "The user is not logged into the Cognito user pool");
+            QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, resultInfo);
+            return requestId;
         }
 
         AZStd::string username;
         if (GetCachedUsernameForRefreshToken(username, refreshToken.c_str()))
         {
-            BasicResultInfo resultInfo SUCCESSFUL_RESULT_INITIALIZER(username.c_str());
-            EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, resultInfo);
-            return;
+            BasicResultInfo resultInfo SUCCESSFUL_RESULT_INITIALIZER(requestId, username.c_str());
+            QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, resultInfo);
+            return requestId;
         }
 
-        auto refreshCallback = [this](const BasicResultInfo& basicResult, const Model::AuthenticationResultType& authenticationResult)
+        auto refreshCallback = [this, requestId](const BasicResultInfo& basicResult, const Model::AuthenticationResultType& authenticationResult)
         {
             if (!basicResult.wasSuccessful)
             {
@@ -318,14 +326,18 @@ namespace CloudGemPlayerAccount
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, basicResult);
             };
 
-            GetUserForAcccessToken(getUserCallback, authenticationResult.GetAccessToken().c_str());
+            GetUserForAcccessToken(requestId, getUserCallback, authenticationResult.GetAccessToken().c_str());
         };
 
         AuthenticateWithRefreshToken(refreshCallback, refreshToken.c_str());
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         using SignUpRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, SignUp);
 
         // An anonymous credentials provider is used because the request does not need to be signed.
@@ -333,11 +345,11 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username, password](SignUpRequestJob* job)
+        auto callbackLambda = [this, requestId, username, password](SignUpRequestJob* job)
         {
             DeliveryDetails deliveryDetails;
             deliveryDetails.Reset(job->result.GetCodeDeliveryDetails());
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnSignUpComplete, resultInfo, deliveryDetails, job->result.GetUserConfirmed());
         };
 
@@ -357,10 +369,14 @@ namespace CloudGemPlayerAccount
         }
 
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         using ConfirmSignUpRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, ConfirmSignUp);
 
         // An anonymous credentials provider is used because the request does not need to be signed.
@@ -368,9 +384,9 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username, confirmationCode](ConfirmSignUpRequestJob* job)
+        auto callbackLambda = [this, requestId, username, confirmationCode](ConfirmSignUpRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnConfirmSignUpComplete, resultInfo);
         };
 
@@ -380,10 +396,14 @@ namespace CloudGemPlayerAccount
         job->request.SetUsername(username.c_str());
         job->request.SetConfirmationCode(confirmationCode.c_str());
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::ResendConfirmationCode(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::ResendConfirmationCode(const AZStd::string& username)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         using ResendConfirmationCodeRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, ResendConfirmationCode);
 
         // An anonymous credentials provider is used because the request does not need to be signed.
@@ -391,9 +411,9 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username](ResendConfirmationCodeRequestJob* job)
+        auto callbackLambda = [this, requestId, username](ResendConfirmationCodeRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
             DeliveryDetails deliveryDetails;
             deliveryDetails.Reset(job->result.GetCodeDeliveryDetails());
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnResendConfirmationCodeComplete, resultInfo, deliveryDetails);
@@ -404,10 +424,14 @@ namespace CloudGemPlayerAccount
         job->request.SetClientId(GetClientId().c_str());
         job->request.SetUsername(username.c_str());
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::ForgotPassword(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::ForgotPassword(const AZStd::string& username)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         using ForgotPasswordRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, ForgotPassword);
 
         // An anonymous credentials provider is used because the request does not need to be signed.
@@ -415,9 +439,9 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username](ForgotPasswordRequestJob* job)
+        auto callbackLambda = [this, requestId, username](ForgotPasswordRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
             DeliveryDetails deliveryDetails;
             deliveryDetails.Reset(job->result.GetCodeDeliveryDetails());
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnForgotPasswordComplete, resultInfo, deliveryDetails);
@@ -428,10 +452,14 @@ namespace CloudGemPlayerAccount
         job->request.SetClientId(GetClientId().c_str());
         job->request.SetUsername(username.c_str());
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         using ConfirmForgotPasswordRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, ConfirmForgotPassword);
 
         // An anonymous credentials provider is used because the request does not need to be signed.
@@ -439,9 +467,9 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username, password](ConfirmForgotPasswordRequestJob* job)
+        auto callbackLambda = [this, requestId, username, password](ConfirmForgotPasswordRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnConfirmForgotPasswordComplete, resultInfo);
         };
 
@@ -452,28 +480,38 @@ namespace CloudGemPlayerAccount
         job->request.SetPassword(password.c_str());
         job->request.SetUsername(username.c_str());
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::InitiateAuth(const AZStd::string& username, const AZStd::string& password)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::InitiateAuth(const AZStd::string& username, const AZStd::string& password)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         auto onComplete = [](const BasicResultInfo& resultInfo)
         {
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnInitiateAuthComplete, resultInfo);
         };
-        CallInitiateAuth(username, password, "", onComplete);
+        CallInitiateAuth(requestId, username, password, "", onComplete);
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::RespondToForceChangePasswordChallenge(const AZStd::string& username,
+    AZ::u32 CloudGemPlayerAccountSystemComponent::RespondToForceChangePasswordChallenge(const AZStd::string& username,
         const AZStd::string& currentPassword, const AZStd::string& newPassword)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         auto onComplete = [](const BasicResultInfo& resultInfo)
         {
             EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnRespondToForceChangePasswordChallengeComplete, resultInfo);
         };
-        CallInitiateAuth(username, currentPassword, newPassword, onComplete);
+        CallInitiateAuth(requestId, username, currentPassword, newPassword, onComplete);
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::CallInitiateAuth(const AZStd::string& username, const AZStd::string& currentPassword,
+    void CloudGemPlayerAccountSystemComponent::CallInitiateAuth(AZ::u32 requestId, const AZStd::string& username, const AZStd::string& currentPassword,
         const AZStd::string& newPassword, const AuthCallback& authCallback)
     {
         using InitiateAuthRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, InitiateAuth);
@@ -483,11 +521,11 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, username, currentPassword, newPassword, authCallback](InitiateAuthRequestJob* job)
+        auto callbackLambda = [this, requestId, username, currentPassword, newPassword, authCallback](InitiateAuthRequestJob* job)
         {
             if (!job->WasSuccess())   // See if first step in auth process failed
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 authCallback(resultInfo);
             }
             else
@@ -502,16 +540,16 @@ namespace CloudGemPlayerAccount
                     }
 
                     if (challengeType == "ForceChangePassword" && newPassword.empty()) {
-                        BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(username, FORCE_CHANGE_PASSWORD_ERROR_TYPE, FORCE_CHANGE_PASSWORD_ERROR_MSG);
+                        BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(requestId, username, FORCE_CHANGE_PASSWORD_ERROR_TYPE, FORCE_CHANGE_PASSWORD_ERROR_MSG);
                         authCallback(resultInfo);
                         return;
                     }
 
-                    RespondToAuthChallenge(job->result.GetChallengeName(), challengeType, job->result, currentPassword, newPassword, authCallback);
+                    RespondToAuthChallenge(requestId, job->result.GetChallengeName(), challengeType, job->result, currentPassword, newPassword, authCallback);
                 }
                 else
                 {
-                    BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(username, GENERAL_AUTH_ERROR_TYPE, "Unexpected auth challenge");
+                    BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(requestId, username, GENERAL_AUTH_ERROR_TYPE, "Unexpected auth challenge");
                     authCallback(resultInfo);
                 }
             }
@@ -525,18 +563,25 @@ namespace CloudGemPlayerAccount
         job->Start();
     }
 
-    void CloudGemPlayerAccountSystemComponent::SignOut(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::SignOut(const AZStd::string& username)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         LocalSignOut(username);
 
-        EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnSignOutComplete, username.c_str());
+        BasicResultInfo resultInfo SUCCESSFUL_RESULT_INITIALIZER(requestId, username);
+        QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, OnSignOutComplete, resultInfo);
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword)
     {
-        ENSURE_SIGNED_IN(OnChangePasswordComplete, username)
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username, previousPassword, proposedPassword](AuthTokenGroup tokenGroup)
+        ENSURE_SIGNED_IN(OnChangePasswordComplete, requestId, username)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username, previousPassword, proposedPassword](AuthTokenGroup tokenGroup)
         {
             using ChangePasswordRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, ChangePassword);
 
@@ -545,9 +590,9 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username, previousPassword, proposedPassword](ChangePasswordRequestJob* job)
+            auto callbackLambda = [this, requestId, username, previousPassword, proposedPassword](ChangePasswordRequestJob* job)
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnChangePasswordComplete, resultInfo);
                 SignOutIfTokenIsInvalid(job, username);
             };
@@ -559,13 +604,17 @@ namespace CloudGemPlayerAccount
             job->request.SetProposedPassword(proposedPassword.c_str());
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::GlobalSignOut(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::GlobalSignOut(const AZStd::string& username)
     {
-        ENSURE_SIGNED_IN(OnGlobalSignOutComplete, username)
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username](AuthTokenGroup tokenGroup)
+        ENSURE_SIGNED_IN(OnGlobalSignOutComplete, requestId, username)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username](AuthTokenGroup tokenGroup)
         {
             using GlobalSignOutRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, GlobalSignOut);
 
@@ -574,14 +623,14 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](GlobalSignOutRequestJob* job)
+            auto callbackLambda = [this, requestId, username](GlobalSignOutRequestJob* job)
             {
                 if (job->WasSuccess())
                 {
                     LocalSignOut(username); // Erase all local credential caches
                 }
 
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGlobalSignOutComplete, resultInfo);
                 SignOutIfTokenIsInvalid(job, username);
             };
@@ -591,13 +640,17 @@ namespace CloudGemPlayerAccount
             job->request.SetAccessToken(tokenGroup.accessToken);
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::DeleteOwnAccount(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::DeleteOwnAccount(const AZStd::string& username)
     {
-        ENSURE_SIGNED_IN(OnDeleteOwnAccountComplete, username)
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username](AuthTokenGroup tokenGroup)
+        ENSURE_SIGNED_IN(OnDeleteOwnAccountComplete, requestId, username)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username](AuthTokenGroup tokenGroup)
         {
             using DeleteUserRequestJob = AWS_API_REQUEST_JOB_NO_RESULT(CognitoIdentityProvider, DeleteUser);
 
@@ -606,14 +659,14 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](DeleteUserRequestJob* job)
+            auto callbackLambda = [this, requestId, username](DeleteUserRequestJob* job)
             {
                 if (job->WasSuccess())
                 {
                     LocalSignOut(username); // Erase all local credential caches
                 }
 
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnDeleteOwnAccountComplete, resultInfo);
                 SignOutIfTokenIsInvalid(job, username);
             };
@@ -623,13 +676,19 @@ namespace CloudGemPlayerAccount
             job->request.SetAccessToken(tokenGroup.accessToken);
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::GetUser(const AZStd::string& username)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::GetUser(const AZStd::string& username)
     {
-        ENSURE_SIGNED_IN_WITH_ARGS(OnGetUserComplete, username, UserAttributeValues(), UserAttributeList())
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username](AuthTokenGroup tokenGroup)
+        auto blankUserAttributeValues = UserAttributeValues();
+        auto blankUserAttributeList = UserAttributeList();
+        ENSURE_SIGNED_IN_WITH_ARGS(OnGetUserComplete, requestId, username, blankUserAttributeValues, blankUserAttributeList)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username](AuthTokenGroup tokenGroup)
         {
             using GetUserRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, GetUser);
 
@@ -638,9 +697,9 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](GetUserRequestJob* job)
+            auto callbackLambda = [this, requestId, username](GetUserRequestJob* job)
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
 
                 UserAttributeValues attrs;
                 UserAttributeList mfaOps;
@@ -668,13 +727,17 @@ namespace CloudGemPlayerAccount
             job->request.SetAccessToken(tokenGroup.accessToken);
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode)
     {
-        ENSURE_SIGNED_IN(OnVerifyUserAttributeComplete, username)
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username, attributeName, confirmationCode](AuthTokenGroup tokenGroup)
+        ENSURE_SIGNED_IN(OnVerifyUserAttributeComplete, requestId, username)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username, attributeName, confirmationCode](AuthTokenGroup tokenGroup)
         {
             using VerifyUserAttributeRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, VerifyUserAttribute);
 
@@ -683,9 +746,9 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](VerifyUserAttributeRequestJob* job)
+            auto callbackLambda = [this, requestId, username](VerifyUserAttributeRequestJob* job)
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnVerifyUserAttributeComplete, resultInfo);
                 SignOutIfTokenIsInvalid(job, username);
             };
@@ -697,21 +760,25 @@ namespace CloudGemPlayerAccount
             job->request.SetCode(confirmationCode.c_str());
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete)
     {
+        AZ::u32 requestId = m_nextRequestId++;
+
         if (attributesToDelete.GetData().size() < 1)
         {
             // Nothing to delete
-            BasicResultInfo resultInfo SUCCESSFUL_RESULT_INITIALIZER(username);
-            EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnDeleteUserAttributesComplete, resultInfo);
-            return;
+            BasicResultInfo resultInfo SUCCESSFUL_RESULT_INITIALIZER(requestId, username);
+            QUEUE_EBUS_EVENT_ON_TICKBUS(CloudGemPlayerAccountNotificationBus, OnDeleteUserAttributesComplete, resultInfo);
+            return requestId;
         }
 
-        ENSURE_SIGNED_IN(OnDeleteUserAttributesComplete, username)
+        ENSURE_SIGNED_IN(OnDeleteUserAttributesComplete, requestId, username)
 
-        RefreshAccessTokensIfExpired(username, [this, username, attributesToDelete](AuthTokenGroup tokenGroup)
+        RefreshAccessTokensIfExpired(username, [this, requestId, username, attributesToDelete](AuthTokenGroup tokenGroup)
         {
             using DeleteUserAttributesRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, DeleteUserAttributes);
 
@@ -720,9 +787,9 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](DeleteUserAttributesRequestJob* job)
+            auto callbackLambda = [this, requestId, username](DeleteUserAttributesRequestJob* job)
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnDeleteUserAttributesComplete, resultInfo);
                 SignOutIfTokenIsInvalid(job, username);
             };
@@ -737,13 +804,18 @@ namespace CloudGemPlayerAccount
             }
             job->Start();
         });
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes)
     {
-        ENSURE_SIGNED_IN_WITH_ARGS(OnUpdateUserAttributesComplete, username, DeliveryDetailsArray())
+        AZ::u32 requestId = m_nextRequestId++;
 
-        RefreshAccessTokensIfExpired(username, [this, username, attributes](AuthTokenGroup tokenGroup)
+        auto blankDeliveryDetailsArray = DeliveryDetailsArray();
+        ENSURE_SIGNED_IN_WITH_ARGS(OnUpdateUserAttributesComplete, requestId, username, blankDeliveryDetailsArray)
+
+        RefreshAccessTokensIfExpired(username, [this, requestId, username, attributes](AuthTokenGroup tokenGroup)
         {
             using UpdateUserAttributesRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, UpdateUserAttributes);
 
@@ -752,9 +824,9 @@ namespace CloudGemPlayerAccount
             config.credentialsProvider = m_anonymousCredentialsProvider;
             config.region = GetPoolRegion().c_str();
 
-            auto callbackLambda = [this, username](UpdateUserAttributesRequestJob* job)
+            auto callbackLambda = [this, requestId, username](UpdateUserAttributesRequestJob* job)
             {
-                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username);
+                BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username);
                 auto& detailsList = job->result.GetCodeDeliveryDetailsList();
                 EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnUpdateUserAttributesComplete, resultInfo, DeliveryDetailsArray{ detailsList });
                 SignOutIfTokenIsInvalid(job, username);
@@ -773,16 +845,21 @@ namespace CloudGemPlayerAccount
             }
             job->Start();
         });
+
+        return requestId;
     }
 
     //////////////////////////////// End Public User Pool Wrapper Functions ////////////////////////////////////////////
 
-    void CloudGemPlayerAccountSystemComponent::GetPlayerAccount()
+    AZ::u32 CloudGemPlayerAccountSystemComponent::GetPlayerAccount()
     {
-        auto callbackLambda = [](ServiceAPI::GetAccountRequestJob* job)
+        AZ::u32 requestId = m_nextRequestId++;
+
+        auto callbackLambda = [requestId](ServiceAPI::GetAccountRequestJob* job)
         {
             AccountResultInfo resultInfo
             {
+                requestId,
                 job->WasSuccess(),
                 job->WasSuccess() ? "" : "GetAccountFailed",
                 job->error.message.c_str()
@@ -794,14 +871,19 @@ namespace CloudGemPlayerAccount
 
         ServiceAPI::GetAccountRequestJob* job = ServiceAPI::GetAccountRequestJob::Create(callbackLambda, callbackLambda);
         job->Start();
+
+        return requestId;
     }
 
-    void CloudGemPlayerAccountSystemComponent::UpdatePlayerAccount(const PlayerAccount& playerAccount)
+    AZ::u32 CloudGemPlayerAccountSystemComponent::UpdatePlayerAccount(const PlayerAccount& playerAccount)
     {
-        auto callbackLambda = [playerAccount](ServiceAPI::PutAccountRequestJob* job)
+        AZ::u32 requestId = m_nextRequestId++;
+
+        auto callbackLambda = [requestId, playerAccount](ServiceAPI::PutAccountRequestJob* job)
         {
             AccountResultInfo resultInfo
             {
+                requestId,
                 job->WasSuccess(),
                 job->WasSuccess() ? "" : "UpdatePlayerAccountFailed",
                 job->error.message.c_str()
@@ -812,6 +894,8 @@ namespace CloudGemPlayerAccount
         ServiceAPI::PutAccountRequestJob* job = ServiceAPI::PutAccountRequestJob::Create(callbackLambda, callbackLambda);
         job->parameters.UpdateAccountRequest.PlayerName = playerAccount.GetPlayerName();
         job->Start();
+
+        return requestId;
     }
 
     void CloudGemPlayerAccountSystemComponent::LocalSignOut(const AZStd::string& username)
@@ -821,7 +905,7 @@ namespace CloudGemPlayerAccount
             m_usernamesToTokens.erase(username);
         }
 
-        gEnv->pLmbrAWS->GetClientManager()->Logout();
+        EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, Logout);
     }
 
     template<typename Job> void CloudGemPlayerAccountSystemComponent::SignOutIfTokenIsInvalid(const Job& job, const AZStd::string& username)
@@ -867,7 +951,10 @@ namespace CloudGemPlayerAccount
         refreshRequest.SetAuthFlow(Model::AuthFlowType::REFRESH_TOKEN_AUTH);
         refreshRequest.AddAuthParameters("REFRESH_TOKEN", tokens.longTermToken);
 
-        Model::InitiateAuthOutcome refreshOutcome = GetClient()->InitiateAuth(refreshRequest);
+        CloudGemFramework::AwsApiClientJobConfig<Aws::CognitoIdentityProvider::CognitoIdentityProviderClient> clientConfig;
+        auto identityClient = clientConfig.GetClient();
+
+        Model::InitiateAuthOutcome refreshOutcome = identityClient->InitiateAuth(refreshRequest);
 
         Aws::Auth::LoginAccessTokens tokenGroup;
         if (!refreshOutcome.IsSuccess())
@@ -876,7 +963,7 @@ namespace CloudGemPlayerAccount
             if (refreshOutcome.GetError().GetErrorType() == Aws::CognitoIdentityProvider::CognitoIdentityProviderErrors::NOT_AUTHORIZED)
             {
                 // The token is no longer valid so the user is effectively not signed in.  Update the local state to match the server.
-                gEnv->pLmbrAWS->GetClientManager()->Logout();
+                EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, Logout);
             }
 
             return tokenGroup;
@@ -911,7 +998,8 @@ namespace CloudGemPlayerAccount
         // Use the access token to get the username.
         Model::GetUserRequest getUserRequest;
         getUserRequest.SetAccessToken(authenticationResult.GetAccessToken());
-        Model::GetUserOutcome getUserOutcome = GetClient()->GetUser(getUserRequest);
+
+        Model::GetUserOutcome getUserOutcome = identityClient->GetUser(getUserRequest);
 
         if (!getUserOutcome.IsSuccess())
         {
@@ -1076,7 +1164,7 @@ namespace CloudGemPlayerAccount
             if (!resultInfo.wasSuccessful && job->error.GetErrorType() == Aws::CognitoIdentityProvider::CognitoIdentityProviderErrors::NOT_AUTHORIZED)
             {
                 // The token is no longer valid so the user is effectively not signed in.  Update the local state to match the server.
-                gEnv->pLmbrAWS->GetClientManager()->Logout();
+                EBUS_EVENT(CloudGemFramework::CloudCanvasPlayerIdentityBus, Logout);
             }
         };
 
@@ -1088,7 +1176,7 @@ namespace CloudGemPlayerAccount
         job->Start();
     }
 
-    void CloudGemPlayerAccountSystemComponent::GetUserForAcccessToken(const GetUserForAccessTokenHandler& handler, const AZStd::string& accessToken)
+    void CloudGemPlayerAccountSystemComponent::GetUserForAcccessToken(AZ::u32 requestId, const GetUserForAccessTokenHandler& handler, const AZStd::string& accessToken)
     {
         using GetUserRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, GetUser);
 
@@ -1097,9 +1185,9 @@ namespace CloudGemPlayerAccount
         config.credentialsProvider = m_anonymousCredentialsProvider;
         config.region = GetPoolRegion().c_str();
 
-        auto callbackLambda = [this, handler](GetUserRequestJob* job)
+        auto callbackLambda = [this, requestId, handler](GetUserRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, job->result.GetUsername().c_str());
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, job->result.GetUsername().c_str());
             handler(resultInfo);
         };
 
@@ -1109,7 +1197,7 @@ namespace CloudGemPlayerAccount
         job->Start();
     }
 
-    void CloudGemPlayerAccountSystemComponent::RespondToAuthChallenge(Model::ChallengeNameType challengeName, AZStd::string challengeType,
+    void CloudGemPlayerAccountSystemComponent::RespondToAuthChallenge(AZ::u32 requestId, Model::ChallengeNameType challengeName, AZStd::string challengeType,
         const Model::InitiateAuthResult& result, const AZStd::string currentPassword, const AZStd::string newPassword, AuthCallback onComplete)
     {
         using RespondToAuthChallengeRequestJob = AWS_API_REQUEST_JOB(CognitoIdentityProvider, RespondToAuthChallenge);
@@ -1122,9 +1210,9 @@ namespace CloudGemPlayerAccount
         const Aws::Map<Aws::String, Aws::String>& challengeParams = result.GetChallengeParameters();
         auto username = challengeParams.at("USERNAME");
 
-        auto callbackLambda = [this, username, onComplete](RespondToAuthChallengeRequestJob* job)
+        auto callbackLambda = [this, requestId, username, onComplete](RespondToAuthChallengeRequestJob* job)
         {
-            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, username.c_str());
+            BasicResultInfo resultInfo BASIC_RESULT_INITIALIZER(job, requestId, username.c_str());
 
             if (!job->WasSuccess())   // See if first step in auth process failed
             {
@@ -1146,7 +1234,7 @@ namespace CloudGemPlayerAccount
                 case Model::ChallengeNameType::DEVICE_PASSWORD_VERIFIER:
                 case Model::ChallengeNameType::ADMIN_NO_SRP_AUTH:
                 case Model::ChallengeNameType::SMS_MFA:
-                    onComplete({ false, "", GENERAL_AUTH_ERROR_TYPE, NON_STANDARD_ERROR_TYPE, GENERAL_AUTH_ERROR_MSG });
+                    onComplete({ requestId,  false, "", GENERAL_AUTH_ERROR_TYPE, NON_STANDARD_ERROR_TYPE, GENERAL_AUTH_ERROR_MSG });
                     break;
 
                 case Model::ChallengeNameType::NOT_SET:
@@ -1154,17 +1242,18 @@ namespace CloudGemPlayerAccount
                     // Successfully logged in
                     auto& authResult = job->result.GetAuthenticationResult();
                     AuthTokenGroup tokenGroup = CacheUserAuthDetails(username.c_str(), authResult);
-                    bool success = gEnv->pLmbrAWS->GetClientManager()->Login(m_userPoolProviderName.c_str(),
+                    bool success{ false };
+                    EBUS_EVENT_RESULT(success, CloudGemFramework::CloudCanvasPlayerIdentityBus, Login, m_userPoolProviderName.c_str(),
                         tokenGroup.idToken.c_str(), // Note use of ID Token, not Access Token
                         tokenGroup.refreshToken.c_str(),
                         tokenGroup.GetExpirationTime());
                     if (success)
                     {
-                        onComplete(SUCCESSFUL_RESULT_INITIALIZER(""));
+                        onComplete(SUCCESSFUL_RESULT_INITIALIZER(requestId, ""));
                     }
                     else
                     {
-                        onComplete({ false, "", GENERAL_AUTH_ERROR_TYPE, NON_STANDARD_ERROR_TYPE, GENERAL_AUTH_ERROR_MSG });
+                        onComplete({ requestId,  false, "", GENERAL_AUTH_ERROR_TYPE, NON_STANDARD_ERROR_TYPE, GENERAL_AUTH_ERROR_MSG });
                     }
                     break;
                 }
@@ -1198,16 +1287,11 @@ namespace CloudGemPlayerAccount
         job->Start();
     }
 
-    LmbrAWS::CognitoIdentityProvider::IdentityProviderClient CloudGemPlayerAccountSystemComponent::GetClient()
-    {
-        LmbrAWS::CognitoIdentityProvider::Manager& idpManager = gEnv->pLmbrAWS->GetClientManager()->GetCognitoIdentityProviderManager();
-        return idpManager.CreateIdentityProviderClient(m_userPoolLogicalName.c_str());
-    }
-
     AZStd::string CloudGemPlayerAccountSystemComponent::GetPoolId()
     {
-        LmbrAWS::CognitoIdentityProvider::Manager& idpManager = gEnv->pLmbrAWS->GetClientManager()->GetCognitoIdentityProviderManager();
-        return idpManager.CreateIdentityProviderClient(m_userPoolLogicalName.c_str()).GetUserPoolId().c_str();
+        AZStd::string poolId;
+        EBUS_EVENT_RESULT(poolId, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, m_userPoolLogicalName);
+        return poolId;
     }
 
     AZStd::string CloudGemPlayerAccountSystemComponent::GetPoolRegion()
@@ -1225,10 +1309,17 @@ namespace CloudGemPlayerAccount
 
     AZStd::string CloudGemPlayerAccountSystemComponent::GetClientId()
     {
-        LmbrAWS::CognitoIdentityProvider::Manager& idpManager = gEnv->pLmbrAWS->GetClientManager()->GetCognitoIdentityProviderManager();
-        LmbrAWS::CognitoIdentityProvider::IdentityProviderClientSettings& settings = idpManager.GetIdentityProviderClientSettingsCollection().GetSettings(m_userPoolLogicalName.c_str());
-        const LmbrAWS::CognitoIdentityProvider::UserPoolApp& clientInfo = settings.clientApps[m_clientAppName.c_str()];
+        AZStd::shared_ptr<CloudGemFramework::UserPoolClientInfo> clientInfo;
+        EBUS_EVENT_RESULT(clientInfo, CloudGemFramework::CloudCanvasUserPoolMappingsBus, GetUserPoolClientInfo, m_userPoolLogicalName, m_clientAppName);
 
-        return clientInfo.clientId.c_str();
+        if (clientInfo)
+        {
+            return clientInfo->GetClientId();
+        }
+        else
+        {
+            AZ_Warning("CloudGemPlayerAccount", false, "No mapping found user pool %s client app %s", m_userPoolLogicalName, m_clientAppName);
+        }
+        return "";
     }
 } // namespace CloudGemPlayerAccount

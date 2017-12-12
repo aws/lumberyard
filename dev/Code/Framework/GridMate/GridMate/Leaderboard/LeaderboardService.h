@@ -31,7 +31,7 @@ namespace GridMate
 
     /*
      * LbTableId
-     * On X360/PS3, leaderboards are identified by a number, while on Steam they are identified by a string.
+     * On some plaforms, leaderboards are identified by a number, while on Steam they are identified by a string.
      * Care must be taken to ensure that the id matches the settings for each platform and their
      * platform definitions.
      */
@@ -58,7 +58,7 @@ namespace GridMate
         {
             LBSTOR_INVALID,
             LBSTOR_INT32,
-            LBSTOR_INT64,   // Only supported on X360 and PS3, not on Steam.
+            LBSTOR_INT64,   // Only supported on X360 and PS3, not on Steam. // ACCEPTED_USE
             LBSTOR_FLOAT,
             LBSTOR_CONTEXT,
         };
@@ -87,9 +87,9 @@ namespace GridMate
         bool operator!=(const LbFieldType& rhs) const { return !(*this == rhs); }
 
         StorageType     m_storageType;      // Specifies C++ data type for this field
-        int             m_infoType;         // X360 only: must match property ID specified in XLAST for this field
-        int             m_columnId;         // X360 only: On X360, it must match the column id specified in XLAST for this field.
-        gridmate_string m_dataSource;       // used on XBone to retrieve additional columns
+        int             m_infoType;         // OBSOLETE PLATFORM ONLY?
+        int             m_columnId;         // OBSOLETE PLATFORM ONLY?
+        gridmate_string m_dataSource;
     };
 
     /*

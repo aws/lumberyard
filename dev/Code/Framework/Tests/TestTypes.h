@@ -18,6 +18,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Driller/Driller.h>
 #include <AzCore/Memory/MemoryDriller.h>
+#include <AzCore/Memory/AllocationRecords.h>
 
 namespace UnitTest
 {
@@ -44,12 +45,17 @@ namespace UnitTest
             desc.m_heap.m_memoryBlocksByteSize[0] = heapSizeMB * 1024 * 1024;
             m_memBlock = DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
             desc.m_heap.m_memoryBlocks[0] = m_memBlock;
-            //desc.m_stackRecordLevels = 10;
+
+            desc.m_allocationRecords = true;
+            desc.m_stackRecordLevels = 10;
 
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
-            //AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-            //if(records)
-            //records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
+            if (records)
+            {
+                records->SetMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
+                records->SetSaveNames(true);
+            }
         }
 
         virtual ~AllocatorsFixture()

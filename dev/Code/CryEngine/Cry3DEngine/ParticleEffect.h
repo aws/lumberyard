@@ -483,6 +483,8 @@ public:
     virtual void InsertChild(int slot, IParticleEffect* pEffect);
     virtual int FindChild(IParticleEffect* pEffect) const;
 
+    void ReorderChildren(const std::vector<IParticleEffect*> & children) override;
+
     virtual void SetParent(IParticleEffect* pParent);
     virtual IParticleEffect* GetParent() const
     {

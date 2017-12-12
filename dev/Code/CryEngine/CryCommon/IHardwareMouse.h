@@ -16,83 +16,46 @@
 //              can use the cursor not at the same time be successively
 //              => We need to know when to enable/disable the cursor.
 
-#ifndef CRYINCLUDE_CRYCOMMON_IHARDWAREMOUSE_H
-#define CRYINCLUDE_CRYCOMMON_IHARDWAREMOUSE_H
 #pragma once
 
-#include <AzFramework/Input/System/InputSystemComponent.h>
+#include <AzCore/PlatformDef.h>
+
+#include <LyShine/Bus/UiCursorBus.h>
 
 //-----------------------------------------------------------------------------------------------------
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
+/// @cond EXCLUDE_DOCS
+/// @deprecated Use UiCursorBus instead.
+//struct AZ_DEPRECATED(IHardwareMouse, "IHardwareMouse has been deprecated, use UiCursorBus instead.")
 struct IHardwareMouse
 {
     virtual ~IHardwareMouse() {}
-    virtual void Release() = 0;
+    virtual void Release() { delete this; }
 
-    virtual bool SetCursor(const char* cursorPath) = 0;
-    virtual void SetGameMode(bool gameMode) = 0; // Should only be called from the editor
+    /// @deprecated Use UiCursorBus::IncrementVisibleCounter instead.
+    virtual void AZ_DEPRECATED(IncrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    {
+        UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
+    }
 
-    virtual void IncrementCounter() = 0;
-    virtual void DecrementCounter() = 0;
-    virtual bool IsHidden() = 0;
+    /// @deprecated Use UiCursorBus::DecrementVisibleCounter instead.
+    virtual void AZ_DEPRECATED(DecrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    {
+        UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
+    }
 
-    virtual void Update() = 0;
-    virtual void Render() = 0;
+    /// @deprecated Use UiCursorBus::IsUiCursorVisible instead.
+    virtual bool AZ_DEPRECATED(IsHidden(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    {
+        bool isCursorVisible = false;
+        UiCursorBus::BroadcastResult(isCursorVisible, &UiCursorInterface::IsUiCursorVisible);
+        return isCursorVisible;
+    }
+
+    /// @deprecated Use UiCursorBus::SetUiCursor instead.
+    virtual bool AZ_DEPRECATED(SetCursor(const char* cursorPath), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    {
+        UiCursorBus::Broadcast(&UiCursorInterface::SetUiCursor, cursorPath);
+        return true;
+    }
 };
-#else
-struct IHardwareMouse
-{
-    // <interfuscator:shuffle>
-    virtual ~IHardwareMouse(){}
-
-    virtual void Release() = 0;
-
-    // We need to register after the creation of the device but before its init
-    virtual void OnPreInitRenderer() = 0;
-
-    // We need to register after the creation of input to emulate mouse
-    virtual void OnPostInitInput() = 0;
-
-    // Called only in Editor when switching from editing to game mode
-    virtual void SetGameMode(bool bGameMode) = 0;
-
-    // Increment when you want to show the cursor, decrement otherwise
-    virtual void IncrementCounter() = 0;
-    virtual void DecrementCounter() = 0;
-
-    // Standard get/set functions, mainly for Gamepad emulation purpose
-    virtual void GetHardwareMousePosition(float* pfX, float* pfY) = 0;
-    virtual void SetHardwareMousePosition(float fX, float fY) = 0;
-
-    // Same as above, but relative to upper-left corner to the client area of our app
-    virtual void GetHardwareMouseClientPosition(float* pfX, float* pfY) = 0;
-    virtual void SetHardwareMouseClientPosition(float fX, float fY) = 0;
-
-    // Load and/or set cursor
-    virtual bool SetCursor(int idc_cursor_id) = 0;
-    virtual bool SetCursor(const char* path) = 0;
-
-    virtual void Reset(bool bVisibleByDefault) = 0;
-    virtual void ConfineCursor(bool confine) = 0;
-    virtual void Hide(bool hide) = 0;
-    virtual bool IsHidden() = 0;
-
-    // When set, HardwareMouse will remember the last cursor position before hiding.
-    // On show, HardwareMouse will restore the position of the mouse.
-    virtual void RememberLastCursorPosition(bool remember) = 0;
-    virtual void Update() = 0;
-    virtual void Render() = 0;
-    // </interfuscator:shuffle>
-
-#ifdef WIN32
-    virtual void UseSystemCursor(bool useSystemCursor) = 0;
-#endif
-
-    virtual ISystemEventListener* GetSystemEventListener() = 0;
-};
-#endif // defined(AZ_FRAMEWORK_INPUT_ENABLED)
-//-----------------------------------------------------------------------------------------------------
-
-#endif // CRYINCLUDE_CRYCOMMON_IHARDWAREMOUSE_H
-
-//-----------------------------------------------------------------------------------------------------
+/// @endcond

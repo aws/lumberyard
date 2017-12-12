@@ -82,6 +82,7 @@ namespace Amazon {
         this->setWindowFlags(Qt::Dialog | Qt::Popup);
         this->setWindowTitle(tr("Login to Amazon Lumberyard"));
         this->setContentsMargins(30, 29, 27, 30);
+        this->setObjectName("LoginDialog");
 
         m_layout.setContentsMargins(0, 0, 0, 0);
 

@@ -50,8 +50,8 @@ protected:
         string  args;
 
         SCmd() {}
-        SCmd(ECmd cmd, const string& args, uint32 freq = 1)
-        { this->cmd = cmd; this->args = args; this->freq = freq; }
+        SCmd(ECmd _cmd, const string& _args, uint32 _freq = 1)
+        { this->cmd = _cmd; this->args = _args; this->freq = _freq; }
     };
 
     struct SSample

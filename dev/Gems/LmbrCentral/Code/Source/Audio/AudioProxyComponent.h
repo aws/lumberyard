@@ -46,10 +46,17 @@ namespace LmbrCentral
          */
         void OnTransformChanged(const AZ::Transform&, const AZ::Transform&) override;
 
+
         /*!
         * AudioProxyComponentRequestBus::Handler
         * Required Interface
         */
+        bool ExecuteSourceTrigger(
+            const Audio::TAudioControlID triggerID,
+            const Audio::SAudioCallBackInfos& callbackInfo,
+            const Audio::TAudioControlID& sourceId
+        ) override;
+
         bool ExecuteTrigger(
             const Audio::TAudioControlID triggerID,
             const Audio::SAudioCallBackInfos& callbackInfo

@@ -2,7 +2,7 @@
     "GemFormatVersion": 3, 
     "LinkType": "Dynamic", 
     "Name": "Tornadoes", 
-    "Summary": "[Deprecated] - Provides the Tornado environment entity.",
+    "Summary": "(LEGACY) Provides the Tornado environment entity.",
     "Tags": ["Weather", "Weather Effects"],
     "Uuid": "d48ca459d0644521aad37f08466ef83a", 
     "Version": "0.1.0",

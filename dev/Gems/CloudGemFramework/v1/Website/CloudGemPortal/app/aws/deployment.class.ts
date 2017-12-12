@@ -4,6 +4,7 @@ import { Deployment, DeploymentSettings, AwsService } from './aws.service'
 import { AwsResourceGroup, ResourceGroup, ResourceOutputEnum  } from './resource-group.class'
 import { Schema } from './schema.class'
 import { AwsContext } from './context.class'
+import { LyMetricService } from 'app/shared/service/index'
 
 export class AwsDeployment implements Deployment {
 
@@ -34,12 +35,14 @@ export class AwsDeployment implements Deployment {
         private deploymentsettings: DeploymentSettings        
     ) {
         this._deploymentSettings = deploymentsettings;
-        this._resourceGroups = new BehaviorSubject<ResourceGroup[]>([]);        
+        this._resourceGroups = new BehaviorSubject<ResourceGroup[]>(undefined);        
     }
 
     public update(): void {
-        if (!this.settings || !this.settings.DeploymentStackId)
+        if (!this.settings || !this.settings.DeploymentStackId) {
+            this._resourceGroups.next([]);     
             return;
+        }
 
         let region = AwsService.getRegionFromArn(this.settings.DeploymentStackId);
                 
@@ -81,6 +84,7 @@ export class AwsDeployment implements Deployment {
         }, (err: any, data: any) => {
             if (err) {                
                 console.log(err);
+                this._resourceGroups.next([]);
                 return;
             }
             let rgs: AwsResourceGroup[] = [];            

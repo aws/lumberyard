@@ -63,9 +63,6 @@ namespace LmbrAWS
             EOP_QueueArn
         };
 
-        LmbrAWS::SQS::QueueClientInputPort m_queueClientPort {
-            EIP_QueueClient
-        };
         std::shared_ptr<Aws::Queues::Sqs::SQSQueue> m_sqsQueue;
         IFlowGraphPtr m_flowGraph;
         TFlowNodeId m_flowNodeId;

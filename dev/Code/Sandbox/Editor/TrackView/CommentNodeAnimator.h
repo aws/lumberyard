@@ -32,21 +32,20 @@ struct CCommentContext
 {
     CCommentContext()
         : m_nLastActiveKeyIndex(-1)
-        , m_strComment(0)
         , m_size(1.0f)
         , m_align(0)
+        , m_color(0.f, 0.f, 0.f, 1.f)
     {
         sprintf_s(m_strFont, sizeof(m_strFont), "default");
         m_unitPos = Vec2(0.f, 0.f);
-        m_color = Vec3(0.f, 0.f, 0.f);
     }
 
     int m_nLastActiveKeyIndex;
 
-    const char* m_strComment;
+    AZStd::string m_strComment;
     char m_strFont[64];
     Vec2 m_unitPos;
-    Vec3 m_color;
+    AZ::Color m_color;
     float m_size;
     int m_align;
 };

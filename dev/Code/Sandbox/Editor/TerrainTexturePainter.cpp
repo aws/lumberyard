@@ -695,10 +695,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 
     SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
-    // The terrain shader appears to be doing ad-hoc gamma correction using squares and square roots. The brightness value
-    // matches when it is first brought into "linear" space (i.e. sqrt). This isn't a proper gamma correction, but it matches
-    // what the shader expects.
-    br.m_cFilterColor = m_brush.m_cFilterColor * sqrtf(m_brush.m_fBrightness);
+    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
+    br.m_cFilterColor.rgb2srgb();
     br.fRadius = m_brush.radius / fTerrainSize;
     br.color = m_brush.value;
     if (m_brush.bErase)
@@ -881,9 +879,15 @@ void CTerrainTexturePainter::Command_Activate()
         // Already active.
         return;
     }
+
+    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
+
+    // This needs to be done after the terrain tab is selected, because in
+    // Cry-Free mode the terrain tool could be closed, whereas in legacy
+    // mode the rollupbar is never deleted, it's only hidden
     pTool = new CTerrainTexturePainter();
     GetIEditor()->SetEditTool(pTool);
-    GetIEditor()->SelectRollUpBar(ROLLUP_TERRAIN);
+
     MainWindow::instance()->update();
 }
 

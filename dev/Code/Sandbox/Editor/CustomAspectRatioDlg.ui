@@ -78,6 +78,10 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>m_x</tabstop>
+  <tabstop>m_y</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

@@ -58,7 +58,7 @@ typedef std::vector<CRoadSector> CRoadSectorVector;
  *  CRoadObject is an object that represent named 3d position in world.
  *
  */
-class CRoadObject
+class SANDBOX_API CRoadObject
     : public CSplineObject
 {
     Q_OBJECT

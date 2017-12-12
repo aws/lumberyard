@@ -34,7 +34,7 @@ enum EImFileError
 #define FIM_BIG_ENDIANNESS          0x0400  // for textures converted to big endianness format
 #define FIM_SPLITTED                0x0800  // for dds textures stored in splitted files
 #define FIM_SRGB_READ               0x1000
-#define FIM_X360_NOT_PRETILED       0x2000  // for dds textures that cannot be pretiled
+#define FIM_X360_NOT_PRETILED       0x2000  // for dds textures that cannot be pretiled // ACCEPTED_USE
 #define FIM_UNUSED_BIT_1            0x4000  // Free to use
 #define FIM_RENORMALIZED_TEXTURE    0x8000  // for dds textures with EIF_RenormalizedTexture set in the dds header (not currently supported in the engine at runtime)
 #define FIM_HAS_ATTACHED_ALPHA      0x10000 // image has an attached alpha image

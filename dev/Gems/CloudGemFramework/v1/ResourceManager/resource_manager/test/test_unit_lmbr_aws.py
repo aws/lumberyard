@@ -34,8 +34,6 @@ lymetrics_library_path = get_lymetrics_library_path()
 if lymetrics_library_path is None:
     raise RuntimeError('No lymetrics library was found.')
 
-subprocess.call([r'c:\tools\ListDLLs\Listdlls.exe', 'd', lymetrics_library_path], shell=True)
-
 print '***********************************'
 print os.environ
 print '***********************************'

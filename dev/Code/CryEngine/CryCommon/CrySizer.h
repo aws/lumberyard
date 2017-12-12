@@ -24,6 +24,9 @@
 //////////////////////////////////////////////////////////////////////////
 
 // common containers for overloads
+#include <list>
+
+#include "Cry_Math.h"
 #include <StlUtils.h>
 #include <Tarray.h>
 #include <CryPodArray.h>
@@ -68,13 +71,6 @@ enum ICrySizerFlagsEnum
 //////////////////////////////////////////////////////////////////////////
 namespace stl
 {
-    struct MapLikeStruct
-    {
-        bool color;
-        void* parent;
-        void* left;
-        void* right;
-    };
     template <class Map>
     inline size_t size_of_map(const Map& m)
     {
@@ -184,7 +180,7 @@ public:
     template<typename Type>
     void AddObject(const Type& rObj)
     {
-        rObj.GetMemoryUsage(this);
+        (void)rObj;
     }
 
     template<typename Type>
@@ -609,7 +605,7 @@ protected:
 
 // use this to push (and automatically pop) the sizer component name at the beginning of the
 // getSize() function
-#define SIZER_COMPONENT_NAME(pSizerPointer, szComponentName) PREFAST_SUPPRESS_WARNING(6246) CrySizerComponentNameHelper __sizerHelper(pSizerPointer, szComponentName, false)
-#define SIZER_SUBCOMPONENT_NAME(pSizerPointer, szComponentName) PREFAST_SUPPRESS_WARNING(6246) CrySizerComponentNameHelper __sizerHelper(pSizerPointer, szComponentName, true)
+#define SIZER_COMPONENT_NAME(pSizerPointer, szComponentName) PREFAST_SUPPRESS_WARNING(6246) CrySizerComponentNameHelper AZ_JOIN(sizerHelper, __LINE__)(pSizerPointer, szComponentName, false)
+#define SIZER_SUBCOMPONENT_NAME(pSizerPointer, szComponentName) PREFAST_SUPPRESS_WARNING(6246) CrySizerComponentNameHelper AZ_JOIN(sizerHelper, __LINE__)(pSizerPointer, szComponentName, true)
 
 #endif // CRYINCLUDE_CRYCOMMON_CRYSIZER_H

@@ -30,10 +30,10 @@ namespace AZ
             virtual void ReflectSceneModules(SerializeContext* context) = 0;
             virtual void ActivateSceneModules() = 0;
             virtual void DeactivateSceneModules() = 0;
+
+            virtual size_t GetErrorCount() const = 0;
         };
 
-        inline ISceneConfig::~ISceneConfig()
-        {
-        }
+        inline ISceneConfig::~ISceneConfig() = default;
     } // RC
 } // AZ

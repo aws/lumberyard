@@ -245,10 +245,10 @@ private:
 
     struct SAIRefinforcementCallDebug
     {
-        SAIRefinforcementCallDebug(const Vec3& from, const Vec3& to, float t, const char* perf)
-            : from(from)
-            , to(to)
-            , t(t)
+        SAIRefinforcementCallDebug(const Vec3& _from, const Vec3& _to, float _t, const char* perf)
+            : from(_from)
+            , to(_to)
+            , t(_t)
             , performer(perf) {}
         Vec3 from, to;
         string performer;

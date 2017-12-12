@@ -16,12 +16,19 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Entity/EntityContextBus.h>
-
 #include <LmbrCentral/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/ConstraintComponentBus.h>
+#include <AzCore/Component/TickBus.h>
 
 namespace LmbrCentral
 {
+    enum ActivationState
+    {
+        Inactive,
+        WaitingForGeometry,
+        Active
+    };
+
     /*!
     * Stores configuration settings for physics constraints
     */
@@ -153,6 +160,7 @@ namespace LmbrCentral
         : public AZ::Component
         , private PhysicsComponentNotificationBus::MultiHandler
         , private ConstraintComponentRequestBus::Handler
+        , private AZ::TickBus::Handler
     {
     public:
         AZ_COMPONENT(ConstraintComponent, "{0D5A3F64-68E9-45EE-A73F-892A4CB5BFAF}");
@@ -194,11 +202,17 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
+        // TickBus::Handler
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
         // Private helpers
         void EnableInternal();
         void DisableInternal();
         void OnPhysicsEnabledChanged(bool enabled);
         void SetupPivotsAndFrame(pe_action_add_constraint &aac) const;
+        void AddCryConstraint();
         bool IsEnabled() const;
         //////////////////////////////////////////////////////////////////////////
 
@@ -210,6 +224,11 @@ namespace LmbrCentral
 
         // Serialized members
         ConstraintConfiguration m_config;
+
+        pe_action_add_constraint m_action_add_constraint;
+        IPhysicalEntity* m_physEntity = nullptr;
+        IPhysicalEntity* m_physBuddy = nullptr;
+        ActivationState m_activationState = ActivationState::Inactive;
     };
 
 } // namespace LmbrCentral

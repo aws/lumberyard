@@ -19,7 +19,6 @@
 #include "DriverD3D.h"
 #include "I3DEngine.h"
 #include "IMusicSystem.h"
-#include "IHardwareMouse.h"
 #include "IStatoscope.h"
 #include "AnimKey.h"
 
@@ -864,7 +863,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
         Set2DMode(1, 1, backupSceneMatrices);
 
         {
-            TempDynVB<SVF_P3F_C4B_T2F> vb;
+            TempDynVB<SVF_P3F_C4B_T2F> vb(gRenDev);
             vb.Allocate(4);
             SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -940,7 +939,7 @@ void CD3D9Renderer::PostMeasureOverdraw()
 
             Set2DMode(800, 600, backupSceneMatrices);
 
-            TempDynVB<SVF_P3F_C4B_T2F> vb;
+            TempDynVB<SVF_P3F_C4B_T2F> vb(gRenDev);
             vb.Allocate(4);
             SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -1860,6 +1859,8 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
             }
         }
 
+        SAFE_RELEASE(zResource);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////
         // set up resources and textures for backbuffer
         D3D11_TEXTURE2D_DESC tmpDesc = bbDesc;
@@ -1941,8 +1942,8 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
         if (includeAlpha)
         {
             gcpRendD3D->GetDeviceContext().Unmap(tempZtex, 0);
-            SAFE_RELEASE(tempZtex);
         }
+        SAFE_RELEASE(tempZtex);
 
         gcpRendD3D->GetDeviceContext().Unmap(pTmpTexture, 0);
         SAFE_RELEASE(pTmpTexture);
@@ -1957,6 +1958,7 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
 
 bool CD3D9Renderer::InternalSaveToTIFF(ID3D11Texture2D* backBuffer, const char* filePath)
 {
+    bool result = false;
     //Have to copy from GPU to staging texture first.
     const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
     const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
@@ -2007,13 +2009,15 @@ bool CD3D9Renderer::InternalSaveToTIFF(ID3D11Texture2D* backBuffer, const char* 
                 auto shot = gEnv->pSystem->GetImageHandler()->CreateImage(std::move(data), nResolvedWidth, nResolvedHeight);
                 if (shot)
                 {
-                    return gEnv->pSystem->GetImageHandler()->SaveImage(shot.get(), filePath);
+                    result = gEnv->pSystem->GetImageHandler()->SaveImage(shot.get(), filePath);
                 }
             }
         }
     }
 
-    return false;
+    SAFE_RELEASE(pTempCopyTex);
+
+    return result;
 }
 
 #define DEPTH_BUFFER_SCALE 1024.0f
@@ -2281,7 +2285,7 @@ void CD3D9Renderer::PrintResourcesLeaks()
                 continue;
             }
             nPS++;
-            Warning("--- Vertex Shader '%s' leak after level unload", psh->GetName());
+            Warning("--- Pixel Shader '%s' leak after level unload", psh->GetName());
         }
     }
     iLog->Log("\n \n");
@@ -4445,11 +4449,6 @@ void CD3D9Renderer::RT_EndFrame()
 
     FX_SetState(GS_NODEPTHTEST);
 
-    if (gEnv && gEnv->pHardwareMouse)
-    {
-        gEnv->pHardwareMouse->Render();
-    }
-
     if (m_pPipelineProfiler)
     {
         m_pPipelineProfiler->EndFrame();
@@ -5717,7 +5716,7 @@ void CD3D9Renderer::RT_DrawImageWithUVInternal(float xpos, float ypos, float z, 
     EF_SetColorOp(eCO_MODULATE, eCO_MODULATE, DEF_TEXARG0, DEF_TEXARG0);
     EF_SetSrgbWrite(false);
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gRenDev);
     vb.Allocate(4);
     SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -5899,7 +5898,7 @@ Matrix44A OffCenterProjection(const CCamera& cam, const Vec3& nv, unsigned short
     return m;
 }
 
-void CD3D9Renderer::SetViewParameters(const CameraViewParameters& viewParameters)
+void CD3D9Renderer::ApplyViewParameters(const CameraViewParameters& viewParameters)
 {
     int nThreadID = m_pRT->GetThreadList();
     m_RP.m_TI[nThreadID].m_cam.m_viewParameters = viewParameters;
@@ -6020,7 +6019,7 @@ void CD3D9Renderer::SetCamera(const CCamera& cam)
     Vec3 vAt = vEye + Vec3((f32)mCam34(0, 1), (f32)mCam34(1, 1), (f32)mCam34(2, 1));
     Vec3 vUp = Vec3((f32)mCam34(0, 2), (f32)mCam34(1, 2), (f32)mCam34(2, 2));
     viewParameters.LookAt(vEye, vAt, vUp);
-    SetViewParameters(viewParameters);
+    ApplyViewParameters(viewParameters);
 
     EF_SetCameraInfo();
 }
@@ -6219,7 +6218,7 @@ void CD3D9Renderer::DrawQuad(float x0, float y0, float x1, float y1, const Color
     c.NormalizeCol(c);
     DWORD col = c.pack_argb8888();
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gRenDev);
     vb.Allocate(4);
     SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -6267,7 +6266,7 @@ void CD3D9Renderer::DrawFullScreenQuad(CShader* pSH, const CCryNameTSCRC& TechNa
     float fWidth5 = (float)m_NewViewport.nWidth - 0.5f;
     float fHeight5 = (float)m_NewViewport.nHeight - 0.5f;
 
-    TempDynVB<SVF_TP3F_C4B_T2F> vb;
+    TempDynVB<SVF_TP3F_C4B_T2F> vb(gRenDev);
     vb.Allocate(4);
     SVF_TP3F_C4B_T2F* Verts = vb.Lock();
 
@@ -6317,7 +6316,7 @@ void CD3D9Renderer::DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, c
 
     DWORD col = D3DRGBA(color.r, color.g, color.b, color.a);
 
-    TempDynVB<SVF_P3F_C4B_T2F> vb;
+    TempDynVB<SVF_P3F_C4B_T2F> vb(gRenDev);
     vb.Allocate(4);
     SVF_P3F_C4B_T2F* vQuad = vb.Lock();
 
@@ -6444,20 +6443,20 @@ void CD3D9Renderer::SetDefaultRenderStates()
     DS.Desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     DS.Desc.DepthFunc = bReverseDepth ? D3D11_COMPARISON_GREATER_EQUAL : D3D11_COMPARISON_LESS_EQUAL;
     DS.Desc.StencilEnable = FALSE;
-    SetDepthState(&DS,0);
+    SetDepthState(&DS, 0);
 
-    RS.Desc.CullMode = (m_nCurStateRS != (uint32)- 1) ? m_StatesRS[m_nCurStateRS].Desc.CullMode : D3D11_CULL_BACK;
-    switch(RS.Desc.CullMode)
+    RS.Desc.CullMode = (m_nCurStateRS != (uint32) - 1) ? m_StatesRS[m_nCurStateRS].Desc.CullMode : D3D11_CULL_BACK;
+    switch (RS.Desc.CullMode)
     {
     case D3D11_CULL_BACK:
-    m_RP.m_eCull = eCULL_Back;
-    break;
+        m_RP.m_eCull = eCULL_Back;
+        break;
     case D3D11_CULL_NONE:
-    m_RP.m_eCull = eCULL_None;
-    break;
+        m_RP.m_eCull = eCULL_None;
+        break;
     case D3D11_CULL_FRONT:
-    m_RP.m_eCull = eCULL_Front;
-    break;
+        m_RP.m_eCull = eCULL_Front;
+        break;
     }
     ;
     RS.Desc.FillMode = D3D11_FILL_SOLID;
@@ -6837,7 +6836,36 @@ void CD3D9Renderer::Set2DMode(uint32 orthoX, uint32 orthoY, TransformationMatric
         zfar += .01f;
     }
 
-    mathMatrixOrthoOffCenterLH(m, 0.0, orthoX, orthoY, 0.0, znear, zfar);
+    float left = 0.0f;
+    float right = orthoX;
+    float top = 0.0f;
+    float bottom = orthoY;
+
+    // If we are doing tiled rendering (e.g. for a hi-res screenshot) then adjust the viewport
+    const SRenderTileInfo* rti = GetRenderTileInfo();
+    if (rti->nGridSizeX > 1.0f || rti->nGridSizeY > 1.0f)
+    {
+        // The tile size includes a transition border around it. This has all been pre-calculated by
+        // the code that sets up the tiling.
+        float halfTileWidth = (orthoX / rti->nGridSizeX) * 0.5f;
+        float halfTileHeight = (orthoY / rti->nGridSizeY) * 0.5f;
+
+        // This is the normalized offset from the center of the (non-tiled) viewport to the center of the tile.
+        // Again the numbers in the struct have been pre-calculated to make setting a 3D matrix easier.
+        float normalizedOffsetX = (rti->nGridSizeX - 1.f) - rti->nPosX * 2.0f;
+        float normalizedOffsetY = (rti->nGridSizeY - 1.f) - rti->nPosY * 2.0f;
+
+        // calculate the midpoint of this tile
+        float midX = (orthoX * 0.5f) + (halfTileWidth * normalizedOffsetX);
+        float midY = (orthoY * 0.5f) + (halfTileHeight * normalizedOffsetY);
+
+        left = midX - halfTileWidth;
+        right = midX + halfTileWidth;
+        top = midY - halfTileHeight;
+        bottom = midY + halfTileHeight;
+    }
+
+    mathMatrixOrthoOffCenterLH(m, left, right, bottom, top, znear, zfar);
 
     if (m_RP.m_TI[nThreadID].m_PersFlags & RBPF_REVERSE_DEPTH)
     {
@@ -7399,6 +7427,7 @@ void CD3D9Renderer::PostLevelUnload()
     if (m_pRT)
     {
         m_pRT->RC_FlushTextureStreaming(true);
+
         m_pRT->FlushAndWait();
 
         StaticCleanup();

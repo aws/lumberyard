@@ -235,7 +235,7 @@ public:
         case ESYSTEM_EVENT_GAME_MODE_SWITCH_END:
         {
             SAFE_DELETE(m_pPrecacheProfiler);
-            CLoadingProfilerSystem::SaveTimeContainersToFile(gEnv->bMultiplayer == true ? "mode_switch_mp.crylp" : "mode_switch_sp.crylp", 0.0, true);
+            CLoadingProfilerSystem::SaveTimeContainersToFile(gEnv->bMultiplayer == true ? "mode_switch_mp.lmbrlp" : "mode_switch_sp.lmbrlp", 0.0, true);
         }
 
         case ESYSTEM_EVENT_LEVEL_LOAD_PREPARE:
@@ -266,8 +266,8 @@ public:
                     levelName = sv_map->GetString();
                 }
 
-                string levelNameFullProfile = levelName + "_LP.crylp";
-                string levelNameThreshold = levelName + "_LP_OneSec.crylp";
+                string levelNameFullProfile = levelName + "_LP.lmbrlp";
+                string levelNameThreshold = levelName + "_LP_OneSec.lmbrlp";
                 CLoadingProfilerSystem::SaveTimeContainersToFile(levelNameFullProfile.c_str(), 0.0, false);
                 CLoadingProfilerSystem::SaveTimeContainersToFile(levelNameThreshold.c_str(), 1.0, true);
             }
@@ -551,8 +551,6 @@ void CLoadingProfilerSystem::SaveTimeContainersToFile(const char* name, double f
 {
     if (m_pRoot[m_iActiveRoot])
     {
-        FILE* f;
-
         const char* levelName = name;
         //Ignore any folders in the input name
         const char* folder = strrchr(name, '/');
@@ -565,13 +563,16 @@ void CLoadingProfilerSystem::SaveTimeContainersToFile(const char* name, double f
 
         gEnv->pCryPak->AdjustFileName(string(string(g_szTestResults) + "\\" + levelName).c_str(), path, ICryPak::FLAGS_PATH_REAL | ICryPak::FLAGS_FOR_WRITING);
         gEnv->pCryPak->MakeDir(g_szTestResults);
-        f = fopen(path, "wb");
 
-        if (f)
+        AZ::IO::HandleType handle = AZ::IO::InvalidHandle;
+
+        AZ::IO::Result f = AZ::IO::FileIOBase::GetInstance()->Open(path,AZ::IO::OpenMode::ModeWrite, handle);
+
+        if (handle != AZ::IO::InvalidHandle)
         {
             UpdateSelfStatistics(m_pRoot[m_iActiveRoot]);
-            WriteTimeContainerToFile(m_pRoot[m_iActiveRoot], f, 0, fMinTotalTime);
-            fclose(f);
+            WriteTimeContainerToFile(m_pRoot[m_iActiveRoot], handle, 0, fMinTotalTime);
+            AZ::IO::FileIOBase::GetInstance()->Close(handle);
         }
 
         if (bClean)
@@ -581,7 +582,7 @@ void CLoadingProfilerSystem::SaveTimeContainersToFile(const char* name, double f
     }
 }
 
-void CLoadingProfilerSystem::WriteTimeContainerToFile(SLoadingTimeContainer* p, FILE* f, unsigned int depth, double fMinTotalTime)
+void CLoadingProfilerSystem::WriteTimeContainerToFile(SLoadingTimeContainer* p, AZ::IO::HandleType &handle, unsigned int depth, double fMinTotalTime)
 {
     if (p == NULL)
     {
@@ -601,17 +602,25 @@ void CLoadingProfilerSystem::WriteTimeContainerToFile(SLoadingTimeContainer* p, 
 
     CryFixedStringT<128> str(p->m_pFuncName);
     str.replace(':', '_');
-    fprintf(f, "%s<%s selfTime='%f' selfMemory='%f' totalTime='%f' totalMemory='%f' count='%i' totalSeeks='%i' totalReads='%i' totalOpens='%i' totalDiskSize='%f' selfSeeks='%i' selfReads='%i' selfOpens='%i' selfDiskSize='%f'>\n",
-        sDepth.c_str(), str.c_str(), p->m_dSelfTime, p->m_dSelfMemUsage, p->m_dTotalTime, p->m_dTotalMemUsage, p->m_nCounter,
-        p->m_totalInfo.m_nSeeksCount, p->m_totalInfo.m_nFileReadCount, p->m_totalInfo.m_nFileOpenCount, p->m_totalInfo.m_dOperationSize,
-        p->m_selfInfo.m_nSeeksCount, p->m_selfInfo.m_nFileReadCount, p->m_selfInfo.m_nFileOpenCount, p->m_selfInfo.m_dOperationSize);
+
+    char data[4096];
+    AZ::u64 bytesWritten;
+
+    azsnprintf(data, sizeof(data), "%s<%s selfTime='%f' selfMemory='%f' totalTime='%f' totalMemory='%f' count='%i' totalSeeks='%i' totalReads='%i' totalOpens='%i' totalDiskSize='%f' selfSeeks='%i' selfReads='%i' selfOpens='%i' selfDiskSize='%f'>\n",
+                                    sDepth.c_str(), str.c_str(), p->m_dSelfTime, p->m_dSelfMemUsage, p->m_dTotalTime, p->m_dTotalMemUsage, p->m_nCounter,
+                                    p->m_totalInfo.m_nSeeksCount, p->m_totalInfo.m_nFileReadCount, p->m_totalInfo.m_nFileOpenCount, p->m_totalInfo.m_dOperationSize,
+                                    p->m_selfInfo.m_nSeeksCount, p->m_selfInfo.m_nFileReadCount, p->m_selfInfo.m_nFileOpenCount, p->m_selfInfo.m_dOperationSize);
+
+    AZ::IO::FileIOBase::GetInstance()->Write(handle, data, strlen(data), &bytesWritten);
 
     for (size_t i = 0, end = p->m_pChilds.size(); i < end; ++i)
     {
-        WriteTimeContainerToFile(p->m_pChilds[i], f, depth + 1, fMinTotalTime);
+        WriteTimeContainerToFile(p->m_pChilds[i], handle, depth + 1, fMinTotalTime);
     }
 
-    fprintf(f, "%s</%s>\n", sDepth.c_str(), str.c_str());
+    azsnprintf(data, sizeof(data), "%s</%s>\n", sDepth.c_str(), str.c_str());
+    AZ::IO::FileIOBase::GetInstance()->Write(handle, data, strlen(data), &bytesWritten);
+
 }
 
 void CLoadingProfilerSystem::UpdateSelfStatistics(SLoadingTimeContainer* p)

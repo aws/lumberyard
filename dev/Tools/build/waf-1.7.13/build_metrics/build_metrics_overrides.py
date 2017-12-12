@@ -28,16 +28,12 @@ later use.
 old_scripting_run_commands = Scripting.run_commands
 
 def run_commands_gather_metrics():
-    start_time = time.time()
-
-    old_scripting_run_commands()
-
-    build_metrics_reporter.submit_build_metric('BuildTime',
-                                               build_metrics_reporter.MetricUnit['Seconds'],
-                                               time.time() - start_time,
-                                               {})
-
-    build_metrics_reporter.stop_metric_reporter(True, True)
+    try:
+        old_scripting_run_commands()
+    except:
+        raise
+    finally:
+        build_metrics_reporter.stop_metric_reporter(True, True)
 
 
 old_scripting_run_command = Scripting.run_command
@@ -45,13 +41,16 @@ old_scripting_run_command = Scripting.run_command
 def run_command_gather_metrics(cmd_name):
     start_time = time.time()
 
-    ret = old_scripting_run_command(cmd_name)
-
-    build_metrics_reporter.submit_build_metric('CommandTime',
-                                               build_metrics_reporter.MetricUnit['Seconds'],
-                                               time.time() - start_time,
-                                               {'Command': cmd_name },
-                                               True)
+    try:
+        ret = old_scripting_run_command(cmd_name)
+    except:
+        raise
+    finally:
+        build_metrics_reporter.submit_build_metric('CommandTime',
+                                                    build_metrics_reporter.MetricUnit['Seconds'],
+                                                    time.time() - start_time,
+                                                    {'Command': cmd_name },
+                                                    True)
     return ret
 
 Scripting.run_commands = run_commands_gather_metrics
@@ -63,13 +62,17 @@ old_taskbase_process = Task.TaskBase.process
 
 def taskbase_process_monkey_patch(self):
     start_time = time.time()
-    old_taskbase_process(self)
-    execution_time = time.time() - start_time
-    build_metrics_reporter.submit_build_metric('TaskTime',
-                                               build_metrics_reporter.MetricUnit['Seconds'],
-                                               execution_time,
-                                               {'Task':type(self).__name__},
-                                               True, True)
+    try:
+        old_taskbase_process(self)
+    except:
+        raise
+    finally:
+        execution_time = time.time() - start_time
+        build_metrics_reporter.submit_build_metric('TaskTime',
+                                                   build_metrics_reporter.MetricUnit['Seconds'],
+                                                   execution_time,
+                                                   {'Task':type(self).__name__},
+                                                   True, True)
 
 Task.TaskBase.process = taskbase_process_monkey_patch
 

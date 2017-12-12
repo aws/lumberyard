@@ -40,10 +40,8 @@ public:
     static bool LoadJPEG(const QString& strFileName, CImageEx& image);
     static bool SaveJPEG(const QString& strFileName, CImageEx& image);
 
-    static bool SaveBitmap(const QString& szFileName, CImageEx& image, bool inverseY = true);
-    static bool SaveBitmap(LPCSTR szFileName, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP, HDC hdc);
+    static bool SaveBitmap(const QString& szFileName, CImageEx& image);
     static bool LoadBmp(const QString& file, CImageEx& image);
-    static bool LoadBmp(const QString& fileName, CImageEx& image, const RECT& rc);
 
     //! Save image in PGM format.
     static bool SavePGM(const QString& fileName, const CImageEx& image);
@@ -77,9 +75,9 @@ public:
     static unsigned char GetBilinearFilteredAt(const int iniX256, const int iniY256, const CByteImage& image);
 
 private:
-    static bool LoadImageWithGDIPlus(const QString& fileName, CImageEx& image);
-    static bool FillFromBITMAPObj(const QImage& bitmap, CImageEx& image);
-    static bool CreateBitmapFromImage(const CImageEx& image, QImage& bitmapObj);
+    static bool Load(const QString& fileName, CImageEx& image);
     static bool Save(const QString& strFileName, CImageEx& inImage);
+    static bool QImageToImage(const QImage& bitmap, CImageEx& image);
+    static bool ImageToQImage(const CImageEx& image, QImage& bitmapObj);
 };
 #endif // CRYINCLUDE_EDITOR_UTIL_IMAGEUTIL_H

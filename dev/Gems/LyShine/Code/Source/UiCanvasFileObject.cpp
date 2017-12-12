@@ -110,13 +110,13 @@ UiCanvasFileObject* UiCanvasFileObject::LoadCanvasFromStream(AZ::IO::GenericStre
         else
         {
             // This does not look like an old format canvas file so treat it as new format
-            AZ::IO::MemoryStream stream(buffer, fileSize);
-            canvas = LoadCanvasFromNewFormatStream(stream, filterDesc);
+            AZ::IO::MemoryStream newFormatStream(buffer, fileSize);
+            canvas = LoadCanvasFromNewFormatStream(newFormatStream, filterDesc);
 
             if (!canvas)
             {
                 AZ_Warning("UI", false, "UI canvas file: %s could not be loaded. It may be corrupted.",
-                    stream.GetFilename());
+                    newFormatStream.GetFilename());
             }
         }
     }

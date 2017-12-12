@@ -70,7 +70,7 @@ struct IConsoleConnectivity
 
 
     // Description:
-    // Gets the the title IP for the connected XBOX 360 console .
+    // Gets the the title IP for the connected console .
     // Arguments:
     //  dwConsoleAddressPlaceholder - is the pointer to the placeholder of the variable
     // which will contain the title IP of the console.

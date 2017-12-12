@@ -178,6 +178,9 @@ protected:
     void PickPreviewMaterial();
     void InitMatSender();
 
+    //! Reloads any registered materials that have been modified by the runtime.
+    void ReloadDirtyMaterials();
+
 protected:
     QString m_libsPath;
 

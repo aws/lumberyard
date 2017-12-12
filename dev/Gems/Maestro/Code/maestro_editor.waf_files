@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Source/Components": [
+            "Source/Components/EditorSequenceAgentComponent.h",
+            "Source/Components/EditorSequenceAgentComponent.cpp",
+            "Source/Components/EditorSequenceComponent.h",
+            "Source/Components/EditorSequenceComponent.cpp"
+        ]
+    }
+}
+

@@ -1,0 +1,15 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FlagMAT" MtlFlags="524418" Shader="Illum" GenMask="81000000" StringGenMask="%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_fabric" Diffuse="0.11443538,0.11443538,0.11443538" Specular="0.040915202,0.040915202,0.040915202" Emittance="0.60382748,0.57758057,0.55834049,0" Opacity="0.98000002" Shininess="68" AlphaTest="0.33000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/fx_flag_01.dds"/>
+    <Texture Map="Bumpmap" File="objects/effects/fx_flag_01_ddn.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="1" TexMod_UOscillatorAmplitude="1" TexMod_VOscillatorRate="1" TexMod_VOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Emittance" File="objects/effects/fx_flag_01_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

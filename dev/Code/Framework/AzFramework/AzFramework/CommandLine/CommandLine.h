@@ -15,7 +15,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
-#include <AzCore/std/string/const_string.h>
+#include <AzCore/std/string/string_view.h>
 
 namespace AzFramework
 {
@@ -51,13 +51,13 @@ namespace AzFramework
         /**
         * Determines whether a switch is present in the command line
         */
-        bool HasSwitch(AZStd::const_string switchName) const;
+        bool HasSwitch(AZStd::string_view switchName) const;
 
         /**
         * Get the number of values for the given switch.
         * @return 0 if the switch does not exist, otherwise the total number of values that appear after that switch
         */
-        AZStd::size_t GetNumSwitchValues(AZStd::const_string switchName) const;
+        AZStd::size_t GetNumSwitchValues(AZStd::string_view switchName) const;
 
         /**
         * Get the actual value of a switch
@@ -65,7 +65,7 @@ namespace AzFramework
         * @param index The 0-based index to retrieve the switch value for
         * @return The value at that index.  This will Assert if you attempt to index out of bounds
         */
-        const AZStd::string& GetSwitchValue(AZStd::const_string switchName, AZStd::size_t index) const;
+        const AZStd::string& GetSwitchValue(AZStd::string_view switchName, AZStd::size_t index) const;
 
         /*
         * Get the number of misc values (values that are not associated with a switch)

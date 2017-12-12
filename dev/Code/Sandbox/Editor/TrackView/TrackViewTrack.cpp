@@ -695,7 +695,7 @@ void CTrackViewTrack::CopyKeysToClipboard(XmlNodeRef& xmlNode, const bool bOnlyS
 
     XmlNodeRef childNode = xmlNode->newChild("Track");
     childNode->setAttr("name", GetName());
-    GetParameterType().Serialize(childNode, false);
+    GetParameterType().SaveToXml(childNode);
     childNode->setAttr("valueType", GetValueType());
 
     m_pAnimTrack->SerializeSelection(childNode, false, bOnlySelectedKeys);

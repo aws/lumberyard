@@ -30,8 +30,6 @@
 #include <vector>
 #include <map>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_ScriptSystem
 #define RWI_NAME_TAG "RayWorldIntersection(Script)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(Script)"
 

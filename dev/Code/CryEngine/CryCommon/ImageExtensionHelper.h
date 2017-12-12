@@ -220,18 +220,18 @@ namespace CImageExtensionHelper
     const static uint32 EIF_Greyscale           =        0x8;  // hint for the engine (e.g. greyscale light beams can be applied to shadow mask), can be for DXT1 because compression artfacts don't count as color
     const static uint32 EIF_SupressEngineReduce =       0x10;  // info for the engine: don't reduce texture resolution on this texture
     const static uint32 EIF_UNUSED_BIT          =       0x40;  // Free to use
-    const static uint32 EIF_Compressed          =      0x200;  // info for the engine: it's an MCT or PTC compressed texture for XBox
+    const static uint32 EIF_Compressed          =      0x200;  // info for the engine: it's an MCT or PTC compressed texture for XBox // ACCEPTED_USE
     const static uint32 EIF_AttachedAlpha       =      0x400;  // info for the engine: it's a texture with attached alpha channel
     const static uint32 EIF_SRGBRead            =      0x800;  // info for the engine: if gamma corrected rendering is on, this texture requires SRGBRead (it's not stored in linear)
-    const static uint32 EIF_XBox360Native       =     0x1000;  // info for the engine: native XBox360 texture format
-    const static uint32 EIF_PS3Native           =     0x2000;  // info for the engine: native PS3 texture format
-    const static uint32 EIF_X360NotPretiled     =     0x4000;  // info for the engine: the texture cannot be pretiled
+    const static uint32 EIF_XBox360Native       =     0x1000;  // info for the engine: native XBox360 texture format // ACCEPTED_USE
+    const static uint32 EIF_PS3Native           =     0x2000;  // info for the engine: native PS3 texture format // ACCEPTED_USE
+    const static uint32 EIF_X360NotPretiled     =     0x4000;  // info for the engine: the texture cannot be pretiled // ACCEPTED_USE
     const static uint32 EIF_DontResize          =     0x8000;  // info for the engine: for dds textures that shouldn't be resized with r_TexResolution
     const static uint32 EIF_RenormalizedTexture =    0x10000;  // info for the engine: for dds textures that have renormalized color range
     const static uint32 EIF_CafeNative          =    0x20000;  // info for the engine: native Cafe texture format
-    const static uint32 EIF_OrbisNative         =    0x40000;  // info for the engine: native Orbis texture format
+    const static uint32 EIF_OrbisNative         =    0x40000;  // info for the engine: native Orbis texture format // ACCEPTED_USE
     const static uint32 EIF_Tiled               =    0x80000;  // info for the engine: texture has been tiled for the platform
-    const static uint32 EIF_DurangoNative       =   0x100000;  // info for the engine: native Durango texture format
+    const static uint32 EIF_DurangoNative       =   0x100000;  // info for the engine: native Durango texture format // ACCEPTED_USE
     const static uint32 EIF_Splitted            =   0x200000;  // info for the engine: this texture is splitted
     const static uint32 EIF_Colormodel          =  0x7000000;  // info for the engine: bitmask: colormodel used in the texture
     const static uint32 EIF_Colormodel_RGB      =  0x0000000;  // info for the engine: colormodel is RGB (default)
@@ -298,7 +298,7 @@ namespace CImageExtensionHelper
     //   true, if this texture is ready for this platform
     inline const bool IsImageNative(const uint32 nFlags)
     {
-        return (nFlags & (EIF_XBox360Native | EIF_PS3Native)) == 0;
+        return (nFlags & (EIF_XBox360Native | EIF_PS3Native)) == 0; // ACCEPTED_USE
     }
 
     // Arguments:

@@ -35,6 +35,7 @@ namespace AZ
                 SCENE_DATA_API size_t GetVertexCount() const override;
                 SCENE_DATA_API size_t GetLinkCount(size_t vertexIndex) const override;
                 SCENE_DATA_API const Link& GetLink(size_t vertexIndex, size_t linkIndex) const override;
+                SCENE_DATA_API Link& GetLink(size_t vertexIndex, size_t linkIndex);
                 SCENE_DATA_API size_t GetBoneCount() const override;
                 SCENE_DATA_API const AZStd::string& GetBoneName(int boneId) const override;
 

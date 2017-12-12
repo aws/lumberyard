@@ -1,5 +1,5 @@
 ﻿import { AuthStateAction, AuthStateActionContext, EnumAuthState } from '../authentication.class'
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { Subject } from 'rxjs/Subject';
 import { AwsContext } from 'app/aws/context.class'
 
 declare var AWS: any;
@@ -10,7 +10,7 @@ export class AssumeRoleAction implements AuthStateAction {
 
     }
 
-    public handle(subject: BehaviorSubject<AuthStateActionContext>, ...args: any[]): void {
+    public handle(subject: Subject<AuthStateActionContext>, ...args: any[]): void {
         var rolearn = args[0];
         if (rolearn === undefined || rolearn === null || rolearn === '') {
             subject.next(<AuthStateActionContext>{

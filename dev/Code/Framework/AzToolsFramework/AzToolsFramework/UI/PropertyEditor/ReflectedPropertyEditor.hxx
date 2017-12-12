@@ -77,7 +77,10 @@ namespace AzToolsFramework
         void InvalidateValues(); // just updates the values inside properties.
 
         void SetSavedStateKey(AZ::u32 key); // a settings key which is used to store and load the set of things that are expanded or not and other settings
+
         void QueueInvalidation(PropertyModificationRefreshLevel level);
+        //will force any queued invalidations to happen immediately
+        void ForceQueuedInvalidation();
 
         void SetAutoResizeLabels(bool autoResizeLabels);
 
@@ -108,6 +111,9 @@ namespace AzToolsFramework
         // if you want it to save its state, you need to give it a user settings label:
         //void SetSavedStateLabel(AZ::u32 label);
         //static void Reflect(const AZ::ClassDataReflection& reflection);
+
+        void SetDynamicEditDataProvider(DynamicEditDataProvider provider);
+
     signals:
         void OnExpansionContractionDone();
     private:
@@ -122,7 +128,6 @@ namespace AzToolsFramework
         RowContainerType m_widgetsInDisplayOrder;
         UserWidgetToDataMap m_userWidgetsToData;
         void AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth);
-        bool GetNodeVisibilityHelper(InstanceDataNode* ptrNode, AZ::Crc32 visibilityType, AZ::u32& outputVisibility);
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Support for logical property groups / visual hierarchy.
@@ -177,6 +182,7 @@ namespace AzToolsFramework
         bool m_hideRootProperties;
         bool m_queuedTabOrderRefresh;
         int m_expansionDepth;
+        DynamicEditDataProvider m_dynamicEditDataProvider;
     private slots:
         void OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* node, bool expanded, bool fromUserInteraction);
         void DoRefresh();

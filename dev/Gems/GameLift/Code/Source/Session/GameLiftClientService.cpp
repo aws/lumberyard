@@ -23,6 +23,7 @@
 #include <aws/core/utils/Outcome.h>
 #include <aws/gamelift/model/UpdateFleetAttributesRequest.h>
 #include <aws/gamelift/model/UpdateAliasRequest.h>
+#include <aws/gamelift/GameLiftClient.h>
 #pragma warning(pop)
 
 namespace
@@ -58,6 +59,14 @@ namespace GridMate
         {
             m_aliasId.assign(m_serviceDesc.m_aliasId.c_str());
         }
+
+        m_optionsSdk.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Debug;
+        Aws::InitAPI(m_optionsSdk);
+    }
+
+    GameLiftClientService::~GameLiftClientService()
+    {
+        Aws::ShutdownAPI(m_optionsSdk);
     }
 
     bool GameLiftClientService::IsReady() const
@@ -98,7 +107,7 @@ namespace GridMate
 
         if (!StartGameLiftClient())
         {
-            EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this);
+            EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this, "GameLift client failed to start");
         }
 
         GameLiftClientServiceBus::Handler::BusConnect(gridMate);
@@ -118,33 +127,44 @@ namespace GridMate
         SessionService::OnServiceUnregistered(gridMate);
     }
 
+    template <typename Callable>
+    void GameLiftClientService::UpdateImpl(Callable& callable)
+    {
+        if (callable.valid() && callable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+        {
+            if (callable.valid())
+            {
+                auto outcome = callable.get();
+                if (outcome.IsSuccess())
+                {
+                    AZ_TracePrintf("GameLift", "Initialized GameLift client successfully.\n");
+                    m_clientStatus = GameLift_Ready;
+
+                    EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceReady, this);
+                    EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
+                    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
+                }
+                else
+                {
+                    auto errorMessage = outcome.GetError().GetMessage();
+                    AZ_TracePrintf("GameLift", "Failed to initialize GameLift client: %s\n", errorMessage.c_str());
+
+                    m_clientStatus = GameLift_Failed;
+                    EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this, errorMessage.c_str());
+                }
+            }
+        }
+    }
+
     void GameLiftClientService::Update()
     {
-        bool isReady = m_useFleetId ?
-            m_updateFleetAttributesOutcomeCallable.valid() && m_updateFleetAttributesOutcomeCallable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready
-            : m_updateAliasOutcomeCallable.valid() && m_updateAliasOutcomeCallable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
-        if (isReady)
+        if (m_useFleetId)
         {
-            bool isSuccess = m_useFleetId ? m_updateFleetAttributesOutcomeCallable.get().IsSuccess()
-                : m_updateAliasOutcomeCallable.get().IsSuccess();
-            if (isSuccess)
-            {
-                AZ_TracePrintf("GameLift", "Initialized GameLift client successfully.\n");
-                m_clientStatus = GameLift_Ready;
-
-                EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceReady, this);
-                EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
-                EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
-            }
-            else
-            {
-                auto errorMessage = m_useFleetId ? m_updateFleetAttributesOutcomeCallable.get().GetError().GetMessage()
-                    : m_updateAliasOutcomeCallable.get().GetError().GetMessage();
-                AZ_TracePrintf("GameLift", "Failed to initialize GameLift client: %s\n", errorMessage.c_str());
-
-                m_clientStatus = GameLift_Failed;
-                EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this);
-            }
+            UpdateImpl(m_updateFleetAttributesOutcomeCallable);
+        }
+        else
+        {
+            UpdateImpl(m_updateAliasOutcomeCallable);
         }
 
         SessionService::Update();

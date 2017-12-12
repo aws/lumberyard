@@ -1,12 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild, SecurityContext } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { EnumGroupName } from 'app/aws/user/user-management.class';
 import { AwsService } from 'app/aws/aws.service'
 import { ModalComponent } from 'app/shared/component/index';
 import { ActionItem } from "app/view/game/module/shared/class/index";
-import { DomSanitizer } from '@angular/platform-browser';
-
-declare const toastr: any;
+import { ToastsManager } from 'ng2-toastr';
+import { LyMetricService } from 'app/shared/service/index';
+import * as environment from 'app/shared/class/index';
 
 export enum EnumUserAdminModes {
     Default,
@@ -44,7 +44,11 @@ export enum EnumAccountStatus {
     ]
 })
 export class AdminComponent implements OnInit {
+    public get metricIdentifier(): string{
+        return environment.metricWhiteListedFeature[environment.metricAdminIndex]
+    }
     awsCognitoLink = "https://console.aws.amazon.com/cognito/home"
+    missingEmailString = "n/a"
 
     currentTabIndex: number = 0;
     userSortDescending: boolean = true;
@@ -72,7 +76,7 @@ export class AdminComponent implements OnInit {
 
     numUserPages: number = 0;
     currentStartIndex: number = 0;
-    pageSize: number = 10;
+    pageSize: number = 10;    
 
     enumUserGroup = EnumGroupName;
 
@@ -82,7 +86,8 @@ export class AdminComponent implements OnInit {
     constructor(fb: FormBuilder,
         private aws: AwsService,
         private cdr: ChangeDetectorRef,
-        private sanitizer: DomSanitizer
+        private toastr: ToastsManager, 
+        private metric: LyMetricService
     ) {        
         this.userForm = fb.group({
             'username': [null, Validators.compose([Validators.required])],
@@ -155,12 +160,12 @@ export class AdminComponent implements OnInit {
                 this.setAllUsers(users);
                 this.loadingUsers = false;
             }, err => {
-                toastr.error(err.message);
+                this.toastr.error(err.message);
             });
 
         },
             err => {
-                toastr.error(err.message);
+                this.toastr.error(err.message);
             });
     }
 
@@ -207,11 +212,11 @@ export class AdminComponent implements OnInit {
     resetPassword(user: any): void {        
         this.aws.context.userManagement.resetPassword(user.Username, result => {
             this.modalRef.close();
-            toastr.success("The user '" + user.Username + "' password has been reset");            
+            this.toastr.success("The user '" + user.Username + "' password has been reset");            
             this.updateUserList();
         }, err => {
             this.modalRef.close();
-            toastr.error(err.message);            
+            this.toastr.error(err.message);            
         })
     }
 
@@ -247,7 +252,7 @@ export class AdminComponent implements OnInit {
         // submit is done in the validation in this case so we don't have to do anything here.
         this.aws.context.userManagement.register(user.username, user.password, user.email, user.role, result => {
             this.modalRef.close();
-            toastr.success("The user '" + this.sanitizer.sanitize(SecurityContext.HTML, user.username) + "' has been added");            
+            this.toastr.success("The user '" + user.username + "' has been added");            
             this.updateUserList();
         }, err => {
             // Display the error and remove the beginning chunk since it's not formatted well
@@ -258,11 +263,11 @@ export class AdminComponent implements OnInit {
     deleteUser(user) {
         this.aws.context.userManagement.deleteUser(user.Username, result => {
             this.modalRef.close();
-            toastr.success("The user '" + this.sanitizer.sanitize(SecurityContext.HTML, user.Username) + "' has been deleted");
+            this.toastr.success("The user '" + user.Username + "' has been deleted");
             this.updateUserList();
         }, err => {
             // Display the error and remove the beginning chunk since it's not formatted well
-            toastr.error(err.message);            
+            this.toastr.error(err.message);            
         });
     }
 
@@ -292,7 +297,7 @@ export class AdminComponent implements OnInit {
     private appendUser(user: any, rolename: string, array: Array<any>): void {
         let attributes = user.Attributes.filter(user => user.Name == 'email')
         user['Role'] = rolename
-        user['Email'] = attributes.length > 0 ? attributes[0].Value : 'n/a'
+        user['Email'] = attributes.length > 0 ? attributes[0].Value : this.missingEmailString
         array.push(user)
     }
 

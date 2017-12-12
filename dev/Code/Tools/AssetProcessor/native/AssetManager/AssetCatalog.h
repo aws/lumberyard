@@ -44,6 +44,8 @@ namespace AssetProcessor
         : public QObject
         , private AssetRegistryRequestBus::Handler
     {
+        using NetworkRequestID = AssetProcessor::NetworkRequestID;
+        using BaseAssetProcessorMessage = AzFramework::AssetSystem::BaseAssetProcessorMessage;
         Q_OBJECT;
     
     public:
@@ -57,6 +59,7 @@ namespace AssetProcessor
     public Q_SLOTS:
         // incoming message from the AP
         void OnAssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
+        void RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed = false);
 
         void SaveRegistry_Impl();
         void BuildRegistry();
@@ -67,6 +70,8 @@ namespace AssetProcessor
         // AssetRegistryRequestBus::Handler overrides
         int SaveRegistry() override;
         //////////////////////////////////////////////////////////////////////////
+
+        void RegistrySaveComplete(int assetCatalogVersion, bool allCatalogsSaved);
 
         QHash<QString, AzFramework::AssetRegistry> m_registries; // per platform.
         
@@ -79,6 +84,7 @@ namespace AssetProcessor
         bool m_currentlySavingCatalog = false;
         int m_currentRegistrySaveVersion = 0;
         QMutex m_savingRegistryMutex;
+        QMultiMap<int, AssetProcessor::NetworkRequestID> m_queuedSaveCatalogRequest;
 
         AZStd::vector<char> m_saveBuffer; // so that we dont realloc all the time
     };

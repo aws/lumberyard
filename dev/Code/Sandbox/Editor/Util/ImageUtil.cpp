@@ -25,130 +25,19 @@
 #include "CryFile.h"
 #include "GdiUtil.h"
 
-#if !defined(AZ_PLATFORM_WINDOWS)
-typedef struct tagBITMAPFILEHEADER {
-    WORD  bfType;
-    DWORD bfSize;
-    WORD  bfReserved1;
-    WORD  bfReserved2;
-    DWORD bfOffBits;
-} BITMAPFILEHEADER, *PBITMAPFILEHEADER;
-typedef struct tagBITMAPINFOHEADER {
-    DWORD biSize;
-    LONG  biWidth;
-    LONG  biHeight;
-    WORD  biPlanes;
-    WORD  biBitCount;
-    DWORD biCompression;
-    DWORD biSizeImage;
-    LONG  biXPelsPerMeter;
-    LONG  biYPelsPerMeter;
-    DWORD biClrUsed;
-    DWORD biClrImportant;
-} BITMAPINFOHEADER, *PBITMAPINFOHEADER;
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-bool CImageUtil::SaveBitmap(const QString& szFileName, CImageEx& inImage, bool inverseY)
-{
-    ////////////////////////////////////////////////////////////////////////
-    // Simple DIB save code
-    ////////////////////////////////////////////////////////////////////////
-
-    unsigned int i;
-    DWORD* pLine1 = NULL;
-    DWORD* pLine2 = NULL;
-    DWORD* pTemp = NULL;
-    BITMAPFILEHEADER bitmapfileheader;
-    BITMAPINFOHEADER bitmapinfoheader;
-
-    CLogFile::FormatLine("Saving data to bitmap... %s", szFileName.toLatin1().data());
-
-    int dwWidth = inImage.GetWidth();
-    int dwHeight = inImage.GetHeight();
-    DWORD* pData = (DWORD*)inImage.GetData();
-
-    int iAddToPitch = (dwWidth * 3) % 4;
-    if (iAddToPitch)
-    {
-        iAddToPitch = 4 - iAddToPitch;
-    }
-
-    uint8* pImage = new uint8[(dwWidth * 3 + iAddToPitch) * dwHeight];
-
-    i = 0;
-    for (int y = 0; y < dwHeight; y++)
-    {
-        int src_y = y;
-
-        if (inverseY)
-        {
-            src_y = (dwHeight - 1) - y;
-        }
-
-        for (int x = 0; x < dwWidth; x++)
-        {
-            DWORD c = pData[x + src_y * dwWidth];
-            pImage[i] = GetBValue(c);
-            pImage[i + 1] = GetGValue(c);
-            pImage[i + 2] = GetRValue(c);
-            i += 3;
-        }
-
-        for (int j = 0; j < iAddToPitch; j++)
-        {
-            pImage[i++] = 0;
-        }
-    }
-
-    // Fill in bitmap structures
-    bitmapfileheader.bfType = 0x4D42;
-    bitmapfileheader.bfSize = (dwWidth * dwHeight * 3) + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    bitmapfileheader.bfReserved1 = 0;
-    bitmapfileheader.bfReserved2 = 0;
-    bitmapfileheader.bfOffBits = sizeof(BITMAPFILEHEADER) +
-        sizeof(BITMAPINFOHEADER) + (0/* * sizeof(RGBQUAD)*/);
-    bitmapinfoheader.biSize = sizeof(BITMAPINFOHEADER);
-    bitmapinfoheader.biWidth = dwWidth;
-    bitmapinfoheader.biHeight = dwHeight;
-    bitmapinfoheader.biPlanes = 1;
-    bitmapinfoheader.biBitCount = (WORD) 24;
-    bitmapinfoheader.biCompression = 0;
-    bitmapinfoheader.biSizeImage = 0;
-    bitmapinfoheader.biXPelsPerMeter = 0;
-    bitmapinfoheader.biYPelsPerMeter = 0;
-    bitmapinfoheader.biClrUsed = 0;
-    bitmapinfoheader.biClrImportant = 0;
-
-    // Write bitmap to disk
-    QFile file(szFileName);
-    if (!file.open(QFile::WriteOnly))
-    {
-        delete []pImage;
-        return false;
-    }
-
-    // Write the headers to the file
-    file.write((char*)&bitmapfileheader, sizeof(BITMAPFILEHEADER));
-    file.write((char*)&bitmapinfoheader, sizeof(BITMAPINFOHEADER));
-
-    // Write the data
-    file.write((char*)pImage, ((dwWidth * 3 + iAddToPitch) * dwHeight));
-
-    delete []pImage;
-
-    // Success
-    return true;
-}
-
 //////////////////////////////////////////////////////////////////////////
 bool CImageUtil::Save(const QString& strFileName, CImageEx& inImage)
 {
     QImage imgBitmap;
 
-    CreateBitmapFromImage(inImage, imgBitmap);
-
+    ImageToQImage(inImage, imgBitmap);
     return imgBitmap.save(strFileName);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CImageUtil::SaveBitmap(const QString& szFileName, CImageEx& inImage)
+{
+    return Save(szFileName, inImage);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -158,22 +47,29 @@ bool CImageUtil::SaveJPEG(const QString& strFileName, CImageEx& inImage)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CImageUtil::LoadImageWithGDIPlus(const QString& fileName, CImageEx& image)
+bool CImageUtil::Load(const QString& fileName, CImageEx& image)
 {
     QImage imgBitmap(fileName);
 
     if (imgBitmap.isNull())
     {
+        CLogFile::FormatLine("Invalid file:  %s", fileName.toLatin1().data());
         return false;
     }
 
-    return CImageUtil::FillFromBITMAPObj(imgBitmap, image);
+    return QImageToImage(imgBitmap, image);
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CImageUtil::LoadJPEG(const QString& strFileName, CImageEx& outImage)
 {
-    return CImageUtil::LoadImageWithGDIPlus(strFileName, outImage);
+    return CImageUtil::Load(strFileName, outImage);
+}
+
+//===========================================================================
+bool CImageUtil::LoadBmp(const QString& fileName, CImageEx& image)
+{
+    return CImageUtil::Load(fileName, image);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -322,397 +218,6 @@ bool CImageUtil::LoadPGM(const QString& fileName, CImageEx& image)
 }
 
 
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-static inline uint16 us_endian (const byte* ptr)
-{
-    short n;
-    memcpy(&n, ptr, sizeof(n));
-    return n;
-}
-
-static inline unsigned long ul_endian (const byte* ptr)
-{
-    uint32 n;
-    memcpy(&n, ptr, sizeof(n));
-    return n;
-}
-
-static inline long l_endian (const byte* ptr)
-{
-    int32 n;
-    memcpy(&n, ptr, sizeof(n));
-    return n;
-}
-
-#define BFTYPE(x)    us_endian((x) +  0)
-#define BFSIZE(x)    ul_endian((x) +  2)
-#define BFOFFBITS(x) ul_endian((x) + 10)
-#define BISIZE(x)    ul_endian((x) + 14)
-#define BIWIDTH(x)   l_endian ((x) + 18)
-#define BIHEIGHT(x)  l_endian ((x) + 22)
-#define BITCOUNT(x)  us_endian((x) + 28)
-#define BICOMP(x)    ul_endian((x) + 30)
-#define IMAGESIZE(x) ul_endian((x) + 34)
-#define BICLRUSED(x) ul_endian((x) + 46)
-#define BICLRIMP(x)  ul_endian((x) + 50)
-#define BIPALETTE(x) ((x) + 54)
-
-// Type ID
-#define BM "BM" // Windows 3.1x, 95, NT, ...
-#define BA "BA" // OS/2 Bitmap Array
-#define CI "CI" // OS/2 Color Icon
-#define CP "CP" // OS/2 Color Pointer
-#define IC "IC" // OS/2 Icon
-#define PT "PT" // OS/2 Pointer
-
-// Possible values for the header size
-#define WinHSize   0x28
-#define OS21xHSize 0x0C
-#define OS22xHSize 0xF0
-
-// Possible values for the BPP setting
-#define Mono          1  // Monochrome bitmap
-#define _16Color      4  // 16 color bitmap
-#define _256Color     8  // 256 color bitmap
-#define HIGHCOLOR    16  // 16bit (high color) bitmap
-#define TRUECOLOR24  24  // 24bit (true color) bitmap
-#define TRUECOLOR32  32  // 32bit (true color) bitmap
-
-// Compression Types
-#ifndef BI_RGB
-#define BI_RGB        0  // none
-#define BI_RLE8       1  // RLE 8-bit / pixel
-#define BI_RLE4       2  // RLE 4-bit / pixel
-#define BI_BITFIELDS  3  // Bitfields
-#endif
-
-#pragma pack(push,1)
-struct SRGBcolor
-{
-    uint8 red, green, blue;
-};
-struct SRGBPixel
-{
-    uint8 red, green, blue, alpha;
-};
-#pragma pack(pop)
-
-//===========================================================================
-bool CImageUtil::LoadBmp(const QString& fileName, CImageEx& image)
-{
-    std::vector<uint8> data;
-
-    CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
-    {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
-        return false;
-    }
-
-    long iSize = file.GetLength();
-
-    data.resize(iSize);
-    uint8* iBuffer = &data[0];
-    file.ReadRaw(iBuffer, iSize);
-
-    if (!((memcmp(iBuffer, BM, 2) == 0) && BISIZE(iBuffer) == WinHSize))
-    {
-        // Not bmp file.
-        CLogFile::FormatLine("Invalid BMP file format %s", fileName.toLatin1().data());
-        return false;
-    }
-
-    int mWidth = BIWIDTH(iBuffer);
-    int mHeight = BIHEIGHT(iBuffer);
-    image.Allocate(mWidth, mHeight);
-    const int bmp_size = mWidth * mHeight;
-
-    byte* iPtr = iBuffer + BFOFFBITS(iBuffer);
-
-    // The last scanline in BMP corresponds to the top line in the image
-    int  buffer_y = mWidth * (mHeight - 1);
-    bool blip     = false;
-
-    if (BITCOUNT(iBuffer) == _256Color)
-    {
-        //mpIndexImage = mfGet_IndexImage();
-        byte* buffer = new byte[mWidth * mHeight];
-        SRGBcolor mspPal[256];
-        SRGBcolor* pwork = mspPal;
-        byte* inpal   = BIPALETTE(iBuffer);
-
-        for (int color = 0; color < 256; color++, pwork++)
-        {
-            // Whacky BMP palette is in BGR order.
-            pwork->blue  = *inpal++;
-            pwork->green = *inpal++;
-            pwork->red   = *inpal++;
-            inpal++; // Skip unused byte.
-        }
-
-        if (BICOMP(iBuffer) == BI_RGB)
-        {
-            // Read the pixels from "top" to "bottom"
-            while (iPtr < iBuffer + iSize && buffer_y >= 0)
-            {
-                memcpy (buffer + buffer_y, iPtr, mWidth);
-                iPtr += mWidth;
-                buffer_y -= mWidth;
-            } /* endwhile */
-        }
-        else
-        if (BICOMP(iBuffer) == BI_RLE8)
-        {
-            // Decompress pixel data
-            byte rl, rl1, i;    // runlength
-            byte clridx, clridx1; // colorindex
-            int buffer_x = 0;
-            while (iPtr < iBuffer + iSize && buffer_y >= 0)
-            {
-                rl = rl1 = *iPtr++;
-                clridx = clridx1 = *iPtr++;
-                if (rl == 0)
-                {
-                    if (clridx == 0)
-                    {
-                        // new scanline
-                        if (!blip)
-                        {
-                            // if we didnt already jumped to the new line, do it now
-                            buffer_x  = 0;
-                            buffer_y -= mWidth;
-                        }
-                        continue;
-                    }
-                    else
-                    if (clridx == 1)
-                    {
-                        // end of bitmap
-                        break;
-                    }
-                    else
-                    if (clridx == 2)
-                    {
-                        // next 2 bytes mean column- and scanline- offset
-                        buffer_x += *iPtr++;
-                        buffer_y -= (mWidth * (*iPtr++));
-                        continue;
-                    }
-                    else
-                    if (clridx > 2)
-                    {
-                        rl1 = clridx;
-                    }
-                }
-
-                for (i = 0; i < rl1; i++)
-                {
-                    if (!rl)
-                    {
-                        clridx1 = *iPtr++;
-                    }
-                    buffer [buffer_y + buffer_x] = clridx1;
-
-                    if (++buffer_x >= mWidth)
-                    {
-                        buffer_x  = 0;
-                        buffer_y -= mWidth;
-                        blip = true;
-                    }
-                    else
-                    {
-                        blip = false;
-                    }
-                }
-                // pad in case rl == 0 and clridx in [3..255]
-                if (rl == 0 && (clridx & 0x01))
-                {
-                    iPtr++;
-                }
-            }
-        }
-
-        // Convert indexed to RGBA
-        for (int y = 0; y < mHeight; y++)
-        {
-            for (int x = 0; x < mWidth; x++)
-            {
-                SRGBcolor& entry = mspPal[buffer[x + y * mWidth]];
-                image.ValueAt(x, y) = 0xFF000000 | RGB(entry.red, entry.green, entry.blue);
-            }
-        }
-
-        delete []buffer;
-        return true;
-    }
-    else
-    if (!BICLRUSED(iBuffer) && BITCOUNT(iBuffer) == TRUECOLOR24)
-    {
-        int iAddToPitch = (mWidth * 3) % 4;
-        if (iAddToPitch)
-        {
-            iAddToPitch = 4 - iAddToPitch;
-        }
-
-        SRGBPixel* buffer = (SRGBPixel*)image.GetData();
-
-        while (iPtr < iBuffer + iSize && buffer_y >= 0)
-        {
-            SRGBPixel* d = buffer + buffer_y;
-            for (int x = mWidth; x; x--)
-            {
-                d->blue    = *iPtr++;
-                d->green   = *iPtr++;
-                d->red     = *iPtr++;
-                d->alpha = 255;
-                d++;
-            } /* endfor */
-
-            iPtr += iAddToPitch;
-
-            buffer_y -= mWidth;
-        }
-        return true;
-    }
-    else
-    if (!BICLRUSED(iBuffer) && BITCOUNT(iBuffer) == TRUECOLOR32)
-    {
-        SRGBPixel* buffer = (SRGBPixel*)image.GetData();
-
-        while (iPtr < iBuffer + iSize && buffer_y >= 0)
-        {
-            SRGBPixel* d = buffer + buffer_y;
-            for (int x = mWidth; x; x--)
-            {
-                d->blue    = *iPtr++;
-                d->green   = *iPtr++;
-                d->red     = *iPtr++;
-                d->alpha   = *iPtr++;
-                d++;
-            } /* endfor */
-
-            buffer_y -= mWidth;
-        }
-        return true;
-    }
-
-    CLogFile::FormatLine("Unknown BMP image format %s", fileName.toLatin1().data());
-
-    return false;
-}
-
-//===========================================================================
-bool CImageUtil::LoadBmp(const QString& fileName, CImageEx& image, const RECT& rc)
-{
-#pragma pack(push,1)
-    struct SRGBcolor
-    {
-        uint8 red, green, blue;
-    };
-    struct SRGBPixel
-    {
-        uint8 red, green, blue, alpha;
-    };
-#pragma pack(pop)
-
-    std::vector<uint8> header;
-
-    CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
-    {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
-        return false;
-    }
-
-    long iSizeHeader = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    header.resize(iSizeHeader);
-
-
-    //uint8* iBuffer = &data[0];
-    uint8* iBuffer = &header[0];
-
-    file.ReadRaw(iBuffer, iSizeHeader);
-
-    if (!((memcmp(iBuffer, BM, 2) == 0) && BISIZE(iBuffer) == WinHSize))
-    {
-        // Not bmp file.
-        CLogFile::FormatLine("Invalid BMP file format %s", fileName.toLatin1().data());
-        return false;
-    }
-
-    int mWidth = BIWIDTH(iBuffer);
-    int mHeight = BIHEIGHT(iBuffer);
-    const int bmp_size = mWidth * mHeight;
-
-    long offset = BFOFFBITS(iBuffer) - iSizeHeader;
-    if (offset > 0)
-    {
-        std::vector<uint8> data;
-        data.resize(offset);
-        file.ReadRaw(&data[0], offset);
-    }
-
-    int w = rc.right - rc.left;
-    int h = rc.bottom - rc.top;
-
-
-    std::vector<uint8> data;
-
-    int st = 4;
-    if (BITCOUNT(iBuffer) == TRUECOLOR24)
-    {
-        st = 3;
-    }
-
-    int iAddToPitch = (mWidth * st) % 4;
-    if (iAddToPitch)
-    {
-        iAddToPitch = 4 - iAddToPitch;
-    }
-
-    long iSize = mWidth * st + iAddToPitch;
-
-    data.resize(iSize);
-
-    //for (int y = mHeight-1; y > rc.bottom; y--)
-    //file.ReadRaw( &data[0], iSize );
-
-    file.Seek(file.GetPosition() + (mHeight - rc.bottom) * iSize, SEEK_SET);
-
-    if (!BICLRUSED(iBuffer) && (BITCOUNT(iBuffer) == TRUECOLOR24 || BITCOUNT(iBuffer) == TRUECOLOR32))
-    {
-        image.Allocate(w, h);
-        SRGBPixel* buffer = (SRGBPixel*)image.GetData();
-
-        for (int y = h - 1; y >= 0; y--)
-        {
-            file.ReadRaw(&data[0], iSize);
-
-            for (int x = 0; x < w; x++)
-            {
-                buffer[x + y * w].blue  = data[(x + rc.left) * st];
-                buffer[x + y * w].green = data[(x + rc.left) * st + 1];
-                buffer[x + y * w].red   = data[(x + rc.left) * st + 2];
-                if (BITCOUNT(iBuffer) == TRUECOLOR24)
-                {
-                    buffer[x + y * w].alpha = 255;
-                }
-                else
-                {
-                    buffer[x + y * w].alpha = data[(x + rc.left) * st + 3];
-                }
-            }
-        }
-        return true;
-    }
-
-    CLogFile::FormatLine("Unknown BMP image format %s", fileName.toLatin1().data());
-    return false;
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQualityLoss)
 {
@@ -761,7 +266,7 @@ bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQual
     }
     else if (_stricmp(ext, ".png") == 0)
     {
-        return CImageUtil::LoadImageWithGDIPlus(fileName, image);
+        return CImageUtil::Load(fileName, image);
     }
     else if (stricmp(ext, ".hdr") == 0)
     {
@@ -991,34 +496,29 @@ unsigned char CImageUtil::GetBilinearFilteredAt(const int iniX256, const int ini
     return (unsigned char)((top * (256 - ry) + bottom * ry) >> 16);
 }
 
-bool CImageUtil::FillFromBITMAPObj(const QImage& bitmap, CImageEx& image)
+bool CImageUtil::QImageToImage(const QImage& bitmap, CImageEx& image)
 {
-    if (bitmap.depth() != 32)
+
+    QImage convertedBitmap;
+    const QImage *srcBitmap = &bitmap;
+    
+    if (bitmap.format() != QImage::Format_RGBA8888)
+    {
+        convertedBitmap = bitmap.convertToFormat(QImage::Format_RGBA8888);
+        srcBitmap = &convertedBitmap;
+    }
+
+    if (image.Allocate(srcBitmap->width(), srcBitmap->height()) == false)
     {
         return false;
     }
 
-    image.Allocate(bitmap.width(), bitmap.height());
-
-    auto src_p = bitmap.bits();
-
-    for (int i = 0; i < bitmap.height(); i++)
-    {
-        for (int k = 0; k < bitmap.width(); k++)
-        {
-            SRGBPixel*      dest_p  =   (SRGBPixel*)(&(image.ValueAt(k, i)));
-
-            dest_p->blue            = *src_p++;
-            dest_p->green   = *src_p++;
-            dest_p->red         = *src_p++;
-            dest_p->alpha       = *src_p++;
-        }
-    }
+    std::copy(srcBitmap->bits(), srcBitmap->bits() + (srcBitmap->width() * srcBitmap->height() * sizeof(uint32)), reinterpret_cast<uint8*>(image.GetData()));
 
     return true;
 }
 
-bool CImageUtil::CreateBitmapFromImage(const CImageEx& image, QImage& bitmapObj)
+bool CImageUtil::ImageToQImage(const CImageEx& image, QImage& bitmapObj)
 {
     bitmapObj = QImage(image.GetWidth(), image.GetHeight(), QImage::Format_RGBA8888);
     std::copy(image.GetData(), image.GetData() + image.GetWidth() * image.GetHeight(), reinterpret_cast<uint32*>(bitmapObj.bits()));

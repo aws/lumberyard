@@ -16,7 +16,7 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2,0,0,0,0,0,0,0,0,0,0,0">
    <property name="leftMargin">
     <number>10</number>
    </property>
@@ -31,6 +31,12 @@
    </property>
    <item>
     <widget class="QLabel" name="m_titleBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="text">
       <string>Static</string>
      </property>
@@ -59,22 +65,6 @@
     </widget>
    </item>
    <item>
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
     <widget class="QLabel" name="label">
      <property name="text">
       <string>FOV:</string>
@@ -93,22 +83,6 @@
       <string>120°</string>
      </property>
     </widget>
-   </item>
-   <item>
-    <spacer name="horizontalSpacer_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
    <item>
     <widget class="QLabel" name="label_2">
@@ -141,22 +115,6 @@
       <string>000:000</string>
      </property>
     </widget>
-   </item>
-   <item>
-    <spacer name="horizontalSpacer_3">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>10</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
    <item>
     <widget class="QLabel" name="m_sizeStaticCtrl">
@@ -192,7 +150,7 @@
       <string>Toggle display info</string>
      </property>
      <property name="icon">
-      <iconset resource="resource.qrc">
+      <iconset>
        <normaloff>:/stylesheet/img/16x16/info.png</normaloff>:/stylesheet/img/16x16/info.png</iconset>
      </property>
      <property name="checkable">
@@ -206,7 +164,7 @@
       <string>Toggle display helpers</string>
      </property>
      <property name="icon">
-      <iconset resource="resource.qrc">
+      <iconset>
        <normaloff>:/stylesheet/img/16x16/Helpers.png</normaloff>:/stylesheet/img/16x16/Helpers.png</iconset>
      </property>
      <property name="checkable">
@@ -220,7 +178,7 @@
    <item>
     <widget class="QToolButton" name="m_maxBtn">
      <property name="icon">
-      <iconset resource="resource.qrc">
+      <iconset>
        <normaloff>:/stylesheet/img/16x16/Maximize.png</normaloff>:/stylesheet/img/16x16/Maximize.png</iconset>
      </property>
      <property name="iconSize">
@@ -262,8 +220,6 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="resource.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

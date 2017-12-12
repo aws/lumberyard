@@ -195,26 +195,32 @@ bool ViewportElement::PickElementEdges(const AZ::Entity* element,
     float maxY = max(top, bottom) + pickDistance.GetY();
 
     // Test distance of point from edges
-    if (pickPoint.GetY() >= minY && pickPoint.GetY() <= maxY)
+    if (!ViewportHelpers::IsHorizontallyFit(element))
     {
-        if (fabsf(pickPoint.GetX() - left) <= pickDistance.GetX())
+        if (pickPoint.GetY() >= minY && pickPoint.GetY() <= maxY)
         {
-            outEdges.m_left = true;
-        }
-        if (fabsf(pickPoint.GetX() - right) <= pickDistance.GetX())
-        {
-            outEdges.m_right = true;
+            if (fabsf(pickPoint.GetX() - left) <= pickDistance.GetX())
+            {
+                outEdges.m_left = true;
+            }
+            if (fabsf(pickPoint.GetX() - right) <= pickDistance.GetX())
+            {
+                outEdges.m_right = true;
+            }
         }
     }
-    if (pickPoint.GetX() >= minX && pickPoint.GetX() <= maxX)
+    if (!ViewportHelpers::IsVerticallyFit(element))
     {
-        if (fabsf(pickPoint.GetY() - top) <= pickDistance.GetY())
+        if (pickPoint.GetX() >= minX && pickPoint.GetX() <= maxX)
         {
-            outEdges.m_top = true;
-        }
-        if (fabsf(pickPoint.GetY() - bottom) <= pickDistance.GetY())
-        {
-            outEdges.m_bottom = true;
+            if (fabsf(pickPoint.GetY() - top) <= pickDistance.GetY())
+            {
+                outEdges.m_top = true;
+            }
+            if (fabsf(pickPoint.GetY() - bottom) <= pickDistance.GetY())
+            {
+                outEdges.m_bottom = true;
+            }
         }
     }
 
@@ -403,21 +409,25 @@ bool ViewportElement::PickAxisGizmo(const AZ::Entity* element,
     }
 
     // Center square
-    if (ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, -0.02f, 0.16f, -0.16f, 0.02f))
+    if ((interactionMode != ViewportInteraction::InteractionMode::RESIZE ||
+        (!ViewportHelpers::IsHorizontallyFit(element) && !ViewportHelpers::IsVerticallyFit(element))) &&
+        ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, -0.02f, 0.16f, -0.16f, 0.02f))
     {
         outGizmoParts.SetBoth(true);
         return true;
     }
 
     // Up axis
-    if (ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, -0.04f, 0.04f, -0.5f, -0.16f))
+    if ((interactionMode != ViewportInteraction::InteractionMode::RESIZE || !ViewportHelpers::IsVerticallyFit(element)) &&
+        ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, -0.04f, 0.04f, -0.5f, -0.16f))
     {
         outGizmoParts.m_top = true;
         return true;
     }
 
     // Right axis
-    if (ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, 0.16f, 0.5f, -0.04f, 0.04f))
+    if ((interactionMode != ViewportInteraction::InteractionMode::RESIZE || !ViewportHelpers::IsHorizontallyFit(element)) &&
+        ViewportHelpers::IsPointInIconRect(pickPoint, pivotPosition, scaledIconSize, 0.16f, 0.5f, -0.04f, 0.04f))
     {
         outGizmoParts.m_right = true;
         return true;
@@ -633,6 +643,16 @@ void ViewportElement::ResizeByGizmo(HierarchyWidget* hierarchy,
     // Get translation for this element's offsets in viewport space
     AZ::Vector3 viewportTranslation = GetTranslationForSelectedElement(activeElementId, element, mouseTranslation);
 
+    if (ViewportHelpers::IsHorizontallyFit(element))
+    {
+        viewportTranslation.SetX(0.0f);
+    }
+
+    if (ViewportHelpers::IsVerticallyFit(element))
+    {
+        viewportTranslation.SetY(0.0f);
+    }
+
     // Transform to element space
     AZ::Matrix4x4 transformFromViewport;
     EBUS_EVENT_ID(element->GetId(), UiTransformBus, GetTransformFromViewport, transformFromViewport);
@@ -727,7 +747,8 @@ void ViewportElement::MoveAnchors(const ViewportHelpers::SelectedAnchors& grabbe
     localTranslation.SetX(parentSize.GetX() ? (localTranslation.GetX() / parentSize.GetX()) : 0.0f);
     localTranslation.SetY(parentSize.GetY() ? (localTranslation.GetY() / parentSize.GetY()) : 0.0f);
 
-    auto newAnchors = ViewportHelpers::MoveGrabbedAnchor(startAnchors, grabbedAnchors, localTranslation);
+    auto newAnchors = ViewportHelpers::MoveGrabbedAnchor(startAnchors, grabbedAnchors, ViewportHelpers::IsHorizontallyFit(element),
+        ViewportHelpers::IsVerticallyFit(element), localTranslation);
     EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetAnchors, newAnchors, adjustOffsets, false);
 
     EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);

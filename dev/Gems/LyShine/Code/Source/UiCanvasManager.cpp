@@ -20,7 +20,6 @@
 #include "UiGameEntityContext.h"
 
 #include <IRenderer.h>
-#include <IHardwareMouse.h>
 #include <CryPath.h>
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
@@ -43,9 +42,11 @@
 #include <AzCore/std/time.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzFramework/Input/Channels/InputChannel.h>
 
 #include "Animation/UiAnimationSystem.h"
 
+#include <LyShine/Bus/UiCursorBus.h>
 #include <LyShine/Bus/World/UiCanvasOnMeshBus.h>
 #include <LyShine/Bus/World/UiCanvasRefBus.h>
 
@@ -106,6 +107,13 @@ UiCanvasManager::~UiCanvasManager()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiCanvasManager::CreateCanvas()
 {
+    // Prevent in-game canvas from being created when we are in the editor in a simulation mode
+    // but not in game mode (ex. AI/Physics mode or Preview mode)
+    if (gEnv && gEnv->IsEditor() && gEnv->IsEditing())
+    {
+        return AZ::EntityId();
+    }
+
     UiGameEntityContext* entityContext = new UiGameEntityContext();
 
     UiCanvasComponent* canvasComponent = UiCanvasComponent::CreateCanvasInternal(entityContext, false);
@@ -127,8 +135,8 @@ AZ::EntityId UiCanvasManager::CreateCanvas()
 AZ::EntityId UiCanvasManager::LoadCanvas(const AZStd::string& assetIdPathname)
 {
     // Prevent canvas from being loaded when we are in the editor in a simulation mode
-    // but not in game mode (ex. AI/Physics mode).
-    // NOTE: Preview mode does not come through here since we clone the canvas rather than load it
+    // but not in game mode (ex. AI/Physics mode or Preview mode).
+    // NOTE: Normal Preview mode load does not come through here since we clone the canvas rather than load it
     if (gEnv && gEnv->IsEditor() && gEnv->IsEditing())
     {
         return AZ::EntityId();
@@ -371,11 +379,35 @@ void UiCanvasManager::DestroyLoadedCanvases(bool keepCrossLevelCanvases)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasManager::HandleInputEventForLoadedCanvases(const SInputEvent& event)
+bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::InputChannel& inputChannel)
 {
     // reverse iterate over the loaded canvases so that the front most canvas gets first chance to
     // handle the event
     bool areAnyInWorldInputCanvasesLoaded = false;
+
+    // Take a snapshot of the input channel instead of just passing through the channel itself.
+    // This is necessary because UI input is currently simulated in the editor's UI Preview mode
+    // by constructing 'fake' input events, which we can do with snapshots but not input channels.
+    // Long term we should look to update the AzFramework input system while in UI Editor Preview
+    // mode so that it works exactly the same as in-game input, but this is a larger task for later.
+    const AzFramework::InputChannel::Snapshot inputSnapshot(inputChannel);
+
+    // De-normalize the position (if any) of the input event, as the UI system expects it relative
+    // to the viewport from here on.
+    AZ::Vector2 viewportPos(0.0f, 0.0f);
+    const AzFramework::InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<AzFramework::InputChannel::PositionData2D>();
+    if (positionData2D)
+    {
+        viewportPos.SetX(positionData2D->m_normalizedPosition.GetX() * m_latestViewportSize.GetX());
+        viewportPos.SetY(positionData2D->m_normalizedPosition.GetY() * m_latestViewportSize.GetY());
+    }
+
+    // Get the active modifier keys (if any) of the input event. Will only exist for keyboard keys.
+    const AzFramework::ModifierKeyStates* modifierKeyStates = inputChannel.GetCustomData<AzFramework::ModifierKeyStates>();
+    const AzFramework::ModifierKeyMask activeModifierKeys = modifierKeyStates ?
+                                                            modifierKeyStates->GetActiveModifierKeys() :
+                                                            AzFramework::ModifierKeyMask::None;
+
     for (auto iter = m_loadedCanvases.rbegin(); iter != m_loadedCanvases.rend(); ++iter)
     {
         UiCanvasComponent* canvas = *iter;
@@ -387,16 +419,17 @@ bool UiCanvasManager::HandleInputEventForLoadedCanvases(const SInputEvent& event
             areAnyInWorldInputCanvasesLoaded = true;
         }
 
-        if (canvas->HandleInputEvent(event))
+        if (canvas->HandleInputEvent(inputSnapshot, &viewportPos, activeModifierKeys))
         {
             return true;
         }
     }
 
     // if there are any canvases loaded that are rendering to texture we handle them seperately after the screen canvases
-    if (areAnyInWorldInputCanvasesLoaded)
+    // only do this for input events that are actually associated with a position
+    if (areAnyInWorldInputCanvasesLoaded && positionData2D)
     {
-        if (HandleInputEventForInWorldCanvases(event))
+        if (HandleInputEventForInWorldCanvases(inputSnapshot, viewportPos))
         {
             return true;
         }
@@ -406,13 +439,13 @@ bool UiCanvasManager::HandleInputEventForLoadedCanvases(const SInputEvent& event
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasManager::HandleKeyboardEventForLoadedCanvases(const SUnicodeEvent& event)
+bool UiCanvasManager::HandleTextEventForLoadedCanvases(const AZStd::string& textUTF8)
 {
     // reverse iterate over the loaded canvases so that the front most canvas gets first chance to
     // handle the event
     for (auto iter = m_loadedCanvases.rbegin(); iter != m_loadedCanvases.rend(); ++iter)
     {
-        if ((*iter)->HandleKeyboardEvent(event))
+        if ((*iter)->HandleTextEvent(textUTF8))
         {
             return true;
         }
@@ -465,7 +498,7 @@ UiCanvasComponent* UiCanvasManager::FindEditorCanvasComponentByPathname(const st
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasManager::HandleInputEventForInWorldCanvases(const SInputEvent& event)
+bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AZ::Vector2& viewportPos)
 {
     // First we need to construct a ray from the either the center of the screen or the mouse position.
     // This requires knowledge of the camera
@@ -480,19 +513,19 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const SInputEvent& even
     // If the mouse cursor is visible we will assume that the ray should be in the direction of the
     // mouse pointer. This is a temporary solution. A better solution is to be able to configure the
     // LyShine system to say how ray input should be handled.
-    if (!gEnv->pHardwareMouse->IsHidden())
+    bool isCursorVisible = false;
+    UiCursorBus::BroadcastResult(isCursorVisible, &UiCursorInterface::IsUiCursorVisible);
+    if (isCursorVisible)
     {
-        Vec2 screenPos = event.screenPosition;
-
         // for some reason Unproject seems to work when given the viewport pos with (0,0) at the
         // bottom left as opposed to the top left - even though that function specifically sets top left
         // to (0,0).
-        screenPos.y = cam.GetViewSurfaceZ() - screenPos.y;
+        const float viewportYInverted = cam.GetViewSurfaceZ() - viewportPos.GetY();
 
         // Unproject to get the screen position in world space, use arbitrary Z that is within the depth range
-        Vec3 viewportPos(screenPos.x, screenPos.y, 0.5f);
+        Vec3 flippedViewportPos(viewportPos.GetX(), viewportYInverted, 0.5f);
         Vec3 unprojectedPos;
-        cam.Unproject(viewportPos, unprojectedPos);
+        cam.Unproject(flippedViewportPos, unprojectedPos);
 
         // We want a vector relative to the camera origin
         Vec3 rayVec = unprojectedPos - rayOrigin;
@@ -527,7 +560,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const SInputEvent& even
                 {
                     // set the hit details to the hit entity, it will convert into canvas coords and send to canvas
                     bool result = false;
-                    EBUS_EVENT_ID_RESULT(result, entityId, UiCanvasOnMeshBus, ProcessRayHitInputEvent, event, rayhit);
+                    EBUS_EVENT_ID_RESULT(result, entityId, UiCanvasOnMeshBus, ProcessRayHitInputEvent, inputSnapshot, rayhit);
                     if (result)
                     {
                         return true;

@@ -80,7 +80,6 @@
 
 #include "CryWindows.h"
 
-#include "CryModuleDefs.h"
 #include "platform.h"
 #include "functor.h"
 #include "Cry_Geo.h"

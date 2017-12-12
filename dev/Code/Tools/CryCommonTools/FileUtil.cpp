@@ -92,11 +92,15 @@ static bool ScanDirectoryRecursive(const string& root, const string& path, const
     AZ::IO::LocalFileIO localFileIO;
     localFileIO.FindFiles(root.c_str(), file.c_str(), [&](const char* filePath) -> bool
     {
-        const string foundFilename(filePath);
-        if (StringHelpers::MatchesWildcardsIgnoreCase(foundFilename, file))
+        bool isDir = localFileIO.IsDirectory(filePath);
+        if (!isDir)
         {
-            anyFound = true;
-            files.push_back(PathHelpers::Join(path, PathHelpers::GetFilename(filePath)));			
+            const string foundFilename(filePath);
+            if (StringHelpers::MatchesWildcardsIgnoreCase(foundFilename, file))
+            {
+                anyFound = true;
+                files.push_back(PathHelpers::Join(path, PathHelpers::GetFilename(filePath)));
+            }
         }
                                        
         return true; // Keep iterating

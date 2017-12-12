@@ -139,7 +139,10 @@ static void BuildTemporalParameters(TemporalAAParameters& temporalAAParameters)
     temporalAAParameters.m_sharpeningFactor = max(CRenderer::CV_r_AntialiasingTAASharpening + 1.0f, 1.0f);
     temporalAAParameters.m_useAntiFlickerFilter = (float)CRenderer::CV_r_AntialiasingTAAUseAntiFlickerFilter;
     temporalAAParameters.m_clampingFactor = CRenderer::CV_r_AntialiasingTAAClampingFactor;
-    temporalAAParameters.m_newFrameWeight = 1.0f - expf(-CRenderer::GetElapsedTime() / max(gRenDev->CV_r_AntialiasingTAANewFrameFalloff, FLT_EPSILON));
+
+    // Computes the frame weight using an exponential falloff function with respect to time. This is so that higher FPS gets more history and lower FPS gets more of the current frame.
+    const float FrameWeightMin = 0.1f; /// Use 10% of the current frame. Any more than this and jitter will start to dominate.
+    temporalAAParameters.m_newFrameWeight = AZStd::min(1.0f - expf(-CRenderer::GetElapsedTime() / AZStd::max(gRenDev->CV_r_AntialiasingTAANewFrameFalloff, FLT_EPSILON)), FrameWeightMin);
 }
 
 void PostAAPass::RenderTemporalAA(
@@ -512,7 +515,9 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     {
         gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE4];
     }
-
+    
+    PostProcessUtils().SetSRGBShaderFlags();
+    
     static const CCryNameTSCRC TechNameComposites("PostAAComposites");
     static const CCryNameTSCRC TechNameDebugMotion("PostAADebugMotion");
 
@@ -632,7 +637,9 @@ void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
     {
         gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
-
+    
+    PostProcessUtils().SetSRGBShaderFlags();
+    
     gcpRendD3D->FX_PushWireframeMode(R_SOLID_MODE);
     gcpRendD3D->FX_SetState(GS_NODEPTHTEST);
 

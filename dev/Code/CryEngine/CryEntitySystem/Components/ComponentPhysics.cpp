@@ -437,9 +437,9 @@ void CComponentPhysics::ProcessEvent(SEntityEvent& event)
     case ENTITY_EVENT_UNHIDE:
     {
         // Force xform update to move physics component. Physics ignores updates while hidden.
-        SEntityEvent event(ENTITY_EVENT_XFORM);
-        event.nParam[0] = ENTITY_XFORM_POS | ENTITY_XFORM_ROT | ENTITY_XFORM_SCL;
-        OnEntityXForm(event);
+        SEntityEvent xformEvent(ENTITY_EVENT_XFORM);
+        xformEvent.nParam[0] = ENTITY_XFORM_POS | ENTITY_XFORM_ROT | ENTITY_XFORM_SCL;
+        OnEntityXForm(xformEvent);
     }
     case ENTITY_EVENT_VISIBLE:
         if (!gEnv->IsEditor() && !m_pPhysicalEntity && (GetFlags() & (FLAG_PHYSICS_REMOVED)))

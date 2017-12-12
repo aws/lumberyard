@@ -30,16 +30,21 @@
 #include "UiCheckboxComponent.h"
 #include "UiDraggableComponent.h"
 #include "UiDropTargetComponent.h"
+#include "UiDropdownComponent.h"
+#include "UiDropdownOptionComponent.h"
 #include "UiSliderComponent.h"
 #include "UiTextInputComponent.h"
 #include "UiScrollBarComponent.h"
 #include "UiScrollBoxComponent.h"
 #include "UiFaderComponent.h"
+#include "UiLayoutFitterComponent.h"
 #include "UiMaskComponent.h"
 #include "UiLayoutCellComponent.h"
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
+#include "UiRadioButtonComponent.h"
+#include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
 #include "UiTooltipDisplayComponent.h"
 #include "UiDynamicLayoutComponent.h"
@@ -81,7 +86,7 @@ namespace LyShine
         {
             serialize->Class<LyShineSystemComponent, AZ::Component>()
                 ->Version(0)
-                ->SerializerForEmptyClass();
+                ->Field("CursorImagePath", &LyShineSystemComponent::m_cursorImagePathname);
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
@@ -90,6 +95,8 @@ namespace LyShine
                         ->Attribute(AZ::Edit::Attributes::Category, "UI")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(0, &LyShineSystemComponent::m_cursorImagePathname, "CursorImagePath", "The cursor image path.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &LyShineSystemComponent::BroadcastCursorImagePathname);
                     ;
             }
         }
@@ -97,6 +104,7 @@ namespace LyShine
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<UiCanvasManagerBus>("UiCanvasManagerBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("CreateCanvas", &UiCanvasManagerBus::Events::CreateCanvas)
                 ->Event("LoadCanvas", &UiCanvasManagerBus::Events::LoadCanvas)
                 ->Event("UnloadCanvas", &UiCanvasManagerBus::Events::UnloadCanvas)
@@ -137,6 +145,12 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    LyShineSystemComponent::LyShineSystemComponent()
+    {
+        m_cursorImagePathname.SetAssetPath("engineassets/textures/cursor_green.tif");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     void LyShineSystemComponent::Init()
     {
     }
@@ -157,18 +171,23 @@ namespace LyShine
         RegisterComponentTypeForMenuOrdering(UiTextComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiButtonComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiCheckboxComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiRadioButtonComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiRadioButtonGroupComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiSliderComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiTextInputComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiScrollBarComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiScrollBoxComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDraggableComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDropTargetComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiDropdownComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiDropdownOptionComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiFaderComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiMaskComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiLayoutColumnComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiLayoutRowComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiLayoutGridComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiLayoutCellComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiLayoutFitterComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiTooltipComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiTooltipDisplayComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDynamicLayoutComponent::RTTI_Type());
@@ -191,6 +210,7 @@ namespace LyShine
         
         m_pLyShine = new CLyShine(gEnv->pSystem);
         gEnv->pLyShine = m_pLyShine;
+        BroadcastCursorImagePathname();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,6 +285,12 @@ namespace LyShine
         delete canvasFileObject->m_canvasEntity;
         delete canvasFileObject->m_rootSliceEntity;
         delete canvasFileObject;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void LyShineSystemComponent::BroadcastCursorImagePathname()
+    {
+        UiCursorBus::Broadcast(&UiCursorInterface::SetUiCursor, m_cursorImagePathname.GetAssetPath().c_str());
     }
 
 }

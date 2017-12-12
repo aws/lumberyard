@@ -27,15 +27,15 @@ class CSelectTrack
     : public TAnimTrack<ISelectKey>
 {
 public:
+    AZ_CLASS_ALLOCATOR(CSelectTrack, AZ::SystemAllocator, 0);
+    AZ_RTTI(CSelectTrack, "{D05D53BF-86D1-4D38-A3C6-4EFC09C16431}", IAnimTrack);
+
     EAnimValue GetValueType() { return eAnimValue_Select; };
 
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(ISelectKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-    }
+    static void Reflect(AZ::SerializeContext* serializeContext);
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_SELECTTRACK_H

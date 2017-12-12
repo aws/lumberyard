@@ -2,7 +2,9 @@
     "none": {
         "Source": [
             "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/StdAfx.h",
+            "Source/CloudCanvasCommonModule.cpp",
+            "Source/CloudCanvasCommonModule.h"
         ]
     },
     "auto": {
@@ -10,7 +12,6 @@
             "Include/CloudCanvasCommon/CloudCanvasCommonBus.h"
         ],
         "Source": [
-            "Source/CloudCanvasCommonModule.cpp",
             "Source/CloudCanvasCommonSystemComponent.cpp",
             "Source/CloudCanvasCommonSystemComponent.h"
         ]

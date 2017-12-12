@@ -148,8 +148,6 @@ public:
 
     // Vertex Transformation
     SSkinningData* GetVertexTransformationData(const bool bVertexAnimation, uint8 nRenderLOD);
-    bool ShouldSwSkin() const { return (m_AttFlags & FLAGS_ATTACH_SW_SKINNING) != 0; }
-    bool ShouldSkinLinear() const { return (m_AttFlags & FLAGS_ATTACH_LINEAR_SKINNING) != 0; }
     _smart_ptr<IRenderMesh> CreateVertexAnimationRenderMesh(uint lod, uint id);
     void CullVertexFrames(const SRenderingPassInfo& passInfo, float fDistance);
 
@@ -180,11 +178,13 @@ public:
     CVertexData m_vertexData;
     CVertexAnimation m_vertexAnimation;
     // history for skinning data, needed for motion blur
+    static const int tripleBufferSize = 3;
     struct
     {
         SSkinningData* pSkinningData;
+        int nNumBones;
         int nFrameID;
-    } m_arrSkinningRendererData[3];                                                      // triple buffered for motion blur
+    } m_arrSkinningRendererData[tripleBufferSize];                                                      // triple buffered for motion blur
 
     //! Lock whenever creating/releasing bone remappings
     AZStd::mutex m_remapMutex;

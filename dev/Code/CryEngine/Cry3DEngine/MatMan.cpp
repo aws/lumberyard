@@ -42,10 +42,19 @@ int CMatMan::e_pre_sketch_spec = 0;
 int CMatMan::e_texeldensity = 0;
 
 #if !defined(_RELEASE)
+    // Texture names to be used for error / process loading indications
+    static const char* szDefaultSolid = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
 static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
+    static const char* szTextureCompiling = "EngineAssets/TextureMsg/TextureCompiling.tif";
+    static const char* szShaderCompiling = "EngineAssets/TextureMsg/ShaderCompiling.tif";
 static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/GeomNotBreakable.tif";
 #else
+    // Some of the textures here will direct to the regular DefaultSolids_diff to prevent eye catching
+    // bug textures in release mode
+    static const char* szDefaultSolid = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
 static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
+    static const char* szTextureCompiling = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
+    static const char* szShaderCompiling = "EngineAssets/TextureMsg/DefaultSolids_diff.tif";
 static const char* szGeomNotBreakable = "EngineAssets/TextureMsg/ReplaceMeRelease.tif";
 #endif
 
@@ -149,6 +158,35 @@ _smart_ptr<IMaterial> CMatMan::CreateMaterial(const char* sMtlName, int nMtlFlag
 }
 
 //////////////////////////////////////////////////////////////////////////
+// A placeholder material while the original is loading.
+// Add more edge case handling for various material types if required
+_smart_ptr<IMaterial> CMatMan::CreateMaterialPlaceholder(const char* materialName, int nMtlFlags, const char* textureName)
+{
+    SInputShaderResources   sr;
+    SShaderItem             si;
+
+    sr.m_LMaterial.m_Opacity = 1;
+    sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
+    sr.m_LMaterial.m_Specular.set(0, 0, 0, 0);
+    sr.m_Textures[EFTT_DIFFUSE].m_Name = textureName;
+
+    if (nMtlFlags & MTL_FLAG_IS_TERRAIN)
+        si = GetRenderer()->EF_LoadShaderItem("Terrain.Layer", true, 0, &sr);
+    else if (nMtlFlags & MTL_FLAG_IS_SKY)
+        si = GetRenderer()->EF_LoadShaderItem("SkyHDR", true, 0, &sr);
+    else
+        si = GetRenderer()->EF_LoadShaderItem("Illum", true, 0, &sr);
+
+    if (si.m_pShaderResources)
+        si.m_pShaderResources->SetMaterialName(materialName);
+
+    _smart_ptr<IMaterial>   pMtl = CreateMaterial(materialName);
+    pMtl->AssignShaderItem(si);
+
+    return pMtl;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CMatMan::NotifyCreateMaterial(_smart_ptr<IMaterial> pMtl)
 {
     if (m_pListener)
@@ -157,8 +195,9 @@ void CMatMan::NotifyCreateMaterial(_smart_ptr<IMaterial> pMtl)
     }
 }
 
+
 //////////////////////////////////////////////////////////////////////////
-bool CMatMan::Unregister(CMatInfo* pMat, bool deleteEditorMaterial)
+bool CMatMan::Unregister(_smart_ptr<IMaterial> pMat, bool deleteEditorMaterial)
 {
     assert(pMat);
     if (m_pListener && deleteEditorMaterial)
@@ -166,7 +205,7 @@ bool CMatMan::Unregister(CMatInfo* pMat, bool deleteEditorMaterial)
         m_pListener->OnDeleteMaterial(pMat);
     }
 
-    if (!(pMat->m_Flags & MTL_FLAG_PURE_CHILD))
+    if (!(pMat->GetFlags() & MTL_FLAG_PURE_CHILD))
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
         
@@ -221,7 +260,8 @@ _smart_ptr<IMaterial> CMatMan::FindMaterial(const char* sMtlName) const
     return it->second;
 }
 
-//////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
 _smart_ptr<IMaterial> CMatMan::LoadMaterial(const char* sMtlName, bool bMakeIfNotFound, bool bNonremovable, unsigned long nLoadingFlags)
 {
     return LoadMaterialInternal(sMtlName, bMakeIfNotFound, bNonremovable, nLoadingFlags);
@@ -229,7 +269,8 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterial(const char* sMtlName, bool bMakeIfNo
 
 
 
-//////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
 _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool bMakeIfNotFound, bool bNonremovable, unsigned long nLoadingFlags)
 {
     if (!m_bInitialized)
@@ -244,6 +285,7 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
 
     AZStd::string name = UnifyName(sMtlName);
     _smart_ptr<IMaterial> pMtl = nullptr;
+
     UniqueManualEvent uniqueManualEvent = CheckMaterialCache(name, pMtl);
 
     if (pMtl != nullptr)
@@ -256,9 +298,9 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
     {
         if (bMakeIfNotFound)
         {
-            return m_pDefaultMtl;
+            pMtl = CreateMaterialPlaceholder(name.c_str(), nLoadingFlags, szDefaultSolid);
+            return pMtl;
         }
-
         return nullptr;
     }
     
@@ -294,21 +336,11 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
             // Fall through
         case AzFramework::AssetSystem::AssetStatus_Compiling:
         {
-            // Create a place holder material while the original is loading.
             AZStd::string unifiedName = UnifyName(filename.c_str());
-            SInputShaderResources sr;
-            sr.m_LMaterial.m_Opacity = 1;
-            sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
-            sr.m_Textures[EFTT_DIFFUSE].m_Name = "EngineAssets/TextureMsg/color_White.tif";
-            SShaderItem si = GetRenderer()->EF_LoadShaderItem("Illum", true, 0, &sr);
-            if (si.m_pShaderResources)
-            {
-                si.m_pShaderResources->SetMaterialName(unifiedName.c_str());
-            }
-            pMtl = CreateMaterial(unifiedName.c_str());
-            pMtl->AssignShaderItem(si);
+            pMtl = CreateMaterialPlaceholder(unifiedName.c_str(), nLoadingFlags, szDefaultSolid );
             break;
         }
+
         case AzFramework::AssetSystem::AssetStatus_Compiled:
             // If the materials compiled it could be that between the check if it exists and getting the status it completed compilation.
             //      In this case, check the status again and load as normal if found, otherwise consider it an error.
@@ -359,15 +391,15 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
         }
     }
 
-    if (!pMtl && bMakeIfNotFound)
-    {
-        pMtl = m_pDefaultMtl;
-    }
-
     if (bNonremovable && pMtl)
-    {
+    {   // mark as non-removable material on specific cases (probes..)
         AZStd::lock_guard<AZStd::mutex> lock(m_nonRemovablesMutex);
         m_nonRemovables.push_back((CMatInfo*)pMtl.get());
+    }
+
+    if (!pMtl && bMakeIfNotFound)
+    {
+        pMtl = CreateMaterialPlaceholder(name.c_str(), nLoadingFlags, szDefaultSolid);
     }
 
     return pMtl;
@@ -380,29 +412,25 @@ UniqueManualEvent CMatMan::CheckMaterialCache(const AZStd::string& name, T& cach
     bool hasControl = false;
     ManualResetEvent* manualResetEvent;
 
-    {
-        AZStd::unique_lock<AZStd::recursive_mutex> lock(m_materialMapMutex);
+    AZStd::unique_lock<AZStd::recursive_mutex> lock(m_materialMapMutex);
 
-        auto iterator = m_pendingMaterialLoads.find(name);
+    auto iterator = m_pendingMaterialLoads.find(name);
 
-        if (iterator != m_pendingMaterialLoads.end())
-        {
-            manualResetEvent = iterator->second.get();
-        }
-        else
+    if (iterator != m_pendingMaterialLoads.end())
     {
-            // Event not found, create one
-            hasControl = true;
-            manualResetEvent = new ManualResetEvent();
-            m_pendingMaterialLoads.emplace(name, AZStd::unique_ptr<ManualResetEvent>(manualResetEvent));
-        }
+        manualResetEvent = iterator->second.get();
+    }
+    else
+    {
+        // Event not found, create one
+        hasControl = true;
+        manualResetEvent = new ManualResetEvent();
+        m_pendingMaterialLoads.emplace(name, AZStd::unique_ptr<ManualResetEvent>(manualResetEvent));
     }
 
     if (!hasControl)
     {
         manualResetEvent->Wait();
-
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
 
         MtlNameMap::const_iterator it = m_mtlNameMap.find(name);
 
@@ -411,13 +439,14 @@ UniqueManualEvent CMatMan::CheckMaterialCache(const AZStd::string& name, T& cach
             cachedMaterial = it->second;
         }
         else
-    {
+        {
             cachedMaterial = nullptr;
         }
     }
 
     return UniqueManualEvent(manualResetEvent, hasControl);
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName, XmlNodeRef node, bool bForcePureChild, uint16 sortPrio /*= 0*/, _smart_ptr<IMaterial> pExistingMtl /*= 0*/, unsigned long nLoadingFlags /*= 0*/, _smart_ptr<IMaterial> pParentMtl /*= 0*/)
@@ -447,6 +476,7 @@ _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName
     else
     {
         pMtl->SetFlags(mtlFlags | pMtl->GetFlags());
+        pMtl->SetDirty(false);
     }
 
     if (!(mtlFlags & MTL_FLAG_MULTI_SUBMTL))
@@ -703,7 +733,6 @@ bool CMatMan::LoadMaterialLayerSlot(uint32 nSlot, _smart_ptr<IMaterial> pMtl, co
     if (pInputResources.m_Textures[EFTT_DIFFUSE].m_Name.empty())
     {
         pInputResources.m_Textures[EFTT_DIFFUSE].m_Name = szReplaceMe;
-        //      pInputResources.m_Textures[EFTT_DIFFUSE].m_Name = "<default>";
     }
 
     if (pInputResources.m_Textures[EFTT_NORMALS].m_Name.empty())
@@ -1005,36 +1034,12 @@ void CMatMan::InitDefaults()
     {
         // This line is REQUIRED by the buildbot testing framework to determine when tests have formally started. Please inform WillW or Morgan before changing this.
         CryLogAlways("Initializing default materials...");
-
-        m_pDefaultMtl = new CMatInfo;
-        m_pDefaultMtl->SetName("Default");
-        SInputShaderResources sr;
-        sr.m_LMaterial.m_Opacity = 1;
-        sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
-        sr.m_Textures[EFTT_DIFFUSE].m_Name = szReplaceMe;
-        //sr.m_Textures[EFTT_DIFFUSE].m_Name = "<default>";
-        SShaderItem si = GetRenderer()->EF_LoadShaderItem("Illum", true, 0, &sr);
-        if (si.m_pShaderResources)
-        {
-            si.m_pShaderResources->SetMaterialName("Default");
-        }
-        m_pDefaultMtl->AssignShaderItem(si);
+        m_pDefaultMtl = CreateMaterialPlaceholder("Default", 0, szReplaceMe);
     }
 
     if (!m_pDefaultTerrainLayersMtl)
     {
-        m_pDefaultTerrainLayersMtl = new CMatInfo;
-        m_pDefaultTerrainLayersMtl->SetName("DefaultTerrainLayer");
-        SInputShaderResources sr;
-        sr.m_LMaterial.m_Opacity = 1;
-        sr.m_LMaterial.m_Diffuse.set(1, 1, 1, 1);
-        sr.m_Textures[EFTT_DIFFUSE].m_Name = szReplaceMe;
-        SShaderItem si = GetRenderer()->EF_LoadShaderItem("Terrain.Layer", true, 0, &sr);
-        if (si.m_pShaderResources)
-        {
-            si.m_pShaderResources->SetMaterialName("DefaultTerrainLayer");
-        }
-        m_pDefaultTerrainLayersMtl->AssignShaderItem(si);
+        m_pDefaultTerrainLayersMtl = CreateMaterialPlaceholder("DefaultTerrainLayer", MTL_FLAG_IS_TERRAIN, szReplaceMe);
     }
 
     if (!m_pDefaultLayersMtl)
@@ -1141,6 +1146,27 @@ namespace
     {
         return (pMtl->GetFlags() & MTL_FLAG_MULTI_SUBMTL) ? true : false;
     };
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMatMan::ReloadMaterial(_smart_ptr<IMaterial> pMtl)
+{
+    AZStd::string name = UnifyName(pMtl->GetName());
+
+    AZStd::string filename = name;
+    auto extPos = filename.find('.');
+    if (extPos == AZStd::string::npos)
+    {
+        filename += MATERIAL_EXT;
+    }
+
+    XmlNodeRef mtlNode = GetSystem()->LoadXmlFromFile(filename.c_str());
+
+    // This should reload the Material's data in-place without modifying any
+    // material management registration. Otherwise we would have to send some
+    // kind of messages about the material being replaced to every object 
+    // with a pointer to it.
+    MakeMaterialFromXml(name, mtlNode, false, 0, pMtl);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1472,7 +1498,7 @@ void CMatMan::OnFileChanged(AZStd::string assetPath)
 
     if (mat)
     {
-        Unregister(static_cast<CMatInfo*>(mat.get()), false);
+        Unregister(mat, false);
 
         //Check all statObjs to see if they are using this material and reload them if so.
         int statObjCount = 0;
@@ -1508,8 +1534,8 @@ void CMatMan::OnFileChanged(AZStd::string assetPath)
             gEnv->p3DEngine->GetLoadedStatObjArray(&objects[0], statObjCount);
             for (int curObj = 0; curObj < statObjCount; ++curObj)
             {
-                _smart_ptr<IMaterial> mat = objects[curObj]->GetMaterial();
-                if (mat && !strcmp(mat->GetName(),
+                _smart_ptr<IMaterial> objMaterial = objects[curObj]->GetMaterial();
+                if (objMaterial && !strcmp(objMaterial->GetName(),
                     "Default"))
                 {
                     objects[curObj]->Refresh(FRO_GEOMETRY);
@@ -1526,7 +1552,7 @@ void CMatMan::OnFileRemoved(AZStd::string assetPath)
     _smart_ptr<IMaterial> mat = FindMaterial(assetPath.c_str());
     if (mat)
     {
-        Unregister(static_cast<CMatInfo*>(mat.get()));
+        Unregister(mat);
 
 
         //Check all statObjs to see if they are using this material and reload them if so.
@@ -1550,3 +1576,4 @@ void CMatMan::OnFileRemoved(AZStd::string assetPath)
         }
     }
 }
+

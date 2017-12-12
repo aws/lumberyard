@@ -513,18 +513,6 @@ void CXConsoleVariableCVarGroup::OnCVarChangeFunc(ICVar* pVar)
 
     int iValue = pThis->GetIVal();
 
-    // all sys_spec_* should be clamped by the max available spec
-    if (_strnicmp(pThis->GetName(), "sys_spec", 8) == 0)
-    {
-        int iMaxSpec = gEnv->pSystem->GetMaxConfigSpec();
-
-        if (iValue > iMaxSpec)
-        {
-            iValue = iMaxSpec;
-            pThis->m_iValue = iValue;
-        }
-    }
-
     TCVarGroupStateMap::const_iterator itGrp = pThis->m_CVarGroupStates.find(iValue);
 
     SCVarGroup* pGrp = 0;

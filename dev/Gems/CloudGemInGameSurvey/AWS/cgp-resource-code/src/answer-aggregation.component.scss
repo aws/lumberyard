@@ -1,0 +1,31 @@
+﻿@import "./styles/variables";
+
+.answer-aggregation {
+    border: 1px solid $border-gray;
+    padding: 10px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.answer-table tr {
+    border-bottom:1px solid $light-gray;
+}
+
+.answer-table tbody {
+    border: none;
+    border: 1px solid $light-gray;
+    border-collapse: collapse;
+}
+
+.active-chart {
+    color: $primary-color;  
+}
+
+.cursor-pointer {
+    cursor: pointer;   
+}
+
+.question-title {
+    font-weight: bold;
+    padding-bottom: 5px;
+}

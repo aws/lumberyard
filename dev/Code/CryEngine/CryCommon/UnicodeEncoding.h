@@ -353,8 +353,8 @@ namespace Unicode
         struct SBase<T&, Tag>
         {
             T& base;
-            SBase(T& base)
-                : base(base) {}
+            SBase(T& b)
+                : base(b) {}
             T& GetBase() { return base; }
             const T& GetBase() const { return base; }
         };
@@ -568,8 +568,8 @@ namespace Unicode
         struct SDecoder<SameEncoding, SEncoder<SameEncoding, Sink>, void>
         {
             Sink sink;
-            SDecoder(Sink sink)
-                : sink(sink) {}
+            SDecoder(Sink s)
+                : sink(s) {}
             void operator()(uint32 unit)
             {
                 sink(unit);

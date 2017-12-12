@@ -16,7 +16,6 @@
 #include "EffectPlayer.h"
 
 #include <ICryAnimation.h>
-#include <IInput.h>
 #include <IEntitySystem.h>
 
 namespace CharacterTool {

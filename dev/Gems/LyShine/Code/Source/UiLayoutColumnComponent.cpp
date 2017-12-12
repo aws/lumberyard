@@ -337,13 +337,15 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
             editInfo->DataElement(AZ::Edit::UIHandlers::LayoutPadding, &UiLayoutColumnComponent::m_padding, "Padding", "The layout padding")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show) // needed because sub-elements are hidden
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::SpinBox, &UiLayoutColumnComponent::m_spacing, "Spacing", "The spacing between children")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiLayoutColumnComponent::m_order, "Order", "Which direction the column fills")
                 ->EnumAttribute(UiLayoutInterface::VerticalOrder::TopToBottom, "Top to bottom")
@@ -354,7 +356,8 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
                 "When checked, fixed default layout cell values are used for child elements with no LayoutCell\n"
                 "component rather than using defaults calculated by other components on the child.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateLayout)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::InvalidateParentLayout)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutColumnComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
 
             // Alignment
             {
@@ -381,6 +384,7 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiLayoutColumnBus>("UiLayoutColumnBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetPadding", &UiLayoutColumnBus::Events::GetPadding)
             ->Event("SetPadding", &UiLayoutColumnBus::Events::SetPadding)
             ->Event("GetSpacing", &UiLayoutColumnBus::Events::GetSpacing)
@@ -398,6 +402,7 @@ void UiLayoutColumnComponent::Reflect(AZ::ReflectContext* context)
 void UiLayoutColumnComponent::Activate()
 {
     UiLayoutBus::Handler::BusConnect(m_entity->GetId());
+    UiLayoutControllerBus::Handler::BusConnect(m_entity->GetId());
     UiLayoutColumnBus::Handler::BusConnect(m_entity->GetId());
     UiLayoutCellDefaultBus::Handler::BusConnect(m_entity->GetId());
     UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
@@ -409,6 +414,7 @@ void UiLayoutColumnComponent::Activate()
 void UiLayoutColumnComponent::Deactivate()
 {
     UiLayoutBus::Handler::BusDisconnect();
+    UiLayoutControllerBus::Handler::BusDisconnect();
     UiLayoutColumnBus::Handler::BusDisconnect();
     UiLayoutCellDefaultBus::Handler::BusDisconnect();
     UiTransformChangeNotificationBus::Handler::BusDisconnect();
@@ -424,6 +430,12 @@ void UiLayoutColumnComponent::InvalidateLayout()
 void UiLayoutColumnComponent::InvalidateParentLayout()
 {
     UiLayoutHelpers::InvalidateParentLayout(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiLayoutColumnComponent::CheckLayoutFitterAndRefreshEditorTransformProperties() const
+{
+    UiLayoutHelpers::CheckFitterAndRefreshEditorTransformProperties(GetEntityId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

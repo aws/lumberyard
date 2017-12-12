@@ -98,8 +98,8 @@ bool CTrackEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selecte
             IEventKey eventKey;
             keyHandle.GetKey(&eventKey);
 
-            mv_event = eventKey.event;
-            mv_value = eventKey.eventValue;
+            mv_event = eventKey.event.c_str();
+            mv_value = eventKey.eventValue.c_str();
             mv_editEvents = false;
 
             bAssigned = true;

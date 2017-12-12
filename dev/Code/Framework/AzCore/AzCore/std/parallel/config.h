@@ -24,12 +24,12 @@
  * for more information. We are conforming with \ref C++0x but of course have
  * have limited support.
  *
- * \li \ref AZStd::atomic                                           (supported on PC,X360,PS3, and a locking implementation on Wii)
- * \li \ref AZStd::mutex (a.k.a critical_section)                   (supported on PC,X360,PS3,Wii)
- * \li \ref AZStd::recursive_mutex (a.k.a critical_section)         (supported on PC,X360,PS3,Wii)
- * \li \ref AZStd::semaphore                                        (supported on PC,X360,PS3,Wii)
- * \li \ref AZStd::thread                                           (supported on PC,X360,PS3,Wii)
- * \li \ref AZStd::condition_variable                               (supported on PC,X360,PS3,Wii)
+ * \li \ref AZStd::atomic                                           
+ * \li \ref AZStd::mutex (a.k.a critical_section)                   
+ * \li \ref AZStd::recursive_mutex (a.k.a critical_section)         
+ * \li \ref AZStd::semaphore                                        
+ * \li \ref AZStd::thread                                           
+ * \li \ref AZStd::condition_variable                               
  * \li \ref AZStd::lock
  * \li \ref ParallelContainers
  *
@@ -120,9 +120,6 @@
 #   include <pthread.h>
 #   include <semaphore.h>
 #   include <sys/time.h>
-#elif defined(AZ_PLATFORM_WII)
-    #include <revolution/os.h>
-    #include <revolution/os/OSMutex.h>
 #endif
 
 #if defined(AZ_PLATFORM_APPLE)
@@ -163,8 +160,6 @@ namespace AZStd
     };
     typedef HANDLE              native_thread_handle_type;
 
-#elif defined(AZ_PLATFORM_WII)
-    // Redacted
 #elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     // Mutex
     typedef pthread_mutex_t     native_mutex_data_type;

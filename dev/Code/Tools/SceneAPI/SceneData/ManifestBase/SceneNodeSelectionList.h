@@ -41,8 +41,8 @@ namespace AZ
                 : public DataTypes::ISceneNodeSelectionList
             {
             public:
-                AZ_RTTI(SceneNodeSelectionList, "{D0CE66CE-1BAD-42F5-86ED-3923573B3A02}", ISceneNodeSelectionList);
-                ~SceneNodeSelectionList() = default;
+                AZ_RTTI(SceneNodeSelectionList, "{D0CE66CE-1BAD-42F5-86ED-3923573B3A02}", DataTypes::ISceneNodeSelectionList);
+                ~SceneNodeSelectionList() override;
 
                 SCENE_DATA_API size_t GetSelectedNodeCount() const override;
                 SCENE_DATA_API const AZStd::string& GetSelectedNode(size_t index) const override;
@@ -57,7 +57,7 @@ namespace AZ
                 SCENE_DATA_API void ClearUnselectedNodes() override;
 
                 SCENE_DATA_API AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList> Copy() const override;
-                SCENE_DATA_API void CopyTo(ISceneNodeSelectionList& other) const override;
+                SCENE_DATA_API void CopyTo(DataTypes::ISceneNodeSelectionList& other) const override;
 
                 static void Reflect(AZ::ReflectContext* context);
                 
@@ -65,6 +65,9 @@ namespace AZ
                 AZStd::vector<AZStd::string> m_selectedNodes;
                 AZStd::vector<AZStd::string> m_unselectedNodes;
             };
+            
+            inline SceneNodeSelectionList::~SceneNodeSelectionList() = default;
+            
         } // SceneData
     } // SceneAPI
 } // AZ

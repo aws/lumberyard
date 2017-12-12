@@ -34,7 +34,6 @@ namespace LYGame
         // EditorGameRequestBus interface implementation
         IGameStartup* CreateGameStartup() override;
         IEditorGame* CreateEditorGame() override;
-        const char* GetGameName() const override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

@@ -18,8 +18,6 @@ from waflib import Context, TaskGen, Logs
 from waflib.Task import Task
 from waflib.Configure import conf
 
-import lumberyard_sdks
-
 #############################################################################
 class use_file_generator(BuildContext):
     ''' Util class to generate a use dependency file for a single module '''
@@ -30,7 +28,8 @@ class use_file_generator(BuildContext):
 # Sets to store 'exempt' modules for use maps.  These modules are identified as ones that do not implicitly belong
 # within inferred use maps
 EXEMPT_USE_MODULES = ['AZCodeGenerator']
-EXEMPT_SPEC_MODULES = ['MetricsPlugin','ProjectConfigurator', 'DXOrbisShaderCompiler']
+EXEMPT_SPEC_MODULES = ['MetricsPlugin','ProjectConfigurator',
+                      ]
 
 @conf
 def mark_module_exempt(ctx, target):
@@ -111,6 +110,52 @@ def get_module_configurations(ctx, target, platform=None, preprocess=True):
     else:
         return configurations
 
+
+def _read_module_def_file(ctx, target_name, parent_module, parent_spec):
+    """
+    Read a module's use_map file if possible
+    :param ctx:          Context
+    :param target_name:  Name of the module
+    :return:             Modules defined in the use_map if possible
+    """
+    if _is_module_exempt(ctx, target_name):
+        return None
+
+    # If a module 'uses' a uselib module, that means that the module intends to allow the
+    # dependents of the module to inherit the uselib as well, which is valid.  Uselibs do
+    # not have any dependent uses.
+    third_party_uselibs = getattr(ctx.all_envs[''], 'THIRD_PARTY_USELIBS', [])
+    if target_name in third_party_uselibs:
+        return None
+
+    module_def = read_module_def_file(ctx, target_name)
+    if module_def is None:
+        if parent_module is not None:
+            pass
+        elif parent_spec is not None:
+            # Only show the warning for modules that are on exempt module spec list and they are not a GEM
+            if not target_name in EXEMPT_SPEC_MODULES and not ctx.is_gem(target_name):
+                Logs.warn('[WARN] Invalid module {} defined as a use dependency in waf spec \'{}\''.format(target_name,
+                                                                                                           parent_spec))
+        return None
+    return module_def
+
+@conf
+def get_export_internal_3rd_party_lib(ctx, target, parent_spec):
+    """
+    Determine if a module has the 'export_internal_3rd_party_lib' flag set to True
+
+    :param ctx:     Context
+    :param target:  Name of the module
+    :param parent_spec: Name of the parent spec
+    :return:    True if 'export_internal_3rd_party_lib' ios set to True, default to False if not specified
+    """
+    module_def = cached_module_def_map.get(target, _read_module_def_file(ctx, target, None, parent_spec))
+    if not module_def:
+        return False
+    return module_def.get('export_internal_3rd_party_lib', False)
+
+
 @conf
 def get_module_uses(ctx, target, parent_spec):
     """
@@ -121,34 +166,6 @@ def get_module_uses(ctx, target, parent_spec):
     :return:        Set of all modules that this module is dependent on
     """
 
-    def _read_module_def_file(ctx, target_name, parent_module, parent_spec):
-        """
-        Read a module's use_map file if possible
-        :param ctx:          Context
-        :param target_name:  Name of the module
-        :return:             Modules defined in the use_map if possible
-        """
-        if _is_module_exempt(ctx, target_name):
-            return None
-
-        # If a module 'uses' a uselib module, that means that the module intends to allow the
-        # dependents of the module to inherit the uselib as well, which is valid.  Uselibs do
-        # not have any dependent uses.
-        third_party_uselibs = getattr(ctx.all_envs[''], 'THIRD_PARTY_USELIBS', [])
-        if target_name in third_party_uselibs:
-            return None
-
-        module_def = read_module_def_file(ctx, target_name)
-        if module_def is None:
-            if parent_module is not None:
-                pass
-            elif parent_spec is not None:
-                # Only show the warning for modules that are on exempt module spec list and they are not a GEM
-                if not target_name in EXEMPT_SPEC_MODULES and not ctx.is_gem(target_name):
-                    Logs.warn('[WARN] Invalid module {} defined as a use dependency in waf spec \'{}\''.format(target_name,parent_spec))
-            return None
-        return module_def
-
     def _get_module_use(ctx, target_name, parent_module, parent_spec):
         """
         Determine all of the uses for a module recursivel
@@ -157,8 +174,9 @@ def get_module_uses(ctx, target, parent_spec):
         :return:        Set of all modules that this module is dependent on
         """
         if target_name not in cached_module_use_map:
-            module_def = _read_module_def_file(ctx, target_name, parent_module, parent_spec)
             uses = []
+            cached_module_use_map[target_name] = uses
+            module_def = _read_module_def_file(ctx, target_name, parent_module, parent_spec)
             if module_def is not None:
                 uses += module_def['uses']
             sub_uses = []
@@ -166,7 +184,6 @@ def get_module_uses(ctx, target, parent_spec):
                 if target_name != use:
                     sub_uses += _get_module_use(ctx, use, target_name, None)
             uses += sub_uses
-            cached_module_use_map[target_name] = uses
         return cached_module_use_map[target_name]
 
     return _get_module_use(ctx, target, None, parent_spec)
@@ -248,9 +265,11 @@ def gen_create_use_map_file(tgen):
     use_module_list = getattr(tgen, 'use_module_list')
     platform_list = getattr(tgen, 'platform_list')
     config_list = getattr(tgen, 'configuration_list')
+    export_internal_3p_libs = getattr(tgen, 'export_internal_3p_libs')
 
     # Create the taskgen for the use_map generation
     tsk = tgen.create_task('gen_module_def_file', wscript_src, module_def_file )
+    setattr(tsk, 'EXPORT_INTERNAL_3P_LIBS', export_internal_3p_libs)
     setattr(tsk, 'USE_MAP_LIST', use_module_list)
     setattr(tsk, 'PLATFORM_LIST', [] if platform_list is None else platform_list)
     setattr(tsk, 'CONFIG_LIST', [] if config_list is None else config_list)
@@ -278,6 +297,10 @@ class gen_module_def_file(Task):
                       "platforms": self.PLATFORM_LIST,
                       "configurations": self.CONFIG_LIST,
                       "uses": self.USE_MAP_LIST}
+
+        if self.EXPORT_INTERNAL_3P_LIBS:
+            module_def["export_internal_3rd_party_lib"] = True
+
         module_def_json = json.dumps(module_def)
         return module_def_json
 

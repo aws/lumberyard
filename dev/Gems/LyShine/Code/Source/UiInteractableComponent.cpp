@@ -31,7 +31,7 @@ class BehaviorUiInteractableNotificationBusHandler : public UiInteractableNotifi
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(BehaviorUiInteractableNotificationBusHandler, "{BBF912EB-8F45-4869-B1F0-19CDA9D16231}", AZ::SystemAllocator,
-        OnHoverStart, OnHoverEnd, OnPressed, OnReleased);
+        OnHoverStart, OnHoverEnd, OnPressed, OnReleased, OnReceivedHoverByNavigatingFromDescendant);
 
     void OnHoverStart() override
     {
@@ -52,11 +52,17 @@ public:
     {
         Call(FN_OnReleased);
     }
+
+    void OnReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId) override
+    {
+        Call(FN_OnReceivedHoverByNavigatingFromDescendant, descendantEntityId);
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiInteractableComponent::UiInteractableComponent()
-    : m_isHandlingEvents(true)
+    : m_isAutoActivationEnabled(false)
+    , m_isHandlingEvents(true)
     , m_isHover(false)
     , m_isPressed(false)
     , m_pressedPoint(0.0f, 0.0f)
@@ -196,6 +202,12 @@ void UiInteractableComponent::HandleHoverEnd()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::HandleReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId)
+{
+    TriggerReceivedHoverByNavigatingFromDescendantAction(descendantEntityId);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiInteractableComponent::IsHandlingEvents()
 {
     return m_isHandlingEvents;
@@ -205,6 +217,18 @@ bool UiInteractableComponent::IsHandlingEvents()
 void UiInteractableComponent::SetIsHandlingEvents(bool isHandlingEvents)
 {
     m_isHandlingEvents = isHandlingEvents;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::GetIsAutoActivationEnabled()
+{
+    return m_isAutoActivationEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::SetIsAutoActivationEnabled(bool isEnabled)
+{
+    m_isAutoActivationEnabled = isEnabled;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -338,6 +362,8 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
 
             ->Field("NavigationSettings", &UiInteractableComponent::m_navigationSettings)
 
+            ->Field("IsAutoActivationEnabled", &UiInteractableComponent::m_isAutoActivationEnabled)
+
             ->Field("HoverStartActionName", &UiInteractableComponent::m_hoverStartActionName)
             ->Field("HoverEndActionName", &UiInteractableComponent::m_hoverEndActionName)
             ->Field("PressedActionName", &UiInteractableComponent::m_pressedActionName)
@@ -358,6 +384,11 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             // Navigation
             editInfo->DataElement(0, &UiInteractableComponent::m_navigationSettings, "Navigation",
                 "How to navigate from this interactbale to the next interactable");
+
+            editInfo->DataElement(0, &UiInteractableComponent::m_isAutoActivationEnabled, "Auto activate",
+                "When checked, this interactable will automatically become active when navigated to with a gamepad/keyboard.\n"
+                "When unchecked, a button press is required to activate/deactivate this interactable.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiInteractableComponent::IsAutoActivationSupported);
 
             // States Group
             {
@@ -391,10 +422,14 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiInteractableBus>("UiInteractableBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("IsHandlingEvents", &UiInteractableBus::Events::IsHandlingEvents)
-            ->Event("SetIsHandlingEvents", &UiInteractableBus::Events::SetIsHandlingEvents);
+            ->Event("SetIsHandlingEvents", &UiInteractableBus::Events::SetIsHandlingEvents)
+            ->Event("GetIsAutoActivationEnabled", &UiInteractableBus::Events::GetIsAutoActivationEnabled)
+            ->Event("SetIsAutoActivationEnabled", &UiInteractableBus::Events::SetIsAutoActivationEnabled);
 
         behaviorContext->EBus<UiInteractableActionsBus>("UiInteractableActionsBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetHoverStartActionName", &UiInteractableActionsBus::Events::GetHoverStartActionName)
             ->Event("SetHoverStartActionName", &UiInteractableActionsBus::Events::SetHoverStartActionName)
             ->Event("GetHoverEndActionName", &UiInteractableActionsBus::Events::GetHoverEndActionName)
@@ -410,6 +445,7 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Enum<(int)UiInteractableStatesInterface::StateDisabled>("eUiInteractableState_Disabled");
 
         behaviorContext->EBus<UiInteractableStatesBus>("UiInteractableStatesBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetStateColor", &UiInteractableStatesBus::Events::GetStateColor)
             ->Event("SetStateColor", &UiInteractableStatesBus::Events::SetStateColor)
             ->Event("HasStateColor", &UiInteractableStatesBus::Events::HasStateColor)
@@ -425,6 +461,7 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Event("HasStateFont", &UiInteractableStatesBus::Events::HasStateFont);
 
         behaviorContext->EBus<UiInteractableNotificationBus>("UiInteractableNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<BehaviorUiInteractableNotificationBusHandler>();
     }
 
@@ -591,6 +628,18 @@ void UiInteractableComponent::TriggerReleasedAction()
         // Queue the event to prevent deletions during the input event
         EBUS_QUEUE_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_releasedActionName);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::TriggerReceivedHoverByNavigatingFromDescendantAction(AZ::EntityId descendantEntityId)
+{
+    EBUS_EVENT_ID(GetEntityId(), UiInteractableNotificationBus, OnReceivedHoverByNavigatingFromDescendant, descendantEntityId);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::IsAutoActivationSupported()
+{
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

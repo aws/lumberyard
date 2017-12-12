@@ -148,9 +148,10 @@ void CAssetBrowserModel::OnAssetFilterChanged()
 //////////////////////////////////////////////////////////////////////////
 void CAssetBrowserDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CAssetBrowserDialog>(GetIEditor(), LyViewPane::LegacyAssetBrowser, LyViewPane::CategoryOther, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CAssetBrowserDialog>(LyViewPane::LegacyAssetBrowser, LyViewPane::CategoryOther, options);
     CommandManagerHelper::RegisterCommand(
         GetIEditor()->GetCommandManager(),
         "asset_browser",

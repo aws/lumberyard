@@ -67,10 +67,11 @@ namespace GridMate
             Reliable =          1 << 3,
             IncludeCtorData =   1 << 4,
             OmitUnmodified =    1 << 5,
+            ForceReliable =     1 << 6,
 
             None = 0,
-            NewProxy = IncludeDatasets | OmitUnmodified | Reliable,
-            FullSync = IncludeDatasets | ForceDirty | Authoritative | Reliable,
+            NewProxy = IncludeDatasets | OmitUnmodified | Authoritative | Reliable | ForceReliable,
+            FullSync = IncludeDatasets | ForceDirty | Authoritative | Reliable | ForceReliable,
         };
     };
     //-----------------------------------------------------------------------------

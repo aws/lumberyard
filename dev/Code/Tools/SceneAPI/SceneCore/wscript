@@ -21,9 +21,9 @@ def build(bld):
         configurations      = ['debug_all', 'profile_all'],
         disable_pch         = True,
         includes            = [ bld.Path('Code/Tools') ],
-        use                 = [ 'AzCore', 'AzFramework', 'AzToolsFramework', 'GFxFramework', 'EmotionFXSharedLib' ],
+        use                 = [ 'AzCore', 'AzFramework', 'AzToolsFramework', 'GFxFramework', 'EMotionFXStaticLib' ],
         defines             = [ 'SCENE_CORE_EXPORTS', '_HAS_EXCEPTIONS=0' ],
-        features            = [ 'crcfix' ],
+        features            = [ 'crcfix', 'link_running_program' ],
 
         output_sub_folder_copy = 'rc',
 

@@ -18,15 +18,16 @@
 #include "D3DPostProcess.h"
 #include <I3DEngine.h>
 #include <IEntityRenderState.h>
-#include "../Common/ReverseDepth.h"
 #include "MultiLayerAlphaBlendPass.h"
+#include <Common/ReverseDepth.h>
+#include <Common/RenderCapabilities.h>
 
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
 
 
-HRESULT CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat)
+long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat)
 {
     FUNCTION_PROFILER_RENDER_FLAT
     HRESULT hr;
@@ -469,7 +470,7 @@ void CD3D9Renderer::FX_ClearTarget(D3DSurface* pView, const ColorF& cClear, cons
     GetDeviceContext().ClearView(
         pView,
         (const FLOAT*)&cClear,
-        pRects, 
+        pRects,
         numRects);
 #else
     if (!numRects)
@@ -1249,7 +1250,6 @@ void CD3D9Renderer::FX_SetState(int st, int AlphaRef, int RestoreState)
                 BS.Desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
                 blendOperationAlpha = D3D11_BLEND_OP_MAX;
                 break;
-
             }
 
             // todo: add separate alpha blend support for mrt
@@ -1426,13 +1426,9 @@ void CD3D9Renderer::FX_HairState(uint32& nState, const SShaderPass* pPass)
             nState = (nState & ~(GS_BLEND_MASK | GS_DEPTHFUNC_MASK));
             nState |= GS_DEPTHFUNC_LESS;
 
-            if ((m_RP.m_nPassGroupID == EFSLIST_TRANSP) && (m_RP.m_pShader->m_Flags2 & EF2_DEPTH_FIXUP))
+            if ((m_RP.m_nPassGroupID == EFSLIST_TRANSP) && (m_RP.m_pShader->m_Flags2 & EF2_DEPTH_FIXUP) && RenderCapabilities::SupportsDualSourceBlending())
             {
-#if defined(CRY_USE_METAL) || defined(OPENGL_ES)
-                nState |= GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA;
-#else
                 nState |= GS_BLSRC_SRC1ALPHA | GS_BLDST_ONEMINUSSRC1ALPHA | GS_BLALPHA_MIN;
-#endif
             }
             else
             {
@@ -1528,7 +1524,6 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
     else if ((m_RP.m_nPassGroupID == EFSLIST_TRANSP) && (m_RP.m_nSortGroupID == 1) &&
              !(rRP.m_PersFlags2 & RBPF2_MOTIONBLURPASS) && !(m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & (RBPF_SHADOWGEN | RBPF_ZPASS)))
     {
-
         State &= ~GS_BLALPHA_MASK;
 
         // Depth fixup for transparent geometry
@@ -1544,7 +1539,6 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
                 State |= GS_BLALPHA_MIN;
             }
         }
-
     }
 
     if ((rRP.m_PersFlags2 & RBPF2_ALLOW_DEFERREDSHADING) && (rRP.m_pShader->m_Flags & EF_SUPPORTSDEFERREDSHADING))
@@ -1667,7 +1661,7 @@ bool CD3D9Renderer::FX_GetTargetSurfaces(CTexture* pTarget, D3DSurface*& pTargSu
     return true;
 }
 
-bool CD3D9Renderer::FX_SetRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
+bool CD3D9Renderer::FX_SetRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
 {
     if (nTarget >= RT_STACK_WIDTH || m_nRTStackLevel[nTarget] >= MAX_RT_STACK)
     {
@@ -1675,7 +1669,7 @@ bool CD3D9Renderer::FX_SetRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDe
     }
     HRESULT hr = 0;
     SRTStack* pCur = &m_RTStack[nTarget][m_nRTStackLevel[nTarget]];
-    pCur->m_pTarget = pTargetSurf;
+    pCur->m_pTarget = static_cast<D3DSurface*>(pTargetSurf);
     pCur->m_pSurfDepth = pDepthTarget;
     pCur->m_pDepth = pDepthTarget ? (D3DDepthSurface*)pDepthTarget->pSurf : NULL;
     pCur->m_pTex = NULL;
@@ -1699,7 +1693,7 @@ bool CD3D9Renderer::FX_SetRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDe
     m_RP.m_nCommitFlags |= FC_TARGETS;
     return (hr == S_OK);
 }
-bool CD3D9Renderer::FX_PushRenderTarget(int nTarget, D3DSurface* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
+bool CD3D9Renderer::FX_PushRenderTarget(int nTarget, void* pTargetSurf, SDepthTexture* pDepthTarget, uint32 nTileCount)
 {
     assert(m_pRT->IsRenderThread());
     if (nTarget >= RT_STACK_WIDTH || m_nRTStackLevel[nTarget] >= MAX_RT_STACK)
@@ -2142,8 +2136,8 @@ SDepthTexture* CD3D9Renderer::FX_CreateDepthSurface(int nWidth, int nHeight, boo
         pSrf->pTarget->SetPrivateData(WKPDID_D3DDebugObjectName, strlen("Dynamically requested Depth-Buffer"), "Dynamically requested Depth-Buffer");
 #endif
 
-        const float clearDepth = (gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) ? 0.f : 1.f;
-        GetDeviceContext().ClearDepthStencilView(pSrf->pSurf, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, clearDepth, 0);
+        const float clearValue = (gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) ? 0.f : 1.f;
+        GetDeviceContext().ClearDepthStencilView(pSrf->pSurf, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, clearValue, 0);
     }
     else
     {
@@ -2506,7 +2500,7 @@ void CD3D9Renderer::FX_DrawShader_InstancedHW(CShader* ef, SShaderPass* slw)
 
     rRP.m_FlagsPerFlush |= RBSI_INSTANCED;
 
-    TempDynInstVB vb;
+    TempDynInstVB vb(gcpRendD3D);
 
     uint32 nCurInst;
     byte* data = NULL;
@@ -2861,13 +2855,17 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
     rRP.m_RendNumGroup = 0;
     rRP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_VERTEX_VELOCITY];
 
-    if (pSkinningData->nHWSkinningFlags & eHWS_SkinnedLinear)
+    if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
     {
-        rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKELETON_SSD_LINEAR]);
+        rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKINNING_MATRIX]);
+    }
+    else if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_DQ_Linear)
+    {
+        rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKINNING_DQ_LINEAR]);
     }
     else
     {
-        rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKELETON_SSD]);
+        rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKINNING_DUAL_QUAT]);
     }
 
 
@@ -2970,13 +2968,13 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
         assert(pOD);
         if (pOD)
         {
-            SSkinningData* const pSkinningData = pOD->m_pSkinningData;
-            if (!pRE->BindRemappedSkinningData(pSkinningData->remapGUID))
+            SSkinningData* const skinningData = pOD->m_pSkinningData;
+            if (!pRE->BindRemappedSkinningData(skinningData->remapGUID))
             {
                 continue;
             }
 
-            pBuffer[0] = alias_cast<SCharInstCB*>(pSkinningData->pCharInstCB)->m_buffer;
+            pBuffer[0] = alias_cast<SCharInstCB*>(skinningData->pCharInstCB)->m_buffer;
 
 #ifdef CRY_USE_METAL
             // Buffer is sometimes null... binding a null skinned VB will fail on METAL
@@ -2987,9 +2985,9 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
 #endif
 
             // get previous data for motion blur if available
-            if (pSkinningData->pPreviousSkinningRenderData)
+            if (skinningData->pPreviousSkinningRenderData)
             {
-                pBuffer[1] = alias_cast<SCharInstCB*>(pSkinningData->pPreviousSkinningRenderData->pCharInstCB)->m_buffer;
+                pBuffer[1] = alias_cast<SCharInstCB*>(skinningData->pPreviousSkinningRenderData->pCharInstCB)->m_buffer;
             }
         }
         else
@@ -4388,7 +4386,8 @@ void CD3D9Renderer::FX_FlushShader_General()
 
         if (ef->m_eShaderType == eST_Particle)
         {
-            if ((objFlags & FOB_MOTION_BLUR) && CV_r_MotionBlur)
+            bool takingScreenShot = (gcpRendD3D->m_screenShotType != 0);
+            if ((objFlags & FOB_MOTION_BLUR) && CV_r_MotionBlur && (!takingScreenShot || CV_r_MotionBlurScreenShot))
             {
                 rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_MOTION_BLUR];
             }

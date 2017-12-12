@@ -89,7 +89,7 @@ namespace AzFramework
             EnableSocketConnection();
 
             m_cbHandle = m_socketConn->AddMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5),
-                    [this](unsigned int typeId, const void* data, unsigned int dataLength)
+                    [](unsigned int typeId, const void* data, unsigned int dataLength)
                     {
                         if (dataLength)
                         {
@@ -190,6 +190,8 @@ namespace AzFramework
             FileCopyResponse::Reflect(context);
             FileRenameResponse::Reflect(context);
             FindFilesResponse::Reflect(context);
+            SaveAssetCatalogRequest::Reflect(context);
+            SaveAssetCatalogResponse::Reflect(context);
 
             AssetNotificationMessage::Reflect(context);
 
@@ -265,9 +267,9 @@ namespace AzFramework
             AZ_TracePrintf("Asset System Connection", "Asset Processor Connection port: %hu, branch token %s\n", m_assetProcessorPort, m_branchToken.c_str());
             apConnection->Connect(m_assetProcessorIP.c_str(), m_assetProcessorPort);
 
-            //this should be pretty much immediate, but allow up to 2.5 seconds
+            //this should be pretty much immediate, but allow up to 10 seconds in case the CPU is heavily overloaded and thread starting takes a while.
             AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
-            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(2500))
+            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(10))
             {
                 //yield
                 AZStd::this_thread::yield();
@@ -280,6 +282,24 @@ namespace AzFramework
             }
 
             return true;
+        }
+
+        bool AssetSystemComponent::SaveCatalog()
+        {
+            auto apConnection = azrtti_cast<AssetProcessorConnection*>(m_socketConn.get());
+            if (!apConnection)
+            {
+                return false;
+            }
+
+            SaveAssetCatalogRequest saveCatalogRequest;
+            SaveAssetCatalogResponse saveCatalogRespose;
+            if (SendRequest(saveCatalogRequest, saveCatalogRespose))
+            {
+                return saveCatalogRespose.m_saved;
+            }
+
+            return false;
         }
 
         AssetStatus AssetSystemComponent::CompileAssetSync(const AZStd::string& assetPath)

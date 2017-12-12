@@ -3,7 +3,7 @@
 @Component({
     selector: 'page-not-found',
     template: `
-       Page Not Found
+       We seem to have found a dead end.  The route defined was unexpected.
     `,
     styles: [``]
 })

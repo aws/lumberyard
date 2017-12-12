@@ -11,9 +11,9 @@
 */
 #pragma once
 
-#include <IInput.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector2.h>
+#include <AzFramework/Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiInteractableInterface
@@ -46,13 +46,17 @@ public: // member functions
     //! \return true if the interactable handled the event
     virtual bool HandleEnterReleased() { return false; }
 
-    //! Called on the currently active interactable component when a keyboard character input is received
+    //! Called when the interactable was navigated to via gamepad/keyboard, and auto activation is enabled on the interactable
     //! \return true if the interactable handled the event
-    virtual bool HandleCharacterInput(wchar_t character) { return false; };
+    virtual bool HandleAutoActivation() { return false; }
 
-    //! Called on the currently active interactable component when keyboard input is received
+    //! Called on the currently active interactable component when text input is received
     //! \return true if the interactable handled the event
-    virtual bool HandleKeyInput(EKeyId keyId, int modifiers) { return false; }
+    virtual bool HandleTextInput(const AZStd::string& textUTF8) { return false; };
+
+    //! Called on the currently active interactable component when input is received
+    //! \return true if the interactable handled the event
+    virtual bool HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys) { return false; }
 
     //! Called on the currently active interactable component when a mouse/touch position event is received
     //! \param point, the current mouse/touch position (viewport space)
@@ -81,9 +85,19 @@ public: // member functions
     //! Called on the currently hovered interactable component when mouse/touch moves outside of bounds
     virtual void HandleHoverEnd() = 0;
 
+    //! Called when a descendant of the interactable becomes the hover interactable by being navigated to
+    virtual void HandleDescendantReceivedHoverByNavigation(AZ::EntityId descendantEntityId) {};
+
+    //! Called when the interactable becomes the hover interactable by being navigated to from one of its descendants
+    virtual void HandleReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId) {};
+
     //! Enable/disable event handling
     virtual bool IsHandlingEvents() { return true; }
     virtual void SetIsHandlingEvents(bool isHandlingEvents) {}
+
+    //! Get/set whether the interactable automatically becomes active when navigated to via gamepad/keyboard
+    virtual bool GetIsAutoActivationEnabled() = 0;
+    virtual void SetIsAutoActivationEnabled(bool isEnabled) = 0;
 
 public: // static member data
 
@@ -128,16 +142,19 @@ public: // member functions
     virtual ~UiInteractableNotifications(){}
 
     //! Called on hover start
-    virtual void OnHoverStart() = 0;
+    virtual void OnHoverStart() {};
 
     //! Called on hover end
-    virtual void OnHoverEnd() = 0;
+    virtual void OnHoverEnd() {};
 
     //! Called on pressed
-    virtual void OnPressed() = 0;
+    virtual void OnPressed() {};
 
     //! Called on released
-    virtual void OnReleased() = 0;
+    virtual void OnReleased() {};
+
+    //! Called on receiving hover by being navigated to from a descendant
+    virtual void OnReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId) {};
 };
 
 typedef AZ::EBus<UiInteractableNotifications> UiInteractableNotificationBus;

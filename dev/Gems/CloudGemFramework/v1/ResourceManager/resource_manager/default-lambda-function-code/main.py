@@ -13,38 +13,13 @@
 #
 # If the resource group defines one or more AWS Lambda Function resources, you can put 
 # the code that implements the functions below. The Handler property of the Lambda 
-# Function resoruce definition in the groups's resource-template.json file identifies 
+# Function resource definition in the groups's resource-template.json file identifies 
 # the Python function that is called when the Lambda Function is execution. To call 
 # a function here in main.py, set the Handler property to "main.FUNCTION_NAME".
 #
 # IMPORTANT: If the game executes the Lambda Function (which is often the case), then
 # you must configure player access for the Lambda Function. This is done by including
 # the CloudCanvas Permission metadata on the Lambda Function resource definition.
-#
-# An example Lambda Function resource definitions that grants player access is shown below:
-#
-#        "SayHello": {
-#           "Type": "AWS::Lambda::Function",
-#            "Properties": {
-#                "Description": "Example of a function called by the game to write data into a DynamoDB table.",
-#                "Handler": "main.say_hello",
-#                "Role": { "Fn::GetAtt": [ "SayHelloConfiguration", "Role" ] },
-#                "Runtime": { "Fn::GetAtt": [ "SayHelloConfiguration", "Runtime" ] },
-#                "Code": {
-#                    "S3Bucket": { "Fn::GetAtt": [ "SayHelloConfiguration", "ConfigurationBucket" ] },
-#                    "S3Key": { "Fn::GetAtt": [ "SayHelloConfiguration", "ConfigurationKey" ] }
-#                }
-#            },
-#            "Metadata": {
-#                "CloudCanvas": {
-#                    "Permissions": {
-#                        "AbstractRole": "Player",
-#                        "Action": "lambda:InvokeFunction"
-#                    }
-#                }
-#            }
-#        },
-#
 #
 
 import boto3            # Python AWS API

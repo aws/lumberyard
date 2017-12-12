@@ -1,0 +1,8 @@
+{
+    "name": "@cloud-gems/cloudgemplayeraccount",
+    "version": "1.0.0",
+    "description": "Cloud Gem - Player Account",
+    "private": true,
+    "dependencies": {
+    }
+}

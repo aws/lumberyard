@@ -48,11 +48,11 @@ namespace AZ
     {
         PLATFORM_WINDOWS_32 = 0,
         PLATFORM_WINDOWS_64,
-        PLATFORM_XBOX_360,
-        PLATFORM_XBONE,
-        PLATFORM_PS3,
-        PLATFORM_PS4,
-        PLATFORM_WII,
+        PLATFORM_XBOX_360, // ACCEPTED_USE
+        PLATFORM_XBONE, // ACCEPTED_USE
+        PLATFORM_PS3, // ACCEPTED_USE
+        PLATFORM_PS4, // ACCEPTED_USE
+        PLATFORM_WII, // ACCEPTED_USE
         PLATFORM_LINUX_64,
         PLATFORM_ANDROID,
         PLATFORM_APPLE_IOS,
@@ -67,10 +67,6 @@ namespace AZ
     static const PlatformID g_currentPlatform = PLATFORM_WINDOWS_64;
 #elif defined(AZ_PLATFORM_WINDOWS)
     static const PlatformID g_currentPlatform = PLATFORM_WINDOWS_32;
-#elif defined(AZ_PLATFORM_X360)
-    static const PlatformID g_currentPlatform = PLATFORM_XBOX_360;
-#elif defined(AZ_PLATFORM_WII)
-    static const PlatformID g_currentPlatform = PLATFORM_WII;
 #elif defined(AZ_PLATFORM_LINUX_X64)
     static const PlatformID g_currentPlatform = PLATFORM_LINUX_64;
 #elif defined(AZ_PLATFORM_ANDROID)
@@ -89,8 +85,8 @@ namespace AZ
     {
         switch (id)
         {
-        case PLATFORM_XBOX_360:
-        case PLATFORM_PS3:
+        case PLATFORM_XBOX_360: // ACCEPTED_USE
+        case PLATFORM_PS3: // ACCEPTED_USE
             return true;
         default:
             return false;
@@ -184,7 +180,7 @@ namespace AZ
 #else
 #   define azsnprintf       snprintf
 #   define azvsnprintf      vsnprintf
-#   if defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#   if defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
 #       define azswnprintf  swprintf
 #       define azvsnwprintf vswprintf
 #   else
@@ -291,20 +287,20 @@ using std::ptrdiff_t;
  * they have native type equivalent, which should take precedence.
  */
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
 #include <cstdint>
 #endif
 
 namespace AZ
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
     typedef int8_t    s8;
     typedef uint8_t   u8;
     typedef int16_t   s16;
     typedef uint16_t  u16;
     typedef int32_t   s32;
     typedef uint32_t  u32;
-#   if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) // int64_t is long
+#   if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) // int64_t is long // ACCEPTED_USE
     typedef signed long long        s64;
     typedef unsigned long long      u64;
 #   else
@@ -312,15 +308,6 @@ namespace AZ
     typedef uint64_t  u64;
 #   endif //
 
-#elif defined(AZ_PLATFORM_WII)
-    typedef ::s8                    s8;
-    typedef ::u8                    u8;
-    typedef ::s16                   s16;
-    typedef ::u16                   u16;
-    typedef ::s32                   s32;
-    typedef ::u32                   u32;
-    typedef ::s64                   s64;
-    typedef ::u64                   u64;
 #else
     typedef char                    s8;
     typedef unsigned char           u8;
@@ -376,16 +363,6 @@ namespace AZ
 
 // Platform includes
 #ifdef AZ_PLATFORM_WINDOWS
-#elif defined(AZ_PLATFORM_X360)
-    #ifdef NOMINMAX
-        #include <xtl.h>
-    #else
-        #define NOMINMAX
-        #include <xtl.h>
-        #undef NOMINMAX
-    #endif
-#elif defined(AZ_PLATFORM_WII)
-    #include <revolution.h>
 #elif defined(AZ_PLATFORM_LINUX)
 
 #elif defined(AZ_PLATFORM_ANDROID)

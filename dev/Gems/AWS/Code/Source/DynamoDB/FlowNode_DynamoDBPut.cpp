@@ -18,6 +18,9 @@
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <memory>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 using namespace Aws::DynamoDB::Model;
 using namespace Aws::DynamoDB;
 
@@ -39,7 +42,7 @@ namespace LmbrAWS
     {
         static const Aws::Vector<SInputPortConfig> inputPorts = {
             InputPortConfig_Void("PutItem", _HELP("Activate this to write data to the cloud")),
-            m_tableClientPort.GetConfiguration("TableName", _HELP("The name of the table to use")),
+            InputPortConfig<string>("TableName", _HELP("The name of the table to use")),
             InputPortConfig<string, string>("TableKeyName", DEFAULT_HASHKEY_NAME, _HELP("Key name used in this table")),
             InputPortConfig<string>("Key", _HELP("The key you wish to write"), "KeyValue"),
             InputPortConfig<string>("Attribute", _HELP("The attribute you wish to write"), "AttributeToWrite"),
@@ -64,21 +67,16 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_StartPut))
         {
-            auto client = m_tableClientPort.GetClient(pActInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(pActInfo->pGraph, pActInfo->myID, "Client configuration not ready.");
-                return;
-            }
+            AZStd::string tableName = GetPortString(pActInfo, EIP_TableClient).c_str();
+            EBUS_EVENT_RESULT(tableName, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, tableName);
 
-            auto& tableName = client.GetTableName();
             auto& keyName = GetPortString(pActInfo, EIP_TableKeyName);
             auto& key = GetPortString(pActInfo, EIP_Key);
             auto& attribute = GetPortString(pActInfo, EIP_Attribute);
             bool keyMustNotExist = GetPortBool(pActInfo, EIP_KeyMustNotExist);
 
             Aws::DynamoDB::Model::PutItemRequest putRequest;
-            putRequest.SetTableName(tableName);
+            putRequest.SetTableName(tableName.c_str());
             AttributeValue hk;
             hk.SetS(key);
             putRequest.AddItem(keyName, hk);

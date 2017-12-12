@@ -247,7 +247,7 @@ void CDecal::Render(const float fCurTime, int nAfterWater, float fDistanceFading
         m_arrBigDecalRMCustomData[11] = m_fSize;
 
         // N component
-        Vec3 vNormal(Vec3(correctScale * m_vUp).Cross(m_vRight).GetNormalized());
+        Vec3 vNormal(Vec3(correctScale* m_vUp).Cross(m_vRight).GetNormalized());
         m_arrBigDecalRMCustomData[12] = vNormal.x * (m_fSize / m_fWSSize);
         m_arrBigDecalRMCustomData[13] = vNormal.y * (m_fSize / m_fWSSize);
         m_arrBigDecalRMCustomData[14] = vNormal.z * (m_fSize / m_fWSSize);
@@ -257,9 +257,9 @@ void CDecal::Render(const float fCurTime, int nAfterWater, float fDistanceFading
         bool bUseBending = GetCVars()->e_VegetationBending != 0;
         if (m_ownerInfo.pRenderNode && m_ownerInfo.pRenderNode->GetRenderNodeType() == eERType_Vegetation)
         {
-            CObjManager* pObjManager = GetObjManager();
+            IObjManager* pObjManager = GetObjManager();
             CVegetation* pVegetation = (CVegetation*)m_ownerInfo.pRenderNode;
-            pBody = pVegetation->GetStatObj();
+            pBody = static_cast<CStatObj*>(pVegetation->GetStatObj());
             assert(pObjManager && pVegetation && pBody);
 
             if (pVegetation && pBody && bUseBending)
@@ -492,7 +492,7 @@ void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderin
     m_arrBigDecalRMCustomData[10] = 0;
     m_arrBigDecalRMCustomData[11] = fSize * 2.0f;
 
-    Vec3 vNormal(Vec3(correctScale * m_vUp).Cross(m_vRight).GetNormalized());
+    Vec3 vNormal(Vec3(correctScale* m_vUp).Cross(m_vRight).GetNormalized());
     m_arrBigDecalRMCustomData[12] = vNormal.x;
     m_arrBigDecalRMCustomData[13] = vNormal.y;
     m_arrBigDecalRMCustomData[14] = vNormal.z;

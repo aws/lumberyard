@@ -61,7 +61,7 @@ namespace AzToolsFramework
         this->setGeometry(0, 0, width, height);
         pParent->installEventFilter(this);
 
-        QLabel* label = new QLabel(tr("No pushable changes detected"), this);
+        QLabel* label = new QLabel(tr("No saveable changes detected"), this);
         label->setAlignment(Qt::AlignCenter);
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setAlignment(Qt::AlignHCenter);
@@ -254,65 +254,6 @@ namespace AzToolsFramework
     };
 
     //=========================================================================
-    AZ::u32 GetNodeSliceFlags(const InstanceDataNode* node)
-    {
-        AZ_Assert(node, "Invalid data node provided to IsNodePushable");
-
-        const AZ::Edit::ElementData* editData = node->GetElementEditMetadata();
-        const AZ::Edit::ElementData* classEditData = nullptr;
-        if (node->GetClassMetadata()->m_editData)
-        {
-            classEditData = node->GetClassMetadata()->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
-        }
-
-        AZ::u32 sliceFlags = 0;
-
-        if (editData)
-        {
-            AZ::Edit::Attribute* slicePushAttribute = editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-            if (slicePushAttribute)
-            {
-                AZ::u32 elementSliceFlags = 0;
-                AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                reader.Read<AZ::u32>(elementSliceFlags);
-                sliceFlags |= elementSliceFlags;
-            }
-        }
-
-        if (classEditData)
-        {
-            AZ::Edit::Attribute* slicePushAttribute = classEditData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-            if (slicePushAttribute)
-            {
-                AZ::u32 classSliceFlags = 0;
-                AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                reader.Read<AZ::u32>(classSliceFlags);
-                sliceFlags |= classSliceFlags;
-            }
-        }
-
-        return sliceFlags;
-    }
-
-    //=========================================================================
-    bool IsNodePushable(const InstanceDataNode* node, bool isRootEntity)
-    {
-        const AZ::u32 sliceFlags = GetNodeSliceFlags(node);
-
-        if (0 != (sliceFlags & AZ::Edit::SliceFlags::NotPushable))
-        {
-            return false;
-        }
-
-        if (isRootEntity && 0 != (sliceFlags & AZ::Edit::SliceFlags::NotPushableOnSliceRoot))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    //=========================================================================
     // SlicePushWidget
     //=========================================================================
     SlicePushWidget::SlicePushWidget(const EntityIdList& entities, AZ::SerializeContext* serializeContext, QWidget* parent)
@@ -450,8 +391,8 @@ namespace AzToolsFramework
         // Create/populate button box.
         {
             QDialogButtonBox* buttonBox = new QDialogButtonBox(this);
-            QPushButton* pushSelectedButton = new QPushButton(tr(" Push Selected Fields"));
-            pushSelectedButton->setToolTip(tr("Push selected elements to the specified slice(es)."));
+            QPushButton* pushSelectedButton = new QPushButton(tr(" Save Selected Overrides"));
+            pushSelectedButton->setToolTip(tr("Save selected overrides to the specified slice(es)."));
             pushSelectedButton->setDefault(false);
             pushSelectedButton->setAutoDefault(false);
             QPushButton* cancelButton = new QPushButton(tr("Cancel"));
@@ -719,7 +660,7 @@ namespace AzToolsFramework
                 sliceItem->setIcon(1, m_iconSliceItem);
 
                 const QString tooltip =
-                    tr("Check to push field \"") + item->text(0) + tr("\" to asset \"") + assetPath.c_str() + "\".";
+                    tr("Check to save field \"") + item->text(0) + tr("\" to asset \"") + assetPath.c_str() + "\".";
                 sliceItem->setToolTip(0, tooltip);
                 sliceItem->setToolTip(1, tooltip);
 
@@ -1060,7 +1001,7 @@ namespace AzToolsFramework
                     AzToolsFramework::InstanceDataNode* node = nodeStack.back();
                     nodeStack.pop_back();
 
-                    if (!IsNodePushable(node, isRootEntity))
+                    if (!SliceUtilities::IsNodePushable(*node, isRootEntity))
                     {
                         continue;
                     }
@@ -1071,7 +1012,7 @@ namespace AzToolsFramework
                     // it would be confusing to see that you can push changes to an entity but you can't see what
                     // any of those changes are!
                     {
-                        const AZ::u32 sliceFlags = GetNodeSliceFlags(node);
+                        const AZ::u32 sliceFlags = SliceUtilities::GetNodeSliceFlags(*node);
 
                         bool hidden = false;
                         if ((sliceFlags & AZ::Edit::SliceFlags::HideOnAdd) != 0 && node->IsNewVersusComparison())
@@ -1105,7 +1046,7 @@ namespace AzToolsFramework
                         nodeStack.push_back(&childNode);
                     }
 
-                    if (node->IsDifferentVersusComparison() || node->IsNewVersusComparison() || node->IsRemovedVersusComparison())
+                    if (node->HasChangesVersusComparison(false))
                     {
                         AZStd::vector<AzToolsFramework::InstanceDataNode*> walkStack;
                         walkStack.push_back(node);
@@ -1128,37 +1069,7 @@ namespace AzToolsFramework
                             }
 
                             // Use the same visibility determination as the inspector.
-                            AzToolsFramework::NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*walkNode);
-
-                            // Components should always appear, even if they're not exposed in the inspector UI.
-                            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
-                            {
-                                const AZ::SerializeContext::ClassData* classData = walkNode->GetClassMetadata();
-                                if (classData && classData->m_azRtti && classData->m_azRtti->IsTypeOf(azrtti_typeid<AZ::Component>()))
-                                {
-                                    visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
-                                }
-                            }
-
-                            // Nodes marked PushableEvenIfInvisible should appear when their child nodes are being pushed
-                            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
-                            {
-                                const AZ::Edit::ElementData* editData = walkNode->GetElementEditMetadata();
-                                if (editData)
-                                {
-                                    AZ::Edit::Attribute* slicePushAttribute = editData->FindAttribute(AZ::Edit::Attributes::SliceFlags);
-                                    if (slicePushAttribute)
-                                    {
-                                        AZ::u32 flags = 0;
-                                        AzToolsFramework::PropertyAttributeReader reader(nullptr, slicePushAttribute);
-                                        reader.Read<AZ::u32>(flags);
-                                        if (flags & AZ::Edit::UISliceFlags::PushableEvenIfInvisible)
-                                        {
-                                            visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
-                                        }
-                                    }
-                                }
-                            }
+                            AzToolsFramework::NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*walkNode, true);
 
                             if (visibility == AzToolsFramework::NodeDisplayVisibility::Visible)
                             {
@@ -1302,7 +1213,7 @@ namespace AzToolsFramework
                         unpushableNewChildEntityIds.insert(entityId);
 
                         FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
-                        item->setText(0, QString("%1 (added, unpushable [see (A) below])").arg(entity->GetName().c_str()));
+                        item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
                         item->setIcon(0, m_iconNewDataItem);
                         item->m_ancestors = AZStd::move(sliceAncestryToPushTo);
                         item->setCheckState(0, Qt::CheckState::Unchecked);
@@ -1378,7 +1289,7 @@ namespace AzToolsFramework
                 AZ::ComponentApplicationBus::BroadcastResult(parentName, &AZ::ComponentApplicationRequests::GetEntityName, parentId);
 
                 FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
-                item->setText(0, QString("%1 (added, unpushable [see (B) below])").arg(entity->GetName().c_str()));
+                item->setText(0, QString("%1 (added, unsaveable [see (B) below])").arg(entity->GetName().c_str()));
                 item->setIcon(0, m_iconNewDataItem);
                 item->m_ancestors = AZStd::move(ancestors);
                 item->setCheckState(0, Qt::CheckState::Unchecked);
@@ -1416,14 +1327,14 @@ namespace AzToolsFramework
             if (hasUnpushableSliceEntityAdditions)
             {
                 AddStatusMessage(AzToolsFramework::SlicePushWidget::StatusMessageType::Warning, 
-                                    QObject::tr("(A) Unpushable additions detected. These are unpushable because slices cannot contain instances of themselves. "
-                                                "Pushing these additions would create a cyclic asset dependency, causing infinite recursion."));
+                                    QObject::tr("(A) Invalid additions detected. These are unsaveable because slices cannot contain instances of themselves. "
+                                                "Saving these additions would create a cyclic asset dependency, causing infinite recursion."));
             }
             if (hasUnpushableTransformDescendants)
             {
                 AddStatusMessage(AzToolsFramework::SlicePushWidget::StatusMessageType::Warning, 
-                                    QObject::tr("(B) Unpushable additions detected. These are unpushable because they are transform children/descendants of other "
-                                                "unpushable entities."));
+                                    QObject::tr("(B) Invalid additions detected. These are unsaveable because they are transform children/descendants of other "
+                                                "invalid-to-add entities."));
             }
         }
     }

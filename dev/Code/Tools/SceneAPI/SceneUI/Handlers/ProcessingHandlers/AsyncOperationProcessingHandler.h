@@ -32,7 +32,7 @@ namespace AZ
             {
                 Q_OBJECT
             public:
-                explicit AsyncOperationProcessingHandler(AZStd::function<void()> targetFunction, AZStd::function<void()> onComplete, QObject* parent = nullptr);
+                AsyncOperationProcessingHandler(Uuid traceTag, AZStd::function<void()> targetFunction, AZStd::function<void()> onComplete = nullptr, QObject* parent = nullptr);
                 ~AsyncOperationProcessingHandler() override = default;
                 void BeginProcessing() override;
 

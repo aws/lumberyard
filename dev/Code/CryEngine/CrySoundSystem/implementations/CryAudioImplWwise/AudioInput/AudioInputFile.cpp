@@ -39,7 +39,6 @@ namespace Audio
             break;
         case AudioInputSourceType::PcmFile:
             break;
-        case AudioInputSourceType::Unsupported:
         default:
             return;
         }
@@ -123,7 +122,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    void AudioInputFile::ReadInput(const SAudioStreamData& data)
+    void AudioInputFile::ReadInput(const AudioStreamData& data)
     {
         // Don't really need this for File-based sources, the whole file is read in the constructor.
         // However, we may need to implement this for asynchronous loading of the file (streaming).

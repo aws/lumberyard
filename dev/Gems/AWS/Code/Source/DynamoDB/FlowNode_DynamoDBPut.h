@@ -58,9 +58,6 @@ namespace LmbrAWS
             EOP_KeyAlreadyExists = EOP_StartIndex
         };
 
-        LmbrAWS::DynamoDB::TableClientInputPort m_tableClientPort {
-            EIP_TableClient
-        };
         Aws::String m_dataTypeEnumString;
 
         void ApplyResult(const Aws::DynamoDB::Model::PutItemRequest& request,

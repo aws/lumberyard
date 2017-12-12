@@ -29,16 +29,16 @@ typedef struct {
 #define mat_pad(A) (A[W][X]=A[X][W]=A[W][Y]=A[Y][W]=A[W][Z]=A[Z][W]=0,A[W][W]=1)
 
 /** Copy nxn matrix A to C using "gets" for assignment **/
-#define mat_copy(C,gets,A,n) {int i,j; for(i=0;i<n;i++) for(j=0;j<n;j++)\
-    C[i][j] gets (A[i][j]);}
+#define mat_copy(C,gets,A,n) {int _i,_j; for(_i=0;_i<n;_i++) for(_j=0;_j<n;_j++)\
+    C[_i][_j] gets (A[_i][_j]);}
 
 /** Copy transpose of nxn matrix A to C using "gets" for assignment **/
-#define mat_tpose(AT,gets,A,n) {int i,j; for(i=0;i<n;i++) for(j=0;j<n;j++)\
-    AT[i][j] gets (A[j][i]);}
+#define mat_tpose(AT,gets,A,n) {int _i,_j; for(_i=0;_i<n;_i++) for(_j=0;_j<n;_j++)\
+    AT[_i][_j] gets (A[_j][_i]);}
 
 /** Assign nxn matrix C the element-wise combination of A and B using "op" **/
-#define mat_binop(C,gets,A,op,B,n) {int i,j; for(i=0;i<n;i++) for(j=0;j<n;j++)\
-    C[i][j] gets (A[i][j]) op (B[i][j]);}
+#define mat_binop(C,gets,A,op,B,n) {int _i,_j; for(_i=0;_i<n;_i++) for(_j=0;_j<n;_j++)\
+    C[_i][_j] gets (A[_i][_j]) op (B[_i][_j]);}
 
 /** Multiply the upper left 3x3 parts of A and B to get AB **/
 static  void mat_mult(HMatrix A, HMatrix B, HMatrix AB)
@@ -277,23 +277,23 @@ static  float polar_decomp(HMatrix M, HMatrix Q, HMatrix S)
     mat_tpose(Mk,=,M,3);
     M_one = norm_one(Mk);  M_inf = norm_inf(Mk);
     do {
-  adjoint_transpose(Mk, MadjTk);
-  det = vdot(Mk[0], MadjTk[0]);
-  if (det==0.0f) {do_rank2(Mk, MadjTk, Mk); break;}
-  MadjT_one = norm_one(MadjTk); MadjT_inf = norm_inf(MadjTk);
-  gamma = sqrtf(sqrtf((MadjT_one*MadjT_inf)/(M_one*M_inf))/fabs(det));
-  g1 = gamma*0.5f;
-  g2 = 0.5f/(gamma*det);
-  mat_copy(Ek,=,Mk,3);
-  mat_binop(Mk,=,g1*Mk,+,g2*MadjTk,3);
-  mat_copy(Ek,-=,Mk,3);
-  E_one = norm_one(Ek);
-  M_one = norm_one(Mk);  M_inf = norm_inf(Mk);
+      adjoint_transpose(Mk, MadjTk);
+      det = vdot(Mk[0], MadjTk[0]);
+      if (det==0.0f) {do_rank2(Mk, MadjTk, Mk); break;}
+      MadjT_one = norm_one(MadjTk); MadjT_inf = norm_inf(MadjTk);
+      gamma = sqrtf(sqrtf((MadjT_one*MadjT_inf)/(M_one*M_inf))/fabs(det));
+      g1 = gamma*0.5f;
+      g2 = 0.5f/(gamma*det);
+      mat_copy(Ek,=,Mk,3);
+      mat_binop(Mk,=,g1*Mk,+,g2*MadjTk,3);
+      mat_copy(Ek,-=,Mk,3);
+      E_one = norm_one(Ek);
+      M_one = norm_one(Mk);  M_inf = norm_inf(Mk);
     } while (E_one>(M_one*TOL));
     mat_tpose(Q,=,Mk,3); mat_pad(Q);
     mat_mult(Mk, M, S);  mat_pad(S);
     for (i=0; i<3; i++) for (j=i; j<3; j++)
-  S[i][j] = S[j][i] = 0.5f*(S[i][j]+S[j][i]);
+     S[i][j] = S[j][i] = 0.5f*(S[i][j]+S[j][i]);
     return (det);
 }
 
@@ -429,7 +429,7 @@ static  Quatern snuggle(Quatern q, HVect *k)
   big = qa[hi];
   if (all>two) {
       if (all>big) {/*all*/
-    {int i; for (i=0; i<4; i++) pa[i] = sgn(neg[i], 0.5);}
+    {int ii; for (ii=0; ii<4; ii++) pa[ii] = sgn(neg[ii], 0.5);}
     cycle(ka,par)
       } else {/*big*/ pa[hi] = sgn(neg[hi],1.0);}
   } else {

@@ -28,6 +28,8 @@ public:
 
     void RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* node, const QPoint& globalPos);
 
+    void SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget);
+
 private:
 
     // A SharedComponentInfo represents one component
@@ -74,6 +76,7 @@ private:
 
     QWidget* m_containerWidget;
     QVBoxLayout* m_rowLayout;
+    QLabel* m_selectedEntityDisplayNameWidget;
 
     using ComponentPropertyEditorMap = AZStd::unordered_map<AZ::Uuid, AZStd::vector<AzToolsFramework::ReflectedPropertyEditor*>>;
     ComponentPropertyEditorMap m_componentEditorsByType;

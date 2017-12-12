@@ -49,6 +49,13 @@ public:
         }
     }
 
+    QString GetStackResourceRegion() const override
+    {
+        QSharedPointer<IAWSDeploymentModel> deploymentModel = m_resourceManager->GetDeploymentModel();
+        QString region = deploymentModel->GetActiveDeploymentRegion();
+        return region;
+    }
+
     virtual const char* PrepareRefreshCommand(QVariantMap& args) = 0;
 
     bool IsRefreshTime()

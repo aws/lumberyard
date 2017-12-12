@@ -21,6 +21,8 @@ def build(bld):
         file_list   = ['Multiplayer.waf_files'],
 
         # Platform Specific
+        win_use     = ['AWS_CPP_SDK_GAMELIFT',
+                       'AWS_CPP_SDK_CORE'],
         win_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
         win_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
         win_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
@@ -29,10 +31,14 @@ def build(bld):
         win_defines      = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],
 
         linux_defines    = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],
-        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
-        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER'],
+        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
+
+       
+
+       
 
        
        

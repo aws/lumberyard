@@ -1,35 +1,37 @@
 {
-    "AzCore_uber_android.cpp":
+    "auto" :
     {
-        "Android": [
+        "Android" :
+        [
             "Android/AndroidEnv.cpp",
             "Android/AndroidEnv.h",
             "Android/Utils.cpp",
             "Android/Utils.h"
         ],
-        "Android/Deprecated": [
-            "Android/Jni.cpp",
-            "Android/Jni.h",
-            "Android/JniObject.h",
-            "Android/JniSignature.h"
-        ],
-        "Android/JNI": [
+        "Android/JNI" :
+        [
             "Android/JNI/JNI.cpp",
             "Android/JNI/JNI.h",
-            "Android/JNI/Object.cpp",
             "Android/JNI/Object.h",
-            "Android/JNI/Object_impl.h",
+            "Android/JNI/Object_fwd.h",
             "Android/JNI/scoped_ref.h",
             "Android/JNI/shared_ref.h",
-            "Android/JNI/Signature.cpp",
             "Android/JNI/Signature.h"
         ],
-        "Debug":
+        "Android/JNI/Internal" :
+        [
+            "Android/JNI/Internal/ClassName.h",
+            "Android/JNI/Internal/JStringUtils.h",
+            "Android/JNI/Internal/JStringUtils_impl.h",
+            "Android/JNI/Internal/Object_impl.h",
+            "Android/JNI/Internal/Signature_impl.h"
+        ],
+        "Debug" :
         [
             "Debug/StackTracerLinux.inl",
             "Debug/TraceCppLinux.inl"
         ],
-        "Module":
+        "Module" :
         [
             "Module/DynamicModuleHandleLinux.cpp"
         ]

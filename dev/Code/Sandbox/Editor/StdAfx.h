@@ -51,8 +51,6 @@
 #include <QUuid>
 #endif
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Launcher
 #define RWI_NAME_TAG "RayWorldIntersection(Editor)"
 #define PWI_NAME_TAG "PrimitiveWorldIntersection(Editor)"
 

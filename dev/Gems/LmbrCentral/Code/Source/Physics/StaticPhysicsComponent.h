@@ -16,31 +16,16 @@
 namespace LmbrCentral
 {
     /*!
-     * Configuration data for StaticPhysicsComponent.
-     */
-    struct StaticPhysicsConfiguration
-    {
-        AZ_CLASS_ALLOCATOR(StaticPhysicsConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(StaticPhysicsConfiguration, "{2129576B-A548-4F3E-A2A1-87851BF48838}");
-        static void Reflect(AZ::ReflectContext* context);
-
-        //! Whether the entity is initially enabled in the physics simulation.
-        //! Entities can be enabled later via PhysicsComponentRequests::Enable(true).
-        bool m_enabledInitially = true;
-    };
-
-    /*!
      *  Physics component for a solid object that cannot move.
      */
     class StaticPhysicsComponent
         : public PhysicsComponent
     {
     public:
-        AZ_COMPONENT(StaticPhysicsComponent, "{95D89791-6397-41BC-AAC5-95282C8AD9D4}", PhysicsComponent);
+        AZ_COMPONENT(StaticPhysicsComponent, StaticPhysicsComponentTypeId, PhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         StaticPhysicsComponent() = default;
-        explicit StaticPhysicsComponent(const StaticPhysicsConfiguration& configuration);
         ~StaticPhysicsComponent() override = default;
 
         ////////////////////////////////////////////////////////////////////////
@@ -52,10 +37,14 @@ namespace LmbrCentral
         bool IsEnabledInitially() const override { return m_configuration.m_enabledInitially; }
         ////////////////////////////////////////////////////////////////////////
 
-        const StaticPhysicsConfiguration& GetConfiguration() const { return m_configuration; }
-
     protected:
 
-        StaticPhysicsConfiguration m_configuration;
+        ////////////////////////////////////////////////////////////////////////
+        // PhysicsComponent
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+        ////////////////////////////////////////////////////////////////////////
+
+        StaticPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral

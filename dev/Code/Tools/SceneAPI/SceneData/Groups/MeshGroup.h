@@ -40,11 +40,14 @@ namespace AZ
                 AZ_RTTI(MeshGroup, "{07B356B7-3635-40B5-878A-FAC4EFD5AD86}", DataTypes::IMeshGroup);
                 AZ_CLASS_ALLOCATOR(MeshGroup, SystemAllocator, 0)
 
+                MeshGroup();
                 ~MeshGroup() override = default;
 
                 const AZStd::string& GetName() const override;
                 void SetName(const AZStd::string& name);
                 void SetName(AZStd::string&& name);
+                const Uuid& GetId() const override;
+                void OverrideId(const Uuid& id);
 
                 Containers::RuleContainer& GetRuleContainer();
                 const Containers::RuleContainer& GetRuleContainerConst() const;
@@ -56,9 +59,10 @@ namespace AZ
                 static bool VersionConverter(SerializeContext& context, SerializeContext::DataElementNode& classElement);
 
             protected:
-                SceneNodeSelectionList      m_nodeSelectionList;
-                Containers::RuleContainer   m_rules;
-                AZStd::string               m_name;
+                SceneNodeSelectionList m_nodeSelectionList;
+                Containers::RuleContainer m_rules;
+                AZStd::string m_name;
+                Uuid m_id;
             };
         } // SceneData
     } // SceneAPI

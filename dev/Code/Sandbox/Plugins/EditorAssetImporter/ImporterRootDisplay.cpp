@@ -13,11 +13,9 @@
 #include "StdAfx.h"
 #include <ImporterRootDisplay.h>
 #include <ui_ImporterRootDisplay.h>
-#include <TraceMessageAggregator.h>
 
 #include <IEditor.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
-#include <SceneAPI/SceneUI/CommonWidgets/ReportWidget.h>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
 #include <SceneAPI/SceneUI/SceneWidgets/ManifestWidget.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -35,10 +33,13 @@ ImporterRootDisplay::ImporterRootDisplay(AZ::SerializeContext* serializeContext,
     ui->m_updateButton->setProperty("class", "Primary");
 
     connect(ui->m_updateButton, &QPushButton::clicked, this, &ImporterRootDisplay::UpdateClicked);
+
+    BusConnect();
 }
 
 ImporterRootDisplay::~ImporterRootDisplay()
 {
+    BusDisconnect();
     delete ui;
 }
 
@@ -57,17 +58,18 @@ void ImporterRootDisplay::SetSceneDisplay(const QString& headerText, const AZStd
 
     ui->m_filePathText->setText(headerText);
 
-    m_manifestWidget->BuildFromScene(scene);
+    HandleSceneWasReset(scene);
 
     ui->m_updateButton->setEnabled(false);
     m_hasUnsavedChanges = false;
-
-    connect(m_manifestWidget.data(), &AZ::SceneAPI::UI::ManifestWidget::ManifestUpdated, this, &ImporterRootDisplay::SetToDirtyState);
 }
 
 void ImporterRootDisplay::HandleSceneWasReset(const AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& scene)
 {
+    // Don't accept updates while the widget is being filled in.
+    BusDisconnect();
     m_manifestWidget->BuildFromScene(scene);
+    BusConnect();
 }
 
 void ImporterRootDisplay::HandleSaveWasSuccessful()
@@ -81,10 +83,16 @@ bool ImporterRootDisplay::HasUnsavedChanges() const
     return m_hasUnsavedChanges;
 }
 
-void ImporterRootDisplay::SetToDirtyState()
+void ImporterRootDisplay::ObjectUpdated(const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::IManifestObject* /*target*/, void* /*sender*/)
 {
-    m_hasUnsavedChanges = true;
-    ui->m_updateButton->setEnabled(true);
+    if (m_manifestWidget)
+    {
+        if (&scene == m_manifestWidget->GetScene().get())
+        {
+            m_hasUnsavedChanges = true;
+            ui->m_updateButton->setEnabled(true);
+        }
+    }
 }
 
 #include <ImporterRootDisplay.moc>

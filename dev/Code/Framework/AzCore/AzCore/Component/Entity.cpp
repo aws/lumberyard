@@ -20,6 +20,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/IdUtils.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <AzCore/Math/Crc.h>
@@ -27,7 +28,6 @@
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/conversions.h>
-#include <AzCore/std/containers/fixed_unordered_map.h>
 #include <AzCore/Platform/Platform.h>
 
 #include <AzCore/Debug/Profiler.h>
@@ -214,8 +214,6 @@ namespace AZ
             delete reinterpret_cast<Entity*>(ptr);
         }
     };
-
-    u32 Entity::s_machineId = 0;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -243,6 +241,7 @@ namespace AZ
         : m_state(ES_CONSTRUCTED)
         , m_transform(nullptr)
         , m_isDependencyReady(false)
+        , m_isRuntimeActiveByDefault(true)
     {
         m_id = MakeId();
         if (name)
@@ -264,6 +263,7 @@ namespace AZ
         , m_state(ES_CONSTRUCTED)
         , m_transform(nullptr)
         , m_isDependencyReady(false)
+        , m_isRuntimeActiveByDefault(true)
     {
         if (name)
         {
@@ -352,6 +352,9 @@ namespace AZ
         }
 
         m_state = ES_INIT;
+
+        EBUS_EVENT_ID(m_id, EntityBus, OnEntityExists, m_id);
+        EBUS_EVENT(EntitySystemBus, OnEntityInitialized, m_id);
     }
 
     //=========================================================================
@@ -381,8 +384,7 @@ namespace AZ
 
         for (ComponentArrayType::iterator it = m_components.begin(); it != m_components.end(); ++it)
         {
-            Component* component = *it;
-            component->Activate();
+            ActivateComponent(**it);
         }
 
         // Cache the transform interface to the transform interface
@@ -403,6 +405,8 @@ namespace AZ
     //=========================================================================
     void Entity::Deactivate()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+
         EBUS_EVENT_ID(m_id, EntityBus, OnEntityDeactivated, m_id);
         EBUS_EVENT(EntitySystemBus, OnEntityDeactivated, m_id);
 
@@ -411,7 +415,7 @@ namespace AZ
 
         for (ComponentArrayType::reverse_iterator it = m_components.rbegin(); it != m_components.rend(); ++it)
         {
-            (*it)->Deactivate();
+            DeactivateComponent(**it);
         }
 
         m_transform = nullptr;
@@ -432,6 +436,30 @@ namespace AZ
         }
 
         return result;
+    }
+
+    //=========================================================================
+    // CreateComponent
+    //=========================================================================
+    void Entity::InvalidateDependencies()
+    {
+        m_isDependencyReady = false;
+    }
+
+    //=========================================================================
+    // SetRuntimeActiveByDefault
+    //=========================================================================
+    void Entity::SetRuntimeActiveByDefault(bool activeByDefault)
+    {
+        m_isRuntimeActiveByDefault = activeByDefault;
+    }
+
+    //=========================================================================
+    // IsRuntimeActiveByDefault
+    //=========================================================================
+    bool Entity::IsRuntimeActiveByDefault() const
+    {
+        return m_isRuntimeActiveByDefault;
     }
 
     //=========================================================================
@@ -508,7 +536,8 @@ namespace AZ
         {
             component->Init();
         }
-        m_isDependencyReady = false; // we need to check dependencies
+        
+        InvalidateDependencies(); // We need to re-evaluate dependencies
         return true;
     }
 
@@ -656,7 +685,7 @@ namespace AZ
         m_components.erase(it);
         component->SetEntity(nullptr);
 
-        m_isDependencyReady = false; // we need to check dependencies
+        InvalidateDependencies(); // We need to re-evaluate dependencies.
         return true;
     }
 
@@ -694,7 +723,7 @@ namespace AZ
             componentToAdd->Init();
         }
 
-        m_isDependencyReady = false; // we need to check dependencies
+        InvalidateDependencies(); // We need to re-evaluate dependencies
         return true;
     }
 
@@ -952,9 +981,10 @@ namespace AZ
             serializeContext->Class<Entity>(&Serialize::StaticInstance<SerializeEntityFactory>::s_instance)->
                 PersistentId([](const void* instance) -> u64 { return static_cast<u64>(reinterpret_cast<const Entity*>(instance)->GetId()); })->
                 Version(2, &ConvertOldData)->
-                Field("Id", &Entity::m_id)->
+                Field("Id", &Entity::m_id, { {Edit::Attributes::IdGeneratorFunction, aznew AttributeData<IdUtils::Remapper<EntityId>::IdGenerator>(&Entity::MakeId) } })->
                 Field("Name", &Entity::m_name)->
                 Field("IsDependencyReady", &Entity::m_isDependencyReady)->
+                Field("IsRuntimeActive", &Entity::m_isRuntimeActiveByDefault)->
                 Field("Components", &Entity::m_components);
 
             serializeContext->Class<EntityId>()
@@ -971,6 +1001,7 @@ namespace AZ
                     DataElement(AZ::Edit::UIHandlers::Default, &Entity::m_isDependencyReady, "IsDependencyReady", "")->
                         Attribute(Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)->
                         Attribute(Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushable)->
+                    DataElement(AZ::Edit::UIHandlers::Default, &Entity::m_isRuntimeActiveByDefault, "StartActive", "")->
                     DataElement("String", &Entity::m_name, "Name", "Unique name of the entity")->
                         Attribute(Edit::Attributes::ChangeNotify, &Entity::OnNameChanged)->
                     DataElement("Components", &Entity::m_components, "Components", "");
@@ -989,13 +1020,16 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ->Method("Equal", &EntityId::operator==)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ;
 
-            behaviorContext->Property("SystemEntityId", BehaviorConstant(SystemEntityId), nullptr);
+            behaviorContext->Constant("SystemEntityId", BehaviorConstant(SystemEntityId));
 
             behaviorContext->EBus<EntityBus>("EntityBus")
                 ->Handler<BehaviorEntityBusHandler>()
                 ;
+
+            behaviorContext->Class<ComponentConfig>();
         }
     }
 
@@ -1020,15 +1054,16 @@ namespace AZ
         }
 
         // Graph structure for topological sort
-        // Currently we are using the stack to avoid, memory allocations.
-        typedef AZStd::pair<Component*, int> GraphNode;
-        typedef AZStd::fixed_list<GraphNode, 64> GraphNodes;
-        AZStd::fixed_vector<AZStd::pair<GraphNodes::iterator, GraphNodes::iterator>, 128> graphLinks;
+        using GraphNode = AZStd::pair<Component*, int>;
+        using GraphNodes = AZStd::list<GraphNode>;
+        AZStd::vector<AZStd::pair<GraphNodes::iterator, GraphNodes::iterator>> graphLinks;
+        graphLinks.reserve(128);
         GraphNodes graphNodes;
-        AZStd::fixed_vector<Component*, 32> consumerComponents; /// List of components where order doesn't matter and they should be placed at the end of the sort
+        AZStd::vector<Component*> consumerComponents; /// List of components where order doesn't matter and they should be placed at the end of the sort
+        consumerComponents.reserve(32);
 
         // map all provided services to the components
-        AZStd::fixed_unordered_map< ComponentServiceType, GraphNodes::iterator, 37, 100> providedServiceToComponentMap;
+        AZStd::unordered_map<ComponentServiceType, GraphNodes::iterator> providedServiceToComponentMap(37);
         ComponentDescriptor::DependencyArrayType services;
         for (Component* component : components)
         {
@@ -1139,43 +1174,31 @@ namespace AZ
         // If we have any nodes left on the graph, they form a cyclic dependency.
         if (!graphNodes.empty())
         {
-            AZ_Error("Entity", false, "In entity %s the following components have a cyclic dependency:\n");
+            AZ_Error("Entity", false, "The following components have a cyclic dependency:\n");
+
             for (const GraphNode& node : graphNodes)
             {
                 (void)node;
                 AZ_Error("Entity", false, "Component: %s\n", node.first->RTTI_GetTypeName());
             }
+
             return DSR_CYCLIC_DEPENDENCY;
         }
 
         return DSR_OK;
-    }    
+    }
 
-    //=========================================================================
-    // MakeId
-    // Ids must be unique across a project at authoring time. Runtime doesn't matter
-    // as much, especially since ids are regenerated at spawn time, and the network
-    // layer re-maps ids as entities are spawned via replication.
-    // Ids are of the following format:
-    // | 32 bits of monotonic count | 32 bit crc of machine ID, process ID, and process start time |
-    //=========================================================================
-    struct ProcessInfo
+    //32 bit crc of machine ID, process ID, and process start time
+    AZ::u32 Entity::GetProcessSignature()
     {
-        AZ::Platform::MachineId m_machineId = 0;
-        AZ::Platform::ProcessId m_processId = 0;
-        AZ::u64 m_startTime = 0;
-    };
-
-    EntityId Entity::MakeId()
-    {
-        static EnvironmentVariable<AZStd::atomic_uint> counter = nullptr; // this counter is per-process
         static EnvironmentVariable<AZ::u32> processSignature = nullptr;
 
-        if (!counter)
+        struct ProcessInfo
         {
-            counter = Environment::CreateVariable<AZStd::atomic_uint>(AZ_CRC("EntityIdMonotonicCounter", 0xbe691c64), 1);
-        }
-
+            AZ::Platform::MachineId m_machineId = 0;
+            AZ::Platform::ProcessId m_processId = 0;
+            AZ::u64 m_startTime = 0;
+        };
         if (!processSignature)
         {
             ProcessInfo processInfo;
@@ -1185,9 +1208,28 @@ namespace AZ
             AZ::u32 signature = AZ::Crc32(&processInfo, sizeof(processInfo));
             processSignature = Environment::CreateVariable<AZ::u32>(AZ_CRC("MachineProcessSignature", 0x47681763), signature);
         }
+        return *processSignature;
+    }
+
+    //=========================================================================
+    // MakeId
+    // Ids must be unique across a project at authoring time. Runtime doesn't matter
+    // as much, especially since ids are regenerated at spawn time, and the network
+    // layer re-maps ids as entities are spawned via replication.
+    // Ids are of the following format:
+    // | 32 bits of monotonic count | 32 bit crc of machine ID, process ID, and process start time |
+    //=========================================================================
+    EntityId Entity::MakeId()
+    {
+        static EnvironmentVariable<AZStd::atomic_uint> counter = nullptr; // this counter is per-process
+
+        if (!counter)
+        {
+            counter = Environment::CreateVariable<AZStd::atomic_uint>(AZ_CRC("EntityIdMonotonicCounter", 0xbe691c64), 1);
+        }
 
         AZ::u64 count = counter->fetch_add(1);
-        EntityId eid = AZ::EntityId(count << 32 | *processSignature);
+        EntityId eid = AZ::EntityId(count << 32 | GetProcessSignature());
         return eid;
     }
 } // namespace AZ

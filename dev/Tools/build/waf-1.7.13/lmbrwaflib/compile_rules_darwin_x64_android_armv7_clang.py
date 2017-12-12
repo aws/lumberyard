@@ -50,22 +50,15 @@ def load_darwin_x64_android_armv7_clang_common_settings(conf):
 
     # common settings
     gcc_toolchain = '--gcc-toolchain={}'.format(gcc_toolchain_root)
-    target_arch = '--target=armv7-none-linux-androideabi' # <arch><sub>-<vendor>-<sys>-<abi>
+    target_arch = '--target=thumbv7-none-linux-androideabi' # <arch><sub>-<vendor>-<sys>-<abi>
 
     common_flags = [
         gcc_toolchain,
         target_arch,
     ]
 
-    additional_compiler_flags = [
-        # Unless specified, OSX is generally case-preserving but case-insensitive.  Windows is the same way, however
-        # OSX seems to behave differently when it comes to casing at the OS level where a file can be showing as
-        # upper-case in Finder and Terminal, the OS can see it as lower-case.
-        '-Wno-nonportable-include-path',
-    ]
-
-    env['CFLAGS'] += common_flags[:] + additional_compiler_flags[:]
-    env['CXXFLAGS'] += common_flags[:] + additional_compiler_flags[:]
+    env['CFLAGS'] += common_flags[:]
+    env['CXXFLAGS'] += common_flags[:]
     env['LINKFLAGS'] += common_flags[:]
 
 

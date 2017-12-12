@@ -12,6 +12,7 @@
 
 #include "StdAfx.h"
 #include "MacroTexture.h"
+#include <AzCore/Math/Color.h>
 
 const MacroTexture::Region MacroTexture::Region::Unit(0.0f, 0.0f, 1.0f);
 
@@ -107,173 +108,34 @@ Morton::Key MacroTexture::MortonEncodeRegion(Region region) const
     return Morton::FindCommonAncestor(p0, p1, p2, p3);
 }
 
-MacroTexture::UniquePtr MacroTexture::Create(const char* filepath, uint32 maxElementCountPerPool)
-{
-    // This is a compiler enforced safety net to avoid crashing the game creating an unreasonable amount of textures.
-    const uint32 MaxSupportedCapacity = 4096;
-
-    AZ_Assert(maxElementCountPerPool > 0,
-        "Attempting to configure texture pool with no capacity");
-
-    AZ_Assert(maxElementCountPerPool <= MaxSupportedCapacity,
-        "Attempting to configure texture pool with more than the supported amount of elements. Please increase MaxSupportedCapacity if this is intentional.");
-
-    maxElementCountPerPool = clamp_tpl(maxElementCountPerPool, 1u, MaxSupportedCapacity);
-
-    MacroTexture* texture = new MacroTexture(maxElementCountPerPool);
-    if (!texture->Init(filepath))
-    {
-        delete texture;
-        texture = nullptr;
-    }
-    return UniquePtr(texture);
-}
-
-MacroTexture::MacroTexture(uint32 maxElementCountPerPool)
-    : m_TexturePool(maxElementCountPerPool)
-    , m_TotalSectorDataSize(0)
-    , m_SectorDataStartOffset(0)
+MacroTexture::MacroTexture(const MacroTextureConfiguration& configuration)
+    : m_TexturePool(configuration.maxElementCountPerPool)
+    , m_TotalSectorDataSize(configuration.totalSectorDataSize)
+    , m_SectorDataStartOffset(configuration.sectorStartDataOffset)
+    , m_TileSizeInPixels(configuration.tileSizeInPixels)
     , m_TreeLevelMax(0)
     , m_Timestamp(0)
-    , m_Endian(eLittleEndian)
-    , m_Filename(nullptr)
-    , m_ColorMultiplier(1.0f)
+    , m_Endian(configuration.endian)
+    , m_Filename(configuration.filePath.c_str())
 {
+    const Morton::Key rootKey = 0x01;
+
+    // Build nodes from index block information
+    {
+        uint16 elementsLeft = configuration.indexBlocks.size();
+        const int16* indices = &configuration.indexBlocks[0];
+        m_Nodes.reserve(elementsLeft);
+        InitNodeTree(rootKey, Region::Unit, 0, indices, elementsLeft);
+        m_Nodes.shrink_to_fit();
+        AZ_Assert(elementsLeft == 0, "Failed to allocate all texture blocks through the quadtree");
+    }
+
+    m_TexturePool.Create(configuration.tileSizeInPixels, configuration.texureFormat);
 }
 
 MacroTexture::~MacroTexture()
 {
     FlushTiles();
-}
-
-bool MacroTexture::Init(const char* filepath)
-{
-    m_Filename = filepath;
-    ICryPak& cryPak = *gEnv->pCryPak;
-
-    ScopedFileHandle scopedHandle(filepath, "rbx");
-    if (!scopedHandle.IsValid())
-    {
-        FileWarning(0, filepath, "Error opening terrain texture file: file not found (you might need to regenerate the surface texture)");
-        return false;
-    }
-    bool bSwapEndian = false;
-
-    //
-    // Common file header
-    //
-
-    SCommonFileHeader commonHeader;
-    {
-        if (!cryPak.FRead(&commonHeader, 1, scopedHandle, false))
-        {
-            FileWarning(0, filepath, "Error opening terrain texture file: header not found (file is broken)");
-            return false;
-        }
-
-        m_Endian = (commonHeader.flags & SERIALIZATION_FLAG_BIG_ENDIAN) ? eBigEndian : eLittleEndian;
-        bSwapEndian = m_Endian != GetPlatformEndian();
-        SwapEndian(commonHeader, bSwapEndian);
-
-        if (strcmp(commonHeader.signature, "CRY"))
-        {
-            FileWarning(0, filepath, "Error opening terrain texture file: invalid signature");
-            return false;
-        }
-
-        if (commonHeader.version != FILEVERSION_TERRAIN_TEXTURE_FILE)
-        {
-            FileWarning(0, filepath, "Error opening terrain texture file: version incompatible (you might need to regenerate the surface texture)");
-            return false;
-        }
-    }
-
-    //
-    // Texture File Header
-    //
-
-    STerrainTextureFileHeader header;
-    {
-        cryPak.FRead(&header, 1, scopedHandle, bSwapEndian);
-        m_ColorMultiplier = header.ColorMultiplier;
-    }
-
-    //
-    // Layer File Headers
-    //
-
-    STerrainTextureLayerFileHeader layerHeader;
-    {
-        cryPak.FRead(&layerHeader, 1, scopedHandle, bSwapEndian);
-        if (layerHeader.eTexFormat != 0xFF)
-        {
-            PrintMessage("  MacroTexture Tiles: Format: %s, Pixel Dimensions: (%dx%d), Bytes: %d",
-                GetRenderer()->GetTextureFormatName(layerHeader.eTexFormat),
-                layerHeader.SectorSizeInPixels,
-                layerHeader.SectorSizeInPixels,
-                layerHeader.SectorSizeInBytes);
-        }
-        else
-        {
-            FileWarning(0, filepath, "  MacroTexture Layer: FAILED TO LOAD. Please regenerate the terrain texture.");
-        }
-
-        // The sector index descriptors can vary in size based on the number of layers. Compute the total descriptor size here.
-        {
-            m_TotalSectorDataSize = layerHeader.SectorSizeInBytes;
-            m_TileSizeInPixels = layerHeader.SectorSizeInPixels;
-
-            // Additional layers in header.
-            for (uint32 i = 1; i < header.LayerCount; ++i)
-            {
-                STerrainTextureLayerFileHeader legacyLayerHeader;
-                cryPak.FRead(&legacyLayerHeader, 1, scopedHandle, bSwapEndian);
-                m_TotalSectorDataSize += legacyLayerHeader.SectorSizeInBytes;
-            }
-        }
-    }
-
-    //
-    // Index Block
-    //
-
-    uint32 indexBlockSize = 0;
-    {
-        uint16 size;
-        cryPak.FRead(&size, 1, scopedHandle, bSwapEndian);
-
-        AZStd::vector<int16> indexBlocks;
-        indexBlocks.resize(size);
-        indexBlockSize = size * sizeof(uint16) + sizeof(uint16);
-
-        for (uint16 i = 0; i < size; ++i)
-        {
-            cryPak.FRead(&indexBlocks[i], 1, scopedHandle, bSwapEndian);
-        }
-
-        const Morton::Key rootKey = 0x01;
-        m_TreeLevelMax = 0;
-
-        {
-            uint16 elementsLeft = indexBlocks.size();
-            const int16* indices = &indexBlocks[0];
-            m_Nodes.reserve(elementsLeft);
-            InitNodeTree(rootKey, Region::Unit, 0, indices, elementsLeft);
-            m_Nodes.shrink_to_fit();
-            AZ_Assert(elementsLeft == 0, "Failed to allocate all texture blocks through the quadtree");
-        }
-
-        PrintMessage("  Color Multiplier: %.f, Texture Index Count: %d", 1.f / m_ColorMultiplier, size);
-    }
-
-    m_SectorDataStartOffset =
-        sizeof(SCommonFileHeader) +
-        sizeof(STerrainTextureFileHeader) +
-        header.LayerCount * sizeof(STerrainTextureLayerFileHeader) +
-        indexBlockSize;
-
-    m_TexturePool.Create(layerHeader.SectorSizeInPixels, layerHeader.eTexFormat);
-    return true;
 }
 
 void MacroTexture::InitNodeTree(Morton::Key key, Region region, uint32 depth, const int16*& indices, uint16& elementsLeft)

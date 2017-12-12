@@ -58,83 +58,89 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->Class<LightComponent>()->RequestBus("LightComponentRequestBus");
-
-            behaviorContext->EBus<LightComponentRequestBus>("LightComponentRequestBus")
-                ->Event("SetLightState", &LightComponentRequestBus::Events::SetLightState)
-                ->Event("TurnOnLight", &LightComponentRequestBus::Events::TurnOnLight)
-                ->Event("TurnOffLight", &LightComponentRequestBus::Events::TurnOffLight)
-                ->Event("ToggleLight", &LightComponentRequestBus::Events::ToggleLight)
+            ;
+            behaviorContext->EBus<LightComponentRequestBus>("Light", "LightComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Rendering")
+                ->Event("SetState", &LightComponentRequestBus::Events::SetLightState, "SetLightState", { { { "State", "1=On, 0=Off" } } })
+                ->Attribute(AZ::Script::Attributes::ToolTip, "Set the light state")
+                ->Event("TurnOn", &LightComponentRequestBus::Events::TurnOnLight, "TurnOnLight")
+                ->Event("TurnOff", &LightComponentRequestBus::Events::TurnOffLight, "TurnOffLight")
+                ->Event("Toggle", &LightComponentRequestBus::Events::ToggleLight, "ToggleLight")
                 // General Settings Modifiers
                 ->Event("GetVisible", &LightComponentRequestBus::Events::GetVisible)
-                ->Event("SetVisible", &LightComponentRequestBus::Events::SetVisible)
+                ->Event("SetVisible", &LightComponentRequestBus::Events::SetVisible, { { { "IsVisible", "" } } })
                 ->VirtualProperty("Visible", "GetVisible", "SetVisible")
                 ->Event("GetColor", &LightComponentRequestBus::Events::GetColor)
-                ->Event("SetColor", &LightComponentRequestBus::Events::SetColor)
+                ->Event("SetColor", &LightComponentRequestBus::Events::SetColor, { { { "Color", "The color to set" } } })
                 ->VirtualProperty("Color", "GetColor", "SetColor")
                 ->Event("GetDiffuseMultiplier", &LightComponentRequestBus::Events::GetDiffuseMultiplier)
-                ->Event("SetDiffuseMultiplier", &LightComponentRequestBus::Events::SetDiffuseMultiplier)
+                ->Event("SetDiffuseMultiplier", &LightComponentRequestBus::Events::SetDiffuseMultiplier, { { { "Multiplier", "The multiplier" } } })
                 ->VirtualProperty("DiffuseMultiplier", "GetDiffuseMultiplier", "SetDiffuseMultiplier")
                 ->Event("GetSpecularMultiplier", &LightComponentRequestBus::Events::GetSpecularMultiplier)
-                ->Event("SetSpecularMultiplier", &LightComponentRequestBus::Events::SetSpecularMultiplier)
+                ->Event("SetSpecularMultiplier", &LightComponentRequestBus::Events::SetSpecularMultiplier, { { { "Multiplier", "The multiplier" } } })
                 ->VirtualProperty("SpecularMultiplier", "GetSpecularMultiplier", "SetSpecularMultiplier")
                 ->Event("GetAmbient", &LightComponentRequestBus::Events::GetAmbient)
-                ->Event("SetAmbient", &LightComponentRequestBus::Events::SetAmbient)
+                ->Event("SetAmbient", &LightComponentRequestBus::Events::SetAmbient, { { { "IsAmbient", "" } } })
                 ->VirtualProperty("Ambient", "GetAmbient", "SetAmbient")
                 // Point Light Modifiers
                 ->Event("GetPointMaxDistance", &LightComponentRequestBus::Events::GetPointMaxDistance)
-                ->Event("SetPointMaxDistance", &LightComponentRequestBus::Events::SetPointMaxDistance)
+                ->Event("SetPointMaxDistance", &LightComponentRequestBus::Events::SetPointMaxDistance, { { { "Distance", "The max point distance" } } })
                 ->VirtualProperty("PointMaxDistance", "GetPointMaxDistance", "SetPointMaxDistance")
                 ->Event("GetPointAttenuationBulbSize", &LightComponentRequestBus::Events::GetPointAttenuationBulbSize)
-                ->Event("SetPointAttenuationBulbSize", &LightComponentRequestBus::Events::SetPointAttenuationBulbSize)
+                ->Event("SetPointAttenuationBulbSize", &LightComponentRequestBus::Events::SetPointAttenuationBulbSize, { { { "BulbSize", "The size of the bulb" } } })
                 ->VirtualProperty("PointAttenuationBulbSize", "GetPointAttenuationBulbSize", "SetPointAttenuationBulbSize")
                 // Area Light Modifiers
                 ->Event("GetAreaMaxDistance", &LightComponentRequestBus::Events::GetAreaMaxDistance)
-                ->Event("SetAreaMaxDistance", &LightComponentRequestBus::Events::SetAreaMaxDistance)
+                ->Event("SetAreaMaxDistance", &LightComponentRequestBus::Events::SetAreaMaxDistance, { { { "Distance", "The max point distance" } } })
                 ->VirtualProperty("AreaMaxDistance", "GetAreaMaxDistance", "SetAreaMaxDistance")
                 ->Event("GetAreaWidth", &LightComponentRequestBus::Events::GetAreaWidth)
-                ->Event("SetAreaWidth", &LightComponentRequestBus::Events::SetAreaWidth)
+                ->Event("SetAreaWidth", &LightComponentRequestBus::Events::SetAreaWidth, { { { "Width", "Area Width" } } })
                 ->VirtualProperty("AreaWidth", "GetAreaWidth", "SetAreaWidth")
                 ->Event("GetAreaHeight", &LightComponentRequestBus::Events::GetAreaHeight)
-                ->Event("SetAreaHeight", &LightComponentRequestBus::Events::SetAreaHeight)
+                ->Event("SetAreaHeight", &LightComponentRequestBus::Events::SetAreaHeight, { { { "Height", "Area Height" } } })
                 ->VirtualProperty("AreaHeight", "GetAreaHeight", "SetAreaHeight")
+                ->Event("GetAreaFOV", &LightComponentRequestBus::Events::GetAreaFOV)
+                ->Event("SetAreaFOV", &LightComponentRequestBus::Events::SetAreaFOV, { { { "FOV", "Field of View" } } })
+                ->VirtualProperty("AreaFOV", "GetAreaFOV", "SetAreaFOV")
                 // Projector Light Modifiers
                 ->Event("GetProjectorMaxDistance", &LightComponentRequestBus::Events::GetProjectorMaxDistance)
-                ->Event("SetProjectorMaxDistance", &LightComponentRequestBus::Events::SetProjectorMaxDistance)
+                ->Event("SetProjectorMaxDistance", &LightComponentRequestBus::Events::SetProjectorMaxDistance, { { { "Distance", "Projector distance" } } })
                 ->VirtualProperty("ProjectorMaxDistance", "GetProjectorMaxDistance", "SetProjectorMaxDistance")
                 ->Event("GetProjectorAttenuationBulbSize", &LightComponentRequestBus::Events::GetProjectorAttenuationBulbSize)
-                ->Event("SetProjectorAttenuationBulbSize", &LightComponentRequestBus::Events::SetProjectorAttenuationBulbSize)
+                ->Event("SetProjectorAttenuationBulbSize", &LightComponentRequestBus::Events::SetProjectorAttenuationBulbSize, { { { "BulbSize", "The size of the bulb" } } })
                 ->VirtualProperty("ProjectorAttenuationBulbSize", "GetProjectorAttenuationBulbSize", "SetProjectorAttenuationBulbSize")
                 ->Event("GetProjectorFOV", &LightComponentRequestBus::Events::GetProjectorFOV)
-                ->Event("SetProjectorFOV", &LightComponentRequestBus::Events::SetProjectorFOV)
+                ->Event("SetProjectorFOV", &LightComponentRequestBus::Events::SetProjectorFOV, { { { "FOV", "Field of View" } } })
                 ->VirtualProperty("ProjectorFOV", "GetProjectorFOV", "SetProjectorFOV")
                 ->Event("GetProjectorNearPlane", &LightComponentRequestBus::Events::GetProjectorNearPlane)
-                ->Event("SetProjectorNearPlane", &LightComponentRequestBus::Events::SetProjectorNearPlane)
+                ->Event("SetProjectorNearPlane", &LightComponentRequestBus::Events::SetProjectorNearPlane, { { { "Plane", "Plane distance" } } })
                 ->VirtualProperty("ProjectorNearPlane", "GetProjectorNearPlane", "SetProjectorNearPlane")
                 // Environment Probe Light Modifiers
                 ->Event("GetProbeAreaDimensions", &LightComponentRequestBus::Events::GetProbeAreaDimensions)
-                ->Event("SetProbeAreaDimensions", &LightComponentRequestBus::Events::SetProbeAreaDimensions)
+                ->Event("SetProbeAreaDimensions", &LightComponentRequestBus::Events::SetProbeAreaDimensions, { { { "Dimension", "The X,Y and Z extents" } } })
                 ->VirtualProperty("ProbeAreaDimensions", "GetProbeAreaDimensions", "SetProbeAreaDimensions")
                 ->Event("GetProbeSortPriority", &LightComponentRequestBus::Events::GetProbeSortPriority)
-                ->Event("SetProbeSortPriority", &LightComponentRequestBus::Events::SetProbeSortPriority)
+                ->Event("SetProbeSortPriority", &LightComponentRequestBus::Events::SetProbeSortPriority, { { { "Priority", "" } } })
                 ->VirtualProperty("ProbeSortPriority", "GetProbeSortPriority", "SetProbeSortPriority")
                 ->Event("GetProbeBoxProjected", &LightComponentRequestBus::Events::GetProbeBoxProjected)
-                ->Event("SetProbeBoxProjected", &LightComponentRequestBus::Events::SetProbeBoxProjected)
+                ->Event("SetProbeBoxProjected", &LightComponentRequestBus::Events::SetProbeBoxProjected, { { { "IsProjected", "TRUE will project the box, False otherwise." } } })
                 ->VirtualProperty("ProbeBoxProjected", "GetProbeBoxProjected", "SetProbeBoxProjected")
                 ->Event("GetProbeBoxHeight", &LightComponentRequestBus::Events::GetProbeBoxHeight)
-                ->Event("SetProbeBoxHeight", &LightComponentRequestBus::Events::SetProbeBoxHeight)
+                ->Event("SetProbeBoxHeight", &LightComponentRequestBus::Events::SetProbeBoxHeight, { { { "Height", "Box Height" } } })
                 ->VirtualProperty("ProbeBoxHeight", "GetProbeBoxHeight", "SetProbeBoxHeight")
                 ->Event("GetProbeBoxLength", &LightComponentRequestBus::Events::GetProbeBoxLength)
-                ->Event("SetProbeBoxLength", &LightComponentRequestBus::Events::SetProbeBoxLength)
+                ->Event("SetProbeBoxLength", &LightComponentRequestBus::Events::SetProbeBoxLength, { { { "Length", "Box Length" } } })
                 ->VirtualProperty("ProbeBoxLength", "GetProbeBoxLength", "SetProbeBoxLength")
                 ->Event("GetProbeBoxWidth", &LightComponentRequestBus::Events::GetProbeBoxWidth)
-                ->Event("SetProbeBoxWidth", &LightComponentRequestBus::Events::SetProbeBoxWidth)
+                ->Event("SetProbeBoxWidth", &LightComponentRequestBus::Events::SetProbeBoxWidth, { { { "Width", "Box Width" } } })
                 ->VirtualProperty("ProbeBoxWidth", "GetProbeBoxWidth", "SetProbeBoxWidth")
                 ->Event("GetProbeAttenuationFalloff", &LightComponentRequestBus::Events::GetProbeAttenuationFalloff)
-                ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff)
+                ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff, { { { "Falloff", "New Attenuation Falloff" } } })
                 ->VirtualProperty("ProbeAttenuationFalloff", "GetProbeAttenuationFalloff", "SetProbeAttenuationFalloff")
                 ;
 
-            behaviorContext->EBus<LightComponentNotificationBus>("LightComponentNotificationBus")
+            behaviorContext->EBus<LightComponentNotificationBus>("LightNotification", "LightComponentNotificationBus", "Notifications for the Light Components")
+                ->Attribute(AZ::Script::Attributes::Category, "Rendering")
                 ->Handler<BehaviorLightComponentNotificationBusHandler>();
         }
     }
@@ -146,7 +152,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LightConfiguration>()
-                ->Version(5, &VersionConverter)
+                ->Version(6, &VersionConverter)
                 ->Field("LightType", &LightConfiguration::m_lightType)
                 ->Field("Visible", &LightConfiguration::m_visible)
                 ->Field("OnInitially", &LightConfiguration::m_onInitially)
@@ -159,6 +165,7 @@ namespace LmbrCentral
                 ->Field("AreaWidth", &LightConfiguration::m_areaWidth)
                 ->Field("AreaHeight", &LightConfiguration::m_areaHeight)
                 ->Field("AreaMaxDistance", &LightConfiguration::m_areaMaxDistance)
+                ->Field("AreaFOV", &LightConfiguration::m_areaFOV)
                 ->Field("ProjectorDistance", &LightConfiguration::m_projectorRange)
                 ->Field("ProjectorAttenuationBulbSize", &LightConfiguration::m_projectorAttenuationBulbSize)
                 ->Field("ProjectorFOV", &LightConfiguration::m_projectorFOV)
@@ -492,6 +499,19 @@ namespace LmbrCentral
         return m_configuration.m_areaHeight;
     }
 
+    void LightComponent::SetAreaFOV(float newFOV)
+    {
+        if (newFOV != m_configuration.m_areaFOV)
+        {
+            m_configuration.m_areaFOV = newFOV;
+            m_light.UpdateRenderLight(m_configuration);
+        }
+    }
+    float LightComponent::GetAreaFOV()
+    {
+        return m_configuration.m_areaFOV;
+    }
+
     void LightComponent::SetProjectorMaxDistance(float newMaxDistance)
     {
         if (newMaxDistance != m_configuration.m_projectorRange)
@@ -557,17 +577,17 @@ namespace LmbrCentral
         return m_configuration.m_probeArea;
     }
 
-    void LightComponent::SetProbeSortPriority(float newPriority)
+    void LightComponent::SetProbeSortPriority(AZ::u32 newPriority)
     {
         if (newPriority != m_configuration.m_probeSortPriority)
         {
-            m_configuration.m_probeSortPriority = (AZ::u32)newPriority;
+            m_configuration.m_probeSortPriority = newPriority;
             m_light.UpdateRenderLight(m_configuration);
         }
     }
-    float LightComponent::GetProbeSortPriority()
+    AZ::u32 LightComponent::GetProbeSortPriority()
     {
-        return (float)m_configuration.m_probeSortPriority;
+        return m_configuration.m_probeSortPriority;
     }
 
     void LightComponent::SetProbeBoxProjected(bool isProbeBoxProjected)
@@ -729,6 +749,7 @@ namespace LmbrCentral
         , m_areaMaxDistance(2.f)
         , m_areaWidth(5.f)
         , m_areaHeight(5.f)
+        , m_areaFOV(45.0f)
         , m_projectorAttenuationBulbSize(0.05f)
         , m_projectorRange(5.f)
         , m_projectorFOV(90.f)

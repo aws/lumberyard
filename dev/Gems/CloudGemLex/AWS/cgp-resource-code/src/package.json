@@ -1,0 +1,8 @@
+{
+  "name": "@cloud-gems/cloudgemlex",
+  "version": "1.0.0",
+  "description": "Cloud Gem - Lex",
+  "private": true,
+    "dependencies": {
+    }
+}

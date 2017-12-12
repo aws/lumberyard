@@ -76,7 +76,7 @@ namespace AzFramework
 
             NegotiationMessage() = default;
             unsigned int GetMessageType() const override;
-            int m_apiVersion = 1; // Changing the value will cause negotiation to fail between incompatible versions
+            int m_apiVersion = 2; // Changing the value will cause negotiation to fail between incompatible versions
             AZ::OSString m_identifier;
             typedef AZStd::unordered_map<unsigned int, AZ::OSString> NegotiationInfoMap;
             NegotiationInfoMap m_negotiationInfoMap;
@@ -289,6 +289,35 @@ namespace AzFramework
             AZ::Data::AssetId m_assetId = AZ::Data::AssetId();
             AZStd::vector<AZ::Data::AssetId> m_legacyAssetIds; // if this asset was referred to by other legacy assetIds in the past, then they will be included here.
             AZ::Data::AssetType m_assetType = AZ::Data::s_invalidAssetType;
+        };
+
+        // SaveAssetCatalogRequest
+        class SaveAssetCatalogRequest
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SaveAssetCatalogRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(SaveAssetCatalogRequest, "{12B0C076-97A8-4FAE-9F56-22A890766272}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+            SaveAssetCatalogRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        // SaveAssetCatalogResponse
+        class SaveAssetCatalogResponse
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(SaveAssetCatalogResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(SaveAssetCatalogResponse, "{F1B4F440-1251-4516-9FAE-2BB067D58191}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            SaveAssetCatalogResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            bool m_saved = false;
         };
 
         //////////////////////////////////////////////////////////////////////////

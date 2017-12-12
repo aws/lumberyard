@@ -34,6 +34,7 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<StereoRendererRequestBus>("StereoRendererRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("IsRenderingToHMD", &StereoRendererRequestBus::Events::IsRenderingToHMD);
         }
     }

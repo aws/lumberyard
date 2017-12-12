@@ -153,6 +153,7 @@ namespace RADTelemetry
     {
         AZ_Printf(ProfileChannel, "Attempting to connect to the Telemetry server at %s:%d", m_address, m_port);
 
+        tmSetCaptureMask(m_captureMask);
         tm_error result = tmOpen(
             0,                      // unused
             "ly",                   // program name, don't use slashes or weird character that will screw up a filename
@@ -170,8 +171,6 @@ namespace RADTelemetry
             {
                 m_running = true;
                 AZ_Printf(ProfileChannel, "Connected to the Telemetry server!");
-
-                tmSetCaptureMask(m_captureMask);
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
                 ScopedLock lock(m_threadNameLock);
@@ -225,7 +224,7 @@ namespace RADTelemetry
         }
     }
 
-    extern "C" tm_api* g_tm_api; // Required for the RAD Telemetry as static lib case
+    TM_EXPORT_API tm_api* g_tm_api; // Required for the RAD Telemetry as static lib case
     void ProfileTelemetryComponent::Initialize()
     {
         if (IsInitialized())
@@ -266,7 +265,6 @@ namespace RADTelemetry
     {
         m_captureMask = mask;
     }
-
 
     void ProfileTelemetryComponent::Reflect(AZ::ReflectContext* context)
     {

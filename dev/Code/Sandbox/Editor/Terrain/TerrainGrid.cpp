@@ -171,7 +171,7 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
     if (!st->textureId)
     {
         st->textureId = pRenderer->DownLoadToVideoMemory(0, dwTextureResolution, dwTextureResolution,
-                eTF_R8G8B8A8, eTF_R8G8B8A8, 0, false, FILTER_LINEAR, 0, 0, FT_USAGE_ALLOWREADSRGB);
+                eTF_B8G8R8A8, eTF_B8G8R8A8, 0, false, FILTER_LINEAR, 0, 0, FT_USAGE_ALLOWREADSRGB);
 
         p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), st->textureId);
     }

@@ -119,6 +119,11 @@ void CSplineObject::RemovePoint(int index)
 Vec3 CSplineObject::GetBezierPos(int index, float t) const
 {
     float invt = 1.0f - t;
+    if (index == GetPointCount() - 1)
+    {
+        return m_points[index].pos *        (invt * invt * invt) +
+            m_points[index].forw *       (3 * t * invt * invt);
+    }
     return m_points[index].pos *        (invt * invt * invt) +
            m_points[index].forw *       (3 * t * invt * invt) +
            m_points[index + 1].back * (3 * t * t * invt) +
@@ -130,6 +135,17 @@ Vec3 CSplineObject::GetBezierPos(int index, float t) const
 Vec3 CSplineObject::GetBezierTangent(int index, float t) const
 {
     float invt = 1.0f - t;
+    if (index == GetPointCount() - 1)
+    {
+        Vec3 tan = -m_points[index].pos *   (invt * invt)
+            + m_points[index].forw *  (invt * (invt - 2 * t));
+        if (!tan.IsZero())
+        {
+            tan.Normalize();
+        }
+
+        return tan;
+    }
     Vec3 tan = -m_points[index].pos *   (invt * invt)
         + m_points[index].forw *  (invt * (invt - 2 * t))
         + m_points[index + 1].back * (t * (2 * invt - t))

@@ -35,7 +35,7 @@ namespace PerforceConnection
     PerforceConfigDialog::PerforceConfigDialog(QWidget* parent)
         : QDialog(parent)
     {
-        this->setWindowFlags(Qt::Tool
+        this->setWindowFlags(Qt::Dialog
             | Qt::MSWindowsFixedSizeDialogHint
             | Qt::WindowStaysOnTopHint);
         m_ui = new Ui::P4SettingsDialog();

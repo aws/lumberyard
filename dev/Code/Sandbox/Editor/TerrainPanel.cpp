@@ -43,4 +43,29 @@ CTerrainPanel::CTerrainPanel(QWidget* pParent)
     OnInitDialog();
 }
 
+
+/**
+ * The Terrain Tool pane is only visible in the Cry-Free version of the Editor.
+ * The RollupBar is completely hidden, but we still need to access the Terrain tab,
+ * so the Terrain Tool is just the Terrain RollupCtrl in a single pane
+ */
+CTerrainTool::CTerrainTool(QWidget* parent)
+    : QRollupCtrl(parent)
+    , m_terrainPanel(new CTerrainPanel())
+{
+    addItem(m_terrainPanel, tr("Terrain"));
+    expandAllPages(true);
+}
+
+void CTerrainTool::RegisterViewClass()
+{
+    QtViewOptions options;
+    options.paneRect = QRect(100, 100, 500, 800);
+    options.isDeletable = false;
+    options.isLegacyReplacement = true;
+    options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+
+    RegisterQtViewPane<CTerrainTool>(GetIEditor(), LyViewPane::TerrainTool, LyViewPane::CategoryTools, options);
+}
+
 #include <TerrainPanel.moc>

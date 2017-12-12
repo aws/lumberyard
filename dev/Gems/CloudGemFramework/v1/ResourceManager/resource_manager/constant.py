@@ -25,7 +25,7 @@ PROJECT_SETTINGS_FILENAME ="project-settings.json"
 PROJECT_CONFIGURATION_RESOURCE_NAME = "Configuration"
 PROJECT_CGP_RESOURCE_NAME = "CloudGemPortal"
 PROJECT_CGP_ROOT_FOLDER = "www"
-PROJECT_CGP_BOOTSTRAP_FILENAME = "cgp_bootstrap.js"
+PROJECT_CGP_BOOTSTRAP_FILENAME = "bootstrap.js"
 PROJECT_CGP_ROOT_FILE = "{}/index.html".format(PROJECT_CGP_ROOT_FOLDER)
 PROJECT_CGP_ROOT_SUPPORT_FILE = "{}/{}".format(PROJECT_CGP_ROOT_FOLDER,PROJECT_CGP_BOOTSTRAP_FILENAME)
 PROJECT_CGP_1 = "a"
@@ -34,6 +34,7 @@ PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS = 604800 # one week
 PROJECT_CGP_AES_SEGMENT_SIZE = 128
 PROJECT_CGP_EXPIRATION_OUT_OF_BOUNDS_MESSAGE = 'The --duration-seconds option value must be in the range 900-3600, inclusive.'
 STACK_UPDATE_DELAY_TIME = 3 # seconds of delay after uploading a template to s3 before asking cloud formation to use it
+MAPPING_FILE_SUFFIX = 'awsLogicalMappings.json'
 
 ## Gem
 GEM_DEFINITION_FILENAME = "gem.json"
@@ -67,11 +68,13 @@ CLI_RETURN_ERROR_UNHANDLED_CODE = 2
 
 ## User
 DEFAULT_PROFILE_NAME = "DefaultProfile"
+DEFAULT_SECTION_NAME = '__default__'
 
 ## Credentials
 ACCESS_KEY_OPTION = 'aws_access_key_id'
 SECRET_KEY_OPTION = 'aws_secret_access_key'
 
 ## Local Project Settings
-ENABLED_RESOURCE_GROUPS_KEY = 'EnabledResourceGroups'
+ENABLED_RESOURCE_GROUPS_KEY = 'EnabledResourceGroups' # deprecated
+DISABLED_RESOURCE_GROUPS_KEY = 'DisabledResourceGroups'
 

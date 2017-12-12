@@ -98,7 +98,9 @@ public:
     QVector<int> ActionIds() const;
 
     void SetShowByDefault(bool value) { m_showByDefault = value; }
+    void SetShowToggled(bool value) { m_showToggled = value; }
     bool IsShowByDefault() const { return m_showByDefault; }
+    bool IsShowToggled() const { return m_showToggled; }
 
     void CopyActions(const AmazonToolbar& other) { m_actions = other.m_actions; }
     void SetActionsOnInternalToolbar(ActionManager* actionManager);
@@ -122,6 +124,7 @@ private:
 
     QVector<ActionData> m_actions;
     bool m_showByDefault = true;
+    bool m_showToggled = false;
     bool m_applyHoverEffect = false;
 };
 

@@ -16,11 +16,14 @@ from waflib.TaskGen import feature, after, after_method, before_method
 import waflib.Node
 import subprocess
 
+from cry_utils import get_command_line_limit
+
 # clang dependencies are a set of dots indicating include depth, followed by the absolute path
 #   ex:  ... /dev/Code/Framework/AzCore/AzCore/base.h
 re_clang_include = re.compile(r'\.\.* (.*)$')
 
-supported_compilers = ['clang', 'clang++', 'orbis-clang', 'orbis-clang++']
+supported_compilers = ['clang', 'clang++',
+]
 
 lock = threading.Lock()
 nodes = {}  # Cache the path -> Node lookup
@@ -41,16 +44,8 @@ def quote_response_command_clang(self, flag):
 def exec_response_command_clang(self, cmd, **kw):
     try:
         tmp = None
-        arg_max = 8192 # windows command line length limit
-        if not sys.platform.startswith('win'):
-            arg_max = int(subprocess.check_output(["getconf", "ARG_MAX"]).strip())
-            env_size = len(subprocess.check_output(['env']))
-            #on platforms such as mac, ARG_MAX encodes the amount of room you have for args, but in BYTES.
-            #as well as for environment itself.
-            arg_max = arg_max - (env_size * 2) # env has lines which are null terminated, reserve * 2 for safety
-            # finally, assume we're using some sort of unicode encoding here, with each character costing us at least two bytes
-            arg_max = arg_max / 2
-        
+        arg_max = get_command_line_limit()
+
         if isinstance(cmd, list) and len(' '.join(cmd)) >= arg_max:
             program = cmd[0]  # unquoted program name, otherwise exec_command will fail
             if program == 'ar' and sys.platform.startswith('darwin'):
@@ -101,7 +96,7 @@ def wrap_class_clang(class_name):
         if self.env.CC_NAME in supported_compilers:
             return exec_command_clang(self, *k, **kw)
         elif self.env.CC_NAME in ['gcc']:
-            # workaround: the previous orbis module was intercepting commands to gcc and clang
+            # workaround: the previous module was intercepting commands to gcc and clang
             # and issuing them with response files.  This new module only handled clang, and this
             # this is the only place that needs response files
             return exec_command_clang(self, *k, **kw)
@@ -241,7 +236,8 @@ def add_clangdeps_flags(taskgen):
 
 #############################################################################
 ## convert path to node.  Dependencies are returned from clang as paths, but we want to know which nodes need to be rebuilt
-def path_to_node(base_node, path, cached_nodes, b_orbis_hack):
+def path_to_node(base_node, path, cached_nodes, b_drive_hack
+):
     # Take the base node and the path and return a node
     # Results are cached because searching the node tree is expensive
     # The following code is executed by threads, it is not safe, so a lock is needed...
@@ -255,7 +251,7 @@ def path_to_node(base_node, path, cached_nodes, b_orbis_hack):
         node = cached_nodes[node_lookup_key]
     except KeyError:
         node = base_node.find_resource(path)
-        if not node and b_orbis_hack: # To handle absolute path on C when building on another drive
+        if not node and b_drive_hack: # To handle absolute path on C when building on another drive 
             node = base_node.make_node(path)
         cached_nodes[node_lookup_key] = node
     finally:
@@ -289,7 +285,8 @@ def wrap_compiled_task_clang(classname):
             node = None
             assert os.path.isabs(path)
 
-            node = path_to_node(bld.root, path, cached_nodes, self.env['PLATFORM'] == 'orbis')
+	    drive_hack = False
+            node = path_to_node(bld.root, path, cached_nodes, drive_hack)
 
             if not node:
                 raise ValueError('could not find %r for %r' % (path, self))

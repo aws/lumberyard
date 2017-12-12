@@ -173,6 +173,7 @@ namespace LmbrCentral
         if (behaviorContext)
         {
             behaviorContext->EBus<MannequinRequestsBus>("MannequinRequestsBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("QueueFragment", &MannequinRequestsBus::Events::QueueFragment)
                 ->Event("PauseAll", &MannequinRequestsBus::Events::PauseAll)
                 ->Event("ResumeAll", &MannequinRequestsBus::Events::ResumeAll)
@@ -191,6 +192,7 @@ namespace LmbrCentral
                 ;
 
             behaviorContext->EBus<MannequinNotificationBus>("MannequinNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("OnActionStart", &MannequinNotifications::OnActionStart)
                 ->Event("OnActionComplete", &MannequinNotifications::OnActionComplete)
                 ->Event("OnActionExit", &MannequinNotifications::OnActionExit)

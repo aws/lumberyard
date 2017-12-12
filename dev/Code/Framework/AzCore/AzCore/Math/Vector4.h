@@ -302,10 +302,6 @@ AZSTD_DECLARE_POD_TYPE(AZ::Vector4);
 
 #if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
     #include <AzCore/Math/Internal/Vector4Win32.inl>
-#elif defined(AZ_SIMD_X360)
-    #include <AzCore/Math/Internal/Vector4x360.inl>
-#elif defined(AZ_SIMD_PS3)
-    #include <AzCore/Math/Internal/Vector4Ps3.inl>
 #elif defined(AZ_SIMD_WII)
     #include <AzCore/Math/Internal/Vector4Wii.inl>
 #else

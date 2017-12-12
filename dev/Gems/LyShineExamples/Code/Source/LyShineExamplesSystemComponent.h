@@ -4,6 +4,7 @@
 #include <AzCore/Component/Component.h>
 
 #include <LyShineExamples/LyShineExamplesBus.h>
+#include <LyShineExamplesCppExample.h>
 #include "LyShineExamplesInternalBus.h"
 
 namespace LyShineExamples
@@ -43,5 +44,6 @@ namespace LyShineExamples
 
     private: // data
         UiDynamicContentDatabase* m_uiDynamicContentDatabase = nullptr;
+        LyShineExamplesCppExample* m_cppExample = nullptr;
     };
 }

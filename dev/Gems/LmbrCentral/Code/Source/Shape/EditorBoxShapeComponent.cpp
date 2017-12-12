@@ -10,17 +10,45 @@
 *
 */
 #include "StdAfx.h"
-#include "BoxShapeComponent.h"
 #include "EditorBoxShapeComponent.h"
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Serialization/EditContext.h>
+
+#include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
+
+#include "BoxShapeComponent.h"
 
 namespace LmbrCentral
 {
     namespace ClassConverters
     {
         static bool DeprecateEditorBoxColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+    }
+
+    void EditorBoxShapeComponent::Activate()
+    {
+        EditorBaseShapeComponent::Activate();
+        BoxShape::Activate(GetEntityId());       
+        EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());        
+    }
+
+    void EditorBoxShapeComponent::Deactivate()
+    {
+        for (int i = 0; i < s_manipulatorCount; ++i)
+        {
+            if (m_linearManipulators[i] != nullptr)
+            {
+                delete m_linearManipulators[i];
+                m_linearManipulators[i] = nullptr;
+            }
+        }        
+
+        EntitySelectionEvents::Bus::Handler::BusDisconnect();
+        BoxShape::Deactivate();
+        EditorBaseShapeComponent::Deactivate();
     }
 
     void EditorBoxShapeComponent::Reflect(AZ::ReflectContext* context)
@@ -51,8 +79,10 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Box_Shape.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(0, &EditorBoxShapeComponent::m_configuration, "Configuration", "Box Shape Configuration")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBoxShapeComponent::ConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
@@ -70,13 +100,176 @@ namespace LmbrCentral
 
     void EditorBoxShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        auto component = gameEntity->CreateComponent<BoxShapeComponent>();
-        if (component)
+        auto component = gameEntity->CreateComponent<BoxShapeComponent>()->SetConfiguration(m_configuration);
+    }
+
+    void EditorBoxShapeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
+    {
+        EditorBaseShapeComponent::OnTransformChanged(local, world);
+        BoxShape::OnTransformChanged(local, world);
+               
+        AZ::Transform tm = world;
+        m_worldScale = tm.ExtractScaleExact();
+        UpdateManipulators();   
+    }
+
+    void EditorBoxShapeComponent::ConfigurationChanged()
+    {             
+        BoxShape::InvalidateCache(BoxIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
+        
+        ShapeComponentNotificationsBus::Event(GetEntityId(),
+            &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+
+        UpdateManipulators();
+    }
+
+    void EditorBoxShapeComponent::OnSelected()
+    {
+        RegisterManipulators();
+    }
+
+    void EditorBoxShapeComponent::OnDeselected()
+    {
+        UnregisterManipulators();
+    }
+
+    void EditorBoxShapeComponent::RegisterManipulators()
+    {
+        AzToolsFramework::ManipulatorManagerId manipulatorManagerId = 1;
+        for (int i = 0; i < s_manipulatorCount; ++i)
         {
-            component->m_configuration = m_configuration;
+            if (m_linearManipulators[i] == nullptr)
+            {
+                m_linearManipulators[i] = aznew AzToolsFramework::LinearManipulator(GetEntityId());
+                m_linearManipulators[i]->SetDisplayType(AzToolsFramework::LinearManipulator::DisplayType::SquarePoint);
+                m_linearManipulators[i]->SetColor(AZ::Color(0.06275f, 0.1647f, 0.1647f, 1.0f));
+
+                m_linearManipulators[i]->InstallMouseDownCallback([this](const AzToolsFramework::LinearManipulationData& manipulationData)
+                {
+                    OnMouseDownManipulator(manipulationData);
+                });
+
+                m_linearManipulators[i]->InstallMouseMoveCallback([this, i](const AzToolsFramework::LinearManipulationData& manipulationData)
+                {
+                    OnMouseMoveManipulator(manipulationData, m_linearManipulators[i]);
+                });
+            }
+            m_linearManipulators[i]->Register(manipulatorManagerId);
+        }
+
+        UpdateManipulators();
+    }
+
+    void EditorBoxShapeComponent::UnregisterManipulators()
+    {
+        for (int i = 0; i < s_manipulatorCount; ++i)
+        {
+            if (m_linearManipulators[i] != nullptr)
+            {
+                m_linearManipulators[i]->Unregister();
+            }
         }
     }
 
+    void EditorBoxShapeComponent::UpdateManipulators()
+    {
+        // We have to do this because all shape components are displayed with only regard for the 
+        // maximum value of its entity's world scale. See the function EditorBaseShapeComponent::DisplayEntity().
+        AZ::VectorFloat maxWorldScale = AZ::GetMax(m_worldScale.GetX(), AZ::GetMax(m_worldScale.GetY(), m_worldScale.GetX()));
+        AZ::VectorFloat half(0.5f);
+        AZ::VectorFloat scaleX = half * maxWorldScale / m_worldScale.GetX();
+        AZ::VectorFloat scaleY = half * maxWorldScale / m_worldScale.GetY();
+        AZ::VectorFloat scaleZ = half * maxWorldScale / m_worldScale.GetZ();
+
+        AZ::Vector3 boxDimensions = m_configuration.GetDimensions();
+        
+        
+        if (m_linearManipulators[0])
+        {
+            m_linearManipulators[0]->SetPosition(AZ::Vector3::CreateAxisX() * scaleX * boxDimensions);
+            m_linearManipulators[0]->SetDirection(AZ::Vector3::CreateAxisX());
+        }
+        if (m_linearManipulators[1])
+        {
+            m_linearManipulators[1]->SetPosition(-AZ::Vector3::CreateAxisX() * scaleX * boxDimensions);
+            m_linearManipulators[1]->SetDirection(-AZ::Vector3::CreateAxisX());
+        }
+        if (m_linearManipulators[2])
+        {
+            m_linearManipulators[2]->SetPosition(AZ::Vector3::CreateAxisY() * scaleY * boxDimensions);
+            m_linearManipulators[2]->SetDirection(AZ::Vector3::CreateAxisY());
+        }
+        if (m_linearManipulators[3])
+        {
+            m_linearManipulators[3]->SetPosition(-AZ::Vector3::CreateAxisY() * scaleY * boxDimensions);
+            m_linearManipulators[3]->SetDirection(-AZ::Vector3::CreateAxisY());
+        }
+        if (m_linearManipulators[4])
+        {
+            m_linearManipulators[4]->SetPosition(AZ::Vector3::CreateAxisZ() * scaleZ * boxDimensions);
+            m_linearManipulators[4]->SetDirection(AZ::Vector3::CreateAxisZ());
+        }
+        if (m_linearManipulators[5])
+        {
+            m_linearManipulators[5]->SetPosition(-AZ::Vector3::CreateAxisZ() * scaleZ * boxDimensions);
+            m_linearManipulators[5]->SetDirection(-AZ::Vector3::CreateAxisZ());
+        }
+
+        for (int i = 0; i < s_manipulatorCount; ++i)
+        {
+            if (m_linearManipulators[i] != nullptr)
+            {
+                m_linearManipulators[i]->SetBoundsDirty();
+            }
+        }
+    }
+
+    void EditorBoxShapeComponent::OnMouseDownManipulator(const AzToolsFramework::LinearManipulationData& /*manipulationData*/)
+    {
+        m_dimensionAtMouseDown = m_configuration.GetDimensions();
+    }
+
+    void EditorBoxShapeComponent::OnMouseMoveManipulator(const AzToolsFramework::LinearManipulationData& manipulationData, AzToolsFramework::LinearManipulator* manipulator)
+    {
+        AZ_Assert(manipulator != nullptr, "Manipulator is nullptr!");
+        AZ_Assert(manipulator->GetManipulatorId() == manipulationData.m_manipulatorId, "Manipulator Ids mismatch!");
+
+        AZ::VectorFloat maxWorldScaleInverse = AZ::VectorFloat::CreateOne() / AZ::GetMax(m_worldScale.GetX(), AZ::GetMax(m_worldScale.GetY(), m_worldScale.GetX()));
+        AZ::VectorFloat delta = manipulationData.m_totalTranslationWorldDelta * 2.0f * maxWorldScaleInverse;
+
+        AZ::VectorFloat zero = AZ::VectorFloat::CreateZero();
+        AZ::Vector3 newDimensions;
+        if (manipulator == m_linearManipulators[0] || manipulator == m_linearManipulators[1])
+        {
+            newDimensions = m_dimensionAtMouseDown + AZ::Vector3::CreateAxisX() * delta;
+            if (newDimensions.GetX() < zero)
+            {
+                newDimensions.SetX(zero);
+            }
+        }
+        else if (manipulator == m_linearManipulators[2] || manipulator == m_linearManipulators[3])
+        {   
+            newDimensions = m_dimensionAtMouseDown + AZ::Vector3::CreateAxisY() * delta;
+            if (newDimensions.GetY() < zero)
+            {
+                newDimensions.SetY(zero);
+            }
+        }
+        else // manipulator == m_linearManipulators[4] || manipulator == m_linearManipulators[5]
+        {
+            newDimensions = m_dimensionAtMouseDown + AZ::Vector3::CreateAxisZ() * delta;
+            if (newDimensions.GetZ() < zero)
+            {
+                newDimensions.SetZ(zero);
+            }
+        }
+
+        SetBoxDimensions(newDimensions);
+        UpdateManipulators();
+
+        AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
+            &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
+    }    
 
     namespace ClassConverters
     {
@@ -97,28 +290,28 @@ namespace LmbrCentral
 
             New:
             <Class name="EditorBoxShapeComponent" field="element" version="1" type="{2ADD9043-48E8-4263-859A-72E0024372BF}">
-             <Class name="BoxShapeConfiguration" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
+             <Class name="BoxShapeConfig" field="Configuration" version="1" type="{F034FBA2-AC2F-4E66-8152-14DFB90D6283}">
               <Class name="Vector3" field="Dimensions" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
              </Class>
             </Class>
             */
 
             // Cache the Configuration
-            BoxShapeConfiguration configuration;
+            BoxShapeConfig configuration;
             int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<BoxShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<BoxShapeConfig>(configuration);
             }
 
             // Convert to EditorBoxShapeComponent
-            bool result = classElement.Convert(context, "{2ADD9043-48E8-4263-859A-72E0024372BF}");
+            bool result = classElement.Convert(context, EditorBoxShapeComponentTypeId);
             if (result)
             {
-                configIndex = classElement.AddElement<BoxShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<BoxShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<BoxShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<BoxShapeConfig>(context, configuration);
                 }
                 return true;
             }

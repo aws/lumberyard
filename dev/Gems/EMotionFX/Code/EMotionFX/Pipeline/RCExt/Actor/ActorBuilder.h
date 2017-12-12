@@ -1,0 +1,138 @@
+#pragma once
+
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Containers/Scene.h>
+
+#include <RCext/CoordinateSystemConverter.h>
+
+
+namespace AZ
+{
+    namespace SceneAPI
+    {
+        namespace DataTypes
+        {
+            class IMeshData;
+        }
+    }
+    namespace GFxFramework
+    {
+        class IMaterialGroup;
+    }
+
+    class Transform;
+}
+
+namespace EMotionFX
+{
+    class Actor;
+    class Node;
+    class Mesh;
+    class MeshBuilder;
+    class MeshBuilderSkinningInfo;
+
+    namespace Pipeline
+    {
+        struct ActorBuilderContext;
+
+        namespace Group
+        {
+            class IActorGroup;
+        }
+
+        struct ActorSettings
+        {
+            bool m_loadMeshes;                      /* Set to false if you wish to disable loading any meshes. */
+            bool m_loadStandardMaterialLayers;      /* Set to false if you wish to disable loading any standard material layers. */
+            bool m_loadSkinningInfo;
+            bool m_optimizeTriangleList;
+            AZ::u32 m_maxWeightsPerVertex;
+            float m_weightThreshold;                /* removes skinning influences below this threshold and re-normalize others. */
+
+            ActorSettings()
+                : m_loadMeshes(true)
+                , m_loadStandardMaterialLayers(true)
+                , m_loadSkinningInfo(true)
+                , m_optimizeTriangleList(true)
+                , m_maxWeightsPerVertex(4)
+                , m_weightThreshold(0.001f)
+            {
+            }
+        };
+
+        class ActorBuilder
+            : public AZ::SceneAPI::SceneCore::ExportingComponent
+        {
+        public:
+            AZ_COMPONENT(ActorBuilder, "{76E1AB76-0861-457D-B100-AFBA154B17FA}", AZ::SceneAPI::SceneCore::ExportingComponent);
+
+            using BoneNameEmfxIndexMap = AZStd::unordered_map<AZStd::string, AZ::u32>;
+
+            ActorBuilder();
+            ~ActorBuilder() override = default;
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            AZ::SceneAPI::Events::ProcessingResult BuildActor(ActorBuilderContext& context);
+
+        private:
+            struct NodeIndexHasher
+            {
+                AZStd::size_t operator()(const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex) const
+                {
+                    return nodeIndex.AsNumber();
+                }
+            };
+            struct NodeIndexComparator
+            {
+                bool operator()(const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& a,
+                    const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& b) const
+                {
+                    return a == b;
+                }
+            };
+            using NodeIndexSet = AZStd::unordered_set<AZ::SceneAPI::Containers::SceneGraph::NodeIndex, NodeIndexHasher, NodeIndexComparator>;
+
+        private:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+            // Workaround for VS2013 - Delete the copy constructor and make it private
+            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+            ActorBuilder(const ActorBuilder&) = delete;
+#endif
+            void BuildPreExportStructure(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
+                AZStd::vector<AZ::SceneAPI::Containers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap);
+
+            void BuildMesh(const ActorBuilderContext& context, EMotionFX::Node* emfxNode, AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData> meshData,
+                const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings, const CoordinateSystemConverter& coordSysConverter);
+
+            EMotionFX::MeshBuilderSkinningInfo* ExtractSkinningInfo(AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData> meshData,
+                const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings);
+
+            void CreateSkinningMeshDeformer(EMotionFX::Actor* actor, EMotionFX::Node* node, EMotionFX::Mesh* mesh, EMotionFX::MeshBuilderSkinningInfo* skinningInfo);
+
+            void ExtractActorSettings(const Group::IActorGroup& actorGroup, ActorSettings& outSettings);
+
+            void GatherGlobalTransform(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::Transform& outTransform);
+
+            bool GetMaterialInfoForActorGroup(const ActorBuilderContext& context);
+            void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
+
+            void GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
+
+        private:
+            AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;
+            AZStd::vector<AZ::u32> m_materialIndexMapForMesh;
+        };
+    }
+}

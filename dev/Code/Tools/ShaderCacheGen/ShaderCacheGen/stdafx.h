@@ -28,9 +28,6 @@
 #include <platform.h>
 #include <ProjectDefines.h>
 
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_Launcher
-
 // Insert your headers here
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

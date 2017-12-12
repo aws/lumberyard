@@ -1,8 +1,25 @@
 ﻿import { NgModule } from '@angular/core';
 import { AppSharedModule } from 'app/shared/shared.module';
-import { DragableComponent, ActionStubComponent, ActionStubBasicComponent, ActionStubItemsComponent, PaginationComponent, SubNavComponent, SearchComponent } from "./component/index";
+import {
+    CloudWatchLogComponent,
+    RestApiExplorerComponent,
+    MetricComponent,
+    BodyTreeViewComponent,
+    DragableComponent,
+    ActionStubComponent,
+    ActionStubBasicComponent,
+    ActionStubItemsComponent,
+    PaginationComponent,
+    FacetComponent,
+    SearchComponent    
+} from "./component/index";
 import { DragulaModule, DragulaService } from 'ng2-dragula/ng2-dragula';
-import { InnerRouterService } from './service/index';
+import {
+    InnerRouterService,
+    ApiGatewayService,
+    CloudGemDirectoryService
+} from './service/index';
+import { FacetDirective } from './directive/facet.directive'
 
 @NgModule({
     imports: [AppSharedModule, DragulaModule],
@@ -14,7 +31,7 @@ import { InnerRouterService } from './service/index';
         ActionStubItemsComponent,
         PaginationComponent,
         SearchComponent,
-        SubNavComponent
+        FacetComponent          
     ],
     declarations: [                  
         DragableComponent,        
@@ -23,11 +40,24 @@ import { InnerRouterService } from './service/index';
         ActionStubItemsComponent,
         PaginationComponent,
         SearchComponent,  
-        SubNavComponent
+        FacetComponent,                        
+        FacetDirective,
+        BodyTreeViewComponent,
+        RestApiExplorerComponent,
+        CloudWatchLogComponent,
+        MetricComponent       
     ],
     providers: [
         DragulaService,
-        InnerRouterService,        
+        InnerRouterService,
+        ApiGatewayService,
+        CloudGemDirectoryService
+    ],
+    entryComponents: [
+        BodyTreeViewComponent,
+        RestApiExplorerComponent,
+        CloudWatchLogComponent, 
+        MetricComponent             
     ]
 })
 export class GameSharedModule { }

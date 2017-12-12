@@ -66,13 +66,17 @@ namespace AZ
             AzRender,
             AzFramework,
             AzToolsFramework,
-            // Add new major categories here (and add names to the parallel position in ProfileCategoryNames)
+            // Add new major categories here (and add names to the parallel position in ProfileCategoryNames) - these categories are enabled by default
             ScriptCanvas,
 
             FirstDetailedCategory,
             RendererDetailed = FirstDetailedCategory,
             ThreeDEngineDetailed,
-            // Add new detailed categories here (and add names to the parallel position in ProfileCategoryNames)
+            // Add new detailed categories here (and add names to the parallel position in ProfileCategoryNames) -- these categories are disabled by default
+            
+            // Internal reserved categories, not for use with performance events
+            FirstReservedCategory,
+            MemoryReserved = FirstReservedCategory,
 
             // Must be last
             Count
@@ -117,7 +121,9 @@ namespace AZ
             "ScriptCanvas",
 
             "RendererDetailed",
-            "3EngineDetailed"
+            "3EngineDetailed",
+
+            "MemoryReserved"
         };
         static_assert(AZ_ARRAY_SIZE(ProfileCategoryNames) == static_cast<AZ::u32>(ProfileCategory::Count), "ProfileCategory and ProfileCategoryNames size mismatch");
     }
@@ -255,6 +261,14 @@ namespace AZ
         AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_PROFILE_TIMER(AZ_INTERNAL_PROF_CAT_NAME(category))
 #   define AZ_PROFILE_SCOPE_IDLE_DYNAMIC(category, ...) \
         AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_PROFILE_TIMER(AZ_INTERNAL_PROF_CAT_NAME(category))
+#endif
+
+#ifndef AZ_PROFILE_MEMORY_ALLOC
+// No other profiler has defined the performance markers AZ_PROFILE_MEMORY_ALLOC (and friends), fall back to a Driller implementation (currently empty)
+#   define AZ_PROFILE_MEMORY_ALLOC(category, address, size, context)
+#   define AZ_PROFILE_MEMORY_ALLOC_EX(category, filename, lineNumber, address, size, context)
+#   define AZ_PROFILE_MEMORY_FREE(category, address)
+#   define AZ_PROFILE_MEMORY_FREE_EX(category, filename, lineNumber, address)
 #endif
 
 namespace AZStd

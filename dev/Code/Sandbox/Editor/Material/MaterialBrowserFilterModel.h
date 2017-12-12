@@ -133,9 +133,6 @@ using MaterialBrowserWidgetBus = AZ::EBus<MaterialBrowserWidgetEvents>;
 */
 AZ::Data::AssetId GetMaterialProductAssetIdFromAssetBrowserEntry(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry);
 
-//! Get the full source path from an AssetBrowserEntry
-AZStd::string GetFullSourcePathFromAssetBrowserEntry(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry);
-
 class MaterialBrowserFilterModel
     : public AzToolsFramework::AssetBrowser::AssetBrowserFilterModel
     , public MaterialBrowserSourceControlBus::Handler

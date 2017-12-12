@@ -1,0 +1,10 @@
+{
+    "auto": {
+        "Include": [
+          "Builder/CoreBuilderSystemComponent.h"
+        ],
+        "Source": [
+            "Builder/CoreBuilderSystemComponent.cpp"
+        ]
+    }
+}

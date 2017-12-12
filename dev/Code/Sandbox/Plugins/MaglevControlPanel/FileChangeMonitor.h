@@ -39,7 +39,8 @@ public:
         DeploymentAccessTemplate,
         ResourceGroupTemplate,
         AWSCredentials,
-        GUIRefresh
+        GUIRefresh,
+        GemsFile
     };
 
     void BeginMonitoring(MonitoredFileType fileType, const QString& fileName);

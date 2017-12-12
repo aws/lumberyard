@@ -194,12 +194,12 @@ void AzToLyInput::UpdateKeyboardModifiers()
         m_activeKeyboardModifiers |= eMM_RAlt;
     }
 
-    if (IsInputChannelActive(InputDeviceKeyboard::Key::ModifierControlL))
+    if (IsInputChannelActive(InputDeviceKeyboard::Key::ModifierCtrlL))
     {
         m_activeKeyboardModifiers |= eMM_LCtrl;
     }
 
-    if (IsInputChannelActive(InputDeviceKeyboard::Key::ModifierControlR))
+    if (IsInputChannelActive(InputDeviceKeyboard::Key::ModifierCtrlR))
     {
         m_activeKeyboardModifiers |= eMM_RCtrl;
     }
@@ -495,21 +495,25 @@ const SMotionSensorData* AzToLyInput::GetMostRecentMotionSensorData() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void AzToLyInput::StartTextInput(const Vec2& inputRectTopLeft, const Vec2& inputRectBottomRight)
 {
-    const float activeTextFieldNormalizedBottomY = inputRectBottomRight.y / static_cast<float>(gEnv->pRenderer->GetHeight());
-    InputTextEntryRequestBus::Broadcast(&InputTextEntryRequests::TextEntryStarted, activeTextFieldNormalizedBottomY);
+    InputTextEntryRequests::VirtualKeyboardOptions options;
+    options.m_normalizedMinY = inputRectBottomRight.y / static_cast<float>(gEnv->pRenderer->GetHeight());
+    InputTextEntryRequestBus::Broadcast(&InputTextEntryRequests::TextEntryStart, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void AzToLyInput::StopTextInput()
 {
-    InputTextEntryRequestBus::Broadcast(&InputTextEntryRequests::TextEntryStopped);
+    InputTextEntryRequestBus::Broadcast(&InputTextEntryRequests::TextEntryStop);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool AzToLyInput::IsScreenKeyboardShowing() const
 {
-    const InputDevice* virtualKeyboardDevice = InputDeviceRequests::FindInputDevice(InputDeviceVirtualKeyboard::Id);
-    return virtualKeyboardDevice ? virtualKeyboardDevice->IsConnected() : false;
+    bool hasTextEntryStarted = false;
+    InputTextEntryRequestBus::EventResult(hasTextEntryStarted,
+                                          InputDeviceVirtualKeyboard::Id,
+                                          &InputTextEntryRequests::HasTextEntryStarted);
+    return hasTextEntryStarted;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -520,8 +524,13 @@ bool AzToLyInput::IsScreenKeyboardSupported() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void AzToLyInput::OnInputTextEvent(const AZStd::string& textUTF8, bool& /*o_hasBeenConsumed*/)
+void AzToLyInput::OnInputTextEvent(const AZStd::string& textUTF8, bool& o_hasBeenConsumed)
 {
+    if (o_hasBeenConsumed)
+    {
+        return;
+    }
+
     // Iterate over and send an event for each unicode codepoint of the new text.
     for (Unicode::CIterator<const char*, false> it(textUTF8.c_str()); *it != 0; ++it)
     {

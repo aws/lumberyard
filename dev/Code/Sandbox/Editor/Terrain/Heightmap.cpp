@@ -251,7 +251,7 @@ CHeightmap::CHeightmap()
     , m_textureSize(DEFAULT_TEXTURE_SIZE)
     , m_numSectors(0)
     , m_unitSize(2)
-    , m_TerrainRGBTexture("TerrainTexture.pak")
+    , m_TerrainBGRTexture("TerrainTexture.pak")
     , m_terrainGrid(new CTerrainGrid)
     , m_updateModSectors(false)
     , m_standaloneMode(false)
@@ -270,7 +270,7 @@ CHeightmap::CHeightmap(const CHeightmap& h)
     , m_numSectors(h.m_numSectors)
     , m_unitSize(h.m_unitSize)
     , m_terrainGrid(new CTerrainGrid) // no copy ctor for this
-    , m_TerrainRGBTexture("TerrainTexture.pak") // no copy ctor for this
+    , m_TerrainBGRTexture("TerrainTexture.pak") // no copy ctor for this
     , m_modSectors(h.m_modSectors)
     , m_updateModSectors(h.m_updateModSectors)
     , m_standaloneMode(true) // always stand alone if copied
@@ -291,7 +291,7 @@ void CHeightmap::CleanUp()
     std::vector<t_hmap> temp;
     m_pHeightmap.swap(temp);
 
-    m_TerrainRGBTexture.FreeData();
+    m_TerrainBGRTexture.FreeData();
 
     m_iWidth = 0;
     m_iHeight = 0;
@@ -381,7 +381,7 @@ void CHeightmap::Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld, b
 
     uint32 dwTileCount = dwTerrainTextureResolution / dwTileResolution;
 
-    m_TerrainRGBTexture.AllocateTiles(dwTileCount, dwTileCount, dwTileResolution);
+    m_TerrainBGRTexture.AllocateTiles(dwTileCount, dwTileCount, dwTileResolution);
 
     // Allocate new data (reuses capacity if the new map is smaller)
     m_pHeightmap.resize(iWidth * iHeight);
@@ -3248,11 +3248,6 @@ void CHeightmap::RecordUndo(int x1, int y1, int width, int height, bool bInfo)
 void CHeightmap::UpdateLayerTexture(const QRect& rect)
 {
     I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-    if (p3DEngine->GetTerrainTextureMultiplier() == 0.0f)
-    {
-        return; // texture is not generated
-    }
-    float fBrMultiplier = 1.f / p3DEngine->GetTerrainTextureMultiplier();
 
     float x1 = HmapToWorld(rect.topLeft()).x;
     float y1 = HmapToWorld(rect.topLeft()).y;
@@ -3268,7 +3263,7 @@ void CHeightmap::UpdateLayerTexture(const QRect& rect)
     int iTerrainSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
     int iTexSectorsNum = iTerrainSize / iTexSectorSize;
 
-    uint32 dwFullResolution = m_TerrainRGBTexture.CalcMaxLocalResolution((float)rect.left() / GetWidth(), (float)rect.top() / GetHeight(), (float)(rect.right() + 1) / GetWidth(), (float)(rect.bottom() + 1) / GetHeight());
+    uint32 dwFullResolution = m_TerrainBGRTexture.CalcMaxLocalResolution((float)rect.left() / GetWidth(), (float)rect.top() / GetHeight(), (float)(rect.right() + 1) / GetWidth(), (float)(rect.bottom() + 1) / GetHeight());
     uint32 dwNeededResolution = dwFullResolution / iTexSectorsNum;
 
     int iSectMinX = (int)floor(y1 / iTexSectorSize);
@@ -3321,59 +3316,66 @@ void CHeightmap::UpdateLayerTexture(const QRect& rect)
                     iLocalOutMaxY = dwNeededResolution;
                 }
 
-                CImageEx image;
-                image.Allocate(iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY);
+                CImageEx imageBGR;
+                imageBGR.Allocate(iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY);
 
-                m_TerrainRGBTexture.GetSubImageStretched(
+                m_TerrainBGRTexture.GetSubImageStretched(
                     (iSectX + (float)iLocalOutMinX / dwNeededResolution) / iTexSectorsNum,
                     (iSectY + (float)iLocalOutMinY / dwNeededResolution) / iTexSectorsNum,
                     (iSectX + (float)iLocalOutMaxX / dwNeededResolution) / iTexSectorsNum,
                     (iSectY + (float)iLocalOutMaxY / dwNeededResolution) / iTexSectorsNum,
-                    image);
+                    imageBGR);
 
-                // convert RGB colour into format that has less compression artefacts for brightness variations
+                
                 {
-                    uint32 dwWidth = image.GetWidth();
-                    uint32 dwHeight = image.GetHeight();
+                    uint32 dwWidth = imageBGR.GetWidth();
+                    uint32 dwHeight = imageBGR.GetHeight();
 
-                    uint32* pMem = &image.ValueAt(0, 0);
-
-                    for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
-                    {
-                        for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
-                        {
-                            float fR = ((*pMem >> 16) & 0xff) * (1.0f / 255.0f);
-                            float fG = ((*pMem >> 8) & 0xff) * (1.0f / 255.0f);
-                            float fB = ((*pMem) & 0xff) * (1.0f / 255.0f);
-
-                            ColorF cCol = ColorF(fR, fG, fB);
-
-                            // Convert to linear space
-                            cCol.srgb2rgb();
-
-                            cCol *= fBrMultiplier;
-                            cCol.Clamp();
+                    uint32* pMemBGR = &imageBGR.ValueAt(0, 0);
 
 
+#if !TERRAIN_USE_CIE_COLORSPACE
+					// common case with no multiplier just requires alpha channel fixup
+					for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
+					{
+						for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
+						{
+							*pMemBGR++ |= 0xff000000; // shader requires alpha channel = 1
+						}
+					}
+#else // convert RGB colour into format that has less compression artefacts for brightness variations
+					for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
+					{
+						for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
+						{
+							float fR = GetBValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so R == B
+							float fG = GetGValue(*pMemBGR) * (1.0f / 255.0f);
+							float fB = GetRValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so B == R
 
-#if TERRAIN_USE_CIE_COLORSPACE
-                            cCol = cCol.RGB2mCIE();
+							ColorF cCol = ColorF(fR, fG, fB);
+
+							// Convert to linear space
+							cCol.srgb2rgb();
+
+							cCol.Clamp();
+
+							cCol = cCol.RGB2mCIE();
+
+							// Convert to gamma 2.2 space
+							cCol.rgb2srgb();
+					
+							uint32 dwR = (uint32)(cCol.r * 255.0f + 0.5f);
+							uint32 dwG = (uint32)(cCol.g * 255.0f + 0.5f);
+							uint32 dwB = (uint32)(cCol.b * 255.0f + 0.5f);
+
+							*pMemBGR++ = 0xff000000 | RGB(dwB, dwG, dwR);        // shader requires alpha channel = 1, Storing in BGR.
+						}
+					}
 #endif
-
-                            // Convert to gamma 2.2 space
-                            cCol.rgb2srgb();
-
-                            uint32 dwR = (uint32)(cCol.r * 255.0f + 0.5f);
-                            uint32 dwG = (uint32)(cCol.g * 255.0f + 0.5f);
-                            uint32 dwB = (uint32)(cCol.b * 255.0f + 0.5f);
-
-                            *pMem++ = 0xff000000 | (dwB << 16) | (dwG << 8) | (dwR);        // shader requires alpha channel = 1
-                        }
-                    }
                 }
 
-                GetIEditor()->GetRenderer()->UpdateTextureInVideoMemory(texId, (unsigned char*)image.GetData(),
-                    iLocalOutMinX, iLocalOutMinY, image.GetWidth(), image.GetHeight(), eTF_R8G8B8A8);
+                GetIEditor()->GetRenderer()->UpdateTextureInVideoMemory(texId, (unsigned char*)imageBGR.GetData(),
+                    iLocalOutMinX, iLocalOutMinY, imageBGR.GetWidth(), imageBGR.GetHeight(), eTF_B8G8R8A8);
                 AddModSector(iSectX, iSectY);
             }
         }
@@ -3422,7 +3424,7 @@ void CHeightmap::UpdateSectorTexture(const QPoint& texsector,
     float fMinX = texsector.x() * fInvSectorCnt;
     float fMinY = texsector.y() * fInvSectorCnt;
 
-    uint32 dwFullResolution = m_TerrainRGBTexture.CalcMaxLocalResolution(fMinX, fMinY, fMinX + fInvSectorCnt, fMinY + fInvSectorCnt);
+    uint32 dwFullResolution = m_TerrainBGRTexture.CalcMaxLocalResolution(fMinX, fMinY, fMinX + fInvSectorCnt, fMinY + fInvSectorCnt);
 
     if (dwFullResolution)
     {
@@ -3458,58 +3460,46 @@ void CHeightmap::UpdateSectorTexture(const QPoint& texsector,
 
         if (iLocalOutMaxX != iLocalOutMinX && iLocalOutMaxY != iLocalOutMinY)
         {
-            CImageEx image;
+            CImageEx imageBGR;
 
-            image.Allocate(iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY);
+            imageBGR.Allocate(iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY);
 
-            m_TerrainRGBTexture.GetSubImageStretched(
+            m_TerrainBGRTexture.GetSubImageStretched(
                 fMinX + fInvSectorCnt / dwNeededResolution * iLocalOutMinX,
                 fMinY + fInvSectorCnt / dwNeededResolution * iLocalOutMinY,
                 fMinX + fInvSectorCnt / dwNeededResolution * iLocalOutMaxX,
                 fMinY + fInvSectorCnt / dwNeededResolution * iLocalOutMaxY,
-                image);
+                imageBGR);
 
             // convert RGB colour into format that has less compression artifacts for brightness variations
+#if TERRAIN_USE_CIE_COLORSPACE
             {
-                bool bDX10 = GetIEditor()->GetRenderer()->GetRenderType() == eRT_DX11;          // i would be cleaner if renderer would ensure the behave the same but that can be slower
+                uint32 dwWidth = imageBGR.GetWidth();
+                uint32 dwHeight = imageBGR.GetHeight();
 
-                uint32 dwWidth = image.GetWidth();
-                uint32 dwHeight = image.GetHeight();
-
-                uint32* pMem = &image.ValueAt(0, 0);
-                if (!pMem)
+                uint32* pMemBGR = &imageBGR.ValueAt(0, 0);
+                if (!pMemBGR)
                 {
                     CryLog("Can't get surface terrain texture. May be it was not generated.");
                     return;
                 }
 
-                float fBrMultiplier = p3DEngine->GetTerrainTextureMultiplier();
-                if (!fBrMultiplier)
-                {
-                    fBrMultiplier = 1.0f;
-                }
-
-                fBrMultiplier = 1.f / fBrMultiplier;
-
                 for (uint32 dwY = 0; dwY < dwHeight; ++dwY)
                 {
                     for (uint32 dwX = 0; dwX < dwWidth; ++dwX)
                     {
-                        float fR = ((((*pMem) & 0x00ff0000) >> 16) & 0xff) * (1.0f / 255.0f);
-                        float fG = ((((*pMem) & 0x0000ff00) >> 8) & 0xff) * (1.0f / 255.0f);
-                        float fB = ((((*pMem) & 0x000000ff)) & 0xff) * (1.0f / 255.0f);
+                        float fR = GetBValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so R == B
+                        float fG = GetGValue(*pMemBGR) * (1.0f / 255.0f);
+                        float fB = GetRValue(*pMemBGR) * (1.0f / 255.0f); // Reading BGR, so B == R
 
                         ColorF cCol = ColorF(fR, fG, fB);
 
                         // Convert to linear space
                         cCol.srgb2rgb();
 
-                        cCol *= fBrMultiplier;
                         cCol.Clamp();
 
-#if TERRAIN_USE_CIE_COLORSPACE
                         cCol = cCol.RGB2mCIE();
-#endif
 
                         // Convert to gamma 2.2 space
                         cCol.rgb2srgb();
@@ -3518,19 +3508,13 @@ void CHeightmap::UpdateSectorTexture(const QPoint& texsector,
                         uint32 dwG = (uint32)(cCol.g * 255.0f + 0.5f);
                         uint32 dwB = (uint32)(cCol.b * 255.0f + 0.5f);
 
-                        if (bDX10)
-                        {
-                            *pMem++ = 0xff000000 | (dwB << 16) | (dwG << 8) | (dwR);        // shader requires alpha channel = 1
-                        }
-                        else
-                        {
-                            *pMem++ = 0xff000000 | (dwR << 16) | (dwG << 8) | (dwB);        // shader requires alpha channel = 1
-                        }
+                        *pMemBGR++ = 0xff000000 | RGB(dwB, dwG, dwR);        // shader requires alpha channel = 1, Storing in BGR.
                     }
                 }
             }
+#endif
 
-            GetIEditor()->GetRenderer()->UpdateTextureInVideoMemory(texId, (unsigned char*)image.GetData(), iLocalOutMinX, iLocalOutMinY, iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY, eTF_R8G8B8A8);
+            GetIEditor()->GetRenderer()->UpdateTextureInVideoMemory(texId, (unsigned char*)imageBGR.GetData(), iLocalOutMinX, iLocalOutMinY, iLocalOutMaxX - iLocalOutMinX, iLocalOutMaxY - iLocalOutMinY, eTF_B8G8R8A8);
             AddModSector(texsector.x(), texsector.y());
         }
     }

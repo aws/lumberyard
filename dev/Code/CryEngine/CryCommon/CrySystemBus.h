@@ -51,4 +51,16 @@ public:
 };
 using CrySystemEventBus = AZ::EBus<CrySystemEvents>;
 
+/*!
+ * Requests to CrySystem
+ */
+class CrySystemRequests
+    : public AZ::EBusTraits
+{
+public:
+    //! Get CrySystem
+    virtual ISystem* GetCrySystem() = 0;
+};
+using CrySystemRequestBus = AZ::EBus<CrySystemRequests>;
+
 #endif // CRYINCLUDE_CRYCOMMON_CRYSYSTEMBUS_H

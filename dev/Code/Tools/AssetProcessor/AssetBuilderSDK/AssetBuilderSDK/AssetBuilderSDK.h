@@ -15,7 +15,7 @@
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
-#include <AZCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include "AssetBuilderBusses.h"
@@ -32,13 +32,17 @@ namespace AssetBuilderSDK
     extern const char* const WarningWindow; //Use this window name to log warning messages.
     extern const char* const InfoWindow; //Use this window name to log info messages.
 
+    extern const char* const s_processJobRequestFileName; //!< File name for having job requests send from the Asset Processor.
+    extern const char* const s_processJobResponseFileName; //!< File name for having job responses returned to the Asset Processor.
+
     // SubIDs uniquely identify a particular output product of a specific source asset
     // currently we use a scheme where various bits of the subId (which is a 32 bit unsigned) are used to designate different things.
     // we may expand this into a 64-bit "namespace" by adding additional 32 bits at the front at some point, if it becomes necessary.
-    extern const AZ::u32 SUBID_MASK_ID;         //! mask is 0xFFFF - so you can have up to 64k subids from a single asset before you start running into the upper bits which are used for other reasons.
-    extern const AZ::u32 SUBID_MASK_LOD_LEVEL;  //! the LOD level can be masked up to 15 LOD levels (it also represents the MIP level).  note that it starts at 1.
-    extern const AZ::u32 SUBID_FLAG_DIFF;       //! this is a 'diff' map.  It may have the alpha, and lod set too if its an alpha of a diff
-    extern const AZ::u32 SUBID_FLAG_ALPHA;      //! this is an alpha mip or alpha channel.
+    extern const AZ::u32 SUBID_MASK_ID;         //!< mask is 0xFFFF - so you can have up to 64k subids from a single asset before you start running into the upper bits which are used for other reasons.
+    extern const AZ::u32 SUBID_MASK_LOD_LEVEL;  //!< the LOD level can be masked up to 15 LOD levels (it also represents the MIP level).  note that it starts at 1.
+    extern const AZ::u32 SUBID_LOD_LEVEL_SHIFT; //!< the shift to move the LOD level in its expected bits.
+    extern const AZ::u32 SUBID_FLAG_DIFF;       //!< this is a 'diff' map.  It may have the alpha, and lod set too if its an alpha of a diff
+    extern const AZ::u32 SUBID_FLAG_ALPHA;      //!< this is an alpha mip or alpha channel.
 
     //! extract only the ID using the above masks
     AZ::u32 GetSubID_ID(AZ::u32 packedSubId);
@@ -65,11 +69,11 @@ namespace AssetBuilderSDK
         Platform_ES3        = 0x02,
         Platform_IOS        = 0x04,
         Platform_OSX        = 0x08,
-        Platform_XBOXONE    = 0x10,
-        Platform_PS4        = 0x20,
+        Platform_XBOXONE    = 0x10, // ACCEPTED_USE
+        Platform_PS4        = 0x20, // ACCEPTED_USE
 
         //! if you add a new platform entry to this enum, you must add it to allplatforms as well otherwise that platform would not be considered valid. 
-        AllPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XBOXONE | Platform_PS4
+        AllPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XBOXONE | Platform_PS4 // ACCEPTED_USE
     };
 
     //! Map data structure to holder parameters that are passed into a job for ProcessJob requests.
@@ -271,13 +275,14 @@ namespace AssetBuilderSDK
 
         //! The source file path that is relative to the watch folder (m_watchFolder)
         AZStd::string m_sourceFile;
+        AZ::Uuid m_sourceFileUUID; ///< each source file has a unique UUID.
 
         //! Platform flags informs the builder which platforms the AssetProcessor is interested in.
         int m_platformFlags;
 
         CreateJobsRequest();
 
-        CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, int platformFlags);
+        CreateJobsRequest(AZ::Uuid builderid, AZStd::string sourceFile, AZStd::string watchFolder, int platformFlags, const AZ::Uuid& sourceFileUuid);
 
         // returns the number of platforms that are enabled for the source file
         size_t GetEnabledPlatformsCount() const;
@@ -329,7 +334,16 @@ namespace AssetBuilderSDK
         AZStd::string m_productFileName; // relative or absolute product file path
 
         AZ::Data::AssetType m_productAssetType = AZ::Data::AssetType::CreateNull(); // the type of asset this is
-        AZ::u32 m_productSubID; //a stable product identifier
+        AZ::u32 m_productSubID; ///< a stable product identifier - see note below.
+
+        /// LegacySUBIds are other names for the same product for legacy compatibility.
+        /// if you ever referred to this product by a different sub-id previously but have decided to change your numbering scheme
+        /// You should emit the prior sub ids into this array.  If we ever go looking for an asset and we fail to find it under a
+        /// canonical product SubID, the system will attempt to look it up in the list of "previously known as..." legacy subIds in case
+        /// the source data it is reading is old.  This allows you to change your subID scheme at any time as long as you include
+        /// the old scheme in the legacySubIDs list.
+        AZStd::vector<AZ::u32> m_legacySubIDs; 
+
         // SUB ID context: A Stable sub id means a few things. Products (game ready assets) are identified in the engine by AZ::Data::AssetId, which is a combination of source guid which is random and this product sub id. AssetType is currently NOT USED to differentiate assets by the system. So if two or more products of the same source are for the same platform they can not generate the same sub id!!! If they did this would be a COLLISION!!! which would not allow the rngine to access one or more of the products!!! Not using asset type in the differentiation may change in the future, but it is the way it is done for now.
         // SUB ID RULES:
         // 1. The builder alone is responsible for determining asset type and sub id.
@@ -380,6 +394,7 @@ namespace AssetBuilderSDK
         JobDescriptor m_jobDescription; // job descriptor for this job.  Note that this still contains the job parameters from when you emitted it during CreateJobs
         AZStd::string m_tempDirPath; // temp directory that the builder should use to create job outputs for this job request
         AZ::u64 m_jobId; // job id for this job, this is also the address for the JobCancelListener
+        AZ::Uuid m_sourceFileUUID; // the UUID of the source file.  Will be used as the uuid of the AssetID of the product when combined with the subID.
         AZStd::vector<SourceFileDependency> m_sourceFileDependencyList;
 
         ProcessJobRequest();
@@ -402,9 +417,10 @@ namespace AssetBuilderSDK
         AZ_CLASS_ALLOCATOR(ProcessJobResponse, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(ProcessJobResponse, "{6b48ada5-0d52-43be-ad57-0bf8aeaef04b}");
         
-        ProcessJobResultCode m_resultCode = ProcessJobResult_Success;
         AZStd::vector<JobProduct> m_outputProducts;
-
+        ProcessJobResultCode m_resultCode = ProcessJobResult_Success;
+        bool m_requiresSubIdGeneration = true; //!< Used to determine if legacy RC products need sub ids generated for them.
+        
         ProcessJobResponse() = default;
         ProcessJobResponse(const ProcessJobResponse& other) = default;
         ProcessJobResponse(ProcessJobResponse&& other);

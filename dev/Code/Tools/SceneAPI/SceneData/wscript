@@ -34,11 +34,11 @@ def build(bld):
                                        'AzFramework',
                                        'AzToolsFramework',
                                        'GFxFramework',
-                                       'EmotionFXSharedLib'],
+                                       'EMotionFXStaticLib'],
         uselib                      = ['QT5CORE',
                                        'QT5WIDGETS'],
         defines                     = [ 'SCENE_DATA_EXPORTS' ],
-        features                    = ['qt5', 'crcfix'],
+        features                    = ['qt5', 'crcfix', 'link_running_program'],
         output_sub_folder_copy      = 'rc',
 
         #platform specific

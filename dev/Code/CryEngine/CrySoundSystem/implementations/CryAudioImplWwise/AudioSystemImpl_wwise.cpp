@@ -1541,7 +1541,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioSourceId CAudioSystemImpl_wwise::CreateAudioSource(const SAudioInputConfig& sourceConfig)
+    bool CAudioSystemImpl_wwise::CreateAudioSource(const SAudioInputConfig& sourceConfig)
     {
         return AudioSourceManager::Get().CreateSource(sourceConfig);
     }

@@ -19,7 +19,7 @@ import resource_manager.cli
 def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = subparsers.add_parser("dynamic-content", help="Commands to manage the CloudGemDynamicContent gem")
     subparser.register('action', 'parsers', resource_manager.cli.AliasedSubParsersAction)
-    dynamic_content_subparsers = subparser.add_subparsers(dest = 'subparser_name')
+    dynamic_content_subparsers = subparser.add_subparsers(dest = 'subparser_name', metavar='COMMAND')
 
     subparser = dynamic_content_subparsers.add_parser('show-manifest', help='List all entries in the content manifest')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')

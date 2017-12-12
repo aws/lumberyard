@@ -760,6 +760,7 @@ struct ICharacterInstance
     virtual void ComputeGeometricMean(SMeshLodInfo& lodInfo) const = 0;
 
     virtual bool HasVertexAnimation() const = 0;
+    virtual bool UseMatrixSkinning() const = 0;
 
     // Description:
     //     Returns material used to render this character, can be either a custom or model material.

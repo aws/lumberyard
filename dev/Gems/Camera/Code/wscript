@@ -17,13 +17,15 @@ def build(bld):
         disable_tests   = not 'win' in bld.env['PLATFORM'],
 
         editor = dict(
+            features    = ['qt5'],
+            uselib      = ['XTP','QT5CORE','QT5GUI','QT5WIDGETS'],
             defines     = ['CAMERA_EDITOR',],
-            uselib      = ['XTP'],
             includes    = [bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include'),
                            ],
+            use         = ['EditorUI_QT','EditorCommon','EditorCore']
         ),
 
         win_features        = ['crcfix'],

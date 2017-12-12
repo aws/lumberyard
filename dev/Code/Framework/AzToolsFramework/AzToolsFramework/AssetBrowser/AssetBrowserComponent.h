@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzCore/std/smart_ptr/scoped_ptr.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -36,7 +36,6 @@ namespace AzToolsFramework
         class SourceAssetBrowserEntry;
         class FolderAssetBrowserEntry;
         class RootAssetBrowserEntry;
-        class AssetBrowserThumbnailer;
         class AssetEntryChangeset;
 
         //! AssetBrowserComponent caches database entries
@@ -47,6 +46,7 @@ namespace AzToolsFramework
         class AssetBrowserComponent
             : public AZ::Component
             , public AssetBrowserComponentRequestsBus::Handler
+            , public AssetDatabaseLocationNotificationsBus::Handler
             , public AzFramework::AssetCatalogEventBus::Handler
             , public AZ::TickBus::Handler
             , public AssetSystemBus::Handler
@@ -65,9 +65,13 @@ namespace AzToolsFramework
             static void Reflect(AZ::ReflectContext* context);
 
             //////////////////////////////////////////////////////////////////////////
+            // AssetDatabaseLocationNotificationsBus
+            //////////////////////////////////////////////////////////////////////////
+            void OnDatabaseInitialized() override;
+
+            //////////////////////////////////////////////////////////////////////////
             // AssetBrowserComponentRequestsBus
             //////////////////////////////////////////////////////////////////////////
-            void DatabaseInitialized() override;
             AssetBrowserModel* GetAssetBrowserModel() override;
 
             //////////////////////////////////////////////////////////////////////////
@@ -93,7 +97,6 @@ namespace AzToolsFramework
             AZStd::shared_ptr<RootAssetBrowserEntry> m_rootEntry;
             AZStd::binary_semaphore m_updateWait;
             AZStd::thread m_thread;
-            AZStd::scoped_ptr<AssetBrowserThumbnailer> m_thumbnailProvider;
 
             //! wait until database is ready
             bool m_dbReady;
@@ -102,7 +105,7 @@ namespace AzToolsFramework
             //! should the query thread stop
             AZStd::atomic_bool m_disposed;
 
-            AZStd::scoped_ptr<AssetBrowserModel> m_assetBrowserModel;
+            AZStd::unique_ptr<AssetBrowserModel> m_assetBrowserModel;
             AZStd::shared_ptr<AssetEntryChangeset> m_changeset;
 
             //! Notify to start the query thread

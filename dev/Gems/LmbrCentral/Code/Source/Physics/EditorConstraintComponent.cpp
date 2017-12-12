@@ -108,16 +108,16 @@ namespace LmbrCentral
                             ->Attribute(AZ::Edit::Attributes::Suffix, " NM")
 
                     // Limits
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "Rotation limits")
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Movement limits")
                         ->DataElement(0, &ConstraintConfiguration::m_enableRotationLimits, "Enable", "Specify rotation limits per axis")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &ConstraintConfiguration::GetRotationLimitGroupVisibility)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ConstraintConfiguration::OnPropertyChanged)
-                        ->DataElement(0, &ConstraintConfiguration::m_xmin, "Min", "If  less than max, the constraint will only rotate the object about the selected axis with the defined angle")
+                        ->DataElement(0, &ConstraintConfiguration::m_xmin, "Min", "If less than max, the constraint will only move/rotate on the given axis between the specified min and max values")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &ConstraintConfiguration::GetRotationLimitVisibilityX)
                             ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
                             ->Attribute(AZ::Edit::Attributes::Suffix, &ConstraintConfiguration::GetXLimitUnits)
-                        ->DataElement(0, &ConstraintConfiguration::m_xmax, "Max", "If greater than min, the constraint will only rotate the object about the selected axis with the defined angle")
+                        ->DataElement(0, &ConstraintConfiguration::m_xmax, "Max", "If greater than min, the constraint will only move/rotate on the given axis between the specified min and max values")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &ConstraintConfiguration::GetRotationLimitVisibilityX)
                             ->Attribute(AZ::Edit::Attributes::Min, -360.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 360.0f)
@@ -180,6 +180,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PhysicsConstraint.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))  
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-constraint.html")
 
                     ->DataElement(0, &EditorConstraintComponent::m_config, "Settings", "Constraint configuration")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)

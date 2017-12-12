@@ -24,7 +24,7 @@ local MoveEntity =
 
 
 function MoveEntity:OnActivate()
-	local gameplayBusId = GameplayNotificationId(self.entityId, self.Properties.IncomingGameplayEventName)
+	local gameplayBusId = GameplayNotificationId(self.entityId, self.Properties.IncomingGameplayEventName, "Vector3")
 	self.gameplayBus = GameplayNotificationBus.Connect(self, gameplayBusId)
 end
 

@@ -337,7 +337,7 @@ namespace UiSpline
 
     //////////////////////////////////////////////////////////////////////////
     template <>
-    inline void UiSpline::BezierSpline<Vec2, UiSpline::SplineKeyEx<Vec2> >::Reflect(AZ::SerializeContext* serializeContext)
+    inline void BezierSplineVec2::Reflect(AZ::SerializeContext* serializeContext)
     {
         TSplineBezierBasisVec2::Reflect(serializeContext);
 

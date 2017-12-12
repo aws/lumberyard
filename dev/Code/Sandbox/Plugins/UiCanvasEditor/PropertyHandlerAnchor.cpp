@@ -22,15 +22,41 @@
 #include "AnchorPresets.h"
 #include "AnchorPresetsWidget.h"
 
+#include <LyShine/Bus/UiLayoutFitterBus.h>
+
 PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
     : QWidget(parent)
     , m_common(4, 1)
     , m_propertyVectorCtrl(m_common.ConstructGUI(this))
     , m_anchorPresetsWidget(nullptr)
     , m_disabledLabel(nullptr)
+    , m_controlledByFitterLabel(nullptr)
     , m_isReadOnly(false)
 {
-    QHBoxLayout* layout = new QHBoxLayout(this);
+    QVBoxLayout* vLayout = new QVBoxLayout(this);
+    vLayout->setContentsMargins(0, 0, 0, 0);
+    vLayout->setSpacing(0);
+
+    // Disabled label (used when the property is read-only)
+    // This is a special feature of the anchor property - it is used to display a message
+    // when the transform is disabled.
+    {
+        m_disabledLabel = new QLabel(this);
+        m_disabledLabel->setText("Anchors and Offsets are\ncontrolled by parent");
+        m_disabledLabel->setVisible(false);
+        vLayout->addWidget(m_disabledLabel);
+    }
+
+    // Controlled by fitter label
+    // Used to display a message when the transform is being controlled by a layout fitter
+    {
+        m_controlledByFitterLabel = new QLabel(this);
+        m_controlledByFitterLabel->setText(""); // text depends on fit level
+        m_controlledByFitterLabel->setVisible(false);
+        vLayout->addWidget(m_controlledByFitterLabel);
+    }
+
+    QHBoxLayout* layout = new QHBoxLayout();
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -73,15 +99,7 @@ PropertyAnchorCtrl::PropertyAnchorCtrl(QWidget* parent)
         layout->addWidget(m_propertyVectorCtrl);
     }
 
-    // Disabled label (used when the property is read-only)
-    // This is a special feature of the anchor property - it is used to display a message
-    // when the transform is disabled.
-    {
-        m_disabledLabel = new QLabel(this);
-        m_disabledLabel->setText("Anchors and Offsets are\ncontrolled by parent");
-        m_disabledLabel->setVisible(false);
-        layout->addWidget(m_disabledLabel);
-    }
+    vLayout->addLayout(layout);
 }
 
 void PropertyAnchorCtrl::ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
@@ -108,6 +126,61 @@ void PropertyAnchorCtrl::ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::Prop
             AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ReadOnly' attribute from property '%s' into string box", debugName);
         }
         return;
+    }
+    else if (attrib == AZ_CRC("LayoutFitterType", 0x7c009203))
+    {
+        UiLayoutFitterInterface::FitType fitType = UiLayoutFitterInterface::FitType::None;
+        if (attrValue->Read<UiLayoutFitterInterface::FitType>(fitType))
+        {
+            bool horizFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::HorizontalOnly);
+            bool vertFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::VerticalOnly);
+
+            // Enable or disable the horizontal stretch anchors (separated) depending on whether
+            // horizontal fit is enabled
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(3, !horizFit);
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(7, !horizFit);
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(11, !horizFit);
+
+            // Enable or disable the vertical stretch anchors (separated) depending on whether
+            // vertical fit is enabled
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(12, !vertFit);      
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(13, !vertFit);
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(14, !vertFit);
+
+            // Enable or disable the horizontal and vertical stretch anchor depending on whether
+            // horizontal and vertical fit is enabled
+            m_anchorPresetsWidget->SetPresetButtonEnabledAt(15, !(horizFit || vertFit));
+
+            // Set text describing why some properties are disabled
+            const char* controlledByFitterText = nullptr;
+            if (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical)
+            {
+                controlledByFitterText = "Element width and height are controlled\nby the layout fitter. The layout fitter\nalso controls the anchors by ensuring\nthey are together";
+            }
+            else if (fitType == UiLayoutFitterInterface::FitType::HorizontalOnly)
+            {
+                controlledByFitterText = "Element width is controlled by the\nlayout fitter. The layout fitter also\ncontrols the left and right anchors\nby ensuring they are together";
+            }
+            else if (fitType == UiLayoutFitterInterface::FitType::VerticalOnly)
+            {
+                controlledByFitterText = "Element height is controlled by the\nlayout fitter. The layout fitter also\ncontrols the top and bottom anchors\nby ensuring they are together";
+            }
+
+            if (controlledByFitterText)
+            {
+                m_controlledByFitterLabel->setText(controlledByFitterText);
+                m_controlledByFitterLabel->setVisible(true);
+            }
+            else
+            {
+                m_controlledByFitterLabel->setVisible(false);
+            }
+        }
+        else
+        {
+            // emit a warning!
+            AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'LayoutFitterType' attribute from property '%s' into string box", debugName);
+        }
     }
 }
 
@@ -138,20 +211,6 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
     AzToolsFramework::VectorElement** elements = GUI->GetPropertyVectorCtrl()->getElements();
 
     AZ::EntityId entityId = GetParentEntityId(node, index);
-
-    // Check if this element is being controlled by its parent
-    bool isControlledByParent = false;
-    AZ::Entity* parentElement = nullptr;
-    EBUS_EVENT_ID_RESULT(parentElement, entityId, UiElementBus, GetParent);
-    if (parentElement)
-    {
-        EBUS_EVENT_ID_RESULT(isControlledByParent, parentElement->GetId(), UiLayoutBus, IsControllingChild, entityId);
-    }
-
-    if (isControlledByParent)
-    {
-        return;
-    }
 
     // Check if an anchor preset has been selected
     bool presetSelected = true;
@@ -254,21 +313,44 @@ void PropertyHandlerAnchor::WriteGUIValuesIntoProperty(size_t index, PropertyAnc
     {
         UiTransform2dInterface::Anchors newAnchors = instance;
 
+        // Check if transform is controlled by a layout fitter
+        bool horizontalFit = false;
+        EBUS_EVENT_ID_RESULT(horizontalFit, entityId, UiLayoutFitterBus, GetHorizontalFit);
+
+        bool verticalFit = false;
+        EBUS_EVENT_ID_RESULT(verticalFit, entityId, UiLayoutFitterBus, GetVerticalFit);
+
         if (elements[0]->WasValueEditedByUser())
         {
             newAnchors.m_left = elements[0]->GetValue() / 100.0f;
+            if (horizontalFit)
+            {
+                newAnchors.m_right = newAnchors.m_left;
+            }
         }
         if (elements[1]->WasValueEditedByUser())
         {
             newAnchors.m_top = elements[1]->GetValue() / 100.0;
+            if (verticalFit)
+            {
+                newAnchors.m_bottom = newAnchors.m_top;
+            }
         }
         if (elements[2]->WasValueEditedByUser())
         {
             newAnchors.m_right = elements[2]->GetValue() / 100.0;
+            if (horizontalFit)
+            {
+                newAnchors.m_left = newAnchors.m_right;
+            }
         }
         if (elements[3]->WasValueEditedByUser())
         {
             newAnchors.m_bottom = elements[3]->GetValue() / 100.0;
+            if (verticalFit)
+            {
+                newAnchors.m_top = newAnchors.m_bottom;
+            }
         }
 
         EBUS_EVENT_ID(entityId, UiTransform2dBus, SetAnchors, newAnchors, false, true);

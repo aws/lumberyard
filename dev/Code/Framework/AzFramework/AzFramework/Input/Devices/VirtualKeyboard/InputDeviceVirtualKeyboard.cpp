@@ -31,13 +31,11 @@ namespace AzFramework
     }};
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceVirtualKeyboard::Implementation::CustomCreateFunctionType InputDeviceVirtualKeyboard::Implementation::CustomCreateFunctionPointer = nullptr;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceVirtualKeyboard::InputDeviceVirtualKeyboard()
         : InputDevice(Id)
         , m_allChannelsById()
-        , m_pimpl(nullptr)
+        , m_pimpl()
+        , m_implementationRequestHandler(*this)
     {
         // Create all command input channels
         for (const InputChannelId& channelId : Command::All)
@@ -48,9 +46,7 @@ namespace AzFramework
         }
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
 
         // Connect to the text entry request bus
         InputTextEntryRequestBus::Handler::BusConnect(GetInputDeviceId());
@@ -63,7 +59,7 @@ namespace AzFramework
         InputTextEntryRequestBus::Handler::BusDisconnect(GetInputDeviceId());
 
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy all command input channels
         for (const auto& channelById : m_commandChannelsById)
@@ -91,29 +87,35 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceVirtualKeyboard::HasTextEntryStarted() const
+    {
+        return m_pimpl ? m_pimpl->HasTextEntryStarted() : false;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::TextEntryStart(const VirtualKeyboardOptions& options)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->TextEntryStart(options);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::TextEntryStop()
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->TextEntryStop();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceVirtualKeyboard::TickInputDevice()
     {
         if (m_pimpl)
         {
             m_pimpl->TickInputDevice();
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboard::TextEntryStarted(float activeTextFieldNormalizedBottomY)
-    {
-        if (m_pimpl)
-        {
-            m_pimpl->TextEntryStarted(activeTextFieldNormalizedBottomY);
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboard::TextEntryStopped()
-    {
-        if (m_pimpl)
-        {
-            m_pimpl->TextEntryStopped();
         }
     }
 
@@ -159,7 +161,7 @@ namespace AzFramework
         for (const InputChannelId& channelId : m_rawCommandEventQueue)
         {
             const auto& channelIt = m_inputDevice.m_commandChannelsById.find(channelId);
-            if (channelIt != m_inputDevice.m_commandChannelsById.end() && !channelIt->second)
+            if (channelIt != m_inputDevice.m_commandChannelsById.end() && channelIt->second)
             {
                 const InputChannel& channel = *(channelIt->second);
                 m_inputDevice.BroadcastInputChannelEvent(channel);

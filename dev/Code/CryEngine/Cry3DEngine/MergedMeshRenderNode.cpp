@@ -226,7 +226,7 @@ namespace
         // in lower already
 
         // Note: The insert method of our moronic dynarray<T> DOES NOT COMPILE!
-        for (size_t i = 1, end = upper.size() - 1; i < end; lower.push_back(upper[i++]))
+        for (size_t i = 1, upperEnd = upper.size() - 1; i < upperEnd; lower.push_back(upper[i++]))
         {
             ;
         }
@@ -1356,11 +1356,11 @@ class CGeometryManager
     size_t m_PreprocessedSize;
 
     // Bakes the lod into a special structure for efficient runtime merging
-    bool PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_t nLod, const Matrix34& transformMatrix);
+    bool PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod, const Matrix34& transformMatrix);
 
     // If statobj has "mergedmesh_autodeform" property set, extract deform info
     // to perform quick&dirty deform sim
-    bool ExtractDeformLOD(SMMRMGeometry* geometry, CStatObj* host, size_t nLod);
+    bool ExtractDeformLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod);
 
 public:
     CGeometryManager();
@@ -1370,7 +1370,7 @@ public:
     void Shutdown();
 
     SMMRMGeometry* GetGeometry(uint32, uint16);
-    SMMRMGeometry* GetGeometry(CStatObj*, uint16);
+    SMMRMGeometry* GetGeometry(IStatObj*, uint16);
 
     void ReleaseGeometry(SMMRMGeometry*);
 
@@ -1386,13 +1386,13 @@ public:
 
     bool SyncPreparationStep();
 
-    ILINE StatInstGroup& GetStatObjGroup(const SMMRMGeometry* geometry) const
+    StatInstGroup& GetStatObjGroup(const SMMRMGeometry* geometry) const
     {
-        return GetObjManager()->m_lstStaticTypes[0][geometry->srcGroupId];
+        return GetObjManager()->GetListStaticTypes()[0][geometry->srcGroupId];
     }
-    ILINE CStatObj* GetStatObj(const SMMRMGeometry* geometry) const
+    IStatObj* GetStatObj(const SMMRMGeometry* geometry) const
     {
-        return GetObjManager()->m_lstStaticTypes[0][geometry->srcGroupId].GetStatObj();
+        return GetObjManager()->GetListStaticTypes()[0][geometry->srcGroupId].GetStatObj();
     }
 };
 
@@ -1417,7 +1417,7 @@ void CGeometryManager::Initialize(int nWorkers)
 {
 }
 
-bool CGeometryManager::ExtractDeformLOD(SMMRMGeometry* geometry, CStatObj* host, size_t nLod)
+bool CGeometryManager::ExtractDeformLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod)
 {
     MEMORY_SCOPE_CHECK_HEAP();
     strided_pointer<Vec3> vtx;
@@ -1680,7 +1680,7 @@ bool CGeometryManager::ExtractDeformLOD(SMMRMGeometry* geometry, CStatObj* host,
     return true;
 }
 
-bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_t nLod, const Matrix34& transformMatrix)
+bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod, const Matrix34& transformMatrix)
 {
     MEMORY_SCOPE_CHECK_HEAP();
     IRenderMesh* renderMesh = NULL;
@@ -1715,7 +1715,7 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_
         }
     }
 
-    IF((!(renderMesh = statObj->GetRenderMesh())) || (!(gEnv->IsDynamicMergedMeshGenerationEnable()) && (Cry3DEngineBase::m_p3DEngine->m_bInShutDown || Cry3DEngineBase::m_p3DEngine->m_bInUnload)), 0)
+    IF ((!(renderMesh = statObj->GetRenderMesh())) || (!(gEnv->IsDynamicMergedMeshGenerationEnable()) && (Cry3DEngineBase::m_p3DEngine->m_bInShutDown || Cry3DEngineBase::m_p3DEngine->m_bInUnload)), 0)
     {
         // Only set to NO_RENDERMESH if no sub-objects have already set this.
         if (geometry->state == SMMRMGeometry::CREATED)
@@ -1757,8 +1757,8 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_
         if (rotationMatrixIsIdentity)
         {
             MeshTangentsFrameToQTangents(
-            tangs.data, tangs.iStride, nvertices,
-            qtangents, sizeof(qtangents[0]));
+                tangs.data, tangs.iStride, nvertices,
+                qtangents, sizeof(qtangents[0]));
         }
         else
         {
@@ -1772,30 +1772,30 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_
             }
 
             MeshTangentsFrameToQTangents(
-            transformedTangents.data, transformedTangents.iStride, nvertices,
-            qtangents, sizeof(qtangents[0]));
+                transformedTangents.data, transformedTangents.iStride, nvertices,
+                qtangents, sizeof(qtangents[0]));
 
             CryModuleMemalignFree(transformedTangents.data);
         }
     }
 
     // Patch envelope based weighting into geometry if RC skipped weighting step for lower lods.
-    if (weights == NULL && host->m_pBoneMapping)
+    if (weights == NULL && host->GetBoneMapping())
     {
-        int nvertices = renderMesh->GetVerticesCount();
-        weights = new SMeshBoneMapping_uint8[nvertices];
+        int vertCount = renderMesh->GetVerticesCount();
+        weights = new SMeshBoneMapping_uint8[vertCount];
 
         weightsAllocated = true;
-        for (int i = 0; i < nvertices; ++i)
+        for (int i = 0; i < vertCount; ++i)
         {
             float dist = FLT_MAX;
             size_t idx = (size_t)-1;
-            for (int j = 0, boneIdx = 1; j < host->m_nSpines; boneIdx += host->m_pSpines[j++].nVtx - 1)
+            for (int j = 0, boneIdx = 1; j < host->GetSpineCount(); boneIdx += host->GetSpines()[j++].nVtx - 1)
             {
-                for (int k = 0; k < host->m_pSpines[j].nVtx - 1; ++k)
+                for (int k = 0; k < host->GetSpines()[j].nVtx - 1; ++k)
                 {
                     float t = 0.f, dp = Distance::Point_Lineseg(
-                            vtx[i], Lineseg(host->m_pSpines[j].pVtx[k], host->m_pSpines[j].pVtx[k + 1]), t);
+                            vtx[i], Lineseg(host->GetSpines()[j].pVtx[k], host->GetSpines()[j].pVtx[k + 1]), t);
                     if (dp < dist)
                     {
                         dist = dp;
@@ -1900,7 +1900,7 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_
 
             for (size_t k = 0; k < chunk->nvertices; ++k)
             {
-                IF(transformedPosition != chunk->general[k].xyz, 1)
+                IF (transformedPosition != chunk->general[k].xyz, 1)
                 {
                     continue;
                 }
@@ -1916,7 +1916,7 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, CStatObj* host, size_
                 {
                     continue;
                 }
-                IF(norm && transformedNormal != chunk->normals[k], 1)
+                IF (norm && transformedNormal != chunk->normals[k], 1)
                 {
                     continue;
                 }
@@ -2034,7 +2034,7 @@ void CGeometryManager::PrepareGeometry(SMMRMGeometry* geometry)
     {
         return;
     }
-    CStatObj* statObj = NULL;
+    IStatObj* statObj = NULL;
     if (geometry->is_obj)
     {
         statObj = geometry->srcObj;
@@ -2059,16 +2059,16 @@ void CGeometryManager::PrepareGeometry(SMMRMGeometry* geometry)
 
         success &= PrepareLOD(geometry, statObj, i, identityMatrix);
     }
-    if (!!CryStringUtils::stristr(statObj->m_szProperties, "mergedmesh_deform"))
+    if (!!CryStringUtils::stristr(statObj->GetProperties(), "mergedmesh_deform"))
     {
         success &= ExtractDeformLOD(geometry, statObj, 0);
     }
-    else if (statObj->m_nSpines && statObj->m_pSpines)
+    else if (statObj->GetSpineCount() && statObj->GetSpines())
     {
-        resize_list(geometry->pSpineInfo, geometry->numSpines = statObj->m_nSpines, 16);
-        for (i = 0; i < statObj->m_nSpines; ++i)
+        resize_list(geometry->pSpineInfo, geometry->numSpines = statObj->GetSpineCount(), 16);
+        for (i = 0; i < statObj->GetSpineCount(); ++i)
         {
-            const SSpine& spine = statObj->m_pSpines[i];
+            const SSpine& spine = statObj->GetSpines()[i];
             size_t baseVtx = geometry->numSpineVtx;
             resize_list(geometry->pSpineVtx, geometry->numSpineVtx += (geometry->pSpineInfo[i].nSpineVtx = spine.nVtx), 16);
             for (j = 0; j < spine.nVtx; ++j)
@@ -2110,7 +2110,7 @@ void CGeometryManager::PrepareGeometry(SMMRMGeometry* geometry)
 
         if (GetCVars()->e_DebugGeomPrep > 0)
         {
-            string szGeomName = statObj->m_szFileName + "_" + statObj->m_szGeomName;
+            string szGeomName = statObj->GetFileName() + "_" + statObj->GetGeoName();
             CryLogAlways("PVRN geometry '%s' prepared, size %" PRISIZE_T " bytes"
                 , (szGeomName.c_str() ? szGeomName.c_str() : "unknown")
                 , resultingSize);
@@ -2136,15 +2136,15 @@ void CGeometryManager::PrepareGeometry(SMMRMGeometry* geometry)
 
 SMMRMGeometry* CGeometryManager::GetGeometry(uint32 groupId, uint16 slot)
 {
-    StatInstGroup* group = &GetObjManager()->m_lstStaticTypes[slot][groupId];
-    CStatObj* statObj = group->GetStatObj();
+    StatInstGroup* group = &GetObjManager()->GetListStaticTypes()[slot][groupId];
+    IStatObj* statObj = group->GetStatObj();
     if (!statObj)
     {
         CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "CGeometryManager::GetGeometry group has no statobj");
-        statObj = m_pObjManager->m_pDefaultCGF;
+        statObj = m_pObjManager->GetDefaultCGF();
     }
 
-    string filename = (statObj->m_szFileName + "_" + statObj->m_szGeomName);
+    string filename = (statObj->GetFileName() + "_" + statObj->GetGeoName());
     str_hash_t fileNameHash = hasher(filename.c_str(), filename.length());
 
     GeometryMapT::iterator it = m_geomMap.lower_bound(fileNameHash);
@@ -2173,9 +2173,9 @@ SMMRMGeometry* CGeometryManager::GetGeometry(uint32 groupId, uint16 slot)
     return &it->second;
 }
 
-SMMRMGeometry* CGeometryManager::GetGeometry(CStatObj* statObj, uint16 slot)
+SMMRMGeometry* CGeometryManager::GetGeometry(IStatObj* statObj, uint16 slot)
 {
-    string filename = (statObj->m_szFileName + "_" + statObj->m_szGeomName);
+    string filename = (statObj->GetFileName() + "_" + statObj->GetGeoName());
     str_hash_t fileNameHash = hasher(filename.c_str(), filename.length());
 
     GeometryMapT::iterator it = m_geomMap.lower_bound(fileNameHash);
@@ -2231,7 +2231,7 @@ void CGeometryManager::ReleaseGeometry(SMMRMGeometry* geom)
         }
         else
         {
-            CStatObj* pStatObj = GetStatObj(&it->second);
+            IStatObj* pStatObj = GetStatObj(&it->second);
             if (pStatObj)
             {
                 pStatObj->Release();
@@ -2251,7 +2251,7 @@ void CGeometryManager::GetUsedMeshes(DynArray<string>& names)
     {
         const SMMRMGeometry& geom = it->second;
         gEnv->pJobManager->WaitForJob(const_cast<JobManager::SJobState&>(geom.geomPrepareState));
-        CStatObj* pObj = NULL;
+        IStatObj* pObj = NULL;
         if (geom.is_obj)
         {
             pObj = geom.srcObj;
@@ -2262,7 +2262,7 @@ void CGeometryManager::GetUsedMeshes(DynArray<string>& names)
         }
         if (pObj)
         {
-            names.push_back(pObj->m_szFileName);
+            names.push_back(pObj->GetFileName());
         }
     }
 }
@@ -2470,13 +2470,13 @@ bool CMergedMeshRenderNode::PrepareRenderMesh(RENDERMESH_UPDATE_TYPE type)
                 assert (0);
                 CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR,
                     "merged mesh '%s' had no rendermesh during merging",
-                    GetStatObj(m_groups[index].instGroupId)->m_szFileName.c_str());
+                    GetStatObj(m_groups[index].instGroupId)->GetFileName().c_str());
                 break;
             case SMMRMGeometry::CREATED:
                 assert (0);
                 CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR,
                     "merged mesh '%s' has an invalid state during merging",
-                    GetStatObj(m_groups[index].instGroupId)->m_szFileName.c_str());
+                    GetStatObj(m_groups[index].instGroupId)->GetFileName().c_str());
                 break;
             case SMMRMGeometry::NO_STATINSTGROUP:
                 assert (0);
@@ -2648,7 +2648,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
             "CMergedMeshRenderNode::AddInstance no valid statinstgroup given");
         return NULL;
     }
-    CStatObj* statObj = group->GetStatObj();
+    IStatObj* statObj = group->GetStatObj();
     IF (!statObj, 0)
     {
         CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR,
@@ -2664,9 +2664,9 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
     gEnv->pJobManager->WaitForJob(m_cullState);
     for (size_t i = 0; i < m_nGroups; ++i)
     {
-        if (m_groups[i].instGroupId == sample.InstGroupId && 
+        if (m_groups[i].instGroupId == sample.InstGroupId &&
             (procGeom->numVtx == 0 ||
-            m_groups[i].numSamples < min((size_t)MMRM_MAX_SAMPLES_PER_BATCH, 0xffffu / procGeom->numVtx)))
+             m_groups[i].numSamples < min((size_t)MMRM_MAX_SAMPLES_PER_BATCH, 0xffffu / procGeom->numVtx)))
         {
             headerIndex = i;
             header = &m_groups[i];
@@ -2891,14 +2891,14 @@ void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const 
         }
         else if (instGroup->GetStatObj())
         {
-            material = static_cast<_smart_ptr<IMaterial>>(instGroup->GetStatObj()->GetMaterial());
+            material = static_cast<_smart_ptr < IMaterial >> (instGroup->GetStatObj()->GetMaterial());
         }
         SMMRM* mesh = NULL;
         for (j = 0; j < num_rms; ++j)
         {
             if (renderMeshes[j].mat == material)
             {
-                mesh = &renderMeshes[j];
+                mesh = & renderMeshes[j];
                 break;
             }
         }
@@ -2913,212 +2913,212 @@ void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const 
         }
     }
 
-    // Pre-allocate the number of concurrent updates each mesh will receive
-    for (size_t j = 0; j < num_rms; ++j)
-    {
-        renderMeshes[j].updates.resize(num_updates[j]);
-        num_updates[j] = 0;
-    }
+// Pre-allocate the number of concurrent updates each mesh will receive
+for (size_t j = 0; j < num_rms; ++j)
+{
+    renderMeshes[j].updates.resize(num_updates[j]);
+    num_updates[j] = 0;
+}
 
-    // For all registered groups, build the update contexts
-    // and grab required vertex and index counts
-    for (size_t i = 0, j = 0; i < m_nGroups; ++i)
+// For all registered groups, build the update contexts
+// and grab required vertex and index counts
+for (size_t i = 0, j = 0; i < m_nGroups; ++i)
+{
+    MEMORY_SCOPE_CHECK_HEAP();
+    SMMRMGroupHeader* group = & m_groups[i];
+    IF (group->numSamples == 0 || group->specMismatch || ((int)type != (int)group->is_dynamic) || num_vi[i] == 0, 0)
     {
-        MEMORY_SCOPE_CHECK_HEAP();
-        SMMRMGroupHeader* group = &m_groups[i];
-        IF (group->numSamples == 0 || group->specMismatch || ((int)type != (int)group->is_dynamic) || num_vi[i] == 0, 0)
-        {
-            continue;
-        }
-        SMMRM* mesh = &renderMeshes[groups_mesh[i]];
-        SMMRMUpdateContext& update = mesh->updates[num_updates[groups_mesh[i]]++];
-        update.group = group;
-        update.chunks.resize(group->numVisbleChunks);
-        for (size_t k = 0; k < group->numVisbleChunks; ++k)
-        {
-            mesh->indices  += (update.chunks[k].icnt = group->visibleChunks[k].indices);
-            mesh->vertices += (update.chunks[k].vcnt = group->visibleChunks[k].vertices);
-            update.chunks[k].matId = group->visibleChunks[k].matId;
-        }
+        continue;
     }
+    SMMRM* mesh = & renderMeshes[groups_mesh[i]];
+    SMMRMUpdateContext& update = mesh->updates[num_updates[groups_mesh[i]]++];
+    update.group = group;
+    update.chunks.resize(group->numVisbleChunks);
+    for (size_t k = 0; k < group->numVisbleChunks; ++k)
+    {
+        mesh->indices  += (update.chunks[k].icnt = group->visibleChunks[k].indices);
+        mesh->vertices += (update.chunks[k].vcnt = group->visibleChunks[k].vertices);
+        update.chunks[k].matId = group->visibleChunks[k].matId;
+    }
+}
 
 # if MMRM_RENDER_DEBUG && MMRM_VISUALIZE_WINDFIELD
-    if (GetCVars()->e_MergedMeshesDebug)
-    {
-        VisualizeWindField(m_wind, m_internalAABB, true, true);
-    }
+if (GetCVars()->e_MergedMeshesDebug)
+{
+    VisualizeWindField(m_wind, m_internalAABB, true, true);
+}
 # endif
 
-    // Loop over the rendermeshes and dispatch the update passes
-    for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
+// Loop over the rendermeshes and dispatch the update passes
+for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
+{
+    MEMORY_SCOPE_CHECK_HEAP();
+    SMMRM* mesh = & renderMeshes[i];
+    if (mesh->updates.empty() || mesh->vertices == 0 || mesh->indices == 0)
     {
-        MEMORY_SCOPE_CHECK_HEAP();
-        SMMRM* mesh = &renderMeshes[i];
-        if (mesh->updates.empty() || mesh->vertices == 0 || mesh->indices == 0)
+        continue;
+    }
+    size_t k = 0, vertices = 0, indices = 0;
+    do
+    {
+        // Assign contiguous renderchunks per group subchunk, split into multiple rendermeshes
+        // if the combined size of the rendermeshes exceed the allowed vertex count for 16bit
+        // indices.
+        std::vector<CRenderChunk> rmchunks;
+        rmchunks.reserve(mesh->updates.size());
+        CRenderChunk chunk;
+        chunk.m_vertexFormat = eVF_P3S_C4B_T2S;
+        size_t iv = 0, ii = 0, beg = k, accum = 0;
+        for (; k < mesh->updates.size(); ++k)
         {
+            SMMRMUpdateContext* update = & mesh->updates[k];
+            for (size_t j = 0, acumm = 0, nc = update->chunks.size(); j < nc; ++j)
+            {
+                accum += update->chunks[j].vcnt;
+            }
+            if (iv + accum > 0xffff)
+            {
+                goto done;
+            }
+            for (size_t j = 0, nc = update->chunks.size(); j < nc; ++j)
+            {
+                if (update->chunks[j].matId != chunk.m_nMatID)
+                {
+                    if (chunk.nNumIndices > 0 && chunk.nNumVerts > 0)
+                    {
+                        rmchunks.push_back(chunk);
+                    }
+
+                    chunk.m_nMatID = update->chunks[j].matId;
+                    chunk.nFirstIndexId = ii;
+                    chunk.nFirstVertId = iv;
+                    chunk.nNumIndices = 0;
+                    chunk.nNumVerts = 0;
+                }
+                update->chunks[j].ioff = ii;
+                update->chunks[j].voff = iv;
+                chunk.nNumIndices += update->chunks[j].icnt;
+                ii += update->chunks[j].icnt;
+                chunk.nNumVerts += update->chunks[j].vcnt;
+                iv += update->chunks[j].vcnt;
+            }
+        }
+        done:
+        if (chunk.nNumIndices && chunk.nNumVerts)
+        {
+            rmchunks.push_back(chunk);
+        }
+
+        mmrm_assert(iv <= 0xffff);
+        // Create a new rendermesh and dispatch the asynchronous updates
+        _smart_ptr<IRenderMesh> rm = GetRenderer()->CreateRenderMeshInitialized(
+                NULL, iv, eVF_P3S_C4B_T2S, NULL, ii,
+                prtTriangleList, "MergedMesh", "MergedMesh", eRMT_Dynamic);
+        rm->LockForThreadAccess();
+        m_SizeInVRam += (sizeof(SVF_P3S_C4B_T2S) + sizeof(SPipTangents))* iv;
+        m_SizeInVRam += sizeof(vtx_idx)* ii;
+
+        strided_pointer<SPipTangents> tgtBuf;
+        strided_pointer<Vec3f16> vtxBuf;
+        strided_pointer<Vec3f16> nrmBuf;
+        vtx_idx* idxBuf = NULL;
+
+        vtxBuf.data = (Vec3f16*)rm->GetPosPtrNoCache(vtxBuf.iStride, FSL_CREATE_MODE);
+        if (mesh->hasNormals)
+        {
+            nrmBuf.data = (Vec3f16*)rm->GetNormPtr(nrmBuf.iStride, FSL_CREATE_MODE);
+        }
+        if (mesh->hasTangents)
+        {
+            tgtBuf.data = (SPipTangents*)rm->GetTangentPtr(tgtBuf.iStride, FSL_CREATE_MODE);
+        }
+        idxBuf = rm->GetIndexPtr(FSL_CREATE_MODE);
+
+        if (!rm->CanRender() || !vtxBuf || !idxBuf ||
+            (mesh->hasNormals && !nrmBuf) ||
+            (mesh->hasTangents && (!tgtBuf)))
+        {
+            rm->UnlockStream(VSF_GENERAL);
+            rm->UnlockStream(VSF_TANGENTS);
+            rm->UnlockIndexStream();
+            rm->UnLockForThreadAccess();
             continue;
         }
-        size_t k = 0, vertices = 0, indices = 0;
-        do
+        for (size_t j = beg; j < k; ++j)
         {
-            // Assign contiguous renderchunks per group subchunk, split into multiple rendermeshes
-            // if the combined size of the rendermeshes exceed the allowed vertex count for 16bit
-            // indices.
-            std::vector<CRenderChunk> rmchunks;
-            rmchunks.reserve(mesh->updates.size());
-            CRenderChunk chunk;
-            chunk.m_vertexFormat = eVF_P3S_C4B_T2S;
-            size_t iv = 0, ii = 0, beg = k, accum = 0;
-            for (; k < mesh->updates.size(); ++k)
-            {
-                SMMRMUpdateContext* update = &mesh->updates[k];
-                for (size_t j = 0, acumm = 0, nc = update->chunks.size(); j < nc; ++j)
-                {
-                    accum += update->chunks[j].vcnt;
-                }
-                if (iv + accum > 0xffff)
-                {
-                    goto done;
-                }
-                for (size_t j = 0, nc = update->chunks.size(); j < nc; ++j)
-                {
-                    if (update->chunks[j].matId != chunk.m_nMatID)
-                    {
-                        if (chunk.nNumIndices > 0 && chunk.nNumVerts > 0)
-                        {
-                            rmchunks.push_back(chunk);
-                        }
-
-                        chunk.m_nMatID = update->chunks[j].matId;
-                        chunk.nFirstIndexId = ii;
-                        chunk.nFirstVertId = iv;
-                        chunk.nNumIndices = 0;
-                        chunk.nNumVerts = 0;
-                    }
-                    update->chunks[j].ioff = ii;
-                    update->chunks[j].voff = iv;
-                    chunk.nNumIndices += update->chunks[j].icnt;
-                    ii += update->chunks[j].icnt;
-                    chunk.nNumVerts += update->chunks[j].vcnt;
-                    iv += update->chunks[j].vcnt;
-                }
-            }
-done:
-            if (chunk.nNumIndices && chunk.nNumVerts)
-            {
-                rmchunks.push_back(chunk);
-            }
-
-            mmrm_assert(iv <= 0xffff);
-            // Create a new rendermesh and dispatch the asynchronous updates
-            _smart_ptr<IRenderMesh> rm = GetRenderer()->CreateRenderMeshInitialized(
-                    NULL, iv, eVF_P3S_C4B_T2S, NULL, ii,
-                    prtTriangleList, "MergedMesh", "MergedMesh", eRMT_Dynamic);
-            rm->LockForThreadAccess();
-            m_SizeInVRam += (sizeof(SVF_P3S_C4B_T2S) + sizeof(SPipTangents)) * iv;
-            m_SizeInVRam += sizeof(vtx_idx) * ii;
-
-            strided_pointer<SPipTangents> tgtBuf;
-            strided_pointer<Vec3f16> vtxBuf;
-            strided_pointer<Vec3f16> nrmBuf;
-            vtx_idx* idxBuf = NULL;
-
-            vtxBuf.data = (Vec3f16*)rm->GetPosPtrNoCache(vtxBuf.iStride, FSL_CREATE_MODE);
-            if (mesh->hasNormals)
-            {
-                nrmBuf.data = (Vec3f16*)rm->GetNormPtr(nrmBuf.iStride, FSL_CREATE_MODE);
-            }
-            if (mesh->hasTangents)
-            {
-                tgtBuf.data = (SPipTangents*)rm->GetTangentPtr(tgtBuf.iStride, FSL_CREATE_MODE);
-            }
-            idxBuf = rm->GetIndexPtr(FSL_CREATE_MODE);
-
-            if (!rm->CanRender() || !vtxBuf || !idxBuf ||
-                (mesh->hasNormals && !nrmBuf) ||
-                (mesh->hasTangents && (!tgtBuf)))
-            {
-                rm->UnlockStream(VSF_GENERAL);
-                rm->UnlockStream(VSF_TANGENTS);
-                rm->UnlockIndexStream();
-                rm->UnLockForThreadAccess();
-                continue;
-            }
-            for (size_t j = beg; j < k; ++j)
-            {
-                SMMRMUpdateContext* update = &mesh->updates[j];
-                update->general  = (SVF_P3S_C4B_T2S*)vtxBuf.data;
-                update->tangents = tgtBuf.data;
-                update->normals = nrmBuf.data;
-                update->idxBuf = idxBuf;
-                update->updateFlag = rm->SetAsyncUpdateState();
-                update->colliders = m_Colliders;
-                update->ncolliders = m_nColliders;
-                update->projectiles = m_Projectiles;
-                update->nprojectiles = m_nProjectiles;
-                update->max_iter = 1;
-                update->dt = s_mmrm_globals.dt;
-                update->abstime = s_mmrm_globals.abstime;
-                update->zRotation = m_zRotation;
-                update->rotationOrigin = m_pos;
-                update->_min = m_internalAABB.min;
-                update->_max = m_internalAABB.max;
-                update->wind = m_wind;
-                update->use_spines = use_spines && m_SpinesActive;
-                update->frame_count = passInfo.GetMainFrameID();
+            SMMRMUpdateContext* update = & mesh->updates[j];
+            update->general  = (SVF_P3S_C4B_T2S*)vtxBuf.data;
+            update->tangents = tgtBuf.data;
+            update->normals = nrmBuf.data;
+            update->idxBuf = idxBuf;
+            update->updateFlag = rm->SetAsyncUpdateState();
+            update->colliders = m_Colliders;
+            update->ncolliders = m_nColliders;
+            update->projectiles = m_Projectiles;
+            update->nprojectiles = m_nProjectiles;
+            update->max_iter = 1;
+            update->dt = s_mmrm_globals.dt;
+            update->abstime = s_mmrm_globals.abstime;
+            update->zRotation = m_zRotation;
+            update->rotationOrigin = m_pos;
+            update->_min = m_internalAABB.min;
+            update->_max = m_internalAABB.max;
+            update->wind = m_wind;
+            update->use_spines = use_spines && m_SpinesActive;
+            update->frame_count = passInfo.GetMainFrameID();
 #       if MMRM_USE_BOUNDS_CHECK
-                for (size_t u = 0; u < update->chunks.size(); ++u)
+            for (size_t u = 0; u < update->chunks.size(); ++u)
+            {
+                if (((SVF_P3S_C4B_T2S*)vtxBuf.data) + update->chunks[u].voff > (((SVF_P3S_C4B_T2S*)vtxBuf.data) + iv))
                 {
-                    if (((SVF_P3S_C4B_T2S*)vtxBuf.data) + update->chunks[u].voff > (((SVF_P3S_C4B_T2S*)vtxBuf.data) + iv))
-                    {
-                        __debugbreak();
-                    }
-                    if (idxBuf + update->chunks[u].ioff > idxBuf + ii)
-                    {
-                        __debugbreak();
-                    }
+                    __debugbreak();
                 }
-                update->general_end  = ((SVF_P3S_C4B_T2S*)vtxBuf.data) + iv;
-                update->tangents_end = ((SPipTangents*)tgtBuf.data) + iv;
-                update->idx_end = idxBuf + ii;
+                if (idxBuf + update->chunks[u].ioff > idxBuf + ii)
+                {
+                    __debugbreak();
+                }
+            }
+            update->general_end  = ((SVF_P3S_C4B_T2S*)vtxBuf.data) + iv;
+            update->tangents_end = ((SPipTangents*)tgtBuf.data) + iv;
+            update->idx_end = idxBuf + ii;
 #       endif
 #       if MMRM_USE_JOB_SYSTEM
-                if (update->group->deform_vertices)
-                {
-                    TPVRNUpdateRenderMeshDeform job(&s_mmrm_globals.camera, 0u);
-                    job.RegisterJobState(&m_updateState);
-                    job.SetClassInstance(update);
-                    job.SetPriorityLevel(JobManager::eLowPriority);
-                    job.Run();
-                }
-                else
-                {
-                    TPVRNUpdateRenderMeshSpines job(&s_mmrm_globals.camera, 0u);
-                    job.RegisterJobState(&m_updateState);
-                    job.SetClassInstance(update);
-                    job.SetPriorityLevel(JobManager::eLowPriority);
-                    job.Run();
-                }
-#       else
-                if (update->group->deform_vertices)
-                {
-                    update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u);
-                }
-                else
-                {
-                    update->MergeInstanceMeshesSpines(&s_mmrm_globals.camera, 0u);
-                }
-#       endif
+            if (update->group->deform_vertices)
+            {
+                TPVRNUpdateRenderMeshDeform job(& s_mmrm_globals.camera, 0u);
+                job.RegisterJobState(& m_updateState);
+                job.SetClassInstance(update);
+                job.SetPriorityLevel(JobManager::eLowPriority);
+                job.Run();
             }
-            rm->SetRenderChunks(&rmchunks[0], rmchunks.size(), false);
-            rm->UnLockForThreadAccess();
-            mesh->rms.push_back(rm);
-            vertices += iv;
-            indices += ii;
-        } while (vertices < mesh->vertices && indices < mesh->indices);
-    }
+            else
+            {
+                TPVRNUpdateRenderMeshSpines job(& s_mmrm_globals.camera, 0u);
+                job.RegisterJobState(& m_updateState);
+                job.SetClassInstance(update);
+                job.SetPriorityLevel(JobManager::eLowPriority);
+                job.Run();
+            }
+#       else
+            if (update->group->deform_vertices)
+            {
+                update->MergeInstanceMeshesDeform(& s_mmrm_globals.camera, 0u);
+            }
+            else
+            {
+                update->MergeInstanceMeshesSpines(& s_mmrm_globals.camera, 0u);
+            }
+#       endif
+        }
+        rm->SetRenderChunks(& rmchunks[0], rmchunks.size(), false);
+        rm->UnLockForThreadAccess();
+        mesh->rms.push_back(rm);
+        vertices += iv;
+        indices += ii;
+    } while (vertices < mesh->vertices && indices < mesh->indices);
+}
 
-    m_LastUpdateFrame = passInfo.GetMainFrameID();
+m_LastUpdateFrame = passInfo.GetMainFrameID();
 }
 
 void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo)
@@ -3133,7 +3133,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
     }
 
     size_t i = 0;
-    extents = (m_visibleAABB.max - m_visibleAABB.min) * 0.5f;
+    extents = (m_visibleAABB.max - m_visibleAABB.min)* 0.5f;
     origin  = m_pos - extents;
     frameId = passInfo.GetMainFrameID();
 
@@ -3150,8 +3150,8 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
     }
 
     const Vec3& camPos = currentCam.GetPosition();
-    const float sqDiagonalInternal = m_internalAABB.GetRadiusSqr() * GetCVars()->e_MergedMeshesInstanceDist;
-    const float sqDiagonalInternalShadows = m_internalAABB.GetRadiusSqr() * GetCVars()->e_MergedMeshesInstanceDistShadows;
+    const float sqDiagonalInternal = m_internalAABB.GetRadiusSqr()* GetCVars()->e_MergedMeshesInstanceDist;
+    const float sqDiagonalInternalShadows = m_internalAABB.GetRadiusSqr()* GetCVars()->e_MergedMeshesInstanceDistShadows;
     const float sqDiagonal = m_visibleAABB.GetRadiusSqr();
     const float sqDistanceToBox = Distance::Point_AABBSq(camPos, m_visibleAABB);
     int nLod = 0;
@@ -3179,7 +3179,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
     if (sqDistanceToBox < sqDiagonalInternal && m_SpinesActive)
     {
         switched = m_RenderMode != DYNAMIC;
-        m_nLod = (int)min(max(sqDistanceToBox / (max(GetCVars()->e_MergedMeshesLodRatio * sqDiagonal, 0.001f)), 0.f), ((float)MAX_STATOBJ_LODS_NUM - 1.f));
+        m_nLod = (int)min(max(sqDistanceToBox / (max(GetCVars()->e_MergedMeshesLodRatio* sqDiagonal, 0.001f)), 0.f), ((float)MAX_STATOBJ_LODS_NUM - 1.f));
         m_RenderMode = DYNAMIC;
     }
     else
@@ -3189,7 +3189,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
         if (m_nLod != -1)
         {
             const float lastDistanceToBox = Distance::Point_AABBSq(s_mmrm_globals.lastFramesCamPos, m_visibleAABB);
-            if (abs(lastDistanceToBox - sqDistanceToBox) > sqDiagonalInternal * 0.25f)
+            if (abs(lastDistanceToBox - sqDistanceToBox) > sqDiagonalInternal* 0.25f)
             {
                 m_nLod = -1;
             }
@@ -3258,20 +3258,20 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                             continue;
                         }
                         int flags = (int)MMRM_CULL_FRUSTUM | MMRM_CULL_DISTANCE;
-  #       if MMRM_USE_JOB_SYSTEM
+#       if MMRM_USE_JOB_SYSTEM
                         mmrm_printf("starting culljob on %#x header (%#x instance %#x numsamples)\n",
-                            (unsigned int)&m_groups[i]
-                            , (unsigned int)m_groups[i].instances
-                            , (unsigned int)m_groups[i].numSamples);
-                        TPVRNCullRenderMesh job(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
-                        job.RegisterJobState(&m_cullState);
-                        job.SetClassInstance(&m_groups[i]);
+                                    (unsigned int)& m_groups[i]
+                                    , (unsigned int)m_groups[i].instances
+                                    , (unsigned int)m_groups[i].numSamples);
+                        TPVRNCullRenderMesh job(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
+                        job.RegisterJobState(& m_cullState);
+                        job.SetClassInstance(& m_groups[i]);
                         job.SetPriorityLevel(JobManager::eHighPriority);
                         job.Run();
                         //gEnv->pJobManager->WaitForJob(m_cullState);
-  #       else
-                        m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
-  #       endif
+#       else
+                        m_groups[i].CullInstances(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
+#       endif
                         dispatched = true;
                     }
                     if (dispatched)
@@ -3282,10 +3282,10 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                     }
                 }
                 break;
-static_fallthrough:
+                static_fallthrough:
             case INSTANCED:
-                nLod = (int)min(max(sqDistanceToBox / (max(GetCVars()->e_MergedMeshesLodRatio * sqDiagonal, 0.001f)), 0.f), ((float)MAX_STATOBJ_LODS_NUM - 1.f));
-                if ((nLod != m_nLod || (pass == RUT_DYNAMIC && (frameId - m_LastUpdateFrame) > (uint32)(lodFrequency[nLod & 3]))) && s_mmrm_globals.dt > 0.f)
+                nLod = (int)min(max(sqDistanceToBox / (max(GetCVars()->e_MergedMeshesLodRatio* sqDiagonal, 0.001f)), 0.f), ((float)MAX_STATOBJ_LODS_NUM - 1.f));
+                if ((nLod != m_nLod || (pass == RUT_DYNAMIC && (frameId - m_LastUpdateFrame) > (uint32)(lodFrequency[nLod& 3]))) && s_mmrm_globals.dt > 0.f)
                 {
                     bool dispatched = false;
                     DeleteRenderMesh((RENDERMESH_UPDATE_TYPE)pass);
@@ -3297,13 +3297,13 @@ static_fallthrough:
                         }
                         int flags = (int)(nLod << MMRM_LOD_SHIFT) | MMRM_CULL_LOD | MMRM_CULL_DISTANCE;
 #         if MMRM_USE_JOB_SYSTEM
-                        TPVRNCullRenderMesh job(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
-                        job.RegisterJobState(&m_cullState);
-                        job.SetClassInstance(&m_groups[i]);
+                        TPVRNCullRenderMesh job(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
+                        job.RegisterJobState(& m_cullState);
+                        job.SetClassInstance(& m_groups[i]);
                         job.SetPriorityLevel(JobManager::eHighPriority);
                         job.Run();
 #         else
-                        m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
+                        m_groups[i].CullInstances(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
 #endif
                         dispatched = true;
                     }
@@ -3357,7 +3357,7 @@ bool CMergedMeshRenderNode::GroupsCastShadows(RENDERMESH_UPDATE_TYPE type)
         {
             continue;
         }
-        StatInstGroup& srcGroup = GetObjManager()->m_lstStaticTypes[0][m_groups[i].instGroupId];
+        StatInstGroup& srcGroup = GetObjManager()->GetListStaticTypes()[0][m_groups[i].instGroupId];
         if (srcGroup.nCastShadowMinSpec <= GetCVars()->e_ObjShadowCastSpec)
         {
             return true;
@@ -3375,15 +3375,15 @@ void CMergedMeshRenderNode::RenderRenderMesh(
     std::vector<SMMRM>& renderMeshes = m_renderMeshes[type];
     SSectorTextureSet* pTerrainTexInfo = NULL;
     byte ucSunDotTerrain = 255;
-    const float fRenderQuality = min(1.f, max(1.f - (distance * passInfo.GetZoomFactor()) / (GetCVars()->e_MergedMeshesActiveDist * 0.3333f), 0.f));
-	
+    const float fRenderQuality = min(1.f, max(1.f - (distance* passInfo.GetZoomFactor()) / (GetCVars()->e_MergedMeshesActiveDist* 0.3333f), 0.f));
+
     bool bUseTerrainColor = UsesTerrainColor();
 
     if (GetCVars()->e_VegetationUseTerrainColor && bUseTerrainColor)
     {
         float fRadius = GetBBox().GetRadius();
         Vec3 vTerrainNormal = GetTerrain()->GetTerrainSurfaceNormal(GetBBox().GetCenter(), fRadius);
-        ucSunDotTerrain = (uint8)(CLAMP((vTerrainNormal.Dot(Get3DEngine()->GetSunDirNormalized())) * 255.0f, 0, 255));
+        ucSunDotTerrain = (uint8)(CLAMP((vTerrainNormal.Dot(Get3DEngine()->GetSunDirNormalized()))* 255.0f, 0, 255));
         GetObjManager()->FillTerrainTexInfo(m_pOcNode, distance, pTerrainTexInfo, GetBBox());
     }
 
@@ -3409,7 +3409,7 @@ void CMergedMeshRenderNode::RenderRenderMesh(
             ro->m_ObjFlags = FOB_PARTICLE_SHADOWS | FOB_DYNAMIC_OBJECT;
             if (pTerrainTexInfo)
             {
-                ro->m_II.m_AmbColor.a = clamp_tpl((1.0f / 255.f * ucSunDotTerrain), 0.f, 1.f);
+                ro->m_II.m_AmbColor.a = clamp_tpl((1.0f / 255.f* ucSunDotTerrain), 0.f, 1.f);
                 ro->m_ObjFlags |= FOB_BLEND_WITH_TERRAIN_COLOR;
                 ro->m_nTextureID = pTerrainTexInfo->nTex0;
                 if (SRenderObjData* pOD = GetRenderer()->EF_GetObjData(ro, true, passInfo.ThreadID()))
@@ -3417,11 +3417,11 @@ void CMergedMeshRenderNode::RenderRenderMesh(
                     pOD->m_fTempVars[3] = pTerrainTexInfo->fTexOffsetX;
                     pOD->m_fTempVars[4] = pTerrainTexInfo->fTexOffsetY;
                     pOD->m_fTempVars[5] = pTerrainTexInfo->fTexScale;
-                    pOD->m_fTempVars[8] = m_fWSMaxViewDist * 0.3333f; // 0.333f => replicating magic ratio from fRenderQuality
+                    pOD->m_fTempVars[8] = m_fWSMaxViewDist* 0.3333f; // 0.333f => replicating magic ratio from fRenderQuality
                 }
             }
             ro->m_fSort = m_rendParams.fCustomSortOffset;
-            ro->m_nRenderQuality = (uint16)(fRenderQuality * 65535.0f);
+            ro->m_nRenderQuality = (uint16)(fRenderQuality* 65535.0f);
             ro->m_fDistance =   distance;
             ro->m_pCurrMaterial = mesh.mat;
             if (Get3DEngine()->IsTessellationAllowed(ro, passInfo))
@@ -3485,14 +3485,14 @@ bool CMergedMeshRenderNode::Compile(byte* pData, int& nSize, string* pName, std:
     if (pData)
     {
         char token[256];
-        int _i = (int)floorf(abs(m_pos.x) * fExtentsRec);
-        int _j = (int)floorf(abs(m_pos.y) * fExtentsRec);
-        int _k = (int)floorf(abs(m_pos.z) * fExtentsRec);
+        int _i = (int)floorf(abs(m_pos.x)* fExtentsRec);
+        int _j = (int)floorf(abs(m_pos.y)* fExtentsRec);
+        int _k = (int)floorf(abs(m_pos.z)* fExtentsRec);
         sprintf_s(token, "sector_%d_%d_%d", _i, _j, _k);
-        *pName = token;
+        * pName = token;
 
 
-        Vec3 extents = (m_visibleAABB.max - m_visibleAABB.min) * 0.5f;
+        Vec3 extents = (m_visibleAABB.max - m_visibleAABB.min)* 0.5f;
         Vec3 origin  = m_pos - extents;
 
         uint8* pPtr = pData;
@@ -3502,7 +3502,7 @@ bool CMergedMeshRenderNode::Compile(byte* pData, int& nSize, string* pName, std:
         {
             const SMMRMGroupHeader* header = Group(i);
             StatInstGroup& group = GetStatObjGroup(header->instGroupId);
-            int nItemId = CObjManager::GetItemId<IStatInstGroup>(pVegGroupTable, &group);
+            int nItemId = CObjManager::GetItemId<IStatInstGroup>(pVegGroupTable, & group);
             if (nItemId < 0)
             {
                 assert(!"StatObj not found in StatInstGroupTable on exporting");
@@ -3511,9 +3511,9 @@ bool CMergedMeshRenderNode::Compile(byte* pData, int& nSize, string* pName, std:
             SMergedMeshSectorChunk sectorChunk;
             sectorChunk.m_StatInstGroupID = nItemId;
             sectorChunk.m_nSamples = header->numSamples;
-            sectorChunk.i = (uint32)floorf(abs(m_pos.x) * fExtentsRec);
-            sectorChunk.j = (uint32)floorf(abs(m_pos.y) * fExtentsRec);
-            sectorChunk.k = (uint32)floorf(abs(m_pos.z) * fExtentsRec);
+            sectorChunk.i = (uint32)floorf(abs(m_pos.x)* fExtentsRec);
+            sectorChunk.j = (uint32)floorf(abs(m_pos.y)* fExtentsRec);
+            sectorChunk.k = (uint32)floorf(abs(m_pos.z)* fExtentsRec);
             sectorChunk.ver = c_MergedMeshChunkVersion;
             AddToPtr(pPtr, sectorChunk, GetPlatformEndian());
 
@@ -3537,7 +3537,7 @@ bool CMergedMeshRenderNode::Compile(byte* pData, int& nSize, string* pName, std:
         for (size_t i = 0; i < NumGroups(); ++i)
         {
             nSize += sizeof(SMergedMeshSectorChunk);
-            nSize += Group(i)->numSamples * sizeof(SMergedMeshInstanceCompressed);
+            nSize += Group(i)->numSamples* sizeof(SMergedMeshInstanceCompressed);
         }
     }
 
@@ -3558,7 +3558,7 @@ void CMergedMeshRenderNode::FillSamples(DynArray<Vec2>& samples)
         const AABB& aabb = header->procGeom->aabb;
         const Vec3& centre = aabb.GetCenter();
         const Vec3& size = aabb.GetSize();
-        samples.reserve(samples.size() + header->numSamples * 4);
+        samples.reserve(samples.size() + header->numSamples* 4);
         for (size_t j = 0; j < header->numSamples; ++j)
         {
             Vec3 pos = ConvertInstanceAbsolute(header->instances[j], m_internalAABB.min, m_pos, m_zRotation, fExtents);
@@ -3586,25 +3586,25 @@ void CMergedMeshRenderNode::ActivateSpines()
     }
     for (size_t i = 0; i < NumGroups(); ++i)
     {
-        SMMRMGroupHeader* header = &m_groups[i];
+        SMMRMGroupHeader* header = & m_groups[i];
         if (header->specMismatch)
         {
             continue;
         }
         if (header->procGeom->numSpines)
         {
-            pool_resize_list(header->spines, header->numSamples * header->procGeom->numSpineVtx, 16);
+            pool_resize_list(header->spines, header->numSamples* header->procGeom->numSpineVtx, 16);
         }
         if (header->procGeom->deform)
         {
-            pool_resize_list(header->deform_vertices, header->numSamples * header->procGeom->deform->nvertices, 16);
+            pool_resize_list(header->deform_vertices, header->numSamples* header->procGeom->deform->nvertices, 16);
         }
     }
 # if MMRM_USE_JOB_SYSTEM
     TMergedMesh_InitializeSpines job;
     job.SetPriorityLevel(JobManager::eLowPriority);
     job.SetClassInstance(this);
-    job.RegisterJobState(&m_spineInitializationState);
+    job.RegisterJobState(& m_spineInitializationState);
     job.Run();
 # else
     InitializeSpines();
@@ -3623,7 +3623,7 @@ void CMergedMeshRenderNode::RemoveSpines()
     }
     for (size_t i = 0; i < NumGroups(); ++i)
     {
-        SMMRMGroupHeader* header = &m_groups[i];
+        SMMRMGroupHeader* header = & m_groups[i];
         if (header->spines)
         {
             pool_free(header->spines);
@@ -3666,15 +3666,15 @@ void CMergedMeshRenderNode::StreamAsyncOnComplete (IReadStream* pStream, unsigne
 
     for (size_t i = 0; i < NumGroups(); ++i)
     {
-        SMMRMGroupHeader* header = &m_groups[i];
+        SMMRMGroupHeader* header = & m_groups[i];
         if (header->splitGroup == false && stepcount)
         {
-            pBuffer += sizeof(SMergedMeshInstanceCompressed) * stepcount;
+            pBuffer += sizeof(SMergedMeshInstanceCompressed)* stepcount;
             stepcount = 0;
         }
         if (header->splitGroup == false)
         {
-            const SMergedMeshSectorChunk& sectorChunk = *StepData<SMergedMeshSectorChunk>(pBuffer, eLittleEndian);
+            const SMergedMeshSectorChunk& sectorChunk = * StepData<SMergedMeshSectorChunk>(pBuffer, eLittleEndian);
 
             if (!(sectorChunk.ver == c_MergedMeshChunkVersion))
             {
@@ -3683,26 +3683,26 @@ void CMergedMeshRenderNode::StreamAsyncOnComplete (IReadStream* pStream, unsigne
                 return; // Data may not be what is expcted, so don't load to avoid potential crash.
             }
 
-  #   if MMRM_DEBUG
+#   if MMRM_DEBUG
             {
                 if (sectorChunk.m_StatInstGroupID != header->instGroupId)
                 {
                     __debugbreak();
                 }
-                if (sectorChunk.i != (uint32)floorf(abs(m_initPos.x) * fExtentsRec))
+                if (sectorChunk.i != (uint32)floorf(abs(m_initPos.x)* fExtentsRec))
                 {
                     __debugbreak();
                 }
-                if (sectorChunk.j != (uint32)floorf(abs(m_initPos.y) * fExtentsRec))
+                if (sectorChunk.j != (uint32)floorf(abs(m_initPos.y)* fExtentsRec))
                 {
                     __debugbreak();
                 }
-                if (sectorChunk.k != (uint32)floorf(abs(m_initPos.z) * fExtentsRec))
+                if (sectorChunk.k != (uint32)floorf(abs(m_initPos.z)* fExtentsRec))
                 {
                     __debugbreak();
                 }
             }
-  #   endif
+#   endif
         }
 
         if (!header->specMismatch)
@@ -3724,17 +3724,17 @@ void CMergedMeshRenderNode::PrintState(float& yPos)
     int i, j, k;
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
 
-    i = (int)floorf(abs(m_pos.x) * fExtentsRec);
-    j = (int)floorf(abs(m_pos.y) * fExtentsRec);
-    k = (int)floorf(abs(m_pos.z) * fExtentsRec);
+    i = (int)floorf(abs(m_pos.x)* fExtentsRec);
+    j = (int)floorf(abs(m_pos.y)* fExtentsRec);
+    k = (int)floorf(abs(m_pos.z)* fExtentsRec);
     Cry3DEngineBase::Get3DEngine()->DrawTextLeftAligned(10.f, yPos += 13.f, 1.f, Col_Red
-        , "mmrm__%02d_%02d_%02d \t %5s \t %9.3f \t %11s \t %8.3f kb \t %8d"
-        , (unsigned int)i, (unsigned int)j, (unsigned int)k
-        , (Visible() ? "true" : "false")
-        , DistanceSq()
-        , ToString(m_State)
-        , MetaSize() / 1024.f
-        , m_LastDrawFrame);
+                                                        , "mmrm__%02d_%02d_%02d \t %5s \t %9.3f \t %11s \t %8.3f kb \t %8d"
+                                                        , (unsigned int)i, (unsigned int)j, (unsigned int)k
+                                                        , (Visible() ? "true" : "false")
+                                                        , DistanceSq()
+                                                        , ToString(m_State)
+                                                        , MetaSize() / 1024.f
+                                                        , m_LastDrawFrame);
 }
 
 void CMergedMeshRenderNode::StreamOnComplete (IReadStream* pStream, unsigned nError)
@@ -3766,13 +3766,13 @@ bool CMergedMeshRenderNode::StreamIn()
     switch (m_State)
     {
     case PREPARED:
-        i = (int)floorf(abs(m_initPos.x) * fExtentsRec);
-        j = (int)floorf(abs(m_initPos.y) * fExtentsRec);
-        k = (int)floorf(abs(m_initPos.z) * fExtentsRec);
+        i = (int)floorf(abs(m_initPos.x)* fExtentsRec);
+        j = (int)floorf(abs(m_initPos.y)* fExtentsRec);
+        k = (int)floorf(abs(m_initPos.z)* fExtentsRec);
         m_State = STREAMING;
 
         sprintf_s(szFileName, "%s%s\\sector_%d_%d_%d.dat", Get3DEngine()->GetLevelFolder(), COMPILED_MERGED_MESHES_BASE_NAME
-            , i, j, k);
+                    , i, j, k);
         m_pReadStream = GetSystem()->GetStreamEngine()->StartRead(eStreamTaskTypeMergedMesh, szFileName, this);
         return true;
     default:
@@ -3795,7 +3795,7 @@ bool CMergedMeshRenderNode::StreamOut()
         m_State = PREPARED;
         for (size_t i = 0; i < NumGroups(); ++i)
         {
-            SMMRMGroupHeader* header = &m_groups[i];
+            SMMRMGroupHeader* header = & m_groups[i];
             if (header->instances)
             {
                 pool_free(header->instances);
@@ -3841,7 +3841,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
 #if MMRM_RENDER_DEBUG
     const float fExtents = c_MergedMeshesExtent;
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
-    Vec3 extents = (m_visibleAABB.max - m_visibleAABB.min) * 0.5f;
+    Vec3 extents = (m_visibleAABB.max - m_visibleAABB.min)* 0.5f;
     Vec3 origin  = m_pos - extents;
     Quat q;
 
@@ -3852,7 +3852,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
         Matrix34 mat;
         mat.SetIdentity();
         ColorF col;
-        if (mergedMeshesDebug & (1 << 1))
+        if (mergedMeshesDebug& (1 << 1))
         {
             switch (m_State)
             {
@@ -3883,18 +3883,18 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
                 }
             }
             gEnv->pRenderer->DrawLabel(m_pos, 1.f, "(vb %04d ib %04d) (size %3.1f kb) (nLod %d)"
-                , nVerts
-                , nInds
-                , (m_SizeInVRam) / 1024.f
-                , nLod
-                );
+                                        , nVerts
+                                        , nInds
+                                        , (m_SizeInVRam) / 1024.f
+                                        , nLod
+                                        );
         }
     }
     if (m_State != STREAMED_IN)
     {
         return;
     }
-    if (mergedMeshesDebug & (1 << 3))
+    if (mergedMeshesDebug& (1 << 3))
     {
         std::vector<Vec3> lines;
         std::vector<vtx_idx> indices;
@@ -3907,7 +3907,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
             {
                 Vec3 v;
                 ConvertInstanceAbsolute(v, header.instances[l], m_internalAABB.min, m_pos, m_zRotation, fExtents);
-                float scale = (1.f / VEGETATION_CONV_FACTOR) * header.instances[l].scale;
+                float scale = (1.f / VEGETATION_CONV_FACTOR)* header.instances[l].scale;
 
                 indices.push_back(lines.size());
                 lines.push_back(v);
@@ -3919,10 +3919,10 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
         if (!lines.empty() && !indices.empty())
         {
             pAuxGeomRender->DrawLines(
-                &lines[0], lines.size(), &indices[0], indices.size(), Col_Green, 1.f);
+                & lines[0], lines.size(), & indices[0], indices.size(), Col_Green, 1.f);
         }
     }
-    if (GetCVars()->e_MergedMeshesDebug & (1 << 4))
+    if (GetCVars()->e_MergedMeshesDebug& (1 << 4))
     {
         std::vector<AABB> aabbs;
         for (size_t i = 0; i < m_nGroups; ++i)
@@ -3933,17 +3933,17 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
             {
                 Vec3 pos;
                 ConvertInstanceAbsolute(pos, header.instances[l], m_internalAABB.min, m_pos, m_zRotation, fExtents);
-                float scale = (1.f / VEGETATION_CONV_FACTOR) * header.instances[l].scale;
-                aabbs.push_back(AABB(pos + aabb.min * scale, pos + aabb.max * scale));
+                float scale = (1.f / VEGETATION_CONV_FACTOR)* header.instances[l].scale;
+                aabbs.push_back(AABB(pos + aabb.min* scale, pos + aabb.max* scale));
             }
         }
         if (!aabbs.empty())
         {
             pAuxGeomRender->DrawAABBs(
-                &aabbs[0], aabbs.size(), false, Col_Green, eBBD_Extremes_Color_Encoded);
+                & aabbs[0], aabbs.size(), false, Col_Green, eBBD_Extremes_Color_Encoded);
         }
     }
-    if (GetCVars()->e_MergedMeshesDebug & (1 << 5))
+    if (GetCVars()->e_MergedMeshesDebug& (1 << 5))
     {
         std::vector<Vec3> lines0, lines1;
         std::vector<vtx_idx> indices0, indices1;
@@ -3951,35 +3951,35 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
         {
             const SMMRMGroupHeader& header = m_groups[i];
 
-            if (GetCVars()->e_MergedMeshesDebug & (1 << 9))
+            if (GetCVars()->e_MergedMeshesDebug& (1 << 9))
             {
                 for (size_t l = 0; header.spines && l < header.numSamples; ++l)
                 {
                     const SMMRMInstance& sample = header.instances[l];
-                    const float fScale = (1.f / VEGETATION_CONV_FACTOR) * sample.scale;
+                    const float fScale = (1.f / VEGETATION_CONV_FACTOR)* sample.scale;
                     DecompressQuat(q, sample);
-                    Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(sample, m_internalAABB.min, m_pos, m_zRotation, fExtents)) * Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
+                    Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(sample, m_internalAABB.min, m_pos, m_zRotation, fExtents))* Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
                     for (size_t j = 0, base = 0; j < header.procGeom->numSpines; ++j)
                     {
                         for (size_t k = 0; k < header.procGeom->pSpineInfo[j].nSpineVtx - 1; ++k)
                         {
                             indices0.push_back(lines0.size());
-                            lines0.push_back(wmat * header.procGeom->pSpineVtx[base + k].pt);
+                            lines0.push_back(wmat* header.procGeom->pSpineVtx[base + k].pt);
                             indices0.push_back(lines0.size());
-                            lines0.push_back(wmat * header.procGeom->pSpineVtx[base + k + 1].pt);
+                            lines0.push_back(wmat* header.procGeom->pSpineVtx[base + k + 1].pt);
                         }
                         base += header.procGeom->pSpineInfo[j].nSpineVtx;
                     }
                 }
             }
-            if (GetCVars()->e_MergedMeshesDebug & (1 << 10))
+            if (GetCVars()->e_MergedMeshesDebug& (1 << 10))
             {
                 for (size_t l = 0, sbase = 0; header.spines && l < header.numSamples; ++l)
                 {
                     const SMMRMInstance& sample = header.instances[l];
-                    const float fScale = (1.f / VEGETATION_CONV_FACTOR) * sample.scale;
+                    const float fScale = (1.f / VEGETATION_CONV_FACTOR)* sample.scale;
                     DecompressQuat(q, sample);
-                    Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(sample, m_internalAABB.min, m_pos, m_zRotation, fExtents)) * Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
+                    Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(sample, m_internalAABB.min, m_pos, m_zRotation, fExtents))* Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
                     for (size_t j = 0, base = 0; j < header.procGeom->numSpines; ++j)
                     {
                         for (size_t k = 0; k < header.procGeom->pSpineInfo[j].nSpineVtx - 1; ++k)
@@ -3996,14 +3996,14 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
                             lines1.push_back(header.spines[sbase + base + k + 1].pt + header.spines[sbase + base + k + 1].vel);
 #             else
                             indices1.push_back(lines1.size());
-                            lines1.push_back(wmat * header.spines[sbase + base + k].pt.ToVec3());
+                            lines1.push_back(wmat* header.spines[sbase + base + k].pt.ToVec3());
                             indices1.push_back(lines1.size());
-                            lines1.push_back(wmat * header.spines[sbase + base + k + 1].pt.ToVec3());
+                            lines1.push_back(wmat* header.spines[sbase + base + k + 1].pt.ToVec3());
 
                             indices1.push_back(lines1.size());
-                            lines1.push_back(wmat * header.spines[sbase + base + k + 1].pt.ToVec3());
+                            lines1.push_back(wmat* header.spines[sbase + base + k + 1].pt.ToVec3());
                             indices1.push_back(lines1.size());
-                            lines1.push_back(wmat * header.spines[sbase + base + k + 1].pt.ToVec3() + header.spines[sbase + base + k + 1].vel.ToVec3());
+                            lines1.push_back(wmat* header.spines[sbase + base + k + 1].pt.ToVec3() + header.spines[sbase + base + k + 1].vel.ToVec3());
 #             endif
                         }
                         base += header.procGeom->pSpineInfo[j].nSpineVtx;
@@ -4011,7 +4011,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
                     sbase += header.procGeom->numSpineVtx;
                 }
             }
-            if (GetCVars()->e_MergedMeshesDebug & (1 << 11))
+            if (GetCVars()->e_MergedMeshesDebug& (1 << 11))
             {
                 for (size_t l = 0, sbase = 0; header.spines && l < header.numSamples; ++l)
                 {
@@ -4046,15 +4046,15 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
         if (!lines0.empty() && !indices0.empty())
         {
             pAuxGeomRender->DrawLines(
-                &lines0[0], lines0.size(), &indices0[0], indices0.size(), Col_Green, 1.f);
+                & lines0[0], lines0.size(), & indices0[0], indices0.size(), Col_Green, 1.f);
         }
         if (!lines1.empty() && !indices1.empty())
         {
             pAuxGeomRender->DrawLines(
-                &lines1[0], lines1.size(), &indices1[0], indices1.size(), Col_Red, 1.f);
+                & lines1[0], lines1.size(), & indices1[0], indices1.size(), Col_Red, 1.f);
         }
     }
-    if (GetCVars()->e_MergedMeshesDebug & (1 << 6) && m_wind)
+    if (GetCVars()->e_MergedMeshesDebug& (1 << 6) && m_wind)
     {
         for (size_t x = 0; x < MMRM_WIND_DIM; ++x)
         {
@@ -4062,10 +4062,10 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
             {
                 for (size_t z = 0; z < MMRM_WIND_DIM; ++z)
                 {
-                    Vec3 pos, w = m_wind[x + y * MMRM_WIND_DIM + z * MMRM_WIND_DIM * MMRM_WIND_DIM].GetNormalized(), size = m_internalAABB.GetSize();
-                    pos.x = m_internalAABB.min.x + (x / (MMRM_WIND_DIM - 1.f)) * size.x;
-                    pos.y = m_internalAABB.min.y + (y / (MMRM_WIND_DIM - 1.f)) * size.y;
-                    pos.z = m_internalAABB.min.z + (z / (MMRM_WIND_DIM - 1.f)) * size.z;
+                    Vec3 pos, w = m_wind[x + y* MMRM_WIND_DIM + z* MMRM_WIND_DIM* MMRM_WIND_DIM].GetNormalized(), size = m_internalAABB.GetSize();
+                    pos.x = m_internalAABB.min.x + (x / (MMRM_WIND_DIM - 1.f))* size.x;
+                    pos.y = m_internalAABB.min.y + (y / (MMRM_WIND_DIM - 1.f))* size.y;
+                    pos.z = m_internalAABB.min.z + (z / (MMRM_WIND_DIM - 1.f))* size.z;
                     pAuxGeomRender->DrawLine(pos, Col_Blue, pos + w, Col_Blue, 4.f);
                     pAuxGeomRender->DrawCone(pos + w, w, 0.1f, 0.25f, Col_LightBlue);
                 }
@@ -4075,7 +4075,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
 # if MMRM_VISUALIZE_WINDFIELD
     VisualizeWindField(m_wind, m_internalAABB, true, true);
 # endif
-    if (GetCVars()->e_MergedMeshesDebug & (1 << 8) && m_nColliders)
+    if (GetCVars()->e_MergedMeshesDebug& (1 << 8) && m_nColliders)
     {
         SAuxGeomRenderFlags oldFlags = pAuxGeomRender->GetRenderFlags(), newFlags = oldFlags;
         newFlags.SetFillMode(e_FillModeWireframe);
@@ -4092,7 +4092,7 @@ void CMergedMeshRenderNode::DebugRender(int nLod)
 
 const SMMRMGroupHeader* CMergedMeshRenderNode::Group(size_t index) const
 {
-    return &m_groups[index];
+    return & m_groups[index];
 }
 
 uint32 CMergedMeshRenderNode::NumGroups() const
@@ -4110,12 +4110,12 @@ uint32 CMergedMeshRenderNode::MetaSize() const
         {
             continue;
         }
-        size += sizeof(SMMRMInstance) * m_groups[i].numSamples;
+        size += sizeof(SMMRMInstance)* m_groups[i].numSamples;
         if (m_groups[i].procGeom->numSpines)
         {
-            size += sizeof(SMMRMSpineVtx) * m_groups[i].numSamples * m_groups[i].procGeom->numSpineVtx;
+            size += sizeof(SMMRMSpineVtx)* m_groups[i].numSamples* m_groups[i].procGeom->numSpineVtx;
         }
-        size += sizeof(SMMRMVisibleChunk) * m_groups[i].numVisbleChunks;
+        size += sizeof(SMMRMVisibleChunk)* m_groups[i].numVisbleChunks;
     }
     return size;
 }
@@ -4146,7 +4146,7 @@ uint32 CMergedMeshRenderNode::SpineCount() const
             all_prepared &= (m_groups[i].procGeom->state == SMMRMGeometry::PREPARED);
             if (!m_groups[i].specMismatch && m_groups[i].procGeom->numSpines)
             {
-                count += m_groups[i].procGeom->numSpineVtx * m_groups[i].numSamples;
+                count += m_groups[i].procGeom->numSpineVtx* m_groups[i].numSamples;
             }
         }
         IF (all_prepared, 1)
@@ -4185,8 +4185,8 @@ void CMergedMeshRenderNode::OverrideViewDistRatio(float value)
 {
     for (size_t i = 0; i < m_nGroups; ++i)
     {
-        StatInstGroup* pInstGroup = &GetStatObjGroup(m_groups[i].instGroupId);
-        m_groups[i].maxViewDistance = pInstGroup->fVegRadius * pInstGroup->fMaxViewDistRatio * value;
+        StatInstGroup* pInstGroup = & GetStatObjGroup(m_groups[i].instGroupId);
+        m_groups[i].maxViewDistance = pInstGroup->fVegRadius* pInstGroup->fMaxViewDistRatio* value;
     }
 }
 
@@ -4203,7 +4203,7 @@ bool CMergedMeshRenderNode::UpdateStreamableComponents(
     , float fEntDistance
     , bool bFullUpdate)
 {
-    CObjManager* pObjManager = GetObjManager();
+    IObjManager* pObjManager = GetObjManager();
     IF (m_usedMaterials.size() == 0u, 0)
     {
         for (size_t i = 0; i < m_nGroups; ++i)
@@ -4220,7 +4220,7 @@ bool CMergedMeshRenderNode::UpdateStreamableComponents(
             }
             else if (pObj = GetStatObj(m_groups[i].instGroupId))
             {
-                StatInstGroup* pInstGroup = &GetStatObjGroup(m_groups[i].instGroupId);
+                StatInstGroup* pInstGroup = & GetStatObjGroup(m_groups[i].instGroupId);
                 material =  pInstGroup->pMaterial
                     ? pInstGroup->pMaterial
                     : (pInstGroup->pStatObj->GetMaterial());
@@ -4266,13 +4266,13 @@ Vec3 CMergedMeshRenderNode::GetSamplePos(size_t group, size_t sample) const
     {
         goto error;
     }
-    header = &m_groups[group];
+    header = & m_groups[group];
     if (sample >= header->numSamples)
     {
         goto error;
     }
     return ConvertInstanceAbsolute(header->instances[sample], m_internalAABB.min, m_pos, m_zRotation, c_MergedMeshesExtent);
-error:
+    error:
     __debugbreak();
     return Vec3(-1, -1, -1);
 }
@@ -4287,16 +4287,16 @@ AABB CMergedMeshRenderNode::GetSampleAABB(size_t group, size_t sample) const
     {
         goto error;
     }
-    header = &m_groups[group];
+    header = & m_groups[group];
     if (sample >= header->numSamples)
     {
         goto error;
     }
-    fScale = (1.f / VEGETATION_CONV_FACTOR) * header->instances[sample].scale;
+    fScale = (1.f / VEGETATION_CONV_FACTOR)* header->instances[sample].scale;
     DecompressQuat(q, header->instances[sample]);
-    bb.CreateTransformedAABB(CreateRotationQ(q, ConvertInstanceAbsolute(header->instances[sample], m_internalAABB.min, m_pos, m_zRotation, c_MergedMeshesExtent)) * Matrix34::CreateScale(Vec3(fScale, fScale, fScale)), header->procGeom->aabb);
+    bb.CreateTransformedAABB(CreateRotationQ(q, ConvertInstanceAbsolute(header->instances[sample], m_internalAABB.min, m_pos, m_zRotation, c_MergedMeshesExtent))* Matrix34::CreateScale(Vec3(fScale, fScale, fScale)), header->procGeom->aabb);
     return bb;
-error:
+    error:
     __debugbreak();
     return AABB();
 }
@@ -4327,10 +4327,10 @@ CMergedMeshInstanceProxy::CMergedMeshInstanceProxy(
     CMergedMeshRenderNode* host
     , size_t header
     , size_t index)
-    : IRenderNode()
-    , m_host(host)
-    , m_headerIndex(header)
-    , m_sampleIndex(index)
+: IRenderNode()
+, m_host(host)
+, m_headerIndex(header)
+, m_sampleIndex(index)
 {
 }
 
@@ -4382,7 +4382,7 @@ void CMergedMeshesManager::Init()
     {
         AUTO_LOCK(s_MergedMeshPoolLock);
         ScopedSwitchToGlobalHeap heaper;
-        size_t memsize = (Cry3DEngineBase::GetCVars()->e_MergedMeshesPool + 4096) * 1024; // include 2mb buffer size for overhead and large peaks
+        size_t memsize = (Cry3DEngineBase::GetCVars()->e_MergedMeshesPool + 4096)* 1024; // include 2mb buffer size for overhead and large peaks
         if (memsize && (s_MergedMeshPool = gEnv->pSystem->GetIMemoryManager()->CreateGeneralExpandingMemoryHeap(
                                 memsize, 0, "MERGEDMESH_POOL")) == NULL)
         {
@@ -4449,7 +4449,7 @@ void CMergedMeshesManager::UpdateViewDistRatio(float value)
                 NodeListT& list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
                 {
-                    (*it)->OverrideViewDistRatio(value);
+                    (* it)->OverrideViewDistRatio(value);
                 }
             }
         }
@@ -4467,7 +4467,7 @@ void CMergedMeshesManager::UpdateLodRatio(float value)
                 NodeListT& list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
                 {
-                    (*it)->OverrideLodRatio(value);
+                    (* it)->OverrideLodRatio(value);
                 }
             }
         }
@@ -4488,10 +4488,10 @@ bool CMergedMeshesManager::CompileSectors(DynArray<SInstanceSector>& sectors, st
                 {
                     nSize = 0;
                     SInstanceSector* pSector = sectors.grow(1);
-                    (*it)->Compile(NULL, nSize, NULL, NULL);
+                    (* it)->Compile(NULL, nSize, NULL, NULL);
                     pSector->data.grow(nSize);
 
-                    if ((*it)->Compile(&pSector->data[0], nSize, &pSector->id, pVegGroupTable) == false)
+                    if ((* it)->Compile(& pSector->data[0], nSize, & pSector->id, pVegGroupTable) == false)
                     {
                         return false;
                     }
@@ -4520,7 +4520,7 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
                 NodeListT& _list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = _list.begin(); it != _list.end(); ++it)
                 {
-                    list.push_back(*it);
+                    list.push_back(* it);
                 }
             }
         }
@@ -4554,7 +4554,7 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
             CMergedMeshRenderNode* node = stack.back();
             stack.pop_back();
 
-            ClusterMappingT::iterator found = mapping.find(node);
+            found = mapping.find(node);
             if (found != mapping.end())
             {
                 continue;
@@ -4563,9 +4563,9 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
 
             const AABB& box = node->GetInternalBBox();
             const Vec3& centre = box.GetCenter();
-            int _i = (int)floorf(abs(centre.x) * fExtentsRec);
-            int _j = (int)floorf(abs(centre.y) * fExtentsRec);
-            int _k = (int)floorf(abs(centre.z) * fExtentsRec);
+            int _i = (int)floorf(abs(centre.x)* fExtentsRec);
+            int _j = (int)floorf(abs(centre.y)* fExtentsRec);
+            int _k = (int)floorf(abs(centre.z)* fExtentsRec);
 
             // Note, as this is a wrapping grid, we need to weed non-neighbours
             for (int i = _i - 1; i <= _i + 1; ++i)
@@ -4574,14 +4574,14 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
                 {
                     for (int k = _k - 1; k <= _k + 1; ++k)
                     {
-                        NodeListT& _list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1)][k & (HashDimZ - 1)];
+                        NodeListT& _list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1)][k& (HashDimZ - 1)];
                         for (NodeListT::iterator it = _list.begin(); it != _list.end(); ++it)
                         {
-                            const AABB& nbox = (*it)->GetInternalBBox();
+                            const AABB& nbox = (* it)->GetInternalBBox();
                             const Vec3& ncentre = nbox.GetCenter();
-                            int ni = (int)floorf(abs(ncentre.x) * fExtentsRec);
-                            int nj = (int)floorf(abs(ncentre.y) * fExtentsRec);
-                            int nk = (int)floorf(abs(ncentre.z) * fExtentsRec);
+                            int ni = (int)floorf(abs(ncentre.x)* fExtentsRec);
+                            int nj = (int)floorf(abs(ncentre.y)* fExtentsRec);
+                            int nk = (int)floorf(abs(ncentre.z)* fExtentsRec);
                             if (abs(ni - _i) <= 1 && abs(nj - _j) <= 1 &&  abs(nk - _k) <= 1)
                             {
                                 stack.push_back(*(it));
@@ -4602,7 +4602,7 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
 
         const AABB& nodeBB = node->GetInternalBBox();
         cluster.extents.Add(nodeBB);
-        if (flags & CLUSTER_BOUNDARY_FROM_SAMPLES)
+        if (flags& CLUSTER_BOUNDARY_FROM_SAMPLES)
         {
             node->FillSamples(cluster.boundary_points);
         }
@@ -4619,13 +4619,13 @@ bool CMergedMeshesManager::CompileAreas(DynArray<SMeshAreaCluster>& clusters, in
     CryLogAlways("MMRM: calculating boundaries ...");
     for (size_t i = 0, end = clusters.size(); i < end; ++i)
     {
-        if (flags & CLUSTER_CONVEXHULL_GRAHAMSCAN)
+        if (flags& CLUSTER_CONVEXHULL_GRAHAMSCAN)
         {
             size_t boundaries = convexhull_graham_scan(clusters[i].boundary_points);
             CryLogAlways("MMRM: cluster %d has %d points on it's convex hull", (int)i, (int)boundaries);
             continue;
         }
-        if (flags & CLUSTER_CONVEXHULL_GIFTWRAP)
+        if (flags& CLUSTER_CONVEXHULL_GIFTWRAP)
         {
             size_t boundaries = convexhull_giftwrap(clusters[i].boundary_points);
             CryLogAlways("MMRM: cluster %d has %d points on it's convex hull", (int)i, (int)boundaries);
@@ -4667,23 +4667,23 @@ CMergedMeshRenderNode* CMergedMeshesManager::FindNode(const Vec3& pos)
     }
 
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
-    int i = (int)floorf(abs(pos.x) * fExtentsRec);
-    int j = (int)floorf(abs(pos.y) * fExtentsRec);
-    int k = (int)floorf(abs(pos.z) * fExtentsRec);
+    int i = (int)floorf(abs(pos.x)* fExtentsRec);
+    int j = (int)floorf(abs(pos.y)* fExtentsRec);
+    int k = (int)floorf(abs(pos.z)* fExtentsRec);
 
-    NodeListT& _list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1) ][k & (HashDimZ - 1)];
+    NodeListT& _list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1) ][k& (HashDimZ - 1)];
     for (NodeListT::iterator it = _list.begin(); it != _list.end(); ++it)
     {
-        CMergedMeshRenderNode* node = *it;
+        CMergedMeshRenderNode* node = * it;
         if (node->m_internalAABB.IsContainPoint(pos))
         {
             int oldest = -INT_MAX, oldidx = 0;
-            for (size_t i = 0; i < 4; ++i)
+            for (size_t idx = 0; idx < 4; ++idx)
             {
-                if (m_CachedLRU[i] > oldest)
+                if (m_CachedLRU[idx] > oldest)
                 {
-                    oldidx = i;
-                    oldest = m_CachedLRU[i];
+                    oldidx = idx;
+                    oldest = m_CachedLRU[idx];
                 }
             }
             m_CachedNodes[oldidx] = node;
@@ -4712,7 +4712,7 @@ void CMergedMeshesManager::CalculateDensity()
                 NodeListT& _list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = _list.begin(); it != _list.end(); ++it)
                 {
-                    (*it)->CalculateDensity();
+                    (* it)->CalculateDensity();
                 }
             }
         }
@@ -4720,19 +4720,19 @@ void CMergedMeshesManager::CalculateDensity()
 }
 
 
-size_t CMergedMeshesManager::QueryDensity(const Vec3& pos, ISurfaceType*(&surfaceTypes)[MMRM_MAX_SURFACE_TYPES], float (&density)[MMRM_MAX_SURFACE_TYPES])
+size_t CMergedMeshesManager::QueryDensity(const Vec3& pos, ISurfaceType*(& surfaceTypes)[MMRM_MAX_SURFACE_TYPES], float (& density)[MMRM_MAX_SURFACE_TYPES])
 {
     FUNCTION_PROFILER_3DENGINE;
 
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
-    int i = (int)(abs(pos.x) * fExtentsRec);
-    int j = (int)(abs(pos.y) * fExtentsRec);
-    int k = (int)(abs(pos.z) * fExtentsRec);
+    int i = (int)(abs(pos.x)* fExtentsRec);
+    int j = (int)(abs(pos.y)* fExtentsRec);
+    int k = (int)(abs(pos.z)* fExtentsRec);
 
-    NodeListT& _list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1) ][k & (HashDimZ - 1)];
+    NodeListT& _list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1) ][k& (HashDimZ - 1)];
     for (NodeListT::iterator it = _list.begin(); it != _list.end(); ++it)
     {
-        CMergedMeshRenderNode* node = *it;
+        CMergedMeshRenderNode* node = * it;
         if (node->m_internalAABB.IsContainPoint(pos))
         {
             return node->QueryDensity(pos, surfaceTypes, density);
@@ -4766,13 +4766,13 @@ void CMergedMeshesManager::PreloadMeshes()
 
         while (iter < end)
         {
-            for (; *iter != '\n' && iter < end; ++iter)
+            for (; * iter != '\n' && iter < end; ++iter)
             {
                 ;
             }
-            if (*iter == '\n' && iter != current)
+            if (* iter == '\n' && iter != current)
             {
-                *iter = '\0';
+                * iter = '\0';
                 CryLog("MMRM loading cgf '%s'", current);
                 Get3DEngine()->LoadStatObjUnsafeManualRef(current, NULL, NULL, false);
             }
@@ -4802,23 +4802,23 @@ IRenderNode* CMergedMeshesManager::AddInstance(const SProcVegSample& sample)
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
     const Vec3& vPos = sample.pos;
 
-    int i = (int)floorf(abs(vPos.x) * fExtentsRec);
-    int j = (int)floorf(abs(vPos.y) * fExtentsRec);
-    int k = (int)floorf(abs(vPos.z) * fExtentsRec);
+    int i = (int)floorf(abs(vPos.x)* fExtentsRec);
+    int j = (int)floorf(abs(vPos.y)* fExtentsRec);
+    int k = (int)floorf(abs(vPos.z)* fExtentsRec);
 
-    NodeListT& list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1)][k & (HashDimZ - 1)];
+    NodeListT& list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1)][k& (HashDimZ - 1)];
     CMergedMeshRenderNode* node = NULL;
     for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
     {
-        if ((*it)->GetInternalBBox().IsContainPoint(vPos))
+        if ((* it)->GetInternalBBox().IsContainPoint(vPos))
         {
-            node = *it;
+            node = * it;
             break;
         }
     }
     if (!node)
     {
-        Vec3 pos = Vec3(i * fExtents, j * fExtents, k * fExtents);
+        Vec3 pos = Vec3(i* fExtents, j* fExtents, k* fExtents);
         Vec3 extents = Vec3(fExtents, fExtents, fExtents);
         list.push_back(node = new CMergedMeshRenderNode());
 
@@ -4838,17 +4838,17 @@ CMergedMeshRenderNode* CMergedMeshesManager::GetNode(const Vec3& vPos)
     float fExtents = c_MergedMeshesExtent;
     float fExtentsRec = 1.f / c_MergedMeshesExtent;
 
-    int i = (int)floorf(abs(vPos.x) * fExtentsRec);
-    int j = (int)floorf(abs(vPos.y) * fExtentsRec);
-    int k = (int)floorf(abs(vPos.z) * fExtentsRec);
+    int i = (int)floorf(abs(vPos.x)* fExtentsRec);
+    int j = (int)floorf(abs(vPos.y)* fExtentsRec);
+    int k = (int)floorf(abs(vPos.z)* fExtentsRec);
 
     CMergedMeshRenderNode* node = NULL;
-    NodeListT& list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1)][k & (HashDimZ - 1)];
+    NodeListT& list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1)][k& (HashDimZ - 1)];
     for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
     {
-        if ((*it)->GetInternalBBox().IsContainPoint(vPos))
+        if ((* it)->GetInternalBBox().IsContainPoint(vPos))
         {
-            node = *it;
+            node = * it;
             break;
         }
     }
@@ -4856,7 +4856,7 @@ CMergedMeshRenderNode* CMergedMeshesManager::GetNode(const Vec3& vPos)
     {
         list.push_back(node = new CMergedMeshRenderNode());
 
-        Vec3 pos = Vec3(i * fExtents, j * fExtents, k * fExtents);
+        Vec3 pos = Vec3(i* fExtents, j* fExtents, k* fExtents);
         Vec3 extents = Vec3(fExtents, fExtents, fExtents);
 
         AABB box;
@@ -4876,11 +4876,11 @@ void CMergedMeshesManager::RemoveMergedMesh(CMergedMeshRenderNode* node)
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
     const Vec3& vPos = node->m_pos;
 
-    int i = (int)floorf(abs(vPos.x) * fExtentsRec);
-    int j = (int)floorf(abs(vPos.y) * fExtentsRec);
-    int k = (int)floorf(abs(vPos.z) * fExtentsRec);
+    int i = (int)floorf(abs(vPos.x)* fExtentsRec);
+    int j = (int)floorf(abs(vPos.y)* fExtentsRec);
+    int k = (int)floorf(abs(vPos.z)* fExtentsRec);
 
-    NodeListT& list = m_Nodes[i & (HashDimXY - 1)][j & (HashDimXY - 1)][k & (HashDimZ - 1)];
+    NodeListT& list = m_Nodes[i& (HashDimXY - 1)][j& (HashDimXY - 1)][k& (HashDimZ - 1)];
     assert (std::find(list.begin(), list.end(), node) != list.end());
     list.erase(std::remove(list.begin(), list.end(), node), list.end());
 
@@ -4894,7 +4894,7 @@ void CMergedMeshesManager::SortActiveInstances(const SRenderingPassInfo& passInf
 # if MMRM_USE_JOB_SYSTEM
     TMMRM_SortActiveInstances job(passInfo);
     job.SetClassInstance(this);
-    job.RegisterJobState(&m_updateState);
+    job.RegisterJobState(& m_updateState);
     job.SetPriorityLevel(JobManager::eHighPriority);
     job.Run();
 # else
@@ -4911,8 +4911,8 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     {
         return;
     }
-    uint32 mainMemLimit  = GetCVars()->e_MergedMeshesPool * 1024;
-    const uint32 activeSpineLimit = (mainMemLimit * GetCVars()->e_MergedMeshesPoolSpines) / 100;
+    uint32 mainMemLimit  = GetCVars()->e_MergedMeshesPool* 1024;
+    const uint32 activeSpineLimit = (mainMemLimit* GetCVars()->e_MergedMeshesPoolSpines) / 100;
     mainMemLimit -= activeSpineLimit;
     const uint32 streamInLimit = min(mainMemLimit >> 2, 256u << 10);
     uint32 sumVramSizeDynamic = 0u
@@ -4926,16 +4926,16 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     const int e_MergedMeshesDebug = GetCVars()->e_MergedMeshesDebug;
 
     const float dt = gEnv->pTimer->GetFrameTime();
-    const float sqDiagonalInternal = sqr(c_MergedMeshesExtent) * 1.25f;
+    const float sqDiagonalInternal = sqr(c_MergedMeshesExtent)* 1.25f;
 
     uint32 frameId = passInfo.GetMainFrameID();
 
     AABB visibleVolume;
 
-    const float fExtents = c_MergedMeshesExtent * 0.25f;
+    const float fExtents = c_MergedMeshesExtent* 0.25f;
     const Vec3 vDiag = Vec3(fExtents, fExtents, fExtents);
     const float fActiveDist = GetCVars()->e_MergedMeshesActiveDist;
-    const float fVisibleDist = fExtents * fActiveDist;
+    const float fVisibleDist = fExtents* fActiveDist;
     const Vec3& vPos = passInfo.GetCamera().GetPosition();
     Vec3 vMax, vMin;
 
@@ -4982,28 +4982,28 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
         size_t nActiveNodes = m_ActiveNodes.size();
         size_t nVisibleNodes = m_VisibleNodes.size();
 
-        if (GetCVars()->e_MergedMeshesDebug & 0x2)
+        if (GetCVars()->e_MergedMeshesDebug& 0x2)
         {
             Cry3DEngineBase::Get3DEngine()->DrawTextLeftAligned(10.f, yPos += 13.f, 1.f, Col_White
-                , "Sector(xyz)\tvisible\t\tDistanceSq\tState\t\t\tSize(kb)\t\t\tLast frame drawn");
+                                                                , "Sector(xyz)\tvisible\t\tDistanceSq\tState\t\t\tSize(kb)\t\t\tLast frame drawn");
         }
 
         for (size_t i = 0, activeSize = 0u; i < nActiveNodes; ++i)
         {
             CMergedMeshRenderNode* node = m_ActiveNodes[i];
             metaSize += node->MetaSize();
-  #     if MMRM_RENDER_DEBUG
+#     if MMRM_RENDER_DEBUG
             if (GetCVars()->e_MergedMeshesDebug)
             {
                 node->DebugRender(node->m_nLod);
             }
-  #     endif
-    #   if !defined(_RELEASE)
-            if (GetCVars()->e_MergedMeshesDebug & 0x2)
+#     endif
+#   if !defined(_RELEASE)
+            if (GetCVars()->e_MergedMeshesDebug& 0x2)
             {
                 node->PrintState(yPos);
             }
-    #   endif
+#   endif
             IF (node->m_LastDrawFrame != frameId, 1)
             {
                 node->m_SizeInVRam = 0u;
@@ -5054,13 +5054,13 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
             }
 #     endif
 
-            uint32 currentInstSize = node->m_Instances * sizeof(SMMRMInstance);
+            uint32 currentInstSize = node->m_Instances* sizeof(SMMRMInstance);
             if (currentInstSize == 0) // Safe to skip over empty nodes
             {
                 continue;
             }
-            uint32 currentSpineSize = node->SpineCount() * sizeof(SMMRMSpineVtxBase);
-            uint32 currentDeformSize = node->DeformCount() * sizeof(SMMRMDeformVertex);
+            uint32 currentSpineSize = node->SpineCount()* sizeof(SMMRMSpineVtxBase);
+            uint32 currentDeformSize = node->DeformCount()* sizeof(SMMRMDeformVertex);
 
             if (activeSize + currentInstSize < mainMemLimit)
             {
@@ -5107,8 +5107,8 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
                 --nVisibleNodes;
                 continue;
             }
-            uint32 currentSpineSize = node->SpineCount() * sizeof(SMMRMSpineVtxBase);
-            uint32 currentDeformSize = node->DeformCount() * sizeof(SMMRMDeformVertex);
+            uint32 currentSpineSize = node->SpineCount()* sizeof(SMMRMSpineVtxBase);
+            uint32 currentDeformSize = node->DeformCount()* sizeof(SMMRMDeformVertex);
 
             if (activeSize + currentSpineSize + currentDeformSize < activeSpineLimit)
             {
@@ -5182,7 +5182,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
             //cpos.x = floorf(cpos.x);
             //cpos.y = floorf(cpos.y);
             //cpos.z = floorf(GetTerrain()->GetZApr(cpos.x, cpos.y, 0));
-            float const fDim = static_cast<float>(Cry3DEngineBase::GetCVars()->e_MergedMeshesClusterVisualizationDimension) * 0.5f;
+            float const fDim = static_cast<float>(Cry3DEngineBase::GetCVars()->e_MergedMeshesClusterVisualizationDimension)* 0.5f;
             uint8 const nDim = static_cast<uint8>(Cry3DEngineBase::GetCVars()->e_MergedMeshesClusterVisualizationDimension);
             DisplayDensity(this, AABB(cpos - Vec3(fDim, fDim, fDim), cpos + Vec3(fDim, fDim, fDim)), nDim);
             //DisplayDensitySpheres(this, AABB(cpos-Vec3(fDim, fDim, fDim), cpos+Vec3(fDim, fDim, fDim)), nDim);
@@ -5223,7 +5223,7 @@ int CMergedMeshesManager::OnPhysPostStep(const EventPhys* event)
         goto skip;
     }
 
-    if (entity->GetStatus(&pos) == 0 || entity->GetParams(&particles) == 0)
+    if (entity->GetStatus(& pos) == 0 || entity->GetParams(& particles) == 0)
     {
         goto skip;
     }
@@ -5235,15 +5235,15 @@ int CMergedMeshesManager::OnPhysPostStep(const EventPhys* event)
 
     projectile.entity = entity;
     projectile.current_pos = pos.pos;
-    projectile.initial_pos = pos.pos - particles.heading * particles.velocity * poststep->dt;
+    projectile.initial_pos = pos.pos - particles.heading* particles.velocity* poststep->dt;
     projectile.direction = (projectile.current_pos - projectile.initial_pos).GetNormalized();
-    projectile.size = (pos.BBox[0] - pos.BBox[1]).len() * Cry3DEngineBase::GetCVars()->e_MergedMeshesBulletScale; //roughly a bullet I'ld say
+    projectile.size = (pos.BBox[0] - pos.BBox[1]).len()* Cry3DEngineBase::GetCVars()->e_MergedMeshesBulletScale; //roughly a bullet I'ld say
     projectile.size = max(min(projectile.size, 8.5f), 1.f);
     projectile.lifetime = Cry3DEngineBase::GetCVars()->e_MergedMeshesBulletLifetime;
 
     _this->AddProjectile(projectile);
 
-skip:
+    skip:
     return 1;
 }
 
@@ -5307,7 +5307,7 @@ void CMergedMeshesManager::ResetActiveNodes()
                 NodeListT& list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
                 {
-                    (*it)->Reset();
+                    (* it)->Reset();
                 }
             }
         }
@@ -5335,24 +5335,25 @@ struct SDeformableData
         , m_needsBaking(true)
     {}
 
-    ~SDeformableData() {}
+    ~SDeformableData() {
+    }
 };
 
 CDeformableNode::CDeformableNode(uint16 slot)
-    : m_pData()
-    , m_nData()
-    , m_wind()
-    , m_nFrameId()
-    , m_Colliders()
-    , m_nColliders()
-    , m_Projectiles()
-    , m_nProjectiles()
-    , m_pHeap()
-    , m_numIndices()
-    , m_numVertices()
-    , m_renderMesh()
-    , m_pStatObj()
-    , m_all_prepared()
+: m_pData()
+, m_nData()
+, m_wind()
+, m_nFrameId()
+, m_Colliders()
+, m_nColliders()
+, m_Projectiles()
+, m_nProjectiles()
+, m_pHeap()
+, m_numIndices()
+, m_numVertices()
+, m_renderMesh()
+, m_pStatObj()
+, m_all_prepared()
 {
     m_bbox = AABB(Vec3(0, 0, 0));
 }
@@ -5439,16 +5440,16 @@ void CDeformableNode::ClearSimulationData()
     m_all_prepared = false;
 }
 
-void CDeformableNode::CreateInstanceData(SDeformableData* pData, CStatObj* pStatObj)
+void CDeformableNode::CreateInstanceData(SDeformableData* pData, IStatObj* pStatObj)
 {
-    SMMRMGroupHeader* header = &pData->m_mmrmHeader;
+    SMMRMGroupHeader* header = & pData->m_mmrmHeader;
     header->procGeom = s_GeomManager.GetGeometry(pStatObj, 0);
     header->physConfig.Update(header->procGeom);
     header->instGroupId = 0;
     header->maxViewDistance = 0;
     header->lodRationNorm = 0;
 
-    SMMRMUpdateContext* update = &pData->m_mmrmContext;
+    SMMRMUpdateContext* update = & pData->m_mmrmContext;
     update->group = header;
 
     resize_list(header->instances, header->numSamplesAlloc = header->numSamples = 1, 128);
@@ -5457,13 +5458,13 @@ void CDeformableNode::CreateInstanceData(SDeformableData* pData, CStatObj* pStat
     header->instances[0].pos_y = 0u;
     header->instances[0].pos_z = 0u;
     CompressQuat(Quat::CreateIdentity(), header->instances[0]);
-    header->instances[0].scale = (uint8)SATURATEB(1.f * VEGETATION_CONV_FACTOR);
+    header->instances[0].scale = (uint8)SATURATEB(1.f* VEGETATION_CONV_FACTOR);
     header->instances[0].lastLod = 0;
 
     pData->m_State = SDeformableData::PREPARED;
 }
 
-void CDeformableNode::SetStatObj(CStatObj* pStatObj)
+void CDeformableNode::SetStatObj(IStatObj* pStatObj)
 {
     ClearInstanceData();
 
@@ -5473,7 +5474,7 @@ void CDeformableNode::SetStatObj(CStatObj* pStatObj)
     }
 
     // Create deformable subobject is present
-    if (pStatObj->m_isDeformable)
+    if (pStatObj->IsDeformable())
     {
         resize_list(m_pData, m_nData = 1, 16);
         CreateInstanceData(m_pData[0] = new SDeformableData, pStatObj);
@@ -5487,9 +5488,9 @@ void CDeformableNode::SetStatObj(CStatObj* pStatObj)
             {
                 continue;
             }
-            if (CStatObj* pChild = static_cast<CStatObj*>(pStatObj->GetSubObject(i)->pStatObj))
+            if (IStatObj* pChild = static_cast<CStatObj*>(pStatObj->GetSubObject(i)->pStatObj))
             {
-                if (!pChild->m_isDeformable)
+                if (!pChild->IsDeformable())
                 {
                     continue;
                 }
@@ -5533,7 +5534,7 @@ void CDeformableNode::UpdateInternalDeform(
     , size_t& ii)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_3DENGINE);
-    SMMRMGroupHeader* group = &pData->m_mmrmHeader;
+    SMMRMGroupHeader* group = & pData->m_mmrmHeader;
     if (group == NULL)
     {
         return;
@@ -5543,8 +5544,8 @@ void CDeformableNode::UpdateInternalDeform(
     {
         return;
     }
-    SMMRMUpdateContext* update = &pData->m_mmrmContext;
-    SMMRMGroupHeader* header = &pData->m_mmrmHeader;
+    SMMRMUpdateContext* update = & pData->m_mmrmContext;
+    SMMRMGroupHeader* header = & pData->m_mmrmHeader;
     if (pData->m_State == SDeformableData::READY)
     {
         FUNCTION_PROFILER_3DENGINE;
@@ -5579,7 +5580,7 @@ void CDeformableNode::UpdateInternalDeform(
             ii += (update->chunks[j].icnt = group->procGeom->pChunks[0][j].nindices);
             iv += (update->chunks[j].vcnt = group->procGeom->pChunks[0][j].nvertices);
         }
-    # if MMRM_USE_BOUNDS_CHECK
+# if MMRM_USE_BOUNDS_CHECK
         for (size_t u = 0; u < update->chunks.size(); ++u)
         {
             if (((SVF_P3S_C4B_T2S*)vtxBuf.data) + update->chunks[u].voff >=  (((SVF_P3S_C4B_T2S*)vtxBuf.data) + vertices))
@@ -5594,7 +5595,7 @@ void CDeformableNode::UpdateInternalDeform(
         update->general_end  = ((SVF_P3S_C4B_T2S*)vtxBuf.data) + vertices;
         update->tangents_end = ((SPipTangents*)tgtBuf.data) + vertices;
         update->idx_end = idxBuf + indices;
-    # endif
+# endif
 
         if (group->deform_vertices)
         {
@@ -5603,15 +5604,15 @@ void CDeformableNode::UpdateInternalDeform(
                 BakeInternal(pData, worldTM);
             }
 
-    #   if MMRM_USE_JOB_SYSTEM
-            TPVRNUpdateRenderMeshDeform job(&s_mmrm_globals.camera, 0u);
-            job.RegisterJobState(&m_updateState);
+#   if MMRM_USE_JOB_SYSTEM
+            TPVRNUpdateRenderMeshDeform job(& s_mmrm_globals.camera, 0u);
+            job.RegisterJobState(& m_updateState);
             job.SetClassInstance(update);
             job.SetPriorityLevel(JobManager::eLowPriority);
             job.Run();
-    #   else
-            update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u);
-    #   endif
+#   else
+            update->MergeInstanceMeshesDeform(& s_mmrm_globals.camera, 0u);
+#   endif
         }
     }
 }
@@ -5626,11 +5627,11 @@ void CDeformableNode::RenderInternalDeform(
         return;
     }
 
-    float radius = max(bbox.max.x - bbox.min.x, max(bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z)) * 0.5f;
-    Vec3 centre = (bbox.max + bbox.min) * 0.5f;
+    float radius = max(bbox.max.x - bbox.min.x, max(bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z))* 0.5f;
+    Vec3 centre = (bbox.max + bbox.min)* 0.5f;
     AABB radbox(centre, radius);
 
-    if (passInfo.IsGeneralPass() && ((passInfo.GetCamera().GetPosition() - bbox.GetCenter()).len2() < sqr(((IRenderNode*)pRenderObject->m_pRenderNode)->GetMaxViewDist()) * Cry3DEngineBase::GetCVars()->e_MergedMeshesDeformViewDistMod))
+    if (passInfo.IsGeneralPass() && ((passInfo.GetCamera().GetPosition() - bbox.GetCenter()).len2() < sqr(((IRenderNode*)pRenderObject->m_pRenderNode)->GetMaxViewDist())* Cry3DEngineBase::GetCVars()->e_MergedMeshesDeformViewDistMod))
     {
         {
             FRAME_PROFILER("CDeformableNode::RenderInternalDeform JobSync", gEnv->pSystem, PROFILE_3DENGINE);
@@ -5664,7 +5665,7 @@ void CDeformableNode::RenderInternalDeform(
         for (size_t i = 0; i < m_nData; ++i)
         {
             SDeformableData* pData = m_pData[i];
-            SMMRMGroupHeader* group = &pData->m_mmrmHeader;
+            SMMRMGroupHeader* group = & pData->m_mmrmHeader;
             SMMRMGeometry* geom = group->procGeom;
             if (!geom)
             {
@@ -5680,13 +5681,13 @@ void CDeformableNode::RenderInternalDeform(
                 }
                 if (m_pHeap)
                 {
-                    group->deform_vertices = (SMMRMDeformVertex*)m_pHeap->Memalign(16, sizeof(SMMRMDeformVertex) * group->numSamples * group->procGeom->deform->nvertices, "deformable vertices");
+                    group->deform_vertices = (SMMRMDeformVertex*)m_pHeap->Memalign(16, sizeof(SMMRMDeformVertex)* group->numSamples* group->procGeom->deform->nvertices, "deformable vertices");
                 }
                 if (!group->deform_vertices)
                 {
-                    resize_list(group->deform_vertices, group->numSamples * group->procGeom->deform->nvertices, 16);
+                    resize_list(group->deform_vertices, group->numSamples* group->procGeom->deform->nvertices, 16);
                 }
-                memset(group->deform_vertices, 0x0, sizeof(SMMRMDeformVertex) * group->numSamples * group->procGeom->deform->nvertices);
+                memset(group->deform_vertices, 0x0, sizeof(SMMRMDeformVertex)* group->numSamples* group->procGeom->deform->nvertices);
                 for (size_t k = 0; group->procGeom->deform && k < group->procGeom->deform->nvertices; ++k)
                 {
                     group->deform_vertices[k].pos[0] = group->deform_vertices[k].pos[1] =  group->procGeom->deform->initial[k];
@@ -5752,10 +5753,10 @@ void CDeformableNode::RenderInternalDeform(
         for (size_t i = 0, iv = 0, ii = 0; i < m_nData; ++i)
         {
             UpdateInternalDeform(m_pData[i], pRenderObject, radbox, passInfo,
-                m_renderMesh, vtxBuf, tgtBuf, velocities, idxBuf, iv, ii);
+                                m_renderMesh, vtxBuf, tgtBuf, velocities, idxBuf, iv, ii);
         }
 
-        m_renderMesh->SetRenderChunks(&m_renderChunks[0], m_renderChunks.size(), false);
+        m_renderMesh->SetRenderChunks(& m_renderChunks[0], m_renderChunks.size(), false);
         m_renderMesh->UnLockForThreadAccess();
     }
 
@@ -5789,7 +5790,7 @@ void CDeformableNode::BakeDeform(const Matrix34& worldTM)
 
 void CDeformableNode::BakeInternal(SDeformableData* pData, const Matrix34& tm)
 {
-    SMMRMGroupHeader* group = &pData->m_mmrmHeader;
+    SMMRMGroupHeader* group = & pData->m_mmrmHeader;
     if (group == NULL)
     {
         return;
@@ -5801,13 +5802,13 @@ void CDeformableNode::BakeInternal(SDeformableData* pData, const Matrix34& tm)
     }
 
     Matrix34 worldTM;
-    worldTM = tm * pData->m_localTM;
+    worldTM = tm* pData->m_localTM;
 
-    SMMRMUpdateContext* update = &pData->m_mmrmContext;
+    SMMRMUpdateContext* update = & pData->m_mmrmContext;
     SMMRMDeformVertex* deform_vertices = update->group->deform_vertices;
     for (size_t i = 0; i < geom->deform->nvertices; ++i)
     {
-        const Vec3 npos = (worldTM * geom->deform->initial[i]);
+        const Vec3 npos = (worldTM* geom->deform->initial[i]);
         deform_vertices[i].pos[0] = deform_vertices[i].pos[1] = npos;
         deform_vertices[i].vel = Vec3(0, 0, 0);
     }
@@ -5836,9 +5837,9 @@ void CMergedMeshesManager::PrepareSegmentData(const AABB& aabb)
                 NodeListT& list = m_Nodes[i][j][k];
                 for (NodeListT::iterator it = list.begin(); it != list.end(); ++it)
                 {
-                    if (aabb.ContainsBox2D((*it)->m_internalAABB))
+                    if (aabb.ContainsBox2D((* it)->m_internalAABB))
                     {
-                        m_SegNodes.push_back((*it));
+                        m_SegNodes.push_back((* it));
                     }
                 }
             }

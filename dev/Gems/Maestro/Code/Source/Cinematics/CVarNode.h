@@ -21,9 +21,11 @@ class CAnimCVarNode
     : public CAnimNode
 {
 public:
-    CAnimCVarNode(const int id);
+    AZ_CLASS_ALLOCATOR(CAnimCVarNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimCVarNode, "{9059B454-EE73-4865-9B76-8C8430E3BB82}", CAnimNode);
 
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_CVar; }
+    CAnimCVarNode(const int id);
+    CAnimCVarNode();
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CAnimNode
@@ -37,13 +39,9 @@ public:
     virtual unsigned int GetParamCount() const;
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
-
     int GetDefaultKeyTangentFlags() const override;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;

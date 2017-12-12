@@ -492,7 +492,7 @@ namespace GridMate
 
             if (extension)
             {
-                const EntityId entityId = gameObject->GetEntityId();
+                const EntityId targetEntityId = gameObject->GetEntityId();
 
                 // If the RMI only needs to execute on this machine, just invoke manually.
                 if (whereMask == eRMI_ToServer && gEnv->bServer)
@@ -508,14 +508,14 @@ namespace GridMate
                 }
 
                 Network& net = Network::Get();
-                EntityReplica* replica = net.FindEntityReplica(entityId);
+                EntityReplica* replica = net.FindEntityReplica(targetEntityId);
 
                 GM_ASSERT_TRACE(replica, "Unable to locate replica for entity %u. Cannot invoke RMI.",
-                    entityId);
+                    targetEntityId);
 
                 if (replica)
                 {
-                    EBUS_EVENT(NetworkSystemEventBus, LegacyRMISent, entityId, *rep, invocation->m_paramsBuffer.GetSize());
+                    EBUS_EVENT(NetworkSystemEventBus, LegacyRMISent, targetEntityId, *rep, invocation->m_paramsBuffer.GetSize());
 
                     if ((invocation->m_where & eRMI_ToServer) == eRMI_ToServer)
                     {

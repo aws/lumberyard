@@ -102,6 +102,7 @@ public:
     virtual void LinkTo(AZ::Entity* follow);
     virtual void LinkTo(IGameObject* follow);
     virtual void LinkTo(IEntity* follow);
+    virtual void Unlink();
     virtual AZ::EntityId GetLinkedId() {return m_linkedTo; };
     virtual void SetCurrentParams(SViewParams& params) { m_viewParams = params; };
     virtual const SViewParams* GetCurrentParams() {return &m_viewParams; }

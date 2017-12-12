@@ -13,6 +13,7 @@
 #define CRYINCLUDE_CRYSYSTEM_ITIMERMOCK_H
 #pragma once
 
+#include <ISerialize.h>
 #include <ITimer.h>
 #include <AzTest/AzTest.h>
 

@@ -388,7 +388,7 @@ void CBootProfilerSession::CollectResults(const char* filename, const float time
     gEnv->pFileIO->Open(path, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary, fileHandle);
     if (fileHandle == AZ::IO::InvalidHandle)
     {
-        return; //TODO: use accessible path when punning from package on durango
+        return;
     }
 
     char buf[512];
@@ -418,9 +418,9 @@ void CBootProfilerSession::CollectResults(const char* filename, const float time
                 pRoot->m_startTimeStamp.QuadPart, pRoot->m_stopTimeStamp.QuadPart);
             AZ::IO::Print(fileHandle, buf);
 
-            for (size_t i = 0; i < pRoot->m_Childs.size(); ++i)
+            for (size_t recordIdx = 0; recordIdx < pRoot->m_Childs.size(); ++recordIdx)
             {
-                CBootProfilerRecord* record = pRoot->m_Childs[i];
+                CBootProfilerRecord* record = pRoot->m_Childs[recordIdx];
                 assert(record);
                 record->Print(fileHandle, buf, buf_size, 2, m_stopTimeStamp, threadName, timeThreshold);
             }

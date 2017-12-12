@@ -15,6 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/parallel/mutex.h>
 
 #include <AzCore/std/functional.h> // for callbacks
 
@@ -96,11 +97,12 @@ namespace AZ
 
         static const int m_maxNumAllocators = 100;
         IAllocator*         m_allocators[m_maxNumAllocators];
-        int                 m_numAllocators;
+        volatile int        m_numAllocators;
         OutOfMemoryCBType   m_outOfMemoryListener;
         bool                m_isAllocatorLeaking;
         MemoryBreak         m_memoryBreak[MaxNumMemoryBreaks];
         char                m_activeBreaks;
+        AZStd::mutex        m_allocatorListMutex;
 
         AZ::Debug::AllocationRecords::Mode m_defaultTrackingRecordMode;
     };

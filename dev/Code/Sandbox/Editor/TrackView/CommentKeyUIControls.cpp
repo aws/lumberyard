@@ -100,8 +100,8 @@ bool CCommentKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
             mv_comment = commentKey.m_strComment.c_str();
             mv_duration = commentKey.m_duration;
             mv_size = commentKey.m_size;
-            mv_font = commentKey.m_strFont;
-            mv_color = commentKey.m_color;
+            mv_font = commentKey.m_strFont.c_str();
+            mv_color = Vec3(commentKey.m_color.GetR(), commentKey.m_color.GetG(), commentKey.m_color.GetB());
             mv_align = commentKey.m_align;
 
             bAssigned = true;
@@ -138,7 +138,7 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             if (!pVar || pVar == mv_font.GetVar())
             {
                 QString sFont = mv_font;
-                cry_strcpy(commentKey.m_strFont, sFont.toLatin1().data());
+                commentKey.m_strFont = sFont.toLatin1().data();
             }
 
             if (!pVar || pVar == mv_align.GetVar())
@@ -147,7 +147,9 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             }
 
             SyncValue(mv_duration, commentKey.m_duration, false, pVar);
-            SyncValue(mv_color, commentKey.m_color, false, pVar);
+            Vec3 color(commentKey.m_color.GetR(), commentKey.m_color.GetG(), commentKey.m_color.GetB());
+            SyncValue(mv_color, color, false, pVar);
+            commentKey.m_color.Set(color.x, color.y, color.z, commentKey.m_color.GetA());
             SyncValue(mv_size, commentKey.m_size, false, pVar);
 
             CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));

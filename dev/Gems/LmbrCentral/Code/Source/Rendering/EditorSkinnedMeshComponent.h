@@ -20,6 +20,7 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 
 #include "SkinnedMeshComponent.h"
 
@@ -35,7 +36,7 @@ namespace LmbrCentral
     class EditorSkinnedMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private MeshComponentRequestBus::Handler
-        , private MaterialRequestBus::Handler
+        , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
@@ -82,7 +83,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MaterialRequestBus interface implementation
+        // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
         ///////////////////////////////////

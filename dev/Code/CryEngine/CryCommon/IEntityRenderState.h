@@ -59,6 +59,7 @@ enum EERType
     eERType_MergedMesh,
     eERType_GeomCache,
     eERType_StaticMeshRenderComponent,
+    eERType_DynamicMeshRenderComponent,
     eERType_SkinnedMeshRenderComponent,
     eERType_TypesNum, // MUST BE AT END TOTAL NUMBER OF ERTYPES
 };
@@ -234,11 +235,18 @@ struct IRenderNode
     virtual void SetBBox(const AABB& WSBBox) = 0;
 
     virtual void SetScale(const Vec3& scale) {}
+    
+    //Get the scales assuming the scale is uniform or per column as needed.
+    virtual float GetUniformScale() { return 1.0f; }
+    virtual float GetColumnScale(int column) { return 1.0f; }
 
     // Summary:
     //    Changes the world coordinates position of this node by delta
     //    Don't forget to call this base function when overriding it.
     virtual void OffsetPosition(const Vec3& delta) = 0;
+
+    // Return true when the node is initialized and ready to render
+    virtual bool IsReady() const { return true; }
 
     // Summary:
     //   Renders node geometry
@@ -320,6 +328,7 @@ struct IRenderNode
     { 
         return GetRenderNodeType() == eERType_RenderComponent || 
             GetRenderNodeType() == eERType_StaticMeshRenderComponent || 
+            GetRenderNodeType() == eERType_DynamicMeshRenderComponent || 
             GetRenderNodeType() == eERType_SkinnedMeshRenderComponent;
     }
     virtual void Dephysicalize(bool bKeepIfReferenced = false) {}

@@ -114,7 +114,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector4 Vector4::GetNormalizedSafeExact(const VectorFloat& tolerance) const
     {
         float length = GetLength();
-        if (length < tolerance)
+        if (length <= tolerance)
         {
             return Vector4(1.0f, 0.0f, 0.0f, 0.0f);
         }
@@ -138,7 +138,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::NormalizeSafeWithLengthExact(const VectorFloat& tolerance)
     {
         float length = GetLength();
-        if (length < tolerance)
+        if (length <= tolerance)
         {
             Set(1.0f, 0.0f, 0.0f, 0.0f);
         }
@@ -152,12 +152,12 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool Vector4::IsNormalized(const VectorFloat& tolerance) const
     {
-        return (fabsf(GetLengthSq() - 1.0f) < tolerance);
+        return (fabsf(GetLengthSq() - 1.0f) <= tolerance);
     }
 
     AZ_MATH_FORCE_INLINE bool Vector4::IsClose(const Vector4& v, const VectorFloat& tolerance) const
     {
-        return ((fabsf(v.m_x - m_x) < tolerance) && (fabsf(v.m_y - m_y) < tolerance) && (fabsf(v.m_z - m_z) < tolerance) && (fabsf(v.m_w - m_w) < tolerance));
+        return ((fabsf(v.m_x - m_x) <= tolerance) && (fabsf(v.m_y - m_y) <= tolerance) && (fabsf(v.m_z - m_z) <= tolerance) && (fabsf(v.m_w - m_w) <= tolerance));
     }
 
     AZ_MATH_FORCE_INLINE bool Vector4::operator==(const Vector4& rhs) const

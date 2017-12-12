@@ -71,20 +71,7 @@ namespace AZ
 
         void FbxSceneSystem::ConvertBoneUnit(Transform& inOutTransform) const
         {
-#if !defined(MOTIONCANVAS_GEM_ENABLED)
-            // The fbx file exported from Maya will have default unit in centimeter.
-            // E.g. A global transformation in meter unit:
-            // 0.01 0    0    | 0.05
-            // 0    0.01 0    | 0
-            // 0    0    0.01 | 0
-            // while a global transform in centimeter unit:
-            // 1    0    0    | 5
-            // 0    1    0    | 0
-            // 0    0    1    | 0
-            // We need to remove scale from transform matrix (so the root bone's rotation matrix is identity) to satisfy the
-            // input requirement of AssetWriter
-            inOutTransform.ExtractScale();
-#endif
+
 
             // Need to scale translation explicitly as MultiplyByScale won't change the translation component
             // and we need to convert to meter unit

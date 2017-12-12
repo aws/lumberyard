@@ -161,6 +161,8 @@ public: // Create from serialization only
 
     QString GetCryIndexPath(const LPCTSTR levelFilePath);
 
+    const bool IsLevelLoadFailed() const { return m_bLoadFailed; }
+
 private:
     QString m_strMasterCDFolder;
     bool m_bLoadFailed;

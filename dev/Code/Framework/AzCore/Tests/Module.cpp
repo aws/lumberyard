@@ -13,6 +13,7 @@
 #include "TestTypes.h"
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Module/Module.h>
+#include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Memory/AllocationRecords.h>
 #include "ModuleTestBus.h"
 
@@ -20,14 +21,29 @@ using namespace AZ;
 
 namespace UnitTest
 {
+    class SystemComponentRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual bool IsConnected() = 0;
+    };
+    using SystemComponentRequestBus = AZ::EBus<SystemComponentRequests>;
+
     class SystemComponentFromModule
         : public AZ::Component
+        , protected SystemComponentRequestBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponentFromModule, "{7CDDF71F-4D9E-41B0-8F82-4FFA86513809}")
 
-        void Activate() override {}
-        void Deactivate() override {}
+        void Activate() override
+        {
+            SystemComponentRequestBus::Handler::BusConnect();
+        }
+        void Deactivate() override
+        {
+            SystemComponentRequestBus::Handler::BusDisconnect();
+        }
 
         static void Reflect(AZ::ReflectContext* reflectContext)
         {
@@ -36,6 +52,12 @@ namespace UnitTest
                 serializeContext->Class<SystemComponentFromModule>()->
                     SerializerForEmptyClass();
             }
+        }
+
+    protected:
+        bool IsConnected() override
+        {
+            return true;
         }
     };
 
@@ -88,7 +110,7 @@ namespace UnitTest
         modulesOut.push_back(new UnitTest::StaticModule());
     }
 
-    TEST(ApplicationModule, Test)
+    TEST(ModuleManager, Test)
     {
         {
             ComponentApplication app;
@@ -100,7 +122,7 @@ namespace UnitTest
 
             // AZCoreTestDLL will load as a dynamic module
             appDesc.m_modules.push_back();
-            ComponentApplication::Descriptor::DynamicModuleDescriptor& dynamicModuleDescriptor = appDesc.m_modules.back();
+            DynamicModuleDescriptor& dynamicModuleDescriptor = appDesc.m_modules.back();
             dynamicModuleDescriptor.m_dynamicLibraryPath = "AZCoreTestDLL";
 
             // StaticModule will load via AZCreateStaticModule(...)
@@ -109,19 +131,19 @@ namespace UnitTest
             ComponentApplication::StartupParameters startupParams;
             startupParams.m_createStaticModulesCallback = AZCreateStaticModules;
             Entity* systemEntity = app.Create(appDesc, startupParams);
-            AZ_TEST_ASSERT(systemEntity);
+            EXPECT_NE(nullptr, systemEntity);
             systemEntity->Init();
             systemEntity->Activate();
 
             // Check that StaticModule was loaded and reflected
-            AZ_TEST_ASSERT(StaticModule::s_loaded);
+            EXPECT_TRUE(StaticModule::s_loaded);
             // AZ_TEST_ASSERT(StaticModule::s_reflected);
 
             { // Query both modules via the ModuleTestRequestBus
                 EBusAggregateResults<const char*> moduleNames;
                 EBUS_EVENT_RESULT(moduleNames, ModuleTestRequestBus, GetModuleName);
 
-                AZ_TEST_ASSERT(moduleNames.values.size() == 2);
+                EXPECT_TRUE(moduleNames.values.size() == 2);
                 bool foundStaticModule = false;
                 bool foundDynamicModule = false;
                 for (const char* moduleName : moduleNames.values)
@@ -135,17 +157,135 @@ namespace UnitTest
                         foundStaticModule = true;
                     }
                 }
-                AZ_TEST_ASSERT(foundDynamicModule);
-                AZ_TEST_ASSERT(foundStaticModule);
+                EXPECT_TRUE(foundDynamicModule);
+                EXPECT_TRUE(foundStaticModule);
             }
 
             // Check that system component from module was added
-            AZ_TEST_ASSERT(systemEntity->FindComponent<SystemComponentFromModule>());
+            bool isComponentAround = false;
+            SystemComponentRequestBus::BroadcastResult(isComponentAround, &SystemComponentRequestBus::Events::IsConnected);
+            EXPECT_TRUE(isComponentAround);
+
+            {
+                // Find the dynamic module
+                const ModuleData* systemLoadedModule = nullptr;
+                ModuleManagerRequestBus::Broadcast(&ModuleManagerRequestBus::Events::EnumerateModules, [&systemLoadedModule](const ModuleData& moduleData) {
+                    if (azrtti_typeid(moduleData.GetModule()) == Uuid("{99C6BF95-847F-4EEE-BB60-9B26D02FF577}"))
+                    {
+                        systemLoadedModule = &moduleData;
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                });
+                ASSERT_NE(nullptr, systemLoadedModule);
+
+                ModuleManagerRequests::LoadModuleOutcome loadResult = AZ::Failure(AZStd::string("Failed to connect to ModuleManagerRequestBus"));
+
+                // Load the module
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::ActivateEntity, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+
+                // Capture the handle
+                AZStd::shared_ptr<ModuleData> moduleHandle = AZStd::move(loadResult.GetValue());
+
+                // Validate that the pointer is the same as the one the system loaded
+                EXPECT_EQ(systemLoadedModule, moduleHandle.get());
+
+                // Load the module again
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::ActivateEntity, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+
+                // Validate that the pointers from the load calls are the same
+                EXPECT_EQ(moduleHandle.get(), loadResult.GetValue().get());
+            }
 
             // shut down application (deletes Modules, unloads DLLs)
             app.Destroy();
         }
 
-        AZ_TEST_ASSERT(!StaticModule::s_loaded);
+        EXPECT_FALSE(StaticModule::s_loaded);
+
+        bool isComponentAround = false;
+        SystemComponentRequestBus::BroadcastResult(isComponentAround, &SystemComponentRequestBus::Events::IsConnected);
+        EXPECT_FALSE(isComponentAround);
+    }
+
+    TEST(ModuleManager, SequentialLoadTest)
+    {
+        {
+            ComponentApplication app;
+
+            // Start up application
+            ComponentApplication::Descriptor appDesc;
+            ComponentApplication::StartupParameters startupParams;
+            Entity* systemEntity = app.Create(appDesc, startupParams);
+
+            EXPECT_NE(nullptr, systemEntity);
+            systemEntity->Init();
+            systemEntity->Activate();
+
+            {
+
+                ModuleManagerRequests::LoadModuleOutcome loadResult = AZ::Failure(AZStd::string("Failed to connect to ModuleManagerRequestBus"));
+
+                // Create the module
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::None, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+
+                // Find the dynamic module
+                const ModuleData* systemLoadedModule = nullptr;
+                ModuleManagerRequestBus::Broadcast(&ModuleManagerRequestBus::Events::EnumerateModules, [&systemLoadedModule](const ModuleData& moduleData) {
+                    systemLoadedModule = &moduleData;
+                    return false;
+                });
+
+                // Test that the module exists, but is empty
+                ASSERT_NE(nullptr, systemLoadedModule);
+                EXPECT_EQ(nullptr, systemLoadedModule->GetDynamicModuleHandle());
+                EXPECT_EQ(nullptr, systemLoadedModule->GetModule());
+                EXPECT_EQ(nullptr, systemLoadedModule->GetEntity());
+
+                // Capture the handle
+                AZStd::shared_ptr<ModuleData> moduleHandle = AZStd::move(loadResult.GetValue());
+
+                // Validate that the pointer is the same as the one the system loaded
+                EXPECT_EQ(systemLoadedModule, moduleHandle.get());
+
+                // Load the module
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::Load, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+
+                // Validate that the pointers from the load calls are the same
+                EXPECT_EQ(moduleHandle.get(), loadResult.GetValue().get());
+
+                EXPECT_NE(nullptr, systemLoadedModule->GetDynamicModuleHandle());
+                EXPECT_EQ(nullptr, systemLoadedModule->GetModule());
+                EXPECT_EQ(nullptr, systemLoadedModule->GetEntity());
+
+                // Create the module class
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::CreateClass, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+                EXPECT_EQ(moduleHandle.get(), loadResult.GetValue().get());
+
+                EXPECT_NE(nullptr, systemLoadedModule->GetDynamicModuleHandle());
+                EXPECT_NE(nullptr, systemLoadedModule->GetModule());
+                EXPECT_EQ(nullptr, systemLoadedModule->GetEntity());
+
+                // Activate the system entity
+                ModuleManagerRequestBus::BroadcastResult(loadResult, &ModuleManagerRequestBus::Events::LoadDynamicModule, "AZCoreTestDLL", ModuleInitializationSteps::ActivateEntity, true);
+                ASSERT_TRUE(loadResult.IsSuccess());
+                EXPECT_EQ(moduleHandle.get(), loadResult.GetValue().get());
+
+                EXPECT_NE(nullptr, systemLoadedModule->GetDynamicModuleHandle());
+                EXPECT_NE(nullptr, systemLoadedModule->GetModule());
+                EXPECT_NE(nullptr, systemLoadedModule->GetEntity());
+            }
+
+            // shut down application (deletes Modules, unloads DLLs)
+            app.Destroy();
+        }
     }
 } // namespace UnitTest

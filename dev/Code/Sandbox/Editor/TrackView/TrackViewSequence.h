@@ -100,6 +100,7 @@ class CTrackViewSequence
 
 public:
     CTrackViewSequence(IAnimSequence* pSequence);
+    CTrackViewSequence(AZStd::intrusive_ptr<IAnimSequence>& sequence);
     ~CTrackViewSequence();
 
     // Called after de-serialization of IAnimSequence
@@ -131,7 +132,7 @@ public:
 
     // Get sequence object in scene
     CSequenceObject* GetSequenceObject() const { return static_cast<CSequenceObject*>(m_pAnimSequence->GetOwner()); }
-    AZ::EntityId     GetSequenceComponentEntityId() const { return m_pAnimSequence ? m_pAnimSequence->GetOwnerId() : AZ::EntityId(); }
+    AZ::EntityId     GetSequenceComponentEntityId() const { return m_pAnimSequence.get() ? m_pAnimSequence->GetOwnerId() : AZ::EntityId(); }
 
     // Get the Object Layer that the sequence entity is in
     CObjectLayer*    GetSequenceObjectLayer() const;
@@ -164,10 +165,6 @@ public:
     // Begin & end cut scene
     void BeginCutScene(const bool bResetFx) const;
     void EndCutScene() const;
-
-    // Time step
-    float GetFixedTimeStep() const { return m_pAnimSequence->GetFixedTimeStep(); }
-    void SetFixedTimeStep(const float dt) { m_pAnimSequence->SetFixedTimeStep(dt); }
 
     // Reset
     void Reset(const bool bSeekToStart) { m_pAnimSequence->Reset(bSeekToStart); }
@@ -268,7 +265,7 @@ public:
 
     ESequenceType GetSequenceType() const 
     {
-        if (m_pAnimSequence)
+        if (m_pAnimSequence.get())
         {
             return m_pAnimSequence->GetSequenceType();
         }
@@ -277,8 +274,6 @@ public:
             return eSequenceType_Legacy;
         }
     }
-
-    void PrepareForSave();
 
     // Called when the 'Record' button is pressed in the toolbar
     void SetRecording(bool enableRecording);
@@ -328,19 +323,19 @@ private:
     float m_time;
 
     // Stores if sequence is bound
-    bool m_bBoundToEditorObjects;
+    bool m_bBoundToEditorObjects = false;
 
-    _smart_ptr<IAnimSequence> m_pAnimSequence;
+    AZStd::intrusive_ptr<IAnimSequence> m_pAnimSequence;
     std::vector<ITrackViewSequenceListener*> m_sequenceListeners;
 
     // Notification queuing
-    unsigned int m_selectionRecursionLevel;
-    bool m_bNoNotifications;
-    bool m_bQueueNotifications;
-    bool m_bNodeSelectionChanged;
-    bool m_bForceAnimation;
-    bool m_bKeySelectionChanged;
-    bool m_bKeysChanged;
+    unsigned int m_selectionRecursionLevel = 0;
+    bool m_bNoNotifications = false;
+    bool m_bQueueNotifications = false;
+    bool m_bNodeSelectionChanged = false;
+    bool m_bForceAnimation = false;
+    bool m_bKeySelectionChanged = false;
+    bool m_bKeysChanged = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////

@@ -122,6 +122,7 @@ protected:
     void ReleaseVariable();
     //! Callback called when variable change.
     void OnVariableChange(IVariable* var);
+    void OnVariableEnumChange(IVariable* var);
 
 public:
     //! Get number of child nodes.
@@ -133,6 +134,8 @@ public:
     /** Get name of property item.
     */
     virtual QString GetName() const;
+
+    QString GetFullName() const;
 
 protected:
     void InitializeAIWave();

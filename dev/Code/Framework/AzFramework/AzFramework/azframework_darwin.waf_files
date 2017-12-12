@@ -11,9 +11,6 @@
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/RawInputNotificationBus_darwin.h"
         ],
-        "Input/Buses/Requests": [
-            "Input/Buses/Requests/RawInputRequestBus_darwin.h"
-        ],
         "Input/Devices/Gamepad": [
             "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_apple.mm"
         ],

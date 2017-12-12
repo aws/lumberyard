@@ -57,12 +57,6 @@ public: // member functions
 
     virtual ~UiLayoutInterface() {}
 
-    //! Set the child elements' width transform properties
-    virtual void ApplyLayoutWidth() = 0;
-
-    //! Set the child elements' height transform properties
-    virtual void ApplyLayoutHeight() = 0;
-
     //! Get whether this layout component uses layout cells to calculate its layout
     virtual bool IsUsingLayoutCellsToCalculateLayout() = 0;
 

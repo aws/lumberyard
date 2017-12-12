@@ -12,7 +12,9 @@
 #include "stdafx.h"
 #include "EditorSelectionAccentSystemComponent.h"
 
+#include <AzCore/Debug/Profiler.h>
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
@@ -48,26 +50,47 @@ namespace AzToolsFramework
 
         void EditorSelectionAccentSystemComponent::AfterEntityHighlightingChanged()
         {
-            m_isAccentRefreshQueued = true;
+            if (!m_isAccentRefreshQueued)
+            {
+                QueueAccentRefresh();
+            }
         }
 
         void EditorSelectionAccentSystemComponent::AfterEntitySelectionChanged()
         {
-            m_isAccentRefreshQueued = true;
+            if (!m_isAccentRefreshQueued)
+            {
+                QueueAccentRefresh();
+            }
         }
 
-        void EditorSelectionAccentSystemComponent::ProcessQueuedSelectionAccents()
+        void EditorSelectionAccentSystemComponent::QueueAccentRefresh()
         {
-            if (m_isAccentRefreshQueued)
-            {
-                InvalidateAccents();
-                RecalculateAndApplyAccents();
-                m_isAccentRefreshQueued = false;
-            }
+            AZ_Assert(!m_isAccentRefreshQueued, "Queueing another accent refresh when one is already queued!");
+            m_isAccentRefreshQueued = true;
+
+            AZStd::function<void()> accentRefreshCallback =
+                [this]()
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorSelectionAccentSystemComponent::QueueAccentRefresh:AccentRefreshCallback");
+                    InvalidateAccents();
+                    RecalculateAndApplyAccents();
+                    m_isAccentRefreshQueued = false;
+                };
+
+            AZ::TickBus::QueueFunction(accentRefreshCallback);
+        }
+
+        void EditorSelectionAccentSystemComponent::ForceSelectionAccentRefresh()
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+            InvalidateAccents();
+            RecalculateAndApplyAccents();
         }
 
         void EditorSelectionAccentSystemComponent::InvalidateAccents()
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             for (const AZ::EntityId& accentedEntity : m_currentlyAccentedEntities)
             {
                 AzToolsFramework::ComponentEntityEditorRequestBus::Event(accentedEntity, &AzToolsFramework::ComponentEntityEditorRequests::SetSandboxObjectAccent, ComponentEntityAccentType::None);
@@ -76,6 +99,7 @@ namespace AzToolsFramework
 
         void EditorSelectionAccentSystemComponent::RecalculateAndApplyAccents()
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             AzToolsFramework::EntityIdList selectedEntities;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(selectedEntities, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
             AzToolsFramework::EntityIdSet selectedEntitiesSet;

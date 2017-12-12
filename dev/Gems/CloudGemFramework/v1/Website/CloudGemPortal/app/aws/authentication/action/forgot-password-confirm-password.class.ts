@@ -1,5 +1,5 @@
 ﻿import { AuthStateAction, AuthStateActionContext, EnumAuthState } from '../authentication.class';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { Subject } from 'rxjs/Subject';
 import { AwsContext } from 'app/aws/context.class';
 
 declare var AWSCognito: any;
@@ -10,7 +10,7 @@ export class ForgotPasswordConfirmNewPasswordAction implements AuthStateAction {
 
     }
 
-    public handle(subject: BehaviorSubject<AuthStateActionContext>, ...args: any[]): void {
+    public handle(subject: Subject<AuthStateActionContext>, ...args: any[]): void {
         let username = args[0];
         if (username === undefined || username === null || username === '') {
             subject.next(<AuthStateActionContext>{
@@ -39,13 +39,13 @@ export class ForgotPasswordConfirmNewPasswordAction implements AuthStateAction {
         }
 
         var userdata = {
-            Username: username,
+            Username: username.trim(),
             Pool: this.context.cognitoUserPool
         };
 
         let cognitouser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userdata)
 
-        cognitouser.confirmPassword(code, password, {
+        cognitouser.confirmPassword(code, password.trim(), {
             onSuccess: function () {
                 subject.next(<AuthStateActionContext>{
                     state: EnumAuthState.FORGOT_PASSWORD_CONFIRMATION_SUCCESS,

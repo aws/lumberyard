@@ -17,7 +17,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QTableView>
-#include <AZCore/std/parallel/lock.h>
+#include <AzCore/std/parallel/lock.h>
 
 #include <UI/Logging/TracePrintFLogPanel.moc>
 
@@ -134,17 +134,29 @@ namespace AzToolsFramework
                         AZStd::lock_guard<AZStd::mutex> lock(m_bufferedLinesMutex);
                         m_bufferedLines.push(Logging::LogLine(message, window ? window : "", type, QDateTime::currentMSecsSinceEpoch()));
                     }
-                    bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
-                    if (!wasQueued)
+
+                    // Connect to the system tick bus here to ensure we're on the right thread for the singleShot call we want to make
+                    if (!AZ::SystemTickBus::Handler::BusIsConnected())
                     {
-                        QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
+                        AZ::SystemTickBus::Handler::BusConnect();
                     }
                 }
             }
         }
 
+        void AZTracePrintFLogTab::OnSystemTick()
+        {
+            AZ::SystemTickBus::Handler::BusDisconnect();
+            bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
+            if (!wasQueued)
+            {
+                QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
+            }
+        }
+
         AZTracePrintFLogTab::~AZTracePrintFLogTab()
         {
+            AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
             // qt autodeletes any qt  objects.
         }
 

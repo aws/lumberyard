@@ -62,5 +62,13 @@ namespace RenderCapabilities
     {
         NCryMetal::CacheMinOSVersionInfo();
     }
-    
+
+    bool SupportsDualSourceBlending()
+    {
+        // Metal supports dual source blending for devices running OXS >= 10.12 or iOS >= 11.0
+        // but you need to declare the "index" of the render target in the shader (half4 Source1 [[ color(0), index(1) ]])
+        // Unfortunately HLSLcc is not able to generate this type of declaration because the DX Shader bytecode doesn't
+        // distinguish between a normal output or one for dual source blending.
+        return false;
+    }    
 }

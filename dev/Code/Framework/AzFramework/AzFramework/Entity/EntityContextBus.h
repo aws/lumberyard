@@ -136,6 +136,7 @@ namespace AzFramework
 
         /**
          * Creates an entity and adds it to the root slice of the entity context.
+         * This operation does not activate the entity by default.
          * @param name A name for the entity.
          * @return A pointer to a new entity. 
          * This operation succeeds unless the system is completely out of memory.
@@ -149,6 +150,18 @@ namespace AzFramework
          * @param entity A pointer to the entity to add.
          */
         virtual void AddEntity(AZ::Entity* entity) = 0;
+
+        /**
+         * Activates an entity that is owned by the entity context.
+         * @param id The ID of the entity to activate.
+         */
+        virtual void ActivateEntity(AZ::EntityId entityId) = 0;
+
+        /**
+         * Deactivates an entity that is owned by the entity context.
+         * @param id The ID of the entity to deactivate.
+         */
+        virtual void DeactivateEntity(AZ::EntityId entityId) = 0;
 
         /**
          * Removes an entity from the entity context's root slice and 

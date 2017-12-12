@@ -17,6 +17,7 @@
 #include <StdAfx.h>
 #include "GLShader.hpp"
 #include "GLDevice.hpp"
+#include <Common/RenderCapabilities.h>
 
 #if DXGL_INPUT_GLSL && DXGL_GLSL_FROM_HLSLCROSSCOMPILER
 #include "hlslcc.hpp"
@@ -426,7 +427,7 @@ namespace NCryOpenGL
         return true;
     }
 
-    bool InitializeShaderReflectionParameters(SShaderReflection::TParameters& kParameters, SDXBCParseContext* pContext)
+    bool InitializeShaderReflectionParameters(SShaderReflection::TParameters& kParameters, SDXBCParseContext* pContext, bool extended = false)
     {
         uint32 uNumElements, uVersion;
         if (!DXBCReadUint32(*pContext, uNumElements) ||
@@ -444,6 +445,12 @@ namespace NCryOpenGL
             for (uElement = uPrevNumElements; uElement < kParameters.size(); ++uElement)
             {
                 SShaderReflectionParameter& kParameter(kParameters.at(uElement));
+                // Only for extended parameters fxc adds two extra pieces of information, the stream index and the minimum precision.
+                if (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.Stream))
+                {
+                    return false;
+                }
+
                 uint32 uSemNamePosition;
                 if (!DXBCReadUint32(*pContext, uSemNamePosition) ||
                     !SDXBCParseContext(*pContext, uSemNamePosition).ReadString(kParameter.m_acSemanticName, DXGL_ARRAY_SIZE(kParameter.m_acSemanticName)))
@@ -458,8 +465,8 @@ namespace NCryOpenGL
                     !DXBCReadUint32(*pContext, kParameter.m_kDesc.Register) ||
                     !DXBCReadUint8(*pContext, kParameter.m_kDesc.Mask) ||
                     !DXBCReadUint8(*pContext, kParameter.m_kDesc.ReadWriteMask) ||
-                    !DXBCReadUint8(*pContext, kParameter.m_kDesc.Stream) ||
-                    !DXBCReadUint8(*pContext, kParameter.m_kDesc.MinPrecision))
+                    !pContext->SeekRel(sizeof(uint16_t)) || // These two bytes are part of the mask but are not used, so we skip them.
+                    (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.MinPrecision))) // Precision available only for extended parameters.
                 {
                     return false;
                 }
@@ -562,13 +569,15 @@ namespace NCryOpenGL
             }
             break;
             case FOURCC_ISGN:
-                if (!InitializeShaderReflectionParameters(pReflection->m_kInputs, &kChunkContext))
+            case FOURCC_ISG1:
+                if (!InitializeShaderReflectionParameters(pReflection->m_kInputs, &kChunkContext, uChunkFourCC == FOURCC_ISG1))
                 {
                     return false;
                 }
                 break;
             case FOURCC_OSGN:
-                if (!InitializeShaderReflectionParameters(pReflection->m_kOutputs, &kChunkContext))
+            case FOURCC_OSG1:
+                if (!InitializeShaderReflectionParameters(pReflection->m_kOutputs, &kChunkContext, uChunkFourCC == FOURCC_OSG1))
                 {
                     return false;
                 }
@@ -876,7 +885,7 @@ namespace NCryOpenGL
         const char* szVersion = "#version 440\n";
         // Workaround for AMD Catalyst - as of version 15.7.1 using "#version 440" causes std140 uniform buffers
         // to have random layouts (see https://community.amd.com/thread/185272)
-        if (pDevice->GetAdapter()->m_eDriverVendor == eDV_ATI || pDevice->GetAdapter()->m_eDriverVendor == eDV_AMD)
+        if (pDevice->GetAdapter()->m_eDriverVendor == RenderCapabilities::s_gpuVendorIdAMD)
         {
             szVersion = "#version 430\n";
         }
@@ -1322,22 +1331,6 @@ namespace NCryOpenGL
 
 #endif //DXGL_ENABLE_SHADER_TRACING
 
-    template <size_t uSize>
-    bool GetEmbeddedName(char (&acBuffer)[uSize], const char* szGLSL, uint32 uNameMask)
-    {
-        uint32 uNameOffset   = uNameMask >> 12;
-        uint32 uNameSize     = uNameMask & 0x3FF;
-        if (uNameSize + 1 >= uSize)
-        {
-            DXGL_ERROR("Embedded name is too big");
-            return false;
-        }
-
-        memcpy(acBuffer, szGLSL + uNameOffset, uNameSize);
-        acBuffer[uNameSize] = '\0';
-        return true;
-    }
-
     struct SResourceIndexRange
     {
         uint32 m_uMin;
@@ -1359,12 +1352,6 @@ namespace NCryOpenGL
     {
         ENCODED_SAMPLER_STRIDE = 3, ENCODED_RESOURCE_STRIDE = 2
     };
-    inline uint32 DecodeTextureIndex(uint32 uSamplerField)     { return uSamplerField >> 22; }
-    inline uint32 DecodeSamplerIndex(uint32 uSamplerField)     { return (uSamplerField >> 12) & 0x3FF; }
-    inline uint32 DecodeTextureUnitIndex(uint32 uSamplerField) { return (uSamplerField >>  2) & 0x3FF; }
-    inline bool DecodeNormalSample(uint32 uSamplerField)       { return ((uSamplerField >>  1) & 0x1) == 1; }
-    inline bool DecodeCompareSample(uint32 uSamplerField)      { return (uSamplerField        & 0x1) == 1; }
-    inline uint32 DecodeResourceIndex(uint32 uResourceField)   { return uResourceField; }
 
     template <uint32 (* DecodeFunc)(uint32), uint32 uStride>
     void GetResourceIndexRange(SResourceIndexRange* pRange, const uint32* puResources, uint32 uNumResources)
@@ -1420,20 +1407,20 @@ namespace NCryOpenGL
                 const SShaderReflection& kReflection(kVersion.m_kReflection);
 
                 pRequirements->m_akTypes[eRUT_Texture].m_uNumUnits += kReflection.m_uNumSamplers;
-                GetResourceIndexRange<DecodeTextureUnitIndex, ENCODED_SAMPLER_STRIDE>(
+                GetResourceIndexRange<DXBC::DecodeTextureUnitIndex, ENCODED_SAMPLER_STRIDE>(
                     &akInputRanges[uShader][eRUT_Texture],
                     reinterpret_cast<const uint32*>(kVersion.m_kSource.m_pData + kReflection.m_uSamplersOffset),
                     kReflection.m_uNumSamplers);
 
                 pRequirements->m_akTypes[eRUT_UniformBuffer].m_uNumUnits += kReflection.m_uNumUniformBuffers;
-                GetResourceIndexRange<DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
+                GetResourceIndexRange<DXBC::DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
                     &akInputRanges[uShader][eRUT_UniformBuffer],
                     reinterpret_cast<const uint32*>(kVersion.m_kSource.m_pData + kReflection.m_uUniformBuffersOffset),
                     kReflection.m_uNumUniformBuffers);
 
 #if DXGL_SUPPORT_SHADER_STORAGE_BLOCKS
                 pRequirements->m_akTypes[eRUT_StorageBuffer].m_uNumUnits += kReflection.m_uNumStorageBuffers;
-                GetResourceIndexRange<DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
+                GetResourceIndexRange<DXBC::DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
                     &akInputRanges[uShader][eRUT_StorageBuffer],
                     reinterpret_cast<const uint32*>(kVersion.m_kSource.m_pData + kReflection.m_uStorageBuffersOffset),
                     kReflection.m_uNumStorageBuffers);
@@ -1443,7 +1430,7 @@ namespace NCryOpenGL
                 if (pDevice->IsFeatureSupported(eF_ShaderImages))
                 {
                     pRequirements->m_akTypes[eRUT_Image].m_uNumUnits += kReflection.m_uNumImages;
-                    GetResourceIndexRange<DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
+                    GetResourceIndexRange<DXBC::DecodeResourceIndex, ENCODED_RESOURCE_STRIDE>(
                         &akInputRanges[uShader][eRUT_Image],
                         reinterpret_cast<const uint32*>(kVersion.m_kSource.m_pData + kReflection.m_uImagesOffset),
                         kReflection.m_uNumImages);
@@ -1495,11 +1482,11 @@ namespace NCryOpenGL
             uint32 uEmbeddedNormalName   = pSamplers[uElement * 3 + 1];
             uint32 uEmbeddedCompareName  = pSamplers[uElement * 3 + 2];
 
-            uint32 uTextureIndex     = DecodeTextureIndex(uSamplerField);
-            uint32 uSamplerIndex     = DecodeSamplerIndex(uSamplerField);
-            uint32 uTextureUnitIndex = DecodeTextureUnitIndex(uSamplerField);
-            bool bNormalSample       = DecodeNormalSample(uSamplerField);
-            bool bCompareSample      = DecodeCompareSample(uSamplerField);
+            uint32 uTextureIndex     = DXBC::DecodeTextureIndex(uSamplerField);
+            uint32 uSamplerIndex     = DXBC::DecodeSamplerIndex(uSamplerField);
+            uint32 uTextureUnitIndex = DXBC::DecodeTextureUnitIndex(uSamplerField);
+            bool bNormalSample       = DXBC::DecodeNormalSample(uSamplerField);
+            bool bCompareSample      = DXBC::DecodeCompareSample(uSamplerField);
 
             uint32 uTextureSlot = TextureSlot(eStage, uTextureIndex);
             uint32 uSamplerSlot = SamplerSlot(eStage, uSamplerIndex);
@@ -1517,7 +1504,7 @@ namespace NCryOpenGL
 
             if (bNormalSample || !bSample) // Both normal sampling and texture loads use the "normal sampler name" field
             {
-                if (!GetEmbeddedName(acNameBuffer, szGLSL, uEmbeddedNormalName) ||
+                if (!DXBC::GetEmbeddedName(acNameBuffer, szGLSL, uEmbeddedNormalName) ||
                     !BindUniformToUnit(iProgramName, uTextureUnit, acNameBuffer, pContext))
                 {
                     return false;
@@ -1526,7 +1513,7 @@ namespace NCryOpenGL
 
             if (bCompareSample)
             {
-                if (!GetEmbeddedName(acNameBuffer, szGLSL, uEmbeddedCompareName) ||
+                if (!DXBC::GetEmbeddedName(acNameBuffer, szGLSL, uEmbeddedCompareName) ||
                     !BindUniformToUnit(iProgramName, uTextureUnit, acNameBuffer, pContext))
                 {
                     return false;
@@ -1559,14 +1546,14 @@ namespace NCryOpenGL
             uint32 uResourceField = pResources[uElement * 2 + 0];
             uint32 uResourceName  = pResources[uElement * 2 + 1];
 
-            uint32 uResourceIndex = DecodeResourceIndex(uResourceField);
+            uint32 uResourceIndex = DXBC::DecodeResourceIndex(uResourceField);
 
             uint32 uResourceSlot = pfIndexToSlot(eStage, uResourceIndex);
             uint32 uResourceUnit;
             if (pfBindResourceToUnit)
             {
                 uResourceUnit = pPartition ? pPartition->m_akStages[eStage](uResourceIndex) : uMapPosition + uElement;
-                if (!GetEmbeddedName(acNameBuffer, szGLSL, uResourceName) ||
+                if (!DXBC::GetEmbeddedName(acNameBuffer, szGLSL, uResourceName) ||
                 !pfBindResourceToUnit(iProgramName, uResourceUnit, acNameBuffer, pContext))
                 {
                     return false;

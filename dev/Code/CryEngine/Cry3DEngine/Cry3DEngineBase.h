@@ -19,6 +19,7 @@
 #define CRYINCLUDE_CRY3DENGINE_CRY3DENGINEBASE_H
 #pragma once
 
+#include "CryEngineAPI.h"
 #include "3DEngineMemory.h"
 #include "IEntityRenderState.h"
 
@@ -29,10 +30,10 @@ struct IPhysicalWorld;
 struct ITimer;
 struct IConsole;
 struct I3DEngine;
+struct IObjManager;
 struct CVars;
 struct CVisAreaManager;
 class CTerrain;
-class CObjManager;
 class C3DEngine;
 class CParticleManager;
 class CDecalManager;
@@ -62,9 +63,9 @@ struct Cry3DEngineBase
     static IPhysicalWorld* m_pPhysicalWorld;
     static IConsole* m_pConsole;
     static C3DEngine* m_p3DEngine;
-    static CVars* m_pCVars;
+    ENGINE_API static CVars* m_pCVars;
     static ICryPak* m_pCryPak;
-    static CObjManager* m_pObjManager;
+    static IObjManager* m_pObjManager;
     static CTerrain* m_pTerrain;
     static IParticleManager* m_pPartManager;
     static IOpticsManager* m_pOpticsManager;
@@ -110,7 +111,7 @@ struct Cry3DEngineBase
     inline static IPhysicalWorld* GetPhysicalWorld() { return m_pPhysicalWorld; }
     inline static IConsole* GetConsole() { return m_pConsole; }
     inline static C3DEngine* Get3DEngine() { return m_p3DEngine; }
-    inline static CObjManager* GetObjManager() { return m_pObjManager; };
+    inline static IObjManager* GetObjManager() { return m_pObjManager; };
     inline static CTerrain* GetTerrain() { return m_pTerrain; };
     inline static CVars* GetCVars() { return m_pCVars; }
     inline static CVisAreaManager* GetVisAreaManager() { return m_pVisAreaManager; }
@@ -134,9 +135,9 @@ struct Cry3DEngineBase
     float GetCurTimeSec();
     float GetCurAsyncTimeSec();
 
-    void PrintMessage(const char* szText, ...) PRINTF_PARAMS(2, 3);
-    void PrintMessagePlus(const char* szText, ...) PRINTF_PARAMS(2, 3);
-    void PrintComment(const char* szText, ...) PRINTF_PARAMS(2, 3);
+    static void PrintMessage(const char* szText, ...) PRINTF_PARAMS(1, 2);
+    static void PrintMessagePlus(const char* szText, ...) PRINTF_PARAMS(1, 2);
+    static void PrintComment(const char* szText, ...) PRINTF_PARAMS(1, 2);
 
     // Validator warning.
     static void Warning(const char* format, ...) PRINTF_PARAMS(1, 2);

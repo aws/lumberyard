@@ -445,6 +445,7 @@ class CHWShader_D3D
     friend class CDeviceGraphicsPSO;
     friend class CDeviceGraphicsPSO_DX11;
     friend class CDeviceGraphicsPSO_DX12;
+    friend class CGnmGraphicsPipelineState;
     friend class CSceneGBufferPass;  // HACK
 
     SShaderDevCache* m_pDevCache;

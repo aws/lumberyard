@@ -20,13 +20,15 @@ import os
 def is_win_x64_platform(ctx):
     platform = ctx.env['PLATFORM'].lower()
     return ('win_x64' in platform) and (platform in PLATFORMS['win32'])
+    
+def is_darwin_x64_platform(ctx):
+    platform = ctx.env['PLATFORM'].lower()
+    return ('darwin_x64' in platform) and (platform in PLATFORMS['darwin'])
 
 def use_windows_dll_semantics(ctx):
     if is_win_x64_platform(ctx):
         return True
     platform = ctx.env['PLATFORM'].lower()
-    if platform == 'durango':
-        return True
     return False
 
 def get_static_suffix():
@@ -40,7 +42,13 @@ def should_link_aws_native_sdk_statically(bld):
     configuration = bld.env['CONFIGURATION']
 
     if ((platform != 'project_generator' and bld.is_variant_monolithic(platform, configuration)) or 
-        any(substring in platform for substring in ['darwin', 'ios', 'appletv', 'linux', 'android', 'orbis', 'durango'])):
+        any(substring in platform for substring in [
+	    'darwin',
+	    'ios',
+	    'appletv',
+	    'linux',
+	    'android',
+	])):
         return True
     return False
 
@@ -54,12 +62,25 @@ def get_dynamic_lib_extension(bld):
 
 def get_platform_lib_prefix(bld):
     platform = bld.env['PLATFORM']
-    if any(substring in platform for substring in ['darwin', 'ios', 'appletv', 'linux', 'android', 'orbis']):
+    if any(substring in platform for substring in [
+        'darwin',
+	'ios',
+	'appletv',
+	'linux',
+	'android',
+	]):
         return 'lib'
     return ''
 
 def aws_native_sdk_platforms(bld):
-    return ['win', 'darwin', 'ios', 'appletv', 'linux', 'android_armv7_clang', 'orbis', 'durango', 'project_generator']
+    return [
+        'win',
+	'darwin',
+	'ios',
+	'appletv',
+	'linux',
+	'android_armv7_clang',
+	'project_generator']
 
 def should_project_include_aws_native_sdk(bld):
     platform = bld.env['PLATFORM']
@@ -197,12 +218,6 @@ def _get_build_dir(self, forceReleaseDir=False):
     elif 'android' in platform:
         build_dir = 'android'
         return build_dir
-    elif 'orbis' in platform:
-        build_dir = 'orbis'
-        return build_dir
-    elif 'durango' in platform:
-        build_dir = 'durango'
-        return build_dir
         
     build_dir += '/'
 
@@ -247,10 +262,6 @@ def BuildPlatformLibraryDirectory(bld, forceStaticLinking):
         platformDir = 'linux/intel64'
     elif 'android' in platform:
         platformDir = 'android'
-    elif 'orbis' in platform:
-        platformDir = 'orbis'
-    elif 'durango' in platform:
-        platformDir = 'durango'
     else:
         # TODO: add support for other platforms as versions become available
         platformDir = 'windows/intel64'
@@ -285,23 +296,25 @@ def link_aws_sdk_core_after(self):
 @before_method('apply_incpaths')
 def copy_external_ly_identity(self):
     if not os.path.exists(self.bld.CreateRootRelativePath('Code/Tools/LyIdentity/wscript')):
-        sharedLibraryPath = 'Tools/InternalSDKs/LyIdentity/' + self.bld.BuildPlatformLibraryDirectory(False)
-        self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyIdentity_shared.dll" ]
+        if is_win_x64_platform(self):
+            sharedLibraryPath = 'Tools/InternalSDKs/LyIdentity/' + self.bld.BuildPlatformLibraryDirectory(False)
+            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyIdentity_shared.dll" ]
 
 
 @conf
 def register_ly_identity_as_external(self):
-    if isinstance(self, BuildContext) and is_win_x64_platform(self):
+    if isinstance(self, BuildContext) and (is_win_x64_platform(self) or is_darwin_x64_platform(self)):
         staticLibraryPath = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity/' + self.BuildPlatformLibraryDirectory(True))
         sharedLibraryPath = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity/' + self.BuildPlatformLibraryDirectory(False)) 
         identityIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity/include')
 
-        self.read_shlib(
-            name            = 'LyIdentity_shared',
-            export_defines  = ['LINK_LY_IDENTITY_DYNAMICALLY'],
-            export_includes = [identityIncludeDir],
-            paths           = [ sharedLibraryPath ]
-        )
+        if is_win_x64_platform(self):
+            self.read_shlib(
+                name            = 'LyIdentity_shared',
+                export_defines  = ['LINK_LY_IDENTITY_DYNAMICALLY'],
+                export_includes = [identityIncludeDir],
+                paths           = [ sharedLibraryPath ]
+            )
 
         self.read_stlib(
             name            = 'LyIdentity_static',
@@ -314,24 +327,26 @@ def register_ly_identity_as_external(self):
 @before_method('apply_incpaths')
 def copy_external_ly_metrics(self):
     if not os.path.exists(self.bld.CreateRootRelativePath('Code/Tools/LyMetrics/wscript')):
-        sharedLibraryPath = 'Tools/InternalSDKs/LyMetrics/' + self.bld.BuildPlatformLibraryDirectory(False)
-        self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsShared_shared.dll" ]
-        self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsProducer_shared.dll" ]
+        if is_win_x64_platform(self):
+            sharedLibraryPath = 'Tools/InternalSDKs/LyMetrics/' + self.bld.BuildPlatformLibraryDirectory(False)
+            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsShared_shared.dll" ]
+            self.source_artifacts_include = getattr(self, 'source_artifacts_include', []) + [ sharedLibraryPath + "/LyMetricsProducer_shared.dll" ]
 
 @conf
 def register_ly_metrics_as_external(self):
-    if isinstance(self, BuildContext) and is_win_x64_platform(self):
+    if isinstance(self, BuildContext) and (is_win_x64_platform(self) or is_darwin_x64_platform(self)):
         staticLibraryPath = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/' + self.BuildPlatformLibraryDirectory(True))
         sharedLibraryPath = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/' + self.BuildPlatformLibraryDirectory(False))
         metricsSharedIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/include')
         metricsProducerIncludeDir = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics/include')
 
-        self.read_shlib(
-            name            = 'LyMetricsShared_shared',
-            export_defines  = ['LINK_LY_METRICS_DYNAMICALLY'],
-            export_includes = [ metricsSharedIncludeDir ],
-            paths           = [ sharedLibraryPath ]
-        )
+        if is_win_x64_platform(self):
+            self.read_shlib(
+                name            = 'LyMetricsShared_shared',
+                export_defines  = ['LINK_LY_METRICS_DYNAMICALLY'],
+                export_includes = [ metricsSharedIncludeDir ],
+                paths           = [ sharedLibraryPath ]
+            )
 
         self.read_stlib(
             name            = 'LyMetricsShared_static',
@@ -339,12 +354,13 @@ def register_ly_metrics_as_external(self):
             paths           = [ staticLibraryPath ]
         )
 
-        self.read_shlib(
-            name            = 'LyMetricsProducer_shared',
-            export_defines  = ['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
-            export_includes = [ metricsProducerIncludeDir ],
-            paths           = [ sharedLibraryPath ]
-        )
+        if is_win_x64_platform(self):
+            self.read_shlib(
+                name            = 'LyMetricsProducer_shared',
+                export_defines  = ['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
+                export_includes = [ metricsProducerIncludeDir ],
+                paths           = [ sharedLibraryPath ]
+            )
 
         self.read_stlib(
             name            = 'LyMetricsProducer_static',

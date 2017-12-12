@@ -12,9 +12,9 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzFramework/Input/Channels/InputChannel.h>
 #include <Cry_Math.h>
 
-struct SInputEvent;
 struct ray_hit;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,12 +28,12 @@ public:
     //! Convert the input collision point into a canvas space position and pass the event and that position
     //! to the UI canvas to handle as a positional input event
     //! \return true if the event was handled
-    virtual bool ProcessCollisionInputEvent(const SInputEvent& event, int triangleIndex, Vec3 hitPoint) = 0;
+    virtual bool ProcessCollisionInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint) = 0;
 
     //! Convert the input ray collision into a canvas space position and pass the event and that position
     //! to the UI canvas to handle as a positional input event
     //! \return true if the event was handled
-    virtual bool ProcessRayHitInputEvent(const SInputEvent& event, const ray_hit& rayHit) = 0;
+    virtual bool ProcessRayHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const ray_hit& rayHit) = 0;
 };
 
 using UiCanvasOnMeshBus = AZ::EBus<UiCanvasOnMeshInterface>;

@@ -4,6 +4,7 @@
 #include "internal_includes/toGLSLInstruction.h"
 #include "internal_includes/toGLSLOperand.h"
 #include "internal_includes/languages.h"
+#include "internal_includes/hlslccToolkit.h"
 #include "bstrlib.h"
 #include "stdio.h"
 #include "internal_includes/debug.h"
@@ -29,98 +30,64 @@ void BeginAssignmentEx(HLSLCrossCompilerContext* psContext, const Operand* psDes
 {
     if (psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING && psContext->psShader->eShaderType != HULL_SHADER)
     {
-        char* szCastFunction = "";
+        const char* szCastFunction = "";
         SHADER_VARIABLE_TYPE eSrcType;
         SHADER_VARIABLE_TYPE eDestType = GetOperandDataType(psContext, psDestOperand);
         uint32_t uDestElemCount = GetNumSwizzleElements(psDestOperand);
 
-        if (uSrcToFlag & TO_FLAG_UNSIGNED_INTEGER)
-        {
-            eSrcType = SVT_UINT;
-        }
-        else if (uSrcToFlag & TO_FLAG_INTEGER)
-        {
-            eSrcType = SVT_INT;
-        }
-        else
-        {
-            eSrcType = SVT_FLOAT;
-        }
-
+        eSrcType = TypeFlagsToSVTType(uSrcToFlag);
         if (bSaturate)
         {
             eSrcType = SVT_FLOAT;
         }
 
-        if (eDestType != eSrcType)
+        if (!DoAssignmentDataTypesMatch(eDestType, eSrcType))
         {
             switch (eDestType)
             {
             case SVT_INT:
+            case SVT_INT12:
+            case SVT_INT16:
             {
                 switch (eSrcType)
                 {
                 case SVT_UINT:
-                    switch (uDestElemCount)
-                    {
-                    case 1:
-                        szCastFunction = "int";
-                        break;
-                    case 2:
-                        szCastFunction = "ivec2";
-                        break;
-                    case 3:
-                        szCastFunction = "ivec3";
-                        break;
-                    case 4:
-                        szCastFunction = "ivec4";
-                        break;
-                    default:
-                        ASSERT(0);
-                    }
+                case SVT_UINT16:
+                    szCastFunction = GetConstructorForTypeGLSL(psContext, eDestType, uDestElemCount, false);
                     break;
                 case SVT_FLOAT:
                     szCastFunction = "floatBitsToInt";
                     break;
                 default:
+                    // Bitcasts from lower precisions floats are ambiguous
                     ASSERT(0);
                     break;
                 }
             }
             break;
             case SVT_UINT:
+            case SVT_UINT16:
             {
                 switch (eSrcType)
                 {
                 case SVT_INT:
-                    switch (uDestElemCount)
-                    {
-                    case 1:
-                        szCastFunction = "uint";
-                        break;
-                    case 2:
-                        szCastFunction = "uvec2";
-                        break;
-                    case 3:
-                        szCastFunction = "uvec3";
-                        break;
-                    case 4:
-                        szCastFunction = "uvec4";
-                        break;
-                    default:
-                        ASSERT(0);
-                    }
+                case SVT_INT12:
+                case SVT_INT16:
+                    szCastFunction = GetConstructorForTypeGLSL(psContext, eDestType, uDestElemCount, false);
                     break;
                 case SVT_FLOAT:
                     szCastFunction = "floatBitsToUint";
                     break;
                 default:
+                    // Bitcasts from lower precisions floats are ambiguous
                     ASSERT(0);
                     break;
                 }
             }
             break;
             case SVT_FLOAT:
+            case SVT_FLOAT10:
+            case SVT_FLOAT16:
             {
                 switch (eSrcType)
                 {
@@ -131,6 +98,7 @@ void BeginAssignmentEx(HLSLCrossCompilerContext* psContext, const Operand* psDes
                     szCastFunction = "intBitsToFloat";
                     break;
                 default:
+                    // Bitcasts from lower precisions int/uint are ambiguous
                     ASSERT(0);
                     break;
                 }
@@ -213,9 +181,13 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
             switch (e0Type)
             {
             case SVT_INT:
+            case SVT_INT12:
+            case SVT_INT16:
                 typeFlag = TO_FLAG_INTEGER;
                 break;
             case SVT_UINT:
+            case SVT_UINT8:
+            case SVT_UINT16:
                 typeFlag = TO_FLAG_UNSIGNED_INTEGER;
                 break;
             default:
@@ -384,9 +356,13 @@ static void AddMOVBinaryOp(HLSLCrossCompilerContext* psContext, const Operand* p
         switch (eSrcType)
         {
         case SVT_INT:
+        case SVT_INT12:
+        case SVT_INT16:
             ui32SrcFlags = TO_FLAG_INTEGER;
             break;
         case SVT_UINT:
+        case SVT_UINT8:
+        case SVT_UINT16:
             ui32SrcFlags = TO_FLAG_UNSIGNED_INTEGER;
             break;
         }
@@ -488,10 +464,14 @@ static void AddMOVCBinaryOp(HLSLCrossCompilerContext* psContext, const Operand* 
     switch (GetOperandDataType(psContext, pDest))
     {
     case SVT_UINT:
+    case SVT_UINT8:
+    case SVT_UINT16:
         szVecType = "uvec";
         eDstDataType = TO_FLAG_UNSIGNED_INTEGER;
         break;
     case SVT_INT:
+    case SVT_INT12:
+    case SVT_INT16:
         szVecType = "ivec";
         eDstDataType = TO_FLAG_INTEGER;
         break;
@@ -576,13 +556,35 @@ void CallBinaryOp(HLSLCrossCompilerContext* psContext, const char* name, Instruc
     uint32_t dstSwizCount = GetNumSwizzleElements(&psInst->asOperands[dest]);
 
     AddIndentation(psContext);
-
+    // Qualcomm OpenGLES 3.0 drivers don't support bitwise operators for vectors.
+    // Because of this we need to do the operation per component.
+    bool qualcommWorkaround = (psContext->flags & HLSLCC_FLAG_QUALCOMM_GLES30_DRIVER_WORKAROUND) != 0;
+    bool isBitwiseOperator = psInst->eOpcode == OPCODE_AND || psInst->eOpcode == OPCODE_OR || psInst->eOpcode == OPCODE_XOR;
+    const char* swizzleString[] = { ".x", ".y", ".z", ".w" };
     if (src1SwizCount == src0SwizCount == dstSwizCount)
     {
         BeginAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
-        TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
-        bformata(glsl, " %s ", name);
-        TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+        if (qualcommWorkaround && isBitwiseOperator && src0SwizCount > 1)
+        {
+            for (uint32_t i = 0; i < src0SwizCount; ++i)
+            {
+                if (i > 0)
+                {
+                    bcatcstr(glsl, ", ");
+                }
+                TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
+                bformata(glsl, "%s", swizzleString[i]);
+                bformata(glsl, " %s ", name);
+                TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+                bformata(glsl, "%s", swizzleString[i]);
+            }
+        }
+        else
+        {
+            TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
+            bformata(glsl, " %s ", name);
+            TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+        }
         EndAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
         bcatcstr(glsl, ";\n");
     }
@@ -602,9 +604,28 @@ void CallBinaryOp(HLSLCrossCompilerContext* psContext, const char* name, Instruc
         {
             bcatcstr(glsl, "vec4(");
         }
-        TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
-        bformata(glsl, " %s ", name);
-        TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+
+        if (qualcommWorkaround && isBitwiseOperator && src0SwizCount > 1)
+        {
+            for (uint32_t i = 0; i < src0SwizCount; ++i)
+            {
+                if (i > 0)
+                {
+                    bcatcstr(glsl, ", ");
+                }
+                TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
+                bformata(glsl, "%s", swizzleString[i]);
+                bformata(glsl, " %s ", name);
+                TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+                bformata(glsl, "%s", swizzleString[i]);
+            }
+        }
+        else
+        {
+            TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
+            bformata(glsl, " %s ", name);
+            TranslateOperand(psContext, &psInst->asOperands[src1], TO_FLAG_NONE | dataType);
+        }
         bcatcstr(glsl, ")");
         //Limit src swizzles based on dest swizzle
         //e.g. given hlsl asm: add r0.xy, v0.xyxx, l(0.100000, 0.000000, 0.000000, 0.000000)
@@ -2964,6 +2985,28 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
             if (psOperand->eType == OPERAND_TYPE_TEMP)
             {
                 const uint32_t ui32RegIndex = psOperand->ui32RegisterNumber * 4;
+                if (HavePrecisionQualifers(psContext->psShader->eTargetLanguage))
+                {
+                    switch (psOperand->eMinPrecision)
+                    {
+                    case OPERAND_MIN_PRECISION_DEFAULT:
+                        break;
+                    case OPERAND_MIN_PRECISION_SINT_16:
+                        eNewType = SVT_INT16;
+                        break;
+                    case OPERAND_MIN_PRECISION_UINT_16:
+                        eNewType = SVT_UINT16;
+                        break;
+                    case OPERAND_MIN_PRECISION_FLOAT_2_8:
+                        eNewType = SVT_FLOAT10;
+                        break;
+                    case OPERAND_MIN_PRECISION_FLOAT_16:
+                        eNewType = SVT_FLOAT16;
+                        break;
+                    default:
+                        break;
+                    }
+                }
 
                 if (aeCommonTempVecType != NULL)
                 {
@@ -3163,6 +3206,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             bcatcstr(glsl, "//UTOF\n");
         }
 #endif
+
         AddIndentation(psContext);
         BeginAssignment(psContext, &psInst->asOperands[0], TO_FLAG_FLOAT, psInst->bSaturate);
         bcatcstr(glsl, "vec4(");
@@ -4405,7 +4449,6 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
         ui32FetchTypeToFlags = GetReturnTypeToFlags(psBinding->ui32ReturnType);
 
         const char* fetchFunctionString = psInst->bAddressOffset ? "texelFetchOffset" : "texelFetch";
-
         switch (psBinding->eDimension)
         {
         case REFLECT_RESOURCE_DIMENSION_TEXTURE1D:
@@ -4419,9 +4462,9 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
             bcatcstr(glsl, ", (");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").x, (");
+            bcatcstr(glsl, ").x, int((");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").w");
+            bcatcstr(glsl, ").w)");
             if (psInst->bAddressOffset)
             {
                 bformata(glsl, ", %d", psInst->iUAddrOffset);
@@ -4445,9 +4488,9 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
             bcatcstr(glsl, ", (");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").xyz, (");
+            bcatcstr(glsl, ").xyz, int((");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").w");
+            bcatcstr(glsl, ").w)");
             if (psInst->bAddressOffset)
             {
                 if (psBinding->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DARRAY)
@@ -4489,9 +4532,9 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
                 TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
                 bcatcstr(glsl, ", (");
                 TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-                bcatcstr(glsl, ").xy, (");
+                bcatcstr(glsl, ").xy, int((");
                 TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-                bcatcstr(glsl, ").w");
+                bcatcstr(glsl, ").w)");
                 if (psInst->bAddressOffset)
                 {
                     if (psBinding->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE1DARRAY)
@@ -4544,9 +4587,9 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
             bcatcstr(glsl, ", (");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").xy, ");
+            bcatcstr(glsl, ").xy, int(");
             TranslateOperand(psContext, &psInst->asOperands[3], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ")");
+            bcatcstr(glsl, "))");
             TranslateOperandSwizzle(psContext, &psInst->asOperands[2]);
             TranslateOperandSwizzle(psContext, &psInst->asOperands[0]);
             EndAssignment(psContext, &psInst->asOperands[0], ui32FetchTypeToFlags, psInst->bSaturate);
@@ -4566,9 +4609,9 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
             bcatcstr(glsl, ", ivec3((");
             TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ").xyz), ");
+            bcatcstr(glsl, ").xyz), int(");
             TranslateOperand(psContext, &psInst->asOperands[3], TO_FLAG_INTEGER);
-            bcatcstr(glsl, ")");
+            bcatcstr(glsl, "))");
             TranslateOperandSwizzle(psContext, &psInst->asOperands[2]);
             TranslateOperandSwizzle(psContext, &psInst->asOperands[0]);
             EndAssignment(psContext, &psInst->asOperands[0], ui32FetchTypeToFlags, psInst->bSaturate);

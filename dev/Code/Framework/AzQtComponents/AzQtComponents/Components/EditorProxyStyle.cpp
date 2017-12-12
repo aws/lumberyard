@@ -52,6 +52,8 @@
 #include <QAbstractNativeEventFilter>
 #include <QWindow>
 #include <QApplication>
+#include <QMenu>
+#include <QPushButton>
 
 #include <assert.h>
 
@@ -138,30 +140,30 @@ namespace AzQtComponents
 #endif
 
     // done as a switch statement instead of as an array so that if a new flavor gets added, it'll assert
-    static QColor GetLineEditFlavorColor(StyledLineEdit::Flavor flavor)
+    static QColor GetLineEditFlavorColor(StyledLineEdit::Flavor flavor, bool focusOn)
     {
-        switch (flavor)
+        // Default: Plain state - Grey
+        QColor roundingColor = QColor(110, 112, 113);
+
+        if (!focusOn)
         {
-            default:
-                assert(false);
-
-            // fall through intentional
-
-            case StyledLineEdit::Plain:
-                return QColor(239, 124, 24);
-
-            case StyledLineEdit::Information:
-                return QColor(239, 124, 24);
-
-            case StyledLineEdit::Question:
-                return QColor(66, 133, 244);
-
-            case StyledLineEdit::Invalid:
-                return QColor(226, 82, 67);
-
-            case StyledLineEdit::Valid:
-                return QColor(84, 190, 93);
+            if (flavor == StyledLineEdit::Invalid)
+            {
+                roundingColor = QColor(226, 82, 67);
+            }
+            else
+            {
+                roundingColor = QColor(110, 112, 113);
+            }
         }
+
+        else if (focusOn)
+        {
+            // In focus state - Blue
+            roundingColor = QColor(66, 133, 244);
+        }
+
+        return roundingColor;
     }
 
     // done as a switch statement instead of as an array so that if a new flavor gets added, it'll assert
@@ -169,25 +171,25 @@ namespace AzQtComponents
     {
         switch (flavor)
         {
-            default:
-                assert(false);
+        default:
+            assert(false);
 
-            // fall through intentional
+        // fall through intentional
 
-            case StyledLineEdit::Plain:
-                return QLatin1String("");
+        case StyledLineEdit::Plain:
+            return QLatin1String("");
 
-            case StyledLineEdit::Information:
-                return QLatin1String(":/stylesheet/img/lineedit-information.png");
+        case StyledLineEdit::Information:
+            return QLatin1String(":/stylesheet/img/lineedit-information.png");
 
-            case StyledLineEdit::Question:
-                return QLatin1String(":/stylesheet/img/lineedit-question.png");
+        case StyledLineEdit::Question:
+            return QLatin1String(":/stylesheet/img/lineedit-question.png");
 
-            case StyledLineEdit::Invalid:
-                return QLatin1String(":/stylesheet/img/lineedit-invalid.png");
+        case StyledLineEdit::Invalid:
+            return QLatin1String(":/stylesheet/img/lineedit-invalid.png");
 
-            case StyledLineEdit::Valid:
-                return QLatin1String(":/stylesheet/img/lineedit-valid.png");
+        case StyledLineEdit::Valid:
+            return QLatin1String("");
         }
     }
 
@@ -280,8 +282,10 @@ namespace AzQtComponents
         return true;
     }
 
-    static void drawToolButtonOutline(QPainter *painter, QRect rect)
+    static void drawToolButtonOutline(QPainter* painter, QRect rect)
     {
+        Q_ASSERT(painter != nullptr);
+
         // Doing it in C so the selection frame can have a size depending on the icon size
         // which can be variable
         QPen pen(g_activeButtonBorderColor);
@@ -319,7 +323,7 @@ namespace AzQtComponents
             {
                 if (obj->isWidgetType() &&
                     (ev->type() == QEvent::Enter ||
-                    ev->type() == QEvent::Leave))
+                     ev->type() == QEvent::Leave))
                 {
                     static_cast<QWidget*>(obj)->update();
                 }
@@ -490,9 +494,9 @@ namespace AzQtComponents
         }
 
         g_titleBarOverdrawWidgets.append(widget);
-        connect(widget, &QWidget::destroyed, [widget]{
-            g_titleBarOverdrawWidgets.removeOne(widget);
-        });
+        connect(widget, &QWidget::destroyed, [widget] {
+                g_titleBarOverdrawWidgets.removeOne(widget);
+            });
 
         if (auto handle = widget->windowHandle())
         {
@@ -501,6 +505,34 @@ namespace AzQtComponents
 #else
         Q_UNUSED(widget)
 #endif
+    }
+
+    void EditorProxyStyle::UpdatePrimaryButtonStyle(QPushButton* button)
+    {
+        Q_ASSERT(button != nullptr);
+
+        auto styleSheet = QString(R"(QPushButton
+                                    {
+                                        font-family: 'Open Sans Semibold';
+                                        font-size: 14px;
+                                        text-shadow: 0 0.5px 1px;
+                                        width: 96px;
+                                        height: 28px;
+                                        padding: 1px;
+                                    }
+
+                                    QPushButton:enabled
+                                    {
+                                        color: white;
+                                    }
+
+                                    QPushButton:disabled
+                                    {
+                                        color: #999999;
+                                    }
+                                    )");
+
+        button->setStyleSheet(styleSheet);
     }
 
     void EditorProxyStyle::polishToolbar(QToolBar* tb)
@@ -553,6 +585,42 @@ namespace AzQtComponents
         else if (strcmp(widget->metaObject()->className(), "QDockWidgetGroupWindow") == 0)
         {
             addTitleBarOverdrawWidget(widget);
+        }
+        else if (QMenu* menu = qobject_cast<QMenu*>(widget))
+        {
+#ifdef Q_OS_WIN
+            if (QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS10)
+            {
+                connect(menu, &QMenu::aboutToShow, this, [this, menu] {
+                        /** HACK
+                        * When using two monitors, 2x scalling on the first one, 1x on the second one,
+                        * and using dpiawareness=0 or 1 there's a bug that can be reproduced with pure non-Qt
+                        * Win32 code (only for popups though):
+                        *
+                        * - Have your main window in monitor 1
+                        * - Drag a second window to monitor 2
+                        * - Open a popup on monitor 1 -> it won't have the scaling applied
+                        *
+                        * Somehow Windows remembers where the last Window appeared and uses the scaling
+                        * of that monitor. It's very weird and undocumented, specially since it only happens
+                        * with popups, and doesn't happen if window 2 is frameless.
+                        *
+                        * The alternative is using dpiawareness=2, which would need additional patches
+                        * for dragging windows between screens (a few corner cases).
+                        *
+                        * The workaround is to create an invisible window before showing the popup.
+                        **/
+                        QWidget* helper = new QWidget(nullptr, Qt::Tool);
+                        helper->resize(1, 1);
+                        helper->show();
+                        helper->windowHandle()->setOpacity(0);
+                        QObject::connect(menu, &QMenu::aboutToHide, helper, &QObject::deleteLater);
+                        QObject::connect(menu, &QObject::destroyed, helper, &QObject::deleteLater);
+                    }, Qt::UniqueConnection);
+            }
+#else
+            Q_UNUSED(menu);
+#endif
         }
 
         return QProxyStyle::polish(widget);
@@ -922,7 +990,7 @@ namespace AzQtComponents
         }
         else if (control == QStyle::CC_ToolButton)
         {
-            if (auto button = qobject_cast<const QToolButton *>(widget))
+            if (auto button = qobject_cast<const QToolButton*>(widget))
             {
                 if (button->isChecked() && button->menu())
                 {
@@ -946,13 +1014,14 @@ namespace AzQtComponents
             const auto flavor = fle->flavor();
             auto focusOn = fle->hasFocus();
             auto backgroundColor = focusOn ? QColor(204, 204, 204) : QColor(110, 112, 113);
-            auto roundingColor = focusOn ? GetLineEditFlavorColor(flavor) : QColor(110, 112, 113);
+
+            QColor roundingColor = GetLineEditFlavorColor(flavor, focusOn);
 
             painter->fillPath(pathRect, backgroundColor);
             painter->setPen(roundingColor);
             painter->drawPath(pathRect);
 
-            if (focusOn)
+            if (!focusOn && flavor != StyledLineEdit::Plain)
             {
                 drawLineEditIcon(painter, option->rect, flavor);
             }

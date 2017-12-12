@@ -90,7 +90,7 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool Quaternion::IsIdentity(const VectorFloat& tolerance) const
     {
-        return (fabsf(m_x) < tolerance) && (fabsf(m_y) < tolerance) && (fabsf(m_z) < tolerance) && (fabsf(m_w) > (1.0f - tolerance));
+        return (fabsf(m_x) <= tolerance) && (fabsf(m_y) <= tolerance) && (fabsf(m_z) <= tolerance) && (fabsf(m_w) >= (1.0f - tolerance));
     }
 
     AZ_MATH_FORCE_INLINE const Quaternion Quaternion::GetConjugate() const
@@ -141,7 +141,7 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool Quaternion::IsClose(const Quaternion& q, const VectorFloat& tolerance) const
     {
-        return ((fabsf(q.m_x - m_x) < tolerance) && (fabsf(q.m_y - m_y) < tolerance) && (fabsf(q.m_z - m_z) < tolerance) && (fabsf(q.m_w - m_w) < tolerance));
+        return ((fabsf(q.m_x - m_x) <= tolerance) && (fabsf(q.m_y - m_y) <= tolerance) && (fabsf(q.m_z - m_z) <= tolerance) && (fabsf(q.m_w - m_w) <= tolerance));
     }
 
     AZ_MATH_FORCE_INLINE const Quaternion Quaternion::operator-() const { return Quaternion(-m_x, -m_y, -m_z, -m_w); }

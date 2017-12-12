@@ -33,27 +33,30 @@
 #include <AzCore/Casting/numeric_cast.h>
 // !!! Do not add any headers here !!!
 
+class IOpticsManager;
+class CContentCGF;
+class I3DSampler;
+class ICrySizer;
+class CRenderView;
 struct ISystem;
 struct ICharacterInstance;
 struct CVars;
 struct pe_params_particle;
 struct IMaterial;
-class CContentCGF;
 struct SpawnParams;
 struct ForceObject;
-class I3DSampler;
-class ICrySizer;
 struct IRenderNode;
 struct CRNTmpData;
+struct IObjManager;
 struct IParticleManager;
-class IOpticsManager;
 struct IDeferredPhysicsEventManager;
 struct IBSPTree3D;
 struct ITextureLoadHandler;
 struct ITimeOfDay;
 struct ITerrain;
 struct STerrainInfo;
-class CRenderView;
+struct MacroTextureConfiguration;
+
 namespace ChunkFile
 {
     struct IChunkFileWriter;
@@ -718,11 +721,11 @@ struct IVisAreaManager
     virtual ~IVisAreaManager(){}
     // Summary:
     //   Loads data into VisAreaManager engine from memory block.
-    virtual bool SetCompiledData(uint8* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo) = 0;
+    virtual bool SetCompiledData(uint8* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo) = 0;
 
     // Summary:
     //   Saves data from VisAreaManager engine into memory block.
-    virtual bool GetCompiledData(uint8* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo = NULL) = 0;
+    virtual bool GetCompiledData(uint8* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo = NULL) = 0;
 
     // Summary:
     //   Returns VisAreaManager data memory block size.
@@ -743,7 +746,7 @@ struct IVisAreaManager
     virtual void ReleaseInactiveSegments() = 0;
     virtual bool CreateSegment(int nSID) = 0;
     virtual bool DeleteSegment(int nSID, bool bDeleteNow) = 0;
-    virtual bool StreamCompiledData(uint8* pData, int nDataSize, int nSID, std::vector<struct IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial>>* pMatTable, std::vector<struct IStatInstGroup*>* pStatInstGroupTable, const Vec2& vIndexOffset) = 0;
+    virtual bool StreamCompiledData(uint8* pData, int nDataSize, int nSID, std::vector<struct IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<struct IStatInstGroup*>* pStatInstGroupTable, const Vec2& vIndexOffset) = 0;
     virtual void OffsetPosition(const Vec3& delta) = 0;
     virtual void UpdateConnections() = 0;
     // Summary:
@@ -1174,18 +1177,18 @@ struct I3DEngine
         eStreamingSubsystem_Audio,
     };
 
-	using LoadStaticObjectAsyncResult = std::function<void(_smart_ptr<IStatObj>)>;
+    using LoadStaticObjectAsyncResult = std::function<void(_smart_ptr<IStatObj>)>;
 
-	struct StaticObjectAsyncLoadRequest
-	{
-		StaticObjectAsyncLoadRequest() = default;
+    struct StaticObjectAsyncLoadRequest
+    {
+        StaticObjectAsyncLoadRequest() = default;
 
-		LoadStaticObjectAsyncResult m_callback;
-		string m_filename;
-		string m_geomName;
-		bool m_useStreaming;
-		unsigned long m_loadingFlags;
-	};
+        LoadStaticObjectAsyncResult m_callback;
+        string m_filename;
+        string m_geomName;
+        bool m_useStreaming;
+        unsigned long m_loadingFlags;
+    };
 
     // <interfuscator:shuffle>
     // Summary:
@@ -1342,7 +1345,7 @@ struct I3DEngine
     //     defined in IMaterial.h, under the interface IMaterialManager.
     // Return Value:
     //     None
-    virtual void LoadStatObjAsync(LoadStaticObjectAsyncResult resultCallback, const char *szFileName, const char *szGeomName = nullptr, bool bUseStreaming = true, unsigned long nLoadingFlags = 0) = 0;
+    virtual void LoadStatObjAsync(LoadStaticObjectAsyncResult resultCallback, const char* szFileName, const char* szGeomName = nullptr, bool bUseStreaming = true, unsigned long nLoadingFlags = 0) = 0;
 
     // Summary:
     //     Finds a static object created from the given filename
@@ -1355,6 +1358,18 @@ struct I3DEngine
     virtual IStatObj* FindStatObjectByFilename(const char* filename) = 0;
 
     virtual void ResetCoverageBufferSignalVariables() = 0;
+
+    // Summary:
+    //     Gets gsm range
+    // Return Value:
+    //     An integer representing the gsm range.
+    virtual const float GetGSMRange() = 0;
+
+    // Summary:
+    //     Gets gsm range step
+    // Return Value:
+    //     An integer representing the gsm range step
+    virtual const float GetGSMRangeStep() = 0;
 
     // Summary:
     //     Gets the amount of loaded objects.
@@ -1627,6 +1642,9 @@ struct I3DEngine
 
     virtual void TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo) = 0;
 
+    // Attempts to import a macro texture file at filepath, and fills out the provided configuration with data from the file. Returns true if successful.
+    virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const = 0;
+
     // Summary:
     //     Gets the interpolated terrain elevation for a specified location.
     // Notes:
@@ -1812,12 +1830,6 @@ struct I3DEngine
     // Return Value:
     //   scalar value
     virtual float GetSSAOContrast() const = 0;
-
-    // Summary:
-    //   Returns terrain texture multiplier.
-    // Return Value:
-    //   Scalar value
-    virtual float GetTerrainTextureMultiplier(int nSID = 0) const = 0;
 
     // Summary:
     //   Frees entity render info.
@@ -2124,9 +2136,14 @@ struct I3DEngine
     // Description:
     //    Retrieve pointer to the material i/o interface.
     virtual IMaterialHelpers& GetMaterialHelpers() = 0;
+
     // Description:
     //    Retrieve pointer to the material manager interface.
     virtual IMaterialManager* GetMaterialManager() = 0;
+
+    // Description:
+    //    Retrieve pointer to the object manager interface.
+    virtual IObjManager* GetObjManager() = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // CGF Loader.

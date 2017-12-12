@@ -69,7 +69,7 @@ void PresetButton::UpdateIcon(bool isChecked)
     }
     else
     {
-        if (m_isHovering)
+        if (m_isHovering && isEnabled())
         {
             setIcon(m_hoverIcon);
         }

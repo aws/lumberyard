@@ -44,4 +44,22 @@ namespace LyShine
         int utf8Length = utf8String.length();
         return utf8Length;
     }
+
+    inline int GetByteLengthOfUtf8Chars(const char* utf8String, int numUtf8Chars)
+    {
+        int byteStrlen = 0;
+        Unicode::CIterator<const char*, false> pChar(utf8String);
+        for (int i = 0; i < numUtf8Chars; i++)
+        {
+            uint32_t ch = *pChar;
+            if (!ch)
+            {
+                break;
+            }
+            byteStrlen += GetMultiByteCharSize(ch);
+            pChar++;
+        }
+
+        return byteStrlen;
+    }
 }

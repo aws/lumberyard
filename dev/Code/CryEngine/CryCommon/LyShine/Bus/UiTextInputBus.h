@@ -117,17 +117,17 @@ public: // member functions
     //! Allows this text input to be configured as a password field.
     virtual void SetIsPasswordField(bool passwordField) = 0;
 
-    //! Returns the character to be used to display password fields
+    //! Returns the UTF8 character to be used to display password fields
     //
     //! Note that having a replacement character configured doesn't determine
     //! whether this input is configured as a password field (see GetIsPasswordField).
-    virtual char GetReplacementCharacter() = 0;
+    virtual uint32_t GetReplacementCharacter() = 0;
 
-    //! Sets the character that should be used for displaying text in password fields.
+    //! Sets the UTF8 character that should be used for displaying text in password fields.
     //
     //! Note that setting a replacement character doesn't determine whether this
     //! text input will be used as a password field (see GetIsPasswordField).
-    virtual void SetReplacementCharacter(char replacementChar) = 0;
+    virtual void SetReplacementCharacter(uint32_t replacementChar) = 0;
 
 public: // static member data
 

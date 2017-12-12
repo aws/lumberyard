@@ -8,13 +8,15 @@
 
     "modules" :
     [
+        "AzQtComponents",
         "AzTestRunner",
+        "SetupAssistant",
+        "SetupAssistantBatch",
         "GemRegistry",
         "Lyzard",
         "lmbr",
         "LyzardSDK",
         "LyzardHelloWorld",
-        "LyzardCloudCanvas",
         "LyzardEngines",
         "LyzardGems",
         "LyzardProjects",
@@ -30,6 +32,8 @@
         "LyMetricsProducer_static",
         "LyMetricsProducer_python",
         "LyMetricsConsumer",
-        "LyInstallerMetrics"
+        "LyInstallerMetrics",
+        "SetupAssistant",
+        "SetupAssistantBatch"
     ]
 }

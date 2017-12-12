@@ -221,10 +221,10 @@ namespace AzToolsFramework
             sqlite3_exec(m_db, "VACUUM;", NULL, NULL, NULL);
         }
 
-        int Connection::GetLastRowID()
+        AZ::s64 Connection::GetLastRowID()
         {
             AZ_Assert(m_db, "GetLastRowID:  Database is not open!");
-            return (int)sqlite3_last_insert_rowid(m_db);
+            return sqlite3_last_insert_rowid(m_db);
         }
 
         int Connection::GetNumAffectedRows()

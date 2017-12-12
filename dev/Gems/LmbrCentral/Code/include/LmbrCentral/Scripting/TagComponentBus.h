@@ -21,7 +21,6 @@ namespace LmbrCentral
 {
     using Tag = AZ::Crc32;
     using Tags = AZStd::unordered_set<Tag>;
-    using EditorTags = AZStd::vector<AZStd::string>;
 
     // Provides services for querying Tags on entities.
     class TagGlobalRequests : public AZ::EBusTraits

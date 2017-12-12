@@ -34,7 +34,7 @@ def load_darwin_common_settings(conf):
     # Set Minimum mac os version to 10.10
     v['CFLAGS'] += [ '-mmacosx-version-min=10.10', '-msse4.2' ]
     v['CXXFLAGS'] += [ '-mmacosx-version-min=10.10', '-msse4.2' ]
-    v['LINKFLAGS'] += [ '-mmacosx-version-min=10.10', '-Wl,-undefined,error']
+    v['LINKFLAGS'] += [ '-mmacosx-version-min=10.10', '-Wl,-undefined,error', '-headerpad_max_install_names']
     
     # For now, only support 64 bit MacOs Applications
     v['ARCH'] = ['x86_64']
@@ -259,7 +259,7 @@ def update_3rd_party_libs_to_use_rpath(self):
         current_configuration = self.bld.env['CONFIGURATION']
 
         # Iterate through all target output folders
-        for target_node in self.bld.get_output_folders(current_platform, current_configuration):
+        for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
 
             # Determine the final output directory the library is going to be in
             output_sub_folder = getattr(self, 'output_sub_folder', None)

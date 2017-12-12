@@ -24,8 +24,8 @@ export class UpdatePasswordAction implements UserManagementAction {
         }
 
         var authenticationData = {
-            Username: username,
-            Password: password
+            Username: username.trim(),
+            Password: password.trim()
         };
         var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
 

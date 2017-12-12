@@ -42,12 +42,13 @@ namespace AZ
                     RequestingApplication requester) override;
 
             private:
-                Events::ProcessingResult BuildDefault(Containers::Scene& scene) const;
+                Events::ProcessingResult BuildDefault(Containers::Scene& scene);
                 Events::ProcessingResult UpdateSkeletonGroups(Containers::Scene& scene) const;
 
                 bool SceneHasSkeletonGroup(const Containers::Scene& scene) const;
                 
                 static const int s_rigsPreferredTabOrder;
+                bool m_isDefaultConstructing{ false };
             };
         } // namespace Behaviors
     } // namespace SceneAPI

@@ -23,6 +23,7 @@ import re
 import string
 import random
 import contextlib
+import mock
 from distutils import dir_util
 from tempfile import mkdtemp, gettempdir
 from contextlib import contextmanager
@@ -36,9 +37,11 @@ from botocore.exceptions import ClientError
 import resource_manager.cli
 import resource_manager.constant
 import resource_manager.util
+import resource_manager.stack
 
 # resource manager test imports
 import test_constant
+import junction_safe
 
 REGION='us-east-1'
 
@@ -92,6 +95,12 @@ class lmbr_aws_TestCase(unittest.TestCase):
         super(lmbr_aws_TestCase, self).__init__(*args, **kwargs)
         self.stack_resource_descriptions = {}
         self.stack_descriptions = {}
+        resource_manager.stack.STACK_UPDATE_DELAY_TIME = 20
+
+        # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResoureManager\resource_manager\test\lmbr_aws_test_support.py
+        # we want ...\dev
+        self.__real_root_dir = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..', '..', '..'))
+
 
     def prepare_test_envionment(self, temp_file_suffix, game_name = test_constant.GAME_NAME, alternate_context_names = []):        
         root_temp_dir = gettempdir()
@@ -146,23 +155,29 @@ class lmbr_aws_TestCase(unittest.TestCase):
             with open(game_config_file_path, 'w') as f:
                 f.write('Test Place Holder\n')
 
-        game_gems_file_path = os.path.join(game_dir, 'gems.json')
-        with open(game_gems_file_path, 'w') as f:
-            json.dump(
-                {
-                    "GemListFormatVersion": 2,
-                    "Gems": [
-                        {
-                            "Path": os.path.join(self.REAL_ROOT_DIR, 'Gems', 'CloudGemFramework', 'v1'),
-                            "Uuid": "6fc787a982184217a5a553ca24676cfa",
-                            "Version": "1.0.0",
-                            "_comment": "CloudGemFramework"
-                        }
-                    ]
-                },
-                f, indent=4
-            )
+        self.__enable_real_gem(temp_dir, game_name, 'CloudCanvasCommon')
+        self.__enable_real_gem(temp_dir, game_name, 'CloudGemFramework', 'v1')
 
+        # The following are needed to run lmbr.exe, which is used to create gems with resource groups.
+        self.__copy_root_dir_file(temp_dir, 'engine.json')
+        self.__copy_root_dir_file(temp_dir, 'engineroot.txt')
+        self.__copy_root_dir_file(temp_dir, 'LyzardConfig.xml')
+        self.__make_root_dir_link(temp_dir, 'Bin64vc140.Debug.Test')
+        self.__make_file(game_dir, 'project.json', PROJECT_JSON_CONTENT)
+        self.__make_game_config_file(game_dir, 'Editor.xml', EDITOR_XML_CONTENT)
+        self.__make_game_config_file(game_dir, 'Game.xml', GAME_XML_CONTENT)
+
+        lmbr_path = os.path.join(temp_dir, 'Bin64vc140.Debug.Test', 'lmbr.exe')
+
+        sourcepath = os.path.join(self.REAL_ROOT_DIR, 'Tools', 'LmbrSetup', 'Win.vc140.Debug', 'lmbr.exe')
+        if os.path.isfile(sourcepath):
+            print 'Copying {} to {}.'.format(sourcepath, lmbr_path)
+            shutil.copyfile(sourcepath, lmbr_path)
+        else:
+            raise RuntimeError('Failed to find lmbr.exe at {}'.format(sourcepath))
+
+        # make it so lmbr_aws can call itself (used to generate client code when creating cloud gems)
+        self.__make_file(temp_dir, 'lmbr_aws.cmd', '@CALL {}\lmbr_aws.cmd %*'.format(self.REAL_ROOT_DIR))
 
         return { 
             test_constant.ATTR_GAME_NAME: game_name,
@@ -174,7 +189,47 @@ class lmbr_aws_TestCase(unittest.TestCase):
             test_constant.ATTR_LOCAL_PROJECT_SETTINGS_FILE_PATH: local_project_settings_file_path,
             test_constant.ATTR_PC_CACHE_DIR: pc_cache_dir 
         }
-            
+
+
+    def __copy_root_dir_file(self, temp_dir, file_name):
+        src_path = os.path.join(self.REAL_ROOT_DIR, file_name)
+        dst_path = os.path.join(temp_dir, file_name)
+        print 'Copying {} to {}.'.format(src_path, dst_path)
+        shutil.copyfile(src_path, dst_path)
+
+
+    def __make_root_dir_link(self, temp_dir, target_name):
+        target_path = os.path.join(self.REAL_ROOT_DIR, target_name)
+        link_path = os.path.join(temp_dir, target_name)
+        print 'Linking {} to {}.'.format(target_path, link_path)
+        junction_safe.mklink(target_path, link_path)
+
+
+    def __make_file(self, root_dir, file_name, file_content):
+        path = os.path.join(root_dir, file_name)
+        with open(path, 'w') as file:
+            file.write(file_content)
+
+
+    def __make_game_config_file(self, game_dir, file_name, file_content):
+        path = os.path.join(game_dir, 'Config')
+        if not os.path.exists(path):
+            os.makedirs(path)
+        path = os.path.join(path, file_name)
+        with open(path, 'w') as file:
+            file.write(file_content)
+
+
+    def __make_gem_link(self, temp_dir, gem_name):
+        temp_gems_dir_path = os.path.join(temp_dir, 'Gems')
+        if not os.path.exists(temp_gems_dir_path):
+            os.makedirs(temp_gems_dir_path)
+        target_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name)
+        link_path = os.path.join(temp_dir, 'Gems', gem_name)
+        print 'Linking {} to {}.'.format(target_path, link_path)
+        junction_safe.mklink(target_path, link_path)
+
+
     @contextlib.contextmanager
     def alternate_context(self, alternate_context_name):
         self.context_stack.append(self.context)
@@ -223,7 +278,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                 temp_dir = self.context[test_constant.ATTR_TEMP_DIR]
                 if os.path.isdir(temp_dir):
                     print 'Deleting temporary directory ' + temp_dir
-                    shutil.rmtree(temp_dir, onerror=_del_rw)
+                    junction_safe.rmtree(temp_dir, onerror=_del_rw)
         else:
             resource_manager.util.save_json(context_file_path, self.root_context)
             print '\nTest state saved in {}'.format(context_file_path)
@@ -274,13 +329,18 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
     @property
     def REAL_ROOT_DIR(self):
-        # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResoureManager\resource_manager\test\lmbr_aws_test_support.py
-        # we want ...\dev
-        return os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..', '..', '..'))
+        return self.__real_root_dir
 
     @property
     def TEST_PROFILE(self):
         return test_constant.TEST_PROFILE
+
+    @property
+    def CURRENT_FRAMEWORK_VERSION(self):
+        framework_gem_file_path = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', 'gem.json'))
+        with open(framework_gem_file_path, 'r') as file:
+            framework_gem = json.load(file)
+        return resource_manager.util.Version(framework_gem['Version'])
 
     def run(self, result=None):
         self.currentResult = result # remember result for use in tearDown
@@ -323,43 +383,52 @@ class lmbr_aws_TestCase(unittest.TestCase):
             print('\n\n**** Skipping test \'{}\' ***********************************************************************\n\n'.format(func_name))
 
 
-    def add_to_gems_file(self, gem_name, gem_version_directory_name = None, gem_path = None):
+    def __add_to_gems_file(self, temp_dir, game_name, relative_gem_path):
 
-        gems_json_path = os.path.join(self.GAME_DIR, 'gems.json')
+        gems_json_path = os.path.join(temp_dir, game_name, 'gems.json')
 
         if os.path.exists(gems_json_path):
             with open(gems_json_path, 'r') as f:
                 gems_file_object = json.load(f)
         else:
-            gems_file_object = {}
+            gems_file_object = {
+                "GemListFormatVersion": 2
+            }
 
         gems_list = gems_file_object.setdefault('Gems', [])
 
-        if not gem_path:
-            if gem_version_directory_name:
-                gem_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name, gem_version_directory_name)
-            else:
-                gem_path = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name)
-
         found = False
         for gem_object in gems_list:
-            if gem_object.get('Path') == gem_path:
+            if gem_object.get('Path') == relative_gem_path:
                 found = True
                 break
 
         if not found:
-            gems_object = {}
-            gems_object['Path'] = gem_path
-            gems_list.append(gems_object)
+            dependency_object = self.__get_gem_dependency_object(temp_dir, relative_gem_path)
+            gems_list.append(dependency_object)
 
         print 'Saving gem file at ' + gems_json_path
 
         with open(gems_json_path, 'w+') as f:
             json.dump(gems_file_object, f)
 
-        return gem_path
 
-    def remove_from_gems_file(self, gem_name, gem_path = None, gem_version_directory_name = None):
+    def __get_gem_dependency_object(self, temp_dir, relative_gem_path):
+
+        path = os.path.join(temp_dir, relative_gem_path.replace('/', os.sep), 'gem.json')
+
+        with open(path) as file:
+            content = json.load(file)
+
+        return {
+            "Path": relative_gem_path,
+            "Uuid": content['Uuid'],
+            "Version": content['Version'],
+            "_comment": content['Name']
+        }
+
+
+    def __remove_from_gems_file(self, gem_name, gem_path = None, gem_version_directory_name = None):
 
         gems_json_path = os.path.join(self.GAME_DIR, 'gems.json')
 
@@ -399,49 +468,26 @@ class lmbr_aws_TestCase(unittest.TestCase):
             os.mkdir(dest_path)
         shutil.copyfile(src_file_path, dst_file_path)
             
-    def copy_gems_folder(self, gem_name):
-        src_gem_dir = os.path.join(self.REAL_ROOT_DIR, 'Gems', gem_name)
-        if not os.path.exists(src_gem_dir):
-            raise RuntimeError('Source gem directory does not exist: {}'.format(src_gem_dir))
-        else:
-            dst_gems_dir = os.path.join(self.ROOT_DIR, 'Gems')
-            if not os.path.exists(dst_gems_dir):
-                print 'Creating directory:', dst_gems_dir
-                os.mkdir(dst_gems_dir)
-            dst_gem_dir = os.path.join(dst_gems_dir, gem_name)
-            if os.path.exists(dst_gem_dir):
-                print 'Removing old gem copy at ' + dst_gem_dir
-                shutil.rmtree(dst_gem_dir, onerror=_del_rw)
-            print 'Copying ' + src_gem_dir + ' to ' + dst_gem_dir
-            # Ignore files created when running tests from inside Visual Studio 
-            # using Python Tools for Visual Studio. Visual Studio keeps these 
-            # files opened and that prevents them from being copied. We don't 
-            # need these files so we ignore them.
-            ignore_callable = shutil.ignore_patterns('*.mdf', '*.ldf', '*.opendb')
-            shutil.copytree(src_gem_dir,dst_gem_dir, ignore=ignore_callable)
-            return dst_gem_dir
 
-    def create_test_gem(self, gem_name):
-        '''Creates a {root}\Gems\{gem} directory that contains a gem.json file and adds the gem to the project's gems.json file.'''
+    def enable_real_gem(self, gem_name, version_subdirectory = None):
+        self.__enable_real_gem(self.ROOT_DIR, self.GAME_NAME, gem_name, version_subdirectory)
 
-        gem_dir_path = os.path.join(self.ROOT_DIR, resource_manager.constant.PROJECT_GEMS_DIRECTORY_NAME, gem_name)        
-        if not os.path.isdir(gem_dir_path):
-            os.makedirs(gem_dir_path)
+
+    def __enable_real_gem(self, temp_dir, game_name, gem_name, version_subdirectory = None):
+        self.__make_gem_link(temp_dir, gem_name)
+        self.__add_to_gems_file(temp_dir, game_name, self.__get_relative_gem_path(gem_name, version_subdirectory))
         
-        gem_dir_aws_path = os.path.join(gem_dir_path, resource_manager.constant.GEM_AWS_DIRECTORY_NAME)        
-        if not os.path.isdir(gem_dir_aws_path):
-            os.makedirs(gem_dir_aws_path)
-        
-        gem_file_path = os.path.join(gem_dir_path, resource_manager.constant.GEM_DEFINITION_FILENAME)
-        resource_manager.util.save_json(gem_file_path, { "Name": gem_name, "Uuid": "BB344EBA6ADF4526A55054B3F8C657EB" })
 
-        self.add_to_gems_file(gem_name, gem_path = gem_dir_path)
+    def disable_real_gem(self, gem_name, version_subdirectory = None):
+        self.__remove_from_gems_file(self.__get_relative_gem_path(gem_name, version_subdirectory))
 
-        return gem_dir_path
 
-    def remove_test_gem(self, gem_name):
-        gem_dir_path = os.path.join(self.ROOT_DIR, resource_manager.constant.PROJECT_GEMS_DIRECTORY_NAME, gem_name)        
-        self.remove_from_gems_file(gem_name, gem_path = gem_dir_path)
+    def __get_relative_gem_path(self, gem_name, version_subdirectory):
+        relative_gem_path = 'Gems/' + gem_name
+        if version_subdirectory:
+            relative_gem_path += '/' + version_subdirectory
+        return relative_gem_path
+
 
     def find_arg(self, args, arg_name, default):
         next = False
@@ -559,35 +605,21 @@ class lmbr_aws_TestCase(unittest.TestCase):
         return resource['PhysicalResourceId'] if resource else {}
 
     def get_stack_resource_arn(self, stack_arn, logical_resource_id):
-        resource = self.get_stack_resource(stack_arn, logical_resource_id)
-        if resource['ResourceType'] == 'AWS::CloudFormation::Stack':
-            return resource['PhysicalResourceId']
-        else:
-            return self.make_resource_arn(stack_arn, resource['ResourceType'], resource['PhysicalResourceId'])
+        resource_description = self.get_stack_resource(stack_arn, logical_resource_id)
+        return self.get_stack_resource_description_arn(resource_description)
 
-    RESOURCE_ARN_PATTERNS = {
-        'AWS::DynamoDB::Table': 'arn:aws:dynamodb:{region}:{account_id}:table/{resource_name}',
-        'AWS::Lambda::Function': 'arn:aws:lambda:{region}:{account_id}:function:{resource_name}',
-        'AWS::SQS::Queue': 'arn:aws:sqs:{region}:{account_id}:{resource_name}',
-        'AWS::SNS::Topic': 'arn:aws:sns:{region}:{account_id}:{resource_name}',
-        'AWS::S3::Bucket': 'arn:aws:s3:::{resource_name}',
-        'AWS::IAM::ManagedPolicy': '{resource_name}'
-    }
-
-    def make_resource_arn(self, stack_arn, resource_type, resource_name):
-        if resource_type == 'AWS::IAM::Role':
-            res = self.aws_iam.get_role(RoleName=resource_name)
+    def get_stack_resource_description_arn(self, resource_description):
+        resource_type = resource_description['ResourceType']
+        if resource_type in ['AWS::CloudFormation::Stack', 'AWS::IAM::ManagedPolicy']:
+            return resource_description['PhysicalResourceId']
+        elif resource_type == 'AWS::IAM::Role':
+            res = self.aws_iam.get_role(RoleName=resource_description['PhysicalResourceId'])
             return res['Role']['Arn']
         else:
-
-            pattern = self.RESOURCE_ARN_PATTERNS.get(resource_type, None)
-            if pattern is None:
-                raise RuntimeError('Unsupported resource type {} for resource {}.'.format(resource_type, resource_name))
-
-            return pattern.format(
-                region=self.get_region_from_arn(stack_arn),
-                account_id=self.get_account_id_from_arn(stack_arn),
-                resource_name=resource_name)
+            return resource_manager.util.get_resource_arn(
+                resource_description['StackId'], 
+                resource_description['ResourceType'], 
+                resource_description['PhysicalResourceId'])
 
     def get_stack_name_from_arn(self, arn):
         # Stack ARN format: arn:aws:cloudformation:{region}:{account}:stack/{name}/{guid}
@@ -705,10 +737,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                     permission_resource_name = permission_resource[1:-1]
                     for stack_resource in stack_resources:
                         if stack_resource['LogicalResourceId'] == permission_resource_name:
-                            permission_resources[permission_resource_index] = self.make_resource_arn(
-                                stack_resource['StackId'],
-                                stack_resource['ResourceType'],
-                                stack_resource['PhysicalResourceId'])
+                            permission_resources[permission_resource_index] = self.get_stack_resource_description_arn(stack_resource)
 
     def verify_child_stack(self, context, stack_resource, expected_resource):
         context += ' child stack ' + stack_resource['LogicalResourceId']
@@ -873,8 +902,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
         mappings = user_settings.get('Mappings', {})
         self.__verify_mappings(mappings, deployment_name, logical_ids, expected_physical_resource_ids = expected_physical_resource_ids)
 
-    def verify_release_mappings(self, deployment_name, logical_ids, expected_physical_resource_ids = {}):
-        release_mappings_file_name = deployment_name + '.awsLogicalMappings.json'
+    def verify_release_mappings(self, deployment_name, logical_ids, role, expected_physical_resource_ids = {}):        
+        release_mappings_file_name = deployment_name + '.' + role.lower() + '.awsLogicalMappings.json'
         release_mappings_file_path = os.path.join(self.GAME_DIR, 'Config', release_mappings_file_name)
         print 'Verifing mappings in {}'.format(release_mappings_file_path)
         self.assertTrue(os.path.exists(release_mappings_file_path))
@@ -905,10 +934,15 @@ class lmbr_aws_TestCase(unittest.TestCase):
             # the physical resource id as provided by cloud formation. This might get
             # cleaned up a little when we add a mapping hook for cloud gems. 
 
-            expected_physical_resoruce_id = expected_physical_resource_ids.get(logical_id, resource.get('PhysicalResourceId'))
+            if resource['ResourceType'] == 'Custom::ServiceApi':
+                expected_physical_resource_id = expected_physical_resource_ids.get(logical_id, None)
+                if not expected_physical_resource_id:
+                    expected_physical_resource_id = self.get_stack_output(resource['StackId'], 'ServiceUrl')
+            else:
+                expected_physical_resource_id = expected_physical_resource_ids.get(logical_id, resource.get('PhysicalResourceId'))
 
-            self.assertEquals(mapping['PhysicalResourceId'], expected_physical_resoruce_id, "for mapping " + logical_id)
-            self.assertEquals(mapping['ResourceType'], resource['ResourceType'], "for mapping " + logical_id)                             
+            self.assertEquals(mapping['PhysicalResourceId'], expected_physical_resource_id, mapping['PhysicalResourceId'] + " != " + expected_physical_resource_id + " for mapping " + logical_id)
+            self.assertEquals(mapping['ResourceType'], resource['ResourceType'],  mapping['ResourceType'] + " != " + resource['ResourceType'] + "for mapping " + logical_id)                             
 
         self.assertIn('account_id', mappings)
         self.assertEquals(mappings['account_id']['ResourceType'], 'Configuration', 'for mapping account_id')
@@ -935,12 +969,24 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         for logical_id in mappings.keys():
             if logical_id not in ['account_id', 'region', 'PlayerAccessIdentityPool', 'PlayerLoginIdentityPool', 'PlayerAccessTokenExchange']:
-                self.assertIn(logical_id, logical_ids, 'unexpected mapping')
+                self.assertIn(logical_id, logical_ids, 'unexpected mapping: ' + logical_id)
 
+    def get_gem_path(self, gem_name, *args):
+        # a more robust solution would open the gem.json and compare against name in that....
+        for gem in self.read_project_json('gems.json').get('Gems', []):
+            if gem.get('_comment') == gem_name:
+                return os.path.join(self.ROOT_DIR, gem.get('Path', '').replace('/', os.sep), *args)
+        raise RuntimeError('Could not get path for gem {} because it is not enabled for the project.'.format(gem_name))
 
-    def get_resource_group_file_path(self, resource_group_name, *path_parts):
-        return os.path.join(self.AWS_DIR, 'resource-group', resource_group_name, *path_parts)
-    
+    def get_gem_aws_path(self, gem_name, *args):
+        return self.get_gem_path(gem_name, 'AWS', *args)
+
+    def get_project_path(self, *args):
+        return os.path.join(self.GAME_DIR, *args)
+
+    def get_project_aws_path(self, *args):
+        return self.get_project_path('AWS', *args)
+
     @classmethod
     def isrunnable(self, methodname, dict):        
         if methodname in dict and dict[methodname] == 1:
@@ -1093,11 +1139,31 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         del self.context[test_constant.ATTR_USERS][user_name]
 
-    def edit_project_aws_document(self, *path_parts):
-        return self.EditableJsonDocument(os.path.join(self.AWS_DIR, *path_parts))
+    def read_project_json(self, *path_parts):
+        with open(self.get_project_path(*path_parts)) as file:
+            return json.load(file)
 
-    def edit_resource_group_document(self, resource_group_name, *path_parts):
-        return self.EditableJsonDocument(self.get_resource_group_file_path(resource_group_name, *path_parts))
+    def read_project_aws_json(self, *path_parts):
+        return self.read_project_json('AWS', *path_parts)
+
+    def read_gem_json(self, gem_name, *path_parts):
+        with open(self.get_gem_path(*path_parts)) as file:
+            return json.load(file)
+
+    def read_gem_aws_json(self, gem_name, *path_parts):
+        return self.read_gem_json('AWS', *path_parts)
+
+    def edit_project_aws_json(self, *path_parts):
+        return self.EditableJsonDocument(self.get_project_aws_path(*path_parts))
+
+    def edit_gem_aws_json(self, gem_name, *path_parts):
+        return self.EditableJsonDocument(self.get_gem_aws_path(gem_name, *path_parts))
+
+    def edit_project_json(self, *path_parts):
+        return self.EditableJsonDocument(self.get_project_path(*path_parts))
+
+    def edit_gem_json(self, gem_name, *path_parts):
+        return self.EditableJsonDocument(self.get_gem_path(gem_name, *path_parts))
 
     class EditableJsonDocument():
         def __init__(self, document_path):
@@ -1113,3 +1179,70 @@ class lmbr_aws_TestCase(unittest.TestCase):
                 with open(self.__document_path, 'w') as f:
                     json.dump(self.__document, f, indent=2, sort_keys=True)
             return False
+
+    @contextlib.contextmanager
+    def spy_decorator(self, method_to_decorate):
+        '''Provides a MagicMock that will record calls to a specified method while still executing the origional method.'''
+
+        def get_class_that_defined_method(method):
+            method_name = method.__name__
+            if method.__self__:    
+                classes = [method.__self__.__class__]
+            else:
+                classes = [method.im_class]
+            while classes:
+                c = classes.pop()
+                if method_name in c.__dict__:
+                    return c
+                else:
+                    classes = list(c.__bases__) + classes
+            return None
+
+        _mock = mock.MagicMock()
+        def wrapper(self, *args, **kwargs):
+            _mock(*args, **kwargs)
+            return method_to_decorate(self, *args, **kwargs)
+        wrapper.mock = _mock
+        with mock.patch.object(get_class_that_defined_method(method_to_decorate), method_to_decorate.__name__, new = wrapper):
+            yield _mock
+
+
+PROJECT_JSON_CONTENT = '''{
+    "project_name": "TestGame",
+    "product_name": "Empty Template",
+    "executable_name": "TestGameLauncher",
+    "modules" : [],
+    "project_id": "{8C48136E-A807-42E1-828E-FC15EB6A4D4D}",
+
+    "android_settings" : {
+        "package_name" : "com.lumberyard.empty",
+        "version_number" : 1,
+        "version_name" : "1.0.0.0",
+        "orientation" : "landscape"
+    },
+
+}
+'''
+
+EDITOR_XML_CONTENT = '''<ObjectStream version="1">
+	<Class name="ComponentApplication::Descriptor" type="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}" version="2" specializationTypeId="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}">
+		<Class name="AZStd::vector" field="modules" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{8E779F80-AEAA-565B-ABB1-DE10B18CF995}">
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.FooTest.c039306c475d4ed6b0cefc67b23eb9c7.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+		</Class>
+	</Class>
+</ObjectStream>
+'''
+
+GAME_XML_CONTENT = '''<ObjectStream version="1">
+	<Class name="ComponentApplication::Descriptor" type="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}" version="2" specializationTypeId="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}">
+		<Class name="AZStd::vector" field="modules" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}" specializationTypeId="{8E779F80-AEAA-565B-ABB1-DE10B18CF995}">
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.FooTest.c039306c475d4ed6b0cefc67b23eb9c7.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+		</Class>
+	</Class>
+</ObjectStream>
+'''
+

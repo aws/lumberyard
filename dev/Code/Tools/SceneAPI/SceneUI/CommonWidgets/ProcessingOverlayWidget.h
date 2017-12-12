@@ -12,19 +12,36 @@
 *
 */
 
+
+#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzToolsFramework/Debug/TraceContextMultiStackHandler.h>
+#include <AzQtComponents/Components/StyledDetailsTableModel.h>
 #include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
-#include <SceneAPI/SceneUI/CommonWidgets/ReportCard.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
-#include <QSharedPointer>
 #include <QScopedPointer>
 
 class QCloseEvent;
 class QLabel;
+class QTimer;
+
+namespace AzQtComponents
+{
+    class StyledBusyLabel;
+    class StyledDetailsTableView;
+}
+
+namespace AzToolsFramework
+{
+    namespace Logging
+    {
+        class LogEntry;
+    }
+}
 
 namespace AZ
 {
@@ -32,7 +49,6 @@ namespace AZ
     {
         namespace UI
         {
-            class ReportWidget;
             class OverlayWidget;
         }
 
@@ -45,18 +61,32 @@ namespace AZ
             }
 
             class ProcessingHandler;
-            class SCENE_UI_API ProcessingOverlayWidget : public QWidget
+            class SCENE_UI_API ProcessingOverlayWidget 
+                : public QWidget
+                , public Debug::TraceMessageBus::Handler
             {
                 Q_OBJECT
             public:
-                AZ_CLASS_ALLOCATOR(ProcessingOverlayWidget, SystemAllocator, 0)
+                AZ_CLASS_ALLOCATOR(ProcessingOverlayWidget, SystemAllocator, 0);
 
-                ProcessingOverlayWidget(UI::OverlayWidget* overlay, const AZStd::shared_ptr<ProcessingHandler>& handler);
+                //! Layout configurations for the various stages the Scene Settings can be in.
+                enum class Layout
+                {
+                    Loading,
+                    Resetting,
+                    Exporting
+                };
+
+                ProcessingOverlayWidget(UI::OverlayWidget* overlay, Layout layout, Uuid traceTag, const AZStd::shared_ptr<ProcessingHandler>& handler);
                 ~ProcessingOverlayWidget() override;
+
+                bool OnPrintf(const char* window, const char* message) override;
+                bool OnError(const char* window, const char* message) override;
+                bool OnWarning(const char* window, const char* message) override;
+                bool OnAssert(const char* message) override;
 
                 int PushToOverlay();
 
-                QSharedPointer<UI::ReportWidget> GetReportWidget() const;
                 AZStd::shared_ptr<ProcessingHandler> GetProcessingHandler() const;
 
                 bool GetAutoCloseOnSuccess() const;
@@ -70,35 +100,38 @@ namespace AZ
                 void Closing();
 
             public slots:
-                void AddInfo(const AZStd::string& infoMessage);
-                void AddWarning(const AZStd::string& warningMessage);
-                void AddError(const AZStd::string& errorMessage);
-                void AddAssert(const AZStd::string& assertMessage);
                 void AddLogEntry(const AzToolsFramework::Logging::LogEntry& entry);
 
                 void OnLayerRemoved(int layerId);
 
-                void OnUserMessageUpdated(const AZStd::string& userMessage);
-                void OnSubtextUpdated(const AZStd::string& subtext);
+                void OnSetStatusMessage(const AZStd::string& message);
                 void OnProcessingComplete();
 
+                void UpdateColumnSizes();
+
             private:
-                void AddCard(const AZStd::string& message, UI::ReportCard::Type type);
                 void SetUIToCompleteState();
 
                 bool CanClose() const;
+                bool ShouldProcessMessage() const;
+                void CopyTraceContext(AzQtComponents::StyledDetailsTableModel::TableEntry& entry) const;
 
+                AzToolsFramework::Debug::TraceContextMultiStackHandler m_traceStackHandler;
+                Uuid m_traceTag;
                 QScopedPointer<Ui::ProcessingOverlayWidget> ui;
-                QSharedPointer<UI::ReportWidget> m_reportWidget;
                 AZStd::shared_ptr<ProcessingHandler> m_targetHandler;
                 UI::OverlayWidget* m_overlay;
+                AzQtComponents::StyledBusyLabel* m_busyLabel;
+                AzQtComponents::StyledDetailsTableView* m_reportView;
+                AzQtComponents::StyledDetailsTableModel* m_reportModel;
                 QLabel* m_progressLabel;
                 int m_layerId;
+                QTimer* m_resizeTimer;
                 
                 bool m_isProcessingComplete;
                 bool m_isClosingBlocked;
                 bool m_autoCloseOnSuccess;
-                bool m_encounteredAnyErrors;
+                bool m_encounteredIssues;
             };
         }
     }

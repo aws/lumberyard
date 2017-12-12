@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -18,20 +17,21 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
-#include <SceneAPI/SceneData/EMotionFX/Rules/MetaDataRule.h>
-#include <SceneAPI/SceneData/Groups/ActorGroup.h>
 
-namespace AZ
+#include <SceneAPIExt/Groups/ActorGroup.h>
+#include <SceneAPIExt/Rules/MetaDataRule.h>
+#include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
+
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Group
         {
-            AZ_CLASS_ALLOCATOR_IMPL(ActorGroup, SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(ActorGroup, AZ::SystemAllocator, 0)
 
             ActorGroup::ActorGroup()
-                : m_loadMorphTargets(false)
-                , m_autoCreateTrajectoryNode(true)
+                : m_id(AZ::Uuid::CreateRandom())
             {
             }
 
@@ -50,22 +50,32 @@ namespace AZ
                 m_name = AZStd::move(name);
             }
 
-            Containers::RuleContainer& ActorGroup::GetRuleContainer()
+            const AZ::Uuid& ActorGroup::GetId() const
+            {
+                return m_id;
+            }
+
+            void ActorGroup::OverrideId(const AZ::Uuid& id)
+            {
+                m_id = id;
+            }
+
+            AZ::SceneAPI::Containers::RuleContainer& ActorGroup::GetRuleContainer()
             {
                 return m_rules;
             }
 
-            const Containers::RuleContainer& ActorGroup::GetRuleContainerConst() const
+            const AZ::SceneAPI::Containers::RuleContainer& ActorGroup::GetRuleContainerConst() const
             {
                 return m_rules;
             }
             
-            DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList()
+            AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList()
             {
                 return m_nodeSelectionList;
             }
 
-            const DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList() const
+            const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList() const
             {
                 return m_nodeSelectionList;
             }
@@ -75,70 +85,81 @@ namespace AZ
                 return m_selectedRootBone;
             }
 
-            bool ActorGroup::GetLoadMorphTargets() const
-            {
-                return m_loadMorphTargets;
-            }
-
-            bool ActorGroup::GetAutoCreateTrajectoryNode() const
-            {
-                return m_autoCreateTrajectoryNode;
-            }
-
             void ActorGroup::SetSelectedRootBone(const AZStd::string & selectedRootBone)
             {
                 m_selectedRootBone = selectedRootBone;
             }
 
-            void ActorGroup::SetLoadMorphTargets(bool loadMorphTargets)
+            void ActorGroup::Reflect(AZ::ReflectContext* context)
             {
-                m_loadMorphTargets = loadMorphTargets;
-            }
-
-            void ActorGroup::SetAutoCreateTrajectoryNode(bool autoCreateTrajectoryNode)
-            {
-                m_autoCreateTrajectoryNode = autoCreateTrajectoryNode;
-            }
-
-            void ActorGroup::Reflect(ReflectContext* context)
-            {
-                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(ActorGroup::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (!serializeContext)
                 {
+                    // Check if the context is serialized and has actorGroup class data. 
                     return;
                 }
 
-                serializeContext->Class<ActorGroup, DataTypes::IActorGroup>()->Version(1)
+                serializeContext->Class<IActorGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(2, SceneNodeVersionConverter);
+
+                serializeContext->Class<ActorGroup, IActorGroup>()->Version(2, ActorVersionConverter)
                     ->Field("name", &ActorGroup::m_name)
                     ->Field("selectedRootBone", &ActorGroup::m_selectedRootBone)
                     ->Field("nodeSelectionList", &ActorGroup::m_nodeSelectionList)
-                    ->Field("loadMorphTargets", &ActorGroup::m_loadMorphTargets)
-                    ->Field("autoCreateTrajectoryNode", &ActorGroup::m_autoCreateTrajectoryNode)
+                    ->Field("id", &ActorGroup::m_id)
                     ->Field("rules", &ActorGroup::m_rules);
 
-                EditContext* editContext = serializeContext->GetEditContext();
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
                     editContext->Class<ActorGroup>("Actor group", "Configure actor data exporting.")
-                        ->ClassElement(Edit::ClassElements::EditorData, "")
-                            ->Attribute("AutoExpand", true)
-                            ->Attribute(Edit::Attributes::NameLabelOverride, "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute("AutoExpand", true)
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
                         ->DataElement(AZ_CRC("ManifestName", 0x5215b349), &ActorGroup::m_name, "Name actor",
                             "Name for the group. This name will also be used as the name for the generated file.")
-                            ->Attribute("FilterType", DataTypes::IActorGroup::TYPEINFO_Uuid())
+                        ->Attribute("FilterType", IActorGroup::TYPEINFO_Uuid())
                         ->DataElement("NodeListSelection", &ActorGroup::m_selectedRootBone, "Select root bone", "The root bone of the animation that will be exported.")
-                            ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IBoneData::TYPEINFO_Uuid())
-                        ->DataElement(Edit::UIHandlers::Default, &ActorGroup::m_nodeSelectionList, "Select meshes", "Select the meshes to be included in the actor.")
-                            ->Attribute("FilterName", "meshes")
-                            ->Attribute("FilterType", DataTypes::IMeshData::TYPEINFO_Uuid())
-                        ->DataElement(Edit::UIHandlers::Default, &ActorGroup::m_loadMorphTargets, "Load morph targets", "")
-                        ->DataElement(Edit::UIHandlers::Default, &ActorGroup::m_autoCreateTrajectoryNode, "Auto create trajectory node", "")
-                        ->DataElement(Edit::UIHandlers::Default, &ActorGroup::m_rules, "", "Add or remove rules to fine-tune the export process.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
+                        ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IBoneData::TYPEINFO_Uuid())
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ActorGroup::m_nodeSelectionList, "Select meshes", "Select the meshes to be included in the actor.")
+                        ->Attribute("FilterName", "meshes")
+                        ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid())
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ActorGroup::m_rules, "", "Add or remove rules to fine-tune the export process.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
                 }
             }
 
+            bool ActorGroup::SceneNodeVersionConverter(AZ::SerializeContext & context, AZ::SerializeContext::DataElementNode & classElement)
+            {
+                const unsigned int version = classElement.GetVersion();
+                bool result = true;
+
+                if (version < 2)
+                {
+                    // In version 1 IActorGroup is directly inherit from IGroup, we need to add ISceneNodeGroup inheritance in between. 
+                    AZ::SerializeContext::DataElementNode iGroupNode = classElement.GetSubElement(0);
+                    classElement.RemoveElement(0);
+                    result = result && classElement.AddElement<AZ::SceneAPI::DataTypes::ISceneNodeGroup>(context, "BaseClass1");
+                    AZ::SerializeContext::DataElementNode& iSceneNodeGroupNode = classElement.GetSubElement(0);
+                    result = result && iSceneNodeGroupNode.AddElement(iGroupNode);
+                }
+
+                return result;
+            }
+
+            bool ActorGroup::ActorVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+            {
+                const unsigned int version = classElement.GetVersion();
+
+                bool result = true;
+                // Added a uuid "id" as the unique identifier to replace the file name.
+                // Setting it to null by default and expecting a behavior to patch this when additional information is available.
+                if (version < 2)
+                {
+                    result = result && classElement.AddElementWithData<AZ::Uuid>(context, "id", AZ::Uuid::CreateNull()) != -1;
+                }
+
+                return result;
+            }
         }
     }
 }
-#endif //MOTIONCANVAS_GEM_ENABLED

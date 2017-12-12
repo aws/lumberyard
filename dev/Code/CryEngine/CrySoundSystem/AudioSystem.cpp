@@ -599,7 +599,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::ProcessRequestThreadSafe(CAudioRequestInternal& request)
+    void CAudioSystem::ProcessRequestThreadSafe(CAudioRequestInternal request)
     {
         // Audio Thread!
         FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
@@ -623,7 +623,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::ProcessRequestByPriority(CAudioRequestInternal& request)
+    void CAudioSystem::ProcessRequestByPriority(CAudioRequestInternal request)
     {
         // Todo: This should handle request priority, use request priority as bus Address and process in priority order.
 

@@ -9,93 +9,92 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneData/Rules/EFXMotionCompressionSettingsRule.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <SceneAPIExt/Rules/MotionCompressionSettingsRule.h>
 
-
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
+            AZ_CLASS_ALLOCATOR_IMPL(MotionCompressionSettingsRule, AZ::SystemAllocator, 0)
 
-            AZ_CLASS_ALLOCATOR_IMPL(EFXMotionCompressionSettingsRule, SystemAllocator, 0)
-
-            EFXMotionCompressionSettingsRule::EFXMotionCompressionSettingsRule()
+            MotionCompressionSettingsRule::MotionCompressionSettingsRule()
                 : m_maxTranslationError(0.000025f)
                 , m_maxRotationError(0.000025f)
                 , m_maxScaleError(0.0001f)
             {
             }
 
-            void EFXMotionCompressionSettingsRule::SetMaxTranslationError(float value)
+            void MotionCompressionSettingsRule::SetMaxTranslationError(float value)
             {
                 m_maxTranslationError = value;
             }
 
-            void EFXMotionCompressionSettingsRule::SetMaxRotationError(float value)
+            void MotionCompressionSettingsRule::SetMaxRotationError(float value)
             {
                 m_maxRotationError = value;
             }
 
-            void EFXMotionCompressionSettingsRule::SetMaxScaleError(float value)
+            void MotionCompressionSettingsRule::SetMaxScaleError(float value)
             {
                 m_maxScaleError = value;
             }
 
-            float EFXMotionCompressionSettingsRule::GetMaxTranslationError() const
+            float MotionCompressionSettingsRule::GetMaxTranslationError() const
             {
                 return m_maxTranslationError;
             }
             
-            float EFXMotionCompressionSettingsRule::GetMaxRotationError() const
+            float MotionCompressionSettingsRule::GetMaxRotationError() const
             {
                 return m_maxRotationError;
             }
             
-            float EFXMotionCompressionSettingsRule::GetMaxScaleError() const
+            float MotionCompressionSettingsRule::GetMaxScaleError() const
             {
                 return m_maxScaleError;
             }
 
-            void EFXMotionCompressionSettingsRule::Reflect(ReflectContext* context)
+            void MotionCompressionSettingsRule::Reflect(AZ::ReflectContext* context)
             {
-                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
-                if (!serializeContext || serializeContext->FindClassData(EFXMotionCompressionSettingsRule::TYPEINFO_Uuid()))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (!serializeContext)
                 {
                     return;
                 }
                 
-                serializeContext->Class<EFXMotionCompressionSettingsRule, DataTypes::IEFXMotionCompressionSettingsRule>()->Version(1)
-                    ->Field("maxTranslationError", &EFXMotionCompressionSettingsRule::m_maxTranslationError)
-                    ->Field("maxRotationError", &EFXMotionCompressionSettingsRule::m_maxRotationError);
-                // hide the max scale tolerance in UI as the engine does not support it yet.
-                //    ->Field("maxScaleError", &EFXMotionCompressionSettingsRule::m_maxScaleError);
+                serializeContext->Class<IMotionCompressionSettingsRule, AZ::SceneAPI::DataTypes::IRule>()->Version(1);
 
-                EditContext* editContext = serializeContext->GetEditContext();
+                serializeContext->Class<MotionCompressionSettingsRule, IMotionCompressionSettingsRule>()->Version(1)
+                    ->Field("maxTranslationError", &MotionCompressionSettingsRule::m_maxTranslationError)
+                    ->Field("maxRotationError", &MotionCompressionSettingsRule::m_maxRotationError);
+                // hide the max scale tolerance in UI as the engine does not support it yet.
+                //    ->Field("maxScaleError", &MotionCompressionSettingsRule::m_maxScaleError);
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<EFXMotionCompressionSettingsRule>("Compression settings", "Error tolerance settings while compressing")
-                        ->ClassElement(Edit::ClassElements::EditorData, "")
-                        ->Attribute(Edit::Attributes::AutoExpand, true)
-                        ->DataElement(Edit::UIHandlers::Slider, &EFXMotionCompressionSettingsRule::m_maxTranslationError, "Max translation error tolerance", "Maximum error allowed in translation")
-                        ->Attribute(Edit::Attributes::Min, 0.0f)
-                        ->Attribute(Edit::Attributes::Max, 0.1f)
-                        ->Attribute(Edit::Attributes::Step, 0.000001f)
-                        ->Attribute(Edit::Attributes::Decimals, 6)
-                        ->DataElement(Edit::UIHandlers::Slider, &EFXMotionCompressionSettingsRule::m_maxRotationError, "Max rotation error tolerance", "Maximum error allowed in rotation")
-                        ->Attribute(Edit::Attributes::Min, 0.0f)
-                        ->Attribute(Edit::Attributes::Max, 0.025f)
-                        ->Attribute(Edit::Attributes::Step, 0.000001f)
-                        ->Attribute(Edit::Attributes::Decimals, 6);
+                    editContext->Class<MotionCompressionSettingsRule>("Compression settings", "Error tolerance settings while compressing")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &MotionCompressionSettingsRule::m_maxTranslationError, "Max translation error tolerance", "Maximum error allowed in translation")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 0.1f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.000001f)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 6)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &MotionCompressionSettingsRule::m_maxRotationError, "Max rotation error tolerance", "Maximum error allowed in rotation")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 0.025f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.000001f)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 6);
                         // hide the max scale tolerance in UI as the engine does not support it yet.
-                        // ->DataElement(Edit::UIHandlers::Slider, &EFXMotionCompressionSettingsRule::m_maxScaleError, "Max Scale Error", "Maximum error allowed in scale")
+                        // ->DataElement(Edit::UIHandlers::Slider, &MotionCompressionSettingsRule::m_maxScaleError, "Max Scale Error", "Maximum error allowed in scale")
                         // ->Attribute(Edit::Attributes::Min, 0.0f)
                         // ->Attribute(Edit::Attributes::Max, 0.01f)
                         // ->Attribute(Edit::Attributes::Step, 0.00001f)
@@ -105,4 +104,3 @@ namespace AZ
         } // SceneData
     } // SceneAPI
 } // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED

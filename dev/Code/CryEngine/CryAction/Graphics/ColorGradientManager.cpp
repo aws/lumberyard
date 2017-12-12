@@ -19,6 +19,12 @@ namespace Graphics
 {
     CColorGradientManager::CColorGradientManager()
     {
+        AZ::ColorGradingRequestBus::Handler::BusConnect();
+    }
+
+    CColorGradientManager::~CColorGradientManager()
+    {
+        AZ::ColorGradingRequestBus::Handler::BusDisconnect();
     }
 
     void CColorGradientManager::Reset()
@@ -112,6 +118,11 @@ namespace Graphics
         }
 
         m_colorGradientsToLoad.push_back(LoadingColorGradient(filePath, fadeInTimeInSeconds));
+    }
+
+    void CColorGradientManager::FadeInColorChart(const AZStd::string& colorChartTextureName, float fadeTime)
+    {
+        TriggerFadingColorGradient(colorChartTextureName.c_str(), fadeTime);
     }
 
     void CColorGradientManager::UpdateForThisFrame(const float frameTimeInSeconds)

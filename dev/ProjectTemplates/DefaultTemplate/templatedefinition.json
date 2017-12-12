@@ -1,0 +1,6 @@
+{
+  "TemplateDefinitionVersion": 1,
+  "Name": "Default",
+  "Description":  "A simple starting point suitable for many projects.",
+  "IconPath": "${ProjectName}/preview.png"
+}

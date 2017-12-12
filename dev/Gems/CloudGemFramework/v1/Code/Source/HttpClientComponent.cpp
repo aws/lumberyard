@@ -14,13 +14,13 @@
 
 #include <CloudGemFramework/HttpClientComponent.h>
 #include <CloudGemFramework/HttpRequestJob.h>
+#include <CloudGemFramework/ServiceJobUtil.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-
 
 namespace CloudGemFramework
 {
@@ -69,6 +69,7 @@ namespace CloudGemFramework
                 ;
 
             behaviorContext->EBus<HttpClientComponentNotificationBus>("HttpClientComponentNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<BehaviorHttpClientComponentNotificationBusHandler>()
                 ;
 
@@ -95,27 +96,22 @@ namespace CloudGemFramework
     void HttpClientComponent::MakeHttpRequest(AZStd::string url, AZStd::string method, AZStd::string jsonBody)
     {
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        auto job = aznew HttpRequestJob(true, ServiceJob::GetDefaultConfig(),
-            [this](int responseCode, AZStd::string content)
+        auto job = aznew HttpRequestJob(true, HttpRequestJob::GetDefaultConfig());
+        AZ::EntityId entityId = m_entity->GetId();
+        
+        job->SetCallbacks(
+            [entityId](const AZStd::shared_ptr<HttpRequestJob::Response>& response)
             {
-                AZ::EntityId entityId = m_entity->GetId();
-                AZStd::function<void()> requestCallback = [entityId, responseCode, content] () {
-                    EBUS_EVENT_ID(entityId, HttpClientComponentNotificationBus, OnHttpRequestSuccess, responseCode, content);
-                };
-                EBUS_QUEUE_FUNCTION(AZ::TickBus, requestCallback);
+                EBUS_EVENT_ID(entityId, HttpClientComponentNotificationBus, OnHttpRequestSuccess, response->GetResponseCode(), response->GetResponseBody());
             },
-            [this](int responseCode)
+            [entityId](const AZStd::shared_ptr<HttpRequestJob::Response>& response)
             {
-                AZ::EntityId entityId = m_entity->GetId();
-                AZStd::function<void()> requestCallback = [entityId, responseCode]() {
-                    EBUS_EVENT_ID(entityId, HttpClientComponentNotificationBus, OnHttpRequestFailure, responseCode);
-                };
-                EBUS_QUEUE_FUNCTION(AZ::TickBus, requestCallback);
+                EBUS_EVENT_ID(entityId, HttpClientComponentNotificationBus, OnHttpRequestFailure, response->GetResponseCode());
             }
         );
-        job->SetUrl(url.c_str());
-        job->SetHttpMethod(method);
-        job->SetJsonBody(jsonBody.c_str());
+        job->SetUrl(url);
+        job->SetMethod(method);
+        ConfigureJsonServiceRequest(*job, jsonBody);
 
         job->Start();
 #endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)

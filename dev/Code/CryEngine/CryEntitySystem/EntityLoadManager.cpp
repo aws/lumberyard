@@ -197,14 +197,14 @@ void CEntityLoadManager::CloneHeldLayerEntities(const char* pLayerName, const Ve
     {
         XmlNodeRef entityNode = entities[i];
 
-        const char* pLayerName = entityNode->getAttr("Layer");
+        const char* layerName = entityNode->getAttr("Layer");
 
         bool isIncluded = (numIncludeLayers > 0) ? false : true;
 
         // Check if this layer is in our include list
         for (int j = 0; j < numIncludeLayers; ++j)
         {
-            if (strcmp(pLayerName, pIncludeLayers[j]) == 0)
+            if (strcmp(layerName, pIncludeLayers[j]) == 0)
             {
                 isIncluded = true;
                 break;

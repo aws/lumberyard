@@ -27,6 +27,7 @@ namespace LmbrCentral
                 ->Version(1)
                 ->Field("Controller Definition", &EditorMannequinComponent::m_controllerDefinition);
 
+#ifdef ENABLE_LEGACY_ANIMATION
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
@@ -34,14 +35,16 @@ namespace LmbrCentral
                 editContext->Class<EditorMannequinComponent>(
                     "Mannequin", "The Mannequin component animates a component entity using the Mannequin system")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Mannequin.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-mannequin.html")
                     ->DataElement(0, &EditorMannequinComponent::m_controllerDefinition, "Controller Definition", "The mannequin controller definition file")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorMannequinComponent::ControllerDefinitionChanged);
             }
+#endif
         }
     }
 

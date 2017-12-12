@@ -1,6 +1,8 @@
-<div class="gem-container">
-    <sub-nav> </sub-nav>
-    <div [ngSwitch]="isLoading">
+<div class="gem-container">     
+    <facet-generator [context]="context"            
+        (tabClicked)="subNavActiveIndex = $event"
+        [metricIdentifier]="context.identifier"></facet-generator>
+    <div *ngIf="subNavActiveIndex == 0 || subNavActiveIndex === undefined" [ngSwitch]="isLoading">
         <div *ngSwitchCase="true">
             <loading-spinner></loading-spinner>
         </div>
@@ -62,6 +64,7 @@
 <!--Modal definitions-->
 <modal *ngIf="mode == 1" title="Move PAK '{{currentDynamicContent.FileName}}'"
         [hasSubmit]="true"
+        [metricIdentifier]="context.identifier"
         (modalSubmitted)="onSubmit(currentDynamicContent)"
         submitButtonText="Move content"
         [onClose]="updateView"
@@ -79,7 +82,7 @@
                     </button>
                     <div class="dropdown-menu" aria-labelledby="dynamic-content-stage-dropdown">
                         <button *ngFor="let stage of transitionStages" (click)="currentDynamicContent.stage = stage.name" name="transitionStage"
-                        type="button" class="dropdown-item" [value]="stage.value">
+                        type="button" class="dynamic-content-dropdown-item dropdown-item" [value]="stage.value">
                             {{ stage.name }}
                         </button>
                     </div>
@@ -139,12 +142,13 @@
                 </div>
             </div>
         </form>
-        <pre>{{currentDynamicContent | json | devonly}}</pre>
+        <!--<pre>{{currentDynamicContent | json | devonly}}</pre>-->
     </div>    
 </modal>
 
 <modal *ngIf="mode == 2"
        title="Delete Dynamic Content"
+       [metricIdentifier]="context.identifier"
        [hasSubmit]="true"
        (modalSubmitted)="onDeleteSubmit(currentDynamicContent)"
        [onClose]="updateView"
@@ -153,6 +157,6 @@
        submitButtonText="Delete Content">
     <div class="modal-body">
         <p> Are you sure you want to delete the dynamic content package '{{currentDynamicContent.FileName}}' and all children?</p>
-        <pre>{{currentDynamicContent | json | devonly}}</pre>
+        <!--<pre>{{currentDynamicContent | json | devonly}}</pre>-->
     </div>
 </modal>

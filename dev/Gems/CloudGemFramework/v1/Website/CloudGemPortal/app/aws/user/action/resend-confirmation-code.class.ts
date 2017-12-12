@@ -18,7 +18,7 @@ export class ResendConfirmationCodeAction implements UserManagementAction {
         }    
         
         var userdata = {
-            Username: username,
+            Username: username.trim(),
             Pool: this.context.cognitoUserPool
         };
 

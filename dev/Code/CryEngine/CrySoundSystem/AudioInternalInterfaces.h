@@ -192,6 +192,36 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     template <>
+    struct SAudioManagerRequestDataInternal<eAMRT_CREATE_SOURCE>
+        : public SAudioManagerRequestDataInternalBase
+    {
+        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_CREATE_SOURCE>* const pAMRData)
+            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
+            , m_sourceConfig(pAMRData->m_sourceConfig)
+        {}
+
+        ~SAudioManagerRequestDataInternal<eAMRT_CREATE_SOURCE>() override {}
+
+        SAudioInputConfig m_sourceConfig;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioManagerRequestDataInternal<eAMRT_DESTROY_SOURCE>
+        : public SAudioManagerRequestDataInternalBase
+    {
+        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_DESTROY_SOURCE>* const pAMRData)
+            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
+            , m_sourceId(pAMRData->m_sourceId)
+        {}
+
+        ~SAudioManagerRequestDataInternal<eAMRT_DESTROY_SOURCE>() override {}
+
+        TAudioSourceId m_sourceId;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template <>
     struct SAudioManagerRequestDataInternal<eAMRT_PARSE_CONTROLS_DATA>
         : public SAudioManagerRequestDataInternalBase
     {

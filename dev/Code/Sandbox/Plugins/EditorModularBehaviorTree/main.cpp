@@ -20,9 +20,13 @@
 #include <Include/IPlugin.h>
 #include <Include/IEditorClassFactory.h>
 
-#include "../Editor/QtViewPaneManager.h"
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ViewPaneOptions.h>
+#include "../Editor/LyViewPaneNames.h"
 
 #include "MainWindow.h"
+
+static const char* ViewPaneName = "Modular Behavior Tree Editor";
 
 class Plugin
     : public IPlugin
@@ -35,16 +39,17 @@ class Plugin
 public:
     bool Init(IEditor* pEditor)
     {
-        QtViewOptions options;
+        AzToolsFramework::ViewPaneOptions options;
         options.canHaveMultipleInstances = true;
         options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-        RegisterQtViewPane<MainWindow>(pEditor, "Modular Behavior Tree Editor", LyViewPane::CategoryOther, options);
+        options.isLegacy = true;
+        AzToolsFramework::RegisterViewPane<MainWindow>(ViewPaneName, LyViewPane::CategoryOther, options);
         return true;
     }
 
     void Release() override
     {
-        UnregisterQtViewPane<MainWindow>();
+        AzToolsFramework::UnregisterViewPane(ViewPaneName);
         delete this;
     }
 

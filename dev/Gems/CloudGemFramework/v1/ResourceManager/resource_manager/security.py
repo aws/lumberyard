@@ -23,7 +23,7 @@ def add_cli_commands(subparsers, add_common_args):
 def __add_role_cli_commands(subparsers, add_common_args):
 
     parser = subparsers.add_parser('role', help='Add, modify, and remove AWS IAM Role definitions in the project-template.json and deployment-access-template.json files.')
-    subparsers = parser.add_subparsers(dest='subparser_name')
+    subparsers = parser.add_subparsers(dest='subparser_name', metavar='COMMAND')
 
     # role add [--project] --role ROLE-NAME
     subparser = subparsers.add_parser('add', help='Adds an AWS IAM Role definition to the project-template.json or deployment-access-template.json files.')
@@ -195,16 +195,16 @@ def __get_target_template(context, args):
 
     if args.project:
         return TargetTemplate(
-            template = context.config.extension_project_template,
-            file_path = context.config.extension_project_template_path,
-            save = context.config.save_extension_project_template,
+            template = context.config.project_template_aggregator.extension_template,
+            file_path = context.config.project_template_aggregator.extension_file_path,
+            save = context.config.project_template_aggregator.save_extension_template,
             role_path = { "Fn::Join": [ "", [ "/", { "Ref": "AWS::StackName" }, "/" ]] },
             scope = 'project')
     else:
         return TargetTemplate(
-            template = context.config.extension_deployment_access_template,
-            file_path = context.config.extension_deployment_access_template_path,
-            save = context.config.save_extension_deployment_access_template,
+            template = context.config.deployment_template_aggregator.extension_template,
+            file_path = context.config.deployment_template_aggregator.extension_file_path,
+            save = context.config.deployment_template_aggregator.save_extension_template,
             role_path = { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
             scope = 'deployment')
 

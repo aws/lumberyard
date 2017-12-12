@@ -394,8 +394,25 @@ namespace AzFramework
                     m_fileIO->Write(m_fileHandle, "\n", 1);
                 }
             }
-            // Note:  don't flush here.  The OS has already been handed the data and WILL write it unless power dies.
+            
+            if ((severity == SEV_ERROR) || (severity == SEV_ASSERT) || (severity == SEV_EXCEPTION))
+            {
+                // make sure these survive a crash.
+                FlushLog();
+            }
+
             CheckSizeAndCycleFiles();
         }
     }
+
+    void LogFile::FlushLog()
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> locker(m_logProtector);
+        
+        if (m_fileIO && m_fileHandle)
+        {
+            m_fileIO->Flush(m_fileHandle);
+        }
+    }
+
 };

@@ -488,16 +488,20 @@ void CTerrainNode::DrawArray(const SRenderingPassInfo& passInfo)
                                         {
                                             bool    isTerrainType = (pMat->GetShaderItem().m_pShader->GetShaderType() == eST_Terrain);
                                             if (isTerrainType)
+                                            {
                                                 pMesh->AddRenderElements(pMat, pDetailObj, passInfo, EFSLIST_TERRAINLAYER, 1);
+                                            }
                                             else
                                             {
-                                                // Adi: avoid logging for now until we fix it for real.
-//                                                gEnv->pLog->LogError("Terrain Layer - Incorrect Terrain Layer shader type - [%d] found in frame [%d]",
-//                                                    pMat->GetShaderItem().m_pShader->GetShaderType(), gEnv->pRenderer->GetFrameID());
+                                                gEnv->pLog->LogError("Terrain Layer - Incorrect Terrain Layer shader type - [%d] found in frame [%d]",
+                                                    pMat->GetShaderItem().m_pShader->GetShaderType(), gEnv->pRenderer->GetFrameID());
                                             }
                                         }
                                         else
-                                            gEnv->pLog->LogError( "Terrain Layer - Unassigned material or shader in frame [%d]", gEnv->pRenderer->GetFrameID());
+                                        {
+                                            gEnv->pLog->LogError("Terrain Layer - Unassigned material or shader in frame [%d]", 
+                                                gEnv->pRenderer->GetFrameID());
+                                        }
                                     }
                                 }
                             }
@@ -669,9 +673,9 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
     CTerrain* pTerrain = GetTerrain();
     int nHeightMapUnitSize = CTerrain::GetHeightMapUnitSize();
 
-    IF (_x && _x < nSectorSize && plstNeighbourSectors, true)
+    IF(_x && _x < nSectorSize && plstNeighbourSectors, true)
     {
-        IF (_y == 0, false)
+        IF(_y == 0, false)
         {
             if (CTerrainNode* pNode = pTerrain->GetLeafNodeAt(m_nOriginX + _x, m_nOriginY + _y - _step))
             {
@@ -684,7 +688,7 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
                 Util::AddNeighbourNode(plstNeighbourSectors, pNode);
             }
         }
-        else IF (_y == nSectorSize, false)
+        else IF(_y == nSectorSize, false)
         {
             if (CTerrainNode* pNode = pTerrain->GetLeafNodeAt(m_nOriginX + _x, m_nOriginY + _y + _step))
             {
@@ -699,9 +703,9 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
         }
     }
 
-    IF (_y && _y < nSectorSize && plstNeighbourSectors, true)
+    IF(_y && _y < nSectorSize && plstNeighbourSectors, true)
     {
-        IF (_x == 0, false)
+        IF(_x == 0, false)
         {
             if (CTerrainNode* pNode = pTerrain->GetLeafNodeAt(m_nOriginX + _x - _step, m_nOriginY + _y))
             {
@@ -714,7 +718,7 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
                 Util::AddNeighbourNode(plstNeighbourSectors, pNode);
             }
         }
-        else IF (_x == nSectorSize, false)
+        else IF(_x == nSectorSize, false)
         {
             if (CTerrainNode* pNode = pTerrain->GetLeafNodeAt(m_nOriginX + _x + _step, m_nOriginY + _y))
             {
@@ -886,12 +890,12 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
     assert(m_MeshData->m_Vertices.Count() < 65536);
 
     pRenderMesh = GetRenderer()->CreateRenderMeshInitialized(
-            m_MeshData->m_Vertices.GetElements(), m_MeshData->m_Vertices.Count(),
-            eVF_P2S_N4B_C4B_T1F,
-            m_MeshData->m_Indices.GetElements(), m_MeshData->m_Indices.Count(),
-            prtTriangleList,
-            "TerrainSector", "TerrainSector",
-            eRMT_Dynamic, 1, 0, NULL, NULL, false, true, nullptr);
+        m_MeshData->m_Vertices.GetElements(), m_MeshData->m_Vertices.Count(),
+        eVF_P2S_N4B_C4B_T1F,
+        m_MeshData->m_Indices.GetElements(), m_MeshData->m_Indices.Count(),
+        prtTriangleList,
+        "TerrainSector", "TerrainSector",
+        eRMT_Dynamic, 1, 0, NULL, NULL, false, true, nullptr);
 
     AABB boxWS = GetBBox();
     pRenderMesh->SetBBox(boxWS.min, boxWS.max);
@@ -971,7 +975,7 @@ void CTerrainNode::BuildIndices_Wrapper(SRenderingPassInfo passInfo)
     for (int i = 0; i < neighbors.Count(); i++)
     {
         int nNeighbourMML = neighbors[i]->GetAreaLOD(passInfo);
-        assert(0 <= nNeighbourMML && nNeighbourMML <= ((uint8) - 1));
+        assert(0 <= nNeighbourMML && nNeighbourMML <= ((uint8)-1));
         neighborLods[i] = nNeighbourMML;
     }
 }
@@ -1121,9 +1125,9 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
             {
                 byte* normal = &normals[triangle[0] * normalStride];
                 projectionAxis = GetVecProjectId(Vec3(
-                            ((float)normal[0] - 127.5f),
-                            ((float)normal[1] - 127.5f),
-                            ((float)normal[2] - 127.5f)));
+                    ((float)normal[0] - 127.5f),
+                    ((float)normal[1] - 127.5f),
+                    ((float)normal[2] - 127.5f)));
             }
 
             assert(projectionAxis >= 0 && projectionAxis < 4);
@@ -1159,8 +1163,8 @@ void CTerrainNode::UpdateSurfaceRenderMeshes(
     if (!pMatRM || (pMatRM && pMatRM->GetVertexContainer() != pSrcRM))
     {
         pMatRM = GetRenderer()->CreateRenderMeshInitialized(
-                NULL, 0, eVF_P2S_N4B_C4B_T1F, NULL, 0,
-                prtTriangleList, szComment, szComment, eRMType, 1, 0, NULL, NULL, false, false);
+            NULL, 0, eVF_P2S_N4B_C4B_T1F, NULL, 0,
+            prtTriangleList, szComment, szComment, eRMType, 1, 0, NULL, NULL, false, false);
     }
 
     uint8 szProj[] = "XYZ";

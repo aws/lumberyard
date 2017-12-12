@@ -45,7 +45,7 @@ namespace AZ
         enum LuaScriptInfo : u8 // u8 to avoid endian issues
         {
             // Current latest-asset version
-            AssetVersion = 2,
+            AssetVersion = 3,
 
             // Asset type field for Lua bytecode files
             AssetTypeCompiled = 0,

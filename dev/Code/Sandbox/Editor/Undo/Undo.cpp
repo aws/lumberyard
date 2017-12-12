@@ -189,7 +189,7 @@ void CUndoManager::Accept(const QString& name)
         {
             // Normal recording.
             // Keep max undo steps.
-            while (m_undoStack.size() && (m_undoStack.size() > GetIEditor()->GetEditorSettings()->undoLevels || GetDatabaseSize() > 100 * 1024 * 1024))
+            while (m_undoStack.size() && (m_undoStack.size() >= GetIEditor()->GetEditorSettings()->undoLevels || GetDatabaseSize() > 100 * 1024 * 1024))
             {
                 delete m_undoStack.front();
                 m_undoStack.pop_front();
@@ -510,7 +510,7 @@ void CUndoManager::SuperAccept(const QString& name)
     {
         m_superUndo->SetName(name);
         // Keep max undo steps.
-        while (m_undoStack.size() && (m_undoStack.size() > GetIEditor()->GetEditorSettings()->undoLevels || GetDatabaseSize() > 100 * 1024 * 1024))
+        while (m_undoStack.size() && (m_undoStack.size() >= GetIEditor()->GetEditorSettings()->undoLevels || GetDatabaseSize() > 100 * 1024 * 1024))
         {
             delete m_undoStack.front();
             m_undoStack.pop_front();
@@ -653,6 +653,8 @@ void CUndoManager::Flush()
     delete m_currentUndo;
     m_superUndo = 0;
     m_currentUndo = 0;
+
+    SignalUndoFlushedToListeners();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -759,6 +761,14 @@ void CUndoManager::SignalNumUndoRedoToListeners()
     for (IUndoManagerListener* listener : m_listeners)
     {
         listener->SignalNumUndoRedo(m_undoStack.size(), m_redoStack.size());
+    }
+}
+
+void CUndoManager::SignalUndoFlushedToListeners()
+{
+    for (IUndoManagerListener* listener : m_listeners)
+    {
+        listener->UndoStackFlushed();
     }
 }
 

@@ -324,11 +324,11 @@ void CItemSystem::RegisterForCollection(EntityId itemId)
                     }
                 }
 
-                if (IItem* pItem = GetItem(nItemId))
+                if (IItem* item = GetItem(nItemId))
                 {
-                    CRY_ASSERT(!pItem->GetOwnerId());
+                    CRY_ASSERT(!item->GetOwnerId());
 
-                    CryLogAlways("[game] Removing item %s due to i_lying_item_limit!", pItem->GetEntity()->GetName());
+                    CryLogAlways("[game] Removing item %s due to i_lying_item_limit!", item->GetEntity()->GetName());
                     UnregisterForCollection(nItemId);
                     gEnv->pEntitySystem->RemoveEntity(nItemId);
                 }

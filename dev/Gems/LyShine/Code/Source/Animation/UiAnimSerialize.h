@@ -12,16 +12,6 @@
 #pragma once
 
 #include <AzCore/Serialization/SerializeContext.h>
-#include <Range.h>
-#include <AnimKey.h>
-
-namespace AZ
-{
-    AZ_TYPE_INFO_SPECIALIZE(Range, "{515CF4CF-4992-4139-BDE5-42A887432B45}");
-    AZ_TYPE_INFO_SPECIALIZE(IKey, "{680BD51E-C106-4BBF-9A6F-CD551E00519F}");
-    AZ_TYPE_INFO_SPECIALIZE(IBoolKey, "{DBF8044F-6E64-403D-807D-F3152F640703}");
-}
-
 
 namespace UiAnimSerialize
 {

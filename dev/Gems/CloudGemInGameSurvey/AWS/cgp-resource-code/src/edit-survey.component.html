@@ -1,0 +1,403 @@
+<div class="survey-info">
+    <span class="float-right">
+        <action-stub-items [edit]="canEdit == false? onShowConfirmEditActiveSurveyModal: null" [custom]="getActions()"></action-stub-items>
+    </span>
+    <div>
+        <div class="survey-name">
+            {{survey.surveyMetadata.surveyName}}
+        </div>
+        Survey ID: {{survey.surveyMetadata.surveyId}}
+    </div>
+    <ng-container [ngSwitch]="survey.surveyMetadata.status">
+        <span *ngSwitchCase="SurveyStatus.Active" class="fa fa-check-circle active-survey-icon"></span>
+        <span *ngSwitchCase="SurveyStatus.Draft" class="fa fa-file-text-o"></span>
+        <span *ngSwitchCase="SurveyStatus.Scheduled" class="fa fa-clock-o scheduled-survey-icon"></span>
+    </ng-container>
+    {{SurveyStatus[survey.surveyMetadata.status]}}
+    Created: {{epochToString(survey.surveyMetadata.creationTime)}}
+</div>
+<ng-container [ngSwitch]="canEdit">
+    <ng-container *ngSwitchCase="true">
+        <dragable [drop]="onQuestoinOrderChanged">
+            <div class="question-preview" id="{{question.questionId}}" *ngFor="let question of survey.questions; let questionIndex = index">
+                <span class="float-right">
+                    <ng-container *ngIf="canEdit">
+                        <i class="fa fa-arrows movement-icon" data-toggle="tooltip" data-placement="top" title="Move"></i>
+                        <span class="float-right" [ngSwitch]="question.enabled">
+                            <action-stub-items *ngSwitchCase="true"  [model]="question" [edit]="onShowModifyQuestionModal" [delete]="onShowDeleteQuestionModal" [custom]="[disableQuestionAction]"></action-stub-items>
+                            <action-stub-items *ngSwitchCase="false" [model]="question" [edit]="onShowModifyQuestionModal" [delete]="onShowDeleteQuestionModal" [custom]="[enableQuestionAction]"></action-stub-items>
+                        </span>
+                    </ng-container>
+                </span>
+                    
+                <div class="disabled-question-text" *ngIf="question.enabled == false">This question is disabled and not collecting responses</div>                       
+                <div [class.disabled-question]="question.enabled == false" class="questino-title">
+                    {{question.title}}
+                </div>                    
+
+                <div [class.disabled-question]="question.enabled == false" class="questions" *ngIf="question.type == 'predefined'">
+                    <ng-container *ngIf="question.multipleSelect == true">
+                        <div class="radio-btn-label" *ngFor="let predefine of question.predefines; let i = index">
+                            <input id="question_{{questionIndex}}_option_{{i}}" type="checkbox" />
+                            <label class="l-checkbox" for="question_{{questionIndex}}_option_{{i}}">
+                                {{predefine}}
+                            </label>
+                        </div>
+                    </ng-container>
+                    <ng-container *ngIf="question.multipleSelect == false">
+                        <div [formGroup]="dummyRadioButtonForm">
+                            <div class="radio-btn-container">
+                                <div *ngFor="let predefine of question.predefines; let i = index">
+                                    <label class="radio-btn-label">
+                                        <input class="form-control" type="radio" [value]="i" formControlName="dummy" />
+                                        <span></span> {{predefine}}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                </div>
+
+                <div [class.disabled-question]="question.enabled == false" class="questions" *ngIf="question.type == 'scale'">
+                    {{question.min}}
+                    <ng-container *ngIf="question.minLabel && question.minLabel.length > 0">
+                        ({{question.minLabel}})
+                    </ng-container>
+                    <input type="range">                        
+                    {{question.max}}
+                    <ng-container *ngIf="question.maxLabel && question.maxLabel.length > 0">
+                        ({{question.maxLabel}})
+                    </ng-container>                  
+                </div>
+
+                <div [class.disabled-question]="question.enabled == false" class="questions" *ngIf="question.type == 'text'">
+                    <div>
+                        <textarea class="question-textarea-preview" [(ngModel)]="dummyTextAreaModels[questionIndex]" [maxLength]="question.maxChars"></textarea>
+                        <div class="question-textarea-chars-label">
+                            {{dummyTextAreaModels[questionIndex].length}}/{{question.maxChars}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </dragable>
+    </ng-container>
+    <ng-container *ngSwitchCase="false">
+        <div class="question-preview" id="{{question.questionId}}" *ngFor="let question of survey.questions; let questionIndex = index">
+            <span class="float-right">
+                <ng-container *ngIf="canEdit">
+                    <i class="fa fa-arrows" data-toggle="tooltip" data-placement="top" title="Move"></i>
+                    <span class="float-right" [ngSwitch]="question.enabled">
+                        <action-stub-items *ngSwitchCase="true" [model]="question" [edit]="onShowModifyQuestionModal" [delete]="onShowDeleteQuestionModal" [custom]="[disableQuestionAction]"></action-stub-items>
+                        <action-stub-items *ngSwitchCase="false" [model]="question" [edit]="onShowModifyQuestionModal" [delete]="onShowDeleteQuestionModal" [custom]="[enableQuestionAction]"></action-stub-items>
+                    </span>
+                </ng-container>
+            </span>
+            <div class="disabled-question-text" *ngIf="question.enabled == false">This question is disabled and not collecting responses</div>
+            <div [class.disabled-question]="question.enabled == false" class="questino-title">
+                {{question.title}}
+            </div>
+
+            <div [class.disabled-question]="question.enabled == false" class="questions"  *ngIf="question.type == 'predefined'">
+                <ng-container *ngIf="question.multipleSelect == true">
+                    <div *ngFor="let predefine of question.predefines; let i = index">
+                        <input id="question_{{questionIndex}}_option_{{i}}" type="checkbox" />
+                        <label class="l-checkbox" for="question_{{questionIndex}}_option_{{i}}">
+                            {{predefine}}
+                        </label>
+                    </div>
+                </ng-container>
+                <ng-container *ngIf="question.multipleSelect == false">
+                    <div [formGroup]="dummyRadioButtonForm">
+                        <div class="radio-btn-container">
+                            <div *ngFor="let predefine of question.predefines; let i = index">
+                                <label class="radio-btn-label">
+                                    <input class="form-control" type="radio" [value]="i" formControlName="dummy" />
+                                    <span></span> {{predefine}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
+            <div [class.disabled-question]="question.enabled == false" class="questions" *ngIf="question.type == 'scale'">
+                {{question.min}}
+                <ng-container *ngIf="question.minLabel && question.minLabel.length > 0">
+                    ({{question.minLabel}})
+                </ng-container>
+                <input type="range">                    
+                {{question.max}}
+                <ng-container *ngIf="question.maxLabel && question.maxLabel.length > 0">
+                    ({{question.maxLabel}})
+                </ng-container>
+            </div>
+
+            <div [class.disabled-question]="question.enabled == false" class="questions" *ngIf="question.type == 'text'">
+                <div>
+                    <textarea class="question-textarea-preview" [(ngModel)]="dummyTextAreaModels[questionIndex]" [maxLength]="question.maxChars"></textarea>
+                    <div class="question-textarea-chars-label">
+                        {{dummyTextAreaModels[questionIndex].length}}/{{question.maxChars}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</ng-container>
+
+<ng-container *ngIf="canEdit">
+    <button class="btn l-primary add-question-button" (click)="onShowAddQuestionModal()">
+        Add New Question
+    </button>
+</ng-container>
+
+<ng-container [ngSwitch]="survey.surveyMetadata.status == SurveyStatus.Draft">
+    <button *ngSwitchCase="true" class="btn btn-outline-primary publish-survey-button" (click)="onShowPublishSurveyModal()">
+        Publish Survey
+    </button>
+</ng-container>
+
+
+<modal *ngIf="editMode == EditMode.EditQuestion || editMode == EditMode.CreateQuestion"
+       [title]="editMode == EditMode.EditQuestion ? 'Edit Question' : 'Add New Question'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [submitButtonText]="editMode == EditMode.EditQuestion ? 'Save Changes' : 'Add Question'"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       (modalSubmitted)="editMode == EditMode.EditQuestion ? onModifyQuestion() : onAddQuestion()">
+    <div class="modal-body">
+        <div class="form-group row">
+            <label class="col-form-label col-3">
+                Question Type
+            </label>
+            <div class="d-inline-block dropdown-outer col-8 question-type-dropdown"ngbDropdown>
+                <button type="button" class="btn l-dropdown col-12" id="path-dropdown" ngbDropdownToggle>
+                    <span class="dropdown-inner"> {{curEditingQuestion.getQuestionTypeDisplayText()}} </span>
+                    <i class="fa fa-caret-down" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-center" aria-labelledby="path-dropdown">
+                    <button *ngFor="let questionType of questionTypes" type="button" class="dropdown-item" (click)="onChangeQuestionType(questionType)"> {{questionType.displayText}} </button>
+                </div>
+            </div>
+        </div>        
+
+        <form [formGroup]="questionTitleForm">
+            <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(questionTitleForm, 'title')}">
+                <label class="col-form-label col-3" for="title">
+                    Title
+                </label>
+                <input class="form-control col-8" id="title" type="text" [formControl]="questionTitleForm.controls['title']"
+                       [ngClass]="{'form-control-danger': isFormFieldNotValid(questionTitleForm, 'title')}" />
+
+                <span class="col-3"></span>
+                <div *ngIf="isFormFieldRequiredEmpty(questionTitleForm, 'title')" class="form-control-feedback col-8">Title cannot be empty</div>
+            </div>
+        </form>
+
+        <ng-container *ngIf="curEditingQuestion.type == 'text'">
+            <form [formGroup]="textQuestionForm">
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(textQuestionForm, 'maxChars')}">
+                    <label class="col-form-label col-3" for="maxChars">
+                        Character Limit
+                    </label>
+                    <input class="form-control col-8" id="maxChars" type="number" [formControl]="textQuestionForm.controls['maxChars']"
+                           [ngClass]="{'form-control-danger': isFormFieldNotValid(textQuestionForm, 'maxChars')}" />
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(textQuestionForm, 'maxChars')" class="form-control-feedback col-8">Character Limit is invalid</div>
+                </div>
+            </form>
+        </ng-container>
+
+        <ng-container *ngIf="curEditingQuestion.type == 'scale'">
+            <form [formGroup]="scaleQuestionForm">
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(scaleQuestionForm, 'min')}">
+                    <label class="col-form-label col-3" for="min">
+                        Minimum Value
+                    </label>
+                    <input class="form-control col-8" id="min" type="number" [formControl]="scaleQuestionForm.controls['min']"
+                           [ngClass]="{'form-control-danger': isFormFieldNotValid(scaleQuestionForm, 'min')}" />
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(scaleQuestionForm, 'min')" class="form-control-feedback col-8">Minimum Value cannot be emtpy</div>
+                </div>
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(scaleQuestionForm, 'max')}">
+                    <label class="col-form-label col-3"  for="max">
+                        Maximum Value
+                    </label>
+                    <input class="form-control col-8" id="max" type="number" [formControl]="scaleQuestionForm.controls['max']"
+                           [ngClass]="{'form-control-danger': isFormFieldNotValid(scaleQuestionForm, 'max')}" />
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(scaleQuestionForm, 'max')" class="form-control-feedback col-8">Maximum Value cannot be emtpy</div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-form-label col-3"  for="minLabel">
+                        Minimum Value Label
+                    </label>
+                    <input class="form-control col-8" id="minLabel" type="text" [formControl]="scaleQuestionForm.controls['minLabel']"/>
+                </div>
+                <div class="form-group row">
+                    <label class="col-form-label col-3" for="maxLabel">
+                        Maximum Value Label
+                    </label>
+                    <input class="form-control col-8" id="maxLabel" type="text" [formControl]="scaleQuestionForm.controls['maxLabel']"/>
+                </div>
+            </form>            
+        </ng-container>
+
+        <ng-container *ngIf="curEditingQuestion.type == 'predefined'">
+            <div *ngFor="let optionForm of predefinedQuestionForm.controls['options'].controls; let i = index; trackBy:trackByFn">
+                <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(optionForm, 'value')}">
+                    <label class="col-form-label col-3" *ngIf="i==0">
+                        Multiple Choice Options
+                    </label>
+                    <span class="col-3" *ngIf="i>0"></span>
+
+                    <input class="form-control col-8" type="text" [formControl]="optionForm.controls['value']"
+                           [ngClass]="{'form-control-danger': isFormFieldNotValid(optionForm, 'value')}" />
+                    <i *ngIf="i > 0" class="fa fa-close col-form-label col-1 delete-option-icon" (click)="onDeleteOption(i)"></i>
+
+                    <span class="col-3"></span>
+                    <div *ngIf="isFormFieldRequiredEmpty(optionForm, 'value')" class="form-control-feedback col-8">Option cannot be emtpy</div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <span class="col-3"></span>
+                <div class="col-8 add-option-button">
+                    <button class="btn btn-outline-primary" (click)="onAddOption()">
+                        + Add Option
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.DeleteQuestion"
+       title="Delete Question"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       submitButtonText="Delete Question"
+       (modalSubmitted)="onDeleteQuestion(this.curEditingQuestion.questionId)">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">        
+        <p *ngIf="this.survey.surveyMetadata.status != SurveyStatus.Draft">
+            Deleting a question from a active survey will prevent you from viewing responses collected so far for this
+            question. If you would like to keep viewing the responses, use the "Disable Question" option instead.
+        </p>
+        <p>
+            Are you sure you want to delete this question?
+        </p>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.DisableQuestion || editMode == EditMode.EnableQuestion"
+       [title]="editMode == EditMode.DisableQuestion ? 'Disable Question' : 'Enable Question'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       [submitButtonText]="editMode == EditMode.DisableQuestion ? 'Disable Question' : 'Enable Question'"
+       (modalSubmitted)="editMode == EditMode.DisableQuestion ? onDisableQuestion(this.curEditingQuestion.questionId) : onEnableQuestion(this.curEditingQuestion.questionId)">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <ng-container [ngSwitch]="editMode">
+            <p *ngSwitchCase="EditMode.DisableQuestion">
+                Disabling this question will prevent it from appearing in the survey and responses to it will no longer be collected. Any existing responses to this question will be preserved.
+            </p>
+            <p *ngSwitchCase="EditMode.EnableQuestion">
+                Enable a question will make the question reappear in the survey and start collecting
+                responses again.
+            </p>
+        </ng-container>        
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.ConfirmEditActiveSurvey"
+       title="Edit Active Survey?"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       submitButtonText="Edit Active Survey"
+       (modalSubmitted)="onConfirmEditActiveSurvey()">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <p>
+            Are you sure you want to edit an active survey?
+        </p>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.PublishSurvey || editMode == EditMode.EditActivationPeriod"
+       [title]="editMode == EditMode.PublishSurvey ? 'Publish Survey' : 'Edit Activation Period'"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       [submitButtonText]="editMode == EditMode.PublishSurvey ? 'Publish Survey' : 'Modify'"
+       (modalSubmitted)="editMode == EditMode.PublishSurvey ? onPublishSurvey() : onModifyActivationPeriod()">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <form>
+            <div class="form-group row" [class.has-danger]="activationPeriod.start.valid === false || activationPeriod.end.valid === false">
+                <label for="schedule" class="col-3 col-form-label affix"> Scheduling </label>
+                <div class="col-9">
+                    <datetime-range-picker (dateTimeRange)="onUpdateSurveyActivationPeriod($event)"
+                                           [startDateModel]="activationPeriod.start.date"
+                                           [endDateModel]="activationPeriod.end.date"
+                                           [startTime]="activationPeriod.start.time"
+                                           [endTime]="activationPeriod.end.time"
+                                           [hasStart]="activationPeriod.hasStart"
+                                           [hasEnd]="activationPeriod.hasEnd">
+                    </datetime-range-picker>
+                    <div *ngIf="activationPeriod.start.valid === false" class="form-control-feedback">{{activationPeriod.start.message}}</div>
+                    <div *ngIf="activationPeriod.end.valid === false" class="form-control-feedback">{{activationPeriod.end.message}}</div>
+                </div>
+            </div>
+        </form>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.CloneSurvey"
+       title="Clone Survey"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       submitButtonText="Clone Survey"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       (modalSubmitted)="onCloneSurvey()">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <form [formGroup]="surveyNameForm">
+            <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(surveyNameForm, 'surveyName')}">
+                <label class="col-form-label col-4" for="survey_name">
+                    Survey Name
+                </label>
+                <input class="form-control col-8" id="survey_name" type="text" [formControl]="surveyNameForm.controls['surveyName']"
+                       [ngClass]="{'form-control-danger': isFormFieldNotValid(surveyNameForm, 'surveyName')}" />
+
+                <span class="col-4"></span>
+                <div *ngIf="isFormFieldRequiredEmpty(surveyNameForm, 'surveyName')" class="form-control-feedback col-8">Survey name cannot be empty</div>
+            </div>
+        </form>
+    </div>
+</modal>
+
+<modal *ngIf="editMode == EditMode.CloseSurvey"
+       title="End Survey"
+       [autoOpen]="true"
+       [hasSubmit]="true"
+       [onDismiss]="onDismissModal"
+       [onClose]="onDismissModal"
+       closeButtonText="Cancel"
+       submitButtonText="End Survey"
+       (modalSubmitted)="onCloseSurvey()">
+       [metricIdentifier]="context.identifier"
+    <div class="modal-body">
+        <p> Are you sure you want to end this survey? </p>
+    </div>
+</modal>

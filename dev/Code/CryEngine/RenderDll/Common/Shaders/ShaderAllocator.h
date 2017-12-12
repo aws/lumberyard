@@ -86,7 +86,7 @@ public:
         (void)n;
         if (p)
         {
-            if (!g_shaderGeneralHeap->Free(p))
+            if (g_shaderGeneralHeap && !g_shaderGeneralHeap->Free(p))
             {
                 g_shaderBucketAllocator.deallocate(p);
             }

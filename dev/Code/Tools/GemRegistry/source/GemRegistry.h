@@ -21,7 +21,7 @@
 #define UUID_STR_BUF_LEN 64
 #define GEMS_ASSETS_FOLDER "Assets"
 #define GEM_DEF_FILE "gem.json"
-#define GEM_DEF_FILE_VERSION 3
+#define GEM_DEF_FILE_VERSION 4
 #define GEMS_PROJECT_FILE "gems.json"
 #define GEMS_PROJECT_FILE_VERSION 2
 
@@ -46,6 +46,14 @@
 #define GPF_TAG_LINK_TYPE_DYNAMIC           "Dynamic"
 #define GPF_TAG_LINK_TYPE_DYNAMIC_STATIC    "DynamicStatic"
 #define GPF_TAG_LINK_TYPE_NO_CODE           "NoCode"
+#define GPF_TAG_MODULES                     "Modules"
+#define GPF_TAG_MODULE_NAME                 "Name"
+#define GPF_TAG_MODULE_TYPE                 "Type"
+#define GPF_TAG_MODULE_TYPE_GAME_MODULE     "GameModule"
+#define GPF_TAG_MODULE_TYPE_EDITOR_MODULE   "EditorModule"
+#define GPF_TAG_MODULE_TYPE_STATIC_LIB      "StaticLib"
+#define GPF_TAG_MODULE_TYPE_BUILDER         "Builder"
+#define GPF_TAG_MODULE_EXTENDS              "Extends"
 #define GPF_TAG_IS_GAME_GEM                 "IsGameGem"
 #define GPF_TAG_IS_REQUIRED                 "IsRequired"
 #define GPF_TAG_COMMENT                     "_comment"
@@ -64,7 +72,7 @@ namespace Gems
         AZ::Outcome<void, AZStd::string> LoadAllGemsFromDisk() override;
         AZ::Outcome<void, AZStd::string> LoadProject(const IProjectSettings& settings) override;
 
-        AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath) override;
+        AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath) override;
         IGemDescriptionConstPtr GetGemDescription(const GemSpecifier& spec) const override;
         IGemDescriptionConstPtr GetLatestGem(const AZ::Uuid& uuid) const override;
         AZStd::vector<IGemDescriptionConstPtr> GetAllGemDescriptions() const override;

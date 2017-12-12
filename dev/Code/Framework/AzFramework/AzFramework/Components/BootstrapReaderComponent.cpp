@@ -56,7 +56,7 @@ namespace AzFramework
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Engine")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                    ->DataElement("Config file", &BootstrapReaderComponent::m_configFileName)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BootstrapReaderComponent::m_configFileName, "Config file", "Name of bootstrap configuration file.")
                     ;
             }
         }
@@ -93,7 +93,6 @@ namespace AzFramework
         {
 #if defined AZ_PLATFORM_ANDROID
             path = AZ::Android::Utils::FindAssetsDirectory();
-            path = path + "/" + AZ::Android::Utils::GetGameProjectName();
 #endif
         }
 
@@ -191,7 +190,7 @@ namespace AzFramework
 
         AZStd::string regexString("^\\s*key\\s*=\\s*(\\S+)\\b");
 
-        //Replace the dummy key with the actual one 
+        // Replace the dummy key with the actual one
         auto found = regexString.find("key");
         if (found != AZStd::string::npos)
         {

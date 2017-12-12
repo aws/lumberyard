@@ -29,8 +29,7 @@
 
 //#pragma optimize("",off)
 
-// FIXME DbgHelp broken on Durango currently
-#if defined(WIN32) //|| defined(DURANGO)
+#if   defined(WIN32)
 #include "DebugCallStack.h"
 #include "Psapi.h"
 
@@ -1726,7 +1725,7 @@ void CMemReplay::RecordModuleLoad(void* pSelf, const CReplayModules::ModuleLoadD
     pMR->m_stream.EndAllocateRawEvent<MemReplayPushContextEvent>(baseNameLen);
 
     pMR->RecordAlloc(
-        EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, eCryModule,
+        EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, 0,
         (UINT_PTR)mld.address,
         4096,
         mld.size,
@@ -1741,7 +1740,7 @@ void CMemReplay::RecordModuleUnload(void* pSelf, const CReplayModules::ModuleUnl
     CMemReplay* pMR = reinterpret_cast<CMemReplay*>(pSelf);
 
     PREFAST_SUPPRESS_WARNING(6326)
-    pMR->RecordFree(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, eCryModule, mld.address, 0, REPLAY_RECORD_FREECS != 0);
+    pMR->RecordFree(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, 0, mld.address, 0, REPLAY_RECORD_FREECS != 0);
     pMR->m_stream.WriteEvent(MemReplayModuleUnRefEvent(mld.address));
 }
 

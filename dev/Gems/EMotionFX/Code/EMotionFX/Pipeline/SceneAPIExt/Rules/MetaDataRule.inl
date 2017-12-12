@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -19,20 +19,20 @@
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
-#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
-#include <SceneAPI/SceneData/EMotionFX/Rules/MetaDataRule.h>
+#include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
+#include <SceneAPIExt/Rules/MetaDataRule.h>
 
-
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace SceneData
+        namespace Rule
         {
-
             template<typename T>
             bool MetaDataRule::SaveMetaDataToFile(const AZStd::string& sourceAssetFilename, const AZStd::string& groupName, const AZStd::string& metaDataString)
             {
+                namespace SceneEvents = AZ::SceneAPI::Events;
+                
                 AZ_TraceContext("Meta data", sourceAssetFilename);
 
                 if (sourceAssetFilename.empty())
@@ -42,7 +42,8 @@ namespace AZ
                 }
 
                 // Load the manifest from disk.
-                AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene> scene = AZ::SceneAPI::Events::AssetImportRequest::LoadScene(sourceAssetFilename, AZ::SceneAPI::Events::AssetImportRequest::AssetProcessor);
+                AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene> scene;
+                SceneEvents::SceneSerializationBus::BroadcastResult(scene, &SceneEvents::SceneSerializationBus::Events::LoadScene, sourceAssetFilename, AZ::Uuid::CreateNull());
                 if (!scene)
                 {
                     AZ_Error("EMotionFX", false, "Unable to save meta data to manifest due to failed scene loading.");
@@ -57,26 +58,41 @@ namespace AZ
                     // Non-case sensitive group name comparison. Product filenames are lower case only and might mismatch casing of the entered group name.
                     if (AzFramework::StringFunc::Equal(group.GetName().c_str(), groupName.c_str()))
                     {
-                        SaveMetaData(group, metaDataString);
+                        SaveMetaData(*scene, group, metaDataString);
                     }
                 }
   
                 const AZStd::string& manifestFilename = scene->GetManifestFilename();
 
-                // Source Control: Checkout manifest file.
-                using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-                bool checkoutResult = false;
-                ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Checking out manifest file.", [](int& current, int& max) {});
-                if (!checkoutResult)
+
+                const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(manifestFilename.c_str());
+
+                // Source Control: Checkout file.
+                if (fileExisted)
                 {
-                    AZ_Error("EMotionFX", false, "Unable to checkout meta data from source control. Cannot save manifest file '%s'.", manifestFilename.c_str());
-                    return false;
+                    using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+                    bool checkoutResult = false;
+                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Checking out manifest from source control.", [](int& current, int& max) {});
+                    if (!checkoutResult)
+                    {
+                        AZ_Error("EMotionFX", false, "Cannot checkout file '%s' from source control.", manifestFilename.c_str());
+                        return false;
+                    }
                 }
 
-                return manifest.SaveToFile(manifestFilename.c_str());
-            }
+                const bool saveResult = manifest.SaveToFile(manifestFilename.c_str());
 
-        } // SceneData
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+                // Source Control: Add file in case it did not exist before (when saving it the first time).
+                if (saveResult && !fileExisted)
+                {
+                    using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+                    bool checkoutResult = false;
+                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Adding manifest to source control.", [](int& current, int& max) {});
+                    AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", manifestFilename.c_str());
+                }
+
+                return saveResult;
+            }
+        } // Rule
+    } // Pipeline
+} // EMotionFX

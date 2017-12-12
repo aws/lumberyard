@@ -9,17 +9,70 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_REFLECT_CONTEXT_H
-#define AZCORE_REFLECT_CONTEXT_H
+#pragma once
 
 #include <AzCore/RTTI/RTTI.h>
 
 // For attributes
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/deque.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/typetraits/has_member_function.h>
 
 namespace AZ
 {
+    class ReflectContext;
+
+    /// Function type to called for on demand reflection within methods, properties, etc.
+    using OnDemandReflectionFunctionPtr = void(*)(ReflectContext* context);
+    // #MSVC2013 does not allow using of a function signature.
+    typedef void OnDemandReflectionFunctionRef(ReflectContext* context);
+
+    /**
+     * Base classes for structures that store references to OnDemandReflection instantiations.
+     * ReflectContext will own weak pointers to the function, so that we may look up already registered types.
+     */
+    class OnDemandReflectionOwner
+    {
+    public:
+        virtual ~OnDemandReflectionOwner() = default;
+
+        // Disallow all copy-move operations, as well as default construct
+        OnDemandReflectionOwner() = delete;
+        OnDemandReflectionOwner(const OnDemandReflectionOwner&) = delete;
+        OnDemandReflectionOwner& operator=(const OnDemandReflectionOwner&) = delete;
+        OnDemandReflectionOwner(OnDemandReflectionOwner&&) = delete;
+        OnDemandReflectionOwner& operator=(OnDemandReflectionOwner&&) = delete;
+
+        /// Register an OnDemandReflection function
+        void AddReflectFunction(AZ::Uuid typeId, OnDemandReflectionFunctionPtr reflectFunction);
+
+    protected:
+        /// Constructor to be called by child class
+        explicit OnDemandReflectionOwner(ReflectContext& context);
+
+    private:
+        /// Reflection functions this instance owns references to
+        AZStd::vector<AZStd::shared_ptr<OnDemandReflectionFunctionRef>> m_reflectFunctions;
+        ReflectContext& m_reflectContext;
+    };
+
+    /**
+     *  This is the default implementation for OnDemandReflection (no reflection). You can specialize this template class
+     * for the type you want to reflect on demand.
+     * \note Currently only \ref BehaviorContext support on demand reflection.
+     */
+    template<class T>
+    struct OnDemandReflection
+    {
+        void NoSpecializationFunction();
+    };
+
+    AZ_HAS_MEMBER(NoOnDemandReflection, NoSpecializationFunction, void, ())
+
     /**
      * Base class for all reflection contexts.
      * Currently we recommend to follow the following declarative format for all context.
@@ -38,27 +91,31 @@ namespace AZ
     public:
         AZ_RTTI(ReflectContext, "{B18D903B-7FAD-4A53-918A-3967B3198224}")
 
-        ReflectContext()
-            : m_isRemoveReflection(false)
-        {}
-        virtual ~ReflectContext()   {}
+        ReflectContext();
+        virtual ~ReflectContext() = default;
 
-        void EnableRemoveReflection()
-        { 
-            m_isRemoveReflection = true; 
-        }
-        void DisableRemoveReflection()     
-        { 
-            m_isRemoveReflection = false; 
-        }
+        void EnableRemoveReflection();
+        void DisableRemoveReflection();
+        bool IsRemovingReflection() const;
 
-        bool IsRemovingReflection() const
-        {
-            return m_isRemoveReflection;
-        }
+        /// Check if an OnDemandReflection type's typeid is already reflected
+        bool IsOnDemandTypeReflected(AZ::Uuid typeId);
+
+        /// Execute all queued OnDemandReflection calls
+        void ExecuteQueuedOnDemandReflections();
 
     protected:
-        bool m_isRemoveReflection;  ///< True if all calls in the context should be considered to remove not to add reflection.
+        /// True if all calls in the context should be considered to remove not to add reflection.
+        bool m_isRemoveReflection;
+
+        /// Store the on demand reflect functions so we can avoid double-reflecting something
+        AZStd::unordered_map<AZ::Uuid, AZStd::weak_ptr<OnDemandReflectionFunctionRef>> m_onDemandReflection;
+        /// OnDemandReflection functions that need to be called
+        AZStd::vector<AZStd::pair<AZ::Uuid, OnDemandReflectionFunctionPtr>> m_toProcessOnDemandReflection;
+        /// The type ids of the currently reflecting type. Used to prevent circular references. Is a set to prevent recursive circular references.
+        AZStd::deque<AZ::Uuid> m_currentlyProcessingTypeIds;
+
+        friend OnDemandReflectionOwner;
     };
 
     // Attributes to be used by reflection contexts
@@ -70,29 +127,30 @@ namespace AZ
     class Attribute
     {
     public:
+        using ContextDeleter = void(*)(void* contextData);
+
         AZ_RTTI(AZ::Attribute, "{2C656E00-12B0-476E-9225-5835B92209CC}");
         Attribute()
-            : m_describesChildren(false) 
-            , m_contextData(nullptr)
-        {}
+            : m_contextData(nullptr, &DefaultDelete)
+        { }
+        virtual ~Attribute() = default;
 
-        virtual ~Attribute() 
-        {}
-
-        void SetContextData(void* contextData)
+        void SetContextData(void* contextData, ContextDeleter destroyer)
         {
-            m_contextData = contextData;
+            m_contextData = AZStd::unique_ptr<void, ContextDeleter>(contextData, destroyer);
         }
 
-        void* GetContextData() const 
-        { 
-            return m_contextData; 
+        void* GetContextData() const
+        {
+            return m_contextData.get();
         }
 
-        bool m_describesChildren;
-    
+        bool m_describesChildren = false;
+
     private:
-        void* m_contextData; ///< a generic value you can use to store extra data associated with the attribute
+        AZStd::unique_ptr<void, ContextDeleter> m_contextData; ///< a generic value you can use to store extra data associated with the attribute
+
+        static void DefaultDelete(void*) { }
     };
 
     typedef AZ::u32 AttributeId;
@@ -126,6 +184,8 @@ namespace AZ
         explicit AttributeData(U data)
             : m_data(data) {}
         virtual const T& Get(void* instance) const { (void)instance; return m_data; }
+        T& operator = (T& data) { m_data = data; return m_data; }
+        T& operator = (const T& data) { m_data = data; return m_data; }
     private:
         T   m_data;
     };
@@ -169,18 +229,18 @@ namespace AZ
         AZ_CLASS_ALLOCATOR(AttributeFunction<R(Args...)>, SystemAllocator, 0);
         typedef R(*FunctionPtr)(Args...);
         explicit AttributeFunction(FunctionPtr f)
-                : m_function(f) 
+                : m_function(f)
         {}
 
-        virtual R Invoke(void* instance, Args&&... args) 
-        { 
-            (void)instance; 
+        virtual R Invoke(void* instance, Args&&... args)
+        {
+            (void)instance;
             return m_function(AZStd::forward<Args>(args) ...);
         }
-        
-        virtual AZ::Uuid GetInstanceType() const  
-        { 
-            return AZ::Uuid::CreateNull(); 
+
+        virtual AZ::Uuid GetInstanceType() const
+        {
+            return AZ::Uuid::CreateNull();
         }
 
         FunctionPtr m_function;
@@ -205,7 +265,7 @@ namespace AZ
 
         explicit AttributeMemberFunction(FunctionPtr f)
                 : AttributeFunction<R(Args...)>(nullptr)
-                , m_memFunction(f) 
+                , m_memFunction(f)
         {}
 
         R Invoke(void* instance, Args&&... args) override
@@ -302,11 +362,22 @@ namespace AZ
             }
         };
 
-    } // namespace Internal
+        template<class T, bool IsNoSpecialization = HasNoOnDemandReflection<OnDemandReflection<T>>::value>
+        struct OnDemandReflectHook
+        {
+            static OnDemandReflectionFunctionPtr Get()
+            {
+                return nullptr;
+            }
+        };
 
-} // namespace AZ
-
-#endif // AZCORE_REFLECT_CONTEXT_H
-
-#pragma once
-
+        template<class T>
+        struct OnDemandReflectHook<T, false>
+        {
+            static OnDemandReflectionFunctionPtr Get()
+            {
+                return &OnDemandReflection<T>::Reflect;
+            }
+        };
+    }
+}

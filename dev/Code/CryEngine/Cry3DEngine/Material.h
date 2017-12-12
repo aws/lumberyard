@@ -150,7 +150,7 @@ public:
     };
     const char* GetShaderName() const override
     {
-        return m_shaderName;
+        return m_shaderName.c_str();
     };
 
     // shader item
@@ -193,8 +193,11 @@ public:
     bool AreTexturesStreamedIn(const int nMinPrecacheRoundIds[MAX_STREAM_PREDICTION_ZONES]) const;
 
     //////////////////////////////////////////////////////////////////////////
-    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet);
-    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet);
+    virtual bool SetGetMaterialParamFloat(const char* sParamName, float& v, bool bGet, bool allowShaderParam = false);
+    virtual bool SetGetMaterialParamVec3(const char* sParamName, Vec3& v, bool bGet, bool allowShaderParam = false);
+    virtual bool SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGet, bool allowShaderParam = false);
+    virtual void SetDirty(bool dirty = true);
+    virtual bool IsDirty() const;
 
     virtual void SetCamera(CCamera& cam);
 
@@ -306,7 +309,7 @@ private:
     SShaderItem m_shaderItem;
 
     //! shader full name
-    string m_shaderName;
+    AZStd::string m_shaderName;
 
 #ifdef SUPPORT_MATERIAL_SKETCH
     _smart_ptr<IShader> m_pPreSketchShader;
@@ -337,6 +340,8 @@ private:
         int bHighPriority : 1;
         float fMinMipFactor;
     } m_streamZoneInfo[2];
+
+    bool m_isDirty;
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_MATERIAL_H

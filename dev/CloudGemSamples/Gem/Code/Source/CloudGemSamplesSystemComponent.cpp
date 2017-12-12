@@ -62,11 +62,6 @@ namespace LYGame
         return new EditorGame();
     }
 
-    const char* CloudGemSamplesSystemComponent::GetGameName() const
-    {
-        return GAME_WINDOW_CLASSNAME;
-    }
-
     void CloudGemSamplesSystemComponent::Init()
     {
     }

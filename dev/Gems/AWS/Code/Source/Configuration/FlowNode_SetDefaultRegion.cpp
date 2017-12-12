@@ -11,10 +11,10 @@
 */
 #include <StdAfx.h>
 #include <Configuration/FlowNode_SetDefaultRegion.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
-#include <Configuration/ClientManagerImpl.h>
 #include <aws/core/Region.h>
+#include <CloudGemFramework/AwsApiJob.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
+#include <CloudGemFramework/CloudGemFrameworkBus.h>
 
 namespace LmbrAWS
 {
@@ -43,12 +43,15 @@ namespace LmbrAWS
         if (event == eFE_Activate && activationInfo->pInputPorts[EIP_Activate].IsUserFlagSet())
         {
             Aws::String region = GetPortString(activationInfo, EIP_Region).c_str();
-            ClientSettings& clientSettings {
-                gEnv->pLmbrAWS->GetClientManager()->GetDefaultClientSettings()
-            };
-            clientSettings.region = region;
+            CloudGemFramework::AwsApiJob::Config* clientSettings{ nullptr };
+            EBUS_EVENT_RESULT(clientSettings, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultConfig);
 
-            gEnv->pLmbrAWS->GetClientManager()->ApplyConfiguration();
+            if (clientSettings)
+            {
+                clientSettings->region = region;
+                bool applyResult{ false };
+                EBUS_EVENT_RESULT(applyResult, CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
+            }
 
             SuccessNotify(activationInfo->pGraph, activationInfo->myID);
         }

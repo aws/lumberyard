@@ -28,6 +28,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/ILodRule.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
+#include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 namespace AZ
@@ -95,7 +96,14 @@ namespace AZ
 
                 if (m_assetWriter)
                 {
-                    if (!m_assetWriter->WriteCGF(&cgfContent))
+                    if (m_assetWriter->WriteCGF(&cgfContent))
+                    {
+                        static const AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
+                        // Using the same guid as the parent group/cgf as this needs to be a lod of that cgf.
+                        // Setting the lod to index+1 as 0 means the base mesh and 1-6 are lod levels 0-5.
+                        context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshLodsAssetType, index + 1);
+                    }
+                    else
                     {
                         AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to write CGF LoD file at level %d.", index);
                         result += SceneEvents::ProcessingResult::Failure;

@@ -61,18 +61,21 @@
                 "description": "Get the list of N messages starting at a given index and filter with all, active, expired or planned",
                 "parameters": [
                     {
+						"description": "The index number of the page to fetch first.  Example: 0",
                         "name": "index",
                         "in": "query",
                         "required": true,
                         "type": "integer"
                     },
                     {
+						"description": "The maximum number of messages to fetch.  Example: 1000",
                         "name": "count",
                         "in": "query",
                         "required": true,
                         "type": "integer"
                     },
                     {
+						"description": "Options available here are 'active', 'planned', 'expired'.  Example: active",
                         "name": "filter",
                         "in": "query",
                         "required": true,
@@ -95,6 +98,7 @@
                 "parameters": [
                     {
                         "name": "msg_id",
+						"description": "The message id to edit.",
                         "in": "path",
                         "required": true,
                         "type": "string"
@@ -114,6 +118,7 @@
                 "parameters": [
                     {
                         "name": "msg_id",
+						"description": "The message id to edit.",
                         "in": "path",
                         "required": true,
                         "type": "string"
@@ -121,6 +126,7 @@
                     {
                         "name": "msg",
                         "in": "body",
+						"description": "The new localized message body.",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/MessageData"
@@ -143,11 +149,13 @@
                 "parameters": [
                     {
                         "name": "time",
+						"description": "The player's local time.  Example: Jul 18 2017 13:43",
                         "in": "query",
                         "type": "string"
                     },
                     {
                         "name": "lang",
+						"description": "The ISO 639-1 language code. Example: en",
                         "in": "query",
                         "type": "string"
                     }
@@ -179,15 +187,19 @@
             "type": "object",
             "properties": {
                 "message": {
+					"description": "Required - The localized message of the day text.",
                     "type": "string"
                 },
                 "priority": {
+					"description": "The priority in which to view the message.  0 has the highest priority.",
                     "type": "integer"
                 },
                 "startTime": {
+					"description": "The date time in which to start displaying the message.  Example: Jul 18 2017 00:00",
                     "type": "string"
                 },
                 "endTime": {
+					"description": "The date time in which to stop displaying the message.  Example: Jul 19 2017 16:00",
                     "type": "string"
                 }
             },
@@ -199,18 +211,23 @@
             "type": "object",
             "properties": {
                 "UniqueMsgID": {
+					"description": "The unique message id.",
                     "type": "string"
                 },
                 "message": {
+					"description": "The localized message body.",
                     "type": "string"
                 },
                 "priority": {
+					"description": "The priority in which to view the message.  0 has the highest priority.",
                     "type": "integer"
                 },
                 "startTime": {
+					"description": "The date time in which to start displaying the message.  Example: Jul 18 2017 00:00",
                     "type": "string"
                 },
                 "endTime": {
+					"description": "The date time in which to stop displaying the message.  Example: Jul 19 2017 16:00",
                     "type": "string"
                 }
             }

@@ -41,6 +41,27 @@ export class AwsContext {
     private _usermanagement: UserManagement; 
     private _cognitoIdentity: any;
     private _cognitoIdentityService: any;
+    private _apigateway: any;
+    private _cloudWatchLogs: any;    
+    private _projectName: string = '';
+
+    get name() {
+        return this._projectName;
+    }
+
+    set name(value: string) {
+        if (value === undefined || value === null)
+            return;
+
+        let configBucketParts = value.split('-');
+
+        let name = []
+        for (var i = 0; i < configBucketParts.length - 2; i++) {
+            name.push(configBucketParts[i])
+        }
+
+        this._projectName = name.join('');
+    }
 
     get cognitoUserPool(): any {
         return new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool({
@@ -53,12 +74,28 @@ export class AwsContext {
         return this._cognitoClientId;
     }
 
+    get apiGateway(): any {
+        return this._apigateway;
+    }
+
+    set apiGateway(value: any) {
+        this._apigateway = value;
+    }
+
     get cognitoIdentity(): any {
         return this._cognitoIdentity;
     }
 
     set cognitoIdentity(value: any) {
         this._cognitoIdentity = value;       
+    }
+
+    get cloudWatchLogs(): any {
+        return this._cloudWatchLogs;
+    }
+
+    set cloudWatchLogs(value: any) {
+        this._cloudWatchLogs = value;
     }
 
     get cognitoIdentityService(): any {
@@ -81,9 +118,13 @@ export class AwsContext {
         return this._region;
     }
 
-    set config(value: any) {        
-        AWS.config.update(value);
+    set config(value: any) {             
+        AWS.config.update(value);        
         this.transition(EnumContextState.CLIENT_UPDATED);
+    }
+
+    get config(): any {
+        return AWS.config
     }
 
     set s3(value: any) {        
@@ -156,27 +197,36 @@ export class AwsContext {
     }
 
     public init(userPoolId: string, clientId: string, identityPoolId: string, configBucket: string, region: string) {
-        this._configBucket = configBucket;
+        this.name = configBucket;
+        this._configBucket = configBucket;        
         this._region = region;
         this._userPoolId = userPoolId;
         this._cognitoClientId = clientId;
-        this._identityPoolId = identityPoolId;        
-        //let creds = { accessKeyId: accessKey, secretAccessKey: secretKey, region: region, sessionToken: sessionToken };
+        this._identityPoolId = identityPoolId;                
         let config = {
             region: region,
             credentials: new AWS.CognitoIdentityCredentials({
                 IdentityPoolId: identityPoolId
-            }),
+            }, {
+                    region: region
+                }),
             sslEnabled: true,
             signatureVersion: 'v4'
         };
-
+        
         this.config = config;
-        this._awsClient = function (serviceName: string, apiversion: string) {
-                return new AWS[serviceName]({
-                    apiVersion: apiversion
-                });            }       
+        this._awsClient = function (serviceName: string, options: any) {
+            return new AWS[serviceName](options);
+        }       
+    }
 
+    public initializeServices(): void {
+        this.s3 = this.awsClient("S3", { apiVersion: "2006-03-01", region: this.region });
+        this.cloudFormation = this.awsClient("CloudFormation", { apiVersion: "2010-05-15", region: this.region });
+        this.cognitoIdentityService = this.awsClient("CognitoIdentityServiceProvider", { apiVersion: "2016-04-18", region: this.region });
+        this.cognitoIdentity = this.awsClient("CognitoIdentity", { apiVersion: "2014-06-30", region: this.region });
+        this.apiGateway = this.awsClient("APIGateway", { apiVersion: "2015-07-09", region: this.region });
+        this.cloudWatchLogs = this.awsClient("CloudWatchLogs", { apiVersion: "2014-03-28", region: this.region });        
     }
 
     private transition(to: EnumContextState): void {

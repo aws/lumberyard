@@ -15,82 +15,82 @@
 
 namespace LmbrCentral
 {
-    void EditorRigidPhysicsConfiguration::Reflect(AZ::ReflectContext* context)
+    void EditorRigidPhysicsConfig::Reflect(AZ::ReflectContext* context)
     {
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<EditorRigidPhysicsConfiguration, RigidPhysicsConfiguration>()
-                ->Version(1)
+            serializeContext->Class<EditorRigidPhysicsConfig, RigidPhysicsConfig>()
+                ->Version(2)
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<RigidPhysicsConfiguration>(
+                editContext->Class<RigidPhysicsConfig>(
                     "Rigid Body Physics Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_enabledInitially,
+                    ->DataElement(0, &RigidPhysicsConfig::m_enabledInitially,
                         "Enabled initially", "Whether the entity is initially enabled in the physics simulation.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &RigidPhysicsConfiguration::m_specifyMassOrDensity,
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &RigidPhysicsConfig::m_specifyMassOrDensity,
                         "Specify mass or density", "Whether total mass is specified, or calculated at spawn time based on density and volume")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                        ->EnumAttribute(RigidPhysicsConfiguration::MassOrDensity::Mass, "Mass")
-                        ->EnumAttribute(RigidPhysicsConfiguration::MassOrDensity::Density, "Density")
+                        ->EnumAttribute(RigidPhysicsConfig::MassOrDensity::Mass, "Mass")
+                        ->EnumAttribute(RigidPhysicsConfig::MassOrDensity::Density, "Density")
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_mass,
+                    ->DataElement(0, &RigidPhysicsConfig::m_mass,
                         "Total mass (kg)", "Total mass of entity, in kg")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfiguration::UseMass)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfig::UseMass)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_density,
+                    ->DataElement(0, &RigidPhysicsConfig::m_density,
                         "Density (kg / cubic meter)", "Mass (kg) per cubic meter of the mesh's volume. Total mass of entity is calculated at spawn. (Water's density is 1000)")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfiguration::UseDensity)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfig::UseDensity)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_atRestInitially,
+                    ->DataElement(0, &RigidPhysicsConfig::m_atRestInitially,
                         "At rest initially", "True: Entity remains at rest until agitated.\nFalse: Entity falls after spawn.")
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_enableCollisionResponse,
+                    ->DataElement(0, &RigidPhysicsConfig::m_enableCollisionResponse,
                         "Collision response", "True: Entity's simulation is affected normally as a result of collisions with other bodies.\nFalse: Collision events are reported, but the entity's simulation is not affected by collisions.")
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_interactsWithTriggers,
+                    ->DataElement(0, &RigidPhysicsConfig::m_interactsWithTriggers,
                         "Interacts with triggers", "Indicates whether or not this entity can interact with proximity triggers.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &RigidPhysicsConfiguration::m_recordCollisions, "Record collisions", "Whether or not to record and report collisions with this entity")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &RigidPhysicsConfig::m_recordCollisions, "Record collisions", "Whether or not to record and report collisions with this entity")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &RigidPhysicsConfiguration::m_maxRecordedCollisions, "Number of collisions", "Maximum number of collisions to record and report per frame")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfiguration::m_recordCollisions)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &RigidPhysicsConfig::m_maxRecordedCollisions, "Number of collisions", "Maximum number of collisions to record and report per frame")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &RigidPhysicsConfig::m_recordCollisions)
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Simulation")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_simulationDamping, "Damping", "Uniform damping value applied to object's movement.")
+                    ->DataElement(0, &RigidPhysicsConfig::m_simulationDamping, "Damping", "Uniform damping value applied to object's movement.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_simulationMinEnergy, "Minimum energy", "The energy threshold under which the object will go to sleep.")
+                    ->DataElement(0, &RigidPhysicsConfig::m_simulationMinEnergy, "Minimum energy", "The energy threshold under which the object will go to sleep.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Buoyancy")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_buoyancyDamping, "Water damping", "Uniform damping value applied while in water.")
+                    ->DataElement(0, &RigidPhysicsConfig::m_buoyancyDamping, "Water damping", "Uniform damping value applied while in water.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_buoyancyDensity, "Water density", "Water density strength.")
+                    ->DataElement(0, &RigidPhysicsConfig::m_buoyancyDensity, "Water density", "Water density strength.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
 
-                    ->DataElement(0, &RigidPhysicsConfiguration::m_buoyancyResistance, "Water resistance", "Water resistance strength.")
+                    ->DataElement(0, &RigidPhysicsConfig::m_buoyancyResistance, "Water resistance", "Water resistance strength.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                 ;
@@ -101,7 +101,7 @@ namespace LmbrCentral
     void EditorRigidPhysicsComponent::Reflect(AZ::ReflectContext* context)
     {
         EditorPhysicsComponent::Reflect(context);
-        EditorRigidPhysicsConfiguration::Reflect(context);
+        EditorRigidPhysicsConfig::Reflect(context);
 
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -122,6 +122,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/RigidPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-rigid-body.html")
                     ->DataElement(0, &EditorRigidPhysicsComponent::m_configuration, "Configuration", "Configuration for rigid body physics.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                 ;
@@ -129,14 +130,29 @@ namespace LmbrCentral
         }
     }
 
-    EditorRigidPhysicsComponent::EditorRigidPhysicsComponent(const EditorRigidPhysicsConfiguration& configuration)
-        : m_configuration(configuration)
+    bool EditorRigidPhysicsComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
+        if (auto config = azrtti_cast<const RigidPhysicsConfig*>(baseConfig))
+        {
+            static_cast<RigidPhysicsConfig&>(m_configuration) = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool EditorRigidPhysicsComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto config = azrtti_cast<RigidPhysicsConfig*>(outBaseConfig))
+        {
+            *config = m_configuration;
+            return true;
+        }
+        return false;
     }
 
     void EditorRigidPhysicsComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        gameEntity->CreateComponent<RigidPhysicsComponent>(m_configuration);
+        gameEntity->CreateComponent<RigidPhysicsComponent>()->SetConfiguration(m_configuration);
     }
 
 } // namespace LmbrCentral

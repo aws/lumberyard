@@ -15,7 +15,6 @@
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
 #include <IGameFramework.h>
-#include "StreamingInstall_Durango.h"
 
 class PlatformOS_Base
     : public IPlatformOS
@@ -36,6 +35,10 @@ public:
     bool UserGetOnlineName(unsigned int userIndex, IPlatformOS::TUserName& outName) const override;
     bool GetUserProfilePreference(unsigned int user, EUserProfilePreference ePreference, SUserProfileVariant& outResult) const override;
     bool UserSelectStorageDevice(unsigned int userIndex, bool bForceUI = false) override;
+    bool AZ_DEPRECATED(KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback),
+        "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") override;
+    bool AZ_DEPRECATED(KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") override;
+    bool AZ_DEPRECATED(KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") override;
 
 protected:
     virtual void TrySignIn(unsigned int userId);

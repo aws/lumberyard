@@ -29,6 +29,7 @@ PropertiesContainer::PropertiesContainer(PropertiesWidget* propertiesWidget,
     , m_editorWindow(editorWindow)
     , m_containerWidget(new QWidget(this))
     , m_rowLayout(new QVBoxLayout(m_containerWidget))
+    , m_selectedEntityDisplayNameWidget(nullptr)
     , m_selectionHasChanged(false)
     , m_isCanvasSelected(false)
 {
@@ -306,6 +307,38 @@ AzToolsFramework::ReflectedPropertyEditor* PropertiesContainer::CreatePropertyEd
 
 void PropertiesContainer::Update()
 {
+    size_t selectedEntitiesAmount = m_selectedEntities.size();
+    QString displayName;
+
+    // Either only one element selected, or none (still is 1 because it selects the canvas instead)
+    if (selectedEntitiesAmount == 1)
+    {
+        // If the canvas was selected
+        if (m_isCanvasSelected)
+        {
+            displayName = "Canvas";
+        }
+        // Else one element was selected
+        else
+        {
+            // Set the name in the properties pane to the name of the element
+            AZ::EntityId selectedElement = m_selectedEntities.front();
+            AZStd::string selectedEntityName;
+            EBUS_EVENT_ID_RESULT(selectedEntityName, selectedElement, UiElementBus, GetName);
+            displayName = selectedEntityName.c_str();
+        }
+    }
+    else // more than one entity selected
+    {
+        displayName = ToString(selectedEntitiesAmount) + " elements selected";
+    }
+
+    // Update the selected element display name
+    if (m_selectedEntityDisplayNameWidget != nullptr)
+    {
+        m_selectedEntityDisplayNameWidget->setText(displayName);
+    }
+
     // Clear content.
     {
         for (int j = m_rowLayout->count(); j > 0; --j)
@@ -378,6 +411,24 @@ void PropertiesContainer::Refresh(AzToolsFramework::PropertyModificationRefreshL
                 }
             }
         }
+
+        // If the selection has not changed, but a refresh was prompted then the name of the currently selected entity might
+        // have changed.
+        size_t selectedEntitiesAmount = m_selectedEntities.size();
+        // Check if only one entity is selected and that it is an element
+        if (selectedEntitiesAmount == 1 && !m_isCanvasSelected)
+        {
+            // Set the name in the properties pane to the name of the element
+            AZ::EntityId selectedElement = m_selectedEntities.front();
+            AZStd::string selectedEntityName;
+            EBUS_EVENT_ID_RESULT(selectedEntityName, selectedElement, UiElementBus, GetName);
+
+            // Update the selected element display name
+            if (m_selectedEntityDisplayNameWidget != nullptr)
+            {
+                m_selectedEntityDisplayNameWidget->setText(selectedEntityName.c_str());
+            }
+        }
     }
 }
 
@@ -416,7 +467,7 @@ void PropertiesContainer::SelectedEntityPointersChanged()
 
 void PropertiesContainer::RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* node, const QPoint& globalPos)
 {
-    AZ::Component* onlyThisComponentType = nullptr;
+    AZ::Component* componentToRemove = nullptr;
     {
         while (node)
         {
@@ -424,8 +475,13 @@ void PropertiesContainer::RequestPropertyContextMenu(AzToolsFramework::InstanceD
             {
                 if (node->GetClassMetadata()->m_azRtti->IsTypeOf(AZ::Component::RTTI_Type()))
                 {
-                    onlyThisComponentType = static_cast<AZ::Component*>(node->FirstInstance());
-                    break;
+                    AZ::Component* component = static_cast<AZ::Component*>(node->FirstInstance());
+                    // Only break if the component we got was a component on an entity, not just a member variable component
+                    if (component->GetEntity() != nullptr)
+                    {
+                        componentToRemove = component;
+                        break;
+                    }
                 }
             }
 
@@ -436,12 +492,17 @@ void PropertiesContainer::RequestPropertyContextMenu(AzToolsFramework::InstanceD
     HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
         HierarchyMenu::Show::kRemoveComponents | HierarchyMenu::Show::kPushToSlice,
         false,
-        onlyThisComponentType);
+        componentToRemove);
 
     if (!contextMenu.isEmpty())
     {
         contextMenu.exec(globalPos);
     }
+}
+
+void PropertiesContainer::SetSelectedEntityDisplayNameWidget(QLabel * selectedEntityDisplayNameWidget)
+{
+    m_selectedEntityDisplayNameWidget = selectedEntityDisplayNameWidget;
 }
 
 #include <PropertiesContainer.moc>

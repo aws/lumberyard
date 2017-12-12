@@ -57,7 +57,7 @@ void CRenderView::InitRenderItems()
         for (int j = 0; j < EFSLIST_NUM; j++)
         {
             m_renderItems[i][j].Init();
-            m_renderItems[i][j].SetNoneWorkerThreadID(nThreadId);
+            m_renderItems[i][j].SetNonWorkerThreadID(nThreadId);
         }
     }
 }

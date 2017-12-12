@@ -163,7 +163,7 @@ void CImagePainter::PaintBrush(const float fpx, const float fpy, TImage<LayerWei
 }
 
 
-void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CImageEx& outImage,
+void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CImageEx& outImageBGR,
     const uint32 dwOffsetX, const uint32 dwOffsetY, const float fScaleX, const float fScaleY,
     const SEditorPaintBrush& brush, const CImageEx& imgPattern)
 {
@@ -177,7 +177,7 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
 
     unsigned int pos;
 
-    uint32* src = outImage.GetData();
+    uint32* srcBGR = outImageBGR.GetData();
     uint32* pat = imgPattern.GetData();
 
     int value = brush.color;
@@ -185,8 +185,8 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
     // Calculate the maximum distance
     fMaxDist = brush.fRadius;
 
-    int width = outImage.GetWidth();
-    int height = outImage.GetHeight();
+    int width = outImageBGR.GetWidth();
+    int height = outImageBGR.GetHeight();
 
     int patwidth = imgPattern.GetWidth();
     int patheight = imgPattern.GetHeight();
@@ -239,7 +239,7 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
 
             float fMask = brush.GetMask(iPosX / fScaleX, iPosY / fScaleX);
 
-            uint32 cDstPix = src[pos];
+            uint32 cDstPixBGR = srcBGR[pos];
 
             int32 iPatX = ((uint32)iPosX) % patwidth;
             assert(iPatX >= 0 && iPatX < patwidth);
@@ -259,7 +259,7 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
             const float fRecip255 = 1.0f / 255.0f;
 
             // Convert Src to Linear Space (Src is pattern texture, can be in linear or gamma space)
-            ColorF cSrc = ColorF((cSrcPix & 0x0ff), (cSrcPix & 0x0ff00) >> 8, (cSrcPix & 0x0ff0000) >> 16) * fRecip255;
+            ColorF cSrc = ColorF(GetRValue(cSrcPix), GetGValue(cSrcPix), GetBValue(cSrcPix)) * fRecip255;
             if (bSRGB)
             {
                 cSrc.srgb2rgb();
@@ -271,8 +271,8 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
             cSrc *= cMtl;
             cSrc.clamp(0.0f, 1.0f);
 
-            // Convert Dst to Linear Space ( Dst is always in gamma space )
-            ColorF cDst = ColorF((cDstPix & 0x0ff0000) >> 16, (cDstPix & 0x0ff00) >> 8, (cDstPix & 0x0ff)) * fRecip255;
+            // Convert Dst to Linear Space ( Dst is always in gamma space ), and load from BGR -> RGB
+            ColorF cDst = ColorF(GetBValue(cDstPixBGR), GetGValue(cDstPixBGR), GetRValue(cDstPixBGR)) * fRecip255;
             cDst.srgb2rgb();
 
             // Linear space blend
@@ -282,7 +282,10 @@ void CImagePainter::PaintBrushWithPattern(const float fpx, const float fpy, CIma
             cOut.rgb2srgb();
             cOut *= 255.0f;
 
-            src[pos] = (((uint32)cOut.r) << 16) | (((uint32)cOut.g) << 8) | ((uint32)cOut.b);
+            // Save the blended result as BGR
+            // It's important to round as we go from float back to int.  If we just truncate,
+            // we'll end up with consistently darker colors.
+            srcBGR[pos] = RGB(round(cOut.b), round(cOut.g), round(cOut.r));
         }
     }
 }
@@ -322,13 +325,7 @@ void CImagePainter::FillWithPattern(CImageEx& outImage, const uint32 dwOffsetX, 
 
             uint32 cSrc = pat[iPatX + iPatY * patwidth];
 
-            float SrcR = (cSrc & 0x0ff);                  // RGB flipped
-            float SrcG = (cSrc & 0x0ff00) >> 8;
-            float SrcB = (cSrc & 0x0ff0000) >> 16;
-
-            uint32 r = SrcR, g = SrcG, b = SrcB;
-
-            src[pos] = (r << 16) | (g << 8) | b;
+            src[pos] = cSrc;
         }
     }
 }

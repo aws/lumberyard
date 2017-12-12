@@ -15,7 +15,7 @@ import compile_rules_win_x64_win_x64_vs2015
 def load_common_win_x64_vs2015_test_settings(conf):
     conf.env['DEFINES'] += ['AZ_TESTS_ENABLED']
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/vc140').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
     if not os.path.exists(azcg_dir):
         conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have VS2015 AzCodeGenerator binaries available')
 

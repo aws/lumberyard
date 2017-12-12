@@ -102,7 +102,6 @@ namespace Render
 
                 // Insert and populate the allocation record
                 VRAMAllocationRecordsType::pair_iter_bool iterBool = m_allocations.insert_key(address);
-                // TODO: VRAM registration doesn't seem to work correctly for xbox, so I'm just disabling it for now.
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iterBool.second, "VRAM memory address 0x%p is already allocated and being tracked! VRAM memory reporting may now be inaccurate.", address);
 
@@ -118,7 +117,6 @@ namespace Render
             void UnregisterAllocation(void* address)
             {
                 VRAMAllocationRecordsType::iterator iter = m_allocations.find(address);
-                // TODO: VRAM registration doesn't seem to work correctly for xbox, so I'm just disabling it for now.
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iter != m_allocations.end(), "VRAM memory address 0x%p does not exist in the records. VRAM memory reporting may now be inaccurate.", address);
                 if ( iter != m_allocations.end() )

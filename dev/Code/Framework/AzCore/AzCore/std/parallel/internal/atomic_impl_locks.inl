@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_PARALLEL_ATOMIC_IMPL_LOCKS_INL
-#define AZSTD_PARALLEL_ATOMIC_IMPL_LOCKS_INL 1
+#pragma once
 
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
@@ -302,6 +301,3 @@ namespace AZStd
 #if defined(AZ_COMPILER_MSVC)
     #pragma warning( pop )
 #endif
-
-#endif
-#pragma once

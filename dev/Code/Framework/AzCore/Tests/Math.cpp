@@ -21,11 +21,24 @@
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/Plane.h>
+#include <AzCore/Math/Color.h>
+#include <AzCore/Math/Spline.h>
+#include <AzCore/Math/IntersectSegment.h>
 
 #include <AzCore/Math/Sfmt.h>
 #include <AzCore/Math/Uuid.h>
 
 #include <AzCore/std/containers/unordered_set.h>
+
+// output stream PrintTo() function for VectorFloat so GTest can print it.
+namespace AZ {
+
+    void PrintTo(const VectorFloat& vf, ::std::ostream* os)
+    {
+        *os << static_cast<float>(vf);
+    }
+}
+
 
 using namespace AZ;
 
@@ -139,7 +152,6 @@ namespace UnitTest
         GetSinCos(f4, sinResult, cosResult);
         AZ_TEST_ASSERT(IsClose(sinResult, 0.f, epsilon));
         AZ_TEST_ASSERT(IsClose(cosResult, 1.f, epsilon));
-
     }
 
     TEST(MATH_Vector2, Test)
@@ -690,7 +702,7 @@ namespace UnitTest
         Vector3 rGrEq = Vector3::CreateSelectCmpGreater(vA, vB, Vector3(1.0f), Vector3(0.0f));
         AZ_TEST_ASSERT(rGrEq.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
     }
-    
+
     TEST(MATH_Vector4, Test)
     {
         //constructors
@@ -1922,7 +1934,7 @@ namespace UnitTest
         Vector3 v = (q2 * q1) * Vector3(1.0f, 0.0f, 0.0f);
         AZ_TEST_ASSERT(v.IsClose(Vector3(0.0f, 0.0f, 1.0f)));
     }
-    
+
     TEST(MATH_Aabb, Test)
     {
         //CreateNull
@@ -2367,6 +2379,2690 @@ namespace UnitTest
         AZ_TEST_ASSERT(!pl.IsFinite());
     }
 
+    TEST(MATH_Intersection, ClosestSegmentSegment)
+    {
+        // line2 right and above line1 (no overlap, parallel)
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(4.0f, 0.0f, 0.0f);
+            Vector3 line2Start(7.0f, 0.0f, 4.0f);
+            Vector3 line2End(10.0f, 0.0f, 4.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 5.0f);
+            AZ_TEST_ASSERT(line1Proportion == 1.0f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+
+        // line2 halfway over the top of the line1 (overlap, parallel)
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(4.0f, 0.0f, 0.0f);
+            Vector3 line2Start(2.0f, 0.0f, 3.0f);
+            Vector3 line2End(6.0f, 0.0f, 3.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 3.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.5f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+
+        // line2 over the top of the line1 (inside, parallel)
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(8.0f, 0.0f, 0.0f);
+            Vector3 line2Start(2.0f, 0.0f, 3.0f);
+            Vector3 line2End(6.0f, 0.0f, 3.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 3.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.25f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+
+        // line2 over the top of the line1 (overlap, skew (cross))
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(8.0f, 0.0f, 0.0f);
+            Vector3 line2Start(4.0f, 4.0f, 4.0f);
+            Vector3 line2End(4.0f, -4.0f, 4.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 4.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.5f);
+            AZ_TEST_ASSERT(line2Proportion == 0.5f);
+        }
+
+        // line2 flat diagonal to line1 (no overlap, skew)
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(4.0f, 4.0f, 0.0f);
+            Vector3 line2Start(10.0f, 0.0f, 0.0f);
+            Vector3 line2End(6.0f, 4.0f, 0.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 2.0f);
+            AZ_TEST_ASSERT(line1Proportion == 1.0f);
+            AZ_TEST_ASSERT(line2Proportion == 1.0f);
+        }
+
+        // line2 perpendicular to line1 (skew, no overlap)
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(4.0f, 0.0f, 0.0f);
+            Vector3 line2Start(2.0f, 1.0f, 0.0f);
+            Vector3 line2End(2.0f, 4.0f, 0.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 1.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.5f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+
+        // line 1 degenerates to point
+        {
+            Vector3 line1Start(4.0f, 2.0f, 0.0f);
+            Vector3 line1End(4.0f, 2.0f, 0.0f);
+            Vector3 line2Start(2.0f, 0.0f, 0.0f);
+            Vector3 line2End(2.0f, 4.0f, 0.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 2.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.0f);
+            AZ_TEST_ASSERT(line2Proportion == 0.5f);
+        }
+
+        // line 2 degenerates to point
+        {
+            Vector3 line1Start(0.0f, 0.0f, 0.0f);
+            Vector3 line1End(4.0f, 0.0f, 0.0f);
+            Vector3 line2Start(2.0f, 1.0f, 0.0f);
+            Vector3 line2End(2.0f, 1.0f, 0.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 1.0f);
+            AZ_TEST_ASSERT(line1Proportion == 0.5f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+
+        // both lines degenerate to points
+        {
+            Vector3 line1Start(5.0f, 5.0f, 5.0f);
+            Vector3 line1End(5.0f, 5.0f, 5.0f);
+            Vector3 line2Start(10.0f, 10.0f, 10.0f);
+            Vector3 line2End(10.0f, 10.0f, 10.0f);
+
+            Vector3 line1ClosestPoint;
+            Vector3 line2ClosestPoint;
+            VectorFloat line1Proportion;
+            VectorFloat line2Proportion;
+            Intersect::ClosestSegmentSegment(line1Start, line1End, line2Start, line2End, line1Proportion, line2Proportion, line1ClosestPoint, line2ClosestPoint);
+            float pointDifference = (line2ClosestPoint - line1ClosestPoint).GetLength();
+
+            // (10, 10, 10) - (5, 5, 5) == (5, 5, 5)
+            // |(5,5,5)| == sqrt(5*5+5*5+5*5) == sqrt(75)
+            AZ_TEST_ASSERT(pointDifference == std::sqrtf(75.0f));
+            AZ_TEST_ASSERT(line1Proportion == 0.0f);
+            AZ_TEST_ASSERT(line2Proportion == 0.0f);
+        }
+    }
+
+    TEST(MATH_Intersection, ClosestPointSegment)
+    {
+        // point above center of line
+        {
+            Vector3 lineStart(0.0f, 0.0f, 0.0f);
+            Vector3 lineEnd(4.0f, 0.0f, 0.0f);
+            Vector3 point(2.0f, 2.0f, 0.0f);
+
+            Vector3 lineClosestPoint;
+            VectorFloat lineProportion;
+            Intersect::ClosestPointSegment(point, lineStart, lineEnd, lineProportion, lineClosestPoint);
+
+            float pointDifference = (lineClosestPoint - point).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 2.0f);
+            AZ_TEST_ASSERT(lineProportion == 0.5f);
+        }
+
+        // point same height behind line
+        {
+            Vector3 lineStart(0.0f, 0.0f, 0.0f);
+            Vector3 lineEnd(0.0f, 4.0f, 0.0f);
+            Vector3 point(0.0f, -2.0f, 0.0f);
+
+            Vector3 lineClosestPoint;
+            VectorFloat lineProportion;
+            Intersect::ClosestPointSegment(point, lineStart, lineEnd, lineProportion, lineClosestPoint);
+
+            float pointDifference = (lineClosestPoint - point).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 2.0f);
+            AZ_TEST_ASSERT(lineProportion == 0.0f);
+        }
+
+        // point passed end of line
+        {
+            Vector3 lineStart(0.0f, 0.0f, 0.0f);
+            Vector3 lineEnd(0.0f, 0.0f, 10.0f);
+            Vector3 point(0.0f, 0.0f, 15.0f);
+
+            Vector3 lineClosestPoint;
+            VectorFloat lineProportion;
+            Intersect::ClosestPointSegment(point, lineStart, lineEnd, lineProportion, lineClosestPoint);
+
+            float pointDifference = (lineClosestPoint - point).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 5.0f);
+            AZ_TEST_ASSERT(lineProportion == 1.0f);
+        }
+
+        // point above part way along line
+        {
+            Vector3 lineStart(0.0f, 0.0f, 0.0f);
+            Vector3 lineEnd(4.0f, 4.0f, 0.0f);
+            Vector3 point(3.0f, 3.0f, -1.0f);
+
+            Vector3 lineClosestPoint;
+            VectorFloat lineProportion;
+            Intersect::ClosestPointSegment(point, lineStart, lineEnd, lineProportion, lineClosestPoint);
+
+            float pointDifference = (lineClosestPoint - point).GetLength();
+
+            AZ_TEST_ASSERT(pointDifference == 1.0f);
+            AZ_TEST_ASSERT(lineProportion == 0.75f);
+        }
+    }
+
+    class MATH_SplineTest
+        : public AllocatorsFixture
+    {
+    public:
+        void Linear_NearestAddressFromPosition()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-1.0f, 6.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, 6.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.0f, 2.5f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.0f, 4.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                }
+            }
+        }
+
+        void Linear_NearestAddressFromDirection()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, -1.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 0.0f, -1.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                // note: current error case - unexpected result
+                // internally GetNearestAddress treats ray as line segment - direction not respected - should update?
+                //{
+                //    SplineAddress splineAddress = linearSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
+                //    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                //    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                //}
+            }
+        }
+
+        void Linear_AddressByDistance()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(7.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(15.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(11.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(3.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.6f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(20.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(-5.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(17.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByDistance(20.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+        }
+
+        void Linear_AddressByFraction()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.6f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.8f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.2f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.6f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(-0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = linearSpline.GetAddressByFraction(0.8f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.2f);
+                }
+            }
+        }
+
+        void Linear_GetPosition()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByFraction(0.5f));
+                    AZ_TEST_ASSERT(position == Vector3(5.0f, 2.5f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(SplineAddress());
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 5.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(4.0f));
+                    AZ_TEST_ASSERT(position == Vector3(4.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(SplineAddress(3, 0.0f));
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 5.0f, 0.0f));
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByFraction(0.5f));
+                    AZ_TEST_ASSERT(position == Vector3(5.0f, 5.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(20.0f));
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(18.0f));
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 2.0f, 0.0f));
+                }
+            }
+        }
+
+        void Linear_GetNormal()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // n shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByFraction(0.5f));
+                    AZ_TEST_ASSERT(normal == Vector3(0.0f, 1.0f, 0.0f));
+                }
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(SplineAddress());
+                    AZ_TEST_ASSERT(normal == Vector3(-1.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(normal == Vector3(1.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(4.0f));
+                    AZ_TEST_ASSERT(normal == Vector3(-1.0f, 0.0f, 0.0f));
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+
+                // n shape spline (yz plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 5.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 5.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(4.0f));
+                AZ_TEST_ASSERT(normal == Vector3(1.0f, 0.0f, 0.0f));
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // n shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(20.0f));
+                    AZ_TEST_ASSERT(normal == Vector3(0.0f, -1.0f, 0.0f));
+                }
+
+                {
+                    Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByFraction(0.8f));
+                    AZ_TEST_ASSERT(normal == Vector3(0.0f, -1.0f, 0.0f));
+                }
+            }
+        }
+
+        void Linear_GetTangent()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByFraction(0.5f));
+                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, 1.0f, 0.0f));
+                }
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(SplineAddress());
+                    AZ_TEST_ASSERT(tangent == Vector3(1.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(tangent == Vector3(-1.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByDistance(4.0f));
+                    AZ_TEST_ASSERT(tangent == Vector3(1.0f, 0.0f, 0.0f));
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(SplineAddress(linearSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, -1.0f, 0.0f));
+                }
+
+                {
+                    Vector3 tangent = linearSpline.GetTangent(linearSpline.GetAddressByDistance(16.0f));
+                    AZ_TEST_ASSERT(tangent == Vector3(0.0f, -1.0f, 0.0f));
+                }
+            }
+        }
+
+        void Linear_Length()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    float splineLength = linearSpline.GetSplineLength();
+                    AZ_TEST_ASSERT(splineLength == 15.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(0);
+                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(2);
+                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(4);
+                    AZ_TEST_ASSERT(segmentLength == 0.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(2.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(2.0f, 3.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(4.0f, 3.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(4.0f, 10.0f, 0.0f));
+
+                {
+                    float splineLength = linearSpline.GetSplineLength();
+                    AZ_TEST_ASSERT(splineLength == 14.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(0);
+                    AZ_TEST_ASSERT(segmentLength == 2.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(3);
+                    AZ_TEST_ASSERT(segmentLength == 7.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // backward C shaped spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    float splineLength = linearSpline.GetSplineLength();
+                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(3);
+                    AZ_TEST_ASSERT(segmentLength == 5.0f);
+                }
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // single line (y axis)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+
+                {
+                    float splineLength = linearSpline.GetSplineLength();
+                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                }
+
+                {
+                    float segmentLength = linearSpline.GetSegmentLength(1);
+                    AZ_TEST_ASSERT(segmentLength == 10.0f);
+                }
+            }
+        }
+
+        void Linear_Aabb()
+        {
+            {
+                LinearSpline linearSpline;
+
+                // slight n curve spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                linearSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+            }
+
+            {
+                LinearSpline linearSpline;
+                linearSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                linearSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+            }
+
+            {
+                LinearSpline linearSpline;
+                AZ::Transform translation = AZ::Transform::CreateFromMatrix3x3AndTranslation(Matrix3x3::CreateIdentity(), Vector3(25.0f, 25.0f, 0.0f));
+
+                // slight n curve spline (xy plane)
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                linearSpline.GetAabb(aabb, translation);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(25.0f, 25.0f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(35.0f, 35.0f, 0.0f)));
+            }
+        }
+
+        void CatmullRom_NearestAddressFromPosition()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight backward C curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-1.0f, 6.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, 6.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(5.0f, -2.5f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+            }
+        }
+
+        void CatmullRom_NearestAddressFromDirection()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight backward C curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, -2.5f, 1.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(2.5f, -10.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(7.5f, 2.5f, 0.0f), Vector3(-1.0f, 0.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-2.5f, 7.5f, -1.0f), Vector3(1.0f, 0.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight backward C curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(5.0f, 5.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 5.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetNearestAddress(Vector3(-2.5f, 2.5f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+            }
+        }
+
+        /*
+            Catmull-Rom Sample Points - (0.0f, 0.0f, 0.0f), (0.0f, 10.0f, 0.0f), (10.0f, 10.0f, 0.0f), (10.0f, 0.0f, 0.0f)
+            (calculated using https://www.desmos.com/calculator/552cpvzfxw)
+
+            t = 0         pos = (0.0f, 10.0f, 0.0f)
+            t = 0.125     pos = (0.83984375.0f, 10.546875.0f, 0.0f)
+            t = 0.25      pos = (2.03125.0f, 10.9375.0f, 0.0f)
+            t = 0.375     pos = (3.45703125.0f, 11.171875.0f, 0.0f)
+            t = 0.5       pos = (5.0.0f, 11.25.0f, 0.0f)
+            t = 0.625     pos = (6.54296875.0f, 11.171875.0f, 0.0f)
+            t = 0.75      pos = (7.96875.0f, 10.9375.0f, 0.0f)
+            t = 0.875     pos = (9.16015625.0f, 10.546875.0f, 0.0f)
+            t = 1         pos = (10.0f, 10.0f)
+
+            delta = (0.83984375.0f, 0.546875.0f, 0.0f)     length = 1.00220
+            delta = (1.19140625.0f, 0.390625.0f, 0.0f)     length = 1.25381
+            delta = (1.42578125.0f, 0.234375.0f, 0.0f)     length = 1.44492
+            delta = (1.54296875.0f, 0.078125.0f, 0.0f)     length = 1.54495
+            delta = (1.54296875.0f, -0.078125.0f, 0.0f)    length = 1.54495
+            delta = (1.42578125.0f, -0.234375.0f, 0.0f)    length = 1.44492
+            delta = (1.19140625.0f, -0.390625.0f, 0.0f)    length = 1.25381
+            delta = (0.83984375.0f, -0.546875.0f, 0.0f)    length = 1.00220
+
+            total = 10.49176
+        */
+
+        void CatmullRom_AddressByDistance()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(20.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    // note: spline length is approx 10.49176
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(5.24588f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(0.5f, splineAddress.m_segmentFraction);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(-10.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(50.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByDistance(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+            }
+        }
+
+        void CatmullRom_AddressByFraction()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.75f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.75f);
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = catmullRomSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+            }
+        }
+
+        void CatmullRom_GetPosition()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.125f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.625f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(10.0f, 10.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.0f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.0f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(2, 0.0f));
+                    AZ_TEST_ASSERT(position == Vector3(10.0f, 10.0f, 0.0f));
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.125f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.83984375f, 10.546875f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(1, 0.625f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(6.54296875f, 11.171875f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.0f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(3, 1.0f));
+                    AZ_TEST_ASSERT(position.IsClose(Vector3(0.0f, 0.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
+                    AZ_TEST_ASSERT(position == Vector3(-1.25f, 5.0f, 0.0f));
+                }
+            }
+        }
+
+        void CatmullRom_GetNormal()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.0f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 1.0f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 12.5f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(2, 0.0f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                }
+            }
+        }
+
+        void CatmullRom_GetTangent()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.0f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 1.0f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(12.5f, 0.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(2, 0.0f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(5.0f, -5.0f, 0.0f).GetNormalized()));
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 tangent = catmullRomSpline.GetTangent(SplineAddress(3, 1.0f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
+            }
+        }
+
+        void CatmullRom_Length()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    float length = catmullRomSpline.GetSplineLength();
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                }
+
+                {
+                    float length = catmullRomSpline.GetSegmentLength(0);
+                    AZ_TEST_ASSERT(length == 0.0f);
+                }
+
+                {
+                    float length = catmullRomSpline.GetSegmentLength(1);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                }
+
+                {
+                    float length = catmullRomSpline.GetSegmentLength((size_t)-1);
+                    AZ_TEST_ASSERT(length == 0.0f);
+                }
+
+                {
+                    float length = catmullRomSpline.GetSegmentLength(10);
+                    AZ_TEST_ASSERT(length == 0.0f);
+                }
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    float length = catmullRomSpline.GetSplineLength();
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(41.96704, length);
+                }
+
+                {
+                    float length = catmullRomSpline.GetSegmentLength(3);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(10.49176f, length);
+                }
+            }
+        }
+
+        void CatmullRom_Aabb()
+        {
+            {
+                CatmullRomSpline catmullRomSpline;
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                catmullRomSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(0.0f, 10.0f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(10.0f, 11.25f, 0.0f)));
+            }
+
+            {
+                CatmullRomSpline catmullRomSpline;
+                catmullRomSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                catmullRomSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.25f, -1.25f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.25f, 11.25f, 0.0f)));
+            }
+        }
+
+        void Bezier_NearestAddressFromPosition()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, 12.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, -1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, -12.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, 12.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+        }
+
+        void Bezier_NearestAddressFromDirection()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-1.0f, -1.0f, 0.0f), Vector3(-1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(5.0f, 12.0f, 0.0f), Vector3(0.0f, -1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(12.0f, -1.0f, 0.0f), Vector3(1.0f, 1.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetNearestAddress(Vector3(-10.0f, -10.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.5f);
+                }
+            }
+        }
+
+        void Bezier_AddressByDistance()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByDistance(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByDistance(-5.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByDistance(100.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByDistance(100.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+            }
+        }
+
+        void Bezier_AddressByFraction()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(-0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 0);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 0.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(2.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 1);
+                    AZ_TEST_ASSERT_CLOSE(splineAddress.m_segmentFraction, 0.5f, 0.01f);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(1.0f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 3);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentFraction == 1.0f);
+                }
+
+                {
+                    SplineAddress splineAddress = bezierSpline.GetAddressByFraction(0.5f);
+                    AZ_TEST_ASSERT(splineAddress.m_segmentIndex == 2);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(0.0f, splineAddress.m_segmentFraction);
+                }
+            }
+        }
+
+        void Bezier_GetPosition()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 position = bezierSpline.GetPosition(bezierSpline.GetAddressByFraction(1.0f));
+                    AZ_TEST_ASSERT(position == Vector3(10.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress());
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(position == Vector3(10.0f, 0.0f, 0.0f));
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress());
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
+                    AZ_TEST_ASSERT(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
+            }
+        }
+
+        void Bezier_GetNormal()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                }
+            }
+        }
+
+        void Bezier_GetTangent()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 tangent = bezierSpline.GetTangent(SplineAddress(1, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(1.0f, 0.0f, 0.0f)));
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 tangent = bezierSpline.GetTangent(SplineAddress(3, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(-1.0f, 0.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 tangent = bezierSpline.GetTangent(SplineAddress(2, 0.5f));
+                    AZ_TEST_ASSERT(tangent.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                }
+            }
+        }
+
+        void Bezier_Length()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    float splineLength = bezierSpline.GetSplineLength();
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(splineLength, 31.8014f);
+                }
+
+                {
+                    float segment0Length = bezierSpline.GetSegmentLength(0);
+                    float segment2Length = bezierSpline.GetSegmentLength(2);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(segment0Length, segment2Length);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // n shape (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    float splineLength = bezierSpline.GetSplineLength();
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(splineLength, 43.40867f);
+                }
+
+                {
+                    float segment0Length = bezierSpline.GetSegmentLength(0);
+                    float segment2Length = bezierSpline.GetSegmentLength(3);
+                    AZ_TEST_ASSERT_FLOAT_CLOSE(segment0Length, segment2Length);
+                }
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // single line (y axis)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+
+                {
+                    float splineLength = bezierSpline.GetSplineLength();
+                    AZ_TEST_ASSERT(splineLength == 20.0f);
+                }
+
+                {
+                    float segmentLength = bezierSpline.GetSegmentLength(1);
+                    AZ_TEST_ASSERT(segmentLength == 10.0f);
+                }
+            }
+        }
+
+        void Bezier_Aabb()
+        {
+            {
+                BezierSpline bezierSpline;
+
+                // slight n curve spline (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                bezierSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.2948f, 0.0f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.2948f, 11.7677f, 0.0f)));
+            }
+
+            {
+                BezierSpline bezierSpline;
+                bezierSpline.SetClosed(true);
+
+                // slight n curve spline (xy plane)
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+                bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                AZ::Aabb aabb;
+                bezierSpline.GetAabb(aabb);
+
+                AZ_TEST_ASSERT(aabb.GetMin().IsClose(Vector3(-1.7677f, -1.7677f, 0.0f)));
+                AZ_TEST_ASSERT(aabb.GetMax().IsClose(Vector3(11.7677f, 11.7677f, 0.0f)));
+            }
+        }
+
+        void Spline_Invalid()
+        {
+            LinearSpline linearSpline;
+            CatmullRomSpline catmullRomSpline;
+            BezierSpline bezierSpline;
+
+            SplineAddress linearAddress1 = linearSpline.GetNearestAddress(Vector3::CreateZero());
+            AZ_TEST_ASSERT(linearAddress1 == SplineAddress());
+            SplineAddress linearAddress2 = linearSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
+            AZ_TEST_ASSERT(linearAddress2 == SplineAddress());
+            SplineAddress linearAddress3 = linearSpline.GetAddressByDistance(2.0f);
+            AZ_TEST_ASSERT(linearAddress3 == SplineAddress());
+            SplineAddress linearAddress4 = linearSpline.GetAddressByFraction(0.0f);
+            AZ_TEST_ASSERT(linearAddress4 == SplineAddress());
+            Vector3 linearPosition = linearSpline.GetPosition(SplineAddress(0, 0.5f));
+            AZ_TEST_ASSERT(linearPosition == Vector3::CreateZero());
+            Vector3 linearNormal = linearSpline.GetNormal(SplineAddress(1, 0.5f));
+            AZ_TEST_ASSERT(linearNormal == Vector3::CreateAxisX());
+            Vector3 linearTangent = linearSpline.GetTangent(SplineAddress(2, 0.5f));
+            AZ_TEST_ASSERT(linearTangent == Vector3::CreateAxisX());
+            float linearSegmentLength = linearSpline.GetSegmentLength(2);
+            AZ_TEST_ASSERT(linearSegmentLength == 0.0f);
+            float linearSplineLength = linearSpline.GetSplineLength();
+            AZ_TEST_ASSERT(linearSplineLength == 0.0f);
+
+            SplineAddress catmullRomAddress1 = catmullRomSpline.GetNearestAddress(Vector3::CreateZero());
+            AZ_TEST_ASSERT(catmullRomAddress1 == SplineAddress());
+            SplineAddress catmullRomAddress2 = catmullRomSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
+            AZ_TEST_ASSERT(catmullRomAddress2 == SplineAddress());
+            SplineAddress catmullRomAddress3 = catmullRomSpline.GetAddressByDistance(2.0f);
+            AZ_TEST_ASSERT(catmullRomAddress3 == SplineAddress());
+            SplineAddress catmullRomAddress4 = catmullRomSpline.GetAddressByFraction(0.0f);
+            AZ_TEST_ASSERT(catmullRomAddress4 == SplineAddress());
+            Vector3 catmullRomPosition = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
+            AZ_TEST_ASSERT(catmullRomPosition == Vector3::CreateZero());
+            Vector3 catmullRomNormal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
+            AZ_TEST_ASSERT(catmullRomNormal == Vector3::CreateAxisX());
+            Vector3 catmullRomTangent = catmullRomSpline.GetTangent(SplineAddress(2, 0.5f));
+            AZ_TEST_ASSERT(catmullRomTangent == Vector3::CreateAxisX());
+            float catmullRomSegmentLength = catmullRomSpline.GetSegmentLength(2);
+            AZ_TEST_ASSERT(catmullRomSegmentLength == 0.0f);
+            float catmullRomSplineLength = catmullRomSpline.GetSplineLength();
+            AZ_TEST_ASSERT(catmullRomSplineLength == 0.0f);
+
+            SplineAddress bezierAddress1 = bezierSpline.GetNearestAddress(Vector3::CreateZero());
+            AZ_TEST_ASSERT(bezierAddress1 == SplineAddress());
+            SplineAddress bezierAddress2 = bezierSpline.GetNearestAddress(Vector3::CreateZero(), Vector3::CreateZero());
+            AZ_TEST_ASSERT(bezierAddress2 == SplineAddress());
+            SplineAddress bezierAddress3 = bezierSpline.GetAddressByDistance(2.0f);
+            AZ_TEST_ASSERT(bezierAddress3 == SplineAddress());
+            SplineAddress bezierAddress4 = bezierSpline.GetAddressByFraction(0.0f);
+            AZ_TEST_ASSERT(bezierAddress4 == SplineAddress());
+            Vector3 bezierPosition = bezierSpline.GetPosition(SplineAddress(0, 0.5f));
+            AZ_TEST_ASSERT(bezierPosition == Vector3::CreateZero());
+            Vector3 bezierNormal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
+            AZ_TEST_ASSERT(bezierNormal == Vector3::CreateAxisX());
+            Vector3 bezierTangent = bezierSpline.GetTangent(SplineAddress(2, 0.5f));
+            AZ_TEST_ASSERT(bezierTangent == Vector3::CreateAxisX());
+            float bezierSegmentLength = bezierSpline.GetSegmentLength(2);
+            AZ_TEST_ASSERT(bezierSegmentLength == 0.0f);
+            float bezierSplineLength = bezierSpline.GetSplineLength();
+            AZ_TEST_ASSERT(bezierSplineLength == 0.0f);
+        }
+
+        void Spline_Set()
+        {
+            LinearSpline linearSpline;
+
+            // slight n curve spline (xy plane)
+            linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+            linearSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+            linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+            linearSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+            AZStd::vector<Vector3> vertices {
+                Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 10.0f, 0.0f), Vector3(10.0f, 10.0f, 0.0f), Vector3(10.0f, 0.0f, 0.0f)
+            };
+
+            LinearSpline linearSplineSetLValue;
+            linearSplineSetLValue.m_vertexContainer.SetVertices(vertices);
+
+            LinearSpline linearSplineSetRValue;
+            linearSplineSetRValue.m_vertexContainer.SetVertices(AZStd::vector<Vector3>{ Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 10.0f, 0.0f), Vector3(10.0f, 10.0f, 0.0f), Vector3(10.0f, 0.0f, 0.0f) });
+
+            LinearSpline linearSplineSetLValueCopy;
+            linearSplineSetLValueCopy.m_vertexContainer.SetVertices(linearSplineSetLValue.GetVertices());
+
+            AZ_TEST_ASSERT(linearSpline.GetVertexCount() == linearSplineSetLValue.GetVertexCount());
+            AZ_TEST_ASSERT(linearSpline.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
+            AZ_TEST_ASSERT(linearSplineSetLValue.GetVertexCount() == linearSplineSetRValue.GetVertexCount());
+            AZ_TEST_ASSERT(linearSplineSetLValueCopy.GetVertexCount() == vertices.size());
+
+            BezierSpline bezierSpline;
+
+            // slight n curve spline (xy plane)
+            bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 0.0f, 0.0f));
+            bezierSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
+            bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
+            bezierSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+            BezierSpline bezierSplineSetLValue;
+            bezierSplineSetLValue.m_vertexContainer.SetVertices(vertices);
+
+            BezierSpline bezierSplineSetRValue;
+            bezierSplineSetRValue.m_vertexContainer.SetVertices(AZStd::vector<Vector3>{ Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 10.0f, 0.0f), Vector3(10.0f, 10.0f, 0.0f), Vector3(10.0f, 0.0f, 0.0f) });
+
+            BezierSpline bezierSplineSetLValueCopy;
+            bezierSplineSetLValueCopy.m_vertexContainer.SetVertices(bezierSplineSetLValue.GetVertices());
+
+            AZ_TEST_ASSERT(bezierSpline.GetBezierData().size() == bezierSplineSetLValue.GetBezierData().size());
+            AZ_TEST_ASSERT(bezierSplineSetLValue.GetBezierData().size() == 4);
+            AZ_TEST_ASSERT(bezierSplineSetLValue.GetBezierData().size() == bezierSplineSetRValue.GetBezierData().size());
+            AZ_TEST_ASSERT(bezierSplineSetLValueCopy.GetBezierData().size() == 4);
+            AZ_TEST_ASSERT(bezierSplineSetLValueCopy.GetVertexCount() == vertices.size());
+        }
+    };
+
+    TEST_F(MATH_SplineTest, Linear_NearestAddressFromPosition)
+    {
+        Linear_NearestAddressFromPosition();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_NearestAddressFromDirection)
+    {
+        Linear_NearestAddressFromDirection();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_AddressByDistance)
+    {
+        Linear_AddressByDistance();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_AddressByFraction)
+    {
+        Linear_AddressByFraction();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_GetPosition)
+    {
+        Linear_GetPosition();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_GetNormal)
+    {
+        Linear_GetNormal();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_GetTangent)
+    {
+        Linear_GetTangent();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_Length)
+    {
+        Linear_Length();
+    }
+
+    TEST_F(MATH_SplineTest, Linear_Aabb)
+    {
+        Linear_Aabb();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_Length)
+    {
+        CatmullRom_Length();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_NearestAddressFromPosition)
+    {
+        CatmullRom_NearestAddressFromPosition();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_NearestAddressFromDirection)
+    {
+        CatmullRom_NearestAddressFromDirection();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_AddressByDistance)
+    {
+        CatmullRom_AddressByDistance();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_AddressByFraction)
+    {
+        CatmullRom_AddressByFraction();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_GetPosition)
+    {
+        CatmullRom_GetPosition();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_GetNormal)
+    {
+        CatmullRom_GetNormal();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_GetTangent)
+    {
+        CatmullRom_GetTangent();
+    }
+
+    TEST_F(MATH_SplineTest, CatmullRom_Aabb)
+    {
+        CatmullRom_Aabb();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_NearestAddressFromPosition)
+    {
+        Bezier_NearestAddressFromPosition();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_NearestAddressFromDirection)
+    {
+        Bezier_NearestAddressFromDirection();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_AddressByDistance)
+    {
+        Bezier_AddressByDistance();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_AddressByFraction)
+    {
+        Bezier_AddressByFraction();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_GetPosition)
+    {
+        Bezier_GetPosition();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_GetNormal)
+    {
+        Bezier_GetNormal();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_GetTangent)
+    {
+        Bezier_GetTangent();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_Length)
+    {
+        Bezier_Length();
+    }
+
+    TEST_F(MATH_SplineTest, Bezier_Aabb)
+    {
+        Bezier_Aabb();
+    }
+
+    TEST_F(MATH_SplineTest, Spline_Invalid)
+    {
+        Spline_Invalid();
+    }
+
+    TEST_F(MATH_SplineTest, Spline_Set)
+    {
+        Spline_Set();
+    }
+
+    class MATH_IntersectRayCappedCylinderTest
+        : public AllocatorsFixture
+    {
+    protected:
+
+        void SetUp() override
+        {
+            m_cylinderEnd1 = Vector3(1.1f, 2.2f, 3.3f);
+            m_cylinderDir = Vector3(1.0, 1.0f, 1.0f);
+            m_cylinderDir.NormalizeExact();
+            m_radiusDir = Vector3(-1.0f, 1.0f, 0.0f);
+            m_radiusDir.NormalizeExact();
+            m_cylinderHeight = 5.5f;
+            m_cylinderRadius = 3.768f;
+        }
+
+        void TearDown() override
+        {
+
+        }
+
+        Vector3 m_cylinderEnd1;
+        Vector3 m_cylinderDir;
+        Vector3 m_radiusDir;
+        float m_cylinderHeight;
+        float m_cylinderRadius;
+    };
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOverlapCylinderAxis)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 - 0.5f * m_cylinderHeight * m_cylinderDir;
+        Vector3 rayDir = m_cylinderDir;
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayParallelToAndInsideCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 - 0.5f * m_cylinderHeight * m_cylinderDir + 0.5f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = m_cylinderDir;
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayAlongCylinderSuface)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 - 0.5f * m_cylinderHeight * m_cylinderDir + m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = m_cylinderDir;
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayParallelAndRayOriginInsideCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.2f * m_cylinderHeight * m_cylinderDir + 0.5f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = m_cylinderDir;
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 1);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayParallelToButOutsideCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 - 0.5f * m_cylinderHeight * m_cylinderDir + 1.1f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = m_cylinderDir;
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOuside_RayDirParallelButPointingAwayCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 1.5f * m_cylinderHeight * m_cylinderDir + 0.5f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = m_cylinderDir;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideEnds_BothIntersectionsInbetweenEnds)
+    {
+        Vector3 intersection2 = m_cylinderEnd1 + 0.8f * m_cylinderHeight * m_cylinderDir - m_cylinderRadius * m_radiusDir;
+        Vector3 intersection1 = m_cylinderEnd1 + 0.2f * m_cylinderHeight * m_cylinderDir + m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = intersection2 - intersection1;
+        Vector3 rayOrigin = intersection1 - 2.0f * rayDir;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideEnds_Intersection1OnEnd1_Intersection2InbetweenEnds)
+    {
+        Vector3 intersection2 = m_cylinderEnd1 + 0.6f * m_cylinderHeight * m_cylinderDir - m_cylinderRadius * m_radiusDir;
+        Vector3 intersection1 = m_cylinderEnd1 + 0.6f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = intersection2 - intersection1;
+        Vector3 rayOrigin = intersection1 - 2.0f * rayDir;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginInside_RayGoThroughCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.3f * m_cylinderHeight * m_cylinderDir - 0.4f * m_cylinderRadius * m_radiusDir;
+        Vector3 intersection = m_cylinderEnd1 + 0.8f * m_cylinderHeight * m_cylinderDir + m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = (intersection - rayOrigin).GetNormalizedExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 1);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideCylinderButInBetweenEnds_RayDirPointingAwayCylinder)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.4f * m_cylinderHeight * m_cylinderDir - 1.6f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = rayOrigin - m_cylinderEnd1;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideCylinderButInBetweenEnds_RayDirMissingCylinderEnds)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.4f * m_cylinderHeight * m_cylinderDir - 1.6f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = (m_cylinderEnd1 + m_cylinderHeight * m_cylinderDir - 1.2f * m_cylinderRadius * m_radiusDir) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideCylinderButInBetweenEnds_RayDirShootingOutEnd1)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.4f * m_cylinderHeight * m_cylinderDir - 1.6f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = (m_cylinderEnd1 - 0.2f * m_cylinderRadius * m_radiusDir) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideCylinderButInBetweenEnds_RayDirShootingOutEnd2)
+    {
+        Vector3 rayOrigin = m_cylinderEnd1 + 0.4f * m_cylinderHeight * m_cylinderDir - 1.6f * m_cylinderRadius * m_radiusDir;
+        Vector3 rayDir = (m_cylinderEnd1 + 0.67f * m_cylinderHeight * m_cylinderDir) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayCappedCylinderTest, RayOriginOutsideCylinderButInBetweenEnds_RayDirShootingOutCylinder)
+    {
+        Vector3 perpDir(1.0f, 0, 0);
+        float parallelDiff = 0.453f;
+        float perpendicularDiff = 2.54f;
+        Vector3 rayOrigin = (m_cylinderEnd1 + parallelDiff * m_cylinderHeight * m_cylinderDir) + perpendicularDiff * m_cylinderRadius * perpDir;
+        Vector3 rayDir = (m_cylinderEnd1 + m_cylinderHeight * m_cylinderDir - 2.6f * m_cylinderRadius * perpDir) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t1 = AZ::g_fltMax;
+        float t2 = AZ::g_fltMax;
+        int hits = Intersect::IntersectRayCappedCylinder(rayOrigin, rayDir, m_cylinderEnd1, m_cylinderDir, m_cylinderHeight, m_cylinderRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    class MATH_IntersectRayConeTest
+        : public AllocatorsFixture
+    {
+    protected:
+
+        void SetUp() override
+        {
+            m_coneApex = Vector3(1.264f, 6.773f, 9.612f);
+            m_coneDir = Vector3(-64.0f, -82.783f, -12.97f);
+            m_radiusDir = Vector3(m_coneDir.GetY(), -m_coneDir.GetX(), 0.0f);
+
+            m_coneDir.NormalizeExact();
+            m_coneHeight = 1.643f;
+            m_coneRadius = m_coneHeight;
+
+            m_radiusDir.NormalizeExact();
+
+            m_tangentDir = m_coneHeight * m_coneDir + m_coneRadius * m_radiusDir;
+            m_tangentDir.NormalizeExact();
+        }
+
+        void TearDown() override
+        {
+        }
+
+        Vector3 m_coneApex;
+        Vector3 m_coneDir;
+        Vector3 m_radiusDir;
+        Vector3 m_tangentDir; // direction of tangent line on the surface from the apex to the base
+        float m_coneHeight;
+        float m_coneRadius;
+    };
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginAtApex_RayDirParallelConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex;
+        Vector3 rayDir = m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideConeBelowApex_RayDirParallelConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex + 0.5f * m_coneHeight * m_coneDir - m_coneRadius * m_radiusDir;
+        Vector3 rayDir = m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideConeBelowBase_RayDirParallelConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex + 1.5f * m_coneHeight * m_coneDir - m_coneRadius * m_radiusDir;
+        Vector3 rayDir = m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideConeAboveApex_RayDirParallelConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex - 1.5f * m_coneHeight * m_coneDir - m_coneRadius * m_radiusDir;
+        Vector3 rayDir = m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginInsideCone_RayDirParallelConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex + 0.5f * m_coneHeight * m_coneDir;
+        Vector3 rayDir = m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 1);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginInsideCone_RayDirParallelConeSurfaceOppositeDirection)
+    {
+        Vector3 rayOrigin = m_coneApex + 0.5f * m_coneHeight * m_coneDir;
+        Vector3 rayDir = -m_tangentDir;
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 1);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideCone_RayDirThroughApex)
+    {
+        Vector3 rayOrigin = m_coneApex + 0.03f * m_coneDir + m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 1);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginInsideMirrorCone_RayDirThroughApex)
+    {
+        Vector3 rayOrigin = m_coneApex - 0.5f * m_coneHeight * m_coneDir + 0.25f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideBase_RayDirThroughApex)
+    {
+        Vector3 rayOrigin = m_coneApex + 1.3f * m_coneHeight * m_coneDir + 0.3f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideBase_RayDirThroughConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex + 1.3f * m_coneHeight * m_coneDir + 0.3f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex - 0.3f * m_coneRadius * m_radiusDir - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideConeApexSide_RayDirThroughConeSurface)
+    {
+        Vector3 rayOrigin = m_coneApex + 1.5f * m_coneHeight * m_coneDir + 0.7f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex + 0.7f * m_coneHeight * m_coneDir - 0.8f * m_coneRadius * m_radiusDir - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 2);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginOutsideConeApexSide_RayDirMissCone)
+    {
+        Vector3 rayOrigin = m_coneApex - 0.5f * m_coneHeight * m_coneDir + 0.7f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex + 1.1f * m_coneHeight * m_coneDir + 1.1f * m_coneRadius * m_radiusDir - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    TEST_F(MATH_IntersectRayConeTest, RayOriginInsideMirrorConeApexSide_RayDirMissCone)
+    {
+        Vector3 rayOrigin = m_coneApex - 0.7f * m_coneHeight * m_coneDir + 0.6f * m_coneRadius * m_radiusDir;
+        Vector3 rayDir = (m_coneApex + 1.5f * m_coneHeight * m_coneDir + 1.5f * m_coneRadius * m_radiusDir - rayOrigin).GetNormalizedExact();
+        float t1 = 0.0f;
+        float t2 = 0.0f;
+        int hits = Intersect::IntersectRayCone(rayOrigin, rayDir, m_coneApex, m_coneDir, m_coneHeight, m_coneRadius, t1, t2);
+        EXPECT_EQ(hits, 0);
+    }
+
+    class MATH_IntersectRayQuadTest
+        : public AllocatorsFixture
+    {
+    protected:
+
+        void SetUp() override
+        {
+            m_vertexA = Vector3(1.04f, 2.46f, 5.26f);
+            
+            m_axisB = Vector3(1.0f, 2.0f, 3.0f);
+            m_axisD = Vector3(3.0f, -2.0f, 1.0f);
+            m_axisB.NormalizeExact();
+            m_axisD.NormalizeExact();
+            m_lengthAxisB = 4.56f;
+            m_lengthAxisD = 7.19f;
+            m_normal = m_axisB.Cross(m_axisD);
+            m_normal.NormalizeExact();
+
+            m_vertexB = m_vertexA + m_lengthAxisB * m_axisB;
+            m_vertexC = m_vertexA + m_lengthAxisB * m_axisB + m_lengthAxisD * m_axisD;
+            m_vertexD = m_vertexA + m_lengthAxisD * m_axisD;
+        }
+
+        void TearDown() override
+        {
+
+        }
+
+        Vector3 m_vertexA;
+        Vector3 m_vertexB;
+        Vector3 m_vertexC;
+        Vector3 m_vertexD;
+
+        // two axes defining the quad plane, originating from m_vertexA
+        Vector3 m_axisB;
+        Vector3 m_axisD;
+        float m_lengthAxisB;
+        float m_lengthAxisD;
+
+        Vector3 m_normal;
+    };
+
+    TEST_F(MATH_IntersectRayQuadTest, RayShootingAway_CCW)
+    {
+        Vector3 rayOrigin = (m_vertexA + 0.23f * m_axisB + 0.75f * m_axisD) + 2.0f * m_normal;
+        Vector3 rayDir = rayOrigin - m_vertexC;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayShootingAway_CW)
+    {
+        Vector3 rayOrigin = (m_vertexA + 0.23f * m_axisB + 0.75f * m_axisD) + 2.0f * m_normal;
+        Vector3 rayDir = rayOrigin - m_vertexC;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexC, m_vertexB, m_vertexA, m_vertexD, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectTriangleABC_CCW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = ((0.5f * (0.5f * m_vertexA + 0.5f * m_vertexC)) + 0.5f * m_vertexB) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectTriangleABC_CW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = ((0.5f * (0.5f * m_vertexA + 0.5f * m_vertexC)) + 0.5f * m_vertexB) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexD, m_vertexC, m_vertexB, m_vertexA, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectTriangleACD_CCW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = ((0.5f * (0.5f * m_vertexA + 0.5f * m_vertexC)) + 0.5f * m_vertexD) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectTriangleACD_CW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = ((0.5f * (0.5f * m_vertexA + 0.5f * m_vertexC)) + 0.5f * m_vertexD) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexD, m_vertexC, m_vertexB, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectLineAC_CCW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = (0.5f * m_vertexA + 0.5f * m_vertexC) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayShootOverAB_CCW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = m_vertexA + 1.7f * m_lengthAxisB * m_axisB - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayShootOverAC_CW)
+    {
+        Vector3 rayOrigin = m_vertexA + 2.0f * m_normal;
+        Vector3 rayDir = m_vertexA + 1.3f * (m_vertexD - m_vertexA) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexD, m_vertexC, m_vertexB, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    class MATH_IntersectRayBoxTest
+        : public AllocatorsFixture
+    {
+    protected:
+
+        void SetUp() override
+        {
+            m_boxCenter = Vector3(1.234f, 2.345f, 9.824f);
+            m_boxAxis1 = Vector3(1.0f, 2.0f, 3.0f);
+            m_boxAxis2 = Vector3(-3.0f, 2.0f, -1.0f);
+            m_boxAxis3 = m_boxAxis1.Cross(m_boxAxis2);
+            m_boxAxis1.NormalizeExact();
+            m_boxAxis2.NormalizeExact();
+            m_boxAxis3.NormalizeExact();
+            m_boxHalfExtentAxis1 = 4.775f;
+            m_boxHalfExtentAxis2 = 8.035f;
+            m_boxHalfExtentAxis3 = 14.007f;
+        }
+
+        void TearDown() override
+        {
+
+        }
+
+        Vector3 m_boxCenter;
+        Vector3 m_boxAxis1;
+        Vector3 m_boxAxis2;
+        Vector3 m_boxAxis3;
+        float m_boxHalfExtentAxis1;
+        float m_boxHalfExtentAxis2;
+        float m_boxHalfExtentAxis3;
+    };
+
+    TEST_F(MATH_IntersectRayBoxTest, RayOriginOutside_HitBoxAxis1Side)
+    {
+        Vector3 rayOrigin = m_boxCenter + 2.0f * m_boxHalfExtentAxis1 * m_boxAxis1 + 2.0f * m_boxHalfExtentAxis2 * m_boxAxis2;
+        Vector3 rayDir = m_boxCenter + m_boxHalfExtentAxis1 * m_boxAxis1 - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3, 
+            m_boxHalfExtentAxis1, m_boxHalfExtentAxis2, m_boxHalfExtentAxis3, t);
+        EXPECT_EQ(hit, 1);
+    }
+
+    TEST_F(MATH_IntersectRayBoxTest, RayOriginOutside_ShootAwayFromBox)
+    {
+        Vector3 rayOrigin = m_boxCenter + 2.0f * m_boxHalfExtentAxis3 * m_boxAxis3 + 2.0f * m_boxHalfExtentAxis2 * m_boxAxis2;
+        Vector3 rayDir = rayOrigin - m_boxCenter + m_boxHalfExtentAxis3 * m_boxAxis3;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3,
+            m_boxHalfExtentAxis1, m_boxHalfExtentAxis2, m_boxHalfExtentAxis3, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    TEST_F(MATH_IntersectRayBoxTest, RayOriginOutside_RayParallelToAxis2MissBox)
+    {
+        Vector3 rayOrigin = m_boxCenter + 2.0f * m_boxHalfExtentAxis3 * m_boxAxis3 + 2.0f * m_boxHalfExtentAxis2 * m_boxAxis2;
+        Vector3 rayDir = m_boxAxis2;
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3,
+            m_boxHalfExtentAxis1, m_boxHalfExtentAxis2, m_boxHalfExtentAxis3, t);
+        EXPECT_EQ(hit, 0);
+    }
+
+    TEST_F(MATH_IntersectRayBoxTest, RayOriginInside_ShootToConner)
+    {
+        Vector3 rayOrigin = m_boxCenter + 0.5f * m_boxHalfExtentAxis1 * m_boxAxis1 + 
+            0.5f * m_boxHalfExtentAxis2 * m_boxAxis2 + 0.5f * m_boxHalfExtentAxis3 * m_boxAxis3;
+        Vector3 rayDir = (m_boxCenter - m_boxHalfExtentAxis1 * m_boxAxis1 -
+            m_boxHalfExtentAxis2 * m_boxAxis2 - m_boxHalfExtentAxis3 * m_boxAxis3) - rayOrigin;
+        rayDir.NormalizeExact();
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayBox(rayOrigin, rayDir, m_boxCenter, m_boxAxis1, m_boxAxis2, m_boxAxis3,
+            m_boxHalfExtentAxis1, m_boxHalfExtentAxis2, m_boxHalfExtentAxis3, t);
+        EXPECT_EQ(hit, 1);
+    }
+
     class MATH_SfmtTest
         : public AllocatorsFixture
     {
@@ -2485,12 +5181,12 @@ namespace UnitTest
     {
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
-        {
-            for (int i = 0; i < 10000; ++i)
             {
-                sfmt.Rand32();
-            }
-        };
+                for (int i = 0; i < 10000; ++i)
+                {
+                    sfmt.Rand32();
+                }
+            };
         AZStd::thread threads[8];
         for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
@@ -2507,12 +5203,12 @@ namespace UnitTest
     {
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
-        {
-            for (int i = 0; i < 10000; ++i)
             {
-                sfmt.Rand64();
-            }
-        };
+                for (int i = 0; i < 10000; ++i)
+                {
+                    sfmt.Rand64();
+                }
+            };
         AZStd::thread threads[8];
         for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
@@ -2529,20 +5225,20 @@ namespace UnitTest
     {
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
-        {
-            for (int i = 0; i < 10000; ++i)
             {
-                AZ::u64 roll = sfmt.Rand64();
-                if (roll % 2 == 0)
+                for (int i = 0; i < 10000; ++i)
                 {
-                    sfmt.Rand32();
+                    AZ::u64 roll = sfmt.Rand64();
+                    if (roll % 2 == 0)
+                    {
+                        sfmt.Rand32();
+                    }
+                    else
+                    {
+                        sfmt.Rand64();
+                    }
                 }
-                else
-                {
-                    sfmt.Rand64();
-                }
-            }
-        };
+            };
         AZStd::thread threads[8];
         for (int threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(threads); ++threadIdx)
         {
@@ -2690,5 +5386,442 @@ namespace UnitTest
     TEST_F(MATH_UuidTest, Test)
     {
         run();
+    }
+
+    TEST(MATH_Color, Construction)
+    {
+        // Default constructor
+        Color colorDefault;
+        colorDefault.SetR(1.0f);
+        EXPECT_EQ(colorDefault.GetR(), VectorFloat(1.0f));
+
+        // Vector4 constructor
+        const Vector4 vectorColor(0.5f, 0.6f, 0.7f, 1.0f);
+        const Color colorFromVector(vectorColor);
+        EXPECT_TRUE(colorFromVector.GetAsVector4().IsClose(vectorColor));
+
+        // Single VectorFloat constructor
+        const VectorFloat vfOne = 1.0f;
+        const Color colorFromVectorFloat(vfOne);
+        EXPECT_TRUE(colorFromVectorFloat.GetAsVector4().IsClose(Vector4(1.0f, 1.0f, 1.0f, 1.0f)));
+
+        // Four individual VectorFloats constructor
+        const VectorFloat vfHalf = 0.5f;
+        const Color colorFrom4VectorFloats(vfHalf, vfHalf, vfHalf, vfOne);
+        EXPECT_TRUE(colorFrom4VectorFloats.GetAsVector4().IsClose(Vector4(0.5f, 0.5f, 0.5f, 1.0f)));
+
+        // Four individual floats constructor
+        const Color colorFromFloats(0.5f, 0.6f, 0.7f, 1.0f);
+        EXPECT_TRUE(colorFromFloats.GetAsVector4().IsClose(vectorColor));
+
+        // Four individual uint8s constructor
+        const Color colorFronUints((u8)0x7F, (u8)0x9F, (u8)0xBF, (u8)0xFF);
+        EXPECT_EQ(colorFronUints.ToU32(), 0xFFBF9F7F);
+
+    }
+
+    TEST(MATH_Color, StaticConstruction)
+    {
+        // Zero color
+        const Color colorZero = Color::CreateZero();
+        EXPECT_EQ(colorZero.GetAsVector4(), Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+
+        // OneColor
+        const Color colorOne = Color::CreateOne();
+        EXPECT_EQ(colorOne.GetAsVector4(), Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+
+        // From Float4
+        const float float4Color[4] = { 0.3f, 0.4f, 0.5f, 0.8f };
+        const Color colorFrom4Floats = Color::CreateFromFloat4(float4Color);
+        EXPECT_EQ(colorFrom4Floats.GetAsVector4(), Vector4(0.3f, 0.4f, 0.5f, 0.8f));
+
+        // From Vector3
+        const Vector3 vector3Color(0.6f, 0.7f, 0.8f);
+        const Color colorFromVector3 = Color::CreateFromVector3(vector3Color);
+        EXPECT_EQ(colorFromVector3.GetAsVector4(), Vector4(0.6f, 0.7f, 0.8f, 1.0f));
+
+        // From Vector 3 and float
+        const Color colorFromVector3AndFloat = Color::CreateFromVector3AndFloat(vector3Color, 0.5f);
+        EXPECT_EQ(colorFromVector3AndFloat.GetAsVector4(), Vector4(0.6f, 0.7f, 0.8f, 0.5f));
+    }
+
+    TEST(MATH_Color, Store)
+    {
+        // Store color values to float array.
+        float dest[4];
+        const Color colorOne = Color::CreateOne();
+        colorOne.StoreToFloat4(dest);
+        EXPECT_EQ(dest[0], 1.0f);
+        EXPECT_EQ(dest[1], 1.0f);
+        EXPECT_EQ(dest[2], 1.0f);
+        EXPECT_EQ(dest[3], 1.0f);
+    }
+
+    TEST(MATH_Color, ComponentAccess)
+    {
+        Color testColor;
+
+        // Float Get / Set
+        testColor.SetR(0.4f);
+        EXPECT_EQ(testColor.GetR(), VectorFloat(0.4f));
+        testColor.SetG(0.3f);
+        EXPECT_EQ(testColor.GetG(), VectorFloat(0.3f));
+        testColor.SetB(0.2f);
+        EXPECT_EQ(testColor.GetB(), VectorFloat(0.2f));
+        testColor.SetA(0.1f);
+        EXPECT_EQ(testColor.GetA(), VectorFloat(0.1f));
+
+        // u8 Get / Set
+        testColor.SetR8((u8)0x12);
+        EXPECT_EQ(testColor.GetR8(), 0x12);
+        testColor.SetG8((u8)0x34);
+        EXPECT_EQ(testColor.GetG8(), 0x34);
+        testColor.SetB8((u8)0x56);
+        EXPECT_EQ(testColor.GetB8(), 0x56);
+        testColor.SetA8((u8)0x78);
+        EXPECT_EQ(testColor.GetA8(), 0x78);
+
+        // Index-based element access
+        testColor = Color(0.3f, 0.4f, 0.5f, 0.7f);
+        EXPECT_EQ(testColor.GetElement(0), VectorFloat(0.3f));
+        EXPECT_EQ(testColor.GetElement(1), VectorFloat(0.4f));
+        EXPECT_EQ(testColor.GetElement(2), VectorFloat(0.5f));
+        EXPECT_EQ(testColor.GetElement(3), VectorFloat(0.7f));
+
+        testColor.SetElement(0, 0.7f);
+        EXPECT_EQ(testColor.GetR(), VectorFloat(0.7f));
+        testColor.SetElement(1, 0.5f);
+        EXPECT_EQ(testColor.GetG(), VectorFloat(0.5f));
+        testColor.SetElement(2, 0.4f);
+        EXPECT_EQ(testColor.GetB(), VectorFloat(0.4f));
+        testColor.SetElement(3, 0.3f);
+        EXPECT_EQ(testColor.GetA(), VectorFloat(0.3f));
+    }
+
+    TEST(MATH_Color, SettersGetters)
+    {
+        // Vector3 getter
+        const Color vectorColor = Color(0.3f, 0.4f, 0.5f, 0.7f);
+        EXPECT_EQ(vectorColor.GetAsVector3(), Vector3(0.3f, 0.4f, 0.5f));
+
+        // Vector 4 getter
+        EXPECT_EQ(vectorColor.GetAsVector4(), Vector4(0.3f, 0.4f, 0.5f, 0.7f));
+
+        // Set from single VectorFloat
+        Color singleValue;
+        singleValue.Set(0.75f);
+        EXPECT_EQ(singleValue.GetAsVector4(), Vector4(0.75f, 0.75f, 0.75f, 0.75f));
+
+        // Set from 4 VectorFloats
+        Color separateValues;
+        separateValues.Set(0.23f, 0.45f, 0.67f, 0.89f);
+        EXPECT_EQ(separateValues.GetAsVector4(), Vector4(0.23f, 0.45f, 0.67f, 0.89f));
+
+        // Set from a float[4]
+        float floatArray[4] = { 0.87f, 0.65f, 0.43f, 0.21f };
+        Color floatArrayColor;
+        floatArrayColor.Set(floatArray);
+        EXPECT_EQ(floatArrayColor.GetAsVector4(), Vector4(0.87f, 0.65f, 0.43f, 0.21f));
+
+        // Set from Vector3, Alpha should be set to 1.0f
+        Color vector3Color;
+        vector3Color.Set(Vector3(0.2f, 0.4f, 0.6f));
+        EXPECT_EQ(vector3Color.GetAsVector4(), Vector4(0.2f, 0.4f, 0.6f, 1.0f));
+
+        // Set from Vector3 +_ alpha
+        Color vector4Color;
+        vector4Color.Set(Vector3(0.1f, 0.3f, 0.5f), 0.7f);
+        EXPECT_EQ(vector4Color.GetAsVector4(), Vector4(0.1f, 0.3f, 0.5f, 0.7f));
+
+        // Oddly lacking a Set() from Vector4...
+
+    }
+
+    TEST(MATH_Color, EqualityComparisons)
+    {
+        // Equality within tolerance
+        Color color1(0.1f, 0.2f, 0.3f, 0.4f);
+        Color color2(0.1f, 0.2f, 0.3f, 0.4f);
+        Color color3(0.12f, 0.22f, 0.32f, 0.42f);
+
+        EXPECT_TRUE(color1.IsClose(color2));
+        EXPECT_FALSE(color1.IsClose(color3));
+        EXPECT_TRUE(color1.IsClose(color3, 0.03f));
+        EXPECT_FALSE(color1.IsClose(color3, 0.01f));
+
+        // Zero check within tolerance
+        Color zeroColor = Color::CreateZero();
+        EXPECT_TRUE(zeroColor.IsZero());
+        Color almostZeroColor(0.001f, 0.001f, 0.001f, 0.001f);
+        EXPECT_FALSE(almostZeroColor.IsZero());
+        EXPECT_TRUE(almostZeroColor.IsZero(0.01f));
+        
+        // Strict equality
+        EXPECT_TRUE(color1 == color2);
+        EXPECT_FALSE(color1 == color3);
+
+        // Strict inequality
+        EXPECT_FALSE(color1 != color2);
+        EXPECT_TRUE(color1 != color3);
+    }
+
+    TEST(MATH_Color, LessThanComparisons)
+    {
+        Color color1(0.3f, 0.6f, 0.8f, 1.0f);
+        Color color2(0.2f, 0.5f, 0.7f, 1.0f);
+        Color color3(0.2f, 0.5f, 0.7f, 0.9f);
+        Color color4(0.8f, 0.4f, 0.3f, 0.8f);
+
+        // color 1 and two have an equal component so should not be strictly less than each other
+        EXPECT_FALSE(color1.IsLessThan(color2));
+        EXPECT_FALSE(color2.IsLessThan(color1));
+
+        // color 3 should be strictly less than color 1, but not color 2
+        EXPECT_TRUE(color3.IsLessThan(color1));
+        EXPECT_FALSE(color3.IsLessThan(color2));
+
+        // color 4 has values higher and lower than other colors so it should always fail
+        EXPECT_FALSE(color4.IsLessThan(color1));
+        EXPECT_FALSE(color4.IsLessThan(color2));
+        EXPECT_FALSE(color4.IsLessThan(color3));
+        EXPECT_FALSE(color1.IsLessThan(color4));
+        EXPECT_FALSE(color2.IsLessThan(color4));
+        EXPECT_FALSE(color3.IsLessThan(color4));
+
+        // color 1 and two have an equal component but otherwise color 2 is less than color 1
+        EXPECT_FALSE(color1.IsLessEqualThan(color2));
+        EXPECT_TRUE(color2.IsLessEqualThan(color1));
+
+        // color 3 should be less than or equal to both color 1 and color 2
+        EXPECT_TRUE(color3.IsLessEqualThan(color1));
+        EXPECT_TRUE(color3.IsLessEqualThan(color2));
+
+        // color 4 has values higher and lower than other colors so it should always fail
+        EXPECT_FALSE(color4.IsLessEqualThan(color1));
+        EXPECT_FALSE(color4.IsLessEqualThan(color2));
+        EXPECT_FALSE(color4.IsLessEqualThan(color3));
+        EXPECT_FALSE(color1.IsLessEqualThan(color4));
+        EXPECT_FALSE(color2.IsLessEqualThan(color4));
+        EXPECT_FALSE(color3.IsLessEqualThan(color4));
+    }
+
+    TEST(MATH_Color, GreaterThanComparisons)
+    {
+        Color color1(0.3f, 0.6f, 0.8f, 1.0f);
+        Color color2(0.2f, 0.5f, 0.7f, 1.0f);
+        Color color3(0.2f, 0.5f, 0.7f, 0.9f);
+        Color color4(0.8f, 0.4f, 0.3f, 0.8f);
+
+        // color 1 and two have an equal component so should not be strictly greater than each other
+        EXPECT_FALSE(color1.IsGreaterThan(color2));
+        EXPECT_FALSE(color2.IsGreaterThan(color1));
+
+        // color 1 should be strictly greater than color 3, but color 2 shouldn't
+        EXPECT_TRUE(color1.IsGreaterThan(color3));
+        EXPECT_FALSE(color2.IsGreaterThan(color3));
+
+        // color 4 has values higher and lower than other colors so it should always fail
+        EXPECT_FALSE(color4.IsGreaterThan(color1));
+        EXPECT_FALSE(color4.IsGreaterThan(color2));
+        EXPECT_FALSE(color4.IsGreaterThan(color3));
+        EXPECT_FALSE(color1.IsGreaterThan(color4));
+        EXPECT_FALSE(color2.IsGreaterThan(color4));
+        EXPECT_FALSE(color3.IsGreaterThan(color4));
+
+        // color 1 and two have an equal component but otherwise color 2 is less than color 1
+        EXPECT_TRUE(color1.IsGreaterEqualThan(color2));
+        EXPECT_FALSE(color2.IsGreaterEqualThan(color1));
+
+        // color 1 and 2 should both be greater than or equal to color 3
+        EXPECT_TRUE(color1.IsGreaterEqualThan(color3));
+        EXPECT_TRUE(color2.IsGreaterEqualThan(color3));
+
+        // color 4 has values higher and lower than other colors so it should always fail
+        EXPECT_FALSE(color4.IsGreaterEqualThan(color1));
+        EXPECT_FALSE(color4.IsGreaterEqualThan(color2));
+        EXPECT_FALSE(color4.IsGreaterEqualThan(color3));
+        EXPECT_FALSE(color1.IsGreaterEqualThan(color4));
+        EXPECT_FALSE(color2.IsGreaterEqualThan(color4));
+        EXPECT_FALSE(color3.IsGreaterEqualThan(color4));
+    }
+
+    TEST(MATH_Color, VectorConversions)
+    {
+        Vector3 vec3FromColor(Color(0.4f, 0.6f, 0.8f, 1.0f));
+        EXPECT_EQ(vec3FromColor, Vector3(0.4f, 0.6f, 0.8f));
+
+        Vector4 vec4FromColor(Color(0.4f, 0.6f, 0.8f, 1.0f));
+        EXPECT_EQ(vec4FromColor, Vector4(0.4f, 0.6f, 0.8f, 1.0f));
+
+        Color ColorfromVec3;
+        ColorfromVec3 = Vector3(0.3f, 0.4f, 0.5f);
+        EXPECT_EQ(ColorfromVec3.GetAsVector4(), Vector4(0.3f, 0.4f, 0.5f, 1.0f));
+    }
+
+    TEST(MATH_Color, LinearToGamma)
+    {
+        // Very dark values (these are converted differently)
+        Color reallyDarkLinear(0.001234f, 0.000123f, 0.001010f, 0.5f);
+        Color reallyDarkGamma = reallyDarkLinear.LinearToGamma();
+        Color reallyDarkGammaCheck(0.01594328f, 0.00158916f, 0.0130492f, 0.5f);
+        EXPECT_TRUE(reallyDarkGamma.IsClose(reallyDarkGammaCheck, 0.00001f));
+
+        // Normal values
+        Color normalLinear(0.123456f, 0.345678f, 0.567890f, 0.8f);
+        Color normalGamma = normalLinear.LinearToGamma();
+        Color normalGammaCheck(0.386281658744f, 0.622691988496f, 0.77841737783f, 0.8f);
+        EXPECT_TRUE(normalGamma.IsClose(normalGammaCheck, 0.00001f));
+
+        // Bright values
+        Color brightLinear(1.234567f, 3.456789f, 5.678901f, 1.0f);
+        Color brightGamma = brightLinear.LinearToGamma();
+        Color brightGammaCheck(1.09681722689f, 1.71388455271f, 2.12035054203f, 1.0f);
+        EXPECT_TRUE(brightGamma.IsClose(brightGammaCheck, 0.00001f));
+
+        // Zero should stay the same
+        Color zeroColor = Color::CreateZero();
+        Color zeroColorGamma = zeroColor.LinearToGamma();
+        EXPECT_TRUE(zeroColorGamma.IsClose(zeroColor, 0.00001f));
+
+        // One should stay the same
+        Color oneColor = Color::CreateOne();
+        Color oneColorGamma = oneColor.LinearToGamma();
+        EXPECT_TRUE(oneColorGamma.IsClose(oneColor, 0.00001f));
+    }
+
+    TEST(MATH_Color, GammaToLinear)
+    {
+        // Very dark values (these are converted differently)
+        Color reallyDarkGamma(0.001234f, 0.000123f, 0.001010f, 0.5f);
+        Color reallyDarkLinear = reallyDarkGamma.GammaToLinear();
+        Color reallyDarkLinearCheck(0.0000955108359133f, 0.00000952012383901f, 0.000078173374613f, 0.5f);
+        EXPECT_TRUE(reallyDarkLinear.IsClose(reallyDarkLinearCheck, 0.00001f));
+
+        // Normal values
+        Color normalGamma(0.123456f, 0.345678f, 0.567890f, 0.8f);
+        Color normalLinear = normalGamma.GammaToLinear();
+        Color normalLinearCheck(0.0140562303977f, 0.097927189487f, 0.282345816828f, 0.8f);
+        EXPECT_TRUE(normalLinear.IsClose(normalLinearCheck, 0.00001f));
+
+        // Bright values
+        Color brightGamma(1.234567f, 3.456789f, 5.678901f, 1.0f);
+        Color brightLinear = brightGamma.GammaToLinear();
+        Color brightLinearCheck(1.61904710087f, 17.9251290437f, 58.1399365547f, 1.0f);
+        EXPECT_TRUE(brightLinear.IsClose(brightLinearCheck, 0.00001f));
+
+        // Zero should stay the same
+        Color zeroColor = Color::CreateZero();
+        Color zeroColorLinear = zeroColor.GammaToLinear();
+        EXPECT_TRUE(zeroColorLinear.IsClose(zeroColor, 0.00001f));
+
+        // One should stay the same
+        Color oneColor = Color::CreateOne();
+        Color oneColorLinear = oneColor.GammaToLinear();
+        EXPECT_TRUE(oneColorLinear.IsClose(oneColor, 0.00001f));
+    }
+
+    TEST(MATH_Color, UintConversions)
+    {
+        // Convert to u32, floats expected to floor.
+        Color colorToU32(0.23f, 0.55f, 0.88f, 1.0f);
+        EXPECT_EQ(colorToU32.ToU32(), 0xFFE08C3A);
+
+        // Convert from u32
+        Color colorFromU32;
+        colorFromU32.FromU32(0xFFE08C3A);
+        EXPECT_TRUE(colorFromU32.IsClose(Color(0.22745098039f, 0.549019607843f, 0.87843137254f, 1.0f), 0.00001f));
+
+        // Convert to u32 and change to gamma space at the same time.
+        Color colorToU32Gamma(0.23f, 0.55f, 0.88f, 0.5f);
+        EXPECT_EQ(colorToU32Gamma.ToU32LinearToGamma(), 0x7FF1C383);
+
+        // Convert from u32 and change to linear space at the same time.
+        Color colorFromU32Gamma;
+        colorFromU32Gamma.FromU32GammaToLinear(0x7FF1C383);
+        EXPECT_TRUE(colorFromU32Gamma.IsClose(Color(0.22696587351f, 0.54572446137f, 0.879622396888f, 0.498039215686f), 0.00001f));
+
+    }
+
+    TEST(MATH_Color, DotProduct)
+    {
+        Color color1(0.6f, 0.4f, 0.3f, 0.1f);
+        Color color2(0.5f, 0.7f, 0.3f, 0.8f);
+        Color color3(2.5f, 1.7f, 5.3f, 2.8f);
+
+        EXPECT_NEAR(color1.Dot(color2), 0.75f, 0.0001f);
+        EXPECT_NEAR(color1.Dot(color3), 4.05f, 0.0001f);
+        EXPECT_NEAR(color2.Dot(color3), 6.27f, 0.0001f);
+
+        EXPECT_NEAR(color1.Dot3(color2), 0.67f, 0.0001f);
+        EXPECT_NEAR(color1.Dot3(color3), 3.77f, 0.0001f);
+        EXPECT_NEAR(color2.Dot3(color3), 4.03f, 0.0001f);
+    }
+
+    TEST(MATH_Color, Addition)
+    {
+        Color color1(0.6f, 0.4f, 0.3f, 0.1f);
+        Color color2(0.5f, 0.7f, 0.3f, 0.8f);
+        Color colorSum(1.1f, 1.1f, 0.6f, 0.9f);
+
+        EXPECT_TRUE(colorSum.IsClose(color1 + color2, 0.0001f));
+
+        color1 += color2;
+        EXPECT_TRUE(colorSum.IsClose(color1, 0.0001f));
+    }
+
+    TEST(MATH_Color, Subtraction)
+    {
+        Color color1(0.6f, 0.4f, 0.3f, 0.1f);
+        Color color2(0.5f, 0.7f, 0.3f, 0.8f);
+        Color colorDiff(0.1f, -0.3f, 0.0f, -0.7f);
+
+        EXPECT_TRUE(colorDiff.IsClose(color1 - color2, 0.0001f));
+
+        color1 -= color2;
+        EXPECT_TRUE(colorDiff.IsClose(color1, 0.0001f));
+    }
+
+    TEST(MATH_Color, Multiplication)
+    {
+        Color color1(0.6f, 0.4f, 0.3f, 0.1f);
+        Color color2(0.5f, 0.7f, 0.3f, 0.8f);
+        Color colorProduct(0.3f, 0.28f, 0.09f, 0.08f);
+        Color color2Double(1.0f, 1.4f, 0.6f, 1.6f);
+
+        // Product of two colors
+        EXPECT_TRUE(colorProduct.IsClose(color1 * color2, 0.0001f));
+
+        // Multiply-assignment
+        color1 *= color2;
+        EXPECT_TRUE(colorProduct.IsClose(color1, 0.0001f));
+
+        // Product of color and float
+        EXPECT_TRUE(color2Double.IsClose(color2 * 2.0f));
+
+        // Multiply-assignment with single float
+        color2 *= 2.0f;
+        EXPECT_TRUE(color2Double.IsClose(color2));
+    }
+
+    TEST(MATH_Color, Division)
+    {
+        Color color1(0.6f, 0.4f, 0.3f, 0.1f);
+        Color color2(0.5f, 0.8f, 0.3f, 0.8f);
+        Color colorQuotient(1.2f, 0.5f, 1.0f, 0.125f);
+        Color color2Half(0.25f, 0.4f, 0.15f, 0.4f);
+
+        // Product of two colors
+        EXPECT_TRUE(colorQuotient.IsClose(color1 / color2, 0.0001f));
+
+        // Multiply-assignment
+        color1 /= color2;
+        EXPECT_TRUE(colorQuotient.IsClose(color1, 0.0001f));
+
+        // Product of color and float
+        EXPECT_TRUE(color2Half.IsClose(color2 / 2.0f));
+
+        // Multiply-assignment with single float
+        color2 /= 2.0f;
+        EXPECT_TRUE(color2Half.IsClose(color2));
     }
 }

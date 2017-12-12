@@ -11,8 +11,6 @@
 */
 #include <StdAfx.h>
 #include <AzCore/IO/SystemFile.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
 #include <Nodes/FlowNode_DownloadPresignedURL.h>
 #include <aws/core/utils/StringUtils.h>
 #include <PresignedURL/PresignedURLBus.h>
@@ -53,20 +51,20 @@ namespace LmbrAWS
             AZStd::string inputString{ GetPortString(pActInfo, EIP_DownloadURL) };
             AZStd::string outputFile{ GetPortString(pActInfo, EIP_OutputFile) };
 
-            EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, inputString, outputFile);
+            EBUS_EVENT(CloudCanvas::PresignedURLRequestBus, RequestDownloadSignedURL, inputString, outputFile, AZ::EntityId());
         }
     }
 
-    void FlowNode_DownloadPresignedURL::GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString) 
+    void FlowNode_DownloadPresignedURL::GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile)
     {
         if (responseCode == static_cast<int>(Aws::Http::HttpResponseCode::OK))
         {
-            gEnv->pLog->LogAlways("Downloaded signed URL to %s", fileRequest.c_str());
+            gEnv->pLog->LogAlways("Downloaded signed URL to %s", outputFile.c_str());
             SuccessNotify(m_activationInfo.pGraph, m_activationInfo.myID);
         }
         else
         {
-            gEnv->pLog->LogAlways("Failed to download signed URL to %s (%s)", fileRequest.c_str(), resultString.c_str());
+            gEnv->pLog->LogAlways("Failed to download signed URL to %s (%s)", outputFile.c_str(), resultString.c_str());
             ErrorNotify(m_activationInfo.pGraph, m_activationInfo.myID, "Failed to download signed url");
         }
     }

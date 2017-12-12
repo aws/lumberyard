@@ -1,0 +1,34 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/LegacyGameInterface/LegacyGameInterfaceBus.h"
+        ],
+        "Source": [
+            "Source/LegacyGameInterfaceModule.cpp",
+            "Source/LegacyGameInterfaceSystemComponent.cpp",
+            "Source/LegacyGameInterfaceSystemComponent.h"
+        ],
+        "Source/Core": [
+            "Source/Core/EditorGame.cpp",
+            "Source/Core/EditorGame.h",
+            "Source/Core/LegacyGame.cpp",
+            "Source/Core/LegacyGame.h",
+            "Source/Core/LegacyGameRules.cpp",
+            "Source/Core/LegacyGameRules.h"
+        ],
+        "Source/Game": [
+            "Source/Game/Actor.cpp",
+            "Source/Game/Actor.h"
+        ],
+        "Source/System": [
+            "Source/System/GameStartup.cpp",
+            "Source/System/GameStartup.h"
+        ]
+    }
+}

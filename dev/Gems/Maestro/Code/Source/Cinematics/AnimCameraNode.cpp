@@ -49,7 +49,7 @@ namespace
 };
 
 CAnimCameraNode::CAnimCameraNode(const int id)
-    : CAnimEntityNode(id)
+    : CAnimEntityNode(id, eAnimNodeType_Camera)
     , m_fFOV(60.0f)
     , m_fDOF(ZERO)
     , m_fNearZ(DEFAULT_NEAR)
@@ -562,6 +562,7 @@ void CAnimCameraNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAni
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimCameraNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimEntityNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -624,7 +625,7 @@ Ang3 CAnimCameraNode::ShakeParam::ApplyCameraShake(CPNoise3& noiseGen, float tim
     Ang3 rotation;
     Ang3 rotationNoise;
 
-    float noiseAmpMult = this->amplitudeMult * this->noiseAmpMult;
+    float noiseAmpMultiplier = this->amplitudeMult * this->noiseAmpMult;
 
     float t = this->timeOffset;
 
@@ -649,13 +650,13 @@ Ang3 CAnimCameraNode::ShakeParam::ApplyCameraShake(CPNoise3& noiseGen, float tim
 
     rotation.x = noiseGen.Noise1D(this->phase.x) * this->amplitude.x * this->amplitudeMult;
 
-    rotationNoise.x = noiseGen.Noise1D(this->phaseNoise.x) * this->amplitude.x * noiseAmpMult;
+    rotationNoise.x = noiseGen.Noise1D(this->phaseNoise.x) * this->amplitude.x * noiseAmpMultiplier;
 
     rotation.y = noiseGen.Noise1D(this->phase.y) * this->amplitude.y * this->amplitudeMult;
-    rotationNoise.y = noiseGen.Noise1D(this->phaseNoise.y) * this->amplitude.y * noiseAmpMult;
+    rotationNoise.y = noiseGen.Noise1D(this->phaseNoise.y) * this->amplitude.y * noiseAmpMultiplier;
 
     rotation.z = noiseGen.Noise1D(this->phase.z) * this->amplitude.z * this->amplitudeMult;
-    rotationNoise.z = noiseGen.Noise1D(this->phaseNoise.z) * this->amplitude.z * noiseAmpMult;
+    rotationNoise.z = noiseGen.Noise1D(this->phaseNoise.z) * this->amplitude.z * noiseAmpMultiplier;
 
     angles += rotation + rotationNoise;
 

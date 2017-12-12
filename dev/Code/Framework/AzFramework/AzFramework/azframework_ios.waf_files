@@ -11,9 +11,6 @@
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/RawInputNotificationBus_ios.h"
         ],
-        "Input/Buses/Requests": [
-            "Input/Buses/Requests/RawInputRequestBus_ios.h"
-        ],
         "Input/Devices/Gamepad": [
             "Input/Devices/Gamepad/InputDeviceGamepad_pimpl_apple.mm"
         ],

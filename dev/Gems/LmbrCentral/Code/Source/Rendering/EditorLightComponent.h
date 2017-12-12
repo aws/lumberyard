@@ -21,6 +21,8 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 
+#include <LmbrCentral/Rendering/EditorLightComponentBus.h>
+
 #include "LightComponent.h"
 
 #include <IStatObj.h>
@@ -65,7 +67,7 @@ namespace LmbrCentral
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private LightComponentEditorRequestBus::Handler
+        , private EditorLightComponentRequestBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
@@ -99,19 +101,24 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // LightComponentEditorRequestBus::Handler interface implementation
-        void SetCubemap(const char* cubemap) override;
+        void SetCubemap(const AZStd::string& cubemap) override;
+        void SetProjectorTexture(const AZStd::string& projectorTexture) override;
+
         AZ::u32 GetCubemapResolution() override;
+        void SetCubemapResolution(AZ::u32 resolution) override;
         bool UseCustomizedCubemap() const override;
         void RefreshLight() override;
         const LightConfiguration& GetConfiguration() const override;
         AZ::Crc32 OnCubemapAssetChanged();
         AZ::Crc32 OnCustomizedCubemapChanged();
 
-
         ///////////////////////////////////////////
         // LightComponentEditorRequestBus Modifiers
         void SetVisible(bool isVisible) override;
         bool GetVisible() override;
+
+        void SetOnInitially(bool onInitially) override;
+        bool GetOnInitially() override;
 
         void SetColor(const AZ::Color& newColor) override;
         const AZ::Color GetColor() override;
@@ -140,6 +147,9 @@ namespace LmbrCentral
         void SetAreaHeight(float newHeight) override;
         float GetAreaHeight() override;
 
+        void SetAreaFOV(float newFOV) override;
+        float GetAreaFOV() override;
+
         void SetProjectorMaxDistance(float newMaxDistance) override;
         float GetProjectorMaxDistance() override;
 
@@ -156,8 +166,8 @@ namespace LmbrCentral
         void SetProbeAreaDimensions(const AZ::Vector3& newDimensions) override;
         const AZ::Vector3 GetProbeAreaDimensions() override;
 
-        void SetProbeSortPriority(float newPriority) override;
-        float GetProbeSortPriority() override;
+        void SetProbeSortPriority(AZ::u32 newPriority) override;
+        AZ::u32 GetProbeSortPriority() override;
 
         void SetProbeBoxProjected(bool isProbeBoxProjected) override;
         bool GetProbeBoxProjected() override;
@@ -173,7 +183,71 @@ namespace LmbrCentral
 
         void SetProbeAttenuationFalloff(float newAttenuationFalloff) override;
         float GetProbeAttenuationFalloff() override;
+
+        void SetIndoorOnly(bool indoorOnly) override;
+        bool GetIndoorOnly() override;
+
+        void SetCastShadowSpec(AZ::u32 castShadowSpec) override;
+        AZ::u32 GetCastShadowSpec() override;
+
+        void SetViewDistanceMultiplier(float viewDistanceMultiplier) override;
+        float GetViewDistanceMultiplier() override;
+
+        void SetProbeArea(const AZ::Vector3& probeArea) override;
+        AZ::Vector3 GetProbeArea() override;
+
+        void SetVolumetricFogOnly(bool volumetricFogOnly) override;
+        bool GetVolumetricFogOnly() override;
+
+        void SetVolumetricFog(bool volumetricFog) override;
+        bool GetVolumetricFog() override;
+
+        void SetAttenuationFalloffMax(float attenFalloffMax);
+        float GetAttenuationFalloffMax();
+
+        void SetIgnoreVisAreas(bool ignoreVisAreas) override;
+        bool GetIgnoreVisAreas() override;
+
+        void SetAffectsThisAreaOnly(bool affectsThisAreaOnly) override;
+        bool GetAffectsThisAreaOnly() override;
+
+        void SetBoxHeight(float boxHeight) override;
+        float GetBoxHeight() override;
+
+        void SetBoxWidth(float boxWidth) override;
+        float GetBoxWidth() override;
+
+        void SetBoxLength(float boxLength) override;
+        float GetBoxLength() override;
+
+        void SetBoxProjected(bool boxProjected) override;
+        bool GetBoxProjected() override;
+
+        void SetShadowBias(float shadowBias) override;
+        float GetShadowBias() override;
+
+        void SetShadowSlopeBias(float shadowSlopeBias) override;
+        float GetShadowSlopeBias() override;
+
+        void SetShadowResScale(float shadowResScale) override;
+        float GetShadowResScale() override;
+
+        void SetShadowUpdateMinRadius(float shadowUpdateMinRadius) override;
+        float GetShadowUpdateMinRadius() override;
+
+        void SetShadowUpdateRatio(float shadowUpdateRatio) override;
+        float GetShadowUpdateRatio() override;
         //////////////////////////////////////////////////////////////////////////
+
+        // Animation parameters
+        void SetAnimIndex(AZ::u32 animIndex) override;
+        AZ::u32 GetAnimIndex() override;
+
+        void SetAnimSpeed(float animSpeed) override;
+        float GetAnimSpeed() override;
+
+        void SetAnimPhase(float animPhase) override;
+        float GetAnimPhase() override;
 
         //////////////////////////////////////////////////////////////////////////
         // RenderNodeRequestBus::Handler interface implementation
@@ -203,6 +277,11 @@ namespace LmbrCentral
         {
             LightComponent::GetDependentServices(dependent);
             dependent.push_back(AZ_CRC("EditorVisibilityService", 0x90888caf));
+        }
+
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            LightComponent::GetIncompatibleServices(incompatible);
         }
 
         static void Reflect(AZ::ReflectContext* context);
@@ -258,12 +337,25 @@ namespace LmbrCentral
 
         void OnEditorSpecChange() override;
 
+        //! Returns whether the light is an environment probe
         bool IsProbe() const;
+
+        //! Returns whether the light has a cubemap assigned
+        bool HasCubemap() const;
+
+        //! Triggers regeneration of the environment probe's cubemap (the current cubemap output will be baked into the new cubemap as well).
         void GenerateCubemap();
+
+        //! Removes the associated cubemap, returning the environment probe to its default state
+        void ClearCubemap();
+
         void OnViewCubemapChanged();
 
-        //return true if it's a probe and not using customized cubemap
+        //! Returns true if it's an environment probe and not using customized cubemap
         bool CanGenerateCubemap() const;
+
+        //! Returns the name to use for the Generate Cubemap button.
+        const char* GetGenerateCubemapButtonName() const;
         
         const char* GetCubemapAssetName() const;
 
@@ -274,6 +366,7 @@ namespace LmbrCentral
         bool m_viewCubemap;
         bool m_useCustomizedCubemap;
         bool m_cubemapRegen;
+        bool m_cubemapClear;
         //for cubemap asset selection
         AzFramework::SimpleAssetReference<TextureAsset> m_cubemapAsset;
 
@@ -284,6 +377,8 @@ namespace LmbrCentral
         //Statics that can be used by every light
         static IEditor*             m_editor;
         static IMaterialManager*    m_materialManager;
+        static const char* BUTTON_GENERATE;
+        static const char* BUTTON_ADDBOUNCE;
     };
 } // namespace LmbrCentral
 

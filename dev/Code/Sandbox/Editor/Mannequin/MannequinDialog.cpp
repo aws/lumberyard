@@ -89,12 +89,15 @@ void SetMannequinDialogKeyPropertyCmd(IConsoleCmdArgs* pArgs)
 //////////////////////////////////////////////////////////////////////////
 void CMannequinDialog::RegisterViewClass()
 {
-    QtViewOptions opt;
+#ifdef ENABLE_LEGACY_ANIMATION
+    AzToolsFramework::ViewPaneOptions opt;
     opt.isPreview = true;
     opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CMannequinDialog>(GetIEditor(), LyViewPane::Mannequin, "Animation", opt);
-    GetIEditor()->GetSettingsManager()->AddToolName(MANNEQUIN_LAYOUT_SECTION, LyViewPane::Mannequin);
-    GetIEditor()->GetSettingsManager()->AddToolVersion(LyViewPane::Mannequin, MANNEQUIN_EDITOR_VERSION);
+    AzToolsFramework::RegisterViewPane<CMannequinDialog>(LyViewPane::LegacyMannequin, LyViewPane::CategoryAnimation, opt);
+    GetIEditor()->GetSettingsManager()->AddToolName(MANNEQUIN_LAYOUT_SECTION, LyViewPane::LegacyMannequin);
+    GetIEditor()->GetSettingsManager()->AddToolVersion(LyViewPane::LegacyMannequin, MANNEQUIN_EDITOR_VERSION);
+#endif // ENABLE_LEGACY_ANIMATION
+
 }
 
 const GUID& CMannequinDialog::GetClassID()
@@ -121,7 +124,7 @@ CMannequinDialog::CMannequinDialog(QWidget* pParent /*=NULL*/)
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    SEventLog toolEvent(LyViewPane::Mannequin, "", MANNEQUIN_EDITOR_VERSION);
+    SEventLog toolEvent(LyViewPane::LegacyMannequin, "", MANNEQUIN_EDITOR_VERSION);
     GetIEditor()->GetSettingsManager()->RegisterEvent(toolEvent);
 
     GetIEditor()->GetObjectManager()->GetLayersManager()->AddUpdateListener(functor(*this, &CMannequinDialog::OnLayerUpdate));

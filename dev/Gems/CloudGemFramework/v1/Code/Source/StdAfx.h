@@ -11,4 +11,23 @@
 */
 #pragma once
 
+#if defined(CLOUD_GEM_FRAMEWORK_EDITOR)
+
+#include <AzCore/PlatformDef.h>
+
+/////////////////////////////////////////////////////////////////////////////
+// Engine
+/////////////////////////////////////////////////////////////////////////////
+#include <Cry_Math.h>
+#include <ISystem.h>
+#include <ISerialize.h>
+#include <CryName.h>
+
+#else // defined(CLOUD_GEM_FRAMEWORK_EDITOR)
+
 #include <platform.h> // Many CryCommon files require that this is included first.
+
+#endif // defined(CLOUD_GEM_FRAMEWORK_EDITOR)
+
+#undef IN
+#undef GetObject

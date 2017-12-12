@@ -44,6 +44,8 @@
 
 #include "QtUtil.h"
 
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
+
 #ifdef LoadCursor
 #undef LoadCursor
 #endif
@@ -773,6 +775,7 @@ void CSequencerDopeSheetBase::OnPaste()
         m_bUseClipboard = true;
 
         StartPasteKeys();
+        FinalizePasteKeys();
     }
 }
 
@@ -1085,7 +1088,7 @@ void CSequencerDopeSheetBase::OnLButtonDown(const QPoint& point, Qt::KeyboardMod
             if (!gSettings.stylusMode) // there's no point in changing the cursor when we're dealing with absolute pointing device.
             {
                 // set the mouse position on-screen
-                QCursor::setPos(mapToGlobal(newPoint));
+                AzQtComponents::SetCursorPos(mapToGlobal(newPoint));
             }
         }
         else
@@ -1675,7 +1678,7 @@ void CSequencerDopeSheetBase::OnRButtonDown(const QPoint& point, Qt::KeyboardMod
         }
         else if (cmd == PASTE_KEY)
         {
-            StartPasteKeys();
+            OnPaste();
         }
         else if (cmd == CLONE_ON_SPOT_KEY)
         {
@@ -2081,9 +2084,7 @@ void CSequencerDopeSheetBase::OnRButtonUp(const QPoint& point, Qt::KeyboardModif
             const int cmd = action ? action->data().toInt() : -1;
             if (cmd == PASTE_KEY)
             {
-                // Don't want to pick up a previous drag as a paste!
-                m_bUseClipboard = true;
-                StartPasteKeys();
+                OnPaste();
             }
             else if (cmd == NEW_KEY)
             {

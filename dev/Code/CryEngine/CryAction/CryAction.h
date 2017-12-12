@@ -107,7 +107,8 @@ class CGameContextBridge;
 
 namespace Graphics
 {
-	class CColorGradientManager;
+    class CColorGradientManager;
+    class ScreenFaderManager;
 }
 
 class CCryAction
@@ -119,39 +120,39 @@ public:
 
     // IGameFramework
     void ClearTimers();
-    virtual TimerID AddTimer(CTimeValue interval, bool repeat, TimerCallback callback, void* userdata);
-    virtual void* RemoveTimer(TimerID timerID);
+    TimerID AddTimer(CTimeValue interval, bool repeat, TimerCallback callback, void* userdata) override;
+    void* RemoveTimer(TimerID timerID) override;
 
-    virtual uint32 GetPreUpdateTicks();
+    uint32 GetPreUpdateTicks() override;
 
-    virtual void RegisterFactory(const char* name, IActorCreator* pCreator, bool isAI);
-    virtual void RegisterFactory(const char* name, IItemCreator* pCreator, bool isAI);
-    virtual void RegisterFactory(const char* name, IVehicleCreator* pCreator, bool isAI);
-    virtual void RegisterFactory(const char* name, IGameObjectExtensionCreator* pCreator, bool isAI);
-    virtual void RegisterFactory(const char* name, ISaveGame*(*func)(), bool);
-    virtual void RegisterFactory(const char* name, ILoadGame*(*func)(), bool);
+    void RegisterFactory(const char* name, IActorCreator* pCreator, bool isAI) override;
+    void RegisterFactory(const char* name, IItemCreator* pCreator, bool isAI) override;
+    void RegisterFactory(const char* name, IVehicleCreator* pCreator, bool isAI) override;
+    void RegisterFactory(const char* name, IGameObjectExtensionCreator* pCreator, bool isAI) override;
+    void RegisterFactory(const char* name, ISaveGame*(*func)(), bool) override;
+    void RegisterFactory(const char* name, ILoadGame*(*func)(), bool) override;
 
-    virtual bool Init(SSystemInitParams& startupParams);
-    virtual void InitGameType(bool multiplayer, bool fromInit);
-    virtual bool CompleteInit();
-    virtual void Shutdown();
-    virtual bool PreUpdate(bool haveFocus, unsigned int updateFlags);
-    virtual void PostUpdate(bool haveFocus, unsigned int updateFlags);
-    virtual void Reset(bool clients);
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const;
+    bool Init(SSystemInitParams& startupParams) override;
+    void InitGameType(bool multiplayer, bool fromInit) override;
+    bool CompleteInit() override;
+    void Shutdown() override;
+    bool PreUpdate(bool haveFocus, unsigned int updateFlags) override;
+    void PostUpdate(bool haveFocus, unsigned int updateFlags) override;
+    void Reset(bool clients) override;
+    void GetMemoryUsage(ICrySizer* pSizer) const override;
 
-    virtual void PauseGame(bool pause, bool force, unsigned int nFadeOutInMS = 0);
-    virtual bool IsGamePaused();
-    virtual bool IsGameStarted();
-    virtual void MarkGameStarted();
-    virtual bool IsLoadingSaveGame();
-    virtual const char* GetLevelName();
-    virtual const char* GetAbsLevelPath(char* const pPath, const uint32 cPathMaxLen);
-    virtual bool IsInTimeDemo();    // Check if time demo is in progress (either playing or recording);
-    virtual bool IsTimeDemoRecording(); // Check if time demo is recording;
+    void PauseGame(bool pause, bool force, unsigned int nFadeOutInMS = 0) override;
+    bool IsGamePaused() override;
+    bool IsGameStarted() override;
+    void MarkGameStarted() override;
+    bool IsLoadingSaveGame() override;
+    const char* GetLevelName() override;
+    const char* GetAbsLevelPath(char* const pPath, const uint32 cPathMaxLen) override;
+    bool IsInTimeDemo() override;    // Check if time demo is in progress (either playing or recording)
+    bool IsTimeDemoRecording() override; // Check if time demo is recording
 
-    virtual bool IsLevelPrecachingDone() const;
-    virtual void SetLevelPrecachingDone(bool bValue);
+    bool IsLevelPrecachingDone() const override;
+    void SetLevelPrecachingDone(bool bValue) override;
 
     void HandleGridMateScriptRMI(TSerialize serialize, ChannelId toChannelId, ChannelId avoidChannelId) override;
     void SerializeScript(TSerialize ser, IEntity* entity) override;
@@ -159,114 +160,124 @@ public:
     void NetMarshalScript(Serialization::INetScriptMarshaler* scriptMarshaler, IEntity* entity) override;
     void NetUnmarshalScript(TSerialize ser, IEntity* entity) override;
 
-    virtual ISystem* GetISystem() { return m_pSystem; };
-    virtual ILanQueryListener* GetILanQueryListener() {return m_pLanQueryListener; }
-    virtual IUIDraw* GetIUIDraw();
-    virtual IMannequin& GetMannequinInterface();
-    virtual ILevelSystem* GetILevelSystem();
-    virtual IActorSystem* GetIActorSystem();
-    virtual IItemSystem* GetIItemSystem();
-    virtual IVehicleSystem* GetIVehicleSystem();
-    virtual IActionMapManager* GetIActionMapManager();
-    virtual IViewSystem* GetIViewSystem();
-    virtual IGameplayRecorder* GetIGameplayRecorder();
-    virtual IGameRulesSystem* GetIGameRulesSystem();
-    virtual IGameObjectSystem* GetIGameObjectSystem();
-    virtual IFlowSystem* GetIFlowSystem();
-    virtual IGameTokenSystem* GetIGameTokenSystem();
-    virtual IEffectSystem* GetIEffectSystem();
-    virtual IMaterialEffects* GetIMaterialEffects();
-    virtual IBreakableGlassSystem* GetIBreakableGlassSystem();
-    virtual IPlayerProfileManager* GetIPlayerProfileManager();
-    virtual ISubtitleManager* GetISubtitleManager();
-    virtual IDialogSystem* GetIDialogSystem();
-    virtual ICooperativeAnimationManager* GetICooperativeAnimationManager();
-    virtual ICheckpointSystem* GetICheckpointSystem();
-    virtual IForceFeedbackSystem* GetIForceFeedbackSystem() const;
-    virtual ICustomActionManager* GetICustomActionManager() const;
-    virtual ICustomEventManager* GetICustomEventManager() const;
-    virtual IRealtimeRemoteUpdate* GetIRealTimeRemoteUpdate();
-    virtual ITimeDemoRecorder* GetITimeDemoRecorder() const;
-    virtual IGamePhysicsSettings* GetIGamePhysicsSettings();
+    ISystem* GetISystem() override { return m_pSystem; }
+    ILanQueryListener* GetILanQueryListener() override {return m_pLanQueryListener; }
+    IUIDraw* GetIUIDraw() override;
+    IMannequin& GetMannequinInterface() override;
+    ILevelSystem* GetILevelSystem() override;
+    IActorSystem* GetIActorSystem() override;
+    IItemSystem* GetIItemSystem() override;
+    IVehicleSystem* GetIVehicleSystem() override;
+    IActionMapManager* GetIActionMapManager() override;
+    IViewSystem* GetIViewSystem() override;
+    IGameplayRecorder* GetIGameplayRecorder() override;
+    IGameRulesSystem* GetIGameRulesSystem() override;
+    IGameObjectSystem* GetIGameObjectSystem() override;
+    IFlowSystem* GetIFlowSystem() override;
+    IGameTokenSystem* GetIGameTokenSystem() override;
+    IEffectSystem* GetIEffectSystem() override;
+    IMaterialEffects* GetIMaterialEffects() override;
+    IPlayerProfileManager* GetIPlayerProfileManager() override;
+    ISubtitleManager* GetISubtitleManager() override;
+    IDialogSystem* GetIDialogSystem() override;
+    ICooperativeAnimationManager* GetICooperativeAnimationManager() override;
+    ICheckpointSystem* GetICheckpointSystem() override;
+    IForceFeedbackSystem* GetIForceFeedbackSystem() const override;
+    ICustomActionManager* GetICustomActionManager() const override;
+    ICustomEventManager* GetICustomEventManager() const override;
+    IRealtimeRemoteUpdate* GetIRealTimeRemoteUpdate() override;
+    IGamePhysicsSettings* GetIGamePhysicsSettings() override;
+    const char* GetStartLevelSaveGameName() override;
 
-    virtual bool StartGameContext(const SGameStartParams* pGameStartParams);
-    virtual bool ChangeGameContext(const SGameContextParams* pGameContextParams);
-    virtual void EndGameContext(bool loadEmptyLevel);
-    virtual bool StartedGameContext() const;
-    virtual bool StartingGameContext() const;
-    virtual bool BlockingSpawnPlayer();
+    bool StartGameContext(const SGameStartParams* pGameStartParams) override;
+    bool ChangeGameContext(const SGameContextParams* pGameContextParams) override;
+    void EndGameContext(bool loadEmptyLevel) override;
+    bool StartedGameContext() const override;
+    bool StartingGameContext() const override;
+    bool BlockingSpawnPlayer() override;
 
-    virtual void ResetBrokenGameObjects();
-    virtual void CloneBrokenObjectsAndRevertToStateAtTime(int32 iFirstBreakEventIndex, uint16* pBreakEventIndices, int32& iNumBreakEvents, IRenderNode** outClonedNodes, int32& iNumClonedNodes, SRenderNodeCloneLookup& renderNodeLookup);
-    virtual void ApplySingleProceduralBreakFromEventIndex(uint16 uBreakEventIndex, const SRenderNodeCloneLookup& renderNodeLookup);
-    virtual void UnhideBrokenObjectsByIndex(uint16* ObjectIndicies, int32 iNumObjectIndices);
+    void ResetBrokenGameObjects() override;
+    void CloneBrokenObjectsAndRevertToStateAtTime(int32 iFirstBreakEventIndex, 
+        uint16* pBreakEventIndices, 
+        int32& iNumBreakEvents, 
+        IRenderNode** outClonedNodes, 
+        int32& iNumClonedNodes, 
+        SRenderNodeCloneLookup& renderNodeLookup) override;
+    void ApplySingleProceduralBreakFromEventIndex(uint16 uBreakEventIndex, const SRenderNodeCloneLookup& renderNodeLookup) override;
+    void UnhideBrokenObjectsByIndex(uint16* ObjectIndicies, int32 iNumObjectIndices) override;
 
     void Serialize(TSerialize ser); // defined in ActionGame.cpp
-    virtual void FlushBreakableObjects();  // defined in ActionGame.cpp
+    void FlushBreakableObjects() override;  // defined in ActionGame.cpp
     void ClearBreakHistory();
 
-    virtual void InitEditor(IGameToEditorInterface* pGameToEditor);
-    virtual void SetEditorLevel(const char* levelName, const char* levelFolder);
-    virtual void GetEditorLevel(char** levelName, char** levelFolder);
+    void InitEditor(IGameToEditorInterface* pGameToEditor) override;
+    void SetEditorLevel(const char* levelName, const char* levelFolder) override;
+    void GetEditorLevel(char** levelName, char** levelFolder) override;
 
-    virtual IActor* GetClientActor() const;
-    virtual EntityId GetClientActorId() const;
-    virtual IEntity* GetClientEntity() const;
-    virtual void SetClientActor(EntityId id);
-    virtual CTimeValue GetServerTime();
-    virtual IGameObject* GetGameObject(EntityId id);
-    virtual bool GetNetworkSafeClassId(uint16& id, const char* className);
-    virtual bool GetNetworkSafeClassName(char* className, size_t classNameSizeInBytes, uint16 id);
-    virtual IGameObjectExtension* QueryGameObjectExtension(EntityId id, const char* name);
+    IActor* GetClientActor() const override;
+    EntityId GetClientActorId() const override;
+    IEntity* GetClientEntity() const override;
+    void SetClientActor(EntityId id, bool setupActionMaps = true) override;
+    CTimeValue GetServerTime() override;
+    IGameObject* GetGameObject(EntityId id) override;
+    bool GetNetworkSafeClassId(uint16& id, const char* className) override;
+    bool GetNetworkSafeClassName(char* className, size_t classNameSizeInBytes, uint16 id) override;
+    IGameObjectExtension* QueryGameObjectExtension(EntityId id, const char* name) override;
 
-    virtual bool SaveGame(const char* path, bool bQuick = false, bool bForceImmediate = false, ESaveGameReason reason = eSGR_QuickSave, bool ignoreDelay = false, const char* checkpointName = NULL);
-    virtual ELoadGameResult LoadGame(const char* path, bool quick = false, bool ignoreDelay = false);
-    virtual void ScheduleEndLevel(const char* nextLevel = "", bool clearRenderBufferToBlack = true);
-    virtual void ScheduleEndLevelNow(const char* nextLevel, bool clearRenderBufferToBlack = true);
+    bool SaveGame(const char* path, 
+        bool bQuick = false, 
+        bool bForceImmediate = false, 
+        ESaveGameReason reason = eSGR_QuickSave, 
+        bool ignoreDelay = false, 
+        const char* checkpointName = NULL) override;
+    ELoadGameResult LoadGame(const char* path, bool quick = false, bool ignoreDelay = false) override;
+    void ScheduleEndLevelNow(const char* nextLevel, bool clearRenderBufferToBlack = true) override;
 
-    virtual void OnEditorSetGameMode(int iMode);
-    virtual bool IsEditing(){return m_isEditing; }
+    void OnEditorSetGameMode(int iMode) override;
+    bool IsEditing() override {return m_isEditing; }
 
-    virtual void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity);
+    void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity) override;
 
     bool IsImmersiveMPEnabled();
 
-    virtual void AllowSave(bool bAllow = true)
+    void AllowSave(bool bAllow = true) override
     {
         m_bAllowSave = bAllow;
     }
 
-    virtual void AllowLoad(bool bAllow = true)
+    void AllowLoad(bool bAllow = true) override
     {
         m_bAllowLoad = bAllow;
     }
 
-    virtual bool CanSave();
-    virtual bool CanLoad();
+    bool CanSave() override;
+    bool CanLoad() override;
 
-    virtual ISerializeHelper* GetSerializeHelper() const;
+    ISerializeHelper* GetSerializeHelper() const override;
 
-    virtual bool CanCheat();
+    bool CanCheat() override;
 
     void SetGameGUID(const char* gameGUID);
     const char* GetGameGUID() { return m_gameGUID; }
 
-    virtual bool IsVoiceRecordingEnabled() {return m_VoiceRecordingEnabled != 0; }
+    bool IsVoiceRecordingEnabled() override {return m_VoiceRecordingEnabled != 0; }
 
-    virtual ISharedParamsManager* GetISharedParamsManager();
-    virtual float GetLoadSaveDelay() const {return m_lastSaveLoad; }
+    ISharedParamsManager* GetISharedParamsManager() override;
+    float GetLoadSaveDelay() const override {return m_lastSaveLoad; }
 
-    virtual IGameVolumes* GetIGameVolumesManager() const;
-    virtual std::shared_ptr<IPrefabManager> GetIPrefabManager() const;
+    IGameVolumes* GetIGameVolumesManager() const override;
+    std::shared_ptr<IPrefabManager> GetIPrefabManager() const override;
 
-    virtual void PreloadAnimatedCharacter(IScriptTable* pEntityScript);
-    virtual void PrePhysicsTimeStep(float deltaTime);
+    void PreloadAnimatedCharacter(IScriptTable* pEntityScript) override;
+    void PrePhysicsTimeStep(float deltaTime) override;
 
-    virtual void RegisterExtension(ICryUnknownPtr pExtension);
-    virtual void ReleaseExtensions();
+    void RegisterExtension(ICryUnknownPtr pExtension) override;
+    void ReleaseExtensions() override;
 
+    IBreakableGlassSystem* GetIBreakableGlassSystem();
+    void ScheduleEndLevel(const char* nextLevel = "", bool clearRenderBufferToBlack = true);
 protected:
-    virtual ICryUnknownPtr QueryExtensionInterfaceById(const CryInterfaceID& interfaceID) const;
+    ICryUnknownPtr QueryExtensionInterfaceById(const CryInterfaceID& interfaceID) const override;
     // ~IGameFramework
 
 public:
@@ -280,24 +291,24 @@ public:
     CPersistentDebug* GetPersistentDebug() { return m_pPersistentDebug; }
     CSignalTimer* GetSignalTimer();
     CRangeSignaling* GetRangeSignaling();
-    virtual IPersistentDebug* GetIPersistentDebug();
-    virtual IVisualLog* GetIVisualLog();
+    IPersistentDebug* GetIPersistentDebug() override;
+    IVisualLog* GetIVisualLog() override;
     CVisualLog* GetVisualLog() { return m_pVisualLog; }
     CGameContextBridge* GetGameContextBridge() { return m_contextBridge; }
     Graphics::CColorGradientManager* GetColorGradientManager() { return m_colorGradientManager; }
 
 #ifndef _RELEASE
-    virtual DebugCamera* GetDebugCamera() { return m_debugCamera; }
+    DebugCamera* GetDebugCamera() override { return m_debugCamera; }
 #endif
 
-    virtual void    AddBreakEventListener(IBreakEventListener* pListener);
-    virtual void    RemoveBreakEventListener(IBreakEventListener* pListener);
+    void    AddBreakEventListener(IBreakEventListener* pListener) override;
+    void    RemoveBreakEventListener(IBreakEventListener* pListener) override;
 
     void OnBreakEvent(uint16 uBreakEventIndex);
     void OnPartRemoveEvent(int32 iPartRemoveEventIndex);
 
-    virtual void RegisterListener       (IGameFrameworkListener* pGameFrameworkListener, const char* name, EFRAMEWORKLISTENERPRIORITY eFrameworkListenerPriority);
-    virtual void UnregisterListener (IGameFrameworkListener* pGameFrameworkListener);
+    void RegisterListener       (IGameFrameworkListener* pGameFrameworkListener, const char* name, EFRAMEWORKLISTENERPRIORITY eFrameworkListenerPriority) override;
+    void UnregisterListener (IGameFrameworkListener* pGameFrameworkListener) override;
 
     CDialogSystem* GetDialogSystem() { return m_pDialogSystem; }
     CTimeOfDayScheduler* GetTimeOfDayScheduler() const { return m_pTimeOfDayScheduler; }
@@ -312,24 +323,22 @@ public:
     void NotifyGameFrameworkListeners(ILoadGame* pLoadGame);
     void NotifySavegameFileLoadedToListeners(const char* pLevelName);
     void NotifyForceFlashLoadingListeners();
-    virtual void EnableVoiceRecording(const bool enable);
-    virtual IDebugHistoryManager* CreateDebugHistoryManager();
-    virtual void ExecuteCommandNextFrame(const char* cmd);
-    virtual const char* GetNextFrameCommand() const;
-    virtual void ClearNextFrameCommand();
-    virtual void PrefetchLevelAssets(const bool bEnforceAll);
+    void EnableVoiceRecording(const bool enable) override;
+    IDebugHistoryManager* CreateDebugHistoryManager() override;
+    void ExecuteCommandNextFrame(const char* cmd) override;
+    const char* GetNextFrameCommand() const override;
+    void ClearNextFrameCommand() override;
+    void PrefetchLevelAssets(const bool bEnforceAll) override;
 
-    virtual void ShowPageInBrowser(const char* URL);
-    virtual bool StartProcess(const char* cmd_line);
-    virtual bool SaveServerConfig(const char* path);
+    void ShowPageInBrowser(const char* URL) override;
+    bool StartProcess(const char* cmd_line) override;
+    bool SaveServerConfig(const char* path) override;
 
     void  OnActionEvent(const SActionEvent& ev);
 
     void DumpMemInfo(const char* format, ...) PRINTF_PARAMS(2, 3);
-
-    const char* GetStartLevelSaveGameName();
-
-    virtual IAIActorProxy* GetAIActorProxy(EntityId entityid) const;
+    
+    IAIActorProxy* GetAIActorProxy(EntityId entityid) const;
     CAIProxyManager* GetAIProxyManager() { return m_pAIProxyManager; }
     const CAIProxyManager* GetAIProxyManager() const { return m_pAIProxyManager; }
 
@@ -468,6 +477,7 @@ private:
     CCustomActionManager* m_pCustomActionManager;
     CCustomEventManager* m_pCustomEventManager;
     Graphics::CColorGradientManager* m_colorGradientManager = nullptr;
+    Graphics::ScreenFaderManager* m_screenFaderManager = nullptr;
 
     IGameStatistics* m_pGameStatistics;
 
@@ -487,10 +497,7 @@ private:
 
     // developer mode
     CDevMode* m_pDevMode;
-
-    // TimeDemo recorder.
-    CTimeDemoRecorder* m_pTimeDemoRecorder;
-
+    
     // Currently handles the automatic creation of vegetation areas
     CRuntimeAreaManager* m_pRuntimeAreaManager;
 

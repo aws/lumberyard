@@ -126,7 +126,7 @@ bool CWaitProgress::Step(int nPercentage)
     }
 
     // Use the oportunity to process windows messages here.
-    static const AZ::u64 TIMEOUT_MS = 100;
+    static const AZ::u64 TIMEOUT_MS = 1;
     qApp->processEvents(QEventLoop::AllEvents, TIMEOUT_MS);
 
     return true;

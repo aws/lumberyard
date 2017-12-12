@@ -32,6 +32,7 @@
 class QLabel;
 class QSpacerItem;
 class QMenu;
+class QMimeData;
 
 namespace Ui
 {
@@ -152,14 +153,18 @@ namespace AzToolsFramework
         void QueuePropertyRefresh();
         void ClearInstances(bool invalidateImmediately = true);
 
-        AZStd::vector<AZ::Component*> GetAllComponentsForEntityInOrder(AZ::Entity* entity);
+        void GetAllComponentsForEntityInOrder(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity);
+        void RemoveHiddenComponents(AZ::Entity::ComponentArrayType& componentsOnEntity);
+        void SortComponentsByPriority(AZ::Entity::ComponentArrayType& componentsOnEntity);
+        void SortComponentsByOrder(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
+        void SaveComponentOrder(const AZ::EntityId& entityId, const AZ::Entity::ComponentArrayType& componentsInOrder);
+
         void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
-        void SortComponentsByOrder(AZ::Entity::ComponentArrayType& componentsToSort, ComponentOrderArray& componentOrderList);
-        bool ShouldDisplayComponent(AZ::Component* component) const;
+        bool ShouldDisplayComponent(const AZ::Component* component) const;
         bool IsComponentRemovable(const AZ::Component* component) const;
         bool AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const;
 
@@ -192,50 +197,87 @@ namespace AzToolsFramework
             const QSize& size,
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
 
-        QAction* m_addComponentAction;
-        QAction* m_removeAction;
-        QAction* m_cutAction;
-        QAction* m_copyAction;
-        QAction* m_pasteAction;
-        QAction* m_enableAction;
-        QAction* m_disableAction;
-        QAction* m_moveUpAction;
-        QAction* m_moveDownAction;
+        QAction* m_actionToAddComponents;
+        QAction* m_actionToDeleteComponents;
+        QAction* m_actionToCutComponents;
+        QAction* m_actionToCopyComponents;
+        QAction* m_actionToPasteComponents;
+        QAction* m_actionToEnableComponents;
+        QAction* m_actionToDisableComponents;
+        QAction* m_actionToMoveComponentsUp;
+        QAction* m_actionToMoveComponentsDown;
+        QAction* m_actionToMoveComponentsTop;
+        QAction* m_actionToMoveComponentsBottom;
         QAction* m_resetToSliceAction;
 
         void CreateActions();
         void UpdateActions();
 
-        AZStd::vector<AZ::Component*> GetCopyableComponents() const;
-        void RemoveComponents(const AZStd::vector<AZ::Component*>& components);
-        void RemoveComponents();
+        AZ::Entity::ComponentArrayType GetCopyableComponents() const;
+        void DeleteComponents(const AZ::Entity::ComponentArrayType& components);
+        void DeleteComponents();
         void CutComponents();
         void CopyComponents();
         void PasteComponents();
-        void EnableComponents(const AZStd::vector<AZ::Component*>& components);
+        void EnableComponents(const AZ::Entity::ComponentArrayType& components);
         void EnableComponents();
-        void DisableComponents(const AZStd::vector<AZ::Component*>& components);
+        void DisableComponents(const AZ::Entity::ComponentArrayType& components);
         void DisableComponents();
         void MoveComponentsUp();
         void MoveComponentsDown();
+        void MoveComponentsTop();
+        void MoveComponentsBottom();
+
+        //component reorder and drag drop helpers
+
+        //reorder source before target
+        void MoveComponentBefore(const AZ::Component* sourceComponent, const AZ::Component* targetComponent, ScopedUndoBatch &undo);
+
+        //reorder source after target
+        void MoveComponentAfter(const AZ::Component* sourceComponent, const AZ::Component* targetComponent, ScopedUndoBatch &undo);
+
+        //reorder each element of source before corresponding element of target
+        void MoveComponentRowBefore(const AZ::Entity::ComponentArrayType &sourceComponents, const AZ::Entity::ComponentArrayType &targetComponents, ScopedUndoBatch &undo);
+
+        //reorder each element of source after corresponding element of target
+        void MoveComponentRowAfter(const AZ::Entity::ComponentArrayType &sourceComponents, const AZ::Entity::ComponentArrayType &targetComponents, ScopedUndoBatch &undo);
+
+        //determine if any neighboring component editor rows can be exchanged
+        bool IsMoveAllowed(const ComponentEditorVector& componentEditors) const;
+
+        //determine if the specified component editor rows can be exchanged
+        bool IsMoveAllowed(const ComponentEditorVector& componentEditors, size_t sourceComponentEditorIndex, size_t targetComponentEditorIndex) const;
+
+        bool IsMoveComponentsUpAllowed() const;
+        bool IsMoveComponentsDownAllowed() const;
 
         void ResetToSlice();
 
         bool DoesOwnFocus() const;
-        bool DoesIntersectWidget(const QRect& rectGlobal, const QWidget* widget) const;
-        bool DoesIntersectSelectedComponentEditor(const QRect& rectGlobal) const;
-        bool DoesIntersectNonSelectedComponentEditor(const QRect& rectGlobal) const;
+        QRect GetWidgetGlobalRect(const QWidget* widget) const;
+        bool DoesIntersectWidget(const QRect& globalRect, const QWidget* widget) const;
+        bool DoesIntersectSelectedComponentEditor(const QRect& globalRect) const;
+        bool DoesIntersectNonSelectedComponentEditor(const QRect& globalRect) const;
 
+        void ClearComponentEditorDragging();
         void ClearComponentEditorSelection();
         void SelectRangeOfComponentEditors(const AZ::s32 index1, const AZ::s32 index2, bool selected = true);
-        void SelectIntersectingComponentEditors(const QRect& rectGlobal, bool selected = true);
-        void ToggleIntersectingComponentEditors(const QRect& rectGlobal);
+        void SelectIntersectingComponentEditors(const QRect& globalRect, bool selected = true);
+        void ToggleIntersectingComponentEditors(const QRect& globalRect);
         AZ::s32 GetComponentEditorIndex(const ComponentEditor* componentEditor) const;
-        ComponentEditorVector GetIntersectingComponentEditors(const QRect& rectGlobal) const;
-        ComponentEditorVector GetSelectedComponentEditors() const;
-        AZStd::vector<AZ::Component*> GetSelectedComponents() const;
+        ComponentEditorVector GetIntersectingComponentEditors(const QRect& globalRect) const;
+
+        const ComponentEditorVector& GetSelectedComponentEditors() const;
+        const AZ::Entity::ComponentArrayType& GetSelectedComponents() const;
+        const AZStd::unordered_map<AZ::EntityId, AZ::Entity::ComponentArrayType>& GetSelectedComponentsByEntityId() const;
+        void UpdateSelectionCache();
+
+        ComponentEditorVector m_selectedComponentEditors;
+        AZ::Entity::ComponentArrayType m_selectedComponents;
+        AZStd::unordered_map<AZ::EntityId, AZ::Entity::ComponentArrayType> m_selectedComponentsByEntityId;
 
         void SaveComponentEditorState();
+        void SaveComponentEditorState(ComponentEditor* componentEditor);
         void LoadComponentEditorState();
         void ClearComponentEditorState();
 
@@ -246,10 +288,58 @@ namespace AzToolsFramework
         };
         AZStd::unordered_map<AZ::ComponentId, ComponentEditorSaveState> m_componentEditorSaveStateTable;
 
+        void UpdateOverlay();
+
+        friend class EntityPropertyEditorOverlay;
+        class EntityPropertyEditorOverlay* m_overlay = nullptr;
+
         //widget overrides
+        void resizeEvent(QResizeEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
         bool eventFilter(QObject* object, QEvent* event) override;
+
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void dragEnterEvent(QDragEnterEvent* event) override;
+        void dragMoveEvent(QDragMoveEvent* event) override;
+        void dropEvent(QDropEvent* event) override;
+
+        bool HandleSelectionEvents(QObject* object, QEvent* event);
         bool m_selectionEventAccepted;
+
+        // drag and drop events
+        QRect GetInflatedRectFromPoint(const QPoint& point, int radius) const;
+        bool IsDragAllowed(const ComponentEditorVector& componentEditors) const;
+        bool IsDropAllowed(const QMimeData* mimeData, const QPoint& posGlobal) const;
+        bool IsDropAllowedForComponentReorder(const QMimeData* mimeData, const QPoint& posGlobal) const;
+        bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId);
+
+        ComponentEditor* GetReorderDropTarget(const QRect& globalRect) const;
+        bool ResetDrag(QMouseEvent* event);
+        bool UpdateDrag(const QPoint& localPos, Qt::MouseButtons mouseButtons, const QMimeData* mimeData);
+        bool StartDrag(QMouseEvent* event);
+        bool HandleDrop(QDropEvent* event);
+        bool HandleDropForComponentTypes(QDropEvent* event);
+        bool HandleDropForComponentAssets(QDropEvent* event);
+        bool HandleDropForAssetBrowserEntries(QDropEvent* event);
+        bool HandleDropForComponentReorder(QDropEvent* event);
+        AZStd::vector<AZ::s32> ExtractComponentEditorIndicesFromMimeData(const QMimeData* mimeData) const;
+        ComponentEditorVector GetComponentEditorsFromIndices(const AZStd::vector<AZ::s32>& indices) const;
+        ComponentEditor* GetComponentEditorsFromIndex(const AZ::s32 index) const;
+        QPoint m_dragStartPosition;
+        bool m_dragStarted;
+
+        void ResetAutoScroll();
+        void QueueAutoScroll();
+        void UpdateAutoScroll();
+        int m_autoScrollCount;
+        int m_autoScrollMargin;
+        bool m_autoScrollQueued;
+
+        void UpdateInternalState();
+
+        void UpdateInitiallyActiveDisplay();
 
         bool m_isBuildingProperties;
 
@@ -259,7 +349,7 @@ namespace AzToolsFramework
         AZ::SerializeContext* m_serializeContext;
 
         AZ::s32 m_componentEditorLastSelectedIndex;
-        size_t m_componentEditorsUsed;
+        AZ::s32 m_componentEditorsUsed;
         ComponentEditorVector m_componentEditors;
 
         using ComponentPropertyEditorMap = AZStd::unordered_map<AZ::Component*, ComponentEditor*>;
@@ -301,7 +391,9 @@ namespace AzToolsFramework
         void OnEntityNameChanged();
         void ScrollToNewComponent();
         void QueueScrollToNewComponent();
+        void OnInitiallyActiveChanged(int);
         void BuildEntityIconMenu();
+        bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
     };
 
 }

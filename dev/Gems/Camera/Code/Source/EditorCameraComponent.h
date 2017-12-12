@@ -12,9 +12,12 @@
 #pragma once
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Math/Color.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/EditorCameraBus.h>
 #include <AzFramework/Components/CameraBus.h>
 
 #include <AzFramework/Components/EditorEntityEvents.h>
@@ -34,6 +37,8 @@ namespace Camera
         , public CameraBus::Handler
         , public AZ::TransformNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
+        , private EditorCameraNotificationBus::Handler
+        , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorCameraComponent, EditorCameraComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
@@ -85,9 +90,22 @@ namespace Camera
         // AzToolsFramework::Components::EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        /// EditorCameraNotificationBus::Handler
+        void OnViewportViewEntityChanged(const AZ::EntityId& newViewId) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        /// AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        void OnSelected() override;
+        void OnDeselected() override;
+        //////////////////////////////////////////////////////////////////////////
     protected:
         void UpdateCamera();
         void EditorDisplay(AzFramework::EntityDebugDisplayRequests& displayInterface, const AZ::Transform& world, bool& handled);
+        AZ::Crc32 OnPossessCameraButtonClicked();
+        AZStd::string GetCameraViewButtonText() const;
 
         //////////////////////////////////////////////////////////////////////////
         /// Private Data
@@ -106,5 +124,8 @@ namespace Camera
         bool m_specifyDimensions = false;
         float m_frustumWidth = s_defaultFrustumDimension;
         float m_frustumHeight = s_defaultFrustumDimension;
+        bool m_viewButton = false;
+        float m_frustumViewPercentLength = 1.f;
+        AZ::Color m_frustumDrawColor = AZ::Color{1.0f, 0.f, 0.f, 1.f};
     };
 } // Camera

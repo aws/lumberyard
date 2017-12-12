@@ -61,7 +61,10 @@
             "Slice/SliceComponent.cpp",
             "Slice/SliceComponent.h",
             "Slice/SliceSystemComponent.h",
-            "Slice/SliceSystemComponent.cpp"
+            "Slice/SliceSystemComponent.cpp",
+            "Slice/SliceMetadataInfoBus.h",
+            "Slice/SliceMetadataInfoComponent.h",
+            "Slice/SliceMetadataInfoComponent.cpp"
         ],
         "Compression":
         [
@@ -220,9 +223,12 @@
             "Math/Internal/Vector3Win32.inl",
             "Math/Internal/Vector4Fpu.inl",
             "Math/Internal/Vector4Win32.inl",
+            "Math/Internal/VectorConversions.inl",
             "Math/Internal/VectorFloatFpu.inl",
             "Math/Internal/VectorFloatWin32.inl",
+            "Math/Internal/VertexContainer.inl",
             "Math/Internal/Color.inl",
+            "Math/InterpolationSample.h",
             "Math/IntersectPoint.h",
             "Math/IntersectSegment.cpp",
             "Math/IntersectSegment.h",
@@ -236,6 +242,8 @@
             "Math/Obb.cpp",
             "Math/Obb.h",
             "Math/Plane.h",
+            "Math/PolygonPrism.h",
+            "Math/PolygonPrism.cpp",
             "Math/Quaternion.cpp",
             "Math/Quaternion.h",
             "Math/Random.cpp",
@@ -243,6 +251,8 @@
             "Math/Sfmt.cpp",
             "Math/Sfmt.h",
             "Math/Sha1.h",
+            "Math/Spline.cpp",
+            "Math/Spline.h",
             "Math/Transform.cpp",
             "Math/Transform.h",
             "Math/Uuid.cpp",
@@ -252,6 +262,10 @@
             "Math/Vector3.cpp",
             "Math/Vector3.h",
             "Math/Vector4.h",
+            "Math/VectorConversions.h",
+            "Math/VertexContainer.h",
+            "Math/VertexContainer.cpp",
+            "Math/VertexContainerInterface.h",
             "Math/Color.h",
             "Math/VectorFloat.cpp",
             "Math/VectorFloat.h"
@@ -296,7 +310,10 @@
             "Module/Environment.cpp",
             "Module/Environment.h",
             "Module/Module.cpp",
-            "Module/Module.h"
+            "Module/Module.h",
+            "Module/ModuleManagerBus.h",
+            "Module/ModuleManager.cpp",
+            "Module/ModuleManager.h"
         ],
         "Outcome":
         [
@@ -322,14 +339,14 @@
             "RTTI/RTTI.h",
             "RTTI/TypeInfo.h",
             "RTTI/ReflectContext.h",
+            "RTTI/ReflectContext.cpp",
             "RTTI/AttributeReader.h",
             "RTTI/AzStdOnDemandReflection.inl",
             "RTTI/AzStdReflectionComponent.h",
             "RTTI/AzStdReflectionComponent.cpp",
             "RTTI/BehaviorContext.cpp",
             "RTTI/BehaviorContext.h",
-            "RTTI/BehaviorObjectSignals.h",
-            "RTTI/OnDemandReflection.h"
+            "RTTI/BehaviorObjectSignals.h"
         ],
         "Script":
         [
@@ -366,6 +383,8 @@
             "Serialization/EditContext.cpp",
             "Serialization/EditContext.h",
             "Serialization/EditContextConstants.inl",
+            "Serialization/IdUtils.inl",
+            "Serialization/IdUtils.h",
             "Serialization/Utils.h",
             "Serialization/Utils.cpp",
             "Serialization/ObjectStream.cpp",
@@ -422,6 +441,10 @@
         [
             "JSON/error/en.h",
             "JSON/error/error.h"
+        ],
+        "Utils": [
+            "Utils/Utils.h",
+            "Utils/Utils.cpp"
         ]
     },
     "none" : {

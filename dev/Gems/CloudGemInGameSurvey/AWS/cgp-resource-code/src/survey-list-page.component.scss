@@ -1,0 +1,48 @@
+﻿$status-filter-bg-color: #f9f9f9;
+
+﻿table.table {
+	margin-bottom: 30px;
+}
+
+.status-filter {
+    cursor: pointer;
+}
+
+.survey-status-filter {
+    position: absolute;
+    background-color: $status-filter-bg-color;
+    min-width: 160px;
+    overflow: auto;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.survey-statuses {
+    padding-left: 10px;
+    padding-top: 10px;
+}
+
+.survey-status {
+    display: block;
+}
+
+.survey-status-filter hr {
+    margin-bottom: 10px;
+}
+
+.survey-status-filter-buttons {
+    display: block;
+}
+
+.survey-status-filter-buttons {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.active-survey-icon {
+    color: green;
+}
+
+.scheduled-survey-icon {
+    color: orangered
+}

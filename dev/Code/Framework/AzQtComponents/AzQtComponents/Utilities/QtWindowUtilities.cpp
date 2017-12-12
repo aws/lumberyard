@@ -16,6 +16,8 @@
 #include <QMainWindow>
 #include <QPainter>
 #include <QDockWidget>
+#include <QCursor>
+#include <QScreen>
 
 namespace AzQtComponents
 {
@@ -91,5 +93,26 @@ namespace AzQtComponents
         painter.setClipRegion(clipRegion);
         painter.setClipping(true);
     }
+
+    void SetCursorPos(const QPoint& point)
+    {
+        const QList<QScreen*> screens = QGuiApplication::screens();
+        bool finished = false;
+        for (int screenIndex = 0; !finished && screenIndex < screens.size(); ++screenIndex)
+        {
+            QScreen* screen = screens[screenIndex];
+            if (screen->geometry().contains(point))
+            {
+                QCursor::setPos(screen, point);
+                finished = true;
+            }
+        }
+    }
+    
+    void SetCursorPos(int x, int y)
+    {
+        SetCursorPos(QPoint(x, y));
+    }
+
 } // namespace AzQtComponents
 

@@ -1,10 +1,8 @@
-require "Scripts/PlayerAccount/menu"
+local menu = require "Scripts/PlayerAccount/menu"
 
-signinmenu = menu:new{canvasName = "SignIn"}
+local signinmenu = menu:new{canvasName = "SignIn"}
 
-function signinmenu:Show()
-    menu.Show(self)
-
+function signinmenu:OnAfterShow()
     if self.context.username then
         self:SetText("UsernameText", self.context.username)
     end
@@ -18,10 +16,27 @@ function signinmenu:OnAction(entityId, actionName)
         self.context.username = username
         
         Debug.Log("Signing in as " .. username .. "...")
-        CloudGemPlayerAccountRequestBus.Broadcast.InitiateAuth(username, password);
+        self.playerAccountBus:InitiateAuth(username, password):OnComplete(function(result)
+            if (result.wasSuccessful) then
+                Debug.Log("Sign in success")
+                self.menuManager:ShowMenu("MainMenu")
+            else
+                if result.errorTypeName == "ACCOUNT_BLACKLISTED" then
+                    Debug.Log("Unable to sign in: the account is blacklisted.")
+                elseif result.errorTypeName == "FORCE_CHANGE_PASSWORD" then
+                    Debug.Log("Unable to sign in: A password change is required.")
+                    self.menuManager:ShowMenu("ForceChangePassword")
+                elseif result.errorTypeName == "UserNotConfirmedException" then
+                    Debug.Log("Unable to sign in: A confirmation code is required.")
+                    self.menuManager:ShowMenu("ConfirmSignUp")
+                else
+                    Debug.Log("Sign in failed: " .. result.errorMessage)
+                end
+            end
+        end)
         return
     end
-    
+
     if actionName == "ForgotPasswordClick" then
         local username = self:GetText("UsernameText")
         self.context.username = username
@@ -30,27 +45,6 @@ function signinmenu:OnAction(entityId, actionName)
     end
 
     menu.OnAction(self, entityId, actionName)
-end
-
-function signinmenu:OnInitiateAuthComplete(result)
-    self:RunOnMainThread(function()
-        if (result.wasSuccessful) then
-            Debug.Log("Sign in success")
-            self.menuManager:ShowMenu("MainMenu")
-        else
-            if result.errorTypeName == "ACCOUNT_BLACKLISTED" then
-                Debug.Log("Unable to sign in: the account is blacklisted.")
-            elseif result.errorTypeName == "FORCE_CHANGE_PASSWORD" then
-                Debug.Log("Unable to sign in: A password change is required.")
-                self.menuManager:ShowMenu("ForceChangePassword")
-            elseif result.errorTypeName == "UserNotConfirmedException" then
-                Debug.Log("Unable to sign in: A confirmation code is required.")
-                self.menuManager:ShowMenu("ConfirmSignUp")
-            else
-                Debug.Log("Sign in failed: " .. result.errorMessage)
-            end
-        end
-    end)
 end
 
 return signinmenu

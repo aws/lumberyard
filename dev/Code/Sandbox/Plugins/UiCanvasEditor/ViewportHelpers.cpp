@@ -13,6 +13,8 @@
 
 #include "EditorCommon.h"
 
+#include <LyShine/Bus/UiLayoutFitterBus.h>
+
 namespace ViewportHelpers
 {
     bool IsControlledByLayout(const AZ::Entity* element)
@@ -25,6 +27,24 @@ namespace ViewportHelpers
         }
 
         return isControlledByParent;
+    }
+
+    bool IsHorizontallyFit(const AZ::Entity* element)
+    {
+        bool isHorizontallyFit = false;
+
+        EBUS_EVENT_ID_RESULT(isHorizontallyFit, element->GetId(), UiLayoutFitterBus, GetHorizontalFit);
+
+        return isHorizontallyFit;
+    }
+
+    bool IsVerticallyFit(const AZ::Entity* element)
+    {
+        bool isVerticallyFit = false;
+
+        EBUS_EVENT_ID_RESULT(isVerticallyFit, element->GetId(), UiLayoutFitterBus, GetVerticalFit);
+
+        return isVerticallyFit;
     }
 
     float GetPerpendicularAngle(float angle)
@@ -158,8 +178,8 @@ namespace ViewportHelpers
     }
 
     UiTransform2dInterface::Anchors MoveGrabbedAnchor(const UiTransform2dInterface::Anchors& anchor,
-        const ViewportHelpers::SelectedAnchors& grabbedAnchors,
-        const AZ::Vector2& v)
+        const ViewportHelpers::SelectedAnchors& grabbedAnchors, bool keepTogetherHorizontally,
+        bool keepTogetherVertically, const AZ::Vector2& v)
     {
         UiTransform2dInterface::Anchors outAnchor(anchor);
 
@@ -167,6 +187,30 @@ namespace ViewportHelpers
         outAnchor.m_right += (grabbedAnchors.m_right) ? v.GetX() : 0.0f;
         outAnchor.m_top += (grabbedAnchors.m_top) ? v.GetY() : 0.0f;
         outAnchor.m_bottom += (grabbedAnchors.m_bottom) ? v.GetY() : 0.0f;
+
+        if (keepTogetherHorizontally)
+        {
+            if (grabbedAnchors.m_left && !grabbedAnchors.m_right)
+            {
+                outAnchor.m_right = outAnchor.m_left;
+            }
+            else if (grabbedAnchors.m_right && !grabbedAnchors.m_left)
+            {
+                outAnchor.m_left = outAnchor.m_right;
+            }
+        }
+
+        if (keepTogetherVertically)
+        {
+            if (grabbedAnchors.m_top && !grabbedAnchors.m_bottom)
+            {
+                outAnchor.m_bottom = outAnchor.m_top;
+            }
+            else if (grabbedAnchors.m_bottom && !grabbedAnchors.m_top)
+            {
+                outAnchor.m_top = outAnchor.m_bottom;
+            }
+        }
 
         // Clamp the anchors
         outAnchor.UnitClamp();

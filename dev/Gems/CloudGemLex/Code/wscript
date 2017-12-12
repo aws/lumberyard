@@ -1,0 +1,25 @@
+
+
+def build(bld):
+    import lumberyard_sdks
+
+    file_list = []
+    if bld.env['PLATFORM'] == 'project_generator':
+        file_list.append('cloudgemlex.waf_files')
+        file_list.append('lmbraws_unsupported.waf_files')
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('cloudgemlex.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')
+            
+    bld.DefineGem(
+        file_list = file_list,
+        includes    = [
+            bld.Path('Code/CryEngine/CryAction'), 
+            bld.Path('Code/SDKs/AWSNativeSDK/include')
+        ],
+        uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
+        shared_settings = ['awsgem.json'],
+        use = ['CloudGemFrameworkStaticLibrary']
+    )

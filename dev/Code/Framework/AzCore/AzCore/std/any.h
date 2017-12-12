@@ -11,16 +11,18 @@
  */
 #pragma once
 
-#include <AzCore/RTTI/RTTI.h>
-
-#include <AzCore/std/functional.h>
-#include <AzCore/std/typetraits/add_const.h>
-#include <AzCore/std/typetraits/remove_reference.h>
-#include <AzCore/std/typetraits/add_pointer.h>
-#include <AzCore/std/typetraits/void_t.h>
-#include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/std/algorithm.h>
+#include <AzCore/std/typetraits/add_const.h>
+#include <AzCore/std/typetraits/add_pointer.h>
+#include <AzCore/std/typetraits/is_abstract.h>
+#include <AzCore/std/typetraits/remove_reference.h>
+#include <AzCore/std/typetraits/void_t.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZStd
 {
@@ -46,6 +48,13 @@ namespace AZStd
             using type = AZStd::conditional<value, AZStd::true_type, AZStd::false_type>;
         };
     }
+    
+    /// distinguishes between any Extension constructor calls
+    struct transfer_ownership_t { explicit transfer_ownership_t() = default; };
+    const transfer_ownership_t s_transfer_ownership{};
+
+    template<typename T> struct in_place_type_t { explicit in_place_type_t() = default; };
+    //template<typename T> const in_place_type_t<T> in_place_type{}; // VS 2013 does not like this
 
     /**
      * The class any describes a type-safe container for single values of any type.
@@ -103,30 +112,57 @@ namespace AZStd
         any(const any& val)
             : any(val.m_allocator)
         {
-            copy_from(val);
+            copy_from(val, val.m_typeInfo);
         }
 
         /// Moves content of val into a new instance.
         any(any&& val)
             : any(val.m_allocator)
         {
-            move_from(move(val));
+            move_from(AZStd::move(val));
         }
 
         /// [Extension] Create an any with a custom typeinfo (copies value in pointer using typeInfo)
-        any(void* pointer, const type_info& typeInfo, const AZStd::allocator& alloc)
+        any(const void* pointer, const type_info& typeInfo)
         {
-            // Create temp any, so that we may move the value given
             any temp;
-            temp.m_pointer = pointer;
+            temp.m_pointer = const_cast<void*>(pointer);
             temp.m_typeInfo = typeInfo;
-            temp.m_allocator = alloc;
 
+            // since the copy will be from m_pointer
+            temp.m_typeInfo.m_useHeap = true; 
+            
             // Call copy-from so that we don't try to clear temp
-            copy_from(temp, Action::Move);
+            copy_from(temp, typeInfo, Action::Copy);
 
             // Make sure temp doesn't try to clear memory (we don't own it)
             temp.m_typeInfo = type_info();
+        }
+                
+        /// [Extension] Create an any with a custom typeinfo (takes ownership of value in pointer using typeInfo)
+        any(transfer_ownership_t, void* pointer, const type_info& typeInfo)
+        {
+            if (typeInfo.m_useHeap)
+            {
+                // non-SBO case, just acquire the pointer
+                m_pointer = pointer;
+                m_typeInfo = typeInfo;
+            }
+            else
+            {
+                // SBO case, call move operation
+                any temp;
+                temp.m_pointer = const_cast<void*>(pointer);
+                temp.m_typeInfo = typeInfo;
+                // since the copy will be from m_pointer
+                temp.m_typeInfo.m_useHeap = true; 
+                
+                // the Action::Reserve in the SBO handler should do nothing
+                copy_from(temp, typeInfo, Action::Move);
+                
+                // don't modify the source (like by calling a destructor on it)
+                temp.m_typeInfo = type_info();
+            }
         }
 
         /// Constructs an object with initial content an object of type decay_t<ValueType>, direct-initialized from forward<ValueType>(val)
@@ -135,7 +171,7 @@ namespace AZStd
             : any(alloc)
         {
             AZ_STATIC_ASSERT(Internal::template_is_copy_constructible<decay_t<ValueType>>::value
-                        ||  (std::is_rvalue_reference<ValueType>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructable or a movable rvalue ref.");
+                        ||  (std::is_rvalue_reference<ValueType>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructible or a movable rvalue ref.");
 
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
@@ -145,6 +181,43 @@ namespace AZStd
 
             // Call copy constructor 
             construct<decay_t<ValueType>>(this, forward<ValueType>(val));
+        }
+
+
+        /// Constructs an object with initial content of type decay_t<ValueType>, direct-non-list-initialized from forward<Args>(args)...
+        template <typename ValueType, typename... Args>
+        explicit any(in_place_type_t<ValueType>, Args&&... args)
+            : any(allocator("AZStd::any"))
+        {
+            static_assert(AZStd::is_constructible<decay_t<ValueType>, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
+                "ValueType must be constructible and copy constructible.");
+
+            // Initialize typeinfo from the type given
+            m_typeInfo = create_template_type_info<decay_t<ValueType>>();
+
+            // Reserve heap space if necessary
+            m_typeInfo.m_handler(Action::Reserve, this, nullptr);
+
+            // forward arguments to ValueType constructor
+            new (get_data()) decay_t<ValueType>(AZStd::forward<Args>(args)...);
+        }
+
+        /// Constructs an object with initial content of type decay_t<ValueType>, direct-non-list-initialized from il, forward<Args>(args)...
+        template <typename ValueType, typename U, typename... Args>
+        explicit any(in_place_type_t<ValueType>, AZStd::initializer_list<U> il, Args&&... args)
+            : any(allocator("AZStd::any"))
+        {
+            static_assert(AZStd::is_constructible<decay_t<ValueType>, AZStd::initializer_list<U>&, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
+                "ValueType must be constructible and copy constructible.");
+
+            // Initialize typeinfo from the type given
+            m_typeInfo = create_template_type_info<decay_t<ValueType>>();
+
+            // Reserve heap space if necessary
+            m_typeInfo.m_handler(Action::Reserve, this, nullptr);
+
+            // forward arguments to ValueType constructor
+            new (get_data()) decay_t<ValueType>(il, AZStd::forward<Args>(args)...);
         }
 
         /// Destroys the contained object, if any, as if by a call to clear()
@@ -160,7 +233,7 @@ namespace AZStd
         /// Moves content of val into this (via any(move(val)).swap(*this))
         any& operator=(any&& val)
         {
-            any(move(val)).swap(*this);
+            any(AZStd::move(val)).swap(*this);
             return *this;
         }
 
@@ -188,9 +261,9 @@ namespace AZStd
         {
             any tmp;
 
-            tmp.move_from(move(*this));
-            move_from(move(other));
-            other.move_from(move(tmp));
+            tmp.move_from(AZStd::move(*this));
+            move_from(AZStd::move(other));
+            other.move_from(AZStd::move(tmp));
         }
 
         /// Returns true if this hasn't been initialized yet or has been cleared
@@ -201,7 +274,7 @@ namespace AZStd
         template <typename ValueType>
         bool is() const { return type() == azrtti_typeid<ValueType>() && m_typeInfo.m_isPointer == is_pointer<ValueType>::value; }
 
-        const AZStd::any::type_info& get_type_info() const { return m_typeInfo; }
+        const type_info& get_type_info() const { return m_typeInfo; }
 
     private:
         // Any elements must be copy constructible
@@ -255,7 +328,7 @@ namespace AZStd
                     // Get reference to value stored in source
                     ValueType& sourceVal = *reinterpret_cast<ValueType*>(const_cast<void*>(source->get_data()));
                     // Pass as argument to move constructor on dest
-                    construct<ValueType>(dest, move(sourceVal));
+                    construct<ValueType>(dest, AZStd::move(sourceVal));
                     break;
                 }
             case Action::Destroy:
@@ -306,11 +379,11 @@ namespace AZStd
         inline       void* get_data()       { return m_typeInfo.m_useHeap ? m_pointer : reinterpret_cast<      void*>(addressof(m_buffer)); }
         inline const void* get_data() const { return m_typeInfo.m_useHeap ? m_pointer : reinterpret_cast<const void*>(addressof(m_buffer)); }
         // Copy contents from another object.
-        inline void copy_from(const any& rhs, Action action = Action::Copy)
+        inline void copy_from(const any& rhs, const type_info& info, Action action = Action::Copy)
         {
             AZ_Assert(empty(), "Internal error: copy_from should only ever be called on an empty object!");
             m_allocator = rhs.m_allocator;
-            m_typeInfo = rhs.m_typeInfo;
+            m_typeInfo = info;
             if (!rhs.empty())
             {
                 m_typeInfo.m_handler(Action::Reserve, this, nullptr); // Create space for the new object (if necessary)
@@ -320,7 +393,7 @@ namespace AZStd
         // Move contents from another object (copy, then clear rhs).
         inline void move_from(any&& rhs)
         {
-            copy_from(rhs, Action::Move);
+            copy_from(rhs, rhs.m_typeInfo, Action::Move);
             rhs.clear();
         }
 
@@ -451,5 +524,17 @@ namespace AZStd
         return true;
 
 #undef CHECK_TYPE
+    }
+
+    template<typename ValueType, typename... Args>
+    any make_any(Args&&... args)
+    {
+        return any(in_place_type_t<ValueType>(), AZStd::forward<Args>(args)...);
+    }
+
+    template<typename ValueType, typename U, typename... Args>
+    any make_any(AZStd::initializer_list<U> il, Args&&... args)
+    {
+        return any(in_place_type_t<ValueType>(), il, AZStd::forward<Args>(args)...);
     }
 }

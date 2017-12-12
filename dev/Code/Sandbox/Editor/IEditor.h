@@ -32,6 +32,9 @@
 #include <CryVersion.h>
 
 #include <WinWidget/WinWidgetId.h>
+
+#include <AzCore/Component/EntityId.h>
+
 class QMenu;
 
 struct CRuntimeClass;
@@ -136,11 +139,6 @@ namespace Editor
 }
 
 
-#define SUPPORTED_MODEL_FILTER "Geometry Files (*.cgf)|*.cgf;*.ccgf |All Files (*.*)|*.*||"
-#define SUPPORTED_IMAGES_FILTER "All Image Files|*.bmp;*.jpg;*.gif;*.pgm;*.raw|All files|*.*||"
-#define SUPPORTED_IMAGES_FILTER_SAVE "BMP Files|*.bmp|JPEG Files|*.jpg|PGM Files|*.pgm|RAW Files|*.raw|All files|*.*||"
-#define SUPPOTED_SOUND_FILTER "Sounds Files|*.wav;*.mp2;*.mp3|Wave Files (*.wav)|*.wav|MP2 Files (*.mp2)|*.mp2|MP3 Files (*.mp3)|*.mp3|All Files|*.*||"
-
 // Global editor notify events.
 enum EEditorNotifyEvent
 {
@@ -159,6 +157,7 @@ enum EEditorNotifyEvent
     eNotify_OnBeginLayerExport,        // Sent when a layer is about to be exported.
     eNotify_OnEndLayerExport,          // Sent after a layer have been exported.
     eNotify_OnCloseScene,              // Send when the document is about to close.
+    eNotify_OnSceneClosed,             // Send when the document is closed.
     eNotify_OnMissionChange,           // Send when the current mission changes.
     eNotify_OnBeginLoad,               // Sent when the document is start to load.
     eNotify_OnEndLoad,                 // Sent when the document loading is finished
@@ -464,8 +463,22 @@ class CTrackViewSequence;
 struct ITrackViewSequenceManager
 {
     virtual IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true) = 0;
-    virtual void OnDeleteSequenceObject(QString name) = 0;
+    virtual void OnDeleteSequenceObject(const AZ::EntityId& entityId) = 0;
+
+    //! Get the first sequence with the given name. They may be more than one sequence with this name.
+    //! Only intended for use with scripting or other cases where a user provides a name.
     virtual CTrackViewSequence* GetSequenceByName(QString name) const = 0;
+
+    //! Get the legacy sequence with the given name. There can only be one legacy sequence with a given name.
+    virtual CTrackViewSequence* GetLegacySequenceByName(QString name) const = 0;
+
+    //! Get the sequence with the given EntityId. For legacy support, legacy sequences can be found by giving
+    //! the sequence ID in the lower 32 bits of the EntityId.
+    virtual CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const = 0;
+
+    virtual void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) = 0;
+
+    virtual void OnSequenceLoaded(const AZ::EntityId& entityId) = 0;
 };
 
 //! Interface to expose TrackViewSequence functionality to SequenceComponent
@@ -809,6 +822,8 @@ struct IEditor
     //! Completely flush all Undo and redo buffers.
     //! Must be done on level reloads or global Fetch operation.
     virtual bool FlushUndo(bool isShowMessage = false) = 0;
+    //! Clear the last N number of steps in the undo stack
+    virtual bool ClearLastUndoSteps(int steps) = 0;
     //! Retrieve current animation context.
     virtual CAnimationContext* GetAnimation() = 0;
     //! Retrieve sequence manager
@@ -855,8 +870,9 @@ struct IEditor
     //! Export manager for exporting objects and a terrain from the game to DCC tools
     virtual IExportManager* GetExportManager() = 0;
     //! Set current configuration spec of the editor.
-    virtual void SetEditorConfigSpec(ESystemConfigSpec spec) = 0;
+    virtual void SetEditorConfigSpec(ESystemConfigSpec spec, ESystemConfigPlatform platform) = 0;
     virtual ESystemConfigSpec GetEditorConfigSpec() const = 0;
+    virtual ESystemConfigPlatform GetEditorConfigPlatform() const = 0;
     virtual void ReloadTemplates() = 0;
     virtual IResourceSelectorHost* GetResourceSelectorHost() = 0;
     virtual struct IBackgroundScheduleManager* GetBackgroundScheduleManager() = 0;
@@ -885,13 +901,17 @@ struct IEditor
     virtual ILogFile* GetLogFile() = 0;  // Vladimir@conffx
 
     // unload all plugins.  Destroys the QML engine because it has to.
-    virtual void UnloadPlugins() = 0;
+    virtual void UnloadPlugins(bool shuttingDown = false) = 0;
 
     // reloads the plugins.  Loads up the QML engine again.
     virtual void LoadPlugins() = 0;
 
     // no other way to get this from a plugin (that I can find)
     virtual CBaseObject* BaseObjectFromEntityId(unsigned int id) = 0;
+
+    // For flagging if the legacy UI items should be enabled
+    virtual bool IsLegacyUIEnabled() = 0;
+    virtual void SetLegacyUIEnabled(bool enabled) = 0;
 };
 
 //! Callback used by editor when initializing for info in UI dialogs

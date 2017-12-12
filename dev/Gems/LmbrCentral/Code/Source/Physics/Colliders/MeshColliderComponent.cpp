@@ -40,6 +40,7 @@ namespace LmbrCentral
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ColliderMesh.png")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-mesh-collider.html")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                 ;
             }
@@ -98,7 +99,7 @@ namespace LmbrCentral
         }
 
         IStatObj* entityStatObj = nullptr;
-        EBUS_EVENT_ID_RESULT(entityStatObj, GetEntityId(), StaticMeshComponentRequestBus, GetStatObj);
+        EBUS_EVENT_ID_RESULT(entityStatObj, GetEntityId(), LegacyMeshComponentRequestBus, GetStatObj);
         if (!entityStatObj)
         {
             return NoPartsAdded;

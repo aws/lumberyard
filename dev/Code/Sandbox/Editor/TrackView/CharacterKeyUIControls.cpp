@@ -121,7 +121,7 @@ bool CCharacterKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
                 }
             }
 
-            mv_animation = charKey.m_animation;
+            mv_animation = charKey.m_animation.c_str();
             mv_loop = charKey.m_bLoop;
             mv_blendGap = charKey.m_bBlendGap;
             mv_unload = charKey.m_bUnload;
@@ -159,7 +159,7 @@ void CCharacterKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
 
             if (mv_animation.GetVar() == pVar)
             {
-                cry_strcpy(charKey.m_animation, ((QString)mv_animation).toLatin1().data());
+                charKey.m_animation = ((QString)mv_animation).toLatin1().data();
                 // This call is required to make sure that the newly set animation is properly triggered.
                 pTrack->GetSequence()->Reset(false);
             }
@@ -171,23 +171,19 @@ void CCharacterKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
             SyncValue(mv_endTime, charKey.m_endTime, false, pVar);
             SyncValue(mv_timeScale, charKey.m_speed, false, pVar);
 
-            if (strlen(charKey.m_animation) > 0)
+            if (!charKey.m_animation.empty())
             {
-                CTrackViewAnimNode* pAnimNode = pTrack->GetAnimNode();
-                IEntity* entity = pAnimNode->GetEntity();
-                if (entity)
+                ICharacterInstance* pCharacter = pTrack->GetAnimNode()->GetCharacterInstance();
+                
+                if (pCharacter)
                 {
-                    ICharacterInstance* pCharacter = entity->GetCharacter(0);
-                    if (pCharacter)
-                    {
-                        IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
-                        assert (pAnimations);
+                    IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
+                    assert (pAnimations);
 
-                        int id = pAnimations->GetAnimIDByName(charKey.m_animation);
-                        charKey.m_duration = pAnimations->GetDuration_sec(id);
+                    int id = pAnimations->GetAnimIDByName(charKey.m_animation.c_str());
+                    charKey.m_duration = pAnimations->GetDuration_sec(id);
 
-                        ResetStartEndLimits(charKey.m_duration);
-                    }
+                    ResetStartEndLimits(charKey.m_duration);
                 }
             }
 

@@ -45,6 +45,8 @@ namespace AzToolsFramework
         void setMaximum(AZ::s64 val);
         void setStep(AZ::s64 val);
         void setMultiplier(AZ::s64 val);
+        void setSoftMinimum(AZ::s64 val);
+        void setSoftMaximum(AZ::s64 val);
         void setPrefix(QString val);
         void setSuffix(QString val);
 
@@ -52,6 +54,8 @@ namespace AzToolsFramework
         AZ::s64 maximum() const;
         AZ::s64 step() const;
         AZ::s64 value() const;
+        AZ::s64 softMinimum() const;
+        AZ::s64 softMaximum() const;
 
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();
@@ -64,6 +68,10 @@ namespace AzToolsFramework
 
     private:
         AZ::s64 m_multiplier;
+        AZ::s64 m_softMinimum;
+        AZ::s64 m_softMaximum;
+        bool m_useSoftMinimum;
+        bool m_useSoftMaximum;
         QSlider* m_pSlider;
         QSpinBox* m_pSpinBox;
 
@@ -81,6 +89,38 @@ namespace AzToolsFramework
         void UpdateWidgetInternalTabbing(DHPropertyIntSlider* widget) override { widget->UpdateTabOrder(); }
     };
 
+    class s16PropertySliderHandler
+        : QObject
+        , public IntSliderHandlerCommon<AZ::s16>
+    {
+        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(s16PropertySliderHandler, AZ::SystemAllocator, 0);
+
+        QWidget* CreateGUI(QWidget* pParent) override;
+        void ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+        void WriteGUIValuesIntoProperty(size_t index, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* node) override;
+        bool ReadValuesIntoGUI(size_t index, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* node)  override;
+        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
+    };
+
+    class u16PropertySliderHandler
+        : QObject
+        , public IntSliderHandlerCommon<AZ::u16>
+    {
+        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(u16PropertySliderHandler, AZ::SystemAllocator, 0);
+
+        QWidget* CreateGUI(QWidget* pParent) override;
+        void ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
+        void WriteGUIValuesIntoProperty(size_t index, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* node) override;
+        bool ReadValuesIntoGUI(size_t index, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* node)  override;
+        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
+    };
+
 
     class s32PropertySliderHandler
         : QObject
@@ -90,9 +130,6 @@ namespace AzToolsFramework
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(s32PropertySliderHandler, AZ::SystemAllocator, 0);
-
-        // common to all int sliders
-        static void ConsumeAttributeCommon(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName);
 
         QWidget* CreateGUI(QWidget* pParent) override;
         void ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
@@ -124,7 +161,7 @@ namespace AzToolsFramework
         // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
         Q_OBJECT
     public:
-        AZ_CLASS_ALLOCATOR(u32PropertySliderHandler, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(s64PropertySliderHandler, AZ::SystemAllocator, 0);
 
         QWidget* CreateGUI(QWidget* pParent) override;
         void ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
@@ -140,7 +177,7 @@ namespace AzToolsFramework
         // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
         Q_OBJECT
     public:
-        AZ_CLASS_ALLOCATOR(u32PropertySliderHandler, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(u64PropertySliderHandler, AZ::SystemAllocator, 0);
 
         QWidget* CreateGUI(QWidget* pParent) override;
         void ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;

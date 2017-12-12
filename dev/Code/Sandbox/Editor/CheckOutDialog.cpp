@@ -24,7 +24,6 @@ CCheckOutDialog::CCheckOutDialog(const QString& file, QWidget* pParent)
 {
     m_ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
-    setFixedSize(size());
 
     m_file = file;
 

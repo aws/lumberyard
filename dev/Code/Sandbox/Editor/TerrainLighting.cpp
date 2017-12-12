@@ -242,13 +242,13 @@ const GUID& CTerrainLighting::GetClassID()
 
 void CTerrainLighting::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.paneRect = QRect(5, 110, 750, 360);
     options.canHaveMultipleInstances = true;
     options.isDeletable = false;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTerrainLighting>(GetIEditor(), LIGHTING_TOOL_WINDOW_NAME, LyViewPane::CategoryOther, options);
+    AzToolsFramework::RegisterViewPane<CTerrainLighting>(LIGHTING_TOOL_WINDOW_NAME, LyViewPane::CategoryOther, options);
 }
 
 void CTerrainLighting::InitTerrainTexGen()
@@ -821,6 +821,10 @@ void CTerrainLighting::OnEditorNotifyEvent(EEditorNotifyEvent event)
             delete m_pTexGen;
             m_pTexGen = nullptr;
         }
+
+        m_sunPathPreview = QPixmap(LIGHTING_PREVIEW_RESOLUTION, LIGHTING_PREVIEW_RESOLUTION);
+        m_sunPathPreview.fill(QColor(Qt::blue));
+        ui->SUN_PATH_PREVIEW_LABEL->setPixmap(m_sunPathPreview);
     }
     break;
     }

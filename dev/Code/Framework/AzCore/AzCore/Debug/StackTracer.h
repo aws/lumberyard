@@ -71,7 +71,7 @@ namespace AZ
             /**
              * Use to load module info data captured at a different system.
              */
-            /// Load module data symbols (X360 export)
+            /// Load module data symbols (X360 export) // ACCEPTED_USE
             static void         LoadModuleData(const void* moduleInfoData, unsigned int moduleInfoDataSize);
 
             /// Return size in bytes of the module information. Can be used to store or transport the data

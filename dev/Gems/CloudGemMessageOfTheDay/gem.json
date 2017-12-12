@@ -5,8 +5,8 @@
     "DisplayName": "Cloud Gem Message Of The Day",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "This Cloud Gems allows you to schedule any number of messages that can be accessed by your game.",
-    "Tags": ["AWS", "Cloud Canvas"],
+    "Summary": "Stay in touch with your players. This Cloud Gem allows you to schedule any number of messages that can be accessed and displayed by your game.",
+    "Tags": ["AWS", "Cloud Canvas", "DynamoDB", "Lambda"],
     "IconPath": "preview.png",
     "Dependencies": [
         {

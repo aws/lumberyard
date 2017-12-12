@@ -1,8 +1,8 @@
 ﻿
 a {
 	color: $primary-color;
+	cursor: pointer;
 	&:hover, &:active, &.active, &:focus {
-		cursor: pointer;
 		text-decoration: none;
 		color: $primary-active-color;
 	}

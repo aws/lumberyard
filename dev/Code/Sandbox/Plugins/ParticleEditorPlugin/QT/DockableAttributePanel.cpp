@@ -446,7 +446,7 @@ void DockableAttributePanel::ItemNameChanged(CBaseLibraryItem* item, const QStri
     QString oldFullName = item->GetLibrary()->GetName(); // Grab old library
     oldFullName.append(".");
     oldFullName.append(oldName);
-    QString prevName = oldFullName.toUtf8().data();
+    QString prevName = oldFullName;
 
     QString nextTabTitle = newLib.isEmpty() ? QString(item->GetLibrary()->GetName()) + "." + currentName : newLib + "." + currentName;
 
@@ -467,7 +467,7 @@ void DockableAttributePanel::UpdateItemName(const QString& fullOldName, const QS
 {
     QStringList newNameList = fullNewName.split(".");
     QString newLibName = newNameList.first();
-    QString prevName = fullOldName.toUtf8().data();
+    QString prevName = fullOldName;
     int tabIndex = FindItemInTabs(prevName);
 
     if (tabIndex != -1)

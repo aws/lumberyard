@@ -500,10 +500,10 @@ void CParticleSubEmitter::UpdateForce()
             //user velocity is applied before other movement calculations
             Vec3 velocity = params.GetVelocityVector(fStrength, fPLife);
             float velLength = velocity.GetLengthFast();
-            float fSpeed = velLength * GetMain().GetSpawnParams().fSpeedScale;
-            fDist += Travel::TravelDistance(abs(fSpeed), params.fAirResistance(0.5f, fStrength, 0.5f), min(fTime, fPLife));
-            fSpeed = Travel::TravelSpeed(abs(fSpeed), params.fAirResistance(0.5f, fStrength, 0.5f), min(fTime, fPLife));
-            fForce += fSpeed * params.fAlpha(0.5f, fStrength, 0.5f, 0.0f) * force.qpLoc.s;
+            float speed = velLength * GetMain().GetSpawnParams().fSpeedScale;
+            fDist += Travel::TravelDistance(abs(speed), params.fAirResistance(0.5f, fStrength, 0.5f), min(fTime, fPLife));
+            speed = Travel::TravelSpeed(abs(speed), params.fAirResistance(0.5f, fStrength, 0.5f), min(fTime, fPLife));
+            fForce += speed * params.fAlpha(0.5f, fStrength, 0.5f, 0.0f) * force.qpLoc.s;
             force.qpLoc.t += velocity.normalize();
         }
         if (params.bContinuous && fPLife > 0.f)

@@ -1,0 +1,22 @@
+<facet-generator [tabs]="['Questions', 'Results', 'Individual Responses']"
+                 (tabClicked)="onTabIndexUpdated($event)"
+                 [metricIdentifier]="context.identifier">
+</facet-generator>
+
+<div *ngIf="isLoading == true">
+    <loading-spinner></loading-spinner>
+</div>
+
+<ng-container *ngIf="isLoading == false && survey">
+    <ng-container *ngIf="tabIndex == 0">
+        <edit-survey [context]="context" [survey]="survey"></edit-survey>
+    </ng-container>
+
+    <ng-container *ngIf="tabIndex == 1">
+        <answer-aggregation [context]="context" [survey]="survey"></answer-aggregation>
+    </ng-container>
+
+    <ng-container *ngIf="tabIndex == 2">
+        <answer-submission-list [context]="context" [survey]="survey"></answer-submission-list>
+    </ng-container>
+</ng-container>

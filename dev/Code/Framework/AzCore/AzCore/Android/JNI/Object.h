@@ -12,42 +12,58 @@
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/string/osstring.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/conditional.h>
 #include <AzCore/std/utils.h>
 
-#include "JNI.h"
+#include <AzCore/Android/JNI/JNI.h>
 
-
-#if defined(AZ_DEBUG_BUILD)
-    #define JNI_SIGNATURE_VALIDATION
+#if defined(JNI_SIGNATURE_VALIDATION)
+    #include <AzCore/Android/JNI/Signature.h>
 #endif
 
 
-namespace AZ
+namespace AZ { namespace Android
 {
-    namespace Android
+    namespace JNI
     {
-        namespace JNI
+        namespace Internal
         {
             //! Utility to allow easier managing of JNI reference when hosting Java classes and objects
             //! in native code.  Provides the same functionality that is available when manipulating JNI
             //! references directly with the raw JNIEnv pointer.
-            class Object
+            //! \tparam Allocator The type of allocator used for both it self and all it's internal
+            //!         allocations.  Defaults to AZ::SystemAllocator
+            template<typename Allocator = AZ::SystemAllocator>
+            class Object final
             {
+            private:
+                //! special case if we are using the SystemAllocator to use the default AZStd::allocator instead of wrapping
+                //! the allocator in AZStdAlloc.  This way the known string types (AZStd::string and AZ::OSString) are correctly
+                //! typedefed internally.
+                typedef typename AZStd::conditional<AZStd::is_same<Allocator, AZ::SystemAllocator>::value, AZStd::allocator, AZStdAlloc<Allocator>>::type AZStdAllocator;
+
+
             public:
-                AZ_CLASS_ALLOCATOR(Object, AZ::SystemAllocator, 0);
+                typedef AZStd::basic_string<char, AZStd::char_traits<char>, AZStdAllocator> string_type;
+                typedef AZStd::vector<JNINativeMethod, AZStdAllocator> vector_type;
+
+
+                AZ_CLASS_ALLOCATOR(Object<Allocator>, Allocator, 0);
+
 
                 //! Creates a custom jni object wrapper from a java class path.  This JNI object
                 //! will take owner ship of all global refs used internally
                 //! \param classPath  The full java class path for the object to be loaded
                 //! \param className  The name of the java class, mostly use for logging purposes
-                Object(const char* classPath, const char* className = nullptr);
+                explicit Object(const char* classPath, const char* className = nullptr);
 
                 //! Creates a JNI object wrapper based on an existing global ref
                 //! \param classRef  The global reference to the jclass for the object
@@ -56,7 +72,7 @@ namespace AZ
                 Object(jclass classRef, jobject objectRef, bool takeOwnership = false);
 
                 //! Automatically cleans up any global JNI reference with the JVM
-                virtual ~Object();
+                ~Object();
 
 
                 //! Register a non-static Java method with the associated Java object instance.  These methods can only
@@ -78,7 +94,7 @@ namespace AZ
                 //! Register native callback with Java 'native' method.
                 //! \param nativeMethods All the native methods to register with the Java class.
                 //! \return True if all the methods were registered successfully, False otherwise
-                bool RegisterNativeMethods(AZStd::vector<JNINativeMethod> nativeMethods);
+                bool RegisterNativeMethods(vector_type nativeMethods);
 
                 //! Register a instance member field with the object.
                 //! \param fieldName The exact name of the java field to register.
@@ -108,7 +124,7 @@ namespace AZ
                 void DestroyInstance();
 
 
-                ///@{
+                //!@{
                 //! All the Invoke<TYPE>Method functions are for calling registered instance methods on
                 //! a java object where <TYPE> is the return type of the java method.
                 //! \param methodName The exact name of the java method to call
@@ -141,8 +157,8 @@ namespace AZ
                 jdouble InvokeDoubleMethod(const char* methodName, Args&&... parameters);
 
                 template<typename... Args>
-                AZStd::string InvokeStringMethod(const char* methodName, Args&&... parameters);
-                ///@}
+                string_type InvokeStringMethod(const char* methodName, Args&&... parameters);
+                //!@}
 
                 //! Call a java instance method that returns a customs java object such as an String, Array
                 //! or other java class type.  This function is restricted to types derived from _jobject.
@@ -153,6 +169,7 @@ namespace AZ
                 InvokeObjectMethod(const char* methodName, Args&&... parameters);
 
 
+                //!@{
                 //! All the InvokeStatic<TYPE>Method functions are for calling registered static methods on
                 //! a java object where <TYPE> is the return type of the java method.
                 //! \param methodName The exact name of the java method to call
@@ -185,7 +202,8 @@ namespace AZ
                 jdouble InvokeStaticDoubleMethod(const char* methodName, Args&&... parameters);
 
                 template<typename... Args>
-                AZStd::string InvokeStaticStringMethod(const char* methodName, Args&&... parameters);
+                string_type InvokeStaticStringMethod(const char* methodName, Args&&... parameters);
+                //!@}
 
                 //! Call a java static method that returns a customs java object such as an String, Array or
                 //! other java class type.  This function is restricted to types derived from _jobject.
@@ -196,6 +214,7 @@ namespace AZ
                 InvokeStaticObjectMethod(const char* methodName, Args&&... parameters);
 
 
+                //!@{
                 //! All the Set<TYPE>Field functions are for setting a registered instance member on
                 //! a java object where <TYPE> is the type of the instance member.
                 //! \param fieldName The exact name of the java instance member to set.
@@ -208,7 +227,8 @@ namespace AZ
                 void SetLongField(const char* fieldName, jlong value);
                 void SetFloatField(const char* fieldName, jfloat value);
                 void SetDoubleField(const char* fieldName, jdouble value);
-                void SetStringField(const char* fieldName, const AZStd::string& value);
+                void SetStringField(const char* fieldName, const string_type& value);
+                //!@}
 
                 //! Set a custom java object instance field.  Restricted to types derived from _jobject,
                 //! such as jstring, jarray, etc.
@@ -216,19 +236,20 @@ namespace AZ
                 typename AZStd::enable_if<AZStd::is_convertible<ValueType, jobject>::value>::type
                 SetObjectField(const char* fieldName, ValueType value);
 
-
+                //!@{
                 //! All the Get<TYPE>Field functions are for getting a registered instance member on
                 //! a java object where <TYPE> is the type of the instance member.
                 //! \param fieldName The exact name of the java instance member to get.
-                jboolean GetBooleanField(const char* fieldName);
-                jbyte GetByteField(const char* fieldName);
-                jchar GetCharField(const char* fieldName);
-                jshort GetShortField(const char* fieldName);
-                jint GetIntField(const char* fieldName);
-                jlong GetLongField(const char* fieldName);
-                jfloat GetFloatField(const char* fieldName);
-                jdouble GetDoubleField(const char* fieldName);
-                AZStd::string GetStringField(const char* fieldName);
+                jboolean    GetBooleanField(const char* fieldName);
+                jbyte       GetByteField(const char* fieldName);
+                jchar       GetCharField(const char* fieldName);
+                jshort      GetShortField(const char* fieldName);
+                jint        GetIntField(const char* fieldName);
+                jlong       GetLongField(const char* fieldName);
+                jfloat      GetFloatField(const char* fieldName);
+                jdouble     GetDoubleField(const char* fieldName);
+                string_type GetStringField(const char* fieldName);
+                //!@}
 
                 //! Get a custom java object instance field.  Restricted to types derived from _jobject,
                 //! such as jstring, jarray, etc.  A global refernece will be returned and the caller is
@@ -238,6 +259,7 @@ namespace AZ
                 GetObjectField(const char* fieldName);
 
 
+                //!@{
                 //! All the Set<TYPE>Field functions are for setting a registered instance member on
                 //! a java object where <TYPE> is the type of the instance member.
                 //! \param fieldName The exact name of the java instance member to set.
@@ -250,7 +272,8 @@ namespace AZ
                 void SetStaticLongField(const char* fieldName, jlong value);
                 void SetStaticFloatField(const char* fieldName, jfloat value);
                 void SetStaticDoubleField(const char* fieldName, jdouble value);
-                void SetStaticStringField(const char* fieldName, const AZStd::string& value);
+                void SetStaticStringField(const char* fieldName, const string_type& value);
+                //!@}
 
                 //! Set a custom java object static field.  Restricted to types derived from _jobject,
                 //! such as jstring, jarray, etc.
@@ -259,21 +282,23 @@ namespace AZ
                 SetStaticObjectField(const char* fieldName, ValueType value);
 
 
+                //!@{
                 //! All the Get<TYPE>Field functions are for getting a registered static member on
                 //! a java object where <TYPE> is the type of the static member.
                 //! \param fieldName The exact name of the java instance member to get.
-                jboolean GetStaticBooleanField(const char* fieldName);
-                jbyte GetStaticByteField(const char* fieldName);
-                jchar GetStaticCharField(const char* fieldName);
-                jshort GetStaticShortField(const char* fieldName);
-                jint GetStaticIntField(const char* fieldName);
-                jlong GetStaticLongField(const char* fieldName);
-                jfloat GetStaticFloatField(const char* fieldName);
-                jdouble GetStaticDoubleField(const char* fieldName);
-                AZStd::string GetStaticStringField(const char* fieldName);
+                jboolean    GetStaticBooleanField(const char* fieldName);
+                jbyte       GetStaticByteField(const char* fieldName);
+                jchar       GetStaticCharField(const char* fieldName);
+                jshort      GetStaticShortField(const char* fieldName);
+                jint        GetStaticIntField(const char* fieldName);
+                jlong       GetStaticLongField(const char* fieldName);
+                jfloat      GetStaticFloatField(const char* fieldName);
+                jdouble     GetStaticDoubleField(const char* fieldName);
+                string_type GetStaticStringField(const char* fieldName);
+                //!@}
 
                 //! Get a custom java object static field.  Restricted to types derived from _jobject,
-                //! such as jstring, jarray, etc.  A global refernece will be returned and the caller is
+                //! such as jstring, jarray, etc.  A global reference will be returned and the caller is
                 //! responsible for deleting through Jni::DeleteGlobalRef when no longer needed.
                 template<typename ReturnType, typename... Args>
                 typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
@@ -281,47 +306,71 @@ namespace AZ
 
 
             private:
+                //! Simple structure containing core information about a registered Java method
                 struct JMethodCache
                 {
-                    jmethodID m_methodId;
+                    jmethodID m_methodId; //!< Pointer to the method reference on the JVM
 
                 #if defined(JNI_SIGNATURE_VALIDATION)
-                    AZStd::string m_methodName;
-                    AZStd::string m_argumentSignature;
-                    AZStd::string m_returnSignature;
+                    string_type m_methodName; //!< Name of the Java method, mostly used for debug logs
+                    string_type m_argumentSignature; //!< Java type signature of all method arguments e.g. (int, String) => ILjava/lang/String;
+                    string_type m_returnSignature; //!< Java type signature of the return value
                 #endif
                 };
 
+                //! Simple structure containing core information about a registered Java field
                 struct JFieldCache
                 {
-                    jfieldID m_fieldId;
+                    jfieldID m_fieldId; //!< Pointer to the field reference on the JVM
 
                 #if defined(JNI_SIGNATURE_VALIDATION)
-                    AZStd::string m_fieldName;
-                    AZStd::string m_signature;
+                    string_type m_fieldName; //!< Name of the Java field, mostly used for debug logs
+                    string_type m_signature; //!< Java type signature of the field
                 #endif
                 };
+
 
                 typedef AZStd::shared_ptr<JMethodCache> JMethodCachePtr;
                 typedef AZStd::shared_ptr<JFieldCache> JFieldCachePtr;
 
-                typedef AZStd::unordered_map<AZStd::string, JMethodCachePtr> JMethodMap;
-                typedef AZStd::unordered_map<AZStd::string, JFieldCachePtr> JFieldMap;
+                template<typename ValueType>
+                using CacheMap = AZStd::unordered_map<string_type, ValueType, AZStd::hash<string_type>, AZStd::equal_to<string_type>, AZStdAllocator>;
+
+                typedef CacheMap<JMethodCachePtr> JMethodMap;
+                typedef CacheMap<JFieldCachePtr> JFieldMap;
+
+
+                template<typename ReturnType>
+                using JniMethodCallback = AZStd::function<ReturnType(JNIEnv*, jobject, jmethodID)>;
+
+                template<typename ReturnType>
+                using JniStaticMethodCallback = AZStd::function<ReturnType(JNIEnv*, jclass, jmethodID)>;
+
+                template<typename ReturnType>
+                using JniFieldCallback = AZStd::function<ReturnType(JNIEnv*, jobject, jfieldID)>;
+
+                template<typename ReturnType>
+                using JniStaticFieldCallback = AZStd::function<ReturnType(JNIEnv*, jclass, jfieldID)>;
+
+
+            #if defined(JNI_SIGNATURE_VALIDATION)
+                typedef Signature<string_type> SigGen;
+            #endif
 
 
                 // ----
 
                 //! Helper to find a register instance method
-                JMethodCachePtr GetMethod(const AZStd::string& methodName) const;
+                JMethodCachePtr GetMethod(const string_type& methodName) const;
 
                 //! Helper to find a register static method
-                JMethodCachePtr GetStaticMethod(const AZStd::string& methodName) const;
+                JMethodCachePtr GetStaticMethod(const string_type& methodName) const;
 
                 //! Helper to find a register instance field
-                JFieldCachePtr GetField(const AZStd::string& fieldName) const;
+                JFieldCachePtr GetField(const string_type& fieldName) const;
 
                 //! Helper to find a register static field
-                JFieldCachePtr GetStaticField(const AZStd::string& fieldName) const;
+                JFieldCachePtr GetStaticField(const string_type& fieldName) const;
 
 
             #if defined(JNI_SIGNATURE_VALIDATION)
@@ -344,13 +393,13 @@ namespace AZ
                 //! \param argumentSignature The argument signature extracted from the Invoke<Type>Method's arguments.
                 //! \param returnSignature The return signature from the the Invoke[Static]<Type>Method call.
                 //! \return True if the signatures match, False otherwise.
-                bool ValidateSignature(JMethodCachePtr methodCache, const AZStd::string& argumentSignature, const AZStd::string& returnSignature);
+                bool ValidateSignature(JMethodCachePtr methodCache, const string_type& argumentSignature, const string_type& returnSignature);
 
                 //! Validate the pending field call's signature matches the registered field's signature
                 //! \param fieldCache The register field information.
                 //! \param signature The field signature extracted from the call to <Opt>[Static]<Type>Field.
                 //! \return True if the signatures match, False otherwise.
-                bool ValidateSignature(JFieldCachePtr fieldCache, const AZStd::string& signature);
+                bool ValidateSignature(JFieldCachePtr fieldCache, const string_type& signature);
             #endif // defined(JNI_SIGNATURE_VALIDATION)
 
 
@@ -360,10 +409,7 @@ namespace AZ
                 //! \param parameters Java method call arguments list
                 //! \return The primitive return value from the Java method
                 template<typename ReturnType, typename... Args>
-                ReturnType InvokePrimitiveTypeMethodInternal(
-                    const char* methodName,
-                    AZStd::function<ReturnType(JNIEnv*, jobject, jmethodID)> jniCallback,
-                    Args&&... parameters);
+                ReturnType InvokePrimitiveTypeMethodInternal(const char* methodName, JniMethodCallback<ReturnType> jniCallback, Args&&... parameters);
 
                 //! Helper for invoking a primitive type instance method on the JNI object
                 //! \param methodName The name of the instance method to invoke
@@ -371,10 +417,7 @@ namespace AZ
                 //! \param parameters Java method call arguments list
                 //! \return The primitive return value from the Java method
                 template<typename ReturnType, typename... Args>
-                ReturnType InvokePrimitiveTypeStaticMethodInternal(
-                    const char* methodName,
-                    AZStd::function<ReturnType(JNIEnv*, jclass, jmethodID)> jniCallback,
-                    Args&&... parameters);
+                ReturnType InvokePrimitiveTypeStaticMethodInternal(const char* methodName, JniStaticMethodCallback<ReturnType> jniCallback, Args&&... parameters);
 
 
                 //! Helper for setting a primitive type instance field
@@ -382,19 +425,14 @@ namespace AZ
                 //! \param jniCallback Lambda wrapper to the actual JNIEnv::Set<type>Field
                 //! \param value New value of the instance field
                 template<typename ValueType>
-                void SetPrimitiveTypeFieldInternal(
-                    const char* fieldName,
-                    AZStd::function<void(JNIEnv*, jobject, jfieldID)> jniCallback,
-                    ValueType value);
+                void SetPrimitiveTypeFieldInternal(const char* fieldName, JniFieldCallback<void> jniCallback, ValueType value);
 
                 //! Helper for getting a primitive type instance field
                 //! \param fieldName The name of the instance field to set
                 //! \param jniCallback Lambda wrapper to the actual JNIEnv::Get<type>Field
                 //! \return The current value of the primitive instance field
                 template<typename ReturnType>
-                ReturnType GetPrimitiveTypeFieldInternal(
-                    const char* fieldName,
-                    AZStd::function<ReturnType(JNIEnv*, jobject, jfieldID)> jniCallback);
+                ReturnType GetPrimitiveTypeFieldInternal(const char* fieldName, JniFieldCallback<ReturnType> jniCallback);
 
 
                 //! Helper for setting a primitive type static field
@@ -402,24 +440,21 @@ namespace AZ
                 //! \param jniCallback Lambda wrapper to the actual JNIEnv::SetStatic<type>Field
                 //! \param value New value of the static field
                 template<typename ValueType>
-                void SetPrimitiveTypeStaticFieldInternal(
-                    const char* fieldName,
-                    AZStd::function<void(JNIEnv*, jclass, jfieldID)> jniCallback,
-                    ValueType value);
+                void SetPrimitiveTypeStaticFieldInternal(const char* fieldName, JniStaticFieldCallback<void> jniCallback, ValueType value);
 
                 //! Helper for getting a primitive type static field
                 //! \param fieldName The name of the static field to set
                 //! \param jniCallback Lambda wrapper to the actual JNIEnv::GetStatic<type>Field
                 //! \return The current value of the primitive static field
                 template<typename ReturnType>
-                ReturnType GetPrimitiveTypeStaticFieldInternal(
-                    const char* fieldName,
-                    AZStd::function<ReturnType(JNIEnv*, jclass, jfieldID)> jniCallback);
+                ReturnType GetPrimitiveTypeStaticFieldInternal(const char* fieldName, JniStaticFieldCallback<ReturnType> jniCallback);
 
 
                 // ----
 
-                AZStd::string m_className; //!< The simple name of the Java class, used for debugging
+                string_type m_className; //!< The simple name of the Java class, used for debugging
+
+                AZStdAllocator m_stdAllocator; //!< Allocator instance used for allocating the JMethodCachePtr/JFieldCachePtr shared pointers
 
                 jclass m_classRef; //!< A global reference to the java class, used for method/filed extraction, static method invocation
                 jobject m_objectRef; //!< A global reference to the java object instance, used for instance method invocation, field access
@@ -433,8 +468,13 @@ namespace AZ
                 bool m_ownsGlobalRefs; //!< Should the global references be destroyed automatically or manually
                 bool m_instanceConstructed; //!< Can we invoke instance methods, has CreateInstance ben called
             };
-        }
-    }
-}
+        } // namespace Internal
 
-#include "Object_impl.h"
+        //! \brief The default \ref AZ::Android::JNI::Internal::Object type which uses the SystemAllocator
+        typedef Internal::Object<AZ::SystemAllocator> Object;
+    } // namespace JNI
+} // namespace Android
+} // namespace AZ
+
+
+#include <AzCore/Android/JNI/Internal/Object_impl.h>

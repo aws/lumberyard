@@ -11,23 +11,19 @@
 */
 #ifndef AZ_UNITY_BUILD
 
-#include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Components/TransformComponent.h>
-#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzFramework/Math/MathUtils.h>
+#include <AzFramework/Network/NetBindingHandlerBus.h>
 #include <AzFramework/Network/NetBindingSystemBus.h>
 #include <AzFramework/Network/NetworkContext.h>
 
 #include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <GridMate/Replica/DataSet.h>
-#include <GridMate/Serialize/MathMarshal.h>
-#include <GridMate/Serialize/DataMarshal.h>
-
-#include <Math/MathUtils.h>
 
 namespace AZ
 {
@@ -79,7 +75,9 @@ namespace AzFramework
 
         TransformReplicaChunk()
             : m_parentId("ParentId")
-            , m_localTransform("LocalTransformData")
+            , m_localTranslation("LocalTranslationData")
+            , m_localRotation("LocalRotationData")
+            , m_localScale("LocalScaleData")
         {
         }
 
@@ -88,8 +86,32 @@ namespace AzFramework
             return true;
         }
 
-        GridMate::DataSet<AZ::u64>::BindInterface<TransformComponent, &TransformComponent::OnNewNetParentData> m_parentId;
-        GridMate::DataSet<AZ::Transform>::BindInterface<TransformComponent, &TransformComponent::OnNewNetTransformData> m_localTransform;
+        void SetInitial(const AZ::Transform& t)
+        {
+            m_initialWorldTM = t;
+
+            m_localTranslation.Set(t.GetTranslation());
+            m_localRotation.Set(AZ::Quaternion::CreateFromTransform(t));
+            m_localScale.Set(t.RetrieveScale());
+        }
+
+        AZ::Transform GetLocalTransform() const
+        {
+            AZ::Transform newXform = AZ::Transform::CreateFromQuaternionAndTranslation(m_localRotation.Get(), m_localTranslation.Get());
+            newXform.MultiplyByScale(m_localScale.Get());
+            return newXform;
+        }
+
+        unsigned int GetLocalTime()
+        {
+            return GetReplicaManager()->GetTime().m_localTime;
+        }
+
+        DataSet<AZ::u64>::BindInterface<TransformComponent, &TransformComponent::OnNewNetParentData> m_parentId;
+
+        DataSet<AZ::Vector3>::BindInterface<TransformComponent, &TransformComponent::OnNewPositionData> m_localTranslation;
+        DataSet<AZ::Quaternion>::BindInterface<TransformComponent, &TransformComponent::OnNewRotationData> m_localRotation;
+        DataSet<AZ::Vector3>::BindInterface<TransformComponent, &TransformComponent::OnNewScaleData> m_localScale;
 
         AZ::Transform m_initialWorldTM;
 
@@ -149,25 +171,137 @@ namespace AzFramework
         , m_onNewParentKeepWorldTM(true)
         , m_parentActivationTransformMode(ParentActivationTransformMode::MaintainOriginalRelativeTransform)
         , m_isStatic(false)
+        , m_interpolatePosition(AZ::InterpolationMode::NoInterpolation)
+        , m_interpolateRotation(AZ::InterpolationMode::NoInterpolation)
     {
         m_localTM = AZ::Transform::CreateIdentity();
         m_worldTM = AZ::Transform::CreateIdentity();
     }
 
-    TransformComponent::TransformComponent(const TransformComponentConfiguration& configuration)
-        : m_localTM(configuration.m_transform)
-        , m_worldTM(configuration.m_worldTransform)
-        , m_parentId(configuration.m_parentId)
-        , m_parentTM(nullptr)
-        , m_onNewParentKeepWorldTM(true)
-        , m_parentActivationTransformMode(configuration.m_parentActivationTransformMode)
-        , m_isStatic(configuration.m_isStatic)
+    TransformComponent::TransformComponent(const TransformComponent& copy)
+        : m_localTM(copy.m_localTM)
+        , m_worldTM(copy.m_worldTM)
+        , m_parentId(copy.m_parentId)
+        , m_parentTM(copy.m_parentTM)
+        , m_notificationBus(nullptr)
+        , m_onNewParentKeepWorldTM(copy.m_onNewParentKeepWorldTM)
+        , m_parentActivationTransformMode(copy.m_parentActivationTransformMode)
+        , m_replicaChunk(nullptr)
+        , m_isStatic(copy.m_isStatic)
+        , m_interpolatePosition(copy.m_interpolatePosition)
+        , m_interpolateRotation(copy.m_interpolateRotation)
+        , m_netTargetTranslation()
+        , m_netTargetRotation()
+        , m_netTargetScale(copy.m_netTargetScale)        
     {
-        SetSyncEnabled(configuration.m_isBoundToNetwork);
+        CreateSamples();
+        if (copy.m_netTargetTranslation)
+        {
+            m_netTargetTranslation->SetNewTarget(copy.m_netTargetTranslation->GetTargetValue(), copy.m_netTargetTranslation->GetTargetTimestamp());
+        }
+        if (copy.m_netTargetRotation)
+        {
+            m_netTargetRotation->SetNewTarget(copy.m_netTargetRotation->GetTargetValue(), copy.m_netTargetRotation->GetTargetTimestamp());
+        }
+
+        SetSyncEnabled(copy.m_isSyncEnabled);
+    }
+
+
+    void TransformComponent::CreateTranslationSample()
+    {
+        switch(m_interpolatePosition)
+        {
+        case AZ::InterpolationMode::LinearInterpolation:
+            m_netTargetTranslation = AZStd::make_unique<AZ::LinearlyInterpolatedSample<AZ::Vector3>>();
+            break;
+        case AZ::InterpolationMode::NoInterpolation:
+        default:
+            m_netTargetTranslation = AZStd::make_unique<AZ::UninterpolatedSample<AZ::Vector3>>();
+            break;
+        }
+    }
+
+    void TransformComponent::CreateRotationSample()
+    {
+        switch (m_interpolateRotation)
+        {
+        case AZ::InterpolationMode::LinearInterpolation:
+            m_netTargetRotation = AZStd::make_unique<AZ::LinearlyInterpolatedSample<AZ::Quaternion>>();
+            break;
+        case AZ::InterpolationMode::NoInterpolation:
+        default:
+            m_netTargetRotation = AZStd::make_unique<AZ::UninterpolatedSample<AZ::Quaternion>>();
+            break;
+        }
+    }
+
+    void TransformComponent::CreateSamples()
+    {
+        if (m_netTargetTranslation)
+        {
+            auto target = m_netTargetTranslation->GetTargetValue();
+            auto timeStamp = m_netTargetTranslation->GetTargetTimestamp();
+
+            CreateTranslationSample();
+
+            m_netTargetTranslation->SetNewTarget(target, timeStamp);
+        }
+        else
+        {
+            CreateTranslationSample();
+        }
+
+        if (m_netTargetRotation)
+        {
+            auto target = m_netTargetRotation->GetTargetValue();
+            auto timeStamp = m_netTargetRotation->GetTargetTimestamp();
+
+            CreateRotationSample();
+
+            m_netTargetRotation->SetNewTarget(target, timeStamp);
+        }
+        else
+        {
+            CreateRotationSample();
+        }
     }
 
     TransformComponent::~TransformComponent()
     {
+    }
+
+    bool TransformComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
+    {
+        if (auto config = azrtti_cast<const AZ::TransformConfig*>(baseConfig))
+        {
+            m_localTM = config->GetLocalTransform();
+            m_worldTM = config->GetWorldTransform();
+            m_parentId = config->m_parentId;
+            m_parentActivationTransformMode = config->m_parentActivationTransformMode;
+            SetSyncEnabled(config->m_netSyncEnabled);
+            m_interpolatePosition = config->m_interpolatePosition;
+            m_interpolateRotation = config->m_interpolateRotation;
+            m_isStatic = config->m_isStatic;
+            return true;
+        }
+        return false;
+    }
+
+    bool TransformComponent::WriteOutConfig(AZ::ComponentConfig* baseConfig) const
+    {
+        if (auto config = azrtti_cast<AZ::TransformConfig*>(baseConfig))
+        {
+            config->SetLocalAndWorldTransform(m_localTM, m_worldTM);
+            config->m_parentId = m_parentId;
+            config->m_parentActivationTransformMode = m_parentActivationTransformMode;
+            config->m_netSyncEnabled = IsSyncEnabled();
+            config->m_interpolatePosition = m_interpolatePosition;
+            config->m_interpolateRotation = m_interpolateRotation;
+            config->m_isStatic = m_isStatic;
+            return true;
+        }
+        return false;
     }
 
     void TransformComponent::Activate()
@@ -580,7 +714,7 @@ namespace AzFramework
         newWorldTransform.MultiplyByScale(scale);
         SetWorldTM(newWorldTransform);
     }
-    
+
     void TransformComponent::SetScaleZ(float scaleZ)
     {
         AZ_Warning("TransformCompnent", false, "SetScaleZ is deprecated, please use SetLocalScaleZ");
@@ -602,7 +736,7 @@ namespace AzFramework
     float TransformComponent::GetScaleX()
     {
         AZ_Warning("TransformCompnent", false, "GetScaleX is deprecated, please use GetLocalScale");
-        
+
         AZ::Vector3 scale = m_worldTM.RetrieveScale();
         return scale.GetX();
     }
@@ -763,7 +897,23 @@ namespace AzFramework
             m_parentId = AZ::EntityId(transformReplicaChunk->m_parentId.Get());
 
             m_worldTM = transformReplicaChunk->m_initialWorldTM;
-            m_localTM = transformReplicaChunk->m_localTransform.Get();
+            m_localTM = transformReplicaChunk->GetLocalTransform();
+
+            CreateSamples();
+
+            m_netTargetTranslation->SetNewTarget(
+                transformReplicaChunk->m_localTranslation.Get(),
+                transformReplicaChunk->m_localTranslation.GetLastUpdateTime());
+            m_netTargetRotation->SetNewTarget(
+                transformReplicaChunk->m_localRotation.Get(),
+                transformReplicaChunk->m_localRotation.GetLastUpdateTime());
+            m_netTargetScale = transformReplicaChunk->m_localScale.Get();
+
+            if (HasAnyInterpolation())
+            {
+                // only connect if interpolation was selected for either position or rotation
+                AZ::TickBus::Handler::BusConnect();
+            }
         }
 
         m_onNewParentKeepWorldTM = false;
@@ -771,6 +921,11 @@ namespace AzFramework
 
     void TransformComponent::UnbindFromNetwork()
     {
+        if (HasAnyInterpolation())
+        {
+            AZ::TickBus::Handler::BusDisconnect();
+        }
+
         if (m_replicaChunk)
         {
             m_replicaChunk->SetHandler(nullptr);
@@ -779,7 +934,7 @@ namespace AzFramework
     }
 
     void TransformComponent::OnNewNetTransformData(const AZ::Transform& transform, const GridMate::TimeContext& /*tc*/)
-    {        
+    {
         SetLocalTMImpl(transform);
     }
 
@@ -793,12 +948,78 @@ namespace AzFramework
         return m_replicaChunk && m_replicaChunk->GetReplica() && !m_replicaChunk->IsMaster();
     }
 
+    bool TransformComponent::IsPositionInterpolated()
+    {
+        return m_interpolatePosition != AZ::InterpolationMode::NoInterpolation;
+    }
+
+    bool TransformComponent::IsRotationInterpolated()
+    {
+        return m_interpolateRotation != AZ::InterpolationMode::NoInterpolation;
+    }
+
+    bool TransformComponent::HasAnyInterpolation()
+    {
+        return IsPositionInterpolated() || IsRotationInterpolated();
+    }
+
+    void TransformComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*currentTime*/)
+    {
+        if (GetEntity() && GetEntity()->GetState() == AZ::Entity::State::ES_ACTIVE && !NetQuery::IsEntityAuthoritative(GetEntityId()))
+        {
+            if (m_replicaChunk)
+            {
+                unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
+                AZ::Transform newXform = GetInterpolatedTransform(localTime);
+                SetLocalTMImpl(newXform);
+            }
+        }
+    }
+
+    AZ::Transform TransformComponent::GetInterpolatedTransform(unsigned localTime)
+    {
+        AZ::Vector3 newTranslation = m_netTargetTranslation->GetInterpolatedValue(localTime);
+        AZ::Quaternion newRotation = m_netTargetRotation->GetInterpolatedValue(localTime);
+        AZ::Transform newXform = AZ::Transform::CreateFromQuaternionAndTranslation(newRotation, newTranslation);
+        newXform.MultiplyByScale(m_netTargetScale);
+
+        return newXform;
+    }
+
+    void TransformComponent::OnNewPositionData(const AZ::Vector3& translation, const GridMate::TimeContext& tc)
+    {
+        m_netTargetTranslation->SetNewTarget(translation, tc.m_realTime);
+        if (!HasAnyInterpolation())
+        {
+            unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
+            AZ::Transform newXform = GetInterpolatedTransform(localTime);
+            SetLocalTMImpl(newXform);
+        }
+    };
+
+    void TransformComponent::OnNewRotationData(const AZ::Quaternion& rotation, const GridMate::TimeContext& tc)
+    {
+        m_netTargetRotation->SetNewTarget(rotation, tc.m_realTime);
+        if (!HasAnyInterpolation())
+        {
+            unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
+            AZ::Transform newXform = GetInterpolatedTransform(localTime);
+            SetLocalTMImpl(newXform);
+        }
+    }
+
+    void TransformComponent::OnNewScaleData(const AZ::Vector3& scale, const GridMate::TimeContext& /*tc*/)
+    {
+        // no interpolation of scale by design, very unlikely somebody needs it
+        m_netTargetScale = scale;
+    }
+
     void TransformComponent::UpdateReplicaChunk()
     {
         if (!IsNetworkControlled() && m_replicaChunk)
         {
             TransformReplicaChunk* transformReplicaChunk = static_cast<TransformReplicaChunk*>(m_replicaChunk.get());
-            transformReplicaChunk->m_localTransform.Set(GetLocalTM());
+            transformReplicaChunk->SetInitial(GetLocalTM());
             transformReplicaChunk->m_parentId.Set(static_cast<AZ::u64>(GetParentId()));
         }
     }
@@ -828,7 +1049,7 @@ namespace AzFramework
 
             if (isKeepWorldTM)
             {
-                SetWorldTM(m_worldTM);
+            SetWorldTM(m_worldTM);
             }
             else
             {
@@ -868,7 +1089,7 @@ namespace AzFramework
         // Called when our parent transform changes
         // Ignore the event until we've already derived our local transform.
         if (m_parentTM)
-        {            
+        {
             m_worldTM = parentWorldTM * m_localTM;
             EBUS_EVENT_PTR(m_notificationBus, AZ::TransformNotificationBus, OnTransformChanged, m_localTM, m_worldTM);
         }
@@ -877,7 +1098,7 @@ namespace AzFramework
     void TransformComponent::OnEntityActivatedImpl(const AZ::EntityId& parentEntityId)
     {
         AZ_Assert(parentEntityId == m_parentId, "We expect to receive notifications only from the current parent!");
-        
+
         AZ::Entity* parentEntity = nullptr;
         EBUS_EVENT_RESULT(parentEntity, AZ::ComponentApplicationBus, FindEntity, parentEntityId);
         AZ_Assert(parentEntity, "We expect to have a parent entity associated with the provided parent's entity Id.");
@@ -930,7 +1151,7 @@ namespace AzFramework
         else if (!m_parentId.IsValid())
         {
             m_worldTM = m_localTM;
-        }        
+        }
 
         EBUS_EVENT_PTR(m_notificationBus, AZ::TransformNotificationBus, OnTransformChanged, m_localTM, m_worldTM);
     }
@@ -969,6 +1190,8 @@ namespace AzFramework
                 ->Field("LocalTransform", &TransformComponent::m_localTM)
                 ->Field("ParentActivationTransformMode", &TransformComponent::m_parentActivationTransformMode)
                 ->Field("IsStatic", &TransformComponent::m_isStatic)
+                ->Field("InterpolatePosition", &TransformComponent::m_interpolatePosition)
+                ->Field("InterpolateRotation", &TransformComponent::m_interpolateRotation)
                 ;
         }
 
@@ -985,6 +1208,7 @@ namespace AzFramework
                 ->Event("GetWorldTM", &AZ::TransformBus::Events::GetWorldTM)
                 ->Event("GetParentId", &AZ::TransformBus::Events::GetParentId)
                 ->Event("GetLocalAndWorld", &AZ::TransformBus::Events::GetLocalAndWorld)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("SetLocalTM", &AZ::TransformBus::Events::SetLocalTM)
                 ->Event("SetWorldTM", &AZ::TransformBus::Events::SetWorldTM)
                 ->Event("SetParent", &AZ::TransformBus::Events::SetParent)
@@ -1009,18 +1233,44 @@ namespace AzFramework
                 ->Event("GetLocalY", &AZ::TransformBus::Events::GetLocalY)
                 ->Event("GetLocalZ", &AZ::TransformBus::Events::GetLocalZ)
                 ->Event("RotateByX", &AZ::TransformBus::Events::RotateByX)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("RotateByY", &AZ::TransformBus::Events::RotateByY)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("RotateByZ", &AZ::TransformBus::Events::RotateByZ)
-                ->Event("SetEulerRotation", &AZ::TransformBus::Events::SetRotation) // Deprecated
-                ->Event("SetRotationQuaternion", &AZ::TransformBus::Events::SetRotationQuaternion) // Deprecated
-                ->Event("SetRotationX", &AZ::TransformBus::Events::SetRotationX) // Deprecated
-                ->Event("SetRotationY", &AZ::TransformBus::Events::SetRotationY) // Deprecated
-                ->Event("SetRotationZ", &AZ::TransformBus::Events::SetRotationZ) // Deprecated
-                ->Event("GetEulerRotation", &AZ::TransformBus::Events::GetRotationEulerRadians) // Deprecated
-                ->Event("GetRotationQuaternion", &AZ::TransformBus::Events::GetRotationQuaternion) // Deprecated
-                ->Event("GetRotationX", &AZ::TransformBus::Events::GetRotationX) // Deprecated
-                ->Event("GetRotationY", &AZ::TransformBus::Events::GetRotationY) // Deprecated
-                ->Event("GetRotationZ", &AZ::TransformBus::Events::GetRotationZ) // Deprecated
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetEulerRotation", &AZ::TransformBus::Events::SetRotation)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetRotationQuaternion", &AZ::TransformBus::Events::SetRotationQuaternion)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetRotationX", &AZ::TransformBus::Events::SetRotationX)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetRotationY", &AZ::TransformBus::Events::SetRotationY)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetRotationZ", &AZ::TransformBus::Events::SetRotationZ)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetEulerRotation", &AZ::TransformBus::Events::GetRotationEulerRadians)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetRotationQuaternion", &AZ::TransformBus::Events::GetRotationQuaternion)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetRotationX", &AZ::TransformBus::Events::GetRotationX)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                   ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetRotationY", &AZ::TransformBus::Events::GetRotationY)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetRotationZ", &AZ::TransformBus::Events::GetRotationZ)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("GetWorldRotation", &AZ::TransformBus::Events::GetWorldRotation)
                 ->Event("GetWorldRotationQuaternion", &AZ::TransformBus::Events::GetWorldRotationQuaternion)
                 ->Event("SetLocalRotation", &AZ::TransformBus::Events::SetLocalRotation)
@@ -1032,14 +1282,30 @@ namespace AzFramework
                 ->Event("GetLocalRotationQuaternion", &AZ::TransformBus::Events::GetLocalRotationQuaternion)
                     ->Attribute("Rotation", AZ::Edit::Attributes::PropertyRotation)
                 ->VirtualProperty("Rotation", "GetLocalRotationQuaternion", "SetLocalRotationQuaternion")
-                ->Event("SetScale", &AZ::TransformBus::Events::SetScale)    // Deprecated
-                ->Event("SetScaleX", &AZ::TransformBus::Events::SetScaleX)  // Deprecated
-                ->Event("SetScaleY", &AZ::TransformBus::Events::SetScaleY)  // Deprecated
-                ->Event("SetScaleZ", &AZ::TransformBus::Events::SetScaleZ)  // Deprecated
-                ->Event("GetScale", &AZ::TransformBus::Events::GetScale)    // Deprecated
-                ->Event("GetScaleX", &AZ::TransformBus::Events::GetScaleX)  // Deprecated
-                ->Event("GetScaleY", &AZ::TransformBus::Events::GetScaleY)  // Deprecated
-                ->Event("GetScaleZ", &AZ::TransformBus::Events::GetScaleZ)  // Deprecated
+                ->Event("SetScale", &AZ::TransformBus::Events::SetScale)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetScaleX", &AZ::TransformBus::Events::SetScaleX)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetScaleY", &AZ::TransformBus::Events::SetScaleY)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("SetScaleZ", &AZ::TransformBus::Events::SetScaleZ)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetScale", &AZ::TransformBus::Events::GetScale)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetScaleX", &AZ::TransformBus::Events::GetScaleX)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetScaleY", &AZ::TransformBus::Events::GetScaleY)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetScaleZ", &AZ::TransformBus::Events::GetScaleZ)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("SetLocalScale", &AZ::TransformBus::Events::SetLocalScale)
                 ->Event("SetLocalScaleX", &AZ::TransformBus::Events::SetLocalScaleX)
                 ->Event("SetLocalScaleY", &AZ::TransformBus::Events::SetLocalScaleY)
@@ -1053,6 +1319,23 @@ namespace AzFramework
                 ->Event("GetEntityAndAllDescendants", &AZ::TransformBus::Events::GetEntityAndAllDescendants)
                 ->Event("IsStaticTransform", &AZ::TransformBus::Events::IsStaticTransform)
                 ;
+
+            behaviorContext->Constant("TransformComponentTypeId", BehaviorConstant(AZ::TransformComponentTypeId));
+            behaviorContext->Constant("EditorTransformComponentTypeId", BehaviorConstant(AZ::EditorTransformComponentTypeId));
+
+            behaviorContext->Class<AZ::TransformConfig>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Enum<(int)AZ::TransformConfig::ParentActivationTransformMode::MaintainOriginalRelativeTransform>("MaintainOriginalRelativeTransform")
+                ->Enum<(int)AZ::TransformConfig::ParentActivationTransformMode::MaintainCurrentWorldTransform>("MaintainCurrentWorldTransform")
+                ->Method("SetTransform", &AZ::TransformConfig::SetTransform)
+                ->Method("SetLocalAndWorldTransform", &AZ::TransformConfig::SetLocalAndWorldTransform)
+                ->Property("parentId", BehaviorValueProperty(&AZ::TransformConfig::m_parentId))
+                ->Property("parentActivationTransformMode",
+                    [](AZ::TransformConfig* config) { return (int&)(config->m_parentActivationTransformMode); },
+                    [](AZ::TransformConfig* config, const int& i) { config->m_parentActivationTransformMode = (AZ::TransformConfig::ParentActivationTransformMode)i; })
+                ->Property("netSyncEnabled", BehaviorValueProperty(&AZ::TransformConfig::m_netSyncEnabled))
+                ->Property("isStatic", BehaviorValueProperty(&AZ::TransformConfig::m_isStatic))
+                ;
         }
 
         NetworkContext* netContext = azrtti_cast<NetworkContext*>(reflection);
@@ -1061,9 +1344,10 @@ namespace AzFramework
             netContext->Class<TransformComponent>()
                 ->Chunk<TransformReplicaChunk, TransformReplicaChunk::Descriptor>()
                     ->Field("ParentId", &TransformReplicaChunk::m_parentId)
-                    ->Field("LocalTransformData", &TransformReplicaChunk::m_localTransform);
+                    ->Field("LocalTranslationData", &TransformReplicaChunk::m_localTranslation)
+                    ->Field("LocalRotationData", &TransformReplicaChunk::m_localRotation)
+                    ->Field("LocalScaleData", &TransformReplicaChunk::m_localScale);
         }
-
     }
 } // namespace AZ
 

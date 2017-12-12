@@ -179,6 +179,10 @@ public:
     */
     void TimeChanged(float newTime);
 
+    /** Notify after a sequence has been loaded, useful for Undo/Redo
+    */
+    void OnSequenceLoaded(AZ::EntityId entityId);
+
 private:
     static void GoToFrameCmd(IConsoleCmdArgs* pArgs);
 
@@ -226,8 +230,13 @@ private:
     //! Currently active animation sequence.
     CTrackViewSequence* m_pSequence;
 
+    //! Id of lastest valid sequence that was selected. Useful for restoring the selected
+    //! sequence after undo has destroyed and recreated it.
+    AZ::EntityId m_mostRecentSequenceId;
+
     //! Name of active sequence (for switching back from game mode and saving)
     QString m_sequenceName;
+
 
     //! Time of active sequence (for switching back from game mode and saving)
     float m_sequenceTime;

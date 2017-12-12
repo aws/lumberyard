@@ -26,7 +26,8 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
-#if !defined(APPLE) && !defined(LINUX) && !defined(ORBIS)
+#if   defined(LINUX) // Scrubber friendly negated define pattern
+#elif !defined(APPLE)
     #include <memory.h>
     #include <malloc.h>
 #endif
@@ -37,18 +38,15 @@
 
 #include <vector>
 
-#if !defined(ORBIS) && !defined(APPLE) && !defined(ANDROID)
-    #if defined(LINUX)
-        #   include <sys/io.h>
-    #else
-        #   include <io.h>
-    #endif
+#if   defined(APPLE) // Scrubber friendly negated define pattern
+#elif defined(ANDROID) // Scrubber friendly negated define pattern
+#elif defined(LINUX)
+    #   include <sys/io.h>
+#else
+    #   include <io.h>
 #endif
 
 //#define DEFINE_MODULE_NAME "CrySystem"
-
-#include <CryModuleDefs.h>
-#define eCryModule eCryM_System
 
 #define CRYSYSTEM_EXPORTS
 
@@ -101,7 +99,6 @@ static inline int RoundToClosestMB(size_t memSize)
 #include <IAISystem.h>
 #include <IXml.h>
 #include <ICmdLine.h>
-#include <IInput.h>
 #include <IConsole.h>
 #include <ILog.h>
 

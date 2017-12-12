@@ -19,6 +19,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <QVBoxLayout>
@@ -91,7 +92,7 @@ namespace MannequinConfigFileHelper
         }
         if (!success)
         {
-            QMessageBox::critical(nullptr, QObject::tr("Error Creating File"), QObject::tr("Could not create file\n%1").arg(normalizedName));
+            QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Error Creating File"), QObject::tr("Could not create file\n%1").arg(normalizedName));
         }
         return success;
     }
@@ -558,7 +559,7 @@ void MannequinConfig::Reflect(AZ::ReflectContext* context)
                 ->DataElement(AZ::Edit::UIHandlers::Default, &MannequinConfig::contextList, "Context Definitions", "")
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ_CRC("RemoveNotify", 0x16ec95f5), &MannequinConfig::CreateInitialContext)
+                    ->Attribute(AZ::Edit::Attributes::RemoveNotify, &MannequinConfig::CreateInitialContext)
                     ->Attribute(AZ::Edit::Attributes::AddNotify, &MannequinConfig::OnContextAdded)
                 ->DataElement(AZ::Edit::UIHandlers::Default, &MannequinConfig::controllerDefsFile, "Controller Definitions File", "ControllerDefs file located in the Mannequin/ADB folder storing Mannequin data")
                 ->DataElement(AZ_CRC("FileSelector", 0xb9bcba1b), &MannequinConfig::tagsFile, "Tags File", "Tags file located in the Mannequin/ADB folder storing tags. This file is reusable across Mannequin Controller setups.")
@@ -591,7 +592,7 @@ void MannequinConfig::Reflect(AZ::ReflectContext* context)
                 ->DataElement(AZ::Edit::UIHandlers::Default, &ContextDefinition::scopeList, "Scope Definitions", "")
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ_CRC("RemoveNotify", 0x16ec95f5), &ContextDefinition::OnScopeRemoved)
+                    ->Attribute(AZ::Edit::Attributes::RemoveNotify, &ContextDefinition::OnScopeRemoved)
                     ->Attribute(AZ_CRC("AddNotify", 0x16f00b95), &ContextDefinition::OnScopeAdded)
                 ;
 

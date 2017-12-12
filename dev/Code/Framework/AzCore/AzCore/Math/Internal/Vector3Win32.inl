@@ -117,7 +117,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector3 Vector3::GetNormalizedSafe(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLength();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector3(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -129,7 +129,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector3 Vector3::GetNormalizedSafeApprox(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLengthApprox();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector3(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -141,7 +141,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector3 Vector3::GetNormalizedSafeExact(const VectorFloat& tolerance) const
     {
         VectorFloat length = GetLengthExact();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             return Vector3(*(SimdVectorType*)&Internal::g_simd1000);
         }
@@ -154,7 +154,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector3::NormalizeSafeWithLength(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLength();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -167,7 +167,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector3::NormalizeSafeWithLengthApprox(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLengthApprox();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -180,7 +180,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector3::NormalizeSafeWithLengthExact(const VectorFloat& tolerance)
     {
         VectorFloat length = GetLengthExact();
-        if ((_mm_movemask_ps(_mm_cmplt_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
+        if ((_mm_movemask_ps(_mm_cmple_ss(length.m_value, tolerance.m_value)) & 0x01) != 0)
         {
             m_value = *(SimdVectorType*)&Internal::g_simd1000;
         }
@@ -196,7 +196,7 @@ namespace AZ
         SimdVectorType one = *reinterpret_cast<const SimdVectorType*>(&Internal::g_simd1111);
         SimdVectorType diff = _mm_sub_ss(GetLengthSq().m_value, one);
         SimdVectorType absDiff = _mm_and_ps(diff, *(const SimdVectorType*)&Internal::g_simdAbsMask);
-        return ((_mm_movemask_ps(_mm_cmplt_ss(absDiff, tolerance.m_value)) & 0x01) != 0);
+        return ((_mm_movemask_ps(_mm_cmple_ss(absDiff, tolerance.m_value)) & 0x01) != 0);
     }
 
     AZ_MATH_FORCE_INLINE void Vector3::SetLength(const VectorFloat& length)
@@ -282,7 +282,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE bool Vector3::IsClose(const Vector3& v, const VectorFloat& tolerance) const
     {
         Vector3 dist = (v - (*this)).GetAbs();
-        return dist.IsLessThan(Vector3(tolerance.m_value));
+        return dist.IsLessEqualThan(Vector3(tolerance.m_value));
     }
 
     AZ_MATH_FORCE_INLINE bool Vector3::operator==(const Vector3& rhs) const
@@ -453,7 +453,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE bool Vector3::IsPerpendicular(const Vector3& v, const VectorFloat& tolerance) const
     {
         SimdVectorType absDot = _mm_and_ps(Dot(v).m_value, *(const SimdVectorType*)&Internal::g_simdAbsMask);
-        return ((_mm_movemask_ps(_mm_cmplt_ss(absDot, tolerance.m_value)) & 0x01) != 0);
+        return ((_mm_movemask_ps(_mm_cmple_ss(absDot, tolerance.m_value)) & 0x01) != 0);
     }
 
     AZ_MATH_FORCE_INLINE const Vector3 operator*(const VectorFloat& multiplier, const Vector3& rhs)

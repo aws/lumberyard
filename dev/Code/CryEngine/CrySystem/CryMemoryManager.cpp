@@ -360,6 +360,7 @@ CRYMEMORYMANAGER_API void* CryMalloc(size_t size, size_t& allocated, size_t alig
 
     assert(alignment == 0 || (reinterpret_cast<UINT_PTR>(p) & (alignment - 1)) == 0);
 
+    AZ_PROFILE_MEMORY_ALLOC(AZ::Debug::ProfileCategory::MemoryReserved, p, sizePlus, "CryMalloc");
 
     return p;
 }
@@ -465,6 +466,7 @@ static void CryFreeReal(void* p)
 //////////////////////////////////////////////////////////////////////////
 size_t CryFree(void* p, size_t alignment)
 {
+    AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, p);
 #ifdef CRYMM_SUPPORT_DEADLIST
 
     if (CCryMemoryManager::s_sys_MemoryDeadListSize > 0)

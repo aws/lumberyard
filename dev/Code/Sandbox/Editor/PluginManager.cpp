@@ -15,7 +15,7 @@
 #include "Include/IPlugin.h"
 #include "PluginManager.h"
 #include "Util/FileUtil.h"
-#include "AZCore/Debug/Trace.h"
+#include "AzCore/Debug/Trace.h"
 
 #include <QLibrary>
 
@@ -210,7 +210,14 @@ bool CPluginManager::LoadPlugins(const char* pPathWithMask)
             {
                 // Construct the full filepath of the current file
                 szFilePath = sFile.absoluteFilePath();
-
+#ifndef ENABLE_LEGACY_ANIMATION
+                // If legacy animation is disabled, skip the loading of EditorAnimation.dll.
+                AZStd::string pluginPath = sFile.filePath().toUtf8().data();
+                if (pluginPath.find("EditorAnimation.dll") != AZStd::string::npos)
+                {
+                    continue;
+                }
+#endif
                 SPlugin plugin;
                 plugin.m_path = sFile.filePath();
                 plugin.m_name = sFile.fileName();

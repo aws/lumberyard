@@ -1121,6 +1121,9 @@ def compile_fun_shell(line):
 		if var == 'SRC':
 			if meth: app('tsk.inputs%s' % meth)
 			else: app('" ".join([a.path_from(bld.bldnode) for a in tsk.inputs])')
+		elif var == 'ABS_SRC':
+			if meth: app('tsk.inputs%s' % meth)
+			else: app('" ".join([\'"{}"\'.format(a.abspath()) for a in tsk.inputs])')
 		elif var == 'TGT':
 			if meth: app('tsk.outputs%s' % meth)
 			else: app('" ".join([a.path_from(bld.bldnode) for a in tsk.outputs])')
@@ -1129,6 +1132,8 @@ def compile_fun_shell(line):
 				m = meth[1:]
 				if m == 'SRC':
 					m = '[a.path_from(bld.bldnode) for a in tsk.inputs]'
+				if m == 'ABS_SRC':
+					m = '[a.abspath() for a in tsk.inputs]'
 				elif m == 'TGT':
 					m = '[a.path_from(bld.bldnode) for a in tsk.outputs]'
 				elif m[:3] not in ('tsk', 'gen', 'bld'):

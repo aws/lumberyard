@@ -445,7 +445,7 @@ namespace Multiplayer
             REGISTER_INT("gm_recvPacketsLimit", 0, VF_NULL, "Maximum packets per second allowed to be received from an existing connection");
 
             REGISTER_STRING("gm_ipversion", "IPv4", 0, "IP protocol version. (Can be 'IPv4' or 'IPv6')");
-            REGISTER_STRING("gm_securityData", "", 0, "Security data for session.(For example on XBox One this is the Security template name)");
+            REGISTER_STRING("gm_securityData", "", 0, "Security data for session.");
             REGISTER_INT_CB("gm_replicasSendTime", 0, VF_NULL, "Time interval between replicas sends (in milliseconds), 0 will bound sends to GridMate tick rate", OnReplicasSendTimeChanged);
             REGISTER_INT_CB("gm_replicasSendLimit", 0, VF_DEV_ONLY, "Replica data send limit in bytes per second. 0 - limiter turned off. (Dev build only)", OnReplicasSendLimitChanged);
             REGISTER_FLOAT_CB("gm_burstTimeLimit", 10.f, VF_DEV_ONLY, "Burst in bandwidth will be allowed for the given amount of time(in seconds). Burst will only be allowed if bandwidth is not capped at the time of burst. (Dev build only)", OnReplicasBurstRangeChanged);

@@ -25,18 +25,19 @@ def build(bld):
         platforms           = ['all'],
         configurations      = ['all'],
         pch                 = 'StdAfx.cpp',
+        defines             = ['ENGINE_EXPORTS'],
         use                 = ['AzCore'],
 
         # Platform Specific
        
 
-        darwin_cxxflags     = ['-Wno-shift-negative-value'],
+        darwin_cxxflags     = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
-        ios_cxxflags        = ['-Wno-shift-negative-value'],
+        ios_cxxflags        = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
-        appletv_cxxflags    = ['-Wno-shift-negative-value'],
+        appletv_cxxflags    = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
-        android_armv7_clang_cxxflags  = ['-Wno-shift-negative-value'],
+        android_armv7_clang_cxxflags  = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
         # Testing
         test_all_file_list  = ['cryphysics_test.waf_files'],

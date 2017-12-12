@@ -72,8 +72,8 @@ bool CMannequinKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selected
             IMannequinKey key;
             keyHandle.GetKey(&key);
 
-            mv_fragment = key.m_fragmentName;
-            mv_tags = key.m_tags;
+            mv_fragment = key.m_fragmentName.c_str();
+            mv_tags = key.m_tags.c_str();
             mv_priority = key.m_priority;
 
             bAssigned = true;
@@ -104,10 +104,10 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
 
             if (mv_fragment.GetVar() == pVar)
             {
-                cry_strcpy(key.m_fragmentName, ((QString)mv_fragment).toLatin1().data());
+                key.m_fragmentName = ((QString)mv_fragment).toLatin1().data();
             }
 
-            if (strlen(key.m_fragmentName) > 0)
+            if (!key.m_fragmentName.empty())
             {
                 IEntity* entity = keyHandle.GetTrack()->GetAnimNode()->GetEntity();
                 if (entity)
@@ -137,7 +137,7 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
                                 pAnimChar->GetActionController()->QueryDuration(*pAction, fFragDuration, fTransDuration);
                                 key.m_duration = fFragDuration + fTransDuration;
                                 key.m_priority = mv_priority;
-                                cry_strcpy(key.m_tags, ((QString)mv_tags).toLatin1().data());
+                                key.m_tags = ((QString)mv_tags).toLatin1().data();
                             }
                         }
                     }

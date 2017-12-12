@@ -1,0 +1,12 @@
+{
+    "none": {
+        "Root":
+        [            
+            "GridHub/main.cpp",
+            "GridHub/GridHub.ui",
+            "GridHub/gridhub.cpp",
+            "GridHub/gridhub.hxx",                        
+            "GridHub/GridHub.qrc"
+        ]
+    }    
+}

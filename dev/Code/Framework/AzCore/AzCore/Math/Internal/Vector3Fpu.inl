@@ -103,7 +103,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const Vector3 Vector3::GetNormalizedSafeExact(const VectorFloat& tolerance) const
     {
         float length = GetLength();
-        if (length < tolerance)
+        if (length <= tolerance)
         {
             return Vector3(1.0f, 0.0f, 0.0f);
         }
@@ -127,7 +127,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE const VectorFloat Vector3::NormalizeSafeWithLengthExact(const VectorFloat& tolerance)
     {
         float length = GetLength();
-        if (length < tolerance)
+        if (length <= tolerance)
         {
             Set(1.0f, 0.0f, 0.0f);
         }
@@ -141,7 +141,7 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool Vector3::IsNormalized(const VectorFloat& tolerance) const
     {
-        return (fabsf(GetLengthSq() - 1.0f) < tolerance);
+        return (fabsf(GetLengthSq() - 1.0f) <= tolerance);
     }
 
     AZ_MATH_FORCE_INLINE void Vector3::SetLength(const VectorFloat& length)       { SetLengthExact(length); }
@@ -178,7 +178,7 @@ namespace AZ
     AZ_MATH_FORCE_INLINE bool Vector3::IsClose(const Vector3& v, const VectorFloat& tolerance) const
     {
         Vector3 dist = (v - (*this)).GetAbs();
-        return dist.IsLessThan(Vector3(tolerance));
+        return dist.IsLessEqualThan(Vector3(tolerance));
     }
 
     AZ_MATH_FORCE_INLINE bool Vector3::operator==(const Vector3& rhs) const
@@ -292,7 +292,7 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool Vector3::IsPerpendicular(const Vector3& v, const VectorFloat& tolerance) const
     {
-        return (fabsf(Dot(v)) < tolerance);
+        return (fabsf(Dot(v)) <= tolerance);
     }
 
     AZ_MATH_FORCE_INLINE const Vector3 operator*(const VectorFloat& multiplier, const Vector3& rhs)

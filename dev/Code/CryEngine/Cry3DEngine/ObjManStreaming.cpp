@@ -973,13 +973,13 @@ void CObjManager::GetObjectsStreamingStatus(I3DEngine::SObjectsStreamingStatus& 
 
     for (LoadedObjects::iterator it = m_lstLoadedObjects.begin(); it != m_lstLoadedObjects.end(); ++it)
     {
-        CStatObj* pStatObj = *it;
-        if (pStatObj->m_bSubObject)
+        IStatObj* pStatObj = *it;
+        if (pStatObj->IsSubObject())
         {
             continue;
         }
 
-        if (pStatObj->m_pLod0)
+        if (pStatObj->GetLodLevel0())
         {
             continue;
         }
@@ -1089,7 +1089,7 @@ void CObjManager::PrecacheCharacterCollect(IRenderNode* pObj, const float fImpor
     static ICVar* pSkipVertexAnimationLOD = gEnv->pConsole->GetCVar("ca_vaSkipVertexAnimationLOD");
     const bool bSkipVertexAnimationLOD = pSkipVertexAnimationLOD != NULL ? pSkipVertexAnimationLOD->GetIVal() != 0 : false;
 
-    int minLod = 0;
+    int minLod = 0, maxLod = 0;
     if (bSkipVertexAnimationLOD && pCharacter->HasVertexAnimation())
     {
         minLod = max(minLod, 1);
@@ -1118,7 +1118,7 @@ void CObjManager::PrecacheCharacterCollect(IRenderNode* pObj, const float fImpor
                 {
                     ISkin* pISkin = pIAttachmentSkin->GetISkin();
 
-                    const int maxLod = (int)pISkin->GetNumLODs() - 1;
+                    maxLod = (int)pISkin->GetNumLODs() - 1;
 
                     const int minPrecacheLod = clamp_tpl(nLod - 1, minLod, maxLod);
                     const int maxPrecacheLod = clamp_tpl(nLod + 1, minLod, maxLod);
@@ -1151,8 +1151,8 @@ void CObjManager::PrecacheCharacterCollect(IRenderNode* pObj, const float fImpor
                         continue;
                     }
 
-                    const int minLod = pStatObj->GetMinUsableLod();
-                    const int maxLod = (int)pStatObj->m_nMaxUsableLod;
+                    minLod = pStatObj->GetMinUsableLod();
+                    maxLod = (int)pStatObj->m_nMaxUsableLod;
                     const int minPrecacheLod = clamp_tpl(nLod - 1, minLod, maxLod);
                     const int maxPrecacheLod = clamp_tpl(nLod + 1, minLod, maxLod);
 
@@ -1216,8 +1216,8 @@ void CObjManager::PrecacheCharacterCollect(IRenderNode* pObj, const float fImpor
                     continue;
                 }
 
-                const int minLod = pStatObj->GetMinUsableLod();
-                const int maxLod = (int)pStatObj->m_nMaxUsableLod;
+                minLod = pStatObj->GetMinUsableLod();
+                maxLod = (int)pStatObj->m_nMaxUsableLod;
                 const int minPrecacheLod = clamp_tpl(nLod - 1, minLod, maxLod);
                 const int maxPrecacheLod = clamp_tpl(nLod + 1, minLod, maxLod);
 
@@ -1272,7 +1272,7 @@ void CObjManager::PrecacheCharacter(IRenderNode* pObj, const float fImportance, 
     }
 }
 
-void CObjManager::PrecacheStatObj(CStatObj* pStatObj, int nLod, const Matrix34A& statObjMatrix, _smart_ptr<IMaterial> pMaterial, float fImportance, float fEntDistance, bool bFullUpdate, bool bHighPriority)
+void CObjManager::PrecacheStatObj(IStatObj* pStatObj, int nLod, const Matrix34A& statObjMatrix, _smart_ptr<IMaterial> pMaterial, float fImportance, float fEntDistance, bool bFullUpdate, bool bHighPriority)
 {
     if (!pStatObj)
     {
@@ -1280,7 +1280,7 @@ void CObjManager::PrecacheStatObj(CStatObj* pStatObj, int nLod, const Matrix34A&
     }
 
     const int minLod = pStatObj->GetMinUsableLod();
-    const int maxLod = (int)pStatObj->m_nMaxUsableLod;
+    const int maxLod = (int)pStatObj->GetMaxUsableLod();
     const int minPrecacheLod = clamp_tpl(nLod - 1, minLod, maxLod);
     const int maxPrecacheLod = clamp_tpl(nLod + 1, minLod, maxLod);
 

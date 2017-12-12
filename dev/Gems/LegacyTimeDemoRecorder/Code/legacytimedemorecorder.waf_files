@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/LegacyTimeDemoRecorder/LegacyTimeDemoRecorderBus.h"
+        ],
+        "Source": [
+            "Source/LegacyTimeDemoRecorderModule.cpp",
+            "Source/LegacyTimeDemoRecorderSystemComponent.cpp",
+            "Source/LegacyTimeDemoRecorderSystemComponent.h",
+            "Source/TimeDemoRecorder.cpp",
+            "Source/TimeDemoRecorder.h"
+        ]
+    }
+}

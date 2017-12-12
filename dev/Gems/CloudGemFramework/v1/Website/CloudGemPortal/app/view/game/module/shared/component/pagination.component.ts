@@ -1,25 +1,50 @@
 import {Component, Input, ViewEncapsulation, Output, EventEmitter} from '@angular/core';
 
+export type paginationType = 'Numbers' | 'Token';
+
 @Component({
     selector: 'pagination',
     template: `
-    <nav aria-label="Page navigation">
-        <ul class="pagination" *ngIf="pages > 1">
-            <li *ngFor="let index of range(pages)" class="page-item">
-                    <a class="page-link" 
-                        [class.page-active]="index == currentPage"
-                        (click)="pageFn(index)"> {{index}} </a>
-            </li>
-        </ul>
-        <pre>{{'Total pages: ' + pages | devonly}}</pre>
-        <pre>{{'Current page index: ' + currentIndex | devonly}}</pre>
-    </nav>
+    <ng-container [ngSwitch]="type">
+        <ng-container *ngSwitchCase="'Token'">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    <li class="page-item">
+                        <a class="page-link" (click)="prevPage(currentPageIndex)" *ngIf="showPrevious">
+                            Previous Page
+                        </a> 
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" (click)="nextPage(currentPageIndex)" *ngIf="showNext">
+                            Next Page
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </ng-container>
+        <ng-container *ngSwitchDefault>
+            <nav aria-label="Page navigation">
+                <ul class="pagination" *ngIf="pages > 1">
+                    <li *ngFor="let index of range(pages)" class="page-item">
+                            <a class="page-link" 
+                                [class.page-active]="index == currentPage"
+                                (click)="pageFn(index)"> {{index}} </a>
+                    </li>
+                </ul>
+                <pre>{{'Total pages: ' + pages | devonly}}</pre>
+                <pre>{{'Current page index: ' + currentIndex | devonly}}</pre>
+            </nav>
+        </ng-container>
+    </ng-container>
     `,
     styleUrls: ['app/view/game/module/shared/component/pagination.component.css'],
     encapsulation: ViewEncapsulation.None   
 })
 export class PaginationComponent {
-    @Input() pages: number;
+    @Input() type?: paginationType
+    @Input() pages?: number;
+    @Input() showNext?: string;
+    @Input() showPrevious?: string;
     @Output() pageChanged = new EventEmitter<number>();
 
     // The current page of the pagination component.  
@@ -48,6 +73,14 @@ export class PaginationComponent {
             a.push(i + 1)
         }
         return a;
+    }
+
+    nextPage() {
+        this.pageChanged.emit(1);
+    }
+
+    prevPage() {
+        this.pageChanged.emit(-1);
     }
 
 }

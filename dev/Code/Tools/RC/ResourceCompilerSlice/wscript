@@ -23,7 +23,6 @@ def build(bld):
         platforms                   = ['win','darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         use                         = ['AzToolsFramework',
-                                       'LmbrAWS',
                                        'AssetBuilderSDK'],
         uselib                      = ['QT5CORE',
                                        'QT5GUI',

@@ -85,10 +85,9 @@ void CSequenceObject::Done()
 {
     assert(m_pSequence);
 
-    GetIEditor()->GetSequenceManager()->OnDeleteSequenceObject(GetName());
-
     if (m_pSequence)
     {
+        GetIEditor()->GetSequenceManager()->OnDeleteSequenceObject(m_pSequence->GetOwnerId());
         m_pSequence->SetOwner(nullptr);
     }
 
@@ -212,7 +211,7 @@ void CSequenceObject::PostLoad(CObjectArchive& ar)
     if (m_pSequence != NULL && sequenceNode != NULL)
     {
         m_pSequence->Serialize(sequenceNode, true, true, m_sequenceId, ar.bUndo);
-        CTrackViewSequence* pTrackViewSequence = GetIEditor()->GetSequenceManager()->GetSequenceByName(m_pSequence->GetName());
+        CTrackViewSequence* pTrackViewSequence = GetIEditor()->GetSequenceManager()->GetLegacySequenceByName(m_pSequence->GetName());
         if (pTrackViewSequence)
         {
             pTrackViewSequence->Load();

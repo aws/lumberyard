@@ -109,7 +109,7 @@ namespace GridMate
                     }
 
 
-                    if (oldValue != s.m_aspectProfiles[i] && !m_changeDelegate.empty())
+                    if (oldValue != s.m_aspectProfiles[i] && m_changeDelegate)
                     {
                         m_changeDelegate(i, oldValue, s.m_aspectProfiles[i]);
                     }

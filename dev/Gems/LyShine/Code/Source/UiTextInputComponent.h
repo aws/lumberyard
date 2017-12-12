@@ -45,8 +45,9 @@ public: // member functions
     bool HandleReleased(AZ::Vector2 point) override;
     bool HandleEnterPressed(bool& shouldStayActive) override;
     bool HandleEnterReleased() override;
-    bool HandleCharacterInput(wchar_t character) override;
-    bool HandleKeyInput(EKeyId keyId, int modifiers) override;
+    bool HandleAutoActivation() override;
+    bool HandleTextInput(const AZStd::string& textUTF8) override;
+    bool HandleKeyInputBegan(const AzFramework::InputChannel::Snapshot& inputSnapshot, AzFramework::ModifierKeyMask activeModifierKeys) override;
     void InputPositionUpdate(AZ::Vector2 point) override;
     void LostActiveStatus() override;
     // ~UiInteractableInterface
@@ -62,8 +63,8 @@ public: // member functions
     // UiTextInputInterface
     bool GetIsPasswordField() override;
     void SetIsPasswordField(bool passwordField) override;
-    char GetReplacementCharacter() override;
-    void SetReplacementCharacter(char replacementChar) override;
+    uint32_t GetReplacementCharacter() override;
+    void SetReplacementCharacter(uint32_t replacementChar) override;
 
     AZ::Color GetTextSelectionColor() override;
     void SetTextSelectionColor(const AZ::Color& color) override;
@@ -104,6 +105,10 @@ protected: // member functions
     void Activate() override;
     void Deactivate() override;
     // ~AZ::Component
+
+    // UiInteractableComponent
+    bool IsAutoActivationSupported() override;
+    // ~UiInteractableComponent
 
     void BeginEditState();
     void EndEditState();
@@ -198,8 +203,8 @@ private: // data
     LyShine::ActionName m_endEditAction;
     LyShine::ActionName m_enterAction;
 
-    char m_replacementCharacter;        //!< If this component is configured as a password field (m_isPasswordField),
-                                        //!< then we'll use this character to replace the contents of the m_textEntity
+    uint32_t m_replacementCharacter;    //!< If this component is configured as a password field (m_isPasswordField),
+                                        //!< then we'll use this UTF8 character to replace the contents of the m_textEntity
                                         //!< string when we render (note that the string contents of m_textEntity
                                         //!< remain unaltered and this only affects rendering).
 

@@ -36,15 +36,20 @@ namespace AZ
             public:
                 AZ_CLASS_ALLOCATOR_DECL;
 
-                ExpandedTransform() = default;
+                ExpandedTransform();
                 explicit ExpandedTransform(const Transform& transform);
-
-                void SetTransform(const AZ::Transform& transform);
+                
                 void GetTransform(AZ::Transform& transform) const;
-
+                void SetTransform(const AZ::Transform& transform);
+                                
                 const AZ::Vector3& GetTranslation() const;
+                void SetTranslation(const AZ::Vector3& translation);
+
                 const AZ::Vector3& GetRotation() const;
+                void SetRotation(const AZ::Vector3& translation);
+
                 const AZ::Vector3& GetScale() const;
+                void SetScale(const AZ::Vector3& scale);
 
             private:
                 AZ::Vector3 m_translation;
@@ -59,6 +64,8 @@ namespace AZ
                 AZ_CLASS_ALLOCATOR_DECL;
 
                 explicit TransformRowWidget(QWidget* parent = nullptr);
+
+                void SetEnableEdit(bool enableEdit);
 
                 void SetTransform(const AZ::Transform& transform);
                 void GetTransform(AZ::Transform& transform) const;

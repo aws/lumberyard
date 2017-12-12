@@ -8,8 +8,8 @@
 		<Tool Filename="rcc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>
 		<Tool Filename="link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>
 
-		<Tool Filename="orbis-clang" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
-		<Tool Filename="orbis-clang++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<Tool Filename="orbis-clang" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/> <!-- ACCEPTED_USE -->
+		<Tool Filename="orbis-clang++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/> <!-- ACCEPTED_USE -->
 
 		<Tool Filename="x86_64-linux-gnu-gcc" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 		<Tool Filename="x86_64-linux-gnu-g++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
@@ -17,11 +17,10 @@
 		<Tool Filename="arm-linux-androideabi-gcc" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 		<Tool Filename="arm-linux-androideabi-g++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 
-		<Tool Filename="clang" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
+		<!-- There is an issue with newer versions of clang that causes the slashes to be striped from file paths when being sent through IB.  Doesn't seem to happen with clang++ though -->
 		<Tool Filename="clang++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>
 
 		<Tool Filename="AzCodeGenerator" AllowRemote="true" AllowIntercept="false" TimeLimit="15"/>
-
-  </Tools>
+	</Tools>
 </Profile>
 

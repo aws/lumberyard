@@ -2,10 +2,10 @@
     "GemFormatVersion": 3,
     "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
     "Name": "CloudCanvasCommon",
-    "DisplayName": "Cloud Canvas Common [PREVIEW]",
+    "DisplayName": "Cloud Canvas Common",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Provides functionality used by other Cloud Canvas Gems.",
-    "Tags": ["AWS", "API", "Cloud", "Canvas", "CloudCanvas", "Connected"],
+    "Summary": "This Gem is automatically enabled when selecting any of the Cloud Gems. It provides basic shared functionalities such as AWS sdk initialization and client configuration.",
+    "Tags": ["AWS", "API", "CloudCanvas", "Cloud", "Connected"],
     "IconPath": "CloudCanvasCommon.png"
 }

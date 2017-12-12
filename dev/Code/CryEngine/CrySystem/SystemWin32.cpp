@@ -95,7 +95,6 @@ const char* g_szModuleGroups[][2] = {
     {"CryScriptSystem.dll", g_szGroupCore},
     {"CryNetwork.dll", g_szGroupCore},
     {"CryPhysics.dll", g_szGroupCore},
-    {"CryMovie.dll", g_szGroupCore},
     {"CryInput.dll", g_szGroupCore},
     {"CrySoundSystem.dll", g_szGroupCore},
 #ifdef WIN64
@@ -375,11 +374,6 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
             SIZER_COMPONENT_NAME(pSizer, "PlatformOS");
             m_pPlatformOS->GetMemoryUsage(pSizer);
         }
-    }
-
-    {
-        SIZER_COMPONENT_NAME(pSizer, "CryMovieSystem");
-        m_env.pMovieSystem->GetMemoryUsage(pSizer);
     }
 
     if (m_env.pCharacterManager)
@@ -1204,7 +1198,6 @@ static const char* GetLastSystemErrorMessage()
 
     if (dwError)
     {
-        //#ifdef _XBOX
         LPVOID lpMsgBuf = 0;
 
         if (FormatMessage(
@@ -1225,13 +1218,6 @@ static const char* GetLastSystemErrorMessage()
         {
             return 0;
         }
-
-        //#else
-
-        //sprintf(szBuffer, "Win32 ERROR: %i", dwError);
-        //OutputDebugString(szBuffer);
-
-        //#endif
 
         return szBuffer;
     }
@@ -1304,7 +1290,7 @@ void CSystem::FatalError(const char* format, ...)
 
     // Dump callstack.
 #endif
-#if defined (WIN32) || defined (DURANGO)
+#if defined (WIN32)
     //Triggers a fatal error, so the DebugCallstack can create the error.log and terminate the application
     IDebugCallStack::instance()->FatalError(szBuffer);
 #endif

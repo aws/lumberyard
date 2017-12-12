@@ -240,7 +240,7 @@ void CEnvironementProbeObject::GenerateCubemap()
 
     int cubemapres = 256;
     m_cubemap_resolution->Get(cubemapres);
-    if (cubemapres > 0 && CubemapUtils::GenCubemapWithObjectPathAndSize(fullFilename, this, (int)cubemapres, false))
+    if (cubemapres > 0 && CubemapUtils::GenCubemapWithObjectPathAndSize(fullFilename, this, (int)cubemapres, true))
     {
         IVariable* pVar = GetProperties()->FindVariable("texture_deferred_cubemap", true);
         if (!pVar)
@@ -293,7 +293,7 @@ void CEnvironementProbeTODObject::GenerateCubemap()
             pTODVar->Get(hour);
             gEnv->p3DEngine->GetTimeOfDay()->SetTime(hour, true);
 
-            if (cubemapres > 0 && CubemapUtils::GenCubemapWithObjectPathAndSize(fullFilenameTOD, this, (int)cubemapres, false))
+            if (cubemapres > 0 && CubemapUtils::GenCubemapWithObjectPathAndSize(fullFilenameTOD, this, (int)cubemapres, true))
             {
                 IVariable* pTexVar = GetProperties()->FindVariable(string().Format("TimeOfDay%d", i), true)->FindVariable(string().Format("texture_deferred_cubemap_tod%d", i), true);
                 if (!pTexVar)

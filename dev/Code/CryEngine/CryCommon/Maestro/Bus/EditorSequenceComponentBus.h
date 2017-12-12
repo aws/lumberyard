@@ -17,7 +17,7 @@
 
 #include "SequenceComponentBus.h"
 
-namespace LmbrCentral
+namespace Maestro
 {
     /*!
     * EditorSequenceComponentRequests EBus Interface
@@ -47,9 +47,6 @@ namespace LmbrCentral
         //! Fills in a list of all animatable component ids for the given entity.
         virtual void GetAnimatableComponents(AZStd::vector<AZ::ComponentId>& componentIds, AZ::EntityId id) = 0;
 
-        //! Call before the Director Component is saved from the Editor
-        virtual void OnBeforeSave() = 0;
-
         //! Return the EAnimValue type for the given address
         virtual EAnimValue GetValueType(const AZStd::string& animatableAddress) = 0;
     };
@@ -59,4 +56,4 @@ namespace LmbrCentral
 // defined in the bus header so we can refer to it in the Editor code
 #define EditorSequenceComponentTypeId "{C02DC0E2-D0F3-488B-B9EE-98E28077EC56}"
 
-} // namespace LmbrCentral
+} // namespace Maestro

@@ -34,6 +34,7 @@
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/UI/Slice/SlicePushWidget.hxx>
 
 #include <QtWidgets/QWidget>
@@ -565,6 +566,91 @@ void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& ent
 }
         
 //////////////////////////////////////////////////////////////////////////
+void UiSliceManager::DetachSliceEntities(const AzToolsFramework::EntityIdList& entities)
+{
+    if (!entities.empty())
+    {
+        QString title;
+        QString body;
+        if (entities.size() == 1)
+        {
+            title = QObject::tr("Detach Slice Entity");
+            body = QObject::tr("A detached entity will no longer receive pushes from its slice. The entity will be converted into a non-slice entity. This action cannot be undone.\n\n"
+                "Are you sure you want to detach the selected entity?");
+        }
+        else
+        {
+            title = QObject::tr("Detach Slice Entities");
+            body = QObject::tr("Detached entities no longer receive pushes from their slices. The entities will be converted into non-slice entities. This action cannot be undone.\n\n"
+                "Are you sure you want to detach the selected entities and their descendants?");
+        }
+
+        if (ConfirmDialog_Detach(title, body))
+        {
+            EBUS_EVENT(UiEditorEntityContextRequestBus, DetachSliceEntities, entities);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void UiSliceManager::DetachSliceInstances(const AzToolsFramework::EntityIdList& entities)
+{
+    if (!entities.empty())
+    {
+        // Get all slice instances for given entities
+        AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
+        for (const AZ::EntityId& entityId : entities)
+        {
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+            if (sliceAddress.first)
+            {
+                if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
+                {
+                    sliceInstances.push_back(sliceAddress);
+                }
+            }
+        }
+
+        QString title;
+        QString body;
+        if (sliceInstances.size() == 1)
+        {
+            title = QObject::tr("Detach Slice Instance");
+            body = QObject::tr("A detached instance will no longer receive pushes from its slice. All entities in the slice instance will be converted into non-slice entities. This action cannot be undone.\n\n"
+                "Are you sure you want to detach the selected instance?");
+        }
+        else
+        {
+            title = QObject::tr("Detach Slice Instances");
+            body = QObject::tr("Detached instances no longer receive pushes from their slices. All entities in the slice instances will be converted into non-slice entities. This action cannot be undone.\n\n"
+                "Are you sure you want to detach the selected instances?");
+        }
+
+        if (ConfirmDialog_Detach(title, body))
+        {
+            // Get all instantiated entities for the slice instances
+            AzToolsFramework::EntityIdList entitiesToDetach = entities;
+            for (const AZ::SliceComponent::SliceInstanceAddress& sliceInstance : sliceInstances)
+            {
+                const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.second->GetInstantiated();
+                if (instantiated)
+                {
+                    for (AZ::Entity* entityInSlice : instantiated->m_entities)
+                    {
+                        entitiesToDetach.push_back(entityInSlice->GetId());
+                    }
+                }
+            }
+
+            // Detach the entities
+            EBUS_EVENT(UiEditorEntityContextRequestBus, DetachSliceEntities, entitiesToDetach);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdList& liveEntities, AzToolsFramework::EntityIdList& orderedEntityList, AZ::Entity*& insertBefore)
 {
     // The low-level slice component code has no limit on there being a single root element
@@ -972,7 +1058,7 @@ bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
 
             if (targetFileExists && !removedTargetFile)
             {
-                QMessageBox::warning(nullptr,
+                QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
                     QApplication::tr("Failed to Save Slice"),
                     QApplication::tr("Unable to modify existing target slice file. Please make the slice writeable and try again: \"%1\".").arg(fullPath));
                 return false;
@@ -981,7 +1067,7 @@ bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
             AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), fullPath);
             if (!renameResult)
             {
-                QMessageBox::warning(nullptr,
+                QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
                     QApplication::tr("Failed to Save Slice"),
                     QApplication::tr("Unable to move temporary slice file to target location: \"%1\".").arg(fullPath));
                 fileIO->Remove(tempFilePath.c_str());
@@ -994,7 +1080,7 @@ bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
         }
         else
         {
-            QMessageBox::warning(nullptr,
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
                 QApplication::tr("Failed to Save Slice"),
                 QApplication::tr("Unable to save slice to a temporary file at location: \"%1\".").arg(tempFilePath.c_str()));
             return false;
@@ -1003,7 +1089,7 @@ bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
     }
     else
     {
-        QMessageBox::warning(nullptr,
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
             QApplication::tr("Failed to Save Slice"),
             QApplication::tr("Unable to create temporary slice file at location: \"%1\".").arg(tempFilePath.c_str()));
         return false;
@@ -1011,3 +1097,17 @@ bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
 
     return false;
 }
+
+//////////////////////////////////////////////////////////////////////////
+bool UiSliceManager::ConfirmDialog_Detach(const QString& title, const QString& text)
+{
+    QMessageBox questionBox(QApplication::activeWindow());
+    questionBox.setIcon(QMessageBox::Question);
+    questionBox.setWindowTitle(title);
+    questionBox.setText(text);
+    QAbstractButton* detachButton = questionBox.addButton(QObject::tr("Detach"), QMessageBox::YesRole);
+    questionBox.addButton(QObject::tr("Cancel"), QMessageBox::NoRole);
+    questionBox.exec();
+    return questionBox.clickedButton() == detachButton;
+}
+

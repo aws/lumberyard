@@ -66,7 +66,6 @@ AZStd::vector<AZStd::string> GetModuleNames()
         moduleNames.push_back("CryEntitySystem" MODULE_EXTENSION);
         moduleNames.push_back("CryFont" MODULE_EXTENSION);
         moduleNames.push_back("CryInput" MODULE_EXTENSION);
-        moduleNames.push_back("CryMovie" MODULE_EXTENSION);
         moduleNames.push_back("CryNetwork" MODULE_EXTENSION);
         moduleNames.push_back("CryPhysics" MODULE_EXTENSION);
         moduleNames.push_back("CryScriptSystem" MODULE_EXTENSION);
@@ -1769,7 +1768,6 @@ void CEngineStats::CollectProfileStatistics()
 
 /*static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index)
 {
-    //CryModuleGetMemoryInfo( &moduleInfo.memInfo, (ECryModule)index );
     CryModuleGetMemoryInfo(&moduleInfo.memInfo);
     moduleInfo.usedInModule = (int)(moduleInfo.memInfo.allocated - moduleInfo.memInfo.freed);
     return true;

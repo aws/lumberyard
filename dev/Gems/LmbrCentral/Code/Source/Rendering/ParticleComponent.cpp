@@ -72,24 +72,46 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
+           behaviorContext->Class<ParticleComponent>()
+                ->RequestBus("ParticleComponentRequestBus");
+
             behaviorContext->EBus<ParticleComponentRequestBus>("ParticleComponentRequestBus")
                 ->Event("SetVisibility", &ParticleComponentRequestBus::Events::SetVisibility)
+                ->Event("GetVisibility", &ParticleComponentRequestBus::Events::GetVisibility)
                 ->Event("Show", &ParticleComponentRequestBus::Events::Show)
                 ->Event("Hide", &ParticleComponentRequestBus::Events::Hide)
                 ->Event("Enable", &ParticleComponentRequestBus::Events::Enable)
+                ->Event("GetEnable", &ParticleComponentRequestBus::Events::GetEnable)
                 ->Event("EnablePreRoll", &ParticleComponentRequestBus::Events::EnablePreRoll)
                 ->Event("SetColorTint", &ParticleComponentRequestBus::Events::SetColorTint)
+                ->Event("GetColorTint", &ParticleComponentRequestBus::Events::GetColorTint)
                 ->Event("SetCountScale", &ParticleComponentRequestBus::Events::SetCountScale)
+                ->Event("GetCountScale", &ParticleComponentRequestBus::Events::GetCountScale)
                 ->Event("SetTimeScale", &ParticleComponentRequestBus::Events::SetTimeScale)
+                ->Event("GetTimeScale", &ParticleComponentRequestBus::Events::GetTimeScale)
                 ->Event("SetSpeedScale", &ParticleComponentRequestBus::Events::SetSpeedScale)
+                ->Event("GetSpeedScale", &ParticleComponentRequestBus::Events::GetSpeedScale)
                 ->Event("SetGlobalSizeScale", &ParticleComponentRequestBus::Events::SetGlobalSizeScale)
-                ->Event("SetParticleSizeScale", &ParticleComponentRequestBus::Events::SetParticleSizeScale)
+                ->Event("GetGlobalSizeScale", &ParticleComponentRequestBus::Events::GetGlobalSizeScale)
+                ->Event("SetParticleSizeScaleX", &ParticleComponentRequestBus::Events::SetParticleSizeScaleX)
+                ->Event("GetParticleSizeScaleX", &ParticleComponentRequestBus::Events::GetParticleSizeScaleX)
+                ->Event("SetParticleSizeScaleY", &ParticleComponentRequestBus::Events::SetParticleSizeScaleY)
+                ->Event("GetParticleSizeScaleY", &ParticleComponentRequestBus::Events::GetParticleSizeScaleY)
                 ->Event("SetLifetimeStrength", &ParticleComponentRequestBus::Events::SetLifetimeStrength)
                 ->Event("EnableAudio", &ParticleComponentRequestBus::Events::EnableAudio)
                 ->Event("SetRTPC", &ParticleComponentRequestBus::Events::SetRTPC)
                 ->Event("SetViewDistMultiplier", &ParticleComponentRequestBus::Events::SetViewDistMultiplier)
                 ->Event("SetUseVisArea", &ParticleComponentRequestBus::Events::SetUseVisArea)
                 ->Event("GetEmitterSettings", &ParticleComponentRequestBus::Events::GetEmitterSettings)
+                ->VirtualProperty("Visible", "GetVisibility", "SetVisibility")
+                ->VirtualProperty("Enable", "GetEnable", "Enable")
+                ->VirtualProperty("ColorTint", "GetColorTint", "SetColorTint")
+                ->VirtualProperty("CountScale", "GetCountScale", "SetCountScale")
+                ->VirtualProperty("TimeScale", "GetTimeScale", "SetTimeScale")
+                ->VirtualProperty("SpeedScale", "GetSpeedScale", "SetSpeedScale")
+                ->VirtualProperty("GlobalSizeScale", "GetGlobalSizeScale", "SetGlobalSizeScale")
+                ->VirtualProperty("ParticleSizeScaleX", "GetParticleSizeScaleX", "SetParticleSizeScaleX")
+                ->VirtualProperty("ParticleSizeScaleY", "GetParticleSizeScaleY", "SetParticleSizeScaleY")
                 ;
         }
     }
@@ -99,7 +121,7 @@ namespace LmbrCentral
     SpawnParams ParticleEmitterSettings::GetPropertiesAsSpawnParams() const
     {
         SpawnParams params;
-        params.colorTint = Vec3(m_color.GetX(), m_color.GetY(), m_color.GetZ());
+        params.colorTint = Vec3(m_color.GetR(), m_color.GetG(), m_color.GetB());
         params.bEnableAudio = m_enableAudio;
         params.bRegisterByBBox = m_registerByBBox;
         params.fCountScale = m_countScale;
@@ -122,7 +144,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<ParticleEmitterSettings>()->
-                Version(4, &VersionConverter)->
+                Version(5, &VersionConverter)->
                 
                 //Particle
                 Field("Visible", &ParticleEmitterSettings::m_visible)->
@@ -226,6 +248,24 @@ namespace LmbrCentral
             re &= classElement.RemoveElementByName(AZ_CRC("Rotation Random Angles", 0x1d5bf41f));
         }
 
+        // conversion from version 4:
+        if (classElement.GetVersion() <= 4)
+        {
+            //convert color tint's type from Vector3 to Color
+            int colorIndex = classElement.FindElement(AZ_CRC("Color", 0x665648e9));
+            if (colorIndex == -1)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& color = classElement.GetSubElement(colorIndex);
+            AZ::Vector3 colorVec;
+            color.GetData<AZ::Vector3>(colorVec);
+            AZ::Color colorVal(colorVec.GetX(), colorVec.GetY(), colorVec.GetZ(), AZ::VectorFloat(1.0f));
+            color.Convert<AZ::Color>(context);
+            color.SetData(context, colorVal);
+        }
+
         return re;
     }
 
@@ -290,7 +330,7 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
-    void ParticleComponent::SetColorTint(const AZ::Vector3& tint)
+    void ParticleComponent::SetColorTint(const AZ::Color& tint)
     {
         m_settings.m_color = tint;
         m_emitter.ApplyEmitterSetting(m_settings);
@@ -341,16 +381,25 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
-    void ParticleComponent::SetParticleSizeScale(float scaleX, float scaleY)
+    void ParticleComponent::SetParticleSizeScaleX(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scaleX || scaleX < 0
-            || ParticleEmitterSettings::MaxSizeScale < scaleY || scaleY < 0)
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
         {
             return;
         }
 
-        m_settings.m_particleSizeScaleX = scaleX;
-        m_settings.m_particleSizeScaleY = scaleY;
+        m_settings.m_particleSizeScaleX = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void ParticleComponent::SetParticleSizeScaleY(float scale)
+    {
+        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleY = scale;
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
@@ -410,6 +459,55 @@ namespace LmbrCentral
         return m_settings;
     }
 
+    bool ParticleComponent::GetVisibility()
+    {
+        return m_settings.m_visible;
+    }
+    
+    bool ParticleComponent::GetEnable()
+    {
+        return m_settings.m_enable;
+    }
+
+    AZ::Color ParticleComponent::GetColorTint()
+    {
+        return m_settings.m_color;
+    }
+
+    float ParticleComponent::GetCountScale()
+    {
+        return m_settings.m_countScale;
+    }
+
+    float ParticleComponent::GetTimeScale()
+    {
+        return m_settings.m_timeScale;
+    }
+
+    float ParticleComponent::GetSpeedScale()
+    {
+        return m_settings.m_speedScale;
+    }
+
+    float ParticleComponent::GetGlobalSizeScale()
+    {
+        return m_settings.m_sizeScale;
+    }
+
+    float ParticleComponent::GetParticleSizeScaleX()
+    {
+        return m_settings.m_particleSizeScaleX;
+    }
+
+    float ParticleComponent::GetParticleSizeScaleY()
+    {
+        return m_settings.m_particleSizeScaleY;
+    }
+
+    float ParticleComponent::GetPulsePeriod()
+    {
+        return m_settings.m_pulsePeriod;
+    }
     //end ParticleComponentRequestBus handlers
 
     IRenderNode* ParticleComponent::GetRenderNode()
@@ -542,6 +640,11 @@ namespace LmbrCentral
 
     void ParticleEmitter::ApplyRenderFlags(const ParticleEmitterSettings& settings)
     {
+        if (m_emitter == nullptr)
+        {
+            return;
+        }
+
         //apply render node flags
         unsigned int flag = m_emitter->GetRndFlags();
         if (settings.m_useVisAreas)

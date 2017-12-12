@@ -530,6 +530,12 @@ namespace AZStd
         }
 #endif // AZ_HAS_RVALUE_REFS
 
+#if defined(AZ_HAS_INITIALIZERS_LIST)
+        AZ_FORCE_INLINE void insert(std::initializer_list<value_type> list)
+        {
+            insert(list.begin(), list.end());
+        }
+#endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
         // START UNIQUE
         template<class Iterator>
@@ -667,7 +673,7 @@ namespace AZStd
         AZ_FORCE_INLINE size_type       count(const key_type& keyValue) const
         {   // count all elements that match keyValue
             pair_citer_citer pair = equal_range(keyValue);
-            size_type num = distance(pair.first, pair.second);
+            size_type num = AZStd::distance(pair.first, pair.second);
             return num;
         }
 

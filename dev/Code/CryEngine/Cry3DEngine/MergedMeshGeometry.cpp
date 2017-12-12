@@ -4504,7 +4504,7 @@ void SMMRMGroupHeader::CullInstances(CCamera* cam, Vec3* origin, Vec3* rotationO
     MMRM_PROFILE_FUNCTION(gEnv->pSystem, PROFILE_3DENGINE);
 
     SMMRMGroupHeader* header = this;
-    size_t numSamplesVisible = 0, j = 0;
+    size_t visibleSamples = 0, j = 0;
     const size_t nsamples = header->numSamples;
     SMMRMInstance* samples = header->instances;
     const Vec3 _origin(*origin);
@@ -4536,13 +4536,13 @@ void SMMRMGroupHeader::CullInstances(CCamera* cam, Vec3* origin, Vec3* rotationO
         ctx.samples = samples;
 
         // Perform the actual culling
-        numSamplesVisible += CullInstanceList(ctx, visChunks, _origin, _rotationOrigin, zRotation);
+        visibleSamples += CullInstanceList(ctx, visChunks, _origin, _rotationOrigin, zRotation);
         j += ctx.amount;
     } while (j < nsamples);
 
 
     // Blit the visible chunk data back to main memory
-    header->numSamplesVisible = numSamplesVisible;
+    header->numSamplesVisible = visibleSamples;
     memcpy(header->visibleChunks, visChunks, vsb);
 
 # if MMRM_USE_BOUNDS_CHECK
@@ -4839,7 +4839,7 @@ void CMergedMeshRenderNode::CalculateDensity()
     {
         SMMRMGroupHeader* header = &m_groups[i];
         SMMRMGeometry* geom = header->procGeom;
-        StatInstGroup& instGroup = GetObjManager()->m_lstStaticTypes[0][geom->srcGroupId];
+        StatInstGroup& instGroup = GetObjManager()->GetListStaticTypes()[0][geom->srcGroupId];
 
         // Hopefully correctly extract the surface type of the material
         _smart_ptr<IMaterial> material = NULL;

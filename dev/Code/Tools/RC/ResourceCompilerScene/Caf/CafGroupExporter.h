@@ -16,6 +16,7 @@
 #include <SceneAPI/SceneCore/Events/CallProcessorBinder.h>
 
 struct IConvertContext;
+class CInternalSkinningInfo;
 
 namespace AZ
 {
@@ -27,7 +28,7 @@ namespace AZ
             : public SceneAPI::Events::CallProcessorBinder
         {
         public:
-            explicit CafGroupExporter(IAssetWriter* writer, IConvertContext* convertContext);
+            CafGroupExporter(IAssetWriter* writer, IConvertContext* convertContext);
             ~CafGroupExporter() override = default;
 
             SceneAPI::Events::ProcessingResult ProcessContext(CafGroupExportContext& context) const;

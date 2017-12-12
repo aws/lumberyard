@@ -19,12 +19,9 @@
             "Include/Gestures/GestureRecognizerRotate.inl",
             "Include/Gestures/GestureRecognizerSwipe.h",
             "Include/Gestures/GestureRecognizerSwipe.inl",
-            "Include/Gestures/GesturesBus.h",
             "Include/Gestures/IGestureRecognizer.h"
         ],
         "Source": [
-            "Source/GestureManager.h",
-            "Source/GestureManager.cpp",
             "Source/GestureRecognizerClickOrTapFlowNode.cpp",
             "Source/GestureRecognizerDragFlowNode.cpp",
             "Source/GestureRecognizerHoldFlowNode.cpp",

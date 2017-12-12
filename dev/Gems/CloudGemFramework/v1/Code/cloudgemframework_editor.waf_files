@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Source": [
+            "Source/CloudGemFrameworkEditorModule.h",
+            "Source/CloudGemFrameworkEditorModule.cpp"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/CloudGemFrameworkEditorSystemComponent.cpp",
+            "Source/CloudGemFrameworkEditorSystemComponent.h"
+        ]
+    }
+}

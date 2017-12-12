@@ -69,7 +69,8 @@ namespace NCryOpenGL
     typedef _smart_ptr<SDisplayConnection> TWindowContext;
     typedef EGLContext TRenderingContext;
 #elif defined(DXGL_USE_SDL)
-    typedef SDL_Window* TWindowContext;
+    struct IWindowContext;
+    typedef AZStd::shared_ptr<IWindowContext> TWindowContext;
     typedef SDL_GLContext TRenderingContext;
 #elif defined(WIN32)
     typedef HDC TWindowContext;

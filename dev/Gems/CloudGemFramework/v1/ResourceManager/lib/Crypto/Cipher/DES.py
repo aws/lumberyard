@@ -43,7 +43,7 @@ As an example, encryption can be done as follows:
     >>> msg = iv + cipher.encrypt(plaintext)
 
 .. __: http://en.wikipedia.org/wiki/Data_Encryption_Standard
-.. _NIST: http://csrc.nist.gov/publications/fips/fips46-3/fips46-3.pdf
+.. _NIST: http://csrc.nist.gov/publications/fips/fips46-3/fips46-3.pdf # ACCEPTED_USE
 
 :undocumented: __revision__, __package__
 """

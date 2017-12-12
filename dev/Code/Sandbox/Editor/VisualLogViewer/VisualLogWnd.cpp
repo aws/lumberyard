@@ -73,10 +73,11 @@ const GUID& CVisualLogWnd::GetClassID()
 
 void CVisualLogWnd::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CVisualLogWnd>(GetIEditor(), "Visual Log Viewer", LyViewPane::CategoryOther, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CVisualLogWnd>("Visual Log Viewer", LyViewPane::CategoryOther, options);
 }
 
 

@@ -15,30 +15,30 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
 #include <AzCore/RTTI/Rtti.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Group
         {
-            class IEFXMotionGroup
-                : public IGroup
+            class IMotionGroup
+                : public AZ::SceneAPI::DataTypes::IGroup
             {
             public:
-                AZ_RTTI(IEFXMotionGroup, "{1CA400A8-2C3E-423D-B8A3-C457EF88E533}", IGroup);
+                AZ_RTTI(IMotionGroup, "{1CA400A8-2C3E-423D-B8A3-C457EF88E533}", AZ::SceneAPI::DataTypes::IGroup);
 
-                ~IEFXMotionGroup() override = default;
+                ~IMotionGroup() override = default;
 
                 // Ability to specify root bone can be useful if there are multiple skeletons 
                 // stored in an fbx file or if the user wants to override the root bone automatically
                 // selected by the code.
                 virtual const AZStd::string& GetSelectedRootBone() const = 0;
-                virtual uint32_t GetStartFrame() const = 0;
-                virtual uint32_t GetEndFrame() const = 0;
+                virtual AZ::u32 GetStartFrame() const = 0;
+                virtual AZ::u32 GetEndFrame() const = 0;
 
                 virtual void SetSelectedRootBone(const AZStd::string& selectedRootBone) = 0;
-                virtual void SetStartFrame(uint32_t frame) = 0;
-                virtual void SetEndFrame(uint32_t frame) = 0;
+                virtual void SetStartFrame(AZ::u32 frame) = 0;
+                virtual void SetEndFrame(AZ::u32 frame) = 0;
             };
         }
     }

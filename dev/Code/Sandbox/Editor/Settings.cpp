@@ -16,7 +16,6 @@
 
 #include "ISourceControl.h"
 
-#include <LmbrAWS/ILmbrAws.h>
 #include <sstream>
 #include <QGuiApplication>
 #include <QScreen>
@@ -164,8 +163,6 @@ SEditorSettings::SEditorSettings()
     consoleBackgroundColorTheme = ConsoleColorTheme::Light;
     bShowTimeInConsole = false;
     bLayerDoubleClicking = false;
-
-    useNewMenuLayout = true;
 
     enableQtDocking = false;
     enableSceneInspector = false;
@@ -444,7 +441,7 @@ void SEditorSettings::LoadValue(const char* sSection, const char* sKey, ESystemC
             GetIEditor()->GetSettingsManager()->LoadSetting(sSection, sKey, valueCheck);
         }
 
-        if (valueCheck >= CONFIG_CUSTOM && valueCheck < END_CONFIG_SPEC_ENUM)
+        if (valueCheck >= CONFIG_AUTO_SPEC && valueCheck < END_CONFIG_SPEC_ENUM)
         {
             value = (ESystemConfigSpec)valueCheck;
             SaveValue(sSection, sKey, value);
@@ -454,7 +451,7 @@ void SEditorSettings::LoadValue(const char* sSection, const char* sKey, ESystemC
     {
         const SettingsGroup sg(sSection);
         auto valuecheck = static_cast<ESystemConfigSpec>(s_editorSettings()->value(sKey, QVariant::fromValue<int>(value)).toInt());
-        if (valuecheck >= CONFIG_CUSTOM && valuecheck < END_CONFIG_SPEC_ENUM)
+        if (valuecheck >= CONFIG_AUTO_SPEC && valuecheck < END_CONFIG_SPEC_ENUM)
         {
             value = valuecheck;
 
@@ -512,9 +509,8 @@ void SEditorSettings::Save()
     SaveValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
     SaveValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
 
-    SaveValue("Settings", "UseNewMenuLayout", useNewMenuLayout);
-
     SaveValue("Settings", "EnableQtDocking", enableQtDocking);
+
     SaveValue("Settings", "EnableSceneInspector", enableSceneInspector);
     
     //////////////////////////////////////////////////////////////////////////
@@ -736,7 +732,6 @@ void SEditorSettings::Save()
     }
     */
 
-    SaveCloudSettings();
     s_editorSettings()->sync();
 }
 
@@ -799,9 +794,8 @@ void SEditorSettings::Load()
     LoadValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
     LoadValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
 
-    LoadValue("Settings", "UseNewMenuLayout", useNewMenuLayout);
-
     LoadValue("Settings", "EnableQtDocking", enableQtDocking);
+
     LoadValue("Settings", "EnableSceneInspector", enableSceneInspector);
     
     //////////////////////////////////////////////////////////////////////////
@@ -1072,7 +1066,7 @@ void SEditorSettings::PostInitApply()
 
     REGISTER_CVAR2_CB("ed_toolbarIconSize", &gui.nToolbarIconSize, gui.nToolbarIconSize, VF_NULL, "Override size of the toolbar icons 0-default, 16,32,...", ToolbarIconSizeChanged);
 
-    GetIEditor()->SetEditorConfigSpec(editorConfigSpec);
+    GetIEditor()->SetEditorConfigSpec(editorConfigSpec, GetISystem()->GetConfigPlatform());
     REGISTER_CVAR2("ed_backgroundUpdatePeriod", &backgroundUpdatePeriod, backgroundUpdatePeriod, 0, "Delay between frame updates (ms) when window is out of focus but not minimized. 0 = disable background update");
     REGISTER_CVAR2("ed_showErrorDialogOnLoad", &showErrorDialogOnLoad, showErrorDialogOnLoad, 0, "Show error dialog on level load");
     REGISTER_CVAR2_CB("ed_keepEditorActive", &keepEditorActive, 0, VF_NULL, "Keep the editor active, even if no focus is set", KeepEditorActiveChanged);
@@ -1140,53 +1134,6 @@ bool SEditorSettings::BrowseTerrainTexture(bool bIsSave)
         return true;
     }
     return false;
-}
-
-const char* SETTINGS_APPLICATION_NAME = "LmbrEditor";
-
-template< typename T >
-void ApplyCloudSetting(const ILmbrAWS::AwsCloudSettings& settings, const char* settingKey, T* valueDestination)
-{
-    ILmbrAWS::AwsCloudSettings::const_iterator settingsIter = settings.find(AZStd::string(settingKey));
-    if (settingsIter == settings.end())
-    {
-        return;
-    }
-
-    std::stringstream ss(settingsIter->second.c_str());
-
-    ss >> *valueDestination;
-}
-
-void SEditorSettings::LoadCloudSettings()
-{
-    if (gEnv && gEnv->pLmbrAWS != nullptr)
-    {
-        ILmbrAWS::AwsCloudSettings cloudSettings;
-        gEnv->pLmbrAWS->LoadCloudSettings(SETTINGS_APPLICATION_NAME, cloudSettings);
-
-        ApplyCloudSetting(cloudSettings, "Settings\\Metrics:EnableMetricsTracking", &sMetricsSettings.bEnableMetricsTracking);
-    }
-}
-
-template< typename T >
-void AddCloudSetting(ILmbrAWS::AwsCloudSettings& settings, const char* settingKey, const T* valueSource)
-{
-    std::stringstream ss;
-    ss << *valueSource;
-
-    settings[ AZStd::string(settingKey) ] = AZStd::string(ss.str().c_str());
-}
-
-void SEditorSettings::SaveCloudSettings()
-{
-    if (gEnv && gEnv->pLmbrAWS != nullptr)
-    {
-        ILmbrAWS::AwsCloudSettings cloudSettings;
-        AddCloudSetting(cloudSettings, "Settings\\Metrics:EnableMetricsTracking", &sMetricsSettings.bEnableMetricsTracking);
-
-        gEnv->pLmbrAWS->SaveCloudSettings(SETTINGS_APPLICATION_NAME, cloudSettings);
-    }
 }
 
 void EnableSourceControl(bool enable)

@@ -1,19 +1,24 @@
-﻿import { Component, ViewEncapsulation } from '@angular/core';
+﻿import { Component, ViewEncapsulation, ViewContainerRef } from '@angular/core';
 import { DefinitionService, UrlService } from 'app/shared/service/index';
 import { AwsService } from 'app/aws/aws.service';
+import { ToastsManager } from 'ng2-toastr';
 
-declare const toastr: any;
-declare const cgpBootstrap: any;
+declare const bootstrap: any;
 
 @Component({
     selector: 'cc-app',
-    template: '<template ngbModalContainer></template><router-outlet></router-outlet>',
+    template: '<router-outlet></router-outlet>',
     styleUrls: ['./styles/bootstrap/bootstrap.css', './styles/main.css'],
     encapsulation: ViewEncapsulation.None
 })
 export class AppComponent {
-    constructor(aws: AwsService, ds: DefinitionService, urlService: UrlService) {                
+    constructor(ds: DefinitionService, aws: AwsService, urlService: UrlService, private toastr: ToastsManager, vcr: ViewContainerRef ) {                
+        toastr.setRootViewContainerRef(vcr);
         urlService.parseLocationHref(location.href)
+        if (ds.isTest) {
+            localStorage.clear()
+        }
+
         if (ds.isProd)
             window.onbeforeunload = function (e) {
                 var e = e || window.event;
@@ -28,24 +33,7 @@ export class AppComponent {
                 return msg;
             };
                 
-        aws.init(cgpBootstrap.userPoolId, cgpBootstrap.clientId, cgpBootstrap.identityPoolId, cgpBootstrap.projectConfigBucketId, cgpBootstrap.region)
+        aws.init(bootstrap.userPoolId, bootstrap.clientId, bootstrap.identityPoolId, bootstrap.projectConfigBucketId, bootstrap.region, ds)
 
-        toastr.options = {
-            "closeButton": true,
-            "debug": false,
-            "newestOnTop": true,
-            "progressBar": true,
-            "positionClass": "toast-top-center",
-            "preventDuplicates": false,
-            "onclick": null,
-            "showDuration": "300",
-            "hideDuration": "1000",
-            "timeOut": "6000",
-            "extendedTimeOut": "1000",
-            "showEasing": "swing",
-            "hideEasing": "linear",
-            "showMethod": "fadeIn",
-            "hideMethod": "fadeOut"
-        }
     }
 }

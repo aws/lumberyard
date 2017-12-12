@@ -40,13 +40,17 @@ SGraphicsPipelineStateDescription::SGraphicsPipelineStateDescription(
         SRenderObjData* pOD = pObj->GetObjData();
         if (pOD && (pSkinningData = pOD->m_pSkinningData))
         {
-            if (pSkinningData->nHWSkinningFlags & eHWS_SkinnedLinear)
+            if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
             {
-                objectRuntimeMask |= (g_HWSR_MaskBit[HWSR_SKELETON_SSD_LINEAR]);
+                objectRuntimeMask |= (g_HWSR_MaskBit[HWSR_SKINNING_MATRIX]);
+            }
+            else if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_DQ_Linear)
+            {
+                objectRuntimeMask |= (g_HWSR_MaskBit[HWSR_SKINNING_DQ_LINEAR]);
             }
             else
             {
-                objectRuntimeMask |= (g_HWSR_MaskBit[HWSR_SKELETON_SSD]);
+                objectRuntimeMask |= (g_HWSR_MaskBit[HWSR_SKINNING_DUAL_QUAT]);
             }
         }
     }

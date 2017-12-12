@@ -31,8 +31,8 @@ enum ENavigationIDTag
 template <ENavigationIDTag T>
 struct TNavigationID
 {
-    explicit TNavigationID(uint32 id = 0)
-        : id(id) {}
+    explicit TNavigationID(uint32 _id = 0)
+        : id(_id) {}
 
     TNavigationID& operator=(const TNavigationID& other) { id = other.id; return *this; }
 

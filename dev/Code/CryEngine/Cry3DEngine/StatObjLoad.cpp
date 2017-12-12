@@ -19,7 +19,7 @@
 #include "StatObj.h"
 #include "IndexedMesh.h"
 #include "MatMan.h"
-
+#include "ObjMan.h"
 #include "CGF/CGFLoader.h"
 #include "CGF/CGFSaver.h"
 #include "CGF/ReadOnlyChunkFile.h"
@@ -70,7 +70,7 @@ void CStatObj::LoadLowLODs(bool bUseStreaming, unsigned long nLoadingFlags)
     }
 
     int nLoadedLods = 1;
-    CStatObj* loadedLods[MAX_STATOBJ_LODS_NUM];
+    IStatObj* loadedLods[MAX_STATOBJ_LODS_NUM];
     for (int nLodLevel = 0; nLodLevel < MAX_STATOBJ_LODS_NUM; nLodLevel++)
     {
         loadedLods[nLodLevel] = 0;
@@ -78,7 +78,7 @@ void CStatObj::LoadLowLODs(bool bUseStreaming, unsigned long nLoadingFlags)
 
     for (int nLodLevel = 1; nLodLevel < MAX_STATOBJ_LODS_NUM; nLodLevel++)
     {
-        CStatObj* pLodStatObj = LoadLowLODS_Load(nLodLevel, bUseStreaming, nLoadingFlags, NULL, 0);
+        IStatObj* pLodStatObj = LoadLowLODS_Load(nLodLevel, bUseStreaming, nLoadingFlags, NULL, 0);
         if (!pLodStatObj)
         {
             break;
@@ -149,7 +149,7 @@ bool CStatObj::LoadLowLODS_Prep(bool bUseStreaming, unsigned long nLoadingFlags)
     return true;
 }
 
-CStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned long nLoadingFlags, const void* pData, int nDataLen)
+IStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned long nLoadingFlags, const void* pData, int nDataLen)
 {
     const char* sFileExt = PathUtil::GetExt(m_szFileName);
 
@@ -168,25 +168,25 @@ CStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned
     cry_strcat(sLodFileName, ".");
     cry_strcat(sLodFileName, sFileExt);
 
-    CStatObj* pLodStatObj = m_pLODs ? (CStatObj*)m_pLODs[nLodLevel] : (CStatObj*)NULL;
+    IStatObj* pLodStatObj = m_pLODs ? (IStatObj*)m_pLODs[nLodLevel] : nullptr;
 
     // try to load
     bool bRes = false;
 
     string lowerFileName(sLodFileName);
-    pLodStatObj = stl::find_in_map(m_pObjManager->m_nameToObjectMap, CONST_TEMP_STRING(lowerFileName.MakeLower()), NULL);
+    pLodStatObj = stl::find_in_map(m_pObjManager->GetNameToObjectMap(), CONST_TEMP_STRING(lowerFileName.MakeLower()), NULL);
 
     if (pLodStatObj)
     {
-        pLodStatObj->m_pLod0 = this; // Must be here.
+        pLodStatObj->SetLodLevel0(this);
         bRes = true;
 
-        typedef std::set<CStatObj*> LoadedObjects;
-        LoadedObjects::iterator it = m_pObjManager->m_lstLoadedObjects.find(pLodStatObj);
-        if (it != m_pObjManager->m_lstLoadedObjects.end())
+        typedef std::set<IStatObj*> LoadedObjects;
+        LoadedObjects::iterator it = m_pObjManager->GetLoadedObjects().find(pLodStatObj);
+        if (it != m_pObjManager->GetLoadedObjects().end())
         {
-            m_pObjManager->m_lstLoadedObjects.erase(it);
-            m_pObjManager->m_nameToObjectMap.erase(CONST_TEMP_STRING(sLodFileName));
+            m_pObjManager->GetLoadedObjects().erase(it);
+            m_pObjManager->GetNameToObjectMap().erase(CONST_TEMP_STRING(sLodFileName));
         }
     }
     else if (pData || IsValidFile(sLodFileName))
@@ -194,12 +194,12 @@ CStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned
         if (!pLodStatObj)
         {
             pLodStatObj = new CStatObj();
-            pLodStatObj->m_pLod0 = this; // Must be here.
+            pLodStatObj->SetLodLevel0(this);
         }
 
         if (bUseStreaming && GetCVars()->e_StreamCgf)
         {
-            pLodStatObj->m_bCanUnload = true;
+            pLodStatObj->SetCanUnload(true);
         }
 
         bRes = pLodStatObj->LoadCGF(sLodFileName, true, nLoadingFlags, pData, nDataLen);
@@ -229,7 +229,7 @@ CStatObj* CStatObj::LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned
     return pLodStatObj;
 }
 
-void CStatObj::LoadLowLODS_Finalize(int nLoadedLods, CStatObj* loadedLods[MAX_STATOBJ_LODS_NUM])
+void CStatObj::LoadLowLODS_Finalize(int nLoadedLods, IStatObj* loadedLods[MAX_STATOBJ_LODS_NUM])
 {
     //////////////////////////////////////////////////////////////////////////
     // Put LODs into the sub objects.
@@ -246,13 +246,13 @@ void CStatObj::LoadLowLODS_Finalize(int nLoadedLods, CStatObj* loadedLods[MAX_ST
                 continue;
             }
 
-            CStatObj* pSubStatObj = (CStatObj*)pSubObject->pStatObj;
+            IStatObj* pSubStatObj = (CStatObj*)pSubObject->pStatObj;
 
             //          int nLoadedTrisCount = ((CStatObj*)pSubObject->pStatObj)->m_nLoadedTrisCount;
 
             for (int nLodLevel = 1; nLodLevel < nLoadedLods; nLodLevel++)
             {
-                if (loadedLods[nLodLevel] != 0 && loadedLods[nLodLevel]->m_nSubObjectMeshCount > 0)
+                if (loadedLods[nLodLevel] != 0 && loadedLods[nLodLevel]->GetSubObjectMeshCount() > 0)
                 {
                     SSubObject* pLodSubObject = loadedLods[nLodLevel]->FindSubObject(pSubObject->name);
                     if (pLodSubObject && pLodSubObject->pStatObj && pLodSubObject->nType == STATIC_SUB_OBJECT_MESH)
@@ -485,7 +485,7 @@ bool CStatObj::LoadStreamRenderMeshes(const char* filename, const void* pData, c
     // Merge sub-objects for the new lod.
     if (GetCVars()->e_StatObjMerge)
     {
-        CStatObj* pLod0 = (m_pLod0) ? m_pLod0 : this;
+        IStatObj* pLod0 = (m_pLod0) ? m_pLod0 : this;
         pLod0->TryMergeSubObjects(true);
     }
     //////////////////////////////////////////////////////////////////////////
@@ -773,7 +773,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
     if (bLod && m_pLod0)
     {
         // This is a log object, check if parent was merged or not.
-        bIsLod0Merged = m_pLod0->m_nSubObjectMeshCount == 0;
+        bIsLod0Merged = m_pLod0->GetSubObjectMeshCount() == 0;
     }
 
     if (pExportInfo->bMergeAllNodes || (m_nSubObjectMeshCount <= 1 && !bHasJoints && (!bLod || bIsLod0Merged)))

@@ -42,10 +42,15 @@ namespace AZ
 
             void ManifestWidget::BuildFromScene(const AZStd::shared_ptr<Containers::Scene>& scene)
             {
-                m_scene = scene;
-                
                 ui->m_tabs->clear();
                 m_pages.clear();
+                
+                m_scene = scene;
+                if (!scene)
+                {
+                    return;
+                }
+
                 BuildPages();
 
                 Containers::SceneManifest& manifest = scene->GetManifest();
@@ -182,7 +187,6 @@ namespace AZ
 
             void ManifestWidget::AddPage(const QString& category, ManifestWidgetPage* page)
             {
-                connect(page, &ManifestWidgetPage::PageUpdated, this, &ManifestWidget::ManifestUpdated);
                 m_pages.push_back(page);
                 ui->m_tabs->addTab(page, category);
             }

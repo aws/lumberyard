@@ -15,9 +15,12 @@
 #include "MaterialBrowserSearchFilters.h"
 #include "MaterialManager.h"
 
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Jobs/JobFunction.h>
+
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 
 #include <QPainter>
 
@@ -53,71 +56,35 @@ namespace
 
 AZ::Data::AssetId GetMaterialProductAssetIdFromAssetBrowserEntry(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry)
 {
-    AZ::Data::AssetId assetId;
-    if (assetEntry && (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Source || assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product))
+    using namespace AzToolsFramework::AssetBrowser;
+
+    if (assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source ||
+        assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product)
     {
-        // Get the product's assetId
-        if (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
+        AZStd::vector<const ProductAssetBrowserEntry*> products;
+        assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+
+        EBusFindAssetTypeByName materialAssetTypeResult("Material");
+        AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
+
+        for (const auto* product : products)
         {
-            const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = static_cast<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(assetEntry);
-            assetId = productAssetEntry->GetAssetId();
-        }
-        else
-        {
-            // When filtering for products, the source files still show up in the material browser hierarchy
-            // To make them interactive, get the product from the source entry
-            const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* sourceAssetEntry = static_cast<const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry*>(assetEntry);
-            // Ignore the source asset if it is not a material. It might be an FBX that produces materials, in which case the user should explicitly select the product material rather than the FBX to edit it.
-            // Also ignore the source asset if it has no children (there's nothing to edit), or has more than one child (there is not an individual material that can be assumed based on the source) 
-            if (sourceAssetEntry->GetPrimaryAssetType() == GetIEditor()->GetMaterialManager()->GetMaterialAssetType() && sourceAssetEntry->GetChildCount() == 1)
+            if (product->GetAssetType() == materialAssetTypeResult.GetAssetType())
             {
-                // When selecting a source asset in the material browser, get the id of the first (and only) child, and use that as the lookup value in the material record map
-                const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = static_cast<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(sourceAssetEntry->GetChild(0));
-                assetId = productAssetEntry->GetAssetId();
+                return product->GetAssetId();
             }
         }
     }
-    // The default will be an invalid assetId if no appropriate product assetId was found
-    return assetId;
-}
-
-
-AZStd::string GetFullSourcePathFromAssetBrowserEntry(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry)
-{
-    if (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
-    {
-        // Attempt to get the full source path from the relative path
-        // the fastest option is to just get it directly from the entry, but we can fallback on asking the AP if that doesn't work
-        AzToolsFramework::AssetBrowser::AssetBrowserEntry* parentEntry = assetEntry->GetParent();
-        if ((parentEntry) && (parentEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Source))
-        {
-            AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* sourceAssetEntry = azrtti_cast<AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry*>(parentEntry);
-            if (sourceAssetEntry)
-            {
-                return sourceAssetEntry->GetFullPath();
-            }
-        }
-
-        // Fall back on asking the AP
-        bool pathFound = false;
-        AZStd::string fullSourcePath = "";
-        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetFullSourcePathFromRelativeProductPath, assetEntry->GetRelativePath(), fullSourcePath);
-
-        if (pathFound)
-        {
-            return fullSourcePath;
-        }
-    }
-
-    // For non-product entries, or as a fall back if the two attempts at getting a product entry fail
-    return assetEntry->GetFullPath();
+    return AZ::Data::AssetId();
 }
 
 MaterialBrowserFilterModel::MaterialBrowserFilterModel(QObject* parent)
     : AzToolsFramework::AssetBrowser::AssetBrowserFilterModel(parent)
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     MaterialBrowserSourceControlBus::Handler::BusConnect();
-    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusConnect();
+    AssetBrowserModelNotificationsBus::Handler::BusConnect();
 
     m_imageList.push_back(QPixmap(":/MaterialBrowser/material_00.png"));
     m_imageList.push_back(QPixmap(":/MaterialBrowser/material_01.png"));
@@ -137,11 +104,10 @@ MaterialBrowserFilterModel::MaterialBrowserFilterModel(QObject* parent)
 
 
     // Create an asset type filter for materials
-    AzToolsFramework::AssetBrowser::AssetTypeFilter* assetTypeFilter = new AzToolsFramework::AssetBrowser::AssetTypeFilter();
-    assetTypeFilter->SetAssetType(GetIEditor()->GetMaterialManager()->GetMaterialAssetType());
-
-    assetTypeFilter->SetFilterPropagation(AzToolsFramework::AssetBrowser::AssetBrowserEntryFilter::PropagateDirection::Down); //this will make sure folders that contain materials are displayed
-    m_assetTypeFilter = AzToolsFramework::AssetBrowser::FilterConstType(assetTypeFilter);
+    AssetTypeFilter* assetTypeFilter = new AssetTypeFilter();
+    assetTypeFilter->SetAssetType("Material");
+    assetTypeFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down); //this will make sure folders that contain materials are displayed
+    m_assetTypeFilter = FilterConstType(assetTypeFilter);
 
     m_subMaterialSearchFilter = new SubMaterialSearchFilter(this);
 
@@ -158,31 +124,41 @@ MaterialBrowserFilterModel::~MaterialBrowserFilterModel()
     MaterialBrowserSourceControlBus::Handler::BusDisconnect();
 }
 
-void MaterialBrowserFilterModel::UpdateRecord(const QModelIndex &filterModelIndex)
+void MaterialBrowserFilterModel::UpdateRecord(const QModelIndex& filterModelIndex)
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     if (filterModelIndex.isValid())
     {
         QModelIndex modelIndex = mapToSource(filterModelIndex);
 
-        AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry = static_cast<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>(modelIndex.internalPointer());
+        AssetBrowserEntry* assetEntry = static_cast<AssetBrowserEntry*>(modelIndex.internalPointer());
 
-        if (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
+        if (assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source ||
+            assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product)
         {
-            AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = static_cast<AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(modelIndex.internalPointer());
+            AZStd::vector<const ProductAssetBrowserEntry*> products;
+            assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
 
-            MaterialBrowserRecordAssetBrowserData assetBrowserData;
-            assetBrowserData.assetId = productAssetEntry->GetAssetId();
-
-            assetBrowserData.relativeFilePath = assetEntry->GetRelativePath();
-            assetBrowserData.fullSourcePath = GetFullSourcePathFromAssetBrowserEntry(assetEntry);
-            assetBrowserData.modelIndex = modelIndex;
-            assetBrowserData.filterModelIndex = filterModelIndex;
-            UpdateRecord(assetBrowserData);
+            for (const auto* product : products)
+            {
+                if (!m_assetTypeFilter->Match(product))
+                {
+                    continue;
+                }
+                MaterialBrowserRecordAssetBrowserData assetBrowserData;
+                assetBrowserData.assetId = product->GetAssetId();
+                assetBrowserData.relativeFilePath = product->GetRelativePath();
+                assetBrowserData.fullSourcePath = product->GetFullPath();
+                assetBrowserData.modelIndex = modelIndex;
+                assetBrowserData.filterModelIndex = filterModelIndex;
+                UpdateRecord(assetBrowserData);
+            }
         }
     }
 }
 
-void MaterialBrowserFilterModel::UpdateRecord(const MaterialBrowserRecordAssetBrowserData &assetBrowserData)
+void MaterialBrowserFilterModel::UpdateRecord(const MaterialBrowserRecordAssetBrowserData& assetBrowserData)
 {
     CMaterialBrowserRecord record;
     record.SetAssetBrowserData(assetBrowserData);
@@ -190,7 +166,7 @@ void MaterialBrowserFilterModel::UpdateRecord(const MaterialBrowserRecordAssetBr
     SetRecord(record);
 }
 
-void MaterialBrowserFilterModel::UpdateSourceControlFileInfoCallback(const AZ::Data::AssetId &assetId, const AzToolsFramework::SourceControlFileInfo& info)
+void MaterialBrowserFilterModel::UpdateSourceControlFileInfoCallback(const AZ::Data::AssetId& assetId, const AzToolsFramework::SourceControlFileInfo& info)
 {
     CMaterialBrowserRecord record;
     bool found = m_materialRecordMap.find(assetId, &record);
@@ -209,7 +185,7 @@ void MaterialBrowserFilterModel::UpdateSourceControlFileInfoCallback(const AZ::D
     }
 }
 
-void MaterialBrowserFilterModel::UpdateSourceControlLastCheckedTime(const AZ::Data::AssetId &assetId, const QDateTime &dateTime)
+void MaterialBrowserFilterModel::UpdateSourceControlLastCheckedTime(const AZ::Data::AssetId& assetId, const QDateTime& dateTime)
 {
     CMaterialBrowserRecord record;
     bool found = m_materialRecordMap.find(assetId, &record);
@@ -279,11 +255,11 @@ QVariant MaterialBrowserFilterModel::data(const QModelIndex& index, int role /* 
                                     // Async call to get the source control status
                                     bool sourceControlOperationComplete = false;
                                     AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::GetFileInfo, record.GetFullSourcePath().c_str(), [this, assetId](bool succeeded, const AzToolsFramework::SourceControlFileInfo& fileInfo)
-                                    {
-                                        // When the source control operation completes, broadcast an event for the filter model to update the underlying record
-                                        MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlFileInfoCallback, assetId, fileInfo);
-                                    }
-                                    );
+                                        {
+                                            // When the source control operation completes, broadcast an event for the filter model to update the underlying record
+                                            MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlFileInfoCallback, assetId, fileInfo);
+                                        }
+                                        );
                                     // Update the last checked time now instead of waiting for the result so that additional source control requests are not made in the meantime
                                     MaterialBrowserSourceControlBus::Broadcast(&MaterialBrowserSourceControlEvents::UpdateSourceControlLastCheckedTime, assetId, QDateTime::currentDateTime());
                                 }
@@ -303,7 +279,6 @@ QVariant MaterialBrowserFilterModel::data(const QModelIndex& index, int role /* 
                             {
                                 icon = ITEM_IMAGE_OVERLAY_READONLY;
                             }
-
                         }
                         // If there is a source control overlay, draw it on top of the material icon
                         if (icon != -1)
@@ -327,32 +302,41 @@ void MaterialBrowserFilterModel::GetRelativeFilePaths(AZStd::vector<MaterialBrow
     GetRelativeFilePathsRecursive(files, this);
 }
 
-void MaterialBrowserFilterModel::GetRelativeFilePathsRecursive(AZStd::vector<MaterialBrowserRecordAssetBrowserData>& files, const MaterialBrowserFilterModel* model, const QModelIndex &parent /*= QModelIndex()*/) const
+void MaterialBrowserFilterModel::GetRelativeFilePathsRecursive(AZStd::vector<MaterialBrowserRecordAssetBrowserData>& files,
+    const MaterialBrowserFilterModel* model, const QModelIndex& parent) const
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     for (int r = 0; r < model->rowCount(parent); ++r)
     {
         QModelIndex index = model->index(r, 0, parent);
-
         QModelIndex modelIndex = model->mapToSource(index);
-        AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry = static_cast<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>(modelIndex.internalPointer());
-
-        if (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
-        {
-            MaterialBrowserRecordAssetBrowserData item;
-
-            AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = static_cast<AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(modelIndex.internalPointer());
-            item.assetId = productAssetEntry->GetAssetId();
-
-            item.fullSourcePath = GetFullSourcePathFromAssetBrowserEntry(assetEntry);
-            item.relativeFilePath = assetEntry->GetRelativePath();
-            item.modelIndex = modelIndex;
-            item.filterModelIndex = index;
-            files.push_back(item);
-        }
 
         if (model->hasChildren(index))
         {
             GetRelativeFilePathsRecursive(files, model, index);
+        }
+        else
+        {
+            AssetBrowserEntry* assetEntry = static_cast<AssetBrowserEntry*>(modelIndex.internalPointer());
+
+            AZStd::vector<const ProductAssetBrowserEntry*> products;
+            assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+
+            for (const auto* product : products)
+            {
+                if (!m_assetTypeFilter->Match(product))
+                {
+                    continue;
+                }
+                MaterialBrowserRecordAssetBrowserData item;
+                item.assetId = product->GetAssetId();
+                item.fullSourcePath = product->GetFullPath();
+                item.relativeFilePath = product->GetRelativePath();
+                item.modelIndex = modelIndex;
+                item.filterModelIndex = index;
+                files.push_back(item);
+            }
         }
     }
 }
@@ -368,7 +352,7 @@ QModelIndex MaterialBrowserFilterModel::GetIndexFromMaterial(_smart_ptr<CMateria
     return QModelIndex();
 }
 
-QModelIndex MaterialBrowserFilterModel::GetFilterModelIndex(const AZ::Data::AssetId &assetId) const
+QModelIndex MaterialBrowserFilterModel::GetFilterModelIndex(const AZ::Data::AssetId& assetId) const
 {
     QModelIndex filterModelIndex;
     if (TryGetFilterModelIndexRecursive(filterModelIndex, assetId, this))
@@ -379,8 +363,11 @@ QModelIndex MaterialBrowserFilterModel::GetFilterModelIndex(const AZ::Data::Asse
     return QModelIndex();
 }
 
-bool MaterialBrowserFilterModel::TryGetFilterModelIndexRecursive(QModelIndex &filterModelIndex, const AZ::Data::AssetId &assetId, const MaterialBrowserFilterModel* model, const QModelIndex &parent /*= QModelIndex()*/) const
+bool MaterialBrowserFilterModel::TryGetFilterModelIndexRecursive(QModelIndex& filterModelIndex,
+    const AZ::Data::AssetId& assetId, const MaterialBrowserFilterModel* model, const QModelIndex& parent) const
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     // Walk through the filter model to find the product entry with the corresponding assetId
     for (int r = 0; r < model->rowCount(parent); ++r)
     {
@@ -388,20 +375,24 @@ bool MaterialBrowserFilterModel::TryGetFilterModelIndexRecursive(QModelIndex &fi
         filterModelIndex = model->index(r, 0, parent);
 
         QModelIndex modelIndex = model->mapToSource(filterModelIndex);
-        AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry = static_cast<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>(modelIndex.internalPointer());
+        AssetBrowserEntry* assetEntry = static_cast<AssetBrowserEntry*>(modelIndex.internalPointer());
 
         // Check to see if the current entry is the one we're looking for
-        if (assetEntry->GetEntryType() == AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
+        if (assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source ||
+            assetEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product)
         {
-            AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = static_cast<AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(modelIndex.internalPointer());
-            if (assetId == productAssetEntry->GetAssetId())
+            AZStd::vector<const ProductAssetBrowserEntry*> products;
+            assetEntry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+
+            for (const auto* product : products)
             {
-                return true;
+                if (assetId == product->GetAssetId())
+                {
+                    return true;
+                }
             }
         }
-
-        // If not, recursively search through the children of the current entry
-        if (model->hasChildren(filterModelIndex))
+        else if (model->hasChildren(filterModelIndex))
         {
             if (TryGetFilterModelIndexRecursive(filterModelIndex, assetId, model, filterModelIndex))
             {
@@ -420,20 +411,19 @@ void MaterialBrowserFilterModel::EntryAdded(const AzToolsFramework::AssetBrowser
     {
         // Create a job to add/update the entry in the underlying map
         AZ::Job* updateEntryJob = AZ::CreateJobFunction([this, entry]()
-        {
-            MaterialBrowserRecordAssetBrowserData assetBrowserData;
-            assetBrowserData.assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
+                {
+                    MaterialBrowserRecordAssetBrowserData assetBrowserData;
+                    assetBrowserData.assetId = GetMaterialProductAssetIdFromAssetBrowserEntry(entry);
 
-            assetBrowserData.relativeFilePath = entry->GetRelativePath();
-            assetBrowserData.fullSourcePath = GetFullSourcePathFromAssetBrowserEntry(entry);
-            assetBrowserData.filterModelIndex = GetFilterModelIndex(assetBrowserData.assetId);
+                    assetBrowserData.relativeFilePath = entry->GetRelativePath();
+                    assetBrowserData.fullSourcePath = entry->GetFullPath();
+                    assetBrowserData.filterModelIndex = GetFilterModelIndex(assetBrowserData.assetId);
 
-            CMaterialBrowserRecord record;
-            record.SetAssetBrowserData(assetBrowserData);
-            record.m_material = GetIEditor()->GetMaterialManager()->LoadMaterialWithFullSourcePath(record.GetRelativeFilePath().c_str(), record.GetFullSourcePath().c_str());
-            SetRecord(record);
-
-        }, true, m_jobContext);
+                    CMaterialBrowserRecord record;
+                    record.SetAssetBrowserData(assetBrowserData);
+                    record.m_material = GetIEditor()->GetMaterialManager()->LoadMaterialWithFullSourcePath(record.GetRelativeFilePath().c_str(), record.GetFullSourcePath().c_str());
+                    SetRecord(record);
+                }, true, m_jobContext);
 
         // Start the job immediately
         AZ::Job* currentJob = m_jobContext->GetJobManager().GetCurrentJob();
@@ -485,7 +475,7 @@ bool MaterialBrowserFilterModel::TryGetRecordFromMaterial(_smart_ptr<CMaterial> 
     return false;
 }
 
-bool MaterialBrowserFilterModel::TryGetRecordFromAssetId(const AZ::Data::AssetId &assetId, CMaterialBrowserRecord& record) const
+bool MaterialBrowserFilterModel::TryGetRecordFromAssetId(const AZ::Data::AssetId& assetId, CMaterialBrowserRecord& record) const
 {
     bool recordFound = m_materialRecordMap.find(assetId, &record);
     return recordFound;
@@ -494,27 +484,29 @@ bool MaterialBrowserFilterModel::TryGetRecordFromAssetId(const AZ::Data::AssetId
 void MaterialBrowserFilterModel::SetRecord(const CMaterialBrowserRecord& record)
 {
     m_materialRecordMap.erase(record.GetAssetId());
-    m_materialRecordMap.insert(AZStd::pair<AZ::Data::AssetId, CMaterialBrowserRecord>(record.GetAssetId(), record));    
+    m_materialRecordMap.insert({ record.GetAssetId(), record });
 
-    QueueDataChangedEvent(record.GetFilterModelIndex());    
+    QueueDataChangedEvent(record.GetFilterModelIndex());
 }
 
 void MaterialBrowserFilterModel::SetSearchFilter(const AzToolsFramework::AssetBrowser::SearchWidget* searchWidget)
 {
+    using namespace AzToolsFramework::AssetBrowser;
+
     m_searchWidget = searchWidget;
 
     // Create a search filter where either a standard search OR a search for a sub-material name returns a match
-    AzToolsFramework::AssetBrowser::CompositeFilter* compositeSearchFilter = new AzToolsFramework::AssetBrowser::CompositeFilter(AzToolsFramework::AssetBrowser::CompositeFilter::LogicOperatorType::OR);
+    CompositeFilter* compositeSearchFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::OR);
     compositeSearchFilter->AddFilter(m_searchWidget->GetFilter());
-    compositeSearchFilter->AddFilter(AzToolsFramework::AssetBrowser::FilterConstType(m_subMaterialSearchFilter));
+    compositeSearchFilter->AddFilter(FilterConstType(m_subMaterialSearchFilter));
 
     // Create a composite filter where a match must be a material AND match one of the searches
-    AzToolsFramework::AssetBrowser::CompositeFilter* isMaterialAndMatchesSearchFilter = new AzToolsFramework::AssetBrowser::CompositeFilter(AzToolsFramework::AssetBrowser::CompositeFilter::LogicOperatorType::AND);
+    CompositeFilter* isMaterialAndMatchesSearchFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::AND);
     isMaterialAndMatchesSearchFilter->AddFilter(m_assetTypeFilter);
-    isMaterialAndMatchesSearchFilter->AddFilter(AzToolsFramework::AssetBrowser::FilterConstType(compositeSearchFilter));
-
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(compositeSearchFilter));
+    isMaterialAndMatchesSearchFilter->AddFilter(FilterConstType(new ProductsFilter));
     // Set the filter for the MaterialBrowserFilterModel
-    SetFilter(AzToolsFramework::AssetBrowser::FilterConstType(isMaterialAndMatchesSearchFilter));
+    SetFilter(FilterConstType(isMaterialAndMatchesSearchFilter));
 }
 
 void MaterialBrowserFilterModel::SearchFilterUpdated()
@@ -523,21 +515,20 @@ void MaterialBrowserFilterModel::SearchFilterUpdated()
     filterUpdatedSlot();
 }
 
-void MaterialBrowserFilterModel::QueueDataChangedEvent(const QPersistentModelIndex &filterModelIndex)
+void MaterialBrowserFilterModel::QueueDataChangedEvent(const QPersistentModelIndex& filterModelIndex)
 {
     // Queue a data changed event to be executed on the main thread
     AZStd::function<void()> emitDataChanged =
         [this, filterModelIndex]()
-    {
-        if (filterModelIndex.isValid())
         {
-            Q_EMIT dataChanged(filterModelIndex, filterModelIndex);
-        }
-    };
+            if (filterModelIndex.isValid())
+            {
+                Q_EMIT dataChanged(filterModelIndex, filterModelIndex);
+            }
+        };
 
     AZ::TickBus::QueueFunction(emitDataChanged);
 }
-
 
 void MaterialBrowserFilterModel::InitializeRecordUpdateJob()
 {

@@ -12,10 +12,11 @@
 
 #pragma once
 
-#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
+#include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 
 namespace AZ
 {
@@ -30,10 +31,11 @@ namespace AZ
         {
             class LodRule;
 
-            class LodRuleBehavior 
+            class LodRuleBehavior
                 : public SceneCore::BehaviorComponent
                 , public Events::ManifestMetaInfoBus::Handler
                 , public Events::AssetImportRequestBus::Handler
+                , public Events::GraphMetaInfoBus::Handler
             {
             public:
                 AZ_COMPONENT(LodRuleBehavior, "{D2E19864-9A4B-41FD-8ACC-DA6756728CB3}", SceneCore::BehaviorComponent);
@@ -47,6 +49,8 @@ namespace AZ
                 void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target) override;
                 Events::ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester) override;
+
+                void GetAllVirtualTypes(AZStd::set<Crc32>& types) override;
 
             private:
                 size_t SelectLodMeshes(const Containers::Scene& scene, DataTypes::ISceneNodeSelectionList& selection, size_t lodLevel) const;

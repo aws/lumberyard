@@ -2,13 +2,27 @@
 
 // Moment.js for dates.  Angular 2 datepipe is not supported by IE or Safari
 declare var moment: any;
+declare var System: any;
 
 export class DateTimeUtil {
     public static toObjDate(obj: any) {
-        let time = {
-           hour: obj.time.hour,
-           minute: obj.time.minute
-        }
+        let time = null
+
+        if (this.isNotNullOrUndefined(obj.time)
+            && this.isNotNullOrUndefined(obj.time.hour)
+            && this.isNotNullOrUndefined(obj.time.minute)
+            && this.isNotNullOrUndefined(obj.date)
+            && this.isNotNullOrUndefined(obj.date.month)
+            && this.isNotNullOrUndefined(obj.date.year)
+            && this.isNotNullOrUndefined(obj.date.day)
+        ){
+            time = {
+                hour: obj.time.hour,
+                minute: obj.time.minute
+            }
+        }else{
+            return undefined            
+        }        
         
         return new Date(obj.date.year, obj.date.month - 1, obj.date.day, time.hour, time.minute, null);
     }
@@ -35,5 +49,9 @@ export class DateTimeUtil {
     public static fromEpoch(timestamp: number) {     
         var d = new Date(timestamp * 1000);        
         return d;    
+    }
+
+    public static isNotNullOrUndefined(obj: any): boolean {
+        return !(obj === undefined || obj === null)
     }
 }

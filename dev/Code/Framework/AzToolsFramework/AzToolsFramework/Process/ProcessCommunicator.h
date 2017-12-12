@@ -25,11 +25,34 @@
 
 namespace AzToolsFramework
 {
+    class ProcessOutput
+    {
+    public:
+        AZStd::string outputResult;
+        AZStd::string errorResult;
+
+        void Clear();
+        bool HasOutput() const;
+        bool HasError() const;
+    };
+
     class ProcessCommunicator
     {
     public:
+
+        struct OutputStatus
+        {
+            bool outputDeviceReady = false;
+            bool errorsDeviceReady = false;
+            bool shouldReadOutput = false;
+            bool shouldReadErrors = false;
+        };
+
+        ProcessCommunicator() = default;
+        virtual ~ProcessCommunicator() = default;
+
         // Check if communicator is in a valid state
-        virtual bool IsValid() = 0;
+        virtual bool IsValid() const = 0;
 
         // Read error data into a given buffer size (returns amount of data read)
         // Blocking call (until child process writes data)
@@ -59,22 +82,31 @@ namespace AzToolsFramework
         // Blocking call (until child process writes output)
         AZ::u32 BlockUntilOutputAvailable(AZStd::string& readBuffer);
 
+        // Reads into process output until the communicator's output handles are no longer valid
+        void ReadIntoProcessOutput(ProcessOutput& processOutput);
 
     protected:
-        ProcessCommunicator() = default;
-        virtual ~ProcessCommunicator() = default;
+        AZ_DISABLE_COPY(ProcessCommunicator);
+        
+        // Waits for output or error to be ready for reading
+        virtual void WaitForReadyOutputs(OutputStatus& outputStatus) const = 0;
 
-        ProcessCommunicator(const ProcessCommunicator&) = delete;
-        ProcessCommunicator& operator= (const ProcessCommunicator&) = delete;
+        void ReadFromOutputs(ProcessOutput& processOutput,
+            OutputStatus& status, char* buffer, AZ::u32 bufferSize);
 
-        friend class ProcessWatcher;
+    private:
+        static const size_t s_readBufferSize = 16 * 1024;
     };
 
     class ProcessCommunicatorForChildProcess
     {
     public:
+
+        ProcessCommunicatorForChildProcess() = default;
+        virtual ~ProcessCommunicatorForChildProcess() = default;
+
         // Check if communicator is in a valid state
-        virtual bool IsValid() = 0;
+        virtual bool IsValid() const = 0;
 
         // Write error data to parent process (returns amount of data sent)
         // Blocking call (until parent process reads data)
@@ -97,13 +129,7 @@ namespace AzToolsFramework
         AZ::u32 BlockUntilInputAvailable(AZStd::string& readBuffer);
 
     protected:
-        ProcessCommunicatorForChildProcess() = default;
-        virtual ~ProcessCommunicatorForChildProcess() = default;
-
-        ProcessCommunicatorForChildProcess(const ProcessCommunicatorForChildProcess&) = delete;
-        ProcessCommunicatorForChildProcess& operator= (const ProcessCommunicatorForChildProcess&) = delete;
-
-        friend class ProcessWatcher;
+        AZ_DISABLE_COPY(ProcessCommunicatorForChildProcess);
     };
 
     using StdProcessCommunicatorHandle = AZStd::unique_ptr<CommunicatorHandleImpl>;
@@ -142,7 +168,7 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::ProcessCommunicator overrides
-        bool IsValid() override;
+        bool IsValid() const override;
         AZ::u32 ReadError(void* readBuffer, AZ::u32 bufferSize) override;
         AZ::u32 PeekError() override;
         AZ::u32 ReadOutput(void* readBuffer, AZ::u32 bufferSize) override;
@@ -158,6 +184,11 @@ namespace AzToolsFramework
     protected:
         void CreateHandles();
         void CloseAllHandles();
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzToolsFramework::ProcessCommunicator overrides
+        void WaitForReadyOutputs(OutputStatus& outputStatus) const override;
+        //////////////////////////////////////////////////////////////////////////
 
         AZStd::unique_ptr<CommunicatorHandleImpl> m_stdInWrite;
         AZStd::unique_ptr<CommunicatorHandleImpl> m_stdOutRead;
@@ -182,7 +213,7 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::ProcessCommunicatorForChildProcess overrides
-        bool IsValid() override;
+        bool IsValid() const override;
         AZ::u32 WriteError(const void* writeBuffer, AZ::u32 bytesToWrite) override;
         AZ::u32 WriteOutput(const void* writeBuffer, AZ::u32 bytesToWrite) override;
         AZ::u32 PeekInput() override;

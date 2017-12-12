@@ -12,15 +12,12 @@
 #include "stdafx.h"
 #include "EditorUI_QTAPI.h"
 
-void EDITOR_QT_UI_API InitializeEditorUIQTISystem(ISystem* pSystem)
+void EDITOR_QT_UI_API InitializeEditorUIQTISystem(AZ::EnvironmentInstance azEnv)
 {
-    if (pSystem) 
-    {
-        AZ::Environment::Attach(pSystem->GetGlobalEnvironment()->pSharedEnvironment);
-    }
+    AZ::Environment::Attach(azEnv);
 }
 
-void EDITOR_QT_UI_API UninitializeEditorUIQTISystem(ISystem* pSystem)
+void EDITOR_QT_UI_API UninitializeEditorUIQTISystem()
 {
     AZ::Environment::Detach();
 }

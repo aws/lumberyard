@@ -14,7 +14,7 @@ export class SupportComponent {
     public window: any;
 
     public constructor(aws: AwsService, api: ApiService) {
-        this.projectName = aws.context.project.name;
+        this.projectName = aws.context.name;
         this.window = window;
     }
 }

@@ -575,6 +575,8 @@ void QRollupCtrl::showEvent(QShowEvent* ev)
     {
         updateTabs();
     }
+    IEditor* pEditor = GetIEditor();
+    pEditor->SetEditMode(EEditMode::eEditModeSelect);
     QFrame::showEvent(ev);
 }
 

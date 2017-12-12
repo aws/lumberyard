@@ -72,11 +72,24 @@ bool CDecalObjectTool::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, ui
 //////////////////////////////////////////////////////////////////////////
 bool CDecalObjectTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
-    if (m_pDecalObj)
+    if (!m_pDecalObj)
     {
-        m_pDecalObj->MouseCallbackImpl(view, event, point, flags);
+        return true;
     }
-    return true;
+
+    if (m_pDecalObj->MouseCallbackImpl(view, event, point, flags))
+    {
+        return true;
+    }
+
+    if (event == eMouseLDown)
+    {
+        Abort();
+        GetIEditor()->ClearSelection();
+        return true;
+    }
+
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////

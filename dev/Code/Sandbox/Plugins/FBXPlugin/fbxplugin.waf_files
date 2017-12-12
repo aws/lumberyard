@@ -1,18 +1,18 @@
 {
-    "none":
+    "none" :
     {
-        "Root":
+        "Root" :
         [
             "FBXExporter.cpp",
             "FBXExporter.h",
             "FBXPlugin.cpp",
             "FBXPlugin.h",
-			"FBXPlugin.rc",
+            "FBXPlugin.rc",
             "FBXSettingsDlg.cpp",
             "FBXSettingsDlg.h",
             "FBXSettingsDlg.ui",
             "main.cpp",
-			"resource.h",
+            "resource.h",
             "StdAfx.cpp",
             "StdAfx.h"
         ]

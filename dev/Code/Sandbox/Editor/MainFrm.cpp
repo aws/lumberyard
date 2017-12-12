@@ -69,13 +69,6 @@ IMPLEMENT_DYNCREATE(CMainFrame, CXTPFrameWnd)
 BEGIN_MESSAGE_MAP(CMainFrame, CXTPFrameWnd)
 ON_WM_CREATE()
 
-ON_COMMAND_RANGE(ID_TOOL_FIRST, ID_TOOL_LAST, OnExecuteTool)
-ON_UPDATE_COMMAND_UI_RANGE(ID_TOOL_FIRST, ID_TOOL_LAST, OnUpdateTool)
-ON_COMMAND_RANGE(ID_TOOL_SHELVE_FIRST, ID_TOOL_SHELVE_LAST, OnExecuteToolShelve)
-ON_UPDATE_COMMAND_UI_RANGE(ID_TOOL_SHELVE_FIRST, ID_TOOL_SHELVE_LAST, OnUpdateTool)
-
-ON_COMMAND_RANGE(CEditorCommandManager::CUSTOM_COMMAND_ID_FIRST, CEditorCommandManager::CUSTOM_COMMAND_ID_LAST, OnCustomUICommand)
-
 ON_WM_SIZE()
 ON_WM_GETMINMAXINFO()
 ON_WM_COPYDATA()
@@ -348,14 +341,6 @@ CViewPaneManager* CMainFrame::GetViewPaneManager()
     return m_viewPaneManager;
 }
 
-void CMainFrame::OnUpdateTool(CCmdUI* pCmdUI)
-{
-    if (pCmdUI)
-    {
-        pCmdUI->Enable(true);
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 {
@@ -529,17 +514,6 @@ void CMainFrame::UpdateToolsMenu()
 {
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CMainFrame::OnExecuteTool(UINT nID)
-{
-    GetIEditor()->GetToolBoxManager()->ExecuteMacro(nID - ID_TOOL_FIRST, true);
-}
-
-void CMainFrame::OnExecuteToolShelve(UINT nID)
-{
-    GetIEditor()->GetToolBoxManager()->ExecuteMacro(nID - ID_TOOL_SHELVE_FIRST, false);
-}
-
 ////////////////////////////////////////////////////////////////////////////
 ////implementation of the callback for removing recently used files
 //void CMainFrame::OnFileMRURemove( UINT nID )
@@ -711,10 +685,3 @@ void CMainFrame::ResetAutoSaveTimers(bool bForceInit)
         }
     }
 }
-
-//////////////////////////////////////////////////////////////////////////
-void CMainFrame::OnCustomUICommand(UINT nID)
-{
-    GetIEditor()->GetCommandManager()->Execute(nID);
-}
-

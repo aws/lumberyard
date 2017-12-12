@@ -9,66 +9,117 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifdef MOTIONCANVAS_GEM_ENABLED
 
-#include <SceneAPI/SceneData/Behaviors/EFXMotionGroupBehavior.h>
-#include <SceneAPI/SceneData/Groups/EFXMotionGroup.h>
 #include <SceneAPI/SceneData/GraphData/RootBoneData.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphDownwardsIterator.h>
 #include <SceneAPI/SceneCore/Containers/Views/PairIterator.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
+#include <SceneAPI/SceneData/Rules/CommentRule.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
-namespace AZ
+#include <SceneAPIExt/Behaviors/MotionGroupBehavior.h>
+#include <SceneAPIExt/Groups/MotionGroup.h>
+#include <SceneAPIExt/Rules/MotionScaleRule.h>
+#include <SceneAPIExt/Rules/MotionCompressionSettingsRule.h>
+#include <SceneAPIExt/Rules/CoordinateSystemRule.h>
+
+
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace Behaviors
+        namespace Behavior
         {
-            const int EFXMotionGroupBehavior::s_preferredTabOrder = 2;
+            const int MotionGroupBehavior::s_preferredTabOrder = 2;
 
-            AZ_CLASS_ALLOCATOR_IMPL(EFXMotionGroupBehavior, SystemAllocator, 0)
-
-            EFXMotionGroupBehavior::EFXMotionGroupBehavior()
+            void MotionGroupBehavior::Reflect(AZ::ReflectContext* context)
             {
-                Events::ManifestMetaInfoBus::Handler::BusConnect();
-                Events::AssetImportRequestBus::Handler::BusConnect();
-            }
+                Group::MotionGroup::Reflect(context);
+                Rule::MotionScaleRule::Reflect(context);
+                Rule::MotionCompressionSettingsRule::Reflect(context);
 
-            EFXMotionGroupBehavior::~EFXMotionGroupBehavior()
-            {
-                Events::AssetImportRequestBus::Handler::BusDisconnect();
-                Events::ManifestMetaInfoBus::Handler::BusDisconnect();
-            }
-
-            void EFXMotionGroupBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const Containers::Scene& scene)
-            {
-                if (SceneHasMotionGroup(scene) || Utilities::DoesSceneGraphContainDataLike<DataTypes::IAnimationData>(scene, false))
+                AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+                if (serializeContext)
                 {
-                    categories.emplace_back("Motions", SceneData::EFXMotionGroup::TYPEINFO_Uuid(), s_preferredTabOrder);
+                    serializeContext->Class<MotionGroupBehavior, AZ::SceneAPI::SceneCore::BehaviorComponent>()->Version(1);
                 }
             }
 
-            void EFXMotionGroupBehavior::InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target)
+            void MotionGroupBehavior::Activate()
             {
-                if (!target.RTTI_IsTypeOf(SceneData::EFXMotionGroup::TYPEINFO_Uuid()))
+                AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusConnect();
+                AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
+            }
+
+            void MotionGroupBehavior::Deactivate()
+            {
+                AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
+                AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusDisconnect();
+            }
+
+            void MotionGroupBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene)
+            {
+                if (SceneHasMotionGroup(scene) || AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IAnimationData>(scene, false))
+                {
+                    categories.emplace_back("Motions", Group::MotionGroup::TYPEINFO_Uuid(), s_preferredTabOrder);
+                }
+            }
+
+            void MotionGroupBehavior::GetAvailableModifiers(ModifiersList & modifiers, const AZ::SceneAPI::Containers::Scene & scene, const AZ::SceneAPI::DataTypes::IManifestObject & target)
+            {
+                if (target.RTTI_IsTypeOf(Group::IMotionGroup::TYPEINFO_Uuid()))
+                {
+                    modifiers.push_back(AZ::SceneAPI::SceneData::CommentRule::TYPEINFO_Uuid());
+                    const Group::IMotionGroup* group = azrtti_cast<const Group::IMotionGroup*>(&target);
+                    const AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
+
+                    AZStd::unordered_set<AZ::Uuid> existingRules;
+                    const size_t ruleCount = rules.GetRuleCount();
+                    for (size_t i = 0; i < ruleCount; ++i)
+                    {
+                        existingRules.insert(rules.GetRule(i)->RTTI_GetType());
+                    }
+                    if (existingRules.find(Rule::MotionCompressionSettingsRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::MotionCompressionSettingsRule::TYPEINFO_Uuid());
+                    }
+                    if (existingRules.find(Rule::MotionScaleRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::MotionScaleRule::TYPEINFO_Uuid());
+                    }
+                    if (existingRules.find(Rule::CoordinateSystemRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::CoordinateSystemRule::TYPEINFO_Uuid());
+                    }
+                }
+            }
+
+            void MotionGroupBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
+            {
+                if (!target.RTTI_IsTypeOf(Group::MotionGroup::TYPEINFO_Uuid()))
                 {
                     return;
                 }
 
-                SceneData::EFXMotionGroup* group = azrtti_cast<SceneData::EFXMotionGroup*>(&target);
-                group->SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::IEFXMotionGroup>(scene.GetName(), scene.GetManifest()));
+                Group::MotionGroup* group = azrtti_cast<Group::MotionGroup*>(&target);
+                group->SetName(AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<Group::IMotionGroup>(scene.GetName(), scene.GetManifest()));
 
-                const Containers::SceneGraph& graph = scene.GetGraph();
+                AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainer();
+                if (!rules.ContainsRuleOfType<Rule::CoordinateSystemRule>())
+                {
+                    rules.AddRule(AZStd::make_shared<Rule::CoordinateSystemRule>());
+                }
+
+                const AZ::SceneAPI::Containers::SceneGraph& graph = scene.GetGraph();
                 auto nameStorage = graph.GetNameStorage();
                 auto contentStorage = graph.GetContentStorage();
 
-                auto nameContentView = Containers::Views::MakePairView(nameStorage, contentStorage);
+                auto nameContentView = AZ::SceneAPI::Containers::Views::MakePairView(nameStorage, contentStorage);
                 AZStd::string shallowestRootBoneName;
-                auto graphDownwardsView = Containers::Views::MakeSceneGraphDownwardsView<Containers::Views::BreadthFirst>(graph, graph.GetRoot(), nameContentView.begin(), true);
+                auto graphDownwardsView = AZ::SceneAPI::Containers::Views::MakeSceneGraphDownwardsView<AZ::SceneAPI::Containers::Views::BreadthFirst>(graph, graph.GetRoot(), nameContentView.begin(), true);
                 for (auto it = graphDownwardsView.begin(); it != graphDownwardsView.end(); ++it)
                 {
                     if (!it->second)
@@ -83,18 +134,18 @@ namespace AZ
                 }
                 group->SetSelectedRootBone(shallowestRootBoneName);
 
-                auto animationData = AZStd::find_if(contentStorage.begin(), contentStorage.end(), Containers::DerivedTypeFilter<DataTypes::IAnimationData>());
+                auto animationData = AZStd::find_if(contentStorage.begin(), contentStorage.end(), AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IAnimationData>());
                 if (animationData == contentStorage.end())
                 {
                     return;
                 }
-                const DataTypes::IAnimationData* animation = azrtti_cast<const DataTypes::IAnimationData*>(animationData->get());
-                uint32_t frameCount = aznumeric_caster(animation->GetKeyFrameCount());
+                const AZ::SceneAPI::DataTypes::IAnimationData* animation = azrtti_cast<const AZ::SceneAPI::DataTypes::IAnimationData*>(animationData->get());
+                AZ::u32 frameCount = aznumeric_caster(animation->GetKeyFrameCount());
                 group->SetStartFrame(0);
                 group->SetEndFrame((frameCount > 0) ? frameCount - 1 : 0);
             }
 
-            Events::ProcessingResult EFXMotionGroupBehavior::UpdateManifest(Containers::Scene& scene, ManifestAction action,
+            AZ::SceneAPI::Events::ProcessingResult MotionGroupBehavior::UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,
                 RequestingApplication /*requester*/)
             {
                 if (action == ManifestAction::ConstructDefault)
@@ -103,55 +154,66 @@ namespace AZ
                 }
                 else if (action == ManifestAction::Update)
                 {
-                    return UpdateEFXMotionGroupBehaviors(scene);
+                    return UpdateMotionGroupBehaviors(scene);
                 }
                 else
                 {
-                    return Events::ProcessingResult::Ignored;
+                    return AZ::SceneAPI::Events::ProcessingResult::Ignored;
                 }
             }
 
-            Events::ProcessingResult EFXMotionGroupBehavior::BuildDefault(Containers::Scene& scene) const
+            AZ::SceneAPI::Events::ProcessingResult MotionGroupBehavior::BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const
             {
-                if (SceneHasMotionGroup(scene) || !Utilities::DoesSceneGraphContainDataLike<DataTypes::IAnimationData>(scene, true))
+                if (SceneHasMotionGroup(scene) || !AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IAnimationData>(scene, true))
                 {
-                    return Events::ProcessingResult::Ignored;
+                    return AZ::SceneAPI::Events::ProcessingResult::Ignored;
                 }
 
                 // There are animations but no motion group, so add a default motion group to the manifest.
-                AZStd::shared_ptr<SceneData::EFXMotionGroup> group = AZStd::make_shared<SceneData::EFXMotionGroup>();
-                EBUS_EVENT(Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
+                AZStd::shared_ptr<Group::MotionGroup> group = AZStd::make_shared<Group::MotionGroup>();
+
+                // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
+                //      in the same way again. To guarantee the same uuid, generate a stable one instead.
+                group->OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, Group::MotionGroup::TYPEINFO_Uuid()));
+
+                EBUS_EVENT(AZ::SceneAPI::Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
                 scene.GetManifest().AddEntry(AZStd::move(group));
 
-                return Events::ProcessingResult::Success;
+                return AZ::SceneAPI::Events::ProcessingResult::Success;
             }
 
-            Events::ProcessingResult EFXMotionGroupBehavior::UpdateEFXMotionGroupBehaviors(Containers::Scene& scene) const
+            AZ::SceneAPI::Events::ProcessingResult MotionGroupBehavior::UpdateMotionGroupBehaviors(AZ::SceneAPI::Containers::Scene& scene) const
             {
                 bool updated = false;
-                Containers::SceneManifest& manifest = scene.GetManifest();
+                AZ::SceneAPI::Containers::SceneManifest& manifest = scene.GetManifest();
                 auto valueStorage = manifest.GetValueStorage();
-                auto view = Containers::MakeDerivedFilterView<SceneData::EFXMotionGroup>(valueStorage);
-                for (SceneData::EFXMotionGroup& group : view)
+                auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<Group::MotionGroup>(valueStorage);
+                for (Group::MotionGroup& group : view)
                 {
                     if (group.GetName().empty())
                     {
-                        group.SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::IEFXMotionGroup>(scene.GetName(), scene.GetManifest()));
+                        group.SetName(AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<Group::IMotionGroup>(scene.GetName(), scene.GetManifest()));
+                        updated = true;
+                    }
+                    if (group.GetId().IsNull())
+                    {
+                        // When the uuid it's null is likely because the manifest has been updated from an older version. Include the 
+                        // name of the group as there could be multiple groups.
+                        group.OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, Group::MotionGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
                     }
                 }
 
-                return updated ? Events::ProcessingResult::Success : Events::ProcessingResult::Ignored;
+                return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;
             }
 
-            bool EFXMotionGroupBehavior::SceneHasMotionGroup(const Containers::Scene& scene) const
+            bool MotionGroupBehavior::SceneHasMotionGroup(const AZ::SceneAPI::Containers::Scene& scene) const
             {
-                const Containers::SceneManifest& manifest = scene.GetManifest();
-                Containers::SceneManifest::ValueStorageConstData manifestData = manifest.GetValueStorage();
-                auto motionGroup = AZStd::find_if(manifestData.begin(), manifestData.end(), Containers::DerivedTypeFilter<DataTypes::IEFXMotionGroup>());
+                const AZ::SceneAPI::Containers::SceneManifest& manifest = scene.GetManifest();
+                AZ::SceneAPI::Containers::SceneManifest::ValueStorageConstData manifestData = manifest.GetValueStorage();
+                auto motionGroup = AZStd::find_if(manifestData.begin(), manifestData.end(), AZ::SceneAPI::Containers::DerivedTypeFilter<Group::IMotionGroup>());
                 return motionGroup != manifestData.end();
             }
-        } // Behaviors
-    } // SceneAPI
-} // AZ
-#endif //MOTIONCANVAS_GEM_ENABLED
+        } // Behavior
+    } // Pipeline
+} // EMotionFX

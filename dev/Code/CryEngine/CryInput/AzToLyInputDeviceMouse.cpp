@@ -13,7 +13,6 @@
 
 #include "AzToLyInputDeviceMouse.h"
 
-#include <IHardwareMouse.h>
 #include <IRenderer.h>
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>

@@ -460,9 +460,9 @@ void CD3D9Renderer::PrepareShadowGenForFrustumNonJobs(const int nFlags)
             SRenderingPassInfo passInfo = SRenderingPassInfo::CreateShadowPassRenderingInfo(tmpCamera, pCurFrustum->m_Flags, pCurFrustum->nShadowMapLod,
                     pCurFrustum->IsCached(), pCurFrustum->bIsMGPUCopy, &pCurFrustum->nShadowGenMask, nS, pCurFrustum->nShadowGenID[nThreadID][nS], nRenderingFlags);
 
-            for (int i = 0; i < pCurFrustum->pCastersList->Count(); i++)
+            for (int casterIdx = 0; casterIdx < pCurFrustum->pCastersList->Count(); casterIdx++)
             {
-                IShadowCaster* pEnt  = (*pCurFrustum->pCastersList)[i];
+                IShadowCaster* pEnt  = (*pCurFrustum->pCastersList)[casterIdx];
 
                 //TOFIX reactivate OmniDirectionalShadow
                 if (pCurFrustum->bOmniDirectionalShadow)
@@ -593,7 +593,7 @@ void CD3D9Renderer::DrawAllShadowsOnTheScreen()
                         tp->Apply(0, CTexture::GetTexState(ts));
                         D3DSetCull(eCULL_None);
 
-                        TempDynVB<SVF_P3F_T3F> vb;
+                        TempDynVB<SVF_P3F_T3F> vb(gcpRendD3D);
                         vb.Allocate(4);
                         SVF_P3F_T3F* vQuad = vb.Lock();
 
@@ -666,7 +666,7 @@ void CD3D9Renderer::DrawAllShadowsOnTheScreen()
 
                         for (int i = 0; i < 6; i++)
                         {
-                            TempDynVB<SVF_P3F_T3F> vb;
+                            TempDynVB<SVF_P3F_T3F> vb(gcpRendD3D);
                             vb.Allocate(4);
                             SVF_P3F_T3F* vQuad = vb.Lock();
 
@@ -1005,7 +1005,7 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
                 Vec3 vAtC = vEyeC + Vec3(m34(0, 1), m34(1, 1), m34(2, 1));
                 Vec3 vUpC = Vec3(m34(0, 2), m34(1, 2), m34(2, 2));
                 c.LookAt(vEyeC, vAtC, vUpC);
-                SetViewParameters(c);
+                ApplyViewParameters(c);
                 CShadowUtils::GetCubemapFrustum(FTYP_SHADOWOMNIPROJECTION, lof, sideIndex, &m_RP.m_TI[nThreadList].m_matProj, &m_RP.m_TI[nThreadList].m_matView, NULL);
 
                 //enable back facing for omni lights for now
@@ -1095,12 +1095,11 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
 #if defined(CRY_USE_METAL)
                     //Clear calls are cached until a draw call is made. If there is nothing in the caster list no draw calls will be made.
                     //Hence make a draw call to clear the render targets.
-                    /* Disable it temporarily to fix Mac build error.
                     if (lof->pCastersList->Count() == 0)
-                    {                                                
+                    {
                         FX_Commit();
-                        FX_ClearRegion(0);
-                    }*/
+                        FX_ClearTargetRegion();
+                    }
 #endif
                 }
 
@@ -1466,7 +1465,8 @@ void CD3D9Renderer::ConfigShadowTexgen(int Num, ShadowMapFrustum* pFr, int nFrus
             else
             {
                 fShadowJitter = 2.0;
-                m_cEF.m_TempVecs[4].x = fShadowJitter;;
+                m_cEF.m_TempVecs[4].x = fShadowJitter;
+                ;
                 m_cEF.m_TempVecs[4].y = fShadowJitter;
 
                 if (pFr->bOmniDirectionalShadow)
@@ -1600,7 +1600,7 @@ void CD3D9Renderer::FX_PrepareDepthMapsForLight(const SRenderLight& rLight, int 
         }
 
         const bool bSun = (rLight.m_Flags & DLF_SUN) != 0;
-        
+
         // Per-object shadows are added to the "custom" shadow list in CRenderer::FinalizeRendItems_FindShadowFrustums.
         // Do not render them twice.
         if (pCurFrustum->m_eFrustumType != ShadowMapFrustum::e_PerObject)

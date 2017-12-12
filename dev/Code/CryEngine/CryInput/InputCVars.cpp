@@ -23,56 +23,6 @@ CInputCVars::CInputCVars()
         "Toggles input event debugging.\n"
         "Usage: i_debug [0/1]\n"
         "Default is 0 (off). Set to 1 to spam console with key events (only press and release).");
-    REGISTER_CVAR(i_forcefeedback, 1, 0, "Enable/Disable force feedback output.");
-
-    // mouse
-    REGISTER_CVAR(i_mouse_buffered, 0, 0,
-        "Toggles mouse input buffering.\n"
-        "Usage: i_mouse_buffered [0/1]\n"
-        "Default is 0 (off). Set to 1 to process buffered mouse input.");
-    REGISTER_CVAR(i_mouse_sensitivity, 1, 0,
-        "Changes mouse sensitivity.\n"
-        "Usage: i_mouse_sensitivity [float number]\n"
-        "Default is 1 (raw movement), Set to 0 for no movement, [0/1] for slower movement and [1/n] for faster movement");
-    REGISTER_CVAR(i_mouse_accel, 0.0f, VF_DUMPTODISK,
-        "Set mouse acceleration, 0.0 means no acceleration.\n"
-        "Usage: i_mouse_accel [float number] (usually a small number, 0.1 is a good one)\n"
-        "Default is 0.0 (off)");
-    REGISTER_CVAR(i_mouse_accel_max, 100.0f, VF_DUMPTODISK,
-        "Set mouse max mouse delta when using acceleration.\n"
-        "Usage: i_mouse_accel_max [float number]\n"
-        "Default is 100.0");
-    REGISTER_CVAR(i_mouse_smooth, 0.0f, VF_DUMPTODISK,
-        "Set mouse smoothing value, also if 0 (disabled) there will be a simple average\n"
-        "between the old and the actual input.\n"
-        "Usage: i_mouse_smooth [float number]\n"
-        "(1.0 = very very smooth, 30 = almost instant)\n"
-        "Default is 0.0");
-    REGISTER_CVAR(i_mouse_inertia, 0.0f, VF_DUMPTODISK,
-        "Set mouse inertia. It is disabled (0.0) by default.\n"
-        "Usage: i_mouse_inertia [float number]\n"
-        "Default is 0.0");
-
-    // keyboard
-    REGISTER_CVAR(i_bufferedkeys, 1, 0,
-        "Toggles key buffering.\n"
-        "Usage: i_bufferedkeys [0/1]\n"
-        "Default is 0 (off). Set to 1 to process buffered key strokes.");
-
-    // xinput
-    REGISTER_CVAR(i_xinput, 1, 0,
-        "Number of XInput controllers to process\n"
-        "Usage: i_xinput [0/1/2/3/4]\n"
-        "Default is 1.");
-    REGISTER_CVAR(i_xinput_poll_time, 1000, 0,
-        "Number of ms between device polls in polling thread\n"
-        "Usage: i_xinput_poll_time 500\n"
-        "Default is 1000ms. Value must be >=0.");
-
-    REGISTER_CVAR(i_xinput_deadzone_handling, 1, 0,
-        "deadzonehandling\n"
-        "Usage: i_xinput_deadzone_handling 0/1 (0 - old deadzone/ 1 - new deadzone)\n"
-        "Default is 1. Value must be >=0.");
 
     REGISTER_CVAR(i_debugDigitalButtons, 0, 0,
         "render controller's digital button pressed info\n"
@@ -80,15 +30,15 @@ CInputCVars::CInputCVars()
         "Default is 0. Value must be >=0");
 
 #if defined(WIN32) || defined(WIN64)
-    REGISTER_CVAR(i_kinectXboxConnect, 1, 0,
-        "Allow connection to Xbox for Kinect input.\n"
+    REGISTER_CVAR(i_kinectXboxConnect, 1, 0, // ACCEPTED_USE
+        "Allow connection to Xbox for Kinect input.\n" // ACCEPTED_USE
         "Usage: 0 = disabled, 1 = allow connection, 2 = force connection (don't try local Kinect on system) \n"
         "Default is 1");
-    REGISTER_CVAR(i_kinectXboxConnectPort, 62455, 0,
-        "Port used to connect to Xbox for Kinect input.\n"
+    REGISTER_CVAR(i_kinectXboxConnectPort, 62455, 0, // ACCEPTED_USE
+        "Port used to connect to Xbox for Kinect input.\n" // ACCEPTED_USE
         "Default is 62455 (random value different than remote compiler)");
-    i_kinectXboxConnectIP = REGISTER_STRING("i_kinectXboxConnectIP", "", VF_NULL,
-            "Usage: force set a specific Xbox Game IP to connect to for Kinect input (use default xbox from neighbourhood when empty) \n"
+    i_kinectXboxConnectIP = REGISTER_STRING("i_kinectXboxConnectIP", "", VF_NULL, // ACCEPTED_USE
+            "Usage: force set a specific Xbox Game IP to connect to for Kinect input (use default xbox from neighbourhood when empty) \n" // ACCEPTED_USE
             "Default is empty ");
 #endif
 
@@ -111,44 +61,23 @@ CInputCVars::CInputCVars()
     REGISTER_CVAR(i_kinGlobalExpJitterRadius, 0.05f, 0, "Radius to determine jitter correction for double exponential smoothing.");
     REGISTER_CVAR(i_kinGlobalExpDeviationRadius, 0.04f, 0, "Maximum deviation radius from prediction for double exponential smoothing.");
 
-#ifdef USE_SYNERGY_INPUT
     i_synergyServer = REGISTER_STRING("i_synergyServer", "", VF_NULL,
             "Usage: Set the host ip or hostname for the synergy client to connect to\n"
             "Default is empty ");
     i_synergyScreenName = REGISTER_STRING("i_synergyScreenName", "Console", VF_NULL,
             "Usage: Set a screen name for this target\n"
             "Default is \"Console\"");
-#endif
 }
 
 CInputCVars::~CInputCVars()
 {
     gEnv->pConsole->UnregisterVariable("i_debug");
-    gEnv->pConsole->UnregisterVariable("i_forcefeedback");
-
-    // mouse
-    gEnv->pConsole->UnregisterVariable("i_mouse_buffered");
-    gEnv->pConsole->UnregisterVariable("i_mouse_sensitivity");
-    gEnv->pConsole->UnregisterVariable("i_mouse_accel");
-    gEnv->pConsole->UnregisterVariable("i_mouse_accel_max");
-    gEnv->pConsole->UnregisterVariable("i_mouse_smooth");
-    gEnv->pConsole->UnregisterVariable("i_mouse_inertia");
-
-    // keyboard
-    gEnv->pConsole->UnregisterVariable("i_bufferedkeys");
-
-    // xinput
-    gEnv->pConsole->UnregisterVariable("i_xinput");
-    gEnv->pConsole->UnregisterVariable("i_xinput_poll_time");
-
-    gEnv->pConsole->UnregisterVariable("i_xinput_deadzone_handling");
-
     gEnv->pConsole->UnregisterVariable("i_debugDigitalButtons");
 
 #if defined(WIN32) || defined(WIN64)
-    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnect");
-    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnectPort");
-    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnectIP");
+    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnect"); // ACCEPTED_USE
+    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnectPort"); // ACCEPTED_USE
+    gEnv->pConsole->UnregisterVariable("i_kinectXboxConnectIP"); // ACCEPTED_USE
 #endif
 
     gEnv->pConsole->UnregisterVariable("i_kinSkeletonSmoothType");

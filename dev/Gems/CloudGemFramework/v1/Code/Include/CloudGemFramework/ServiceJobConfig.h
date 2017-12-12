@@ -12,23 +12,15 @@
 
 #pragma once
 
-#include <CloudGemFramework/AwsApiJobConfig.h>
+#include <CloudGemFramework/HttpRequestJobConfig.h>
 
 namespace CloudGemFramework
 {
 
     /// Provides configuration needed by service jobs.
     class IServiceJobConfig
-        : public virtual IAwsApiJobConfig
+        : public virtual IHttpRequestJobConfig
     {
-
-    public:
-
-        virtual std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> GetReadRateLimiter() = 0;
-        virtual std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> GetWriteRateLimiter() = 0;
-        virtual std::shared_ptr<Aws::Http::HttpClient> GetHttpClient() = 0;
-        virtual const Aws::String& GetUserAgent() = 0;
-
     };
 
     #ifdef _MSC_VER
@@ -41,7 +33,7 @@ namespace CloudGemFramework
 
     /// Provides service job configuration using settings properties.
     class ServiceJobConfig
-        : public AwsApiJobConfig
+        : public HttpRequestJobConfig
         , public virtual IServiceJobConfig
     {
 
@@ -61,46 +53,17 @@ namespace CloudGemFramework
         /// This simplifies the initialization of static instances. The default
         /// value is nullptr, in which case no initializer will be called.
         ServiceJobConfig(AwsApiJobConfig* defaultConfig = nullptr, InitializerFunction initializer = nullptr)
-            : AwsApiJobConfig{defaultConfig}
+            : HttpRequestJobConfig{defaultConfig}
         {
             if(initializer)
             {
                 initializer(*this);
             }
         }
-   
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> GetReadRateLimiter() override
-        {
-            EnsureSettingsApplied();
-            return m_readRateLimiter;
-        }
-        
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> GetWriteRateLimiter() override
-        {
-            EnsureSettingsApplied();
-            return m_writeRateLimiter;
-        }
-
-        std::shared_ptr<Aws::Http::HttpClient> GetHttpClient() override
-        {
-            EnsureSettingsApplied();
-            return m_httpClient;
-        }
-
-        const Aws::String& GetUserAgent() override
-        {
-            EnsureSettingsApplied();
-            return m_userAgent;
-        }
 
         void ApplySettings() override;
 
     private:
-
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> m_readRateLimiter{nullptr};
-        std::shared_ptr<Aws::Utils::RateLimits::RateLimiterInterface> m_writeRateLimiter{nullptr};
-        std::shared_ptr<Aws::Http::HttpClient> m_httpClient{nullptr};
-        Aws::String m_userAgent{};
 
     };
 

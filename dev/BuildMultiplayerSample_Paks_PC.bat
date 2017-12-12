@@ -21,7 +21,7 @@ echo ----- Processing Assets Using Asset Processor Batch ----
 IF ERRORLEVEL 1 GOTO AssetProcessingFailed
 
 echo ----- Creating Packages ----
-rem lowercase is intentional, since cache folders are lowercase (for ps4)
+rem lowercase is intentional, since cache folders are lowercase on some platforms
 .\%BINFOLDER%\rc\rc.exe /job=%BINFOLDER%\rc\RCJob_Generic_MakePaks.xml /p=pc /game=multiplayersample
 IF ERRORLEVEL 1 GOTO RCFailed
 

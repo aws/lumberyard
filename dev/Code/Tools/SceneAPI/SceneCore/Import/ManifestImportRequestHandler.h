@@ -35,7 +35,7 @@ namespace AZ
                 static void Reflect(ReflectContext* context);
 
                 void GetManifestExtension(AZStd::string& result) override;
-                Events::LoadingResult LoadAsset(Containers::Scene& scene, const AZStd::string& path, 
+                Events::LoadingResult LoadAsset(Containers::Scene& scene, const AZStd::string& path, const Uuid& guid,
                     RequestingApplication requester) override;
                 
             private:

@@ -46,8 +46,10 @@ public:
     virtual void Interpolate(float time, ValueType& value)
     {
         value_type v;
-        interpolate(time, v);
-        ToValueType(v, value);
+        if (interpolate(time, v))
+        {
+            ToValueType(v, value);
+        }
         // Clamp values
         //value[0] = clamp_tpl(value[0],m_fMinValue,m_fMaxValue);
     }

@@ -17,14 +17,20 @@
 #include "DriverD3D.h"
 #include "I3DEngine.h"
 #include "D3DPostProcess.h"
-
+#include <Common/RenderCapabilities.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
-#if defined(WIN32) || defined(WIN64)
-#include "IHardwareMouse.h"
-#endif
 
 #pragma warning(disable: 4244)
 
+enum COLORSPACES
+{
+    CS_sRGB0 = 0,    //Most accurate sRGB curve
+    CS_sRGB1 = 1,   //Cheap approximation - pow(col, 1/2.2)
+    CS_sRGB2 = 2,   //cheaper approx - sqrt(col)
+    CS_P3D65 = 3,
+    CS_Rec709 = 4,
+    CS_Rec2020 = 5
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,14 +91,63 @@ void SD3DPostEffectsUtils::ResolveRT(CTexture*& pDst, const RECT* pSrcRect)
     }
 }
 
-void SD3DPostEffectsUtils::CopyTextureToScreen(CTexture*& pSrc, const RECT* pSrcRegion, const int filterMode)
+void SD3DPostEffectsUtils::SetSRGBShaderFlags()
 {
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SRGB0] | g_HWSR_MaskBit[HWSR_SRGB1] | g_HWSR_MaskBit[HWSR_SRGB2]);
+    switch(CRenderer::CV_r_ColorSpace)
+    {
+        case COLORSPACES::CS_sRGB0:
+        {
+            gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SRGB0];
+            break;
+        }
+        case COLORSPACES::CS_sRGB1:
+        {
+            gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SRGB1];
+            break;
+        }
+        case COLORSPACES::CS_sRGB2:
+        {
+            gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SRGB2];
+            break;
+        }
+        case COLORSPACES::CS_P3D65:
+        {
+            //todo: Needs support
+        }
+        case COLORSPACES::CS_Rec709:
+        {
+            //todo: Add support for Rec709 related shader flags to allow control over color space conversion from c++ code
+        }
+        case COLORSPACES::CS_Rec2020:
+        {
+            //todo: Add support for Rec2020 related shader flags to allow control over color space conversion from c++ code
+        }
+        default:
+        {
+            CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_WARNING, "Color space not supported");
+        }
+    }
+}
+
+void SD3DPostEffectsUtils::CopyTextureToScreen(CTexture*& pSrc, const RECT* pSrcRegion, const int filterMode, bool sRGBLookup)
+{
+    CRenderer* rd = gRenDev;
+    uint64 saveFlagsShader_RT = rd->m_RP.m_FlagsShader_RT;
+    rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE3];
+    if (sRGBLookup && !pSrc->IsSRGB() && !RenderCapabilities::SupportsTextureViews())
+    {
+        //Force SRGB conversion in the shader because the platform doesn't support texture views
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE3];
+        SetSRGBShaderFlags();
+    }
     static CCryNameTSCRC pRestoreTechName("TextureToTexture");
     PostProcessUtils().ShBeginPass(CShaderMan::s_shPostEffects, pRestoreTechName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     gRenDev->FX_SetState(GS_NODEPTHTEST);
-    PostProcessUtils().SetTexture(pSrc, 0, filterMode >= 0 ? filterMode : FILTER_POINT);
+    PostProcessUtils().SetTexture(pSrc, 0, filterMode >= 0 ? filterMode : FILTER_POINT, 1, sRGBLookup);
     PostProcessUtils().DrawFullScreenTri(pSrc->GetWidth(), pSrc->GetHeight(), 0, pSrcRegion);
     PostProcessUtils().ShEndPass();
+    rd->m_RP.m_FlagsShader_RT = saveFlagsShader_RT;
 }
 
 void SD3DPostEffectsUtils::CopyScreenToTexture(CTexture*& pDst, const RECT* pSrcRegion)
@@ -125,7 +180,8 @@ void SD3DPostEffectsUtils::StretchRect(CTexture* pSrc, CTexture*& pDst, bool bCl
     PROFILE_SHADER_SCOPE;
 
     uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
-    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_REVERSE_DEPTH]);
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] |
+                                        g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_REVERSE_DEPTH]);
 
     // Get current viewport
     int iTempX, iTempY, iWidth, iHeight;
@@ -306,6 +362,18 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
     gRenDev->RT_SetScissor(true, 0, 0, pDst->GetWidth() * vDownscaleFactor.x + 0.5f, pDst->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
     //  Confetti End: Igor Lobanchikov
+
+#if defined(OPENGL_ES)
+    uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
+    if (glVersion == DXGLES_VERSION_30)
+    {
+        // There's a bug in Qualcomm OpenGL ES 3.0 drivers that cause the device
+        // shader compiler to crash if we use "textureSize" in the shader to get the texture dimensions.
+        Vec4 texSize = Vec4(srcWidth, srcHeight, 0, 0);
+        static CCryNameR texSizeParam("DownsampleDepth_DepthTex_Dimensions");
+        CShaderMan::s_shPostEffects->FXSetPSFloat(texSizeParam, &texSize, 1);
+    }
+#endif // defined(OPENGL_ES)
 
     // Handle uneven source size by dropping last row/column
     RECT source = { 0, 0, pDst->GetWidth(), pDst->GetHeight() };
@@ -1439,16 +1507,13 @@ bool CREPostProcess:: mfDraw(CShader* ef, SShaderPass* sfm)
     if (CRenderer::CV_r_AntialiasingModeDebug > 0)
     {
         float mx = CTexture::s_ptexBackBuffer->GetWidth() >> 1, my = CTexture::s_ptexBackBuffer->GetHeight() >> 1;
-#if defined(AZ_FRAMEWORK_INPUT_ENABLED)
         AZ::Vector2 systemCursorPositionNormalized = AZ::Vector2::CreateZero();
         AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
                                                               AzFramework::InputDeviceMouse::Id,
                                                               &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
         mx = systemCursorPositionNormalized.GetX() * gEnv->pRenderer->GetWidth();
         my = systemCursorPositionNormalized.GetY() * gEnv->pRenderer->GetHeight();
-#elif defined(WIN32) || defined(WIN64)
-        gEnv->pHardwareMouse->GetHardwareMouseClientPosition(&mx, &my);
-#endif
+
         PostProcessUtils().CopyScreenToTexture(CTexture::s_ptexBackBuffer);
         static CCryNameTSCRC pszTechName("DebugPostAA");
         GetUtils().ShBeginPass(CShaderMan::s_shPostAA, pszTechName, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);

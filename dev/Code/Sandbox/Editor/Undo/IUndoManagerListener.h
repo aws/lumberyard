@@ -20,6 +20,7 @@ struct IUndoManagerListener
     virtual void BeginRestoreTransaction() {}
     virtual void EndRestoreTransaction() {}
     virtual void SignalNumUndoRedo(const unsigned int& numUndo, const unsigned int& numRedo){}
+    virtual void UndoStackFlushed() {}
 };
 
 #endif // CRYINCLUDE_EDITORCORE_UNDO_IUNDOMANAGERLISTENER_H

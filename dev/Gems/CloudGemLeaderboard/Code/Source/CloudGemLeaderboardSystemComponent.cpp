@@ -7,7 +7,7 @@
 
 
 #include "CloudGemLeaderboardSystemComponent.h"
-#include "Include/AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
+#include "AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
 
 namespace CloudGemLeaderboard
 {

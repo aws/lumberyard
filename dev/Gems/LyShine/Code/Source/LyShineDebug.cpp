@@ -874,8 +874,6 @@ static void DebugDraw2dImagePixelRounding()
     float xSpacing = size.GetX() + 4.0f;
     float ySpacing = size.GetY() + 4.0f;
 
-    AZ::Vector2 pos(xStart, yStart);
-
     float offsets[4] = { 0.0f, 0.17f, 0.5f, 0.67f };
     IDraw2d::Rounding roundings[4] = {
         IDraw2d::Rounding::None,

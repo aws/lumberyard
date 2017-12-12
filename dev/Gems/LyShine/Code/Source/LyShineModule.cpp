@@ -26,16 +26,21 @@
 #include "UiCheckboxComponent.h"
 #include "UiDraggableComponent.h"
 #include "UiDropTargetComponent.h"
+#include "UiDropdownComponent.h"
+#include "UiDropdownOptionComponent.h"
 #include "UiSliderComponent.h"
 #include "UiTextInputComponent.h"
 #include "UiScrollBarComponent.h"
 #include "UiScrollBoxComponent.h"
 #include "UiFaderComponent.h"
+#include "UiLayoutFitterComponent.h"
 #include "UiMaskComponent.h"
 #include "UiLayoutCellComponent.h"
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
+#include "UiRadioButtonComponent.h"
+#include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
 #include "UiTooltipDisplayComponent.h"
 #include "UiDynamicLayoutComponent.h"
@@ -72,11 +77,14 @@ namespace LyShine
                 UiCheckboxComponent::CreateDescriptor(),
                 UiDraggableComponent::CreateDescriptor(),
                 UiDropTargetComponent::CreateDescriptor(),
+                UiDropdownComponent::CreateDescriptor(),
+                UiDropdownOptionComponent::CreateDescriptor(),
                 UiSliderComponent::CreateDescriptor(),
                 UiTextInputComponent::CreateDescriptor(),
                 UiScrollBoxComponent::CreateDescriptor(),
                 UiScrollBarComponent::CreateDescriptor(),
                 UiFaderComponent::CreateDescriptor(),
+                UiLayoutFitterComponent::CreateDescriptor(),
                 UiMaskComponent::CreateDescriptor(),
                 UiLayoutCellComponent::CreateDescriptor(),
                 UiLayoutColumnComponent::CreateDescriptor(),
@@ -87,6 +95,8 @@ namespace LyShine
                 UiDynamicLayoutComponent::CreateDescriptor(),
                 UiDynamicScrollBoxComponent::CreateDescriptor(),
                 UiSpawnerComponent::CreateDescriptor(),
+                UiRadioButtonComponent::CreateDescriptor(),
+                UiRadioButtonGroupComponent::CreateDescriptor(),
             });
 
             // This is so the metrics system knows which component LyShine is registering

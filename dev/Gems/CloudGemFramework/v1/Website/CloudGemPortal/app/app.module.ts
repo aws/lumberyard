@@ -9,12 +9,26 @@ import { ErrorModule } from 'app/view/error/error.module';
 import { AuthModule } from 'app/view/authentication/auth.module';
 import { GameModule } from 'app/view/game/game.module';
 import { AppSharedModule } from 'app/shared/shared.module';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ToastModule, ToastOptions} from 'ng2-toastr/ng2-toastr';
+
+export class CustomToastrOptions extends ToastOptions {
+    animate = "fade";
+    showCloseButton = true;
+    maxShown = 3;
+    positionClass = 'toast-bottom-right';
+    messageClass = 'cgp-toastr-message';
+    titleClass = 'cgp-toastr-title';
+    
+}
 
 @NgModule({
     imports: [
-        BrowserModule,                
-        NgbModule.forRoot(),                               
-        AppSharedModule,
+        BrowserModule,      
+        BrowserAnimationsModule,          
+        NgbModule.forRoot(),
+        AppSharedModule.forRoot(),
+        ToastModule.forRoot(),
         ErrorModule,        
         AuthModule,                
         GameModule,
@@ -25,7 +39,8 @@ import { AppSharedModule } from 'app/shared/shared.module';
     ],  
     providers: [
         { provide: APP_BASE_HREF, useValue: '/' },
-        { provide: LOCALE_ID, useValue: "en-US" }
+        { provide: LOCALE_ID, useValue: "en-US" },
+        { provide: ToastOptions, useClass: CustomToastrOptions } 
     ],
     bootstrap: [AppComponent]  
 })

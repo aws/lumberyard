@@ -22,41 +22,6 @@ namespace AZ
 {
     namespace Intersect
     {
-        /**
-         * LineToPointDistancTime computes the time of the shortest distance from point 'p' to segment (s1,s2)
-         * To calculate the point of intersection:
-         * P = s1 + u (s2 - s1)
-         * \param s1 segment start point
-         * \param s2 segment end point
-         * \param p point to find the closest time to.
-         * \return time (on the segment) for the shortest distance from 'p' to (s1,s2)  [0.0f (s1),1.0f (s2)]
-         */
-        AZ_MATH_FORCE_INLINE VectorFloat    LineToPointDistanceTime(const Vector3& s1, const Vector3& s21, const Vector3& p)
-        {
-            Vector3 ps1 = p - s1;
-            // so u = (p.x - s1.x)*(s2.x - s1.x) + (p.y - s1.y)*(s2.y - s1.y) + (p.z-s1.z)*(s2.z-s1.z) /  |s2-s1|^2
-            return s21.Dot(ps1) / s21.Dot(s21);
-        }
-
-        /**
-         * LineToPointDistance computes the closest point to 'p' from a segment (s1,s2).
-         * \param s1 segment start point
-         * \param s2 segment end point
-         * \param p point to find the closest time to.
-         * \param u time (on the segment) for the shortest distance from 'p' to (s1,s2)  [0.0f (s1),1.0f (s2)]
-         * \return the closest point
-         */
-        AZ_MATH_FORCE_INLINE Vector3 LineToPointDistance(const Vector3& s1, const Vector3& s2, const Vector3& p, VectorFloat& u)
-        {
-            Vector3 s21 = s2 - s1;
-            // we assume seg1 and seg2 are NOT coincident
-            AZ_Assert(!s21.IsClose(Vector3(0.0f), 1e-4f), "OK we agreed that we will pass valid segments! (s1 != s2)");
-
-            u = LineToPointDistanceTime(s1, s21, p);
-
-            return s1 + u * s21;
-        }
-
         //enum SegmentTriangleIsectTypes
         //{
         //  ISECT_TRI_SEGMENT_NONE = 0, // no intersection
@@ -81,7 +46,7 @@ namespace AZ
             /*float &u, float &v, float &w,*/ Vector3& normal, VectorFloat& t);
 
         /**
-         * Same as \ref IntersectSegmentTriangleCCW without respecting the trianlge (a,b,c) vertex order (double sided).
+         * Same as \ref IntersectSegmentTriangleCCW without respecting the triangle (a,b,c) vertex order (double sided).
          */
         int IntersectSegmentTriangle(const Vector3& p, const Vector3& q, const Vector3& a, const Vector3& b, const Vector3& c,
             /*float &u, float &v, float &w,*/ Vector3& normal, VectorFloat& t);
@@ -228,6 +193,83 @@ namespace AZ
             return IntersectRaySphereOrigin(m, rayDirNormalized, sphereRadius, t);
         }
 
+        /**
+         * If there is only one intersecting point, the coefficient is stored in \ref t1.
+         * 
+         * @param      rayOrigin      The origin of the ray to test.
+         * @param      rayDir         The direction of the ray to test. It has to be unit length.
+         * @param      cylinderEnd1   The center of the circle on one end of the cylinder.
+         * @param      cylinderDir    The direction pointing from \ref cylinderEnd1 to the other end of the cylinder. It has to be unit length.
+         * @param      cylinderHeight The distance between two centers of the circles on two ends of the cylinder respectively.
+         * @param[out] t1             A possible coefficient in the ray's explicit equation from which an intersecting point is calculated as "rayOrigin + t1 * rayDir".
+         * @param[out] t2             A possible coefficient in the ray's explicit equation from which an intersecting point is calculated as "rayOrigin + t2 * rayDir".
+         * @return                    The number of intersecting points.
+         */
+        int IntersectRayCappedCylinder(const Vector3& rayOrigin, const Vector3& rayDir, 
+                                       const Vector3& cylinderEnd1, const Vector3& cylinderDir, float cylinderHeight, float cylinderRadius,
+                                       float& t1, float& t2);
+
+        /**
+         * If there is only one intersecting point, the coefficient is stored in \ref t1.
+         *
+         * @param      rayOrigin      The origin of the ray to test.
+         * @param      rayDir         The direction of the ray to test. It has to be unit length.
+         * @param      coneApex       The apex of the cone.
+         * @param      coneDir        The unit-length direction from the apex to the base. 
+         * @param      coneHeight     The height of the cone, from the apex to the base.
+         * @param      coneBaseRadius The radius of the cone base circle.
+         * @param[out] t1             A possible coefficient in the ray's explicit equation from which an intersecting point is calculated as "rayOrigin + t1 * rayDir".
+         * @param[out] t2             A possible coefficient in the ray's explicit equation from which an intersecting point is calculated as "rayOrigin + t2 * rayDir".
+         * @return                    The number of intersecting points.
+        */
+        int IntersectRayCone(const Vector3& rayOrigin, const Vector3& rayDir,
+                             const Vector3& coneApex, const Vector3& coneDir, float coneHeight, float coneBaseRaidus,
+                             float& t1, float& t2);
+
+        /**
+         * Test intersection between a ray and a plane in 3D.
+         * @param rayOrigin    The origin of the ray to test intersection with.
+         * @param rayDir       The direction of the ray to test intersection with.
+         * @param planePos     A point on the plane to test intersection with.
+         * @param planeNormal  The normal of the plane to test intersection with.
+         * @param t[out]       The coefficient in the ray's explicit equation from which the intersecting point is calculated as "rayOrigin + t * rayDirection".
+         * @return             The number of intersection point.
+         */
+        int IntersectRayPlane(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& planePos, const Vector3& planeNormal, float& t);
+
+        /**
+         * Test intersection between a ray and a two-sided quadrilateral defined by four points in 3D.
+         * The four points that define the quadrilateral could be passed in with either counter clock-wise 
+         * winding or clock-wise winding.
+         * @param rayOrigin  The origin of the ray to test intersection with.
+         * @param rayDir     The direction of the ray to test intersection with.
+         * @param vertexA    One of the four points that define the quadrilateral.
+         * @param vertexB    One of the four points that define the quadrilateral.
+         * @param vertexC    One of the four points that define the quadrilateral.
+         * @param vertexD    One of the four points that define the quadrilateral.
+         * @param t[out]     The coefficient in the ray's explicit equation from which the intersecting point is calculated as "rayOrigin + t * rayDirection".
+         * @return           The number of intersection point.
+         */
+        int IntersectRayQuad(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& vertexA,
+            const Vector3& vertexB, const Vector3& vertexC, const Vector3& vertexD, float& t);
+
+        /**
+         * Test intersection between a ray and an oriented box in 3D.
+         * @param rayOrigin       The origin of the ray to test intersection with.
+         * @param rayDir          The direction of the ray to test intersection with.
+         * @param boxCenter       The position of the center of the box.
+         * @param boxAxis1        An axis along one dimension of the oriented box.
+         * @param boxAxis2        An axis along one dimension of the oriented box.
+         * @param boxAxis3        An axis along one dimension of the oriented box.
+         * @param boxHalfExtent1  The half extent of the box on the dimension of \ref boxAxis1.
+         * @param boxHalfExtent2  The half extent of the box on the dimension of \ref boxAxis2.
+         * @param boxHalfExtent3  The half extent of the box on the dimension of \ref boxAxis3.
+         * @param t[out]     The coefficient in the ray's explicit equation from which the intersecting point is calculated as "rayOrigin + t * rayDirection".
+         * @return           The number of intersection point.
+         */
+        int IntersectRayBox(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& boxCenter, const Vector3& boxAxis1,
+            const Vector3& boxAxis2, const Vector3& boxAxis3, float boxHalfExtent1, float boxHalfExtent2, float boxHalfExtent3, float& t);
+
         /// Ray cylinder intersection types.
         enum CylinderIsectTypes
         {
@@ -267,13 +309,24 @@ namespace AZ
             VectorFloat& tfirst, VectorFloat& tlast, int& iFirstPlane, int& iLastPlane);
 
         /**
-        * Calculate the line segment PaPb that is the shortest route between
-        * two segments s1s2 and s3s4. Calculate also the values of ua and ub where
-        * Pa = s1 + ua (s2 - s1)
-        * Pb = s3 + ub (s4 - s3)
+        * Calculate the line segment closestPointSegment1<->closestPointSegment2 that is the shortest route between
+        * two segments segment1Start<->segment1End and segment2Start<->segment2End. Also calculate the values of segment1Proportion and segment2Proportion where
+        * closestPointSegment1 = segment1Start + (segment1Proportion * (segment1End - segment1Start))
+        * closestPointSegment2 = segment2Start + (segment2Proportion * (segment2End - segment2Start))
         * If segments are parallel returns a solution.
         */
-        void ClosestSegmentSegment(const Vector3& s1, const Vector3& s2, const Vector3& s3, const Vector3& s4, Vector3& v1, Vector3& v2);
+        void ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End, 
+                                   const Vector3& segment2Start, const Vector3& segment2End, 
+                                   VectorFloat& segment1Proportion, VectorFloat& segment2Proportion, 
+                                   Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+                                   VectorFloat epsilon = VectorFloat(1e-4f));
+
+        /**
+        * Calculate the point (closestPointOnSegment) that is the closest point on
+        * segment segmentStart/segmentEnd to point. Also calculate the value of proportion where
+        * closestPointOnSegment = segmentStart + (proportion * (segmentEnd - segmentStart))
+        */
+        void ClosestPointSegment(const Vector3& point, const Vector3& segmentStart, const Vector3& segmentEnd, VectorFloat& proportion, Vector3& closestPointOnSegment);
     }
 }
 

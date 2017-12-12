@@ -12,11 +12,14 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "CharacterTrack.h"
 
 #define LOOP_TRANSITION_TIME 1.0f
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 bool CCharacterTrack::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     if (bLoading)
@@ -38,7 +41,7 @@ void CCharacterTrack::SerializeKey(ICharacterKey& key, XmlNodeRef& keyNode, bool
         const char* str;
 
         str = keyNode->getAttr("anim");
-        cry_strcpy(key.m_animation, str);
+        key.m_animation = str;
 
         key.m_duration = 0;
         key.m_endTime = 0;
@@ -58,9 +61,10 @@ void CCharacterTrack::SerializeKey(ICharacterKey& key, XmlNodeRef& keyNode, bool
     }
     else
     {
-        if (strlen(key.m_animation) > 0)
+        if (!key.m_animation.empty())
         {
-            keyNode->setAttr("anim", key.m_animation);
+            XmlString temp = key.m_animation.c_str();
+            keyNode->setAttr("anim", temp);
         }
         if (key.m_duration > 0)
         {
@@ -103,9 +107,9 @@ void CCharacterTrack::GetKeyInfo(int key, const char*& description, float& durat
     CheckValid();
     description = 0;
     duration = 0;
-    if (strlen(m_keys[key].m_animation) > 0)
+    if (!m_keys[key].m_animation.empty())
     {
-        description = m_keys[key].m_animation;
+        description = m_keys[key].m_animation.c_str();
         if (m_keys[key].m_bLoop)
         {
             float lastTime = m_timeRange.end;
@@ -147,4 +151,26 @@ float CCharacterTrack::GetKeyDuration(int key) const
     {
         return m_keys[key].GetActualDuration();
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+template<>
+inline void TAnimTrack<ICharacterKey>::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<TAnimTrack<ICharacterKey> >()
+        ->Version(1)
+        ->Field("Flags", &TAnimTrack<ICharacterKey>::m_flags)
+        ->Field("Range", &TAnimTrack<ICharacterKey>::m_timeRange)
+        ->Field("ParamType", &TAnimTrack<ICharacterKey>::m_nParamType)
+        ->Field("Keys", &TAnimTrack<ICharacterKey>::m_keys);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCharacterTrack::Reflect(AZ::SerializeContext* serializeContext)
+{
+    TAnimTrack<ICharacterKey>::Reflect(serializeContext);
+
+    serializeContext->Class<CCharacterTrack, TAnimTrack<ICharacterKey> >()
+        ->Version(1)
+        ->Field("AnimationLayer", &CCharacterTrack::m_iAnimationLayer);
 }

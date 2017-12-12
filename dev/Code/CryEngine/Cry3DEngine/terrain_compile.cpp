@@ -42,7 +42,7 @@
 #define SIGC_CASTSHADOW_MINSPEC_SHIFT (15)
 #define SIGC_CASTSHADOW_MINSPEC_MASK  ((END_CONFIG_SPEC_ENUM - 1) << SIGC_CASTSHADOW_MINSPEC_SHIFT)
 
-void CTerrain::GetVegetationMaterials(std::vector<_smart_ptr<IMaterial>>*& pMatTable)
+void CTerrain::GetVegetationMaterials(std::vector<_smart_ptr<IMaterial> >*& pMatTable)
 {
     if (!pMatTable)
     {
@@ -50,7 +50,7 @@ void CTerrain::GetVegetationMaterials(std::vector<_smart_ptr<IMaterial>>*& pMatT
     }
 
     { // get vegetation objects materials
-        PodArray<StatInstGroup>& rTable = GetObjManager()->m_lstStaticTypes[0];
+        PodArray<StatInstGroup>& rTable = GetObjManager()->GetListStaticTypes()[0];
         int nObjectsCount = rTable.size();
 
         // init struct values and load cgf's
@@ -78,10 +78,10 @@ int CTerrain::GetTablesSize(SHotUpdateInfo* pExportInfo)
 
     // get brush objects table size
     std::vector<IStatObj*> brushTypes;
-    std::vector<_smart_ptr<IMaterial>> usedMats;
+    std::vector<_smart_ptr<IMaterial> > usedMats;
     std::vector<IStatInstGroup*> instGroups;
 
-    std::vector<_smart_ptr<IMaterial>>* pMatTable = &usedMats;
+    std::vector<_smart_ptr<IMaterial> >* pMatTable = &usedMats;
     GetVegetationMaterials(pMatTable);
     if (Get3DEngine()->IsObjectTreeReady())
     {
@@ -138,7 +138,7 @@ int CTerrain::GetCompiledDataSize(SHotUpdateInfo* pExportInfo)
 # endif
 }
 
-void CTerrain::SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStatObj*>*& pStatObjTable, std::vector<_smart_ptr<IMaterial>>*& pMatTable, std::vector<IStatInstGroup*>*& pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
+void CTerrain::SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStatObj*>*& pStatObjTable, std::vector<_smart_ptr<IMaterial> >*& pMatTable, std::vector<IStatInstGroup*>*& pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
 {
     pMatTable = new std::vector < _smart_ptr<IMaterial> >;
     pStatObjTable = new std::vector < struct IStatObj* >;
@@ -278,7 +278,7 @@ void CTerrain::SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStat
         }
 
         { // get brush materials count
-            std::vector<_smart_ptr<IMaterial>>& rTable = *pMatTable;
+            std::vector<_smart_ptr<IMaterial> >& rTable = *pMatTable;
             int nObjectsCount = rTable.size();
 
             // count
@@ -296,7 +296,7 @@ void CTerrain::SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStat
     }
 }
 
-bool CTerrain::GetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
+bool CTerrain::GetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo)
 {
 # if !ENGINE_ENABLE_COMPILATION
     CryFatalError("serialization code removed, please enable ENGINE_ENABLE_COMPILATION in Cry3DEngine/StdAfx.h");
@@ -330,7 +330,7 @@ bool CTerrain::GetCompiledData(byte* pData, int nDataSize, std::vector<struct IS
     UPDATE_PTR_AND_SIZE(pData, nDataSize, sizeof(STerrainChunkHeader));
 
     std::vector<struct IStatObj*>* pStatObjTable = NULL;
-    std::vector< _smart_ptr<IMaterial>>* pMatTable = NULL;
+    std::vector< _smart_ptr<IMaterial> >* pMatTable = NULL;
     std::vector<struct IStatInstGroup*>* pStatInstGroupTable = NULL;
 
     if (bObjs)
@@ -382,13 +382,13 @@ bool CTerrain::GetCompiledData(byte* pData, int nDataSize, std::vector<struct IS
 # endif
 }
 
-void CTerrain::GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial>>* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask)
+void CTerrain::GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial> >* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask)
 {
     SHotUpdateInfo exportInfo;
     exportInfo.nObjTypeMask = nObjTypeMask;
 
     std::vector<IStatObj*> statObjTable;
-    std::vector<_smart_ptr<IMaterial>> matTable;
+    std::vector<_smart_ptr<IMaterial> > matTable;
     std::vector<IStatInstGroup*> statInstGroupTable;
 
     if (Get3DEngine() && Get3DEngine()->IsObjectTreeReady())
@@ -508,7 +508,7 @@ void CTerrain::LoadVegetationData(PodArray<StatInstGroup>& rTable, PodArray<Stat
 }
 
 template <class T>
-bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
+bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
 {
     LOADING_TIME_PROFILE_SECTION;
 
@@ -598,7 +598,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             CTerrain::GetTerrainSize() / nCellSize, CTerrain::GetTerrainSize() / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
     }
 
-    std::vector<_smart_ptr<IMaterial>>* pMatTable = NULL;
+    std::vector<_smart_ptr<IMaterial> >* pMatTable = NULL;
     std::vector<IStatObj*>* pStatObjTable = NULL;
 
     if (bObjs)
@@ -632,7 +632,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             if (!m_bEditor || bHotUpdate)
             {
                 // preallocate real array
-                PodArray<StatInstGroup>& rTable = GetObjManager()->m_lstStaticTypes[DEFAULT_SID];
+                PodArray<StatInstGroup>& rTable = GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
                 rTable.resize(nObjectsCount);//,nObjectsCount);
 
                 // init struct values and load cgf's
@@ -704,7 +704,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
                     PrintMessage("===== Loading %d brush materials ===== ", nObjectsCount);
                 }
 
-                std::vector<_smart_ptr<IMaterial>>& rTable = *pMatTable;
+                std::vector<_smart_ptr<IMaterial> >& rTable = *pMatTable;
                 rTable.clear();
                 rTable.resize(nObjectsCount);//PreAllocate(nObjectsCount,nObjectsCount);
 
@@ -724,7 +724,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
                 }
 
                 // assign real material to vegetation group
-                PodArray<StatInstGroup>& rStaticTypes = GetObjManager()->m_lstStaticTypes[DEFAULT_SID];
+                PodArray<StatInstGroup>& rStaticTypes = GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
                 for (uint32 i = 0; i < rStaticTypes.size(); i++)
                 {
                     if (lstStatInstGroupChunkFileChunks[i].nMaterialId >= 0)
@@ -838,7 +838,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
     return (nNodesLoaded && nDataSize == 0);
 }
 
-bool CTerrain::SetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
+bool CTerrain::SetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
 {
     STerrainChunkHeader* pTerrainChunkHeader = (STerrainChunkHeader*)pData;
     SwapEndian(*pTerrainChunkHeader, eLittleEndian);
@@ -848,7 +848,7 @@ bool CTerrain::SetCompiledData(byte* pData, int nDataSize, std::vector<struct IS
     return Load_T(pData, nDataSize, pTerrainChunkHeader, ppStatObjTable, ppMatTable, bHotUpdate, pExportInfo);
 }
 
-bool CTerrain::Load(AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable)
+bool CTerrain::Load(AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable)
 {
     bool bRes;
 

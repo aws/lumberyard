@@ -51,15 +51,7 @@ namespace
     const char* g_multiplayerConnectLANNodePath = "Multiplayer:Functions:LAN:Connect";
     const char* g_multiplayerListServersLANNodePath = "Multiplayer:Functions:LAN:ListServers";
 
-    // XBone
-    const char* g_multiplayerHostXBoneNodePath = "Multiplayer:Functions:XBone:Host";
-    const char* g_multiplayerConnectXBoneNodePath = "Multiplayer:Functions:XBone:Connect";
-    const char* g_multiplayerListServersXBoneNodePath = "Multiplayer:Functions:XBone:ListServers";
 
-    // PSN
-    const char* g_multiplayerHostPSNNodePath = "Multiplayer:Functions:PSN:Host";
-    const char* g_multiplayerConnectPSNNodePath = "Multiplayer:Functions:PSN:Connect";
-    const char* g_multiplayerListServersPSNNodePath = "Multiplayer:Functions:PSN:ListServers";
 }
 
 namespace FlowMultiplayerNodes
@@ -1023,201 +1015,8 @@ public:
 };
 // </LAN>
 
-// XBox One Flow Nodes
-
-class XBoneFlowNode_Connect
-    : public BaseFlowNode_Connect
-{
-public:
-    XBoneFlowNode_Connect(SActivationInfo* activationInfo)
-        : BaseFlowNode_Connect(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new XBoneFlowNode_Connect(activationInfo);
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-    }
-
-    GridMate::GridSession* JoinSession(const GridMate::SearchInfo* searchInfo, GridMate::CarrierDesc& carrierDesc) override
-    {
-        GridMate::GridSession* session = nullptr;
 
 
-        return session;
-    }
-};
-
-class XBoneFlowNode_Host
-    : public BaseFlowNode_Host
-{
-public:
-    XBoneFlowNode_Host(SActivationInfo* activationInfo)
-        : BaseFlowNode_Host(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new XBoneFlowNode_Host(activationInfo);
-    }
-
-    ICVar* FindServerPortCVar() override
-    {
-        return gEnv->pConsole->GetCVar("cl_serverport");
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-        Multiplayer::Durango::StartSessionService(gridMate);
-    }
-
-    GridMate::SessionParams* GetSessionParams() override
-    {
-        return nullptr;
-    }
-
-    GridMate::GridSession* HostSession(GridMate::CarrierDesc& carrierDesc) override
-    {
-        GridMate::GridSession* session = nullptr;
-
-
-        return session;
-    }
-
-private:
-};
-
-class XBoneFlowNode_ListServers
-    : public BaseFlowNode_ListServers
-
-{
-public:
-    XBoneFlowNode_ListServers(SActivationInfo* activationInfo)
-        : BaseFlowNode_ListServers(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new XBoneFlowNode_ListServers(activationInfo);
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-        Multiplayer::Durango::StartSessionService(gridMate);
-    }
-
-    GridMate::GridSearch* StartGridSearch() override
-    {
-        GridMate::GridSearch* gridSearch = nullptr;
-
-
-        return gridSearch;
-    }
-};
-
-// Playstation 4 Flow Nodes
-
-class PSNFlowNode_Connect
-    : public BaseFlowNode_Connect
-{
-public:
-    PSNFlowNode_Connect(SActivationInfo* activationInfo)
-        : BaseFlowNode_Connect(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new PSNFlowNode_Connect(activationInfo);
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-        Multiplayer::Orbis::StartSessionService(gridMate);
-    }
-
-    GridMate::GridSession* JoinSession(const GridMate::SearchInfo* searchInfo, GridMate::CarrierDesc& carrierDesc) override
-    {
-        GridMate::GridSession* session = nullptr;
-
-
-        return session;
-    }
-};
-
-class PSNFlowNode_Host
-    : public BaseFlowNode_Host
-{
-public:
-    PSNFlowNode_Host(SActivationInfo* activationInfo)
-        : BaseFlowNode_Host(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new PSNFlowNode_Host(activationInfo);
-    }
-
-    ICVar* FindServerPortCVar() override
-    {
-        return gEnv->pConsole->GetCVar("cl_serverport");
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-        Multiplayer::Orbis::StartSessionService(gridMate);
-    }
-
-    GridMate::SessionParams* GetSessionParams() override
-    {
-        return nullptr;
-    }
-
-    GridMate::GridSession* HostSession(GridMate::CarrierDesc& carrierDesc) override
-    {
-        GridMate::GridSession* session = nullptr;
-
-        return session;
-    }
-
-private:
-};
-
-class PSNFlowNode_ListServers
-    : public BaseFlowNode_ListServers
-
-{
-public:
-    PSNFlowNode_ListServers(SActivationInfo* activationInfo)
-        : BaseFlowNode_ListServers(activationInfo)
-    {
-    }
-
-    IFlowNodePtr Clone(SActivationInfo * activationInfo) override
-    {
-        return new PSNFlowNode_ListServers(activationInfo);
-    }
-
-    void StartSessionService(GridMate::IGridMate* gridMate) override
-    {
-        Multiplayer::Orbis::StartSessionService(gridMate);
-    }
-
-    GridMate::GridSearch* StartGridSearch() override
-    {
-        GridMate::GridSearch* gridSearch = nullptr;
-
-
-        return gridSearch;
-    }
-};
 
 // GameLift Flow Nodes
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
@@ -1277,13 +1076,7 @@ REGISTER_FLOW_NODE(g_multiplayerHostLANNodePath,LANFlowNode_Host);
 REGISTER_FLOW_NODE(g_multiplayerConnectLANNodePath,LANFlowNode_Connect);
 REGISTER_FLOW_NODE(g_multiplayerListServersLANNodePath,LANFlowNode_ListServers);
 
-REGISTER_FLOW_NODE(g_multiplayerHostXBoneNodePath,XBoneFlowNode_Host);
-REGISTER_FLOW_NODE(g_multiplayerConnectXBoneNodePath,XBoneFlowNode_Connect);
-REGISTER_FLOW_NODE(g_multiplayerListServersXBoneNodePath,XBoneFlowNode_ListServers);
 
-REGISTER_FLOW_NODE(g_multiplayerHostPSNNodePath,PSNFlowNode_Host);
-REGISTER_FLOW_NODE(g_multiplayerConnectPSNNodePath,PSNFlowNode_Connect);
-REGISTER_FLOW_NODE(g_multiplayerListServersPSNNodePath,PSNFlowNode_ListServers);
 
 REGISTER_FLOW_NODE(g_multiplayerListServersResultNodePath, FlowNode_ListServersResult);
 REGISTER_FLOW_NODE(g_multiplayerSetOwnerNodePath, FlowNode_SetOwner);

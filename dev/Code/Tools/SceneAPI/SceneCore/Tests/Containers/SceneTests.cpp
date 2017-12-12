@@ -50,6 +50,7 @@ namespace AZ
             public:
                 SceneFilenameTests()
                     : m_testScene("testScene")
+                    , m_testId(Uuid::CreateString("{C9B909EE-0751-4BD7-B68B-B2C48D535396}"))
                 {
                 }
 
@@ -62,24 +63,27 @@ namespace AZ
                 {
                 }
 
+                AZ::Uuid m_testId;
                 Scene m_testScene;
             };
 
-            TEST_F(SceneFilenameTests, SetSourceFilename_StringRef_SourceFileRegistered)
+            TEST_F(SceneFilenameTests, SetSource_StringRef_SourceFileRegistered)
             {
                 AZStd::string testFilename = "testFilename.fbx";
-                m_testScene.SetSourceFilename(testFilename);
+                m_testScene.SetSource(testFilename, m_testId);
                 const AZStd::string compareFilename = m_testScene.GetSourceFilename();
                 EXPECT_STREQ(testFilename.c_str(), compareFilename.c_str());
+                EXPECT_EQ(m_testId, m_testScene.GetSourceGuid());
             }
 
-            TEST_F(SceneFilenameTests, SetSourceFilename_StringRefRef_SourceFileRegistered)
+            TEST_F(SceneFilenameTests, SetSource_StringRefRef_SourceFileRegistered)
             {
                 const char* testChrFilename = "testFilename.fbx";
                 AZStd::string testFilename = testChrFilename;
-                m_testScene.SetSourceFilename(AZStd::move(testFilename));
+                m_testScene.SetSource(AZStd::move(testFilename), m_testId);
                 const AZStd::string compareFilename = m_testScene.GetSourceFilename();
                 EXPECT_STREQ(testChrFilename, compareFilename.c_str());
+                EXPECT_EQ(m_testId, m_testScene.GetSourceGuid());
             }
 
             TEST_F(SceneFilenameTests, SetManifestFilename_StringRef_ManifestFileRegistered)

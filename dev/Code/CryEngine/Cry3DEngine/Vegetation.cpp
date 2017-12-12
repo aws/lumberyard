@@ -140,12 +140,12 @@ CLodValue CVegetation::ComputeLod(int wantedLod, const SRenderingPassInfo& passI
     int nLodB = -1;
 
     StatInstGroup& vegetGroup = GetStatObjGroup();
-    if (CStatObj* pStatObj = vegetGroup.GetStatObj())
+    if (IStatObj* pStatObj = vegetGroup.GetStatObj())
     {
         const Vec3 vCamPos = passInfo.GetCamera().GetPosition();
 
         int minUsableLod = pStatObj->GetMinUsableLod();
-        int maxUsableLod = (int)pStatObj->m_nMaxUsableLod;
+        int maxUsableLod = (int)pStatObj->GetMaxUsableLod();
         nLodA = CLAMP(wantedLod, minUsableLod, maxUsableLod);
         nLodA = pStatObj->FindNearesLoadedLOD(nLodA);
 
@@ -207,7 +207,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     FUNCTION_PROFILER_3DENGINE;
     StatInstGroup& vegetGroup = GetStatObjGroup();
 
-    CStatObj* pStatObj = vegetGroup.GetStatObj();
+    IStatObj* pStatObj = vegetGroup.GetStatObj();
 
     if (!pStatObj)
     {
@@ -223,16 +223,16 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     bool bUseTerrainColor((vegetGroup.bUseTerrainColor && GetCVars()->e_VegetationUseTerrainColor) || GetCVars()->e_VegetationUseTerrainColor == 2);
     CRNTmpData::SRNUserData& userData = m_pRNTmpData->userData;
 
-    CRenderObject * pRenderObject = 0;
+    CRenderObject* pRenderObject = 0;
     if (GetObjManager()->CheckCreateRenderObject(
-        userData.m_arrPermanentRenderObjects,
-        MAX_STATOBJ_LODS_NUM,
-        pRenderObject,
-        &lodValue,
-        passInfo,
-        rendItemSorter,
-        m_pInstancingInfo ? m_pInstancingInfo->GetElements() : 0,
-        m_pInstancingInfo ? m_pInstancingInfo->Count() : 0))
+            userData.m_arrPermanentRenderObjects,
+            MAX_STATOBJ_LODS_NUM,
+            pRenderObject,
+            &lodValue,
+            passInfo,
+            rendItemSorter,
+            m_pInstancingInfo ? m_pInstancingInfo->GetElements() : 0,
+            m_pInstancingInfo ? m_pInstancingInfo->Count() : 0))
     {
         return;
     }
@@ -366,7 +366,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
     }
 
     // check the object against the water level
-    if (CObjManager::IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
+    if (GetObjManager()->IsAfterWater(vObjCenter, vCamPos, passInfo, Get3DEngine()->GetWaterLevel()))
     {
         pRenderObject->m_ObjFlags |= FOB_AFTER_WATER;
     }
@@ -394,7 +394,7 @@ void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lo
         }
         duplicated = true;
     }
-    Get3DEngine()->SetupBending(pRenderObject, this, pStatObj->m_fRadiusVert, passInfo, duplicated);
+    Get3DEngine()->SetupBending(pRenderObject, this, pStatObj->GetRadiusVert(), passInfo, duplicated);
 
     if (Get3DEngine()->IsTessellationAllowed(pRenderObject, passInfo))
     {
@@ -427,7 +427,7 @@ void CVegetation::Physicalize(bool bInstant)
 
     StatInstGroup& vegetGroup = GetStatObjGroup();
 
-    CStatObj* pBody = vegetGroup.GetStatObj();
+    IStatObj* pBody = vegetGroup.GetStatObj();
     if (!pBody)
     {
         return;
@@ -438,13 +438,13 @@ void CVegetation::Physicalize(bool bInstant)
 
     //////////////////////////////////////////////////////////////////////////
     // Not create instance if no physical geometry.
-    if (!pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_DEFAULT] && !(pBody->GetFlags() & STATIC_OBJECT_COMPOUND))
+    if (!pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_DEFAULT] && !(pBody->GetFlags() & STATIC_OBJECT_COMPOUND))
     {
         //no bHidability check for the E3 demo - make all the bushes with MAT_OBSTRUCT things soft cover
         //if(!(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT] && (bHideability || pBody->m_nSpines)))
-        if (!(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT]))
+        if (!(pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_OBSTRUCT]))
         {
-            if (!(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_NO_COLLIDE]))
+            if (!(pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_NO_COLLIDE]))
             {
                 return;
             }
@@ -505,7 +505,7 @@ void CVegetation::Physicalize(bool bInstant)
     }
 
     // collidable
-    if (pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_DEFAULT])
+    if (pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_DEFAULT])
     {
         pe_params_ground_plane pgp;
         Vec3 bbox[2] = { pBody->GetBoxMin(), pBody->GetBoxMax() };
@@ -523,8 +523,8 @@ void CVegetation::Physicalize(bool bInstant)
 
         if (!(m_dwRndFlags & ERF_PROCEDURAL))
         {
-            params.idmatBreakable = pBody->m_idmatBreakable;
-            if (pBody->m_bBreakableByGame)
+            params.idmatBreakable = pBody->GetIDMatBreakable();
+            if (pBody->GetBreakableByGame())
             {
                 params.flags |= geom_manually_breakable;
             }
@@ -533,39 +533,39 @@ void CVegetation::Physicalize(bool bInstant)
         {
             params.idmatBreakable = -1;
         }
-        m_pPhysEnt->AddGeometry(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_DEFAULT], &params, -1, 1);
+        m_pPhysEnt->AddGeometry(pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_DEFAULT], &params, -1, 1);
     }
 
     phys_geometry* pgeom;
     params.density = 2;
     params.idmatBreakable = -1;
-    if (pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_NO_COLLIDE] && pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT])
+    if (pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_NO_COLLIDE] && pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_OBSTRUCT])
     {
         params.minContactDist = GetFloatCVar(e_FoliageStiffness);
         params.flags = geom_squashy | geom_colltype_obstruct;
-        m_pPhysEnt->AddGeometry(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT], &params, 1024, 1);
+        m_pPhysEnt->AddGeometry(pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_OBSTRUCT], &params, 1024, 1);
 
         if (!gEnv->IsDedicated() && GetCVars()->e_PhysFoliage >= 2)
         {
             params.density = 0;
             params.flags = geom_log_interactions;
             params.flagsCollider = 0;
-            if (pBody->m_nSpines)
+            if (pBody->GetSpineCount())
             {
                 params.flags |= geom_colltype_foliage_proxy;
             }
-            m_pPhysEnt->AddGeometry(pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_NO_COLLIDE], &params, 2048, 1);
+            m_pPhysEnt->AddGeometry(pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_NO_COLLIDE], &params, 2048, 1);
         }
     }
-    else if ((pgeom = pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_NO_COLLIDE]) || (pgeom = pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT]))
+    else if ((pgeom = pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_NO_COLLIDE]) || (pgeom = pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_OBSTRUCT]))
     {
         params.minContactDist = GetFloatCVar(e_FoliageStiffness);
         params.flags = geom_log_interactions | geom_squashy;
-        if (pBody->m_arrPhysGeomInfo[PHYS_GEOM_TYPE_OBSTRUCT])
+        if (pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_OBSTRUCT])
         {
             params.flags |= geom_colltype_obstruct;
         }
-        if (pBody->m_nSpines)
+        if (pBody->GetSpineCount())
         {
             params.flags |= geom_colltype_foliage_proxy;
         }
@@ -593,8 +593,8 @@ void CVegetation::Physicalize(bool bInstant)
 
 bool CVegetation::PhysicalizeFoliage(bool bPhysicalize, int iSource, int nSlot)
 {
-    CStatObj* pBody = GetStatObj();
-    if (!pBody || !pBody->m_pSpines)
+    IStatObj* pBody = GetStatObj();
+    if (!pBody || !pBody->GetSpines())
     {
         return false;
     }
@@ -712,13 +712,16 @@ void CVegetation::GetMemoryUsage(ICrySizer* pSizer) const
 
 const char* CVegetation::GetName() const
 {
-    return (GetStatObjGroupSize() && GetStatObj()) ?
-           GetStatObj()->GetFilePath() : "StatObjNotSet";
+    const int groupSize = GetStatObjGroupSize();
+    const IStatObj* statObj = GetObjManager()->GetListStaticTypes()[0][m_nObjectTypeIndex].GetStatObj();
+
+    return groupSize && statObj ? statObj->GetFilePath() : "StatObjNotSet";
 }
+
 //////////////////////////////////////////////////////////////////////////
-IRenderMesh*       CVegetation::GetRenderMesh(int nLod)
+IRenderMesh* CVegetation::GetRenderMesh(int nLod)
 {
-    CStatObj*   pStatObj(GetStatObj());
+    IStatObj*   pStatObj(GetStatObj());
 
     if (!pStatObj)
     {
@@ -773,7 +776,7 @@ void CVegetation::OnRenderNodeBecomeVisible(const SRenderingPassInfo& passInfo)
         UpdateSunDotTerrain();
     }
 
-    userData.nWantedLod = CObjManager::GetObjectLOD(this, fEntDistance);
+    userData.nWantedLod = GetObjManager()->GetObjectLOD(this, fEntDistance);
 
     int nLod = userData.nWantedLod;
 
@@ -859,7 +862,7 @@ void CVegetation::SetMatrix(const Matrix34& mat)
 
 void CVegetation::CheckCreateDeformable()
 {
-    if (CStatObj* pStatObj = GetStatObj())
+    if (IStatObj* pStatObj = GetStatObj())
     {
         if (pStatObj->IsDeformable())
         {
@@ -912,7 +915,7 @@ void CVegetation::OffsetPosition(const Vec3& delta)
 bool CVegetation::GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const
 {
     StatInstGroup& vegetGroup = GetStatObjGroup();
-    CStatObj* pStatObj = vegetGroup.GetStatObj();
+    IStatObj* pStatObj = vegetGroup.GetStatObj();
 
     const float fEntityLodRatio = GetLodRatioNormalized();
     if (pStatObj && fEntityLodRatio >  0.0f)
@@ -934,4 +937,25 @@ bool CVegetation::GetLodDistances(const SFrameLodInfo& frameLodInfo, float* dist
     }
 
     return true;
+}
+
+int CVegetation::GetStatObjGroupSize() const
+{
+    return GetObjManager()->GetListStaticTypes()[0].Count();
+}
+
+StatInstGroup& CVegetation::GetStatObjGroup() const
+{
+    return GetObjManager()->GetListStaticTypes()[0][m_nObjectTypeIndex];
+}
+
+IStatObj* CVegetation::GetStatObj()
+{
+    return GetObjManager()->GetListStaticTypes()[0][m_nObjectTypeIndex].GetStatObj();
+}
+
+
+uint8 CVegetation::GetMaterialLayers() const
+{
+    return GetObjManager()->GetListStaticTypes()[0][m_nObjectTypeIndex].nMaterialLayers;
 }

@@ -19,6 +19,7 @@
 #pragma once
 
 #if defined(USE_CRY_ASSERT) && defined(MAC)
+#include <NativeUIRequests.h>
 
 static char gs_szMessage[MAX_PATH];
 
@@ -100,61 +101,25 @@ bool CryAssert(const char* szCondition, const char* szFile, unsigned int line, b
 
     if (!gEnv->bNoAssertDialog && !gEnv->bIgnoreAllAsserts)
     {
+        NativeUI::AssertAction result;
+        EBUS_EVENT_RESULT(result, NativeUI::NativeUIRequestBus, DisplayAssertDialog, gs_szMessage);
+        
+        switch(result)
+        {
+            case NativeUI::AssertAction::IGNORE_ASSERT:
+                return false;
+            case NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
+                gEnv->bNoAssertDialog = true;
+                gEnv->bIgnoreAllAsserts = true;
+                return false;
+            case NativeUI::AssertAction::BREAK:
+                return true;
+            default:
+                break;
+        }
+        
         // For asserts on the Mac always trigger a debug break. Annoying but at least it does not kill the thread like assert() does.
         __asm__("int $3");
-#if 0 // Disable the assert terminal program for now as it does not build nor correctly install it self to be useful
-        CryAutoLock< CryLockT<CRYLOCK_RECURSIVE> > lk (lock);
-        snprintf(gs_command_str, max_len,
-            "osascript -e 'tell application \"Terminal\"' "
-            "-e 'activate' "
-            "-e 'set w to do script \"%s/assert_term \\\"%s\\\" \\\"%s\\\" %d \\\"%s\\\"; echo $? > \\\"%s\\\"/.assert_return;\"' "
-            "-e 'repeat' "
-            "-e 'delay 0.1' "
-            "-e 'if not busy of w then exit repeat' "
-            "-e 'end repeat' "
-            "-e 'do script \"exit 0\" in window 1' "
-            "-e 'end tell' &>/dev/null",
-            GetModulePath(), szCondition, (file_len > 60) ? szFile + (file_len - 61) : szFile, line, gs_szMessage, GetModulePath());
-        int ret = system(gs_command_str);
-        if (ret != 0)
-        {
-            CryLogAlways("<Assert> Terminal failed to execute");
-            return false;
-        }
-        snprintf(gs_command_str, 4069, "%s/.assert_return", GetModulePath());
-        FILE* assert_file = fopen(gs_command_str, "r");
-        if (!assert_file)
-        {
-            CryLogAlways("<Assert> Couldn't open assert file");
-            return false;
-        }
-        int result = -1;
-        fscanf(assert_file, "%d", &result);
-        fclose(assert_file);
-
-        switch (result)
-        {
-        case 0:
-            break;
-        case 1:
-            *pIgnore = true;
-            break;
-        case 2:
-            gEnv->bIgnoreAllAsserts = true;
-            break;
-        case 3:
-            return true;
-            break;
-        case 4:
-            raise(SIGABRT);
-            exit(-1);
-            break;
-        default:
-            CryLogAlways("<Assert> Unknown result in assert file: %d", result);
-            return false;
-        }
-
-#endif
     }
 
 

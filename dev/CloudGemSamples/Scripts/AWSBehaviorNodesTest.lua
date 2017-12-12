@@ -8,7 +8,8 @@ local testButtons = {
     "btnTest05",
     "btnTest06",
     "btnTest07",
-    "btnTest08"
+    "btnTest08",
+    "btnTest09"
 }
 
 function AWSBehaviorNodesTest:OnActivate()
@@ -17,7 +18,7 @@ function AWSBehaviorNodesTest:OnActivate()
     self.buttonHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
 
     -- Connect our EBus to listen for test entity events
-    self.runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests")
+    self.runTestsEventId = GameplayNotificationId(self.entityId, "Run Tests", typeid(""))
     self.gamePlayHandler = GameplayNotificationBus.Connect(self, self.runTestsEventId)
     
     -- Display the mouse cursor
@@ -79,7 +80,7 @@ end
 function AWSBehaviorNodesTest:StartNextTest()
     if self.count < #self.entities then
         self.count = self.count + 1          
-        GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.entities[self.count], "Run Tests"), nil)
+        GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.entities[self.count], "Run Tests", typeid("")), "")
     else
         if self.tag == "Prerequisite" then
             self.tag = "Test Entity"
@@ -109,7 +110,7 @@ function AWSBehaviorNodesTest:SetUpSingleTestButtons()
             local entity = v
             local capturedEnityName = entityName
             Debug.Log("Starting test on entity " .. capturedEnityName)
-            GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entity, "Run Tests"), nil)
+            GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(entity, "Run Tests", typeid("")), "")
         end
     end
 end

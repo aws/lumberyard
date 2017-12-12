@@ -781,7 +781,7 @@ QVariant DialogScriptModel::data(const QModelIndex& index, int role) const
             return tr("Actor %1").arg(rowContents.m_actor + 1);
         case AudioIDColumn:
         {
-            std::string s = rowContents.m_audioTriggerName.c_str();
+            std::string s = rowContents.m_audioTriggerName;
             return QString::fromStdString(s);
         }
         case AnimationColumn:

@@ -284,7 +284,7 @@ enum EKeyId
     eKI_Touch9,
     eKI_TouchLast,
 
-    // Durango controller.
+    // Durango controller. // ACCEPTED_USE
     eKI_XI_DPadUp = KI_XINPUT_BASE,
     eKI_XI_DPadDown,
     eKI_XI_DPadLeft,
@@ -318,7 +318,7 @@ enum EKeyId
     eKI_XI_Connect,     // should be deprecated because all devices can be connected, use eKI_SYS_ConnectDevice instead
     eKI_XI_Disconnect,  // should be deprecated because all devices can be disconnected, use eKI_SYS_DisconnectDevice instead
 
-    // Orbis controller.
+    // Orbis controller. // ACCEPTED_USE
     eKI_Orbis_Options = KI_ORBIS_BASE,
     eKI_Orbis_L3,
     eKI_Orbis_R3,
@@ -347,7 +347,7 @@ enum EKeyId
     eKI_Orbis_RotZ_KeyD,
     eKI_Orbis_RotZ_KeyU,
 
-    // Orbis specific
+    // Orbis specific // ACCEPTED_USE
     eKI_Orbis_Touch,
 
     // Normal inputs should be added above
@@ -473,8 +473,8 @@ struct SUnicodeEvent
 {
     const uint32 inputChar; // The unicode code-point that was entered
 
-    SUnicodeEvent(uint32 inputChar = 0)
-        : inputChar(inputChar) {}
+    SUnicodeEvent(uint32 _inputChar = 0)
+        : inputChar(_inputChar) {}
     void GetMemoryUsage(ICrySizer* pSizer) const {}
 };
 
@@ -597,13 +597,13 @@ struct SFFOutputEvent
         , triggerData(triggerInitValue)
     {}
 
-    SFFOutputEvent(EInputDeviceType id, EFFEffectId event, const SFFTriggerOutputData& triggerData, float time = 1.0f, float ampA = 1.0f, float ampB = 1.0f)
+    SFFOutputEvent(EInputDeviceType id, EFFEffectId event, const SFFTriggerOutputData& _triggerData, float time = 1.0f, float ampA = 1.0f, float ampB = 1.0f)
         : deviceType(id)
         , eventId(event)
         , timeInSeconds(time)
         , amplifierS(ampA)
         , amplifierA(ampB)
-        , triggerData(triggerData)
+        , triggerData(_triggerData)
     {}
 };
 
@@ -858,7 +858,7 @@ struct SKinSkeletonFrame
     SKinSkeletonRawData skeletonRawData[KIN_SKELETON_COUNT];
 
     // add extra skeleton frame data after this point, all data
-    // before needs to be reflected in the Xbox Kinect sync app!
+    // before needs to be reflected in the Xbox Kinect sync app! // ACCEPTED_USE
     SKinSkeletonDefaultData skeletonDefaultData[KIN_SKELETON_COUNT];
 };
 
@@ -1360,7 +1360,7 @@ struct IInput
 
     // Description:
     //   For direct key processing (e.g. win proc functions)
-    //   currently only used by durango metro launcher
+    //   currently only used by some consoles
     virtual void ProcessKey(uint32 key, bool pressed, wchar_t unicode, bool repeat) = 0;
 
     // Description:

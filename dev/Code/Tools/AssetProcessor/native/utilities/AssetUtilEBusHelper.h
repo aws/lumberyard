@@ -189,7 +189,7 @@ namespace AssetProcessor
         typedef AZStd::recursive_mutex MutexType;
 
         // The asset catalog has finished saving the registry
-        virtual void OnRegistrySaveComplete(int assetCatalogVersion) {}
+        virtual void OnRegistrySaveComplete(int /*assetCatalogVersion*/, bool /*allCatalogsSaved*/) {}
     };
 
     using AssetRegistryNotificationBus = AZ::EBus<AssetRegistryNotifications>;

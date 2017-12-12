@@ -729,18 +729,18 @@ CVegetationPanel::~CVegetationPanel()
 /////////////////////////////////////////////////////////////////////////////
 // CVegetationPanel message handlers
 
-void CVegetationPanel::OnBrushRadiusChange(double radius)
+void CVegetationPanel::OnBrushRadiusChange()
 {
+    double radius = m_ui->brushRadiusSpin->value();
     m_ui->brushRadiusSlider->setValue(radius * 100);
     m_tool->SetBrushRadius(radius);
-
-    MainWindow::instance()->setFocus();
 }
 
 void CVegetationPanel::OnBrushRadiusSliderChange(int value)
 {
-    QSignalBlocker blocker(m_ui->brushRadiusSlider);
-    m_ui->brushRadiusSpin->setValue(value / 100.0);
+    double radius = value / 100.0;
+    m_ui->brushRadiusSpin->setValue(radius);
+    m_tool->SetBrushRadius(radius);
 }
 
 void CVegetationPanel::OnPaint()
@@ -805,8 +805,8 @@ void CVegetationPanel::OnInitDialog()
     m_enabledOnObjectSelected << m_ui->mergeButton;
     connect(m_ui->putSelectionToCategoryButton, &QToolButton::clicked, this, &CVegetationPanel::OnInstancesToCategory);
 
-    connect(m_ui->brushRadiusSpin, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &CVegetationPanel::OnBrushRadiusChange);
-    connect(m_ui->brushRadiusSlider, &QSlider::valueChanged, this, &CVegetationPanel::OnBrushRadiusSliderChange);
+    connect(m_ui->brushRadiusSpin, &QDoubleSpinBox::editingFinished, this, &CVegetationPanel::OnBrushRadiusChange);
+    connect(m_ui->brushRadiusSlider, &QSlider::sliderMoved, this, &CVegetationPanel::OnBrushRadiusSliderChange);
     connect(m_ui->paintObjectsButton, &QPushButton::clicked, this, &CVegetationPanel::OnPaint);
     connect(m_ui->removeDuplicatedButton, &QPushButton::clicked, this, &CVegetationPanel::OnRemoveDuplVegetation);
 

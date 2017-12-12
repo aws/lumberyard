@@ -25,7 +25,6 @@ namespace AZ
 
     namespace SceneAPI
     {
-
         namespace SceneData
         {
             class SkeletonGroup
@@ -35,11 +34,14 @@ namespace AZ
                 AZ_RTTI(SkeletonGroup, "{F5F8D1BF-3A24-45E8-8C3F-6A682CA02520}", DataTypes::ISkeletonGroup);
                 AZ_CLASS_ALLOCATOR_DECL
 
+                SkeletonGroup();
                 ~SkeletonGroup() override = default;
 
                 const AZStd::string& GetName() const override;
                 void SetName(const AZStd::string& name);
                 void SetName(AZStd::string&& name);
+                const Uuid& GetId() const override;
+                void OverrideId(const Uuid& id);
 
                 Containers::RuleContainer& GetRuleContainer();
                 const Containers::RuleContainer& GetRuleContainerConst() const;
@@ -51,9 +53,10 @@ namespace AZ
                 static bool VersionConverter(SerializeContext& context, SerializeContext::DataElementNode& classElement);
 
             protected:
-                Containers::RuleContainer   m_rules;
-                AZStd::string               m_name;
-                AZStd::string               m_selectedRootBone;
+                Containers::RuleContainer m_rules;
+                AZStd::string m_name;
+                AZStd::string m_selectedRootBone;
+                Uuid m_id;
             };
         }
     }

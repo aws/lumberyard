@@ -129,10 +129,11 @@ void CDialogEditorDialog::closeEvent(QCloseEvent* ev)
 
 void CDialogEditorDialog::RegisterViewClass()
 {
-    QtViewOptions options;
+    AzToolsFramework::ViewPaneOptions options;
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CDialogEditorDialog>(GetIEditor(), DIALOG_EDITOR_NAME, LyViewPane::CategoryOther, options);
+    options.isLegacy = true;
+    AzToolsFramework::RegisterViewPane<CDialogEditorDialog>(DIALOG_EDITOR_NAME, LyViewPane::CategoryOther, options);
 }
 
 bool CDialogEditorDialog::DoSourceControlOp(CEditorDialogScript* script, ESourceControlOp scOp)

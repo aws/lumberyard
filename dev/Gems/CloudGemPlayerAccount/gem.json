@@ -5,8 +5,8 @@
     "DisplayName": "Cloud Gem Player Account",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Provides user registration, password managment, and login/logout.",
-    "Tags": ["Cloud Canvas", "AWS"],
+    "Summary": "Enable player authentication and account creation for your game. This Cloud Gem provides user registration, password management, and login/logout.",
+    "Tags": ["Cloud Canvas", "AWS", "Cognito", "DynamoDB"],
     "Dependencies": [
         {
             "Uuid": "0945e21b7ae848ac80b4ec1f34c459cc",

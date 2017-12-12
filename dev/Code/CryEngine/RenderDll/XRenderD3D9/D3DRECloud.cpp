@@ -326,11 +326,11 @@ void CRECloud::DisplayWithoutImpostor(const CameraViewParameters& camera)
                 nCurParts = 32768;
             }
 
-            TempDynVB<SVF_P3F_C4B_T2F> vb;
+            TempDynVB<SVF_P3F_C4B_T2F> vb(gcpRendD3D);
             vb.Allocate(nCurParts * 4);
             SVF_P3F_C4B_T2F* pDst = vb.Lock();
 
-            TempDynIB16 ib;
+            TempDynIB16 ib(gcpRendD3D);
             ib.Allocate(nCurParts * 6);
             uint16* pDstInds = ib.Lock();
 
@@ -349,7 +349,7 @@ void CRECloud::DisplayWithoutImpostor(const CameraViewParameters& camera)
             Vec3 cloudShadingMultipliers;
             p3DEngine->GetGlobalParameter(E3DPARAM_CLOUDSHADING_MULTIPLIERS, cloudShadingMultipliers);
 
-            Vec3 brightColor(cloudShadingMultipliers.x * p3DEngine->GetSunColor().CompMul(Vec3(cloudSpec.r, cloudSpec.g, cloudSpec.b)));
+            Vec3 brightColor(cloudShadingMultipliers.x* p3DEngine->GetSunColor().CompMul(Vec3(cloudSpec.r, cloudSpec.g, cloudSpec.b)));
 
             Vec3 negCamFrontDir(-cam.ViewDir());
 
@@ -570,7 +570,14 @@ bool CRECloud::UpdateImposter(CRenderObject* pObj)
             uint32 nX1, nY1, nW1, nH1;
             (*pDT)->Update(iResX, iResY);
             (*pDT)->GetImageRect(nX1, nY1, nW1, nH1);
-            if (nW1 > (int)rd->m_d3dsdBackBuffer.Width || nH1 > (int)rd->m_d3dsdBackBuffer.Height)
+#if defined(OPENGL_ES)
+            // OpenGLES needs the color texture size to match the depth texture
+            pDepth = nW1 != static_cast<int>(rd->m_d3dsdBackBuffer.Width) || nH1 != static_cast<int>(rd->m_d3dsdBackBuffer.Height) ? nullptr : pDepth;
+#else
+            pDepth = nW1 > static_cast<int>(rd->m_d3dsdBackBuffer.Width) || nH1 > static_cast<int>(rd->m_d3dsdBackBuffer.Height) ? nullptr : pDepth;
+#endif // defined(OPENGL_ES)
+
+            if (!pDepth)
             {
                 pDepth = rd->FX_GetDepthSurface(nW1, nH1, false);
             }
@@ -737,13 +744,13 @@ bool CRECloud::mfDisplay(bool bDisplayFrontOfSplit)
 
         if (SRendItem::m_RecurseLevel[rd->m_RP.m_nProcessThreadID] <= 0)
         {
-            const SRenderTileInfo& rti = rd->GetRenderTileInfo();
-            if (rti.nGridSizeX > 1.f || rti.nGridSizeY > 1.f)
+            const SRenderTileInfo* rti = rd->GetRenderTileInfo();
+            if (rti->nGridSizeX > 1.f || rti->nGridSizeY > 1.f)
             { // shift and scale viewport
-                m->m00 *= rti.nGridSizeX;
-                m->m11 *= rti.nGridSizeY;
-                m->m20 =   (rti.nGridSizeX - 1.f) - rti.nPosX * 2.0f;
-                m->m21 = -((rti.nGridSizeY - 1.f) - rti.nPosY * 2.0f);
+                m->m00 *= rti->nGridSizeX;
+                m->m11 *= rti->nGridSizeY;
+                m->m20 =   (rti->nGridSizeX - 1.f) - rti->nPosX * 2.0f;
+                m->m21 = -((rti->nGridSizeY - 1.f) - rti->nPosY * 2.0f);
             }
         }
 
@@ -832,13 +839,13 @@ bool CRECloud::mfDisplay(bool bDisplayFrontOfSplit)
         mathMatrixOrthoOffCenterLH(m, -1, 1, -1, 1, -1, 1);
         if (SRendItem::m_RecurseLevel[rd->m_RP.m_nProcessThreadID] <= 0)
         {
-            const SRenderTileInfo& rti = rd->GetRenderTileInfo();
-            if (rti.nGridSizeX > 1.f || rti.nGridSizeY > 1.f)
+            const SRenderTileInfo* rti = rd->GetRenderTileInfo();
+            if (rti->nGridSizeX > 1.f || rti->nGridSizeY > 1.f)
             { // shift and scale viewport
-                m->m00 *= rti.nGridSizeX;
-                m->m11 *= rti.nGridSizeY;
-                m->m30 = -((rti.nGridSizeX - 1.f) - rti.nPosX * 2.0f);
-                m->m31 =  ((rti.nGridSizeY - 1.f) - rti.nPosY * 2.0f);
+                m->m00 *= rti->nGridSizeX;
+                m->m11 *= rti->nGridSizeY;
+                m->m30 = -((rti->nGridSizeX - 1.f) - rti->nPosX * 2.0f);
+                m->m31 =  ((rti->nGridSizeY - 1.f) - rti->nPosY * 2.0f);
             }
         }
 
@@ -882,7 +889,7 @@ bool CRECloud::mfDisplay(bool bDisplayFrontOfSplit)
         pSH->FXSetVSFloat(LightningColSizeName, &lightningColorSize, 1);
 
         {
-            TempDynVB<SVF_P3F_T2F_T3F> vb;
+            TempDynVB<SVF_P3F_T2F_T3F> vb(gRenDev);
             vb.Allocate(4);
             SVF_P3F_T2F_T3F* vQuad = vb.Lock();
 

@@ -19,6 +19,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
 
 class QAction;
@@ -48,7 +49,9 @@ namespace Ui
     class ImporterRootDisplay;
 }
 
-class ImporterRootDisplay : public QWidget
+class ImporterRootDisplay 
+    : public QWidget
+    , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler
 {
     Q_OBJECT
 
@@ -70,10 +73,10 @@ public:
 signals:
     void UpdateClicked();
 
-private slots:
-    void SetToDirtyState();
-
 private:
+    // ManifestMetaInfoBus
+    void ObjectUpdated(const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::IManifestObject* target, void* sender) override;
+
     Ui::ImporterRootDisplay* ui;
     QScopedPointer<AZ::SceneAPI::UI::ManifestWidget> m_manifestWidget;
     bool m_hasUnsavedChanges;

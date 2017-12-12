@@ -81,10 +81,10 @@ const GUID& CVegetationDataBasePage::GetClassID()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationDataBasePage::RegisterViewClass()
 {
-    QtViewOptions options;
-    options.canHaveMultipleInstances = true;
+    AzToolsFramework::ViewPaneOptions options;
+    options.isLegacyReplacement = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-    RegisterQtViewPane<CVegetationDataBasePage>(GetIEditor(), "Vegetation Editor", LyViewPane::CategoryEditor, options);
+    AzToolsFramework::RegisterViewPane<CVegetationDataBasePage>(LyViewPane::VegetationEditor, LyViewPane::CategoryTools, options);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -150,6 +150,16 @@ CVegetationDataBasePage::CVegetationDataBasePage(QWidget* pParent /*=NULL*/)
     connect(m_ui->m_wndReport->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CVegetationDataBasePage::OnReportSelChange);
     connect(m_ui->m_wndReport, &QWidget::customContextMenuRequested, this, &CVegetationDataBasePage::OnReportRClick);
     connect(m_ui->m_wndReport, &QAbstractItemView::clicked, this, &CVegetationDataBasePage::OnReportClick);
+
+    // When the vegetation editor is created as a standalone tool, we need to
+    // set it as active so that it will receive updates. When it's created
+    // as one of the pages in the database view, its parent is initially a
+    // tab widget and gets activated through that, whereas it has no parent
+    // initially when created as its own tool.
+    if (!pParent)
+    {
+        SetActive(true);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1238,6 +1248,11 @@ void CVegetationDataBasePage::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
     switch (event)
     {
+    case eNotify_OnBeginLoad:
+    case eNotify_OnBeginNewScene:
+        // Vegetation objects are about to be deleted
+        m_vegetationDataBaseModel->setVegetationObjects({});
+        break;
     case eNotify_OnEndSceneOpen:
         ReloadObjects();
         break;

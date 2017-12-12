@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "AnimPostFXNode.h"
 #include "AnimSplineTrack.h"
 #include "CompoundSplineTrack.h"
@@ -71,8 +72,7 @@ public:
 
     //-----------------------------------------------------------------------------
     //!
-    CFXNodeDescription(EAnimNodeType nodeType)
-        : m_nodeType(nodeType){}
+    CFXNodeDescription() {}
 
     //-----------------------------------------------------------------------------
     //!
@@ -94,7 +94,6 @@ public:
 
     //-----------------------------------------------------------------------------
     //!
-    EAnimNodeType m_nodeType;
     std::vector<CAnimNode::SParamInfo> m_nodeParams;
     std::vector< _smart_ptr<CControlParamBase> > m_controlParams;
 };
@@ -135,9 +134,16 @@ void CFXNodeDescription::TControlParam<Vec4>::GetDefault(Vec4& val) const
 CAnimPostFXNode::FxNodeDescriptionMap CAnimPostFXNode::s_fxNodeDescriptions;
 bool CAnimPostFXNode::s_initialized = false;
 
+
 //-----------------------------------------------------------------------------
-CAnimPostFXNode::CAnimPostFXNode(const int id, CFXNodeDescription* pDesc)
-    : CAnimNode(id)
+CAnimPostFXNode::CAnimPostFXNode()
+    : CAnimPostFXNode(0, eAnimNodeType_Invalid, nullptr)
+{
+}
+
+//-----------------------------------------------------------------------------
+CAnimPostFXNode::CAnimPostFXNode(const int id, EAnimNodeType nodeType, CFXNodeDescription* pDesc)
+    : CAnimNode(id, nodeType)
     , m_pDescription(pDesc)
 {
 }
@@ -152,7 +158,7 @@ void CAnimPostFXNode::Initialize()
         //////////////////////////////////////////////////////////////////////////
         //! Radial Blur
         {
-            CFXNodeDescription* pDesc = new CFXNodeDescription(eAnimNodeType_RadialBlur);
+            CFXNodeDescription* pDesc = new CFXNodeDescription();
             s_fxNodeDescriptions[eAnimNodeType_RadialBlur] = pDesc;
             pDesc->m_nodeParams.reserve(4);
             pDesc->m_controlParams.reserve(4);
@@ -165,7 +171,7 @@ void CAnimPostFXNode::Initialize()
         //////////////////////////////////////////////////////////////////////////
         //! Color Correction
         {
-            CFXNodeDescription* pDesc = new CFXNodeDescription(eAnimNodeType_ColorCorrection);
+            CFXNodeDescription* pDesc = new CFXNodeDescription();
             s_fxNodeDescriptions[eAnimNodeType_ColorCorrection] = pDesc;
             pDesc->m_nodeParams.reserve(8);
             pDesc->m_controlParams.reserve(8);
@@ -183,7 +189,7 @@ void CAnimPostFXNode::Initialize()
         //////////////////////////////////////////////////////////////////////////
         //! Depth of Field
         {
-            CFXNodeDescription* pDesc = new CFXNodeDescription(eAnimNodeType_DepthOfField);
+            CFXNodeDescription* pDesc = new CFXNodeDescription();
             s_fxNodeDescriptions[eAnimNodeType_DepthOfField] = pDesc;
             pDesc->m_nodeParams.reserve(4);
             pDesc->m_controlParams.reserve(4);
@@ -196,7 +202,7 @@ void CAnimPostFXNode::Initialize()
         //////////////////////////////////////////////////////////////////////////
         //! Shadow setup - expose couple shadow controls to cinematics
         {
-            CFXNodeDescription* pDesc = new CFXNodeDescription(eAnimNodeType_ShadowSetup);
+            CFXNodeDescription* pDesc = new CFXNodeDescription();
             s_fxNodeDescriptions[eAnimNodeType_ShadowSetup] = pDesc;
             pDesc->m_nodeParams.reserve(1);
             pDesc->m_controlParams.reserve(1);
@@ -206,20 +212,52 @@ void CAnimPostFXNode::Initialize()
 }
 
 //-----------------------------------------------------------------------------
-CAnimNode* CAnimPostFXNode::CreateNode(const int id, EAnimNodeType nodeType)
+/*static*/ CFXNodeDescription* CAnimPostFXNode::GetFXNodeDescription(EAnimNodeType nodeType)
 {
+    CFXNodeDescription* retDescription = nullptr;
+
     CAnimPostFXNode::Initialize();
 
     FxNodeDescriptionMap::iterator itr = s_fxNodeDescriptions.find(nodeType);
 
-    if (itr == s_fxNodeDescriptions.end())
+    if (itr != s_fxNodeDescriptions.end())
     {
-        return 0;
+        retDescription = itr->second;
     }
 
-    CFXNodeDescription* pDesc = itr->second;
+    return retDescription;
+}
 
-    return new CAnimPostFXNode(id, pDesc);
+//-----------------------------------------------------------------------------
+CAnimNode* CAnimPostFXNode::CreateNode(const int id, EAnimNodeType nodeType)
+{
+    CAnimNode* retNode = nullptr;
+
+    CFXNodeDescription* pDesc = GetFXNodeDescription(nodeType);
+
+    if (pDesc)
+    {
+        retNode = aznew CAnimPostFXNode(id, nodeType, pDesc);
+        static_cast<CAnimPostFXNode*>(retNode)->m_nodeType = nodeType;
+    }
+    
+    return retNode;
+}
+
+//-----------------------------------------------------------------------------
+void CAnimPostFXNode::InitPostLoad(IAnimSequence* sequence)
+{
+    CAnimNode::InitPostLoad(sequence);
+
+    // For AZ::Serialization, m_nodeType will have be reflected and deserialized. Find the appropriate FXNodeDescription for it
+    // and store the pointer
+    m_pDescription = GetFXNodeDescription(m_nodeType);
+    if (!m_pDescription)
+    {
+        // This is not ideal - we should never get here unless someone is tampering with data. We can't remove the node at this point,
+        // we can't use a defatult description without crashing later, so we simply assert.
+        AZ_Assert(false, "Unrecognized PostFX nodeType in Track View node %s. Please remove this node from the sequence.", m_name.c_str());
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -250,12 +288,6 @@ void CAnimPostFXNode::SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bL
     }
 
     CAnimNode::SerializeAnims(xmlNode, bLoading, bLoadEmptyTracks);
-}
-
-//-----------------------------------------------------------------------------
-EAnimNodeType CAnimPostFXNode::GetType() const
-{
-    return m_pDescription->m_nodeType;
 }
 
 //-----------------------------------------------------------------------------
@@ -328,7 +360,7 @@ void CAnimPostFXNode::Animate(SAnimContext& ac)
 {
     for (size_t i = 0; i < m_tracks.size(); ++i)
     {
-        IAnimTrack* pTrack = m_tracks[i];
+        IAnimTrack* pTrack = m_tracks[i].get();
         assert(pTrack);
         size_t paramIndex = (size_t)m_tracks[i]->GetParameterType().GetType() - eAnimParamType_User;
         assert(paramIndex < m_pDescription->m_nodeParams.size());
@@ -382,7 +414,7 @@ void CAnimPostFXNode::OnReset()
     // Reset each postFX param to its default.
     for (size_t i = 0; i < m_tracks.size(); ++i)
     {
-        IAnimTrack* pTrack = m_tracks[i];
+        IAnimTrack* pTrack = m_tracks[i].get();
         assert(pTrack);
         size_t paramIndex = (size_t)m_tracks[i]->GetParameterType().GetType() - eAnimParamType_User;
         assert(paramIndex < m_pDescription->m_nodeParams.size());
@@ -416,4 +448,11 @@ void CAnimPostFXNode::OnReset()
             gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), val);
         }
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimPostFXNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimPostFXNode, CAnimNode>()
+        ->Version(1);
 }

@@ -23,7 +23,9 @@
 
 #if MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
 # pragma warning(disable:4700)
-# if !defined(ORBIS) && !defined(MAC) && !defined(LINUX)
+# if   defined(MAC)
+# elif defined(LINUX)
+# else
 # include <intrin.h>
 # endif
 # include <immintrin.h>
@@ -395,14 +397,14 @@ struct SMMRMGeometry
     union
     {
         uint32  srcGroupId;
-        CStatObj* srcObj;
+        IStatObj* srcObj;
     };
     size_t refCount;
     JobManager::SJobState geomPrepareState;
     const bool is_obj : 1;
 
 
-    SMMRMGeometry(CStatObj* obj, uint16 slot)
+    SMMRMGeometry(IStatObj* obj, uint16 slot)
         : aabb(AABB::RESET)
         , numIdx()
         , numVtx()

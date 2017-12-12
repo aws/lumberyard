@@ -81,10 +81,10 @@ namespace std17
         // no copies!
     public:
         // construction
-        explicit unique_resource_t(R&& resource, D&& deleter, bool shouldrun = true)
-            : resource(std::move(resource))
-            , deleter(std::move(deleter))
-            , execute_on_destruction(shouldrun)
+        explicit unique_resource_t(R&& _resource, D&& _deleter, bool _shouldrun = true)
+            : resource(std::move(_resource))
+            , deleter(std::move(_deleter))
+            , execute_on_destruction(_shouldrun)
         {
         }
         // move

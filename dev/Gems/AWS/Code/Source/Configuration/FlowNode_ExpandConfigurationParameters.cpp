@@ -11,8 +11,7 @@
 */
 #include <StdAfx.h>
 #include <Configuration/FlowNode_ExpandConfigurationParameters.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 namespace LmbrAWS
 {
@@ -44,12 +43,52 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Expand))
         {
-            string value = GetPortString(pActInfo, EIP_Value);
-            gEnv->pLmbrAWS->GetClientManager()->GetConfigurationParameters().ExpandParameters(value);
-            ActivateOutput(pActInfo, EOP_Value, value);
+            AZStd::string value = GetPortString(pActInfo, EIP_Value).c_str();
+            AZStd::unordered_set<AZStd::string> seenSet;
+            ExpandParameterMapping(value, seenSet);
+            string valueStr{ value.c_str() };
+            ActivateOutput(pActInfo, EOP_Value, valueStr);
             ActivateOutput(pActInfo, EOP_Success, true);
         }
     }
 
+    void FlowNode_ExpandConfigurationParameters::ExpandParameterMapping(AZStd::string& value, AZStd::unordered_set<AZStd::string>& seen)
+    {
+        int start, end, pos = 0;
+        while ((start = value.find_first_of('$', pos)) != -1)
+        {
+            end = value.find_first_of('$', start + 1);
+            if (end == -1)
+            {
+                // unmatched $ at end of string, leave it there
+                pos = value.size();
+            }
+            else if (end == start + 1)
+            {
+                // $$, remove the second $
+                value.replace(start + 1, 1, "");
+                pos = start + 1;
+            }
+            else
+            {
+                // $foo$
+                AZStd::string name = value.substr(start + 1, (end - start) - 1);
+                if (seen.count(name) == 0) // protect against recursive parameter values
+                {
+                    AZStd::string temp;
+                    EBUS_EVENT_RESULT(temp, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, name);
+                    seen.insert(name);
+                    ExpandParameterMapping(temp, seen);
+                    seen.erase(name);
+                    value.replace(start, (end - start) + 1, temp);
+                    pos = start + temp.length();
+                }
+                else
+                {
+                    pos = end + 1;
+                }
+            }
+        }
+    }
     REGISTER_CLASS_TAG_AND_FLOW_NODE("AWS:Configuration:ExpandConfigurationParameters", FlowNode_ExpandConfigurationParameters);
 } // namespace Amazon

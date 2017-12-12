@@ -31,6 +31,7 @@ def build(bld):
         file_list       = 'cryaction_autoflownode.waf_files',
         platforms       = ['all'],
         configurations  = ['all'],
+        defines         = ['ENGINE_EXPORTS'],
         use             = ['AzCore']
     )
 
@@ -44,18 +45,25 @@ def build(bld):
         platforms               = ['all'],
         configurations          = ['all'],
         pch                     = 'StdAfx.cpp',
+        defines                 = ['ENGINE_EXPORTS'],
         use                     = ['CryAction_AutoFlowNode',
                                    'AzFramework',
                                    'GridMate'],
+
         use_required_gems       = True,
-        includes                = [bld.Path('Code/CryEngine/LmbrAWS')],
 
         # Platform Specific
-        win_lib                 = ['Ws2_32', 'Shell32'],
+        uselib                  = [ 'OPENSSL' ],
+        win_lib                 = ['Ws2_32', 'Shell32', 'shlwapi', 'Winhttp', 'Userenv'],
+
+        darwin_lib              = ['curl'],
 
        
        
 
+        appletv_framework      = [ 'security' ],
+
+       
        
 
         # Testing

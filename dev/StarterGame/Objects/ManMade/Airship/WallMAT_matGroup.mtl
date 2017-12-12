@@ -1,0 +1,12 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="WallMAT" MtlFlags="524416" Shader="Illum" GenMask="4000110000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%PHONG_TESSELLATION%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.099898733,0.099898733,0.099898733,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="Objects/ManMade/Airship/Airship_WallInner_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_wallinner_01_ddna.dds"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" EmittanceMapGamma="1" TessellationFactor="1" SSSIndex="0" TessellationFactorMax="32" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

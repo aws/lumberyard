@@ -1,0 +1,19 @@
+{
+    "description": "Configuration to build gems and their tests",
+    "visual_studio_name": "GemTests",
+    "disable_game_projects": false,
+    "platforms": [
+        "win",
+        "darwin",
+        "linux"
+    ],
+    "configurations": [
+        "debug_test",
+        "profile_test"
+    ],
+    "modules": [
+        "AzTest",
+        "AzCore",
+        "AzTestRunner"
+    ]
+}

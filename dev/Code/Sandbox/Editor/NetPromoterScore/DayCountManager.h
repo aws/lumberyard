@@ -24,8 +24,9 @@ public:
     DayCountManager(QObject* parent);
 
     bool ShouldShowNetPromoterScoreDialog();
+    int GetRatingInterval();
 
-    public Q_SLOTS:
+public Q_SLOTS:
     void OnUpdatePreviousUsedData();
 
 private:

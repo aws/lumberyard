@@ -1122,6 +1122,8 @@ int CRigidEntity::Action(const pe_action* _action, int bThreadSafe)
             flagsLin = contact_constraint_2dof;
         }
 
+        // either the action specifies a particular part (bit of geometry) for the first body involved in the constraint
+        // in that case we check if that part belongs to this body and use it or fail to create a constraint if it is not found
         if (!is_unused(action->partid[0]))
         {
             for (ipart[0] = 0; ipart[0] < m_nParts && m_parts[ipart[0]].id != action->partid[0]; ipart[0]++)
@@ -1133,14 +1135,20 @@ int CRigidEntity::Action(const pe_action* _action, int bThreadSafe)
                 return 0;
             }
         }
+        // or a particular part was not specified, but there is at least one part attached and we use the first one,
         else if (m_nParts)
         {
             ipart[0] = 0;
         }
+        // otherwise we don't have any geometry and fail to create a constraint
+        // note that requests to add geometry in CryPhysics can get queued, so geometry may not be available immediately
         else
         {
             return 0;
         }
+
+        // either the action specifies a particular part (bit of geometry) for the second body involved in the constraint
+        // in that case we check if that part belongs to this body and use it or fail to create a constraint if it is not found
         if (!is_unused(action->partid[1]))
         {
             for (ipart[1] = 0; ipart[1] < pBuddy->m_nParts && pBuddy->m_parts[ipart[1]].id != action->partid[1]; ipart[1]++)
@@ -1152,10 +1160,14 @@ int CRigidEntity::Action(const pe_action* _action, int bThreadSafe)
                 return 0;
             }
         }
+        // or a particular part was not specified, but there is at least one part attached and we use the first one, 
+        // or the constraint is attached directly to the world frame
         else if (pBuddy->m_nParts || pBuddy == &g_StaticPhysicalEntity)
         {
             ipart[1] = 0;
         }
+        // otherwise we don't have any geometry and the constraint is not attached directly to the world frame, so fail to create a constraint
+        // note that requests to add geometry in CryPhysics can get queued, so geometry may not be available immediately
         else
         {
             return 0;

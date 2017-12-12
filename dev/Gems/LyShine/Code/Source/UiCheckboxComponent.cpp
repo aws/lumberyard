@@ -283,6 +283,7 @@ void UiCheckboxComponent::Reflect(AZ::ReflectContext* context)
     if (behaviorContext)
     {
         behaviorContext->EBus<UiCheckboxBus>("UiCheckboxBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("GetState", &UiCheckboxBus::Events::GetState)
             ->Event("SetState", &UiCheckboxBus::Events::SetState)
             ->Event("ToggleState", &UiCheckboxBus::Events::ToggleState)
@@ -298,6 +299,7 @@ void UiCheckboxComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetChangedActionName", &UiCheckboxBus::Events::SetChangedActionName);
 
         behaviorContext->EBus<UiCheckboxNotificationBus>("UiCheckboxNotificationBus")
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Handler<UiCheckboxNotificationBusBehaviorHandler>();
     }
 }

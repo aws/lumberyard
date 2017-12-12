@@ -46,12 +46,12 @@ public:
 protected:
     struct SEntry
     {
-        SEntry(TimeOfDayTimerId id, float time, TimeOfDayTimerCallback callback, void* pUserData)
+        SEntry(TimeOfDayTimerId _id, float _time, TimeOfDayTimerCallback _callback, void* _pUserData)
         {
-            this->id = id;
-            this->time = time;
-            this->callback = callback;
-            this->pUserData = pUserData;
+            this->id = _id;
+            this->time = _time;
+            this->callback = _callback;
+            this->pUserData = _pUserData;
         }
 
         bool operator==(const TimeOfDayTimerId& otherId) const

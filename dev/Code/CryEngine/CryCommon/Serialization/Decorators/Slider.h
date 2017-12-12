@@ -21,10 +21,10 @@ namespace Serialization
 
     struct SSliderF
     {
-        SSliderF(float* value, float minLimit, float maxLimit)
+        SSliderF(float* value, float _minLimit, float _maxLimit)
             : valuePointer(value)
-            , minLimit(minLimit)
-            , maxLimit(maxLimit)
+            , minLimit(_minLimit)
+            , maxLimit(_maxLimit)
         {
         }
 

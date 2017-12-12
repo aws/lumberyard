@@ -52,9 +52,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             )
 
             self.lmbr_aws(
-                'resource-group', 'add',
-                '--resource-group', self.TEST_RESOURCE_GROUP_NAME, 
-                '--include-example-resources'
+                'cloud-gem', 'create',
+                '--gem', self.TEST_RESOURCE_GROUP_NAME, 
+                '--initial-content', 'api-lambda-dynamodb',
+                '--enable'
             )
 
             self.lmbr_aws(
@@ -82,7 +83,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
         logs_bucket_arn = self.get_stack_resource_arn(project_stack_arn, 'Logs')
         project_resource_handler_role_arn = self.get_lambda_function_execution_role_arn(project_stack_arn, 'ProjectResourceHandler')
         project_token_exchange_handler_role_arn = self.get_lambda_function_execution_role_arn(project_stack_arn, 'PlayerAccessTokenExchange')
-        project_service_lambda_role_arn = self.get_lambda_function_execution_role_arn(project_stack_arn, 'ProjectServiceLambda')
+        project_service_lambda_role_arn = self.get_lambda_function_execution_role_arn(project_stack_arn, 'ServiceLambda')
 
         project_level_role_arn = self.get_stack_resource_arn(project_stack_arn, 'ProjectOwner')
         project_level_policy_arn = self.get_stack_resource_arn(project_stack_arn, 'ProjectAccess')
@@ -227,9 +228,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
     def __185_add_resource_group(self):     
         self.lmbr_aws(
-            'resource-group', 'add',
-            '--resource-group', self.TEST_RESOURCE_GROUP_NAME, 
-            '--include-example-resources'
+            'cloud-gem', 'create',
+            '--gem', self.TEST_RESOURCE_GROUP_NAME, 
+            '--initial-content', 'api-lambda-dynamodb',
+            '--enable'
         )
 
 
@@ -244,22 +246,85 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
 
     def __200_verify_access_control_in_created_deployment_stack(self):
+        self.verify_access_control()
+
+
+    def verify_access_control(self, expected_mappings_for_logical_ids = []):
+
+        resource_group_stack_arn = self.get_stack_resource_arn(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME), self.TEST_RESOURCE_GROUP_NAME)
+
+        self.refresh_stack_resources(resource_group_stack_arn)
 
         player_role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player')
         resource_group_stack_arn = self.get_stack_resource_arn(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME), self.TEST_RESOURCE_GROUP_NAME)
-        say_hello_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'SayHello')
-        messages_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'Messages')
+        service_api_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'ServiceApi')
+        service_lambda_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'ServiceLambda')
+        table_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'Table')
 
-        res = self.aws_lambda.get_function(FunctionName = say_hello_arn)
-        say_hello_role_arn = res['Configuration']['Role']
-
+        # player should be able to invoke the api, but not call the lambda or get an item from the table
         self.verify_role_permissions('deployment',
             self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
             self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player'),
             [
                 {
                     'Resources': [
-                        say_hello_arn
+                        service_api_arn + '/api/GET/example/data'
+                    ],
+                    'Allow': [
+                        'execute-api:Invoke'
+                    ]
+                },
+                {
+                    'Resources': [
+                        service_lambda_arn
+                    ],
+                    'Deny': [
+                        'lambda:InvokeFunction'
+                    ]
+                },
+                {
+                    'Resources': [
+                        table_arn
+                    ],
+                    'Deny': [
+                        'dynamodb:GetItem'
+                    ]
+                }
+            ])
+
+        # the service lambda should be able to get an item from the table
+        res = self.aws_lambda.get_function(FunctionName = service_lambda_arn)
+        service_lambda_role_name = self.get_role_name_from_arn(res['Configuration']['Role'])
+        self.verify_role_permissions('deployment',
+            self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
+            service_lambda_role_name,
+            [
+                {
+                    'Resources': [
+                        table_arn
+                    ],
+                    'Allow': [
+                        'dynamodb:GetItem'
+                    ]
+                }
+            ])
+
+        # deployment admin should be able to call the api, invoke the lambda, and get an item from the table
+        self.verify_role_permissions('deployment',
+            self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
+            self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'DeploymentAdmin'),
+            [
+                {
+                    'Resources': [
+                        service_api_arn + '/api/GET/example/data'
+                    ],
+                    'Allow': [
+                        'execute-api:Invoke'
+                    ]
+                },
+                {
+                    'Resources': [
+                        service_lambda_arn
                     ],
                     'Allow': [
                         'lambda:InvokeFunction'
@@ -267,59 +332,54 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                 },
                 {
                     'Resources': [
-                        messages_arn
-                    ],
-                    'Deny': [
-                        'dynamodb:*'
-                    ]
-                }
-            ])
-
-        self.verify_role_permissions('deployment',
-            self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
-            self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'DeploymentAdmin'),
-            [
-                {
-                    'Resources': [
-                        say_hello_arn
+                        table_arn
                     ],
                     'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
+                        'dynamodb:GetItem'
                     ]
                 }
             ]
         )
 
+        # project admin should be able to call the api, invoke the lambda, and get an item from the table
         self.verify_role_permissions('project',
             self.get_project_stack_arn(),
             self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'ProjectAdmin'),
             [
                 {
                     'Resources': [
-                        say_hello_arn
+                        service_api_arn + '/api/GET/example/data'
                     ],
                     'Allow': [
-                        'lambda:*'
+                        'execute-api:Invoke'
                     ]
                 },
                 {
                     'Resources': [
-                        messages_arn
+                        service_lambda_arn
                     ],
                     'Allow': [
-                        'dynamodb:*'
+                        'lambda:InvokeFunction'
+                    ]
+                },
+                {
+                    'Resources': [
+                        table_arn
+                    ],
+                    'Allow': [
+                        'dynamodb:GetItem'
                     ]
                 }
             ]
         )
+
+
+        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.ServiceApi' ]
+        for logical_id in expected_mappings_for_logical_ids:
+            expected_logical_ids.append(self.TEST_RESOURCE_GROUP_NAME + '.' + logical_id)
+        self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids, 'Player')
+        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, [], 'Server')
 
 
     def __210_create_deployment_user(self):
@@ -381,86 +441,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
 
     def __280_verify_access_control_unchanged_in_updated_deployment_stack(self):
-
-        player_role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player')
-        resource_group_stack_arn = self.get_stack_resource_arn(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME), self.TEST_RESOURCE_GROUP_NAME)
-        say_hello_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'SayHello')
-        messages_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'Messages')
-
-        res = self.aws_lambda.get_function(FunctionName = say_hello_arn)
-        say_hello_role_arn = res['Configuration']['Role']
-
-        self.verify_role_permissions('deployment',
-            self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
-            self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player'),
-            [
-                {
-                    'Resources': [
-                        say_hello_arn
-                    ],
-                    'Allow': [
-                        'lambda:InvokeFunction'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Deny': [
-                        'dynamodb:*'
-                    ]
-                }
-            ])
-
-        self.verify_role_permissions('deployment',
-            self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
-            self.get_stack_resource_physical_id(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'DeploymentAdmin'),
-            [
-                {
-                    'Resources': [
-                        say_hello_arn
-                    ],
-                    'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
-                    ]
-                }
-            ]
-        )
-
-        self.verify_role_permissions('project',
-            self.get_project_stack_arn(),
-            self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'ProjectAdmin'),
-            [
-                {
-                    'Resources': [
-                        say_hello_arn
-                    ],
-                    'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
-                    ]
-                }
-            ]
-        )
-
-        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.SayHello' ]
-        self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
+        self.verify_access_control()
 
 
     def __290_list_resource_groups_for_deployment_using_deployment_admin_role(self):
@@ -489,7 +470,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             '--deployment', self.TEST_DEPLOYMENT_NAME, 
             deployment_role='DeploymentAdmin'
         )
-        self.assertIn('SayHello', self.lmbr_aws_stdout)
+        self.assertIn('ServiceLambda', self.lmbr_aws_stdout)
 
 
     def __320_list_resources_using_project_admin_role(self):
@@ -498,7 +479,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             '--deployment', self.TEST_DEPLOYMENT_NAME, 
             project_role='ProjectAdmin'
         )
-        self.assertIn('SayHello', self.lmbr_aws_stdout)
+        self.assertIn('ServiceLambda', self.lmbr_aws_stdout)
 
 
     def __350_add_test_function_to_resource_group(self):              
@@ -521,24 +502,27 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             {
                 'StackStatus': 'UPDATE_COMPLETE',
                 'StackResources': {
-                    'Messages': {
+                    'Table': {
                         'ResourceType': 'AWS::DynamoDB::Table'
                     },
-                    'SayHelloConfiguration': {
+                    'ServiceLambdaConfiguration': {
                         'ResourceType': 'Custom::LambdaConfiguration'
                     },
-                    'SayHello': {
+                    'ServiceLambda': {
                         'ResourceType': 'AWS::Lambda::Function',
                         'Permissions': [
                             {
                                 'Resources': [
-                                    '$Messages$'
+                                    '$Table$'
                                 ],
                                 'Allow': [
                                     'dynamodb:PutItem'
                                 ]
                             }
                         ]
+                    },
+                    'ServiceApi': {
+                        'ResourceType': 'Custom::ServiceApi'
                     },
                     'TestFunctionConfiguration': {
                         'ResourceType': 'Custom::LambdaConfiguration'
@@ -548,7 +532,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                         'Permissions': [
                             {
                                 'Resources': [
-                                    '$Messages$'
+                                    '$Table$'
                                 ],
                                 'Allow': [
                                     'dynamodb:PutItem'
@@ -561,13 +545,11 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                     }
                 }
             })
-                
-        player_role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player')
+
+        self.verify_access_control(expected_mappings_for_logical_ids = [ 'TestFunction' ])
+                        
         resource_group_stack_arn = self.get_stack_resource_arn(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME), self.TEST_RESOURCE_GROUP_NAME)
-        self.refresh_stack_resources(resource_group_stack_arn)
-        say_hello_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'SayHello')
         test_function_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'TestFunction')
-        messages_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'Messages')
 
         self.verify_role_permissions('deployment',
             self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
@@ -575,26 +557,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn
-                    ],
-                    'Allow': [
-                        'lambda:InvokeFunction'
-                    ]
-                },
-                {
-                    'Resources': [
                         test_function_arn
                     ],
                     'Allow': [
                         'lambda:InvokeFunction'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Deny': [
-                        'dynamodb:*'
                     ]
                 }
             ])
@@ -605,19 +571,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn,
                         test_function_arn
                     ],
                     'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
+                        'lambda:InvokeFunction'
                     ]
                 }
             ])
@@ -628,26 +585,13 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn,
                         test_function_arn
                     ],
                     'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
+                        'lambda:InvokeFunction'
                     ]
                 }
             ])
-
-        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.SayHello', self.TEST_RESOURCE_GROUP_NAME + '.TestFunction' ]
-        self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
 
 
     def __380_remove_player_access_from_test_function(self):
@@ -675,24 +619,27 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             {
                 'StackStatus': 'UPDATE_COMPLETE',
                 'StackResources': {
-                    'Messages': {
+                    'Table': {
                         'ResourceType': 'AWS::DynamoDB::Table'
                     },
-                    'SayHelloConfiguration': {
+                    'ServiceLambdaConfiguration': {
                         'ResourceType': 'Custom::LambdaConfiguration'
                     },
-                    'SayHello': {
+                    'ServiceLambda': {
                         'ResourceType': 'AWS::Lambda::Function',
                         'Permissions': [
                             {
                                 'Resources': [
-                                    '$Messages$'
+                                    '$Table$'
                                 ],
                                 'Allow': [
                                     'dynamodb:PutItem'
                                 ]
                             }
                         ]
+                    },
+                    'ServiceApi': {
+                        'ResourceType': 'Custom::ServiceApi'
                     },
                     'TestFunctionConfiguration': {
                         'ResourceType': 'Custom::LambdaConfiguration'
@@ -702,7 +649,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                         'Permissions': [
                             {
                                 'Resources': [
-                                    '$Messages$'
+                                    '$Table$'
                                 ],
                                 'Allow': [
                                     'dynamodb:PutItem'
@@ -716,11 +663,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                 }
             })
 
-        player_role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), 'Player')
+        self.verify_access_control()
+
         resource_group_stack_arn = self.get_stack_resource_arn(self.get_deployment_stack_arn(self.TEST_DEPLOYMENT_NAME), self.TEST_RESOURCE_GROUP_NAME)
-        say_hello_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'SayHello')
         test_function_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'TestFunction')
-        messages_arn = self.get_stack_resource_arn(resource_group_stack_arn, 'Messages')
 
         self.verify_role_permissions('deployment',
             self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME),
@@ -728,26 +674,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn
-                    ],
-                    'Allow': [
-                        'lambda:InvokeFunction'
-                    ]
-                },
-                {
-                    'Resources': [
                         test_function_arn
                     ],
                     'Deny': [
                         'lambda:InvokeFunction'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Deny': [
-                        'dynamodb:*'
                     ]
                 }
             ])
@@ -758,19 +688,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn,
                         test_function_arn
                     ],
                     'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
+                        'lambda:InvokeFunction'
                     ]
                 }
             ])
@@ -781,26 +702,13 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             [
                 {
                     'Resources': [
-                        say_hello_arn,
                         test_function_arn
                     ],
                     'Allow': [
-                        'lambda:*'
-                    ]
-                },
-                {
-                    'Resources': [
-                        messages_arn
-                    ],
-                    'Allow': [
-                        'dynamodb:*'
+                        'lambda:InvokeFunction'
                     ]
                 }
             ])
-
-        expected_logical_ids = [ self.TEST_RESOURCE_GROUP_NAME + '.SayHello' ]
-        self.verify_user_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
-        self.verify_release_mappings(self.TEST_DEPLOYMENT_NAME, expected_logical_ids)
 
 
     def __910_delete_deployment_user(self):
@@ -844,7 +752,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
     def add_lambda_function_to_resource_group(self, resource_group_name, function_name):
 
-        resource_group_path = os.path.join(self.AWS_DIR, 'resource-group/' + resource_group_name)
+        resource_group_path = self.get_gem_aws_path(resource_group_name)
         resource_group_template_path = os.path.join(resource_group_path, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
 
         with open(resource_group_template_path, 'r') as f:
@@ -852,7 +760,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
         resource_group_resources = resource_group_template['Resources']
 
-        resource_group_resources['Messages']['Metadata']['CloudCanvas']['Permissions'].append(
+        resource_group_resources['Table']['Metadata']['CloudCanvas']['Permissions'].append(
             {
                 'AbstractRole': function_name,
                 'Action': 'dynamodb:PutItem'
@@ -865,11 +773,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
                 "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
                 "ConfigurationKey": { "Ref": "ConfigurationKey" },
                 "FunctionName": function_name,
-                "Runtime": "python2.7",
-                "Settings": {
-                    "MessagesTable": { "Ref": "Messages" },
-                    "Greeting": { "Ref": "Greeting" }
-                }
+                "Runtime": "python2.7"
             }
         }
 
@@ -877,7 +781,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Example of a function called by the game to write data into a DynamoDB table.",
-                "Handler": "main.say_hello",
+                "Handler": "main.test",
                 "Role": { "Fn::GetAtt": [ function_name + "Configuration", "Role" ] },
                 "Runtime": { "Fn::GetAtt": [ function_name + "Configuration", "Runtime" ] },
                 "Code": {

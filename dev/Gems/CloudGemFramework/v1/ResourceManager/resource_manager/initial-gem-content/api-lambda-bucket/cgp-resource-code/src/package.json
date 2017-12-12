@@ -1,0 +1,8 @@
+{
+    "name": "@cloud-gems/$-GEM-NAME-LOWER-CASE-$",
+    "version": "1.0.0",
+    "description": "$-GEM-NAME-$",
+    "private": true,
+    "dependencies": {
+    }
+}

@@ -1,9 +1,0 @@
-{
-    "AzCore_uber_xbone.cpp":
-    {
-        "Module":
-        [
-            "Module/DynamicModuleHandleWindows.cpp"
-        ]        
-    }
-}

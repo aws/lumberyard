@@ -49,19 +49,19 @@ namespace AZ
                 extensions.insert(s_extension);
             }
 
-            Events::LoadingResult FbxImportRequestHandler::LoadAsset(Containers::Scene& scene, const AZStd::string& path, RequestingApplication requester)
+            Events::LoadingResult FbxImportRequestHandler::LoadAsset(Containers::Scene& scene, const AZStd::string& path, const Uuid& guid, RequestingApplication requester)
             {
                 if (!AzFramework::StringFunc::Path::IsExtension(path.c_str(), s_extension))
                 {
                     return Events::LoadingResult::Ignored;
                 }
 
-                scene.SetSourceFilename(path);
+                scene.SetSource(path, guid);
 
                 // Push contexts
                 Events::ProcessingResultCombiner contextResult;
-                contextResult += Events::Process<Events::PreImportEventContext>(scene.GetSourceFilename());
-                contextResult += Events::Process<Events::ImportEventContext>(scene.GetSourceFilename(), scene);
+                contextResult += Events::Process<Events::PreImportEventContext>(path);
+                contextResult += Events::Process<Events::ImportEventContext>(path, scene);
                 contextResult += Events::Process<Events::PostImportEventContext>(scene);
 
                 if (contextResult.GetResult() == Events::ProcessingResult::Success)

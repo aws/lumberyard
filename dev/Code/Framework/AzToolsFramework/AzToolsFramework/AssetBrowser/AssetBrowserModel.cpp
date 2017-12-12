@@ -10,12 +10,11 @@
 *
 */
 
+#include <AzCore/Script/ScriptTimePoint.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 
 #include <QMimeData>
-#include <QIcon>
 
 namespace AzToolsFramework
 {
@@ -30,12 +29,14 @@ namespace AzToolsFramework
             , m_addingEntry(false)
             , m_removingEntry(false)
         {
-            BusConnect();
+            AssetBrowserModelRequestsBus::Handler::BusConnect();
+            AZ::TickBus::Handler::BusConnect();
         }
 
         AssetBrowserModel::~AssetBrowserModel()
         {
-            BusDisconnect();
+            AssetBrowserModelRequestsBus::Handler::BusDisconnect();
+            AZ::TickBus::Handler::BusDisconnect();
         }
 
         QModelIndex AssetBrowserModel::index(int row, int column, const QModelIndex& parent) const
@@ -63,17 +64,6 @@ namespace AzToolsFramework
             }
 
             QModelIndex index;
-
-            if (childEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source &&
-                !static_cast<SourceAssetBrowserEntry*>(childEntry)->IsVisible())
-            {
-                childEntry = childEntry->m_children.front();
-            }
-            else if (childEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Product &&
-                !static_cast<SourceAssetBrowserEntry*>(childEntry->GetParent())->IsVisible())
-            {
-                childEntry = nullptr;
-            }
             GetEntryIndex(childEntry, index);
             return index;
         }
@@ -122,9 +112,7 @@ namespace AzToolsFramework
 
             if (role == Qt::DecorationRole)
             {
-                QIcon thumbnail;
-                EBUS_EVENT_RESULT(thumbnail, AssetBrowserThumbnailRequestsBus, GetThumbnail, item);
-                return thumbnail;
+                return QVariant::fromValue(item->GetThumbnailKey());
             }
 
             if (role == Qt::DisplayRole)
@@ -281,6 +269,21 @@ namespace AzToolsFramework
             }
         }
 
+        void AssetBrowserModel::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/) 
+        {
+            // if any entries changed since last tick, notify the views
+            AZStd::vector<AssetBrowserEntry*> entries;
+            m_rootEntry->GetDirty(entries);
+            for (auto entry : entries)
+            {
+                QModelIndex index;
+                if (GetEntryIndex(entry, index))
+                {
+                    Q_EMIT dataChanged(index, index);
+                }
+            }
+        }
+
         bool AssetBrowserModel::GetEntryIndex(AssetBrowserEntry* entry, QModelIndex& index) const
         {
             if (!entry)
@@ -288,7 +291,7 @@ namespace AzToolsFramework
                 return false;
             }
 
-            if (entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Root)
+            if (azrtti_istypeof<RootAssetBrowserEntry*>(entry))
             {
                 index = QModelIndex();
                 return true;

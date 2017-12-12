@@ -9,9 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef PROPERTY_EDITOR_API_H
-#define PROPERTY_EDITOR_API_H
-
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Math/Uuid.h>
@@ -19,7 +16,6 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentBus.h>
-#include "InstanceDataHierarchy.h"
 #include "PropertyEditorAPI_Internals.h"
 
 #pragma once
@@ -239,17 +235,27 @@ namespace AzToolsFramework
         ShowChildrenOnly
     };
 
-    //-----------------------------------------------------------------------------
+    /**
+     * Resolve the \ref AZ::Edit::PropertyVisibility attribute for a given data node.
+     * \param node - instance data hierarchy node
+     * \return ref AZ::Edit::PropertyVisibility value
+     */
     AZ::Crc32 ResolveVisibilityAttribute(const InstanceDataNode& node);
 
     /**
      * Used by in-editor tools to determine if a given field should be visible.
      * This aggregates everything required to make the determination, including
      * editor reflection, bound "Visibility" attributes, etc.
-     * \param node - instance data hierarchy node for which visibility should be calculated.
+     * \param node instance data hierarchy node for which visibility should be calculated.
+     * \param isSlicePushUI (optional - false by default) if enabled, additional push-only visibility options are applied.
      * \return ref NodeDisplayVisibility
      */
-    NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node);
+    NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node, bool isSlicePushUI = false);
+
+    /**
+     * Used by in-editor tools to read the visibility attribute on a given instance
+    */
+    bool ReadVisibilityAttribute(void* instance, AZ::Edit::Attribute* attr, AZ::Crc32& visibility);
 
     /**
      * Determines the display name tools should use for a given property node.
@@ -266,4 +272,3 @@ namespace AZ
 
 #include "PropertyEditorAPI_Internals_impl.h"
 
-#endif // PROPERTY_EDITOR_API_H

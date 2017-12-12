@@ -39,14 +39,15 @@ namespace AZ
 
             SkinGroupExportContext(SceneAPI::Events::ExportEventContext& parent, 
                 const SceneAPI::DataTypes::ISkinGroup& group, Phase phase);
-            SkinGroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-                const SceneAPI::DataTypes::ISkinGroup& group, Phase phase);
+            SkinGroupExportContext(SceneAPI::Events::ExportProductList& products, const SceneAPI::Containers::Scene& scene, 
+                const AZStd::string& outputDirectory, const SceneAPI::DataTypes::ISkinGroup& group, Phase phase);
             SkinGroupExportContext(const SkinGroupExportContext& copyContent, Phase phase);
             SkinGroupExportContext(const SkinGroupExportContext& copyContent) = delete;
             ~SkinGroupExportContext() override = default;
 
             SkinGroupExportContext& operator=(const SkinGroupExportContext& other) = delete;
 
+            SceneAPI::Events::ExportProductList& m_products;
             const SceneAPI::Containers::Scene& m_scene;
             const AZStd::string& m_outputDirectory;
             const SceneAPI::DataTypes::ISkinGroup& m_group;

@@ -17,9 +17,6 @@
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 
-#if   defined(AZ_PLATFORM_X360)
-#   include <malloc.h>
-#endif
 
 #define AZ_STACK_ALLOCATOR(_Variable, _Size)     AZStd::stack_allocator _Variable(alloca(_Size), _Size);
 

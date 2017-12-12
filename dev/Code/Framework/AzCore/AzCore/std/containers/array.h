@@ -142,6 +142,101 @@ namespace AZStd
         T   m_elements[N];
     };
 
+    template<class T>
+    class array<T, 0U>
+    {
+        enum
+        {
+            CONTAINER_VERSION = 1
+        };
+
+        typedef array<T, 0>                              this_type;
+    public:
+        //#pragma region Type definitions
+        typedef T*                                      pointer;
+        typedef const T*                                const_pointer;
+
+        typedef T&                                      reference;
+        typedef const T&                                const_reference;
+        typedef typename AZStd::ptrdiff_t               difference_type;
+        typedef typename AZStd::size_t                  size_type;
+        typedef pointer                                 iterator;
+        typedef const_pointer                           const_iterator;
+
+        typedef AZStd::reverse_iterator<iterator>       reverse_iterator;
+        typedef AZStd::reverse_iterator<const_iterator> const_reverse_iterator;
+        typedef T                                       value_type;
+
+        // AZSTD extension.
+        typedef value_type                              node_type;
+        //#pragma endregion
+
+        enum
+        {
+            array_size = 0
+        };
+
+        AZ_FORCE_INLINE iterator            begin() { return m_elements; }
+        AZ_FORCE_INLINE const_iterator      begin() const { return m_elements; }
+        AZ_FORCE_INLINE iterator            end() { return m_elements; }
+        AZ_FORCE_INLINE const_iterator      end() const { return m_elements; }
+
+        AZ_FORCE_INLINE reverse_iterator        rbegin() { return reverse_iterator(end()); }
+        AZ_FORCE_INLINE const_reverse_iterator  rbegin() const { return const_reverse_iterator(end()); }
+        AZ_FORCE_INLINE reverse_iterator        rend() { return reverse_iterator(begin()); }
+        AZ_FORCE_INLINE const_reverse_iterator  rend() const { return const_reverse_iterator(end()); }
+
+        AZ_FORCE_INLINE const_iterator          cbegin() const { return m_elements; }
+        AZ_FORCE_INLINE const_iterator          cend() const { return m_elements; }
+        AZ_FORCE_INLINE const_reverse_iterator  crbegin() const { return const_reverse_iterator(end()); }
+        AZ_FORCE_INLINE const_reverse_iterator  crend() const { return const_reverse_iterator(end()); }
+
+        AZ_FORCE_INLINE reference       front() { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0");  return m_elements[0]; }
+        AZ_FORCE_INLINE const_reference front() const { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0"); return m_elements[0]; }
+        AZ_FORCE_INLINE reference       back() { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0"); return m_elements[0]; }
+        AZ_FORCE_INLINE const_reference back() const { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0"); return m_elements[0]; }
+
+        AZ_FORCE_INLINE reference operator[](size_type)
+        {
+            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0")
+            return m_elements[0];
+        }
+
+        AZ_FORCE_INLINE const_reference operator[](size_type) const
+        {
+            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0")
+            return m_elements[0];
+        }
+
+        AZ_FORCE_INLINE reference           at(size_type) { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0");  return m_elements[0]; }
+        AZ_FORCE_INLINE const_reference     at(size_type) const { AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0");  return m_elements[0]; }
+
+        // size is constant
+        AZ_FORCE_INLINE static size_type size() { return 0; }
+        AZ_FORCE_INLINE static bool empty() { return true; }
+        AZ_FORCE_INLINE static size_type max_size() { return 0; }
+
+
+        // swap
+        AZ_FORCE_INLINE void swap(this_type&) {}
+
+        // direct access to data (read-only)
+        AZ_FORCE_INLINE const T* data() const { return m_elements; }
+        AZ_FORCE_INLINE T* data() { return m_elements; }
+
+        // assignment with type conversion
+        template <typename T2>
+        AZ_FORCE_INLINE array<T, 0>& operator = (const array<T2, 0>& rhs) { return *this; }
+
+        AZ_FORCE_INLINE void fill(const T&){}
+
+        AZ_FORCE_INLINE bool    validate() const { return true; }
+        // Validate iterator.
+        AZ_FORCE_INLINE int     validate_iterator(const iterator& iter) const { return iter == m_elements ? isf_valid : isf_none; }
+
+        T m_elements[1]; // The minimum size of a class in C++ is 1 byte, so use an array of size 1 as the sentinel value
+    };
+
     //#pragma region Vector equality/inequality
     template<class T, AZStd::size_t N>
     AZ_FORCE_INLINE bool operator==(const array<T, N>& a, const array<T, N>& b)

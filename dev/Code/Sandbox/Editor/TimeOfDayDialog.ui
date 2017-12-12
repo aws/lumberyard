@@ -248,18 +248,18 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="unifyOrBreakTangentHandlesButton">
+           <widget class="QToolButton" name="splineSnapGridX">
             <property name="toolTip">
-             <string>Unify/Break Tangent Handles</string>
-            </property>
-            <property name="text">
-             <string/>
+             <string>Snap to time grid</string>
             </property>
             <property name="iconSize">
              <size>
               <width>18</width>
               <height>18</height>
              </size>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
             <property name="autoRaise">
              <bool>true</bool>
@@ -267,18 +267,18 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="toggleKeyFreezeButton">
+           <widget class="QToolButton" name="splineSnapGridY">
             <property name="toolTip">
-             <string>Freeze/Unfreeze all Keys</string>
-            </property>
-            <property name="text">
-             <string/>
+             <string>Snap to value grid</string>
             </property>
             <property name="iconSize">
              <size>
               <width>18</width>
               <height>18</height>
              </size>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
             <property name="autoRaise">
              <bool>true</bool>

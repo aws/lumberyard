@@ -18,6 +18,7 @@
 #include <IConsole.h> // <> required for Interfuscator
 #include <ICryPak.h> // <> required for Interfuscator
 #include <Cry_Color.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/Component/EntityId.h>
 
 enum EAnimKeyFlags
@@ -128,13 +129,11 @@ struct ITcbKey
 struct IEventKey
     : public IKey
 {
-    const char* event;
-    const char* eventValue;
-    union
-    {
-        const char* animation;
-        const char* target;
-    };
+    AZStd::string event;
+    AZStd::string eventValue;
+    AZStd::string animation;
+    AZStd::string target;
+   
     union
     {
         float value;
@@ -144,9 +143,6 @@ struct IEventKey
 
     IEventKey()
     {
-        event = "";
-        eventValue = "";
-        animation = "";
         duration = 0;
         bNoTriggerInScrubbing = false;
     }
@@ -157,7 +153,7 @@ struct IEventKey
 struct ISelectKey
     : public IKey
 {
-    char szSelection[128];          //!< Node name.
+    AZStd::string szSelection;        //!< Node name.
     AZ::EntityId cameraAzEntityId;    // will be Invalid for legacy Cameras
     float fDuration;
     float fBlendTime;
@@ -166,7 +162,6 @@ struct ISelectKey
     {
         fDuration = 0;
         fBlendTime = 0;
-        szSelection[0] = '\0'; // empty string.
     }
 };
 
@@ -175,7 +170,7 @@ struct ISelectKey
 struct ISequenceKey
     : public IKey
 {
-    char szSelection[128];  //!< Node name.
+    AZStd::string szSelection;  //!< Node name.
     float fDuration;
     float fStartTime;
     float fEndTime;
@@ -184,7 +179,6 @@ struct ISequenceKey
 
     ISequenceKey()
     {
-        szSelection[0] = '\0'; // empty string.
         fDuration = 0;
         fStartTime = 0;
         fEndTime = 0;
@@ -201,17 +195,15 @@ struct ISoundKey
     ISoundKey()
         : fDuration(0.0f)
     {
-        sStartTrigger[0] = '\0';
-        sStopTrigger[0] = '\0';
         customColor.x = Col_TrackviewDefault.r;
         customColor.y = Col_TrackviewDefault.g;
         customColor.z = Col_TrackviewDefault.b;
     }
 
-    char    sStartTrigger[128];
-    char    sStopTrigger[128];
-    float   fDuration;
-    Vec3    customColor;
+    AZStd::string sStartTrigger;
+    AZStd::string sStopTrigger;
+    float         fDuration;
+    Vec3          customColor;
 };
 
 /** ITimeRangeKey used in time ranges animation track.
@@ -262,15 +254,14 @@ struct ITimeRangeKey
 struct ICharacterKey
     : public ITimeRangeKey
 {
-    char m_animation[64];   //!< Name of character animation.
-    bool  m_bBlendGap;  //!< True if gap to next animation should be blended
-    bool    m_bUnload;      //!< Unload after sequence is finished
-    bool    m_bInPlace;   // Play animation in place (Do not move root).
+    AZStd::string m_animation;      //!< Name of character animation.
+    bool m_bBlendGap;               //!< True if gap to next animation should be blended
+    bool m_bUnload;                 //!< Unload after sequence is finished
+    bool m_bInPlace;                // Play animation in place (Do not move root).
 
     ICharacterKey()
         : ITimeRangeKey()
     {
-        m_animation[0] = '\0';
         m_bLoop = false;
         m_bBlendGap = false;
         m_bUnload = false;
@@ -284,15 +275,13 @@ struct ICharacterKey
 struct IMannequinKey
     : public IKey
 {
-    char m_fragmentName[64];    //!< Name of character animation.
-    char m_tags[64];    //!< Name of character animation.
+    AZStd::string m_fragmentName;    //!< Name of character animation.
+    AZStd::string m_tags;    //!< Name of character animation.
     int m_priority;
     float m_duration;       //!< Duration in seconds of this animation.
 
     IMannequinKey()
     {
-        m_fragmentName[0] = '\0';
-        m_tags[0] = '\0';
         m_duration = 0;
         m_priority = 0;
     }
@@ -323,54 +312,21 @@ struct IExprKey
 struct IConsoleKey
     : public IKey
 {
-    char command[64];
-
-    IConsoleKey()
-    {
-        command[0] = '\0';
-    }
-};
-
-enum EMusicKeyType
-{
-    eMusicKeyType_SetMood = 0,
-    eMusicKeyType_VolumeRamp
-};
-
-/** IMusicKey used in music track.
-*/
-struct IMusicKey
-    : public IKey
-{
-    EMusicKeyType eType;
-    char szMood[64];
-    float fTime;
-    float fDuration;
-    char description[32];
-    IMusicKey()
-    {
-        eType = eMusicKeyType_SetMood;
-        szMood[0] = 0;
-        fTime = 0.0f;
-        fDuration = 0.0f;
-        description[0] = 0;
-    }
+    AZStd::string command;
 };
 
 struct ILookAtKey
     : public IKey
 {
-    char szSelection[128];  //!< Node name.
+    AZStd::string szSelection;  //!< Node name.
     float fDuration;
-    char lookPose[128];
+    AZStd::string lookPose;
     float smoothTime;
 
     ILookAtKey()
     {
         fDuration = 0;
-        szSelection[0] = '\0'; // empty string.
         smoothTime = 0.2f;
-        lookPose[0] = 0x00;
     }
 };
 
@@ -395,6 +351,8 @@ struct IDiscreteFloatKey
 struct ICaptureKey
     : public IKey
 {
+    friend class AnimSerializer;
+
     enum CaptureBufferType
     {
         Color = 0,
@@ -410,13 +368,13 @@ struct ICaptureKey
     };
     float duration;
     float timeStep;
-    char folder[ICryPak::g_nMaxPath];
+    AZStd::string folder;
     bool once;
-    char prefix[ICryPak::g_nMaxPath / 4];
+    AZStd::string prefix;
     CaptureBufferType captureBufferIndex;
 
     const char* GetFormat() const
-    { return format;    }
+    { return format.c_str();    }
 
     void FormatJPG()
     { format = "jpg"; }
@@ -449,18 +407,16 @@ struct ICaptureKey
         , once(false)
         , captureBufferIndex(Color)
     {
-        folder[0] = '\0';
-        prefix[0] = '\0';
         FormatTGA();
         ICVar* pCaptureFolderCVar = gEnv->pConsole->GetCVar("capture_folder");
         if (pCaptureFolderCVar != NULL  && pCaptureFolderCVar->GetString())
         {
-            cry_strcpy(folder, pCaptureFolderCVar->GetString());
+            folder = pCaptureFolderCVar->GetString();
         }
         ICVar* pCaptureFilePrefixCVar = gEnv->pConsole->GetCVar("capture_file_prefix");
         if (pCaptureFilePrefixCVar != NULL  && pCaptureFilePrefixCVar->GetString())
         {
-            cry_strcpy(prefix, pCaptureFilePrefixCVar->GetString());
+            prefix = pCaptureFilePrefixCVar->GetString();
         }
         ICVar* pCaptureFileFormatCVar = gEnv->pConsole->GetCVar("capture_file_format");
         if (pCaptureFileFormatCVar != NULL)
@@ -471,18 +427,18 @@ struct ICaptureKey
 
     ICaptureKey(const ICaptureKey& other)
         : IKey(other)
+        , folder(other.folder)
+        , prefix(other.prefix)
         , duration(other.duration)
         , timeStep(other.timeStep)
         , once(other.once)
         , format(other.format)
         , captureBufferIndex(other.captureBufferIndex)
     {
-        cry_strcpy(folder, other.folder);
-        cry_strcpy(prefix, other.prefix);
     }
 
 private:
-    const char* format;
+    AZStd::string format;
 };
 
 //! Boolean key.
@@ -509,29 +465,29 @@ struct ICommentKey
         : m_duration(1.f)
         , m_size(1.f)
         , m_align(eTA_Left)
+        , m_strFont("default")
+        , m_color(1.f, 1.f, 1.f, 1.f)
     {
-        sprintf_s(m_strFont, sizeof(m_strFont), "default");
-        m_color = Vec3(1.f, 1.f, 1.f);
     }
 
     //-----------------------------------------------------------------------------
     //!
     ICommentKey(const ICommentKey& other)
         : IKey(other)
+        , m_strComment(other.m_strComment)
+        , m_strFont(other.m_strFont)
     {
-        m_strComment = other.m_strComment;
         m_duration = other.m_duration;
-        cry_strcpy(m_strFont, other.m_strFont);
         m_color = other.m_color;
         m_size = other.m_size;
         m_align = other.m_align;
     }
 
-    string  m_strComment;
+    AZStd::string m_strComment;
     float   m_duration;
 
-    char    m_strFont[64];
-    Vec3    m_color;
+    AZStd::string m_strFont;
+    AZ::Color    m_color;
     float   m_size;
     ETextAlign  m_align;
 };
@@ -561,8 +517,7 @@ struct IScreenFaderKey
         , m_fadeType(eFT_FadeOut)
         , m_fadeChangeType(eFCT_Linear)
     {
-        m_fadeColor = Vec4(0, 0, 0, 1);
-        m_strTexture[0] = '\0';
+        m_fadeColor = AZ::Color(.0f, .0f, .0f, 1.0f);
     }
 
     //-----------------------------------------------------------------------------
@@ -575,17 +530,35 @@ struct IScreenFaderKey
         , m_fadeChangeType(other.m_fadeChangeType)
     {
         m_fadeColor = other.m_fadeColor;
-        cry_strcpy(m_strTexture, other.m_strTexture);
+        m_strTexture = other.m_strTexture;
     }
 
     //-----------------------------------------------------------------------------
     //!
     float       m_fadeTime;
-    Vec4        m_fadeColor;
-    char        m_strTexture[64];
+    AZ::Color   m_fadeColor;
+    AZStd::string m_strTexture;
     bool        m_bUseCurColor;
     EFadeType   m_fadeType;
     EFadeChangeType m_fadeChangeType;
 };
 
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(IKey, "{680BD51E-C106-4BBF-9A6F-CD551E00519F}");
+    AZ_TYPE_INFO_SPECIALIZE(IBoolKey, "{DBF8044F-6E64-403D-807D-F3152F640703}");
+    AZ_TYPE_INFO_SPECIALIZE(ICaptureKey, "{93AA8D63-6B1E-4D33-8CC3-C82147BB95CB}");
+    AZ_TYPE_INFO_SPECIALIZE(ICharacterKey, "{6D1FB9E2-128C-4B33-84FF-4F696C1F7D53}");
+    AZ_TYPE_INFO_SPECIALIZE(ICommentKey, "{99C2234E-A4DD-45D1-90C3-D5AFC54FA47F}");
+    AZ_TYPE_INFO_SPECIALIZE(IConsoleKey, "{8C0DCB9B-297D-4AF4-A0D1-F5160E6900E8}");
+    AZ_TYPE_INFO_SPECIALIZE(IDiscreteFloatKey, "{469A2B90-E019-4147-A53F-2EB42E179596}");
+    AZ_TYPE_INFO_SPECIALIZE(IEventKey, "{F09533AA-9780-494D-9E5C-8CB98266AC5E}");
+    AZ_TYPE_INFO_SPECIALIZE(ILookAtKey, "{6F4CED0E-D83A-40E2-B7BF-038D82BC0374}");
+    AZ_TYPE_INFO_SPECIALIZE(IMannequinKey, "{C94C3DF0-B68A-4DA6-8B66-17ED79EC8A0C}");
+    AZ_TYPE_INFO_SPECIALIZE(IScreenFaderKey, "{FA15E27D-603F-4829-925A-E36D75C93964}");
+    AZ_TYPE_INFO_SPECIALIZE(ISelectKey, "{FCEADCF5-042E-473B-845F-0778F087B6DC}");
+    AZ_TYPE_INFO_SPECIALIZE(ISequenceKey, "{B55294AD-F14E-43AC-B6B5-AC27B377FE00}");
+    AZ_TYPE_INFO_SPECIALIZE(ISoundKey, "{452E50CF-B7D0-42D5-A86A-B295682674BB}");
+    AZ_TYPE_INFO_SPECIALIZE(ITimeRangeKey, "{17807C95-C7A1-481B-AD94-C54D83928D0B}");
+}
 #endif // CRYINCLUDE_CRYCOMMON_ANIMKEY_H

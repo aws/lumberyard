@@ -48,7 +48,7 @@ typedef IMovieSystem* (* PFNCREATEMOVIESYSTEM)(struct ISystem*);
 #endif
 
 typedef std::vector<IAnimSequence*> AnimSequences;
-typedef std::vector<string> TrackEvents;
+typedef AZStd::vector<AZStd::string> TrackEvents;
 
 enum ESequenceType
 {
@@ -129,11 +129,11 @@ enum EAnimParamType
     eAnimParamType_Animation                        = 7,
     eAnimParamType_Sound                            = 10,
     eAnimParamType_Sequence                         = 13,
-    // eAnimParamType_Expression                    = 14,       // deprecated Jan 2016
+    // eAnimParamType_Expression                    = 14,       ///@deprecated Jan 2016
     eAnimParamType_Console                          = 17,
-    eAnimParamType_Music                            = 18,
+    eAnimParamType_Music                            = 18,       ///@deprecated in 1.11, July 2017 - left in for legacy serialization
     eAnimParamType_Float                            = 19,
-    // eAnimParamType_FaceSequence                  = 20,       // deprecated Jan 2016
+    // eAnimParamType_FaceSequence                  = 20,       ///@deprecated Jan 2016
     eAnimParamType_LookAt                           = 21,
     eAnimParamType_TrackEvent                       = 22,
 
@@ -228,8 +228,11 @@ enum EAnimParamType
 class CAnimParamType
 {
     friend class CMovieSystem;
+    friend class AnimSerializer;
 
 public:
+    AZ_TYPE_INFO(CAnimParamType, "{E2F34955-3B07-4241-8D34-EA3BEF3B33D2}")
+
     static const uint kParamTypeVersion = 9;
 
     CAnimParamType()
@@ -301,12 +304,16 @@ public:
         return false;
     }
 
+
+    void SaveToXml(XmlNodeRef& xmlNode) const;
+    void LoadFromXml(const XmlNodeRef& xmlNode, const uint version = kParamTypeVersion);
+
     // Serialization. Defined in Movie.cpp
     inline void Serialize(XmlNodeRef& xmlNode, bool bLoading, const uint version = kParamTypeVersion);
 
 private:
     EAnimParamType m_type;
-    CCryName m_name;
+    AZStd::string m_name;
 };
 
 namespace AZStd
@@ -370,7 +377,6 @@ enum EAnimValue
 enum ETrackMask
 {
     eTrackMask_MaskSound = 1 << 11, // Old: 1 << ATRACK_SOUND
-    eTrackMask_MaskMusic = 1 << 14, // Old: 1 << ATRACK_MUSIC
 };
 
 //! Structure passed to Animate function.
@@ -462,8 +468,9 @@ struct IMovieCallback
 /** Interface of Animation Track.
 */
 struct IAnimTrack
-    : public _i_reference_target_t
 {
+    AZ_RTTI(IAnimTrack, "{AA0D5170-FB28-426F-BA13-7EFF6BB3AC67}")
+
     //! Flags that can be set on animation track.
     enum EAnimTrackFlags
     {
@@ -480,6 +487,12 @@ struct IAnimTrack
     };
 
     // <interfuscator:shuffle>
+    virtual ~IAnimTrack() {};
+
+    // for intrusive_ptr support
+    virtual void add_ref() = 0;
+    virtual void release() = 0;
+
     //////////////////////////////////////////////////////////////////////////
     virtual EAnimCurveType GetCurveType() = 0;
     virtual EAnimValue     GetValueType() = 0;
@@ -493,7 +506,8 @@ struct IAnimTrack
 #endif
 
     // Return what parameter of the node, this track is attached to.
-    virtual CAnimParamType  GetParameterType() const = 0;
+    virtual const CAnimParamType& GetParameterType() const = 0;
+
     // Assign node parameter ID for this track.
     virtual void SetParameterType(CAnimParamType type) = 0;
 
@@ -634,10 +648,11 @@ struct IAnimTrack
     // Assign active time range for this track.
     virtual void SetTimeRange(const Range& timeRange) = 0;
 
-    // Serialize this animation track to XML.
+    //! @deprecated - IAnimTracks use AZ::Serialization now. Legacy - Serialize this animation track to XML.
     virtual bool Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true) = 0;
-
     virtual bool SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected = false, float fTimeOffset = 0) = 0;
+
+    virtual void InitPostLoad(IAnimSequence* /*sequence*/) {};
 
     //! For custom track animate parameters.
     virtual void Animate(SAnimContext& ec) {};
@@ -670,11 +685,8 @@ struct IAnimTrack
     //! Set the animation layer index. (only for character/look-at tracks ATM)
     virtual void SetAnimationLayerIndex(int index) { }
 
-    // collect memory informations
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
-
     //! Returns whether the track responds to muting (false by default), which only affects the Edtior.
-    //! Tracks that use mute should override this, such as CSoundTrack and CMusicTrack
+    //! Tracks that use mute should override this, such as CSoundTrack
     //! @return Boolean of whether the track respnnds to muting or not
     virtual bool UsesMute() const { return false; }
 
@@ -682,8 +694,6 @@ struct IAnimTrack
     virtual void SetMultiplier(float trackValueMultiplier) = 0;
 
     // </interfuscator:shuffle>
-protected:
-    virtual ~IAnimTrack() {};
 };
 
 
@@ -707,9 +717,10 @@ struct IAnimNodeOwner
         Animation node is reference counted.
 */
 struct IAnimNode
-    : virtual public _i_reference_target_t
 {
 public:
+    AZ_RTTI(IAnimNode, "{0A096354-7F26-4B18-B8C0-8F10A3E0440A}")
+
     //////////////////////////////////////////////////////////////////////////
     // Supported params.
     //////////////////////////////////////////////////////////////////////////
@@ -724,11 +735,11 @@ public:
             : name("")
             , valueType(eAnimValue_Float)
             , flags(ESupportedParamFlags(0)) {};
-        SParamInfo(const char* name, CAnimParamType paramType, EAnimValue valueType, ESupportedParamFlags flags)
-            : name(name)
-            , paramType(paramType)
-            , valueType(valueType)
-            , flags(flags) {};
+        SParamInfo(const char* _name, CAnimParamType _paramType, EAnimValue _valueType, ESupportedParamFlags _flags)
+            : name(_name)
+            , paramType(_paramType)
+            , valueType(_valueType)
+            , flags(_flags) {};
 
         const char* name;           // parameter name.
         CAnimParamType paramType;     // parameter id.
@@ -738,9 +749,13 @@ public:
 
     using AnimParamInfos = AZStd::vector<SParamInfo>;
 
-public:
-
     // <interfuscator:shuffle>
+    virtual ~IAnimNode() {};
+
+    // for intrusive_ptr support
+    virtual void add_ref() = 0;
+    virtual void release() = 0;
+
     //! Set node name.
     virtual void SetName(const char* name) = 0;
 
@@ -751,7 +766,7 @@ public:
     virtual EAnimNodeType GetType() const = 0;
 
     // Return Animation Sequence that owns this node.
-    virtual IAnimSequence* GetSequence() = 0;
+    virtual IAnimSequence* GetSequence() const = 0;
 
     // Set the Animation Sequence that owns this node.
     virtual void SetSequence(IAnimSequence* sequence) = 0;
@@ -921,6 +936,9 @@ public:
     // Serialize only the tracks in this animation node to/from XML
     virtual void SerializeAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) = 0;
 
+    // Sets up internal pointers post load from Sequence Component
+    virtual void InitPostLoad(IAnimSequence* sequence) = 0;
+
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     // Groups interface
@@ -929,9 +947,6 @@ public:
     virtual IAnimNode* GetParent() const = 0;
     virtual IAnimNode* HasDirectorAsParent() const = 0;
     //////////////////////////////////////////////////////////////////////////
-
-    // collect allocated memory
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 
     virtual void Render() = 0;
 
@@ -979,8 +994,8 @@ public:
     // FoV, transform, nearZ
     virtual void SetSkipInterpolatedCameraNode(const bool skipNodeCameraAnimation) {};
 
-protected:
-    virtual ~IAnimNode() {};
+    // Returns the ICharacterInstance used on an Entity or Component Node, nullptr otherwise
+    virtual ICharacterInstance* GetCharacterInstance() { return nullptr; }
 };
 
 //! Track event listener
@@ -1021,36 +1036,49 @@ struct IAnimSequenceOwner
 };
 
 struct IAnimStringTable
-    : public _i_reference_target_t
 {
+    AZ_RTTI(IAnimStringTable, "{35690309-9D22-41FF-80B7-8AF7C8419945}")
+    virtual ~IAnimStringTable() {}
+
+    // for intrusive_ptr support
+    virtual void add_ref() = 0;
+    virtual void release() = 0;
+
     virtual const char* Add(const char* p) = 0;
 };
 
 /** Animation sequence, operates on animation nodes contained in it.
  */
 struct IAnimSequence
-    : public _i_reference_target_t
 {
+    AZ_RTTI(IAnimSequence, "{A60F95F5-5A4A-47DB-B3BB-525BBC0BC8DB}")
+
     static const int kSequenceVersion = 4;
 
     //! Flags used for SetFlags(),GetFlags(),SetParentFlags(),GetParentFlags() methods.
     enum EAnimSequenceFlags
     {
-        eSeqFlags_PlayOnReset                   = BIT(0),   //!< Start playing this sequence immediately after reset of movie system(Level load).
-        eSeqFlags_OutOfRangeConstant    = BIT(1),   //!< Constant Out-Of-Range,time continues normally past sequence time range.
-        eSeqFlags_OutOfRangeLoop            = BIT(2),   //!< Loop Out-Of-Range,time wraps back to the start of range when reaching end of range.
-        eSeqFlags_CutScene                      = BIT(3),   //!< Cut scene sequence.
-        eSeqFlags_NoHUD                             = BIT(4),   //!< Don`t display HUD
-        eSeqFlags_NoPlayer                      = BIT(5),   //!< Disable input and drawing of player
-        eSeqFlags_NoGameSounds              = BIT(9),   //!< Suppress all game sounds.
-        eSeqFlags_NoSeek                            = BIT(10), //!< Cannot seek in sequence.
-        eSeqFlags_NoAbort                           = BIT(11), //!< Cutscene can not be aborted
-        eSeqFlags_NoSpeed                           = BIT(13), //!< Cannot modify sequence speed - TODO: add interface control if required
-        eSeqFlags_CanWarpInFixedTime    = BIT(14), //!< Timewarping will work with a fixed time step.
-        eSeqFlags_EarlyMovieUpdate      = BIT(15), //!< Turn the 'sys_earlyMovieUpdate' on during the sequence.
+        eSeqFlags_PlayOnReset         = BIT(0),   //!< Start playing this sequence immediately after reset of movie system(Level load).
+        eSeqFlags_OutOfRangeConstant  = BIT(1),   //!< Constant Out-Of-Range,time continues normally past sequence time range.
+        eSeqFlags_OutOfRangeLoop      = BIT(2),   //!< Loop Out-Of-Range,time wraps back to the start of range when reaching end of range.
+        eSeqFlags_CutScene            = BIT(3),   //!< Cut scene sequence.
+        eSeqFlags_NoHUD               = BIT(4),   //!< @deprecated - Don`t display HUD
+        eSeqFlags_NoPlayer            = BIT(5),   //!< Disable input and drawing of player
+        eSeqFlags_NoGameSounds        = BIT(9),   //!< Suppress all game sounds.
+        eSeqFlags_NoSeek              = BIT(10), //!< Cannot seek in sequence.
+        eSeqFlags_NoAbort             = BIT(11), //!< Cutscene can not be aborted
+        eSeqFlags_NoSpeed             = BIT(13), //!< Cannot modify sequence speed - TODO: add interface control if required
+     // eSeqFlags_CanWarpInFixedTime  = BIT(14), //!< @deprecated - Timewarp by scaling a fixed time step - removed July 2017, unused
+        eSeqFlags_EarlyMovieUpdate    = BIT(15), //!< Turn the 'sys_earlyMovieUpdate' on during the sequence.
         eSeqFlags_LightAnimationSet   = BIT(16), //!< A special unique sequence for light animations
         eSeqFlags_NoMPSyncingNeeded   = BIT(17), //!< this sequence doesn't require MP net syncing
     };
+
+    virtual ~IAnimSequence() {};
+
+    // for intrusive_ptr support
+    virtual void add_ref() = 0;
+    virtual void release() = 0;
 
     //! Set the name of this sequence. (ex. "Intro" in the same case as above)
     virtual void SetName(const char* name) = 0;
@@ -1058,6 +1086,8 @@ struct IAnimSequence
     virtual const char* GetName() const = 0;
     //! Get the ID (unique in a level and consistent across renaming) of this sequence.
     virtual uint32 GetId () const = 0;
+    //! Resets the ID to the next available ID - used on sequence loads into levels to resolve ID collisions
+    virtual void ResetId() = 0;
 
     // legacy (sequence entity) owners are connected by pointers. DirectorComopnents are connected by AZ::EntityId
     virtual void SetOwner(IAnimSequenceOwner* pOwner) = 0;
@@ -1069,11 +1099,6 @@ struct IAnimSequence
     virtual void SetActiveDirector(IAnimNode* pDirectorNode) = 0;
     //! Get the currently active director node, if any.
     virtual IAnimNode* GetActiveDirector() const = 0;
-
-    //! Get the fixed time step for timewarping.
-    virtual float GetFixedTimeStep() const = 0;
-    //! Set the fixed time step for timewarping.
-    virtual void SetFixedTimeStep(float dt) = 0;
 
     //! Set animation sequence flags
     virtual void SetFlags(int flags) = 0;
@@ -1185,6 +1210,9 @@ struct IAnimSequence
     // Serialize this sequence to XML.
     virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true, uint32 overrideId = 0, bool bUndo = false) = 0;
 
+    // fix up internal pointers after load from Sequence Component
+    virtual void InitPostLoad() = 0;
+
     // Copy some nodes of this sequence to XML.
     virtual void CopyNodes(XmlNodeRef& xmlNode, IAnimNode** pSelectedNodes, uint32 count) = 0;
 
@@ -1216,9 +1244,6 @@ struct IAnimSequence
     //! Track event listener
     virtual void AddTrackEventListener(ITrackEventListener* pListener) = 0;
     virtual void RemoveTrackEventListener(ITrackEventListener* pListener) = 0;
-
-    // collect memory informations
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 
     // return the seuqnence type - legacy or new director component
     virtual ESequenceType GetSequenceType() const = 0;
@@ -1256,6 +1281,8 @@ struct IMovieListener
  */
 struct IMovieSystem
 {
+    AZ_RTTI(IMovieSystem, "{D8E6D6E9-830D-40DC-87F3-E9A069FBEB69}")
+
     enum ESequenceStopBehavior
     {
         eSSB_LeaveTime = 0,         // When sequence is stopped it remains in last played time.
@@ -1266,8 +1293,6 @@ struct IMovieSystem
     // <interfuscator:shuffle>
     virtual ~IMovieSystem(){}
 
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
-
     //! Release movie system.
     virtual void Release() = 0;
     //! Set the user.
@@ -1276,12 +1301,6 @@ struct IMovieSystem
     virtual IMovieUser* GetUser() = 0;
     //! Loads all nodes and sequences from a specific file (should be called when the level is loaded).
     virtual bool Load(const char* pszFile, const char* pszMission) = 0;
-
-    // Description:
-    //      Creates a new animation track with specified type.
-    // Arguments:
-    //      type - Type of track, one of EAnimTrackType enums.
-    virtual IAnimTrack* CreateTrack(EAnimCurveType type) = 0;
 
     virtual IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, ESequenceType = eSequenceType_Legacy) = 0;
     virtual IAnimSequence* LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty = true) = 0;
@@ -1486,6 +1505,9 @@ struct IMovieSystem
 
     virtual ILightAnimWrapper* CreateLightAnimWrapper(const char* name) const = 0;
 
+    virtual void LoadParamTypeFromXml(CAnimParamType& animParamType, const XmlNodeRef& xmlNode, const uint version) = 0;
+    virtual void SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNodeRef& xmlNode) = 0;
+
     // Should only be called from CAnimParamType
     virtual void SerializeParamType(CAnimParamType& animParamType, XmlNodeRef& xmlNode, bool bLoading, const uint version) = 0;
 
@@ -1539,7 +1561,17 @@ inline void SAnimContext::Serialize(XmlNodeRef& xmlNode, bool bLoading)
     }
 }
 
-void CAnimParamType::Serialize(XmlNodeRef& xmlNode, bool bLoading, const uint version)
+inline void CAnimParamType::SaveToXml(XmlNodeRef& xmlNode) const
+{
+    gEnv->pMovieSystem->SaveParamTypeToXml(*this, xmlNode);
+}
+
+inline void CAnimParamType::LoadFromXml(const XmlNodeRef& xmlNode, const uint version)
+{
+    gEnv->pMovieSystem->LoadParamTypeFromXml(*this, xmlNode, version);
+}
+
+inline void CAnimParamType::Serialize(XmlNodeRef& xmlNode, bool bLoading, const uint version)
 {
     gEnv->pMovieSystem->SerializeParamType(*this, xmlNode, bLoading, version);
 }

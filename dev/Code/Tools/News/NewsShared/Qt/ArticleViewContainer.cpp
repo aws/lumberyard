@@ -55,7 +55,7 @@ namespace News
             auto pResource = m_manifest.FindById(id);
             if (pResource && pResource->GetType().compare("article") == 0)
             {
-                AddArticleView(pResource);
+                AddArticleView(ArticleDescriptor(*pResource));
                 articlesFound = true;
             }
         }
@@ -94,11 +94,11 @@ namespace News
         return *it;
     }
 
-    void ArticleViewContainer::AddArticleView(Resource* pResource)
+    void ArticleViewContainer::AddArticleView(const ArticleDescriptor& articleDesc, int articlePosition)
     {
         ClearError();
 
-        ArticleView* view = CreateArticleView(pResource);
+        ArticleView* view = CreateArticleView(articleDesc);
         if (view == nullptr)
         {
             return;
@@ -112,7 +112,12 @@ namespace News
             this, &ArticleViewContainer::linkActivatedSignal);
 
         auto layout = static_cast<QVBoxLayout*>(m_ui->articleViewContents->layout());
-        layout->insertWidget(layout->count() - 1, view);
+        if (articlePosition == -1)
+        {
+            articlePosition = layout->count() - 1;
+        }
+
+        layout->insertWidget(articlePosition, view);
         qApp->processEvents();
     }
 
@@ -121,6 +126,21 @@ namespace News
         m_articles.removeAll(view);
         m_ui->articleViewContents->layout()->removeWidget(view);
         delete view;
+    }
+
+    void ArticleViewContainer::ForceRefreshArticleView(ArticleView* articleView)
+    {
+        if (articleView == nullptr)
+        {
+            return;
+        }
+
+        QSharedPointer<const ArticleDescriptor> articleDesc = articleView->GetArticle();
+        auto layout = static_cast<QVBoxLayout*>(m_ui->articleViewContents->layout());
+        const int viewIndex = layout->indexOf(articleView);
+
+        DeleteArticleView(articleView);
+        AddArticleView(*articleDesc, viewIndex);
     }
 
     void ArticleViewContainer::ScrollToView(ArticleView* view) const
@@ -232,9 +252,8 @@ namespace News
         return articleStyleStringEnumMap.value(articleStyleStr);
     }
 
-    ArticleView* ArticleViewContainer::CreateArticleView(Resource* resource)
+    ArticleView* ArticleViewContainer::CreateArticleView(const ArticleDescriptor& articleDesc)
     {
-        ArticleDescriptor articleDesc = ArticleDescriptor(*resource);
         ArticleStyle articleStyle = GetArticleStyleEnumFromString(articleDesc.GetArticleStyle());
 
         switch(articleStyle)

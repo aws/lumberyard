@@ -338,10 +338,10 @@ public:
     float m_lastBooleanOpScale;
 
     _smart_ptr<CStatObj>* m_pLODs;
-    CStatObj* m_pLod0; // Level 0 stat object. (Pointer to the original object of the LOD)
+    IStatObj* m_pLod0; // Level 0 stat object. (Pointer to the original object of the LOD)
     unsigned int m_nMinUsableLod0 : 8;  // What is the minimal LOD that can be used as LOD0.
     unsigned int m_nMaxUsableLod0 : 8; // What is the maximal LOD that can be used as LOD0.
-    unsigned int m_nMaxUsableLod  : 8;  // What is the maximal LOD that can be used.
+    unsigned int m_nMaxUsableLod : 8;  // What is the maximal LOD that can be used.
     unsigned int m_nLoadedLodsNum : 8;  // How many lods loaded.
 
 
@@ -461,14 +461,23 @@ private:
     // METHODS.
     //////////////////////////////////////////////////////////////////////////
 public:
+    virtual void SetDefaultObject(bool state) override { m_bDefaultObject = state; }
+
     //////////////////////////////////////////////////////////////////////////
     // Fast non virtual access functions.
     ILINE IStatObj::SSubObject& SubObject(int nIndex) { return m_subObjects[nIndex]; };
     ILINE int SubObjectCount() const { return m_subObjects.size(); };
     //////////////////////////////////////////////////////////////////////////
 
+    virtual void SetCanUnload(bool value) override { m_bCanUnload = value; }
     virtual bool IsUnloadable() const { return m_bCanUnload; }
+    virtual bool IsUnmergable() const { return m_bUnmergable; }
+    virtual void SetUnmergable(bool state) { m_bUnmergable = state; }
+
     void DisableStreaming();
+
+    virtual bool AreLodsLoaded() const override { return m_bLodsLoaded; }
+    virtual SPhysGeomArray& GetArrPhysGeomInfo() override { return m_arrPhysGeomInfo; }
 
     IIndexedMesh* GetIndexedMesh(bool bCreatefNone = false);
     IIndexedMesh* CreateIndexedMesh();
@@ -476,14 +485,18 @@ public:
     ILINE const Vec3 GetVegCenter() { return m_vVegCenter; }
     ILINE float GetRadius() { return m_fObjectRadius; }
 
-    virtual void SetFlags(int nFlags) { m_nFlags = nFlags; };
-    virtual int  GetFlags() { return m_nFlags; };
+    virtual void SetFlags(int nFlags) override { m_nFlags = nFlags; };
+    virtual int GetFlags() const override { return m_nFlags; };
+    virtual bool IsLodsAreLoadedFromSeparateFile() override { return m_bLodsAreLoadedFromSeparateFile; }
 
-    virtual unsigned int  GetVehicleOnlyPhysics()       {return m_bVehicleOnlyPhysics; };
-    virtual int                     GetIDMatBreakable()             {return m_idmatBreakable; };
-    virtual unsigned int    GetBreakableByGame()            {return m_bBreakableByGame; };
+    virtual int GetSubObjectMeshCount() const override { return m_nSubObjectMeshCount; }
+    virtual void SetSubObjectMeshCount(int count) { m_nSubObjectMeshCount = count;  }
 
-    bool IsDeformable();
+    virtual unsigned int GetVehicleOnlyPhysics() { return m_bVehicleOnlyPhysics; };
+    virtual int GetIDMatBreakable() { return m_idmatBreakable; };
+    virtual unsigned int GetBreakableByGame() { return m_bBreakableByGame; };
+
+    virtual bool IsDeformable() override;
 
     // Loader
     bool LoadCGF(const char* filename, bool bLod, unsigned long nLoadingFlags, const void* pData, const int nDataSize);
@@ -513,8 +526,8 @@ public:
     }
     ITetrLattice* GetTetrLattice() { return m_pLattice; }
 
-    float GetAIVegetationRadius() const {return m_aiVegetationRadius; }
-    void SetAIVegetationRadius(float radius) {m_aiVegetationRadius = radius; }
+    float GetAIVegetationRadius() const { return m_aiVegetationRadius; }
+    void SetAIVegetationRadius(float radius) { m_aiVegetationRadius = radius; }
 
     //! Refresh object ( reload shaders or/and object geometry )
     virtual void Refresh(int nFlags);
@@ -522,9 +535,9 @@ public:
     IRenderMesh* GetRenderMesh() { return m_pRenderMesh; };
     void SetRenderMesh(IRenderMesh* pRM);
 
-    const char* GetFilePath()    { return (m_szFileName); }
+    const char* GetFilePath() const { return (m_szFileName); }
     void SetFilePath(const char* szFileName) { m_szFileName = szFileName; }
-    const char* GetGeoName()    { return (m_szGeomName); }
+    const char* GetGeoName() { return (m_szGeomName); }
     void SetGeoName(const char* szGeoName) { m_szGeomName = szGeoName; }
     bool IsSameObject(const char* szFileName, const char* szGeomName);
 
@@ -533,8 +546,8 @@ public:
     void  SetBBoxMax(const Vec3& vBBoxMax) { m_vBoxMax = vBBoxMax; }
     Vec3 GetBoxMin() { return m_vBoxMin; }
     Vec3 GetBoxMax() { return m_vBoxMax; }
-    AABB GetAABB() {  return AABB(m_vBoxMin, m_vBoxMax);  }
-    AABB GetAABB() const {  return AABB(m_vBoxMin, m_vBoxMax);  }
+    AABB GetAABB() { return AABB(m_vBoxMin, m_vBoxMax); }
+    AABB GetAABB() const { return AABB(m_vBoxMin, m_vBoxMax); }
 
     virtual float GetExtent(EGeomForm eForm);
     virtual void GetRandomPos(PosNorm& ran, EGeomForm eForm) const;
@@ -542,8 +555,8 @@ public:
     virtual Vec3 GetHelperPos(const char* szHelperName);
     virtual const Matrix34& GetHelperTM(const char* szHelperName);
 
-    float& GetRadiusVert() { return m_fRadiusVert; }
-    float& GetRadiusHors() { return m_fRadiusHors; }
+    virtual float& GetRadiusVert() override { return m_fRadiusVert; }
+    virtual float& GetRadiusHors() override { return m_fRadiusHors; }
 
     virtual int AddRef();
 
@@ -552,17 +565,19 @@ public:
 
     virtual bool IsDefaultObject() { return (m_bDefaultObject); }
 
-    int GetLoadedTrisCount() { return m_nLoadedTrisCount; }
-    int GetRenderTrisCount() { return m_nRenderTrisCount; }
+    int GetLoadedTrisCount() const override { return m_nLoadedTrisCount; }
+    int GetRenderTrisCount() const override { return m_nRenderTrisCount; }
+    int GetRenderMatIds() const override { return m_nRenderMatIds; }
 
     // Load LODs
-    void SetLodObject(int nLod, CStatObj* pLod);
+    void SetLodObject(int nLod, IStatObj* pLod) override;
     bool LoadLowLODS_Prep(bool bUseStreaming, unsigned long nLoadingFlags);
-    CStatObj* LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned long nLoadingFlags, const void* pData, int nDataLen);
-    void LoadLowLODS_Finalize(int nLoadedLods, CStatObj * loadedLods[MAX_STATOBJ_LODS_NUM]);
+    IStatObj* LoadLowLODS_Load(int nLodLevel, bool bUseStreaming, unsigned long nLoadingFlags, const void* pData, int nDataLen);
+    void LoadLowLODS_Finalize(int nLoadedLods, IStatObj* loadedLods[MAX_STATOBJ_LODS_NUM]);
     void LoadLowLODs(bool bUseStreaming, unsigned long nLoadingFlags);
+
     // Free render resources for unused upper LODs.
-    void CleanUnusedLods();
+    virtual void CleanUnusedLods() override;
 
     virtual void FreeIndexedMesh();
     bool RenderDebugInfo(CRenderObject* pObj, const SRenderingPassInfo& passInfo);
@@ -574,20 +589,23 @@ public:
     void Init();
 
     //  void CheckLoaded();
-    virtual IStatObj* GetLodObject(int nLodLevel, bool bReturnNearest = false);
-    virtual IStatObj* GetLowestLod();
-
-    virtual int FindNearesLoadedLOD(int nLodIn, bool bSearchUp = false);
-    virtual int FindHighestLOD(int nBias);
+    IStatObj* GetLodObject(int nLodLevel, bool bReturnNearest = false) override;
+    IStatObj* GetLowestLod() override;
+    _smart_ptr<CStatObj>* GetLods() override { return m_pLODs; }
+    int GetLoadedLodsNum() override { return m_nLoadedLodsNum; }
+    void SetMerged(bool state)  override { m_bMerged = state; }
+    int GetRenderMeshMemoryUsage() const override { return m_nRenderMeshMemoryUsage;  }
+    int FindNearesLoadedLOD(int nLodIn, bool bSearchUp = false) override;
+    int FindHighestLOD(int nBias) override;
 
     // interface IStreamCallback -----------------------------------------------------
 
-    virtual void StreamAsyncOnComplete (IReadStream* pStream, unsigned nError);
-    virtual void StreamOnComplete (IReadStream* pStream, unsigned nError);
+    void StreamAsyncOnComplete(IReadStream* pStream, unsigned nError) override;
+    void StreamOnComplete(IReadStream* pStream, unsigned nError) override;
 
     // -------------------------------------------------------------------------------
 
-    virtual void StartStreaming(bool bFinishNow, IReadStream_AutoPtr* ppStream);
+    void StartStreaming(bool bFinishNow, IReadStream_AutoPtr* ppStream) override;
     void UpdateStreamingPrioriryInternal(const Matrix34A& objMatrix, float fDistance, bool bFullUpdate);
 
     void MakeCompiledFileName(char* szCompiledFileName, int nMaxLen);
@@ -690,16 +708,21 @@ public:
     float GetObjectHeight(float x, float y);
 #endif
 
-    int GetMaxUsableLod();
-    int GetMinUsableLod();
+    virtual int GetMaxUsableLod() const override;
+    virtual int GetMinUsableLod() const override;
+    virtual SMeshBoneMapping_uint8* GetBoneMapping() const override { return m_pBoneMapping; }
+    virtual int GetSpineCount() const override { return m_nSpines; }
+    virtual SSpine* GetSpines() const override { return m_pSpines; }
+
     void RenderStreamingDebugInfo(CRenderObject* pRenderObject);
     void RenderCoverInfo(CRenderObject* pRenderObject);
-    int CountChildReferences();
+
+    virtual int CountChildReferences() const override;
     void ReleaseStreamableContent();
     int GetStreamableContentMemoryUsage(bool bJustForDebug = false);
     virtual void ComputeGeometricMean(SMeshLodInfo& lodInfo);
     virtual float GetLodDistance() const override { return m_fLodDistance; }
-    bool UpdateStreamableComponents(float fImportance, const Matrix34A& objMatrix, bool bFullUpdate, int nNewLod);
+    virtual bool UpdateStreamableComponents(float fImportance, const Matrix34A& objMatrix, bool bFullUpdate, int nNewLod) override;
     void GetStreamableName(string& sName)
     {
         sName = m_szFileName;
@@ -719,8 +742,17 @@ public:
     static void operator delete (void* pToFree);
 
     // Used in ObjMan.
-    void TryMergeSubObjects(bool bFromStreaming);
+    void TryMergeSubObjects(bool bFromStreaming) override;
     void SavePhysicalizeData(CNodeCGF* pNode);
+    bool IsMeshStrippedCGF() const { return m_bMeshStrippedCGF; }
+    string& GetFileName() override { return m_szFileName; }
+    const string& GetFileName() const override { return m_szFileName; }
+
+    int GetUserCount() const override { return m_nUsers; }
+    bool CheckGarbage() const override { return m_bCheckGarbage; }
+    void SetCheckGarbage(bool val) override { m_bCheckGarbage = val; }
+    IStatObj* GetLodLevel0() override { return m_pLod0; }
+    void SetLodLevel0(IStatObj* lod) override { m_pLod0 = lod; }
 
 protected:
     // Called by async stream callback.

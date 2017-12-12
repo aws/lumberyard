@@ -13,6 +13,7 @@
 #include "EditorCylinderShapeComponent.h"
 
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include "CylinderShapeComponent.h"
 
 namespace LmbrCentral
@@ -50,11 +51,25 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Cylinder_Shape.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(0, &EditorCylinderShapeComponent::m_configuration, "Configuration", "Cylinder Shape Configuration")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCylinderShapeComponent::ConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
+    }
+
+    void EditorCylinderShapeComponent::Activate()
+    {
+        EditorBaseShapeComponent::Activate();
+        CylinderShape::Activate(GetEntityId());
+    }
+
+    void EditorCylinderShapeComponent::Deactivate()
+    {
+        CylinderShape::Deactivate();
+        EditorBaseShapeComponent::Deactivate();
     }
 
     void EditorCylinderShapeComponent::DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const
@@ -71,13 +86,13 @@ namespace LmbrCentral
 
     void EditorCylinderShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        auto component = gameEntity->CreateComponent<CylinderShapeComponent>();
-        if (component)
-        {
-            component->m_configuration = m_configuration;
-        }
+        auto component = gameEntity->CreateComponent<CylinderShapeComponent>()->SetConfiguration(m_configuration);
     }
 
+    void EditorCylinderShapeComponent::ConfigurationChanged() 
+    {
+        CylinderShape::InvalidateCache(CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
+    }
 
     namespace ClassConverters
     {
@@ -99,7 +114,7 @@ namespace LmbrCentral
 
             New:
             <Class name="EditorCylinderShapeComponent" field="element" version="1" type="{D5FC4745-3C75-47D9-8C10-9F89502487DE}">
-             <Class name="CylinderShapeConfiguration" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
+             <Class name="CylinderShapeConfig" field="Configuration" version="1" type="{53254779-82F1-441E-9116-81E1FACFECF4}">
               <Class name="float" field="Height" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
               <Class name="float" field="Radius" value="0.2500000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
              </Class>
@@ -107,21 +122,21 @@ namespace LmbrCentral
             */
 
             // Cache the Configuration
-            CylinderShapeConfiguration configuration;
+            CylinderShapeConfig configuration;
             int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<CylinderShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<CylinderShapeConfig>(configuration);
             }
 
             // Convert to EditorCylinderShapeComponent
-            bool result = classElement.Convert(context, "{D5FC4745-3C75-47D9-8C10-9F89502487DE}");
+            bool result = classElement.Convert<EditorCylinderShapeComponent>(context);
             if (result)
             {
-                configIndex = classElement.AddElement<CylinderShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<CylinderShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<CylinderShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<CylinderShapeConfig>(context, configuration);
                 }
                 return true;
             }

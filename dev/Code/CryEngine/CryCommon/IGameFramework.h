@@ -264,19 +264,19 @@ struct SEntityTagParams
     string tagContext;
 
     SEntityTagParams() { Init(); }
-    SEntityTagParams(EntityId entity, const char* text)
+    SEntityTagParams(EntityId _entity, const char* _text)
     {
         Init();
-        this->entity = entity;
-        this->text = text ? text : "";
+        this->entity = _entity;
+        this->text = _text ? _text : "";
     }
-    SEntityTagParams(EntityId entity, const char* text, float size, const ColorF& color, float duration)
+    SEntityTagParams(EntityId _entity, const char* _text, float _size, const ColorF& _color, float duration)
     {
         Init();
-        this->entity = entity;
-        this->text = text ? text : "";
-        this->size = size;
-        this->color = color;
+        this->entity = _entity;
+        this->text = _text ? _text : "";
+        this->size = _size;
+        this->color = _color;
         this->fadeTime = duration;
     }
 
@@ -814,8 +814,9 @@ struct IGameFramework
     virtual IEntity* GetClientEntity() const = 0;
 
     // Description:
-    //    Sets the current client actor.
-    virtual void SetClientActor(EntityId id) = 0;
+    //    Sets the current client actor, and sets up action maps if desired.
+    //    Note: Action maps are deprecated as of Lumberyard 1.11.
+    virtual void SetClientActor(EntityId id, bool setupActionMaps = true) = 0;
 
 #ifndef _RELEASE
     // Description:
@@ -850,12 +851,12 @@ struct IGameFramework
     virtual IGameObjectExtension* QueryGameObjectExtension(EntityId id, const char* name) = 0;
 
     // Description:
-    //    Retrieve pointer to the ITimeDemoRecorder (or NULL)
-    virtual ITimeDemoRecorder* GetITimeDemoRecorder() const = 0;
-
-    // Description:
     //    Retrieve pointer to the IGamePhysicsSettings (or NULL)
     virtual IGamePhysicsSettings* GetIGamePhysicsSettings() = 0;
+
+    // Description:
+    //      Deprecated function for requesting a string that can be used as a file name.
+    virtual const char* GetStartLevelSaveGameName() = 0;
 
     // Description:
     //    Save the current game to disk
@@ -877,6 +878,7 @@ struct IGameFramework
 
     virtual bool IsLoadingSaveGame() = 0;
 
+    // These functions are deprecated, please use the EBus defined in ITimeDemoRecorder directly.
     virtual bool IsInTimeDemo() = 0;
     virtual bool IsTimeDemoRecording() = 0;
 

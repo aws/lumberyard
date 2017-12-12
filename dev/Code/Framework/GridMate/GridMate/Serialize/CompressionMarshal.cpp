@@ -425,7 +425,7 @@ union Data32Bits
 // Date:        March 3, 2009
 //
 // \todo Move this to AZBase if other people can use them.
-// \todo If used often optimize with vmx and use internal float16 format (like the vector pack/unpack unstructions on X360)
+// \todo If used often optimize with vmx and use internal float16 format (like the vector pack/unpack unstructions on PowerPC)
 //=========================================================================
 void
 HalfMarshaler::Marshal(WriteBuffer& wb, float value) const

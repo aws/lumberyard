@@ -55,12 +55,15 @@ namespace Templates
                 AZStd::string m_outFile;
                 /// Whether or not to template the file
                 bool m_isTemplated;
+                /// Whether or not the file is optional
+                bool m_isOptional;
 
                 CopyFileDescriptor() = default;
-                CopyFileDescriptor(const AZStd::string& inFile, const AZStd::string& outFile, bool templated)
+                CopyFileDescriptor(const AZStd::string& inFile, const AZStd::string& outFile, bool templated, bool optional)
                     : m_inFile(inFile)
                     , m_outFile(outFile)
                     , m_isTemplated(templated)
+                    , m_isOptional(optional)
                 { }
             };
 

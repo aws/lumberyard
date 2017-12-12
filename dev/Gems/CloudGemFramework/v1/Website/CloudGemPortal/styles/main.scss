@@ -11,8 +11,11 @@
 @import "modals";
 @import "datetimerangepicker";
 @import "forms";
+@import "dropdown";
+@import "pagination";
 @import "feedback";
 @import "tooltips";
+@import "toastr";
 @import "util";
 
 html {
@@ -31,16 +34,9 @@ html, body {
 	margin-bottom: -35px;
 }
 
+
 .footer-push {
 	height: 35px;
-}
-
-// content container padding: between nav and footer content
-.cgp-content-container {
-	margin: 25px;
-	> h1 {
-		margin: 25px 0 15px 0;
-	}
 }
 
 .cgp-login-container {

@@ -17,6 +17,9 @@
 #pragma warning(pop)
 #include <AzCore/std/string/regex.h>
 
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <CloudGemFramework/AwsApiRequestJob.h>
+
 namespace LmbrAWS
 {
     static const char* CLASS_TAG = "AWS:Primitive:SNS:SnsSubscribe";
@@ -33,7 +36,7 @@ namespace LmbrAWS
             InputPortConfig_Void("Subscribe", _HELP("Subscribe to a topic in order to receive messages published to that topic.  More info can be found at http://docs.aws.amazon.com/sns/latest/dg/SubscribeTopic.html")),
             InputPortConfig<string>("Protocol", _HELP("The protocol of the endpoint to subscribe"), "Protocol",
                 _UICONFIG("enum_string:http=http,https=https,email=email,email-json=email-json,sms=sms,sqs=sqs,application=application,lambda=lambda")),
-            m_topicClientPort.GetConfiguration("TopicARN", _HELP("ARN of the SNS Topic to subscribe to.")),
+            InputPortConfig<string>("TopicARN", _HELP("ARN of the SNS Topic to subscribe to.")),
             InputPortConfig<string>("Endpoint", _HELP("The address of the endpoint to subscribe, for eample when using an email protocol this would be the email address to receive the notifications at.  For sending to http or https info can be found at http://docs.aws.amazon.com/sns/latest/dg/SendMessageToHttp.html  More info on SNS can be found at http://docs.aws.amazon.com/sns/latest/dg/welcome.html"))
         };
 
@@ -101,19 +104,13 @@ namespace LmbrAWS
 
         if (event == eFE_Activate && IsPortActive(activationInfo, EIP_Subscribe) && m_isValid)
         {
-            auto client = m_topicClientPort.GetClient(activationInfo);
-            if (!client.IsReady())
-            {
-                ErrorNotify(activationInfo->pGraph, activationInfo->myID, "Client configuration not ready.");
-                return;
-            }
-
-            auto const& topicArn = client.GetTopicARN();
+            AZStd::string topicArn = GetPortString(activationInfo, EIP_TopicClient).c_str();
+            EBUS_EVENT_RESULT(topicArn, CloudGemFramework::CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, topicArn);
             auto const& endpoint = GetPortString(activationInfo, EIP_Endpoint);
             auto const& protocol = GetPortString(activationInfo, EIP_Protocol);
 
             Aws::SNS::Model::SubscribeRequest subscribeRequest;
-            subscribeRequest.WithTopicArn(topicArn).WithEndpoint(endpoint).WithProtocol(protocol);
+            subscribeRequest.WithTopicArn(topicArn.c_str()).WithEndpoint(endpoint).WithProtocol(protocol);
 
             auto context = std::make_shared<FlowGraphContext>(activationInfo->pGraph, activationInfo->myID);
 

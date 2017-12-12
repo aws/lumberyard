@@ -36,14 +36,18 @@ namespace AZ
 
             void SkeletonGroup::Activate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::ManifestMetaInfoBus::Handler::BusConnect();
                 Events::AssetImportRequestBus::Handler::BusConnect();
+#endif // ENABLE_LEGACY_ANIMATION
             }
 
             void SkeletonGroup::Deactivate()
             {
+#ifdef ENABLE_LEGACY_ANIMATION
                 Events::AssetImportRequestBus::Handler::BusDisconnect();
                 Events::ManifestMetaInfoBus::Handler::BusDisconnect();
+#endif // ENABLE_LEGACY_ANIMATION
             }
 
             void SkeletonGroup::Reflect(ReflectContext* context)
@@ -65,7 +69,7 @@ namespace AZ
 
             void SkeletonGroup::InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target)
             {
-                if (target.RTTI_IsTypeOf(SceneData::SkeletonGroup::TYPEINFO_Uuid()))
+                if (!m_isDefaultConstructing && target.RTTI_IsTypeOf(SceneData::SkeletonGroup::TYPEINFO_Uuid()))
                 {
                     SceneData::SkeletonGroup* group = azrtti_cast<SceneData::SkeletonGroup*>(&target);
 
@@ -110,19 +114,53 @@ namespace AZ
                 }
             }
 
-            Events::ProcessingResult SkeletonGroup::BuildDefault(Containers::Scene& scene) const
+            Events::ProcessingResult SkeletonGroup::BuildDefault(Containers::Scene& scene)
             {
-                if (SceneHasSkeletonGroup(scene) || !Utilities::DoesSceneGraphContainDataLike<DataTypes::IBoneData>(scene, true))
+                if (SceneHasSkeletonGroup(scene))
                 {
                     return Events::ProcessingResult::Ignored;
                 }
 
-                // There are skeletons but no skeleton group, so add a default skeleton group to the manifest.
-                AZStd::shared_ptr<SceneData::SkeletonGroup> group = AZStd::make_shared<SceneData::SkeletonGroup>();
-                EBUS_EVENT(Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
-                scene.GetManifest().AddEntry(AZStd::move(group));
+                const Containers::SceneGraph &graph = scene.GetGraph();
+                auto contentStorage = graph.GetContentStorage();
+                auto nameStorage = graph.GetNameStorage();
+                auto nameContentView = Containers::Views::MakePairView(nameStorage, contentStorage);
+                
+                bool hasCreatedSkeletons = false;
+                m_isDefaultConstructing = true;
+                for (auto it = nameContentView.begin(); it != nameContentView.end(); ++it)
+                {
+                    if (!it->second || !it->second->RTTI_IsTypeOf(AZ::SceneData::GraphData::RootBoneData::TYPEINFO_Uuid()))
+                    {
+                        continue;
+                    }
 
-                return Events::ProcessingResult::Success;
+                    // Check if this is a virtual type. There are no known virtual types supported by skeletons so this skeleton
+                    //      pretends to be something that's not understood by this behavior, so skip it.
+                    AZStd::set<Crc32> virtualTypes;
+                    Events::GraphMetaInfoBus::Broadcast(&Events::GraphMetaInfoBus::Events::GetVirtualTypes, virtualTypes, 
+                        scene, graph.ConvertToNodeIndex(it.GetFirstIterator()));
+                    if (!virtualTypes.empty())
+                    {
+                        continue;
+                    }
+                    
+                    AZStd::shared_ptr<SceneData::SkeletonGroup> group = AZStd::make_shared<SceneData::SkeletonGroup>();
+                    AZStd::string name = DataTypes::Utilities::CreateUniqueName<DataTypes::ISkeletonGroup>(scene.GetName(), it->first.GetName(), scene.GetManifest());
+                    // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
+                    //      in the same way again. To guarantee the same uuid, generate a stable one instead.
+                    group->OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::SkeletonGroup::TYPEINFO_Uuid(), name));
+                    group->SetName(AZStd::move(name));
+                    group->SetSelectedRootBone(it->first.GetPath());
+
+                    Events::ManifestMetaInfoBus::Broadcast(&Events::ManifestMetaInfoBus::Events::InitializeObject, scene, *group);
+
+                    scene.GetManifest().AddEntry(AZStd::move(group));
+                    hasCreatedSkeletons = true;
+                }
+                m_isDefaultConstructing = false;
+
+                return hasCreatedSkeletons ? Events::ProcessingResult::Success : Events::ProcessingResult::Ignored;
             }
 
             Events::ProcessingResult SkeletonGroup::UpdateSkeletonGroups(Containers::Scene& scene) const
@@ -136,6 +174,13 @@ namespace AZ
                     if (group.GetName().empty())
                     {
                         group.SetName(DataTypes::Utilities::CreateUniqueName<DataTypes::ISkeletonGroup>(scene.GetName(), scene.GetManifest()));
+                        updated = true;
+                    }
+                    if (group.GetId().IsNull())
+                    {
+                        // When the uuid is null it's likely because the manifest has been updated from an older version. Include the 
+                        // name of the group as there could be multiple groups.
+                        group.OverrideId(DataTypes::Utilities::CreateStableUuid(scene, SceneData::SkeletonGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
                     }
                 }

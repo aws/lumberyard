@@ -68,9 +68,9 @@ namespace AZ
                 }
 
                 Transform globalTransform = context.m_sourceNode.EvaluateGlobalTransform();
-#if !defined(MOTIONCANVAS_GEM_ENABLED)
+
                 context.m_sourceSceneSystem.SwapTransformForUpAxis(globalTransform);
-#endif
+
                 context.m_sourceSceneSystem.ConvertBoneUnit(globalTransform);
 
                 createdBoneData->SetWorldTransform(globalTransform);

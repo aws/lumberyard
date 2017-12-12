@@ -44,7 +44,11 @@ namespace AZ
     {
         UserSettingsComponentRequestBus::Handler::BusDisconnect();
 
-        Save();
+        if (m_saveOnShutdown)
+        {
+            Save();
+        }
+
         m_provider.Deactivate();
     }
 
@@ -79,6 +83,14 @@ namespace AZ
     }
 
     //-----------------------------------------------------------------------------
+    void UserSettingsComponent::Finalize()
+    {
+        Save();
+        m_provider.Deactivate();
+        m_saveOnShutdown = false;
+    }
+
+    //-----------------------------------------------------------------------------
     void UserSettingsComponent::GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("UserSettingsService", 0xa0eadff5));
@@ -96,10 +108,10 @@ namespace AZ
     //-----------------------------------------------------------------------------
     void UserSettingsComponent::Reflect(ReflectContext* context)
     {
+        UserSettingsProvider::Reflect(context);
+
         if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            UserSettingsProvider::Reflect(serializeContext);
-
             serializeContext->Class<UserSettingsComponent, AZ::Component>()
                 ->Version(3)
                 ->Field("ProviderId", &UserSettingsComponent::m_providerId)

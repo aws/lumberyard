@@ -43,7 +43,7 @@ namespace CloudGemFramework
                 config.requestTimeoutMs = 30000;
                 config.connectTimeoutMs = 30000;
                 AZStd::string caFile;
-                LmbrAWS::RequestRootCAFileResult requestResult;
+                CloudCanvas::RequestRootCAFileResult requestResult;
                 EBUS_EVENT_RESULT(requestResult, CloudGemFrameworkRequestBus, GetRootCAFile, caFile);
                 config.caFile = caFile.c_str();
             }

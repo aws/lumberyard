@@ -22,20 +22,20 @@
 #include "FontRenderer.h"
 #include <StlUtils.h>
 
-
+//! A glyph cache slot. Used to store glyph information read from FreeType.
 typedef struct CCacheSlot
 {
     unsigned int    dwUsage;
     int             iCacheSlot;
-    int             iHoriAdvance;
+    int             iHoriAdvance;   //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
     uint32          cCurrentChar;
 
-    uint8                   iCharWidth;                 // size in pixel
-    uint8                   iCharHeight;                // size in pixel
-    char                    iCharOffsetX;
-    char                    iCharOffsetY;
+    uint8           iCharWidth;     //!< Glyph width (in pixel)
+    uint8           iCharHeight;    //!< Glyph height (in pixel)
+    AZ::s8          iCharOffsetX;   //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
+    AZ::s8          iCharOffsetY;   //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
 
-    CGlyphBitmap    pGlyphBitmap;
+    CGlyphBitmap    pGlyphBitmap;   //!< Contains a buffer storing a copy of the glyph from FreeType
 
     void            Reset()
     {
@@ -69,13 +69,20 @@ typedef std::vector<CCacheSlot*>::iterator             CCacheSlotListItor;
 #undef GetCharHeight
 #endif
 
+//! The glyph cache maps UTF32 codepoints to their corresponding FreeType data.
+//!
+//! This cache is used to associate font glyph info (read from FreeType) with
+//! UTF32 codepoints. Ultimately the glyph info will be read into a font texture
+//! (CFontTexture) to avoid future FreeType lookups.
+//!
+//! \sa CFontTexture
 class CGlyphCache
 {
 public:
     CGlyphCache();
     ~CGlyphCache();
 
-    int Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount, float fSizeRatio = 0.8f);
+    int Create(int iCacheSize, int iGlyphBitmapWidth, int iGlyphBitmapHeight, int iSmoothMethod, int iSmoothAmount);
     int Release();
 
     int LoadFontFromFile(const string& szFileName);
@@ -94,7 +101,19 @@ public:
     CCacheSlot* GetLRUSlot();
     CCacheSlot* GetMRUSlot();
 
-    int GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, char& iCharOffsetX, char& iCharOffsetY, uint32 cChar);
+    //! Obtains glyph information for the given UTF32 codepoint.
+    //! This information is obtained from a CCacheSlot that corresponds to
+    //! the given codepoint. If the codepoint doesn't exist within the cache
+    //! table (m_pCacheTable), then the information is obtain from FreeType
+    //! directly via CFontRenderer.
+    //!
+    //! Ultimately the glyph bitmap is copied into a font texture 
+    //! (CFontTexture). Once the glyph is copied into the font texture then
+    //! the font texture is referenced directly rather than relying on the
+    //! glyph cache or FreeType.
+    //!
+    //! \sa CFontRenderer::GetGlyph, CFontTexture::UpdateSlot
+    int GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, uint32 cChar);
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -118,7 +137,6 @@ private:
 
     int             m_iGlyphBitmapWidth;
     int             m_iGlyphBitmapHeight;
-    float           m_fSizeRatio;
 
     int             m_iSmoothMethod;
     int             m_iSmoothAmount;

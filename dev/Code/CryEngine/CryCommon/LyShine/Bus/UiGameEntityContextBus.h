@@ -15,6 +15,7 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/IdUtils.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzFramework/Entity/EntityContextBus.h>
@@ -51,7 +52,7 @@ public:
         const AZ::Vector2& /*position*/,
         bool /*isViewportPosition*/,
         AZ::Entity* /*parent*/,
-        const AZ::EntityUtils::EntityIdMapper& /*customIdMapper*/)
+        const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& /*customIdMapper*/)
     { return AzFramework::SliceInstantiationTicket(); }
 };
 

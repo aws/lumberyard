@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EntityNode.h"
 #include "EventTrack.h"
 #include "AnimSplineTrack.h"
@@ -105,8 +106,14 @@ namespace
 };
 
 //////////////////////////////////////////////////////////////////////////
-CAnimEntityNode::CAnimEntityNode(const int id)
-    : CAnimNode(id)
+CAnimEntityNode::CAnimEntityNode()
+    : CAnimEntityNode(0, eAnimNodeType_Entity)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+CAnimEntityNode::CAnimEntityNode(const int id, EAnimNodeType nodeType)
+    : CAnimNode(id, nodeType)
 {
     m_EntityId = 0;
     m_entityGuid = 0;
@@ -261,7 +268,7 @@ void CAnimEntityNode::UpdateDynamicParams_PureGame()
 
     for (uint32 i = 0; i < m_tracks.size(); ++i)
     {
-        _smart_ptr<IAnimTrack> pTrack = m_tracks[i];
+        AZStd::intrusive_ptr<IAnimTrack> pTrack = m_tracks[i];
         CAnimParamType paramType(pTrack->GetParameterType());
         if (paramType.GetType() != eAnimParamType_ByString)
         {
@@ -517,6 +524,11 @@ void CAnimEntityNode::CreateDefaultTracks()
 CAnimEntityNode::~CAnimEntityNode()
 {
     ReleaseSounds();
+    if (m_characterTrackAnimator)
+    {
+        delete m_characterTrackAnimator;
+        m_characterTrackAnimator = nullptr;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -655,7 +667,7 @@ void CAnimEntityNode::StillUpdate()
     int paramCount = NumTracks();
     for (int paramIndex = 0; paramIndex < paramCount; paramIndex++)
     {
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         switch (m_tracks[paramIndex]->GetParameterType().GetType())
         {
@@ -728,7 +740,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
         // always evaluate Boolean or interpolated camera tracks, even if it has no keys. Boolean tracks may differ from their
         // non-animate state, and interpolated cameras may have animation depsite having no keys.
         bool alwaysEvaluateTrack = pTrack->GetValueType() == eAnimValue_Bool || IsSkipInterpolatedCameraNodeEnabled();
@@ -822,13 +834,13 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                         const bool bNotTrigger = key.bNoTriggerInScrubbing && ec.bSingleFrame && key.time != ec.time;
                         if (!bNotTrigger)
                         {
-                            const bool bRagollizeEvent = strcmp(key.event, "Ragdollize") == 0;
+                            const bool bRagollizeEvent = strcmp(key.event.c_str(), "Ragdollize") == 0;
                             if (!bRagollizeEvent || GetCMovieSystem()->IsPhysicsEventsEnabled())
                             {
                                 ApplyEventKey(pEntityTrack, entityKey, key);
                             }
 
-                            bool bHideOrUnHide = strcmp(key.event, "Hide") == 0 || strcmp(key.event, "UnHide") == 0;
+                            bool bHideOrUnHide = strcmp(key.event.c_str(), "Hide") == 0 || strcmp(key.event.c_str(), "UnHide") == 0;
 
                             if (m_pOwner && bHideOrUnHide)
                             {
@@ -905,7 +917,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                         m_iCurMannequinKey = key;
 
 
-                        const uint32  valueName = CCrc32::ComputeLowercase(manKey.m_fragmentName);
+                        const uint32  valueName = CCrc32::ComputeLowercase(manKey.m_fragmentName.c_str());
 
                         IGameObject* pGameObject = gEnv->pGame->GetIGameFramework()->GetGameObject(pEntity->GetId());
                         if (pGameObject)
@@ -918,7 +930,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                                 bool isValid = !(FRAGMENT_ID_INVALID == fragID);
 
                                 // Find tags
-                                string tagName = manKey.m_tags;
+                                string tagName = manKey.m_tags.c_str();
                                 TagState tagState = TAG_STATE_EMPTY;
                                 if (!tagName.empty())
                                 {
@@ -970,6 +982,11 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
         case eAnimParamType_Animation:
             if (!ec.bResetting)
             {
+                if (!m_characterTrackAnimator)
+                {
+                    m_characterTrackAnimator = new CCharacterTrackAnimator;
+                }
+
                 bForceEntityActivation = true;
                 if (nAnimCharacterLayer < MAX_CHARACTER_TRACKS + ADDITIVE_LAYERS_OFFSET)
                 {
@@ -981,14 +998,7 @@ void CAnimEntityNode::Animate(SAnimContext& ec)
                         index = pCharTrack->GetAnimationLayerIndex();  // use it instead.
                     }
 
-                    if (pEntity)
-                    {
-                        ICharacterInstance* pCharacter = pEntity->GetCharacter(0);
-                        if (pCharacter)
-                        {
-                            m_characterTrackAnimator.AnimateTrack(pCharTrack, ec, index, iAnimationTrack, pCharacter, pEntity);
-                        }
-                    }
+                    m_characterTrackAnimator->AnimateTrack(pCharTrack, ec, index, iAnimationTrack);
 
                     if (nAnimCharacterLayer == 0)
                     {
@@ -1142,7 +1152,10 @@ void CAnimEntityNode::OnReset()
     m_EntityId = 0;
     m_lastEntityKey = -1;
 
-    m_characterTrackAnimator.OnReset(GetEntity());
+    if (m_characterTrackAnimator)
+    {
+        m_characterTrackAnimator->OnReset(this);
+    }
 
     m_lookAtTarget = "";
     m_lookAtEntityId = 0;
@@ -1185,7 +1198,7 @@ void CAnimEntityNode::PrepareAnimations()
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType trackType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (pAnimations)
         {
@@ -1198,7 +1211,7 @@ void CAnimEntityNode::PrepareAnimations()
                 {
                     ICharacterKey key;
                     pTrack->GetKey(i, &key);
-                    int animId = pAnimations->GetAnimIDByName(key.m_animation);
+                    int animId = pAnimations->GetAnimIDByName(key.m_animation.c_str());
                     if (animId >= 0)
                     {
                         float duration = pAnimations->GetDuration_sec(animId);
@@ -1277,6 +1290,20 @@ void CAnimEntityNode::Activate(bool bActivate)
     m_allowAdditionalTransforms = true;
     m_lookPose = "";
 };
+
+//////////////////////////////////////////////////////////////////////////
+ICharacterInstance* CAnimEntityNode::GetCharacterInstance()
+{
+    ICharacterInstance* retCharInstance = nullptr;
+
+    IEntity* entity = GetEntity();
+    if (entity)
+    {
+        retCharInstance = entity->GetCharacter(0);
+    }
+
+    return retCharInstance;
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimEntityNode::ResetSounds()
@@ -1446,6 +1473,35 @@ void CAnimEntityNode::SetScale(float time, const Vec3& scale)
 }
 
 //////////////////////////////////////////////////////////////////////////
+IAnimTrack* CAnimEntityNode::CreateTrack(const CAnimParamType& paramType)
+{
+    IAnimTrack* retTrack = CAnimNode::CreateTrack(paramType);
+
+    if (retTrack)
+    {
+        if (paramType.GetType() == eAnimParamType_Animation && !m_characterTrackAnimator)
+        {
+            m_characterTrackAnimator = new CCharacterTrackAnimator();
+        }
+    }
+
+    return retTrack;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+bool CAnimEntityNode::RemoveTrack(IAnimTrack* pTrack)
+{
+    if (pTrack && pTrack->GetParameterType().GetType() == eAnimParamType_Animation && m_characterTrackAnimator)
+    {
+        delete m_characterTrackAnimator;
+        m_characterTrackAnimator = nullptr;
+    }
+
+    return CAnimNode::RemoveTrack(pTrack);
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey& key)
 {
     IEntity* pEntity = GetEntity();
@@ -1454,7 +1510,7 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
         return;
     }
 
-    if (*key.animation) // if there is an animation
+    if (!key.animation.empty()) // if there is an animation
     {
         // Start playing animation.
         ICharacterInstance* pCharacter = pEntity->GetCharacter(0);
@@ -1469,13 +1525,13 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
             ISkeletonAnim* pSkeletonAnimation = pCharacter->GetISkeletonAnim();
 
             aparams.m_nLayerID = 0;
-            pSkeletonAnimation->StartAnimation(key.animation,  aparams);
+            pSkeletonAnimation->StartAnimation(key.animation.c_str(),  aparams);
 
             IAnimationSet* pAnimations = pCharacter->GetIAnimationSet();
             assert (pAnimations);
             //float duration = pAnimations->GetLength( key.animation );
 
-            int animId = pAnimations->GetAnimIDByName(key.animation);
+            int animId = pAnimations->GetAnimIDByName(key.animation.c_str());
             if (animId >= 0)
             {
                 float duration = pAnimations->GetDuration_sec(animId);
@@ -1488,7 +1544,7 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
         }
     }
 
-    if (*key.event) // if there's an event
+    if (!key.event.empty()) // if there's an event
     {
         // Fire event on Entity.
         IComponentScriptPtr scriptComponent = pEntity->GetComponent<IComponentScript>();
@@ -1503,7 +1559,7 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
                 for (int i = 0; i < count; ++i)
                 {
                     info = pClass->GetEventInfo(i);
-                    if (strcmp(key.event, info.name) == 0)
+                    if (strcmp(key.event.c_str(), info.name) == 0)
                     {
                         type = info.type;
                         break;
@@ -1517,27 +1573,27 @@ void CAnimEntityNode::ApplyEventKey(CEventTrack* track, int keyIndex, IEventKey&
             case IEntityClass::EVT_INT:
             case IEntityClass::EVT_FLOAT:
             case IEntityClass::EVT_ENTITY:
-                scriptComponent->CallEvent(key.event, (float)atof(key.eventValue));
+                scriptComponent->CallEvent(key.event.c_str(), (float)atof(key.eventValue.c_str()));
                 break;
             case IEntityClass::EVT_BOOL:
-                scriptComponent->CallEvent(key.event, atoi(key.eventValue) != 0 ? true : false);
+                scriptComponent->CallEvent(key.event.c_str(), atoi(key.eventValue.c_str()) != 0 ? true : false);
                 break;
             case IEntityClass::EVT_STRING:
-                scriptComponent->CallEvent(key.event, key.eventValue);
+                scriptComponent->CallEvent(key.event.c_str(), key.eventValue.c_str());
                 break;
             case IEntityClass::EVT_VECTOR:
             {
                 Vec3 vTemp(0, 0, 0);
                 float x = 0, y = 0, z = 0;
-                int res = sscanf(key.eventValue, "%f,%f,%f", &x, &y, &z);
+                int res = sscanf(key.eventValue.c_str(), "%f,%f,%f", &x, &y, &z);
                 assert(res == 3);
                 vTemp(x, y, z);
-                scriptComponent->CallEvent(key.event, vTemp);
+                scriptComponent->CallEvent(key.event.c_str(), vTemp);
             }
             break;
             case -1:
             default:
-                scriptComponent->CallEvent(key.event);
+                scriptComponent->CallEvent(key.event.c_str());
             }
         }
     }
@@ -1576,7 +1632,10 @@ void CAnimEntityNode::ApplyAudioKey(char const* const sTriggerName, bool const b
 //////////////////////////////////////////////////////////////////////////
 void CAnimEntityNode::OnEndAnimation(const char* sAnimation)
 {
-    m_characterTrackAnimator.OnEndAnimation(sAnimation, GetEntity());
+    if (m_characterTrackAnimator)
+    {
+        m_characterTrackAnimator->OnEndAnimation(sAnimation, GetEntity());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1605,15 +1664,15 @@ void CAnimEntityNode::AnimateLookAt(CLookAtTrack* pTrack, SAnimContext& ec)
     allowAdditionalTransforms = true;
     if (nkey >= 0)
     {
-        lookPose = key.lookPose;
-        if ((m_lookAtTarget[0] && !m_lookAtEntityId) || strcmp(key.szSelection, m_lookAtTarget) != 0)
+        lookPose = key.lookPose.c_str();
+        if ((m_lookAtTarget[0] && !m_lookAtEntityId) || strcmp(key.szSelection.c_str(), m_lookAtTarget) != 0)
         {
-            m_lookAtTarget = key.szSelection;
+            m_lookAtTarget = key.szSelection.c_str();
             IEntity* pTargetEntity = NULL;
-            if (strcmp(key.szSelection, "_LocalPlayer") != 0)
+            if (strcmp(key.szSelection.c_str(), "_LocalPlayer") != 0)
             {
                 m_lookAtLocalPlayer = false;
-                pTargetEntity = gEnv->pEntitySystem->FindEntityByName(key.szSelection);
+                pTargetEntity = gEnv->pEntitySystem->FindEntityByName(key.szSelection.c_str());
             }
             else if (gEnv->pGame)
             {
@@ -1714,7 +1773,7 @@ void CAnimEntityNode::AnimateLookAt(CLookAtTrack* pTrack, SAnimContext& ec)
                 Params.m_nFlags = CA_TRACK_VIEW_EXCLUSIVE | CA_LOOP_ANIMATION;
                 Params.m_nLayerID = lookIKLayer;
                 Params.m_fTransTime = 1.0f;
-                pCharacter->GetISkeletonAnim()->StartAnimation(key.lookPose, Params);
+                pCharacter->GetISkeletonAnim()->StartAnimation(key.lookPose.c_str(), Params);
             }
         }
     }
@@ -1857,6 +1916,7 @@ bool CAnimEntityNode::AnimateScriptTableProperty(IAnimTrack* pTrack, SAnimContex
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimEntityNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -1890,6 +1950,16 @@ void CAnimEntityNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEm
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+void CAnimEntityNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimEntityNode, CAnimNode>()
+        ->Version(1)
+        ->Field("EntityGUID", &CAnimEntityNode::m_entityGuid)
+        ->Field("EntityGUIDTarget", &CAnimEntityNode::m_entityGuidTarget)
+        ->Field("EntityGUIDSource", &CAnimEntityNode::m_entityGuidSource);
+}
+
 void CAnimEntityNode::PrecacheStatic(float time)
 {
     // Update durations of all character animations.
@@ -1903,7 +1973,7 @@ void CAnimEntityNode::PrecacheStatic(float time)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (paramType == eAnimParamType_Sound)
         {
@@ -1945,7 +2015,7 @@ void CAnimEntityNode::PrecacheDynamic(float time)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType trackType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if (trackType == eAnimParamType_Animation)
         {
@@ -1960,7 +2030,7 @@ void CAnimEntityNode::PrecacheDynamic(float time)
                 // have an extra reference so they are kept in memory
                 if (key.time < time)
                 {
-                    int32 animID = pAnimations->GetAnimIDByName(key.m_animation);
+                    int32 animID = pAnimations->GetAnimIDByName(key.m_animation.c_str());
                     if (animID >= 0)
                     {
                         uint32 animPathCRC = pAnimations->GetFilePathCRCByAnimID(animID);
@@ -1970,7 +2040,7 @@ void CAnimEntityNode::PrecacheDynamic(float time)
                 }
                 if (key.time < time + ANIMATION_KEY_PRELOAD_INTERVAL)
                 {
-                    int animId = pAnimations->GetAnimIDByName(key.m_animation);
+                    int animId = pAnimations->GetAnimIDByName(key.m_animation.c_str());
                     if (animId >= 0)
                     {
                         uint32 animPathCRC = pAnimations->GetFilePathCRCByAnimID(animId);
@@ -2030,7 +2100,7 @@ void CAnimEntityNode::StopEntity()
         int trackCount = NumTracks();
         for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
         {
-            IAnimTrack* pTrack = m_tracks[paramIndex];
+            IAnimTrack* pTrack = m_tracks[paramIndex].get();
             if (pTrack && pTrack->GetNumKeys() > 0)
             {
                 CAnimParamType paramType = pTrack->GetParameterType();

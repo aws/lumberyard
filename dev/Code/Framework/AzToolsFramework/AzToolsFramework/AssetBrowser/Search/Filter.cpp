@@ -10,6 +10,10 @@
 *
 */
 
+#include <AzCore/Asset/AssetTypeInfoBus.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
@@ -83,7 +87,6 @@ namespace AzToolsFramework
                 }
                 ExpandDown(result, entry);
             }
-
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -167,7 +170,7 @@ namespace AzToolsFramework
             return m_tag;
         }
 
-        void AssetBrowserEntryFilter::SetTag(const QString & tag)
+        void AssetBrowserEntryFilter::SetTag(const QString& tag)
         {
             m_tag = tag;
         }
@@ -226,7 +229,7 @@ namespace AzToolsFramework
         void StringFilter::SetFilterString(const QString& filterString)
         {
             m_filterString = filterString;
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         QString StringFilter::GetNameInternal() const
@@ -260,7 +263,7 @@ namespace AzToolsFramework
         void AssetTypeFilter::SetAssetType(AZ::Data::AssetType assetType)
         {
             m_assetType = assetType;
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         void AssetTypeFilter::SetAssetType(const char* assetTypeName)
@@ -386,27 +389,27 @@ namespace AzToolsFramework
         {
             connect(filter.data(), &AssetBrowserEntryFilter::updatedSignal, this, &AssetBrowserEntryFilter::updatedSignal, Qt::UniqueConnection);
             m_subFilters.append(filter);
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         void CompositeFilter::RemoveFilter(FilterConstType filter)
         {
             if (m_subFilters.removeAll(filter))
             {
-                emit updatedSignal();
+                Q_EMIT updatedSignal();
             }
         }
 
         void CompositeFilter::RemoveAllFilters()
         {
             m_subFilters.clear();
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         void CompositeFilter::SetLogicOperator(LogicOperatorType logicOperator)
         {
             m_logicOperator = logicOperator;
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         const QList<FilterConstType>& CompositeFilter::GetSubFilters() const
@@ -419,7 +422,7 @@ namespace AzToolsFramework
             if (m_emptyResult != result)
             {
                 m_emptyResult = result;
-                emit updatedSignal();
+                Q_EMIT updatedSignal();
             }
         }
 
@@ -531,7 +534,7 @@ namespace AzToolsFramework
             }
 
             m_filter = filter;
-            emit updatedSignal();
+            Q_EMIT updatedSignal();
         }
 
         QString InverseFilter::GetNameInternal() const
@@ -554,6 +557,48 @@ namespace AzToolsFramework
         }
 
         void InverseFilter::FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const
+        {
+            if (MatchInternal(entry))
+            {
+                Expand(result, entry);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // ProductsFilter
+        //////////////////////////////////////////////////////////////////////////
+        ProductsFilter::ProductsFilter() {}
+
+        QString ProductsFilter::GetNameInternal() const
+        {
+            return QString();
+        }
+
+        bool ProductsFilter::MatchInternal(const AssetBrowserEntry* entry) const
+        {
+            auto product = azrtti_cast<const ProductAssetBrowserEntry*>(entry);
+            if (!product)
+            {
+                return true;
+            }
+            auto source = product->GetParent();
+            if (!source)
+            {
+                return true;
+            }
+            if (source->GetChildCount() != 1)
+            {
+                return true;
+            }
+            // hide product if name is the same as the source
+            if (!AzFramework::StringFunc::Equal(product->GetDisplayName().c_str(), source->GetDisplayName().c_str()))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        void ProductsFilter::FilterInternal(AZStd::vector<const AssetBrowserEntry*>& result, const AssetBrowserEntry* entry) const
         {
             if (MatchInternal(entry))
             {

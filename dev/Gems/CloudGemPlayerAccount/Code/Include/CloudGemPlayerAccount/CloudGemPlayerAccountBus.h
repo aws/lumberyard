@@ -42,38 +42,38 @@ namespace CloudGemPlayerAccount
 
         virtual ~CloudGemPlayerAccountRequests() {}
 
-        virtual void GetCurrentUser() = 0;
+        virtual AZ::u32 GetCurrentUser() = 0;
 
         // Checks whether there are any credentials cached in memory for the given user.
         // HasCachedCredentials does not have a corresponding EBUS callback, as it is synchronous. 
         virtual bool HasCachedCredentials(const AZStd::string& /*username*/) { return false; }
 
         // Functions related to signing up
-        virtual void SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes) = 0;
-        virtual void ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode) = 0;
-        virtual void ResendConfirmationCode(const AZStd::string& username) = 0;
+        virtual AZ::u32 SignUp(const AZStd::string& username, const AZStd::string& password, const UserAttributeValues& attributes) = 0;
+        virtual AZ::u32 ConfirmSignUp(const AZStd::string& username, const AZStd::string& confirmationCode) = 0;
+        virtual AZ::u32 ResendConfirmationCode(const AZStd::string& username) = 0;
 
         // Functions related to a forgotten password
-        virtual void ForgotPassword(const AZStd::string& username) = 0;
-        virtual void ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode) = 0;
+        virtual AZ::u32 ForgotPassword(const AZStd::string& username) = 0;
+        virtual AZ::u32 ConfirmForgotPassword(const AZStd::string& username, const AZStd::string& password, const AZStd::string& confirmationCode) = 0;
 
         // Functions related to signing in/out
-        virtual void InitiateAuth(const AZStd::string& username, const AZStd::string& password) = 0;
-        virtual void RespondToForceChangePasswordChallenge(const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword) = 0;
-        virtual void SignOut(const AZStd::string& username) = 0;
+        virtual AZ::u32 InitiateAuth(const AZStd::string& username, const AZStd::string& password) = 0;
+        virtual AZ::u32 RespondToForceChangePasswordChallenge(const AZStd::string& username, const AZStd::string& currentPassword, const AZStd::string& newPassword) = 0;
+        virtual AZ::u32 SignOut(const AZStd::string& username) = 0;
 
         // Functions that require the user to be signed in
-        virtual void ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword) = 0;
-        virtual void GlobalSignOut(const AZStd::string& username) = 0;
-        virtual void DeleteOwnAccount(const AZStd::string& username) = 0;
-        virtual void GetUser(const AZStd::string& username) = 0; // Returns user attribute data for the signed-in user
-        virtual void VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode) = 0;
-        virtual void DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete) = 0;
-        virtual void UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes) = 0;
+        virtual AZ::u32 ChangePassword(const AZStd::string& username, const AZStd::string& previousPassword, const AZStd::string& proposedPassword) = 0;
+        virtual AZ::u32 GlobalSignOut(const AZStd::string& username) = 0;
+        virtual AZ::u32 DeleteOwnAccount(const AZStd::string& username) = 0;
+        virtual AZ::u32 GetUser(const AZStd::string& username) = 0; // Returns user attribute data for the signed-in user
+        virtual AZ::u32 VerifyUserAttribute(const AZStd::string& username, const AZStd::string& attributeName, const AZStd::string& confirmationCode) = 0;
+        virtual AZ::u32 DeleteUserAttributes(const AZStd::string& username, const UserAttributeList& attributesToDelete) = 0;
+        virtual AZ::u32 UpdateUserAttributes(const AZStd::string& username, const UserAttributeValues& attributes) = 0;
 
         // Player Account
-        virtual void GetPlayerAccount() = 0;
-        virtual void UpdatePlayerAccount(const PlayerAccount& playerAccount) = 0;
+        virtual AZ::u32 GetPlayerAccount() = 0;
+        virtual AZ::u32 UpdatePlayerAccount(const PlayerAccount& playerAccount) = 0;
     };
     using CloudGemPlayerAccountRequestBus = AZ::EBus<CloudGemPlayerAccountRequests>;
 
@@ -118,7 +118,7 @@ namespace CloudGemPlayerAccount
 
         virtual void OnInitiateAuthComplete(const BasicResultInfo& resultInfo) {}
         virtual void OnRespondToForceChangePasswordChallengeComplete(const BasicResultInfo& resultInfo) {}
-        virtual void OnSignOutComplete(const char* username) {} // This function always succeeds
+        virtual void OnSignOutComplete(const BasicResultInfo& resultInfo) {} // This function always succeeds
 
                                                                 // The following require the user to be signed in
         virtual void OnChangePasswordComplete(const BasicResultInfo& resultInfo) {}
@@ -198,9 +198,9 @@ namespace CloudGemPlayerAccount
             Call(FN_OnRespondToForceChangePasswordChallengeComplete, resultInfo);
         }
 
-        void OnSignOutComplete(const char* username) override
+        void OnSignOutComplete(const BasicResultInfo& resultInfo) override
         {
-            Call(FN_OnSignOutComplete, username);
+            Call(FN_OnSignOutComplete, resultInfo);
         }
 
         void OnChangePasswordComplete(const BasicResultInfo& resultInfo) override

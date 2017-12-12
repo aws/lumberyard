@@ -159,7 +159,7 @@ void QFileSelectResourceWidget::setPath(const QString& path)
     //HardCoded project absolute path for test 
     QString relativePath = Path::GetRelativePath(newPath.toUtf8().data(), false);
     QString formattedPath = relativePath;
-    relativePath = formattedPath.trimmed().toUtf8().data();
+    relativePath = formattedPath.trimmed();
     //Get relative part.
     QString oldPath;
     m_var->Get(oldPath);

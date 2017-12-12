@@ -15,14 +15,14 @@ import service
 
 IDP_COGNITO = 'Cognito'
 
-@service.api
+@service.api(logging_filter=account_utils.apply_logging_filter)
 def get(request, cognitoUsername):
     user = account_utils.get_user(cognitoUsername)
 
     return account_utils.convert_user_from_cognito_to_model(user)
 
-@service.api
-def put(request, cognitoUsername, UpdateCognitoUser):
+@service.api(logging_filter=account_utils.apply_logging_filter)
+def put(request, cognitoUsername, UpdateCognitoUser=None):
     updates = []
     if UpdateCognitoUser:
         for key, value in UpdateCognitoUser.iteritems():

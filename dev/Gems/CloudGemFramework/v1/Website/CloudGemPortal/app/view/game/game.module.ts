@@ -7,18 +7,20 @@ import { SupportModule } from './module/support/support.module';
 import { AdminModule } from "./module/admin/admin.module";
 import { GameComponent } from "./component/game.component";
 import { NavComponent } from './component/nav.component';
+import { SidebarComponent } from './component/sidebar.component';
 
 @NgModule({
-    imports: [        
+    imports: [                
         GameRoutingModule,
-        AppSharedModule,        
-        GemModule,
+        AppSharedModule,                
         SupportModule,
         AdminModule,
-        AnalyticModule        
-    ],
+        AnalyticModule,
+        GemModule       
+    ],    
     declarations: [
         NavComponent,
+        SidebarComponent,
         GameComponent
     ]
 })

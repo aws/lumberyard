@@ -25,6 +25,11 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QThread>
+#include <QSettings>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 #if !defined(BATCH_MODE)
 #include <QMessageBox>
 #endif
@@ -38,10 +43,16 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Math/Crc.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include <AzCore/JSON/document.h>
+#include <AzCore/JSON/error/en.h>
+
 #include <AzCore/base.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/chrono/chrono.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Engine/EngineUtilities.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <windows.h>
@@ -65,6 +76,9 @@ namespace AssetUtilsInternal
     // This is because Qt has to init random number gen on each thread.
     AZ_THREAD_LOCAL bool g_hasInitializedRandomNumberGenerator = false;
 
+    // so that even if we do init two seeds at exactly the same msec time, theres still this extra
+    // changing number
+    static AZStd::atomic_int g_randomNumberSequentialSeed; 
     // the Assert Absorber here is used to absorb asserts during regex creation.
     // it only absorbs asserts spawned by this thread;
     class AssertAbsorber
@@ -133,6 +147,14 @@ namespace AssetUtilsInternal
                 }
             }
 
+            //ensure that the output dir is present 
+            QFileInfo outFileInfo(outputFile);
+            if (!outFileInfo.absoluteDir().mkpath("."))
+            {
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Failed to create directory (%s).\n", outFileInfo.absolutePath().toUtf8().data());
+                return false;
+            }
+
             if (isCopy && QFile::copy(sourceFile, outputFile))
             {
                 //Success
@@ -176,11 +198,13 @@ namespace AssetUtilities
 {
     // do not place Qt objects in global scope, they allocate and refcount threaded data.
     char s_gameName[AZ_MAX_PATH_LEN] = { 0 };
-    char s_engineRoot[AZ_MAX_PATH_LEN] = { 0 };
+    char s_assetRoot[AZ_MAX_PATH_LEN] = { 0 };
+    char s_cachedEngineRoot[AZ_MAX_PATH_LEN] = { 0 };
 
-    void ResetEngineRoot()
+    void ResetAssetRoot()
     {
-        s_engineRoot[0] = 0;
+        s_assetRoot[0] = 0;
+        s_cachedEngineRoot[0] = 0;
     }
 
     bool CopyDirectory(QDir source, QDir destination)
@@ -237,7 +261,7 @@ namespace AssetUtilities
     QString GetBranchToken()
     {
         QDir engineRoot;
-        ComputeEngineRoot(engineRoot);
+        ComputeAssetRoot(engineRoot);
         QString token = engineRoot.absolutePath().toLower().replace('/', '_').replace("\\", "_");
         const AZStd::string tokenStr(token.toUtf8().data());
         const AZ::Crc32 branchTokenCrc(tokenStr.c_str(), tokenStr.size(), true);
@@ -246,11 +270,11 @@ namespace AssetUtilities
         return QString(branchToken);
     }
 
-    bool ComputeEngineRoot(QDir& root, const QDir* startingRoot)
+    bool ComputeAssetRoot(QDir& root, const QDir* startingRoot)
     {
-        if (s_engineRoot[0])
+        if (s_assetRoot[0])
         {
-            root = QDir(s_engineRoot);
+            root = QDir(s_assetRoot);
             return true;
         }
 
@@ -284,11 +308,40 @@ namespace AssetUtilities
         }
         else
         {
-            azstrcpy(s_engineRoot, AZ_MAX_PATH_LEN, systemRoot.absolutePath().toUtf8().constData());
+            azstrcpy(s_assetRoot, AZ_MAX_PATH_LEN, systemRoot.absolutePath().toUtf8().constData());
             root = systemRoot;
             return true;
         }
     }
+    //! Get the external engine root folder if the engine is external to the current root folder.  
+    //! If the current root folder is also the engine folder, then this behaves the same as ComputeEngineRoot
+    bool ComputeEngineRoot(QDir& root, const QDir* optionalStartingRoot /*= nullptr*/)
+    {
+        if (s_cachedEngineRoot[0])
+        {
+            root = QDir(QString::fromUtf8(s_cachedEngineRoot));
+            return true;
+        }
+
+        QDir    currentRoot;
+        if (!ComputeAssetRoot(currentRoot, optionalStartingRoot))
+        {
+            return false;
+        }
+        
+        root = currentRoot;
+
+		AZStd::string assetRoot(currentRoot.absolutePath().toUtf8().data());
+		AZ::Outcome<AZStd::string, AZStd::string> outcome = AzToolsFramework::EngineUtilities::ReadEngineConfigurationValue(assetRoot, AZStd::string("ExternalEnginePath"));
+
+		if (outcome.IsSuccess())
+		{
+			root = QDir(QString(outcome.GetValue().c_str()));
+			azstrcpy(s_cachedEngineRoot, AZ_MAX_PATH_LEN, root.absolutePath().toUtf8().constData());
+		}
+		return true;
+    }
+
 
     void  ComputeApplicationInformation(QString& dir, QString& filename)
     {
@@ -315,6 +368,17 @@ namespace AssetUtilities
         _makepath_s(currentFileName, nullptr, nullptr, fileName, fileExtension);
         filename = QString(currentFileName);
 #endif
+    }
+
+    void ComputeAppRootAndBinFolderFromApplication(QString& appRoot, QString& filename, QString& binFolder)
+    {
+        QString appDirStr;
+        ComputeApplicationInformation(appDirStr, filename);
+        QDir rootDir(appDirStr);
+        QDir appDir(appDirStr);
+        appDir.cdUp();
+        binFolder = rootDir.dirName();
+        appRoot = appDir.absolutePath();
     }
 
     bool MakeFileWritable(QString fileName)
@@ -454,7 +518,7 @@ namespace AssetUtilities
         return true;
     }
 
-    QString ComputeGameName(QString initialFolder, bool force)
+    QString ComputeGameName(QString initialFolder  /*= QString()*/, bool force)
     {
         if (force || s_gameName[0] == 0)
         {
@@ -471,6 +535,17 @@ namespace AssetUtilities
                         return rawValueString;
                     }
                 }
+            }
+
+            if (initialFolder.isEmpty())
+            {
+                QDir engineRoot;
+                if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+                {
+                    return QString();
+                }
+
+                initialFolder = engineRoot.absolutePath();
             }
             azstrcpy(s_gameName, AZ_MAX_PATH_LEN, ReadGameNameFromBootstrap(initialFolder).toUtf8().constData());
         }
@@ -528,8 +603,18 @@ namespace AssetUtilities
         return platformFlag;
     }
 
-    QString ReadGameNameFromBootstrap(QString initialFolder /*= QString(".")*/)
+    QString ReadGameNameFromBootstrap(QString initialFolder /*= QString()*/)
     {
+        if (initialFolder.isEmpty())
+        {
+            QDir engineRoot;
+            if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+            {
+                return QString();
+            }
+
+            initialFolder = engineRoot.absolutePath();
+        }
         // regexp that matches either the beginning of the file, some whitespace, and sys_game_folder, or,
         // matches a newline, then whitespace, then sys_game_folder
         // it will not match comments.
@@ -564,8 +649,18 @@ namespace AssetUtilities
         return QString();
     }
 
-    QString ReadWhitelistFromBootstrap(QString initialFolder /*= QString(".")*/)
+    QString ReadWhitelistFromBootstrap(QString initialFolder /*= QString()*/)
     {
+        if (initialFolder.isEmpty())
+        {
+            QDir engineRoot;
+            if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+            {
+                return QString();
+            }
+
+            initialFolder = engineRoot.absolutePath();
+        }
         // regexp that matches either the beginning of the file, some whitespace, and sys_game_folder, or,
         // matches a newline, then whitespace, then sys_game_folder
         // it will not match comments.
@@ -599,9 +694,9 @@ namespace AssetUtilities
 
     bool WriteWhitelistToBootstrap(QStringList newWhiteList)
     {
-        QDir engineRoot;
-        ComputeEngineRoot(engineRoot);
-        QString bootstrapFilename = engineRoot.filePath("bootstrap.cfg");
+        QDir assetRoot;
+        ComputeAssetRoot(assetRoot);
+        QString bootstrapFilename = assetRoot.filePath("bootstrap.cfg");
         QFile bootstrapFile(bootstrapFilename);
 
         // do not alter the branch file unless we are able to obtain an exclusive lock.  Other apps (such as NPP) may actually write 0 bytes first, then slowly spool out the remainder)
@@ -676,8 +771,18 @@ namespace AssetUtilities
         return true;
     }
 
-    quint16 ReadListeningPortFromBootstrap(QString initialFolder /*= QString(".")*/)
+    quint16 ReadListeningPortFromBootstrap(QString initialFolder /*= QString()*/)
     {
+        if (initialFolder.isEmpty())
+        {
+            QDir engineRoot;
+            if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+            {
+                //return the default port
+                return 45643;
+            }
+            initialFolder = engineRoot.absolutePath();
+        }
         // regexp that matches either the beginning of the file, some whitespace, and remote_port, or,
         // matches a newline, then whitespace, then remote_port
         // it will not match comments.
@@ -744,19 +849,19 @@ namespace AssetUtilities
 
     bool ComputeProjectCacheRoot(QDir& projectCacheRoot)
     {
-        QDir engineRoot;
-        if (!ComputeEngineRoot(engineRoot))
+        QDir assetRoot;
+        if (!ComputeAssetRoot(assetRoot))
         {
             return false; // failed to detect engine root
         }
 
-        QString gameDir = ComputeGameName(engineRoot.absolutePath());
+        QString gameDir = ComputeGameName(assetRoot.absolutePath());
         if (gameDir.isEmpty())
         {
             return false;
         }
 
-        projectCacheRoot = QDir(engineRoot.filePath("Cache/" + gameDir));
+        projectCacheRoot = QDir(assetRoot.filePath("Cache/" + gameDir));
         return true;
     }
 
@@ -840,9 +945,9 @@ namespace AssetUtilities
 
     bool UpdateBranchToken()
     {
-        QDir engineRoot;
-        ComputeEngineRoot(engineRoot);
-        QString bootstrapFilename = engineRoot.filePath("bootstrap.cfg");
+        QDir assetRoot;
+        ComputeAssetRoot(assetRoot);
+        QString bootstrapFilename = assetRoot.filePath("bootstrap.cfg");
         QFile bootstrapFile(bootstrapFilename);
         QString fileContents;
 
@@ -891,7 +996,6 @@ namespace AssetUtilities
         {
             //Updating branch token
             AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Updating branch token (%s) in (%s)\n", currentBranchToken.toUtf8().constData(), bootstrapFilename.toUtf8().constData());
-            fileContents.replace(readBranchToken, currentBranchToken);
             fileContents.replace(branchTokenPattern.cap(0), "\nassetProcessor_branch_token = " + currentBranchToken + "\n");
         }
 
@@ -1037,7 +1141,8 @@ namespace AssetUtilities
         {
             AssetUtilsInternal::g_hasInitializedRandomNumberGenerator = true;
             // seed the random number generator a different seed as the main thread.  random numbers are thread-specific.
-            qsrand(QTime::currentTime().msecsSinceStartOfDay() + 1);
+            // note that 0 is an invalid random seed.
+            qsrand(QTime::currentTime().msecsSinceStartOfDay() + AssetUtilsInternal::g_randomNumberSequentialSeed.fetch_add(1) + 1);
         }
         QDir tempRoot(startFolder);
 
@@ -1058,17 +1163,25 @@ namespace AssetUtilities
             return false;
         }
 
-        QTemporaryDir tempDir(tempRoot.absoluteFilePath("JobTemp-XXXXXX"));
-        tempDir.setAutoRemove(false);
+        // try multiple times in the very low chance that its going to be a collision:
 
-        if ((tempDir.path().isEmpty()) || (!QDir(tempDir.path()).exists()))
+        for (int attempts = 0; attempts < 3; ++attempts)
         {
-            AZ_WarningOnce("Asset Utils", false, "Could not create new temp folder in %s", tempRoot.absolutePath().toUtf8().constData());
-            result.clear();
-            return false;
-        }
+            QTemporaryDir tempDir(tempRoot.absoluteFilePath("JobTemp-XXXXXX"));
+            tempDir.setAutoRemove(false);
 
-        result = tempDir.path();
+            if ((tempDir.path().isEmpty()) || (!QDir(tempDir.path()).exists()))
+            {
+                QByteArray errorData = tempDir.errorString().toUtf8();
+                AZ_WarningOnce("Asset Utils", false, "Could not create new temp folder in %s - error from OS is '%s'", tempRoot.absolutePath().toUtf8().constData(), errorData);
+                result.clear();
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
+                continue;
+            }
+
+            result = tempDir.path();
+            break;
+        }
         return !result.isEmpty();
     }
 
@@ -1081,7 +1194,7 @@ namespace AssetUtilities
         // * If you can't write to it you have much bigger problems
 
         QDir rootDir;
-        if (ComputeEngineRoot(rootDir))
+        if (ComputeAssetRoot(rootDir))
         {
             QString tempPath = rootDir.absolutePath();
             return CreateTempWorkspace(tempPath, result);
@@ -1208,33 +1321,6 @@ namespace AssetUtilities
     bool QuitListener::WasQuitRequested() const
     {
         return m_requestedQuit;
-    }
-
-    AssetRegistryListener::AssetRegistryListener()
-        : m_currentVersion(-1)
-    {
-        BusConnect();
-    }
-
-    AssetRegistryListener::~AssetRegistryListener()
-    {
-        BusDisconnect();
-    }
-
-    void AssetRegistryListener::OnRegistrySaveComplete(int assetCatalogVersion)
-    {
-        m_currentVersion = assetCatalogVersion;
-    }
-
-    void AssetRegistryListener::WaitForSync() const
-    {
-        int registryVersion = m_currentVersion;
-        AssetProcessor::AssetRegistryRequestBus::BroadcastResult(registryVersion, &AssetProcessor::AssetRegistryRequests::SaveRegistry);
-
-        while (m_currentVersion < registryVersion)
-        {
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(200));
-        }
     }
 
     JobLogTraceListener::JobLogTraceListener(const AZStd::string& logFileName, AZ::s64 jobKey, bool overwriteLogFile /* = false */)

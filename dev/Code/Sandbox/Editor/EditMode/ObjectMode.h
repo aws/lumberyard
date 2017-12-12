@@ -124,6 +124,8 @@ private:
     CBaseObject* m_pHitObject;
 
     bool m_bTransformChanged;
+
+    QPoint m_prevMousePos = QPoint(0, 0);
 };
 
 

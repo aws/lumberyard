@@ -12,14 +12,13 @@
 #ifndef AZCORE_DATA_PATCH_FIELD_H
 #define AZCORE_DATA_PATCH_FIELD_H
 
-#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include "ObjectStream.h"
 
 namespace AZ
 {
     struct Uuid;
-    class SerializeContext;
+    class ReflectContext;
 
     /**
     * Structure that contains patch data for a given class. The primary goal of this
@@ -170,7 +169,7 @@ namespace AZ
         /**
          * Reflect a patch for serialization.
          */
-        static void Reflect(SerializeContext& context);
+        static void Reflect(ReflectContext* context);
 
     protected:
         Uuid     m_targetClassId;

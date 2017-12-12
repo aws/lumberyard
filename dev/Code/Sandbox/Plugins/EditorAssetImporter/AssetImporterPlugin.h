@@ -22,6 +22,7 @@
 #include <Include/IPlugin.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AssetBrowserContextProvider.h>
+#include <SceneSerializationHandler.h>
 
 class AssetImporterPlugin
     : public IPlugin
@@ -100,4 +101,5 @@ private:
 
     // Context provider for the Asset Browser
     AZ::AssetBrowserContextProvider m_assetBrowserContextProvider;
+    AZ::SceneSerializationHandler m_sceneSerializationHandler;
 };

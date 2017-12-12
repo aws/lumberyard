@@ -5,7 +5,7 @@
     "DisplayName": "CryLegacy",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Gem to handle the loading of CryAction.dll and initialization of the Game Framework.",
-    "Tags": ["Required"],
+    "Summary": "Projects created in Lumberyard 1.11 and later no longer contain legacy code to initialize Game Framework and load CryAction.dll. This Gem must be enabled in those projects in order for your game to load in the Editor and Launcher unless you provide an equivalent implementation.",
+    "Tags": ["Legacy"],
     "IconPath": "preview.png"
 }

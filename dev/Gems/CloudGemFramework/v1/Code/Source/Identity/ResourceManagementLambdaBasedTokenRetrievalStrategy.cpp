@@ -10,7 +10,7 @@
 *
 */
 #include <StdAfx.h>
-#include <Configuration/ResourceManagementLambdaBasedTokenRetrievalStrategy.h>
+#include <Identity/ResourceManagementLambdaBasedTokenRetrievalStrategy.h>
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
 #include <aws/lambda/model/InvokeRequest.h>
 #include <aws/lambda/LambdaClient.h>
@@ -27,7 +27,7 @@ using namespace Aws::Http;
 using namespace Aws::Auth;
 using namespace std::chrono;
 
-namespace LmbrAWS
+namespace CloudGemFramework
 {
     static const char* CLASS_TAG = "LmbrAWS::Configuration::ResourceManagementLambdaBasedTokenRetrievalStrategy";
     static const char* ACCESS_TOKEN = "access_token";

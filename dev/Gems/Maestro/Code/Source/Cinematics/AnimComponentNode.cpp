@@ -16,11 +16,11 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Color.h>
 #include <AzFramework/Components/TransformComponent.h>
-
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
-#include <LmbrCentral/Cinematics/EditorSequenceComponentBus.h>
 #include <LmbrCentral/Animation/CharacterAnimationBus.h>
 #include <LmbrCentral/Animation/SimpleAnimationComponentBus.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
+
 #include "CharacterTrack.h"
 
 /*static*/ AZStd::unordered_map<AZ::Uuid, IAnimNode::AnimParamInfos> CAnimComponentNode::s_componentTypeToNonBehaviorPropertiesMap;
@@ -31,7 +31,8 @@
 }
 
 CAnimComponentNode::CAnimComponentNode(int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_Component)
+    , m_refCount(0)
     , m_componentTypeId(AZ::Uuid::CreateNull())
     , m_componentId(AZ::InvalidComponentId)
     , m_skipComponentAnimationUpdates(false)
@@ -57,9 +58,18 @@ CAnimComponentNode::CAnimComponentNode(int id)
     }
 }
 
-EAnimNodeType CAnimComponentNode::GetType() const
+CAnimComponentNode::CAnimComponentNode()
+    : CAnimComponentNode(0)
 {
-    return eAnimNodeType_Component;
+}
+
+CAnimComponentNode::~CAnimComponentNode()
+{
+    if (m_characterTrackAnimator)
+    {
+        delete m_characterTrackAnimator;
+        m_characterTrackAnimator = nullptr;
+    }
 }
 
 void CAnimComponentNode::OnStart()
@@ -87,6 +97,10 @@ void CAnimComponentNode::StopComponentSimpleAnimations() const
 void CAnimComponentNode::OnReset()
 {
     // OnReset is called when sequences are loaded
+    if (m_characterTrackAnimator)
+    {
+        m_characterTrackAnimator->OnReset(this);
+    }
     UpdateDynamicParams();
 }
 
@@ -146,9 +160,9 @@ bool CAnimComponentNode::SetTrackMultiplier(IAnimTrack* track) const
         // check to see if we need to use a track multiplier
 
         // Get Property TypeId
-        LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress propertyAddress(m_componentId, paramType.GetName());
+        Maestro::SequenceComponentRequests::AnimatablePropertyAddress propertyAddress(m_componentId, paramType.GetName());
         AZ::Uuid propertyTypeId = AZ::Uuid::CreateNull();
-        LmbrCentral::SequenceComponentRequestBus::EventResult(propertyTypeId, m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedAddressTypeId,
+        Maestro::SequenceComponentRequestBus::EventResult(propertyTypeId, m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedAddressTypeId,
             GetParentAzEntityId(), propertyAddress);
 
         if (propertyTypeId == AZ::Color::TYPEINFO_Uuid())
@@ -166,9 +180,9 @@ int CAnimComponentNode::SetKeysForChangedBoolTrackValue(IAnimTrack* track, int k
     int retNumKeysSet = 0;
     bool currTrackValue;
     track->GetValue(time, currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatedBoolValue currValue(currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatedBoolValue currValue(currTrackValue);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
 
     if (currTrackValue != currValue.GetBoolValue())
     {
@@ -189,9 +203,9 @@ int CAnimComponentNode::SetKeysForChangedFloatTrackValue(IAnimTrack* track, int 
     int retNumKeysSet = 0;
     float currTrackValue;
     track->GetValue(time, currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatedFloatValue currValue(currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatedFloatValue currValue(currTrackValue);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
 
     if (currTrackValue != currValue.GetFloatValue())
     {
@@ -224,9 +238,9 @@ int CAnimComponentNode::SetKeysForChangedVector3TrackValue(IAnimTrack* track, in
     int retNumKeysSet = 0;
     AZ::Vector3 currTrackValue;
     track->GetValue(time, currTrackValue, applyTrackMultiplier);
-    LmbrCentral::SequenceComponentRequests::AnimatedVector3Value currValue(currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatedVector3Value currValue(currTrackValue);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
     AZ::Vector3 currVector3Value;
     currValue.GetValue(currVector3Value);
     if (!currTrackValue.IsClose(currVector3Value, isChangedTolerance))
@@ -243,9 +257,9 @@ int CAnimComponentNode::SetKeysForChangedQuaternionTrackValue(IAnimTrack* track,
     int retNumKeysSet = 0;
     AZ::Quaternion currTrackValue;
     track->GetValue(time, currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatedQuaternionValue currValue(currTrackValue);
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatedQuaternionValue currValue(currTrackValue);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, track->GetParameterType().GetName());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, currValue, GetParentAzEntityId(), animatableAddress);
     AZ::Quaternion currQuaternionValue;
     currValue.GetValue(currQuaternionValue);
 
@@ -340,9 +354,9 @@ void CAnimComponentNode::SetPos(float time, const Vec3& pos)
 
 Vec3 CAnimComponentNode::GetPos()
 {
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Position");
-    LmbrCentral::SequenceComponentRequests::AnimatedVector3Value posValue(AZ::Vector3::CreateZero());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, posValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Position");
+    Maestro::SequenceComponentRequests::AnimatedVector3Value posValue(AZ::Vector3::CreateZero());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, posValue, GetParentAzEntityId(), animatableAddress);
 
     return Vec3(posValue.GetVector3Value());
 }
@@ -369,9 +383,9 @@ void CAnimComponentNode::SetRotate(float time, const Quat& rotation)
 
 Quat CAnimComponentNode::GetRotate()
 {
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Rotation");
-    LmbrCentral::SequenceComponentRequests::AnimatedQuaternionValue rotValue(AZ::Quaternion::CreateIdentity());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, rotValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Rotation");
+    Maestro::SequenceComponentRequests::AnimatedQuaternionValue rotValue(AZ::Quaternion::CreateIdentity());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, rotValue, GetParentAzEntityId(), animatableAddress);
     return Quat(rotValue.GetQuaternionValue());
 }
 
@@ -397,21 +411,32 @@ void CAnimComponentNode::SetScale(float time, const Vec3& scale)
 
 Vec3 CAnimComponentNode::GetScale()
 {
-    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Scale");
-    LmbrCentral::SequenceComponentRequests::AnimatedVector3Value scaleValue(AZ::Vector3::CreateZero());
-    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, scaleValue, GetParentAzEntityId(), animatableAddress);
+    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Scale");
+    Maestro::SequenceComponentRequests::AnimatedVector3Value scaleValue(AZ::Vector3::CreateZero());
+    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, scaleValue, GetParentAzEntityId(), animatableAddress);
 
     return Vec3(scaleValue.GetVector3Value());
 }
 
 ///////////////////////////////////////////////////////////////////////////
+ICharacterInstance* CAnimComponentNode::GetCharacterInstance()
+{
+    ICharacterInstance* retCharInstance = nullptr;
+    LmbrCentral::CharacterAnimationRequestBus::EventResult(retCharInstance, GetParentAzEntityId(), &LmbrCentral::CharacterAnimationRequestBus::Events::GetCharacterInstance);
+    return retCharInstance;
+}
+
+///////////////////////////////////////////////////////////////////////////
 void CAnimComponentNode::ForceAnimKeyChangeInCharacterTrackAnimator()
 {
-    IAnimTrack* animTrack = GetTrackForParameter(eAnimParamType_Animation);
-    if (m_componentTypeId == EditorSimpleAnimationComponentTypeId && animTrack && animTrack->HasKeys())
+    if (m_characterTrackAnimator)
     {
-        // resets anim key change states so animation will update correctly on the next Animate()
-        m_characterTrackAnimator.ForceAnimKeyChange();
+        IAnimTrack* animTrack = GetTrackForParameter(eAnimParamType_Animation);
+        if (animTrack && animTrack->HasKeys())
+        {
+            // resets anim key change states so animation will update correctly on the next Animate()
+            m_characterTrackAnimator->ForceAnimKeyChange();
+        }
     }
 }
 
@@ -423,12 +448,30 @@ IAnimTrack* CAnimComponentNode::CreateTrack(const CAnimParamType& paramType)
     if (retTrack)
     {
         SetTrackMultiplier(retTrack);
+        if (paramType.GetType() == eAnimParamType_Animation && !m_characterTrackAnimator)
+        {
+            m_characterTrackAnimator = new CCharacterTrackAnimator();
+        }
     }
 
     return retTrack;
 }
 
+
 //////////////////////////////////////////////////////////////////////////
+bool CAnimComponentNode::RemoveTrack(IAnimTrack* pTrack)
+{
+    if (pTrack && pTrack->GetParameterType().GetType() == eAnimParamType_Animation && m_characterTrackAnimator)
+    {
+        delete m_characterTrackAnimator;
+        m_characterTrackAnimator = nullptr;
+    }
+
+    return CAnimNode::RemoveTrack(pTrack);
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CAnimComponentNode::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     CAnimNode::Serialize(xmlNode, bLoading, bLoadEmptyTracks);
@@ -501,9 +544,9 @@ void CAnimComponentNode::AddPropertyToParamInfoMap(const CAnimParamType& paramTy
         //
         // Query the property type Id from the Sequence Component and set it if a supported type is found
         AZ::Uuid propertyTypeId = AZ::Uuid::CreateNull();
-        LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress propertyAddress(m_componentId, propertyInfo.m_displayName.c_str());
+        Maestro::SequenceComponentRequests::AnimatablePropertyAddress propertyAddress(m_componentId, propertyInfo.m_displayName.c_str());
 
-        LmbrCentral::SequenceComponentRequestBus::EventResult(propertyTypeId, m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedAddressTypeId,
+        Maestro::SequenceComponentRequestBus::EventResult(propertyTypeId, m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedAddressTypeId,
             GetParentAzEntityId(), propertyAddress);
 
         if (propertyTypeId == AZ::Vector3::TYPEINFO_Uuid())
@@ -540,12 +583,21 @@ void CAnimComponentNode::AppendNonBehaviorAnimatableProperties(IAnimNode::AnimPa
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CAnimComponentNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CAnimComponentNode, CAnimNode>()
+        ->Version(1)
+        ->Field("ComponentID", &CAnimComponentNode::m_componentId)
+        ->Field("ComponentTypeID", &CAnimComponentNode::m_componentTypeId);
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CAnimComponentNode::UpdateDynamicParams_Editor()
 {
     IAnimNode::AnimParamInfos animatableParams;
 
     // add all parameters supported by the component
-    LmbrCentral::EditorSequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent, 
+    Maestro::EditorSequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent, 
                                                           animatableParams, GetParentAzEntityId(), m_componentId);
 
     // add any additional non-behavior context properties we handle ourselves
@@ -586,8 +638,8 @@ void CAnimComponentNode::UpdateDynamicParamsInternal()
     // Go through all tracks and set Multipliers if required
     for (uint32 i = 0; i < m_tracks.size(); ++i)
     {
-        _smart_ptr<IAnimTrack> track = m_tracks[i];
-        SetTrackMultiplier(track);
+        AZStd::intrusive_ptr<IAnimTrack> track = m_tracks[i];
+        SetTrackMultiplier(track.get());
     }
 }
 
@@ -603,24 +655,24 @@ void CAnimComponentNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const C
             BehaviorPropertyInfo& propertyInfo = findIter->second;
 
             bool boolValue = false;
-            LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress address(m_componentId, propertyInfo.m_animNodeParamInfo.name);
+            Maestro::SequenceComponentRequests::AnimatablePropertyAddress address(m_componentId, propertyInfo.m_animNodeParamInfo.name);
 
             switch (pTrack->GetValueType())
             {
                 case eAnimValue_Float:
                 {
-                    LmbrCentral::SequenceComponentRequests::AnimatedFloatValue defaultValue(.0f);
+                    Maestro::SequenceComponentRequests::AnimatedFloatValue defaultValue(.0f);
 
-                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
+                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
                     pTrack->SetValue(0, defaultValue.GetFloatValue(), true);
                     break;
                 }
                 case eAnimValue_Vector:
                 {
-                    LmbrCentral::SequenceComponentRequests::AnimatedVector3Value defaultValue(AZ::Vector3::CreateZero());
+                    Maestro::SequenceComponentRequests::AnimatedVector3Value defaultValue(AZ::Vector3::CreateZero());
                     AZ::Vector3 vector3Value = AZ::Vector3::CreateZero();
 
-                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
+                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
                     defaultValue.GetValue(vector3Value);
 
                     pTrack->SetValue(0, Vec3(vector3Value.GetX(), vector3Value.GetY(), vector3Value.GetZ()), true);
@@ -628,17 +680,17 @@ void CAnimComponentNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const C
                 }
                 case eAnimValue_Quat:
                 {
-                    LmbrCentral::SequenceComponentRequests::AnimatedQuaternionValue defaultValue(AZ::Quaternion::CreateIdentity());
-                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
+                    Maestro::SequenceComponentRequests::AnimatedQuaternionValue defaultValue(AZ::Quaternion::CreateIdentity());
+                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
                     pTrack->SetValue(0, Quat(defaultValue.GetQuaternionValue()), true);
                     break;
                 }
                 case eAnimValue_RGB:
                 {
-                    LmbrCentral::SequenceComponentRequests::AnimatedVector3Value defaultValue(AZ::Vector3::CreateOne());
+                    Maestro::SequenceComponentRequests::AnimatedVector3Value defaultValue(AZ::Vector3::CreateOne());
                     AZ::Vector3 vector3Value = AZ::Vector3::CreateOne();
 
-                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
+                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
                     defaultValue.GetValue(vector3Value);
                     
                     pTrack->SetValue(0, Vec3(clamp_tpl((float)vector3Value.GetX(), .0f, 1.0f), clamp_tpl((float)vector3Value.GetY(), .0f, 1.0f), clamp_tpl((float)vector3Value.GetZ(), .0f, 1.0f)), /*setDefault=*/ true, /*applyMultiplier=*/ true);
@@ -646,9 +698,9 @@ void CAnimComponentNode::InitializeTrackDefaultValue(IAnimTrack* pTrack, const C
                 }
                 case eAnimValue_Bool:
                 {
-                    LmbrCentral::SequenceComponentRequests::AnimatedBoolValue defaultValue(true);
+                    Maestro::SequenceComponentRequests::AnimatedBoolValue defaultValue(true);
 
-                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
+                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, defaultValue, GetParentAzEntityId(), address);
 
                     pTrack->SetValue(0, defaultValue.GetBoolValue(), true);
                     break;
@@ -681,7 +733,7 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
         CAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-        IAnimTrack* pTrack = m_tracks[paramIndex];
+        IAnimTrack* pTrack = m_tracks[paramIndex].get();
 
         if ((pTrack->HasKeys() == false) || (pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled) || pTrack->IsMasked(ac.trackMask))
         {
@@ -692,37 +744,34 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
         {
             if (paramType.GetType() == eAnimParamType_Animation)
             {
-                // special handling for Character Animation. We short-circuit the SimpleAnimation behavior by grabbing its ICharacterInstance* and animating
-                // it using m_characterTrackAnimator.
-
-                ICharacterInstance* characterInstance = nullptr;
-                LmbrCentral::CharacterAnimationRequestBus::EventResult(characterInstance, GetParentAzEntityId(), &LmbrCentral::CharacterAnimationRequestBus::Events::GetCharacterInstance);
-
-                if (characterInstance)
+                // special handling for Character Animation. We short-circuit the SimpleAnimation behavior using m_characterTrackAnimator
+                if (!m_characterTrackAnimator)
                 {
-                    // bForceEntityActivation = true;   // for legacy entities, we forced IEntity::Activate() for cut-scenes to "solve problems on first frame entity becomes visible because it won't be active.
-                    // not sure if this is needed for AZ::Entities. See EntityNode::Animate() for legacy implmementation
-
-                    if (characterAnimationLayer < MAX_CHARACTER_TRACKS + ADDITIVE_LAYERS_OFFSET)
-                    {
-                        int index = characterAnimationLayer;
-                        CCharacterTrack* pCharTrack = (CCharacterTrack*)pTrack;
-                        if (pCharTrack->GetAnimationLayerIndex() >= 0)   // If the track has an animation layer specified,
-                        {
-                            assert(pCharTrack->GetAnimationLayerIndex() < ISkeletonAnim::LayerCount);
-                            index = pCharTrack->GetAnimationLayerIndex();  // use it instead.
-                        }
-
-                        m_characterTrackAnimator.AnimateTrack(pCharTrack, ac, index, characterAnimationTrackIdx, characterInstance);
-
-                        if (characterAnimationLayer == 0)
-                        {
-                            characterAnimationLayer += ADDITIVE_LAYERS_OFFSET;
-                        }
-                        ++characterAnimationLayer;
-                        ++characterAnimationTrackIdx;
-                    }
+                    m_characterTrackAnimator = new CCharacterTrackAnimator;
                 }
+                
+                // bForceEntityActivation = true;   // for legacy entities, we forced IEntity::Activate() for cut-scenes to "solve problems on first frame entity becomes visible because it won't be active.
+                // not sure if this is needed for AZ::Entities. See EntityNode::Animate() for legacy implmementation
+
+                if (characterAnimationLayer < MAX_CHARACTER_TRACKS + ADDITIVE_LAYERS_OFFSET)
+                {
+                    int index = characterAnimationLayer;
+                    CCharacterTrack* pCharTrack = (CCharacterTrack*)pTrack;
+                    if (pCharTrack->GetAnimationLayerIndex() >= 0)   // If the track has an animation layer specified,
+                    {
+                        assert(pCharTrack->GetAnimationLayerIndex() < ISkeletonAnim::LayerCount);
+                        index = pCharTrack->GetAnimationLayerIndex();  // use it instead.
+                    }
+
+                    m_characterTrackAnimator->AnimateTrack(pCharTrack, ac, index, characterAnimationTrackIdx);
+
+                    if (characterAnimationLayer == 0)
+                    {
+                        characterAnimationLayer += ADDITIVE_LAYERS_OFFSET;
+                    }
+                    ++characterAnimationLayer;
+                    ++characterAnimationTrackIdx;
+                }   
             }
             else
             {
@@ -731,7 +780,7 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
                 if (findIter != m_paramTypeToBehaviorPropertyInfoMap.end())
                 {
                     BehaviorPropertyInfo& propertyInfo = findIter->second;
-                    LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, propertyInfo.m_animNodeParamInfo.name);
+                    Maestro::SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, propertyInfo.m_animNodeParamInfo.name);
 
                     switch (pTrack->GetValueType())
                     {
@@ -741,14 +790,14 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
                             {
                                 float floatValue = .0f;
                                 pTrack->GetValue(ac.time, floatValue, /*applyMultiplier= */ true);
-                                LmbrCentral::SequenceComponentRequests::AnimatedFloatValue value(floatValue);
+                                Maestro::SequenceComponentRequests::AnimatedFloatValue value(floatValue);
 
-                                LmbrCentral::SequenceComponentRequests::AnimatedFloatValue prevValue(floatValue);
-                                LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
+                                Maestro::SequenceComponentRequests::AnimatedFloatValue prevValue(floatValue);
+                                Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
                                 if (!value.IsClose(prevValue))
                                 {
                                     // only set the value if it's changed
-                                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
+                                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
                                 }
                             }
                             break;
@@ -771,10 +820,10 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
                                 tolerance = (1.0f - AZ::g_fltEps) / 255.0f;
                             }
 
-                            LmbrCentral::SequenceComponentRequests::AnimatedVector3Value value(AZ::Vector3(vec3Value.x, vec3Value.y, vec3Value.z));
+                            Maestro::SequenceComponentRequests::AnimatedVector3Value value(AZ::Vector3(vec3Value.x, vec3Value.y, vec3Value.z));
 
-                            LmbrCentral::SequenceComponentRequests::AnimatedVector3Value prevValue(AZ::Vector3(vec3Value.x, vec3Value.y, vec3Value.z));
-                            LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
+                            Maestro::SequenceComponentRequests::AnimatedVector3Value prevValue(AZ::Vector3(vec3Value.x, vec3Value.y, vec3Value.z));
+                            Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
                             AZ::Vector3 vector3PrevValue;
                             prevValue.GetValue(vector3PrevValue);
 
@@ -787,7 +836,7 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
                             if (!value.IsClose(prevValue, tolerance))
                             {
                                 // only set the value if it's changed
-                                LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
+                                Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
                             }
                             break;
                         }
@@ -799,16 +848,16 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
 
                                 AZ::Quaternion quaternionValue(AZ::Quaternion::CreateIdentity());
                                 pTrack->GetValue(ac.time, quaternionValue);
-                                LmbrCentral::SequenceComponentRequests::AnimatedQuaternionValue value(quaternionValue);
-                                LmbrCentral::SequenceComponentRequests::AnimatedQuaternionValue prevValue(quaternionValue);
-                                LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
+                                Maestro::SequenceComponentRequests::AnimatedQuaternionValue value(quaternionValue);
+                                Maestro::SequenceComponentRequests::AnimatedQuaternionValue prevValue(quaternionValue);
+                                Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
                                 AZ::Quaternion prevQuaternionValue;
                                 prevValue.GetValue(prevQuaternionValue);
 
                                 if (!prevQuaternionValue.IsClose(quaternionValue, tolerance))
                                 {
                                     // only set the value if it's changed
-                                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
+                                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
                                 }
                             }
                             break;
@@ -819,21 +868,21 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
                             {
                                 bool boolValue = true;
                                 pTrack->GetValue(ac.time, boolValue);
-                                LmbrCentral::SequenceComponentRequests::AnimatedBoolValue value(boolValue);
+                                Maestro::SequenceComponentRequests::AnimatedBoolValue value(boolValue);
 
-                                LmbrCentral::SequenceComponentRequests::AnimatedBoolValue prevValue(boolValue);
-                                LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
+                                Maestro::SequenceComponentRequests::AnimatedBoolValue prevValue(boolValue);
+                                Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::GetAnimatedPropertyValue, prevValue, GetParentAzEntityId(), animatableAddress);
                                 if (!value.IsClose(prevValue))
                                 {
                                     // only set the value if it's changed
-                                    LmbrCentral::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &LmbrCentral::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
+                                    Maestro::SequenceComponentRequestBus::Event(m_pSequence->GetOwnerId(), &Maestro::SequenceComponentRequestBus::Events::SetAnimatedPropertyValue, GetParentAzEntityId(), animatableAddress, value);
                                 }
                             }
                             break;
                         }
                         default:
                         {
-                            AZ_Warning("TrackView", false, "Unsupported value type requested for Component Node Track %s, skipping...", paramType.GetName());
+                            AZ_Warning("TrackView", false, "Unsupported value type %d requested for Component Node Track %s, skipping...", pTrack->GetValueType(), paramType.GetName());
                             break;
                         }
                     }

@@ -37,6 +37,10 @@ bool CShader::FXSetGSFloat(const CCryNameR& NameParam, const Vec4* fParams, int 
     return true;
 }
 
+bool CShader::FXSetCSFloat(const CCryNameR& NameParam, const Vec4* fParams, int nParams)
+{
+    return true;
+}
 
 bool CShader::FXBegin(uint32* uiPassCount, uint32 nFlags)
 {

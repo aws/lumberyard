@@ -47,6 +47,7 @@ namespace AzFramework
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<GameEntityContextRequestBus>("GameEntityContextRequestBus")
+                ->Event("CreateGameEntity", &GameEntityContextRequestBus::Events::CreateGameEntityForBehaviorContext)
                 ->Event("DestroyGameEntity", &GameEntityContextRequestBus::Events::DestroyGameEntity)
                 ->Event("DestroyGameEntityAndDescendants", &GameEntityContextRequestBus::Events::DestroyGameEntityAndDescendants)
                 ->Event("ActivateGameEntity", &GameEntityContextRequestBus::Events::ActivateGameEntity)
@@ -112,7 +113,6 @@ namespace AzFramework
     {
         ResetContext();
 
-        m_noActivateEntities.clear();
         m_instantiatingDynamicSlices.clear();
     }
 
@@ -125,11 +125,39 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // GameEntityContextRequestBus::CreateGameEntityForBehaviorContext
+    //=========================================================================
+    BehaviorEntity GameEntityContextComponent::CreateGameEntityForBehaviorContext(const char* name)
+    {
+        if (AZ::Entity* entity = CreateGameEntity(name))
+        {
+            return BehaviorEntity(entity->GetId());
+        }
+        return BehaviorEntity();
+    }
+
+    //=========================================================================
     // GameEntityContextRequestBus::AddGameEntity
     //=========================================================================
     void GameEntityContextComponent::AddGameEntity(AZ::Entity* entity)
     {
         AddEntity(entity);
+    }
+
+
+    //=========================================================================
+    // CreateEntity
+    //=========================================================================
+    AZ::Entity* GameEntityContextComponent::CreateEntity(const char* name)
+    {
+        auto entity = aznew AZ::Entity(name);
+
+        // Caller will want to configure entity before it's activated.
+        entity->SetRuntimeActiveByDefault(false);
+
+        AddEntity(entity);
+
+        return entity;
     }
 
     //=========================================================================
@@ -159,14 +187,20 @@ namespace AzFramework
 
         for (AZ::Entity* entity : entities)
         {
-            entity->Init();
+            if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+            {
+                entity->Init();
+            }
         }
 
         for (AZ::Entity* entity : entities)
         {
-            if (m_noActivateEntities.end() == m_noActivateEntities.find(entity->GetId()))
+            if (entity->GetState() == AZ::Entity::ES_INIT)
             {
-                entity->Activate();
+                if (entity->IsRuntimeActiveByDefault())
+                {
+                    entity->Activate();
+                }
             }
         }
     }
@@ -222,7 +256,7 @@ namespace AzFramework
                 else
                 {
                     // Don't activate the entity, it will be destroyed.
-                    MarkEntityForNoActivation(*entityIdIter);
+                    currentEntity->SetRuntimeActiveByDefault(false);
                 }
             }
         }
@@ -249,13 +283,34 @@ namespace AzFramework
         AZ::SliceComponent* rootSlice = GetRootSlice();
         if (rootSlice)
         {
-            const AZ::SliceComponent::SliceInstanceAddress address = rootSlice->FindSlice(id);
+            const auto address = rootSlice->FindSlice(id);
             if (address.second)
             {
-                if (rootSlice->RemoveSliceInstance(address.second))
+                auto sliceInstance = address.second;
+                const auto instantiatedSliceEntities = sliceInstance->GetInstantiated();
+                if (instantiatedSliceEntities)
                 {
-                    return true;
+                    for (AZ::Entity* currentEntity : instantiatedSliceEntities->m_entities)
+                    {
+                        if (currentEntity)
+                        {
+                            if (currentEntity->GetState() == AZ::Entity::ES_ACTIVE)
+                            {
+                                currentEntity->Deactivate();
+                            }
+                            MarkEntityForNoActivation(currentEntity->GetId());
+                        }
+                    }
                 }
+
+                // Queue Slice deletion until next tick. This prevents deleting a dynamic slice from an active entity within that slice.
+                AZStd::function<void()> destroySlice = [rootSlice, sliceInstance]()
+                {
+                    rootSlice->RemoveSliceInstance(sliceInstance);
+                };
+
+                AZ::TickBus::QueueFunction(destroySlice);
+                return true;
             }
         }
 
@@ -267,30 +322,7 @@ namespace AzFramework
     //=========================================================================
     void GameEntityContextComponent::ActivateGameEntity(const AZ::EntityId& entityId)
     {
-        // Verify that this context has the right to perform operations on the entity
-        bool validEntity = IsOwnedByThisContext(entityId);
-        AZ_Warning("GameEntityContext", validEntity, "Entity with id %llu does not belong to the game context.", entityId);
-
-        if (validEntity)
-        {
-            // Look up the entity and activate it.
-            AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
-            if (entity)
-            {
-                // Safety Check: Is the entity initialized?
-                if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-                {
-                    AZ_Warning("GameEntityContext", false, "Entity with id %llu was not initialized before activation requested.", entityId);
-                    entity->Init();
-                }
-
-                if (entity->GetState() == AZ::Entity::ES_INIT)
-                {
-                    entity->Activate();
-                }
-            }
-        }
+        ActivateEntity(entityId);
     }
 
     //=========================================================================
@@ -298,37 +330,13 @@ namespace AzFramework
     //=========================================================================
     void GameEntityContextComponent::DeactivateGameEntity(const AZ::EntityId& entityId)
     {
-        // Verify that this context has the right to perform operations on the entity
-        bool validEntity = IsOwnedByThisContext(entityId);
-        AZ_Warning("GameEntityContext", validEntity, "Entity with id %llu does not belong to the game context.", entityId);
-
-        if (validEntity)
-        {
-            // Then look up the entity and deactivate it.
-            AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
-            if (entity)
-            {
-                switch (entity->GetState())
-                {
-                case AZ::Entity::ES_ACTIVATING:
-                case AZ::Entity::ES_ACTIVE:
-                    // Queue deactivate to trigger next frame
-                    EBUS_QUEUE_FUNCTION(AZ::TickBus, &AZ::Entity::Deactivate, entity);
-                    break;
-
-                default:
-                    // Don't do anything, it's not even active.
-                    break;
-                }
-            }
-        }
+        DeactivateEntity(entityId);
     }
 
     //=========================================================================
     // GameEntityContextRequestBus::InstantiateDynamicSlice
     //=========================================================================
-    SliceInstantiationTicket GameEntityContextComponent::InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::EntityUtils::EntityIdMapper& customIdMapper)
+    SliceInstantiationTicket GameEntityContextComponent::InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper)
     {
         if (sliceAsset.GetId().IsValid())
         {
@@ -361,14 +369,6 @@ namespace AzFramework
     }
 
     //=========================================================================
-    // EntityContextEventBus::ResetContext
-    //=========================================================================
-    void GameEntityContextComponent::MarkEntityForNoActivation(AZ::EntityId entityId)
-    {
-        m_noActivateEntities.insert(entityId);
-    }
-
-    //=========================================================================
     // GameEntityContextRequestBus::GetEntityName
     //=========================================================================
     AZStd::string GameEntityContextComponent::GetEntityName(const AZ::EntityId& id)
@@ -376,6 +376,24 @@ namespace AzFramework
         AZStd::string entityName;
         AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationBus::Events::GetEntityName, id);
         return entityName;
+    }
+
+	//=========================================================================
+    // GameEntityContextRequestBus::MarkEntityForNoActivation
+    //=========================================================================
+    void GameEntityContextComponent::MarkEntityForNoActivation(AZ::EntityId entityId)
+    {
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+
+        AZ_Error("GameEntityContext", entity, 
+            "Failed to locate entity with id %s. It is either not yet Initialized, or the Id is invalid.", 
+            entityId.ToString().c_str());
+
+        if (entity)
+        {
+            entity->SetRuntimeActiveByDefault(false);
+        }
     }
 
     //=========================================================================
@@ -397,8 +415,8 @@ namespace AzFramework
                 {
                     AZ::EntityUtils::SerializableEntityContainer instanceEntities;
                     instanceEntities.m_entities = entities;
-                    AZ::EntityUtils::ReplaceEntityRefs(&instanceEntities,
-                        [this](const AZ::EntityId& originalId, bool isEntityId) -> AZ::EntityId
+                    AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&instanceEntities,
+                        [this](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                         {
                             if (!isEntityId)
                             {
@@ -410,7 +428,7 @@ namespace AzFramework
                             }
                             return originalId;
 
-                        }, m_serializeContext);
+                        }, m_serializeContext, false);
                 }
 
                 // Set initial transform for slice root entity based on the requested root transform for the instance.

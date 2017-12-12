@@ -12,9 +12,12 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
+#include <AzCore/Component/Entity.h>
+#include <AzFramework/Components/CameraBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
 #include "Movie.h"
 #include "AnimSplineTrack.h"
+#include "AnimSerializer.h"
 #include "AnimSequence.h"
 #include "EntityNode.h"
 #include "CVarNode.h"
@@ -30,6 +33,7 @@
 #include "ShadowsSetupNode.h"
 
 #include <StlUtils.h>
+#include <MathConversion.h>
 
 #include <ISystem.h>
 #include <ILog.h>
@@ -131,7 +135,7 @@ namespace
         REGISTER_PARAM_TYPE(Sound)
         REGISTER_PARAM_TYPE(Sequence)
         REGISTER_PARAM_TYPE(Console)
-        REGISTER_PARAM_TYPE(Music)
+        REGISTER_PARAM_TYPE(Music)                      ///@deprecated in 1.11, left in for legacy serialization
         REGISTER_PARAM_TYPE(Float)
         REGISTER_PARAM_TYPE(LookAt)
         REGISTER_PARAM_TYPE(TrackEvent)
@@ -234,6 +238,12 @@ CMovieSystem::CMovieSystem(ISystem* pSystem)
 }
 
 //////////////////////////////////////////////////////////////////////////
+CMovieSystem::CMovieSystem()
+    : CMovieSystem(gEnv->pSystem)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CMovieSystem::DoNodeStaticInitialisation()
 {
     CAnimCameraNode::Initialize();
@@ -286,24 +296,6 @@ bool CMovieSystem::Load(const char* pszFile, const char* pszMission)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimTrack* CMovieSystem::CreateTrack(EAnimCurveType type)
-{
-    switch (type)
-    {
-    case eAnimCurveType_TCBFloat:
-        return new CTcbFloatTrack;
-    case eAnimCurveType_TCBVector:
-        return new CTcbVectorTrack;
-    case eAnimCurveType_TCBQuat:
-        return new CTcbQuatTrack;
-    }
-    ;
-
-    assert(0);
-    return 0;
-}
-
-//////////////////////////////////////////////////////////////////////////
 IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoad, uint32 id, ESequenceType sequenceType)
 {
     if (!bLoad)
@@ -311,7 +303,7 @@ IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoa
         id = m_nextSequenceId++;
     }
 
-    IAnimSequence* pSequence = new CAnimSequence(this, id, sequenceType);
+    IAnimSequence* pSequence = aznew CAnimSequence(this, id, sequenceType);
     pSequence->SetName(pSequenceName);
     m_sequences.push_back(pSequence);
     return pSequence;
@@ -332,7 +324,7 @@ IAnimSequence* CMovieSystem::LoadSequence(const char* pszFilePath)
 //////////////////////////////////////////////////////////////////////////
 IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty)
 {
-    IAnimSequence* pSequence = new CAnimSequence(this, 0);
+    IAnimSequence* pSequence = aznew CAnimSequence(this, 0);
     pSequence->Serialize(xmlNode, true, bLoadEmpty);
 
     // Delete previous sequence with the same name.
@@ -359,7 +351,7 @@ IAnimSequence* CMovieSystem::FindSequence(const char* pSequenceName) const
 
     for (Sequences::const_iterator it = m_sequences.begin(); it != m_sequences.end(); ++it)
     {
-        IAnimSequence* pCurrentSequence = *it;
+        IAnimSequence* pCurrentSequence = it->get();
         const char* fullname = pCurrentSequence->GetName();
 
         if (_stricmp(fullname, pSequenceName) == 0)
@@ -383,7 +375,7 @@ IAnimSequence* CMovieSystem::FindSequence(const AZ::EntityId& componentEntitySeq
             const AZ::EntityId& seqOwnerId = it->get()->GetOwnerId();
             if (seqOwnerId == componentEntitySequenceId)
             {
-                retSequence = *it;
+                retSequence = it->get();
                 break;
             }
         }
@@ -401,7 +393,7 @@ IAnimSequence* CMovieSystem::FindSequenceById(uint32 id) const
 
     for (Sequences::const_iterator it = m_sequences.begin(); it != m_sequences.end(); ++it)
     {
-        IAnimSequence* pCurrentSequence = *it;
+        IAnimSequence* pCurrentSequence = it->get();
         if (id == pCurrentSequence->GetId())
         {
             return pCurrentSequence;
@@ -453,7 +445,7 @@ IAnimSequence* CMovieSystem::GetSequence(int i) const
         return NULL;
     }
 
-    return m_sequences[i];
+    return m_sequences[i].get();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -472,7 +464,7 @@ IAnimSequence* CMovieSystem::GetPlayingSequence(int i) const
         return NULL;
     }
 
-    return m_playingSequences[i].sequence;
+    return m_playingSequences[i].sequence.get();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -493,7 +485,7 @@ bool CMovieSystem::IsCutScenePlaying() const
     const uint numPlayingSequences = m_playingSequences.size();
     for (uint i = 0; i < numPlayingSequences; ++i)
     {
-        const IAnimSequence* pAnimSequence = m_playingSequences[i].sequence;
+        const IAnimSequence* pAnimSequence = m_playingSequences[i].sequence.get();
         if (pAnimSequence && (pAnimSequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene) != 0)
         {
             return true;
@@ -570,9 +562,9 @@ int CMovieSystem::OnSequenceRenamed(const char* before, const char* after)
                     ISequenceKey seqKey;
                     track->GetKey(m, &seqKey);
                     // For each key that refers the sequence, update the name.
-                    if (_stricmp(seqKey.szSelection, before) == 0)
+                    if (_stricmp(seqKey.szSelection.c_str(), before) == 0)
                     {
-                        cry_strcpy(seqKey.szSelection, after);
+                        seqKey.szSelection = after;
                         track->SetKey(m, &seqKey);
                         ++count;
                     }
@@ -611,9 +603,9 @@ int CMovieSystem::OnCameraRenamed(const char* before, const char* after)
                     ISelectKey selKey;
                     track->GetKey(m, &selKey);
                     // For each key that refers the camera, update the name.
-                    if (_stricmp(selKey.szSelection, before) == 0)
+                    if (_stricmp(selKey.szSelection.c_str(), before) == 0)
                     {
-                        cry_strcpy(selKey.szSelection, after);
+                        selKey.szSelection = after;
                         track->SetKey(m, &selKey);
                         ++count;
                     }
@@ -653,7 +645,7 @@ void CMovieSystem::RemoveAllSequences()
     IMovieCallback* pCallback = GetCallback();
     SetCallback(NULL);
     InternalStopAllSequences(true, false);
-    stl::free_container(m_sequences);
+    m_sequences.clear();
 
     for (TMovieListenerMap::iterator it = m_movieListenerMap.begin(); it != m_movieListenerMap.end(); )
     {
@@ -782,12 +774,12 @@ void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMo
              */
             case IMovieListener::eMovieEvent_Aborted:
             {
-                LmbrCentral::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &LmbrCentral::SequenceComponentNotificationBus::Events::OnAbort, GetPlayingTime(pSequence));
+                Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnAbort, GetPlayingTime(pSequence));
                 break;
             }
             case IMovieListener::eMovieEvent_Updated:
             {
-                LmbrCentral::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &LmbrCentral::SequenceComponentNotificationBus::Events::OnUpdate, GetPlayingTime(pSequence));
+                Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnUpdate, GetPlayingTime(pSequence));
                 break;
             }
             default:
@@ -822,7 +814,7 @@ void CMovieSystem::InternalStopAllSequences(bool bAbort, bool bAnimate)
 {
     while (!m_playingSequences.empty())
     {
-        InternalStopSequence(m_playingSequences.begin()->sequence, bAbort, bAnimate);
+        InternalStopSequence(m_playingSequences.begin()->sequence.get(), bAbort, bAnimate);
     }
 
     stl::free_container(m_playingSequences);
@@ -927,7 +919,7 @@ void CMovieSystem::StopAllCutScenes()
         {
             next = it;
             ++next;
-            IAnimSequence* pCurrentSequence = it->sequence;
+            IAnimSequence* pCurrentSequence = it->sequence.get();
             if (pCurrentSequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
             {
                 bAnyStoped = true;
@@ -965,7 +957,7 @@ void CMovieSystem::Reset(bool bPlayOnReset, bool bSeekToStart)
     // Reset all sequences.
     for (Sequences::iterator iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
     {
-        IAnimSequence* pCurrentSequence = *iter;
+        IAnimSequence* pCurrentSequence = iter->get();
         NotifyListeners(pCurrentSequence, IMovieListener::eMovieEvent_Started);
         pCurrentSequence->Reset(bSeekToStart);
         NotifyListeners(pCurrentSequence, IMovieListener::eMovieEvent_Stopped);
@@ -975,7 +967,7 @@ void CMovieSystem::Reset(bool bPlayOnReset, bool bSeekToStart)
     {
         for (Sequences::iterator iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
         {
-            IAnimSequence* pCurrentSequence = *iter;
+            IAnimSequence* pCurrentSequence = iter->get();
             if (pCurrentSequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
             {
                 PlaySequence(pCurrentSequence);
@@ -999,7 +991,7 @@ void CMovieSystem::PlayOnLoadSequences()
 {
     for (Sequences::iterator sit = m_sequences.begin(); sit != m_sequences.end(); ++sit)
     {
-        IAnimSequence* pSequence = *sit;
+        IAnimSequence* pSequence = sit->get();
         if (pSequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
         {
             PlaySequence(pSequence);
@@ -1028,6 +1020,12 @@ void CMovieSystem::StillUpdate()
 
         playingSequence.sequence->StillUpdate();
     }
+
+    // Check for end capture here while in the editor.
+    // In some cases, we might have signaled an end capture when leaving Game mode,
+    // but ControlCapture hasn't been given a tick by Game to actually end the capture.
+    // So make sure any pending end capture signaled gets shutdown here.
+    CheckForEndCapture();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1149,12 +1147,12 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
         if ((nSeqFlags& IAnimSequence::eSeqFlags_CutScene) && m_mov_NoCutscenes != 0)
         {
             // Don't play cut-scene if no cut scenes console variable set.
-            stopSequences.push_back(playingSequence.sequence);
+            stopSequences.push_back(playingSequence.sequence.get());
             continue;
         }
 
         animContext.time = playingSequence.currentTime;
-        animContext.pSequence = playingSequence.sequence;
+        animContext.pSequence = playingSequence.sequence.get();
         animContext.dt = scaledTimeDelta;
         animContext.fps = fps;
         animContext.startTime = playingSequence.startTime;
@@ -1173,7 +1171,7 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
                 // Queue sequence for stopping.
                 if (playingSequence.trackedSequence == false)
                 {
-                    stopSequences.push_back(playingSequence.sequence);
+                    stopSequences.push_back(playingSequence.sequence.get());
                 }
                 continue;
             }
@@ -1189,7 +1187,7 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
         }
         else
         {
-            NotifyListeners(playingSequence.sequence, IMovieListener::eMovieEvent_Updated);
+            NotifyListeners(playingSequence.sequence.get(), IMovieListener::eMovieEvent_Updated);
         }
 
         animContext.bSingleFrame = playingSequence.bSingleFrame;
@@ -1239,6 +1237,7 @@ void CMovieSystem::Callback(IMovieCallback::ECallbackReason reason, IAnimNode* p
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
 void CMovieSystem::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOldNodes, bool bLoadEmpty)
 {
     if (bLoading)
@@ -1276,9 +1275,37 @@ void CMovieSystem::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOld
 }
 
 //////////////////////////////////////////////////////////////////////////
+/*static*/ void CMovieSystem::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CMovieSystem>()
+        ->Version(1)
+        ->Field("Sequences", &CMovieSystem::m_sequences);
+
+    AnimSerializer::ReflectAnimTypes(serializeContext);
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CMovieSystem::SetCameraParams(const SCameraParams& Params)
 {
     m_ActiveCameraParams = Params;
+
+    // Make sure the camera entity is valid
+    if (m_ActiveCameraParams.cameraEntityId.IsValid() && !IsLegacyEntityId(m_ActiveCameraParams.cameraEntityId))
+    {
+        // Component Camera
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_ActiveCameraParams.cameraEntityId);
+        if (entity)
+        {
+            // Make sure the camera component was not removed from an entity that is used as a camera.
+            if (!(entity->FindComponent(CameraComponentTypeId) || entity->FindComponent(EditorCameraComponentTypeId)))
+            {
+                // if this entity does not have a camera component, do not use it.
+                m_ActiveCameraParams.cameraEntityId.SetInvalid();
+            }
+        }
+    }
+
     if (m_pUser)
     {
         m_pUser->SetActiveCamera(m_ActiveCameraParams);
@@ -1322,7 +1349,7 @@ void CMovieSystem::PauseCutScenes()
         {
             if (it->sequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
             {
-                m_pUser->EndCutScene(it->sequence, it->sequence->GetCutSceneFlags(true));
+                m_pUser->EndCutScene(it->sequence.get(), it->sequence->GetCutSceneFlags(true));
             }
         }
     }
@@ -1344,7 +1371,7 @@ void CMovieSystem::ResumeCutScenes()
         {
             if (it->sequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
             {
-                m_pUser->BeginCutScene(it->sequence, it->sequence->GetCutSceneFlags(), true);
+                m_pUser->BeginCutScene(it->sequence.get(), it->sequence->GetCutSceneFlags(), true);
             }
         }
     }
@@ -1571,6 +1598,17 @@ void CMovieSystem::EndCapture()
     m_bEndCapture = true;
 }
 
+void CMovieSystem::CheckForEndCapture()
+{
+    if (m_bEndCapture)
+    {
+        m_cvar_capture_frames->Set(0);
+        m_cvar_t_FixedStep->Set(m_fixedTimeStepBackUp);
+
+        m_bEndCapture = false;
+    }
+}
+
 void CMovieSystem::ControlCapture()
 {
     if (!gEnv->IsEditor())
@@ -1611,8 +1649,8 @@ void CMovieSystem::ControlCapture()
     {
         m_cvar_capture_file_format->Set(m_captureKey.GetFormat());
         m_cvar_capture_frame_once->Set(m_captureKey.once ? 1 : 0);
-        m_cvar_capture_folder->Set(m_captureKey.folder);
-        m_cvar_capture_file_prefix->Set(m_captureKey.prefix);
+        m_cvar_capture_folder->Set(m_captureKey.folder.c_str());
+        m_cvar_capture_file_prefix->Set(m_captureKey.prefix.c_str());
 
         m_fixedTimeStepBackUp = m_cvar_t_FixedStep->GetFVal();
         m_cvar_t_FixedStep->Set(m_captureKey.timeStep);
@@ -1621,13 +1659,7 @@ void CMovieSystem::ControlCapture()
         m_bStartCapture = false;
     }
 
-    if (m_bEndCapture)
-    {
-        m_cvar_capture_frames->Set(0);
-        m_cvar_t_FixedStep->Set(m_fixedTimeStepBackUp);
-
-        m_bEndCapture = false;
-    }
+    CheckForEndCapture();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1694,102 +1726,119 @@ void CMovieSystem::SerializeNodeType(EAnimNodeType& animNodeType, XmlNodeRef& xm
     }
 }
 
+namespace CAnimParamTypeXmlNames
+{
+    static const char* kParamUserValue = "paramUserValue";
+    static const char* kVirtualPropertyName = "virtualPropertyName";
+}
+
 //////////////////////////////////////////////////////////////////////////
-void CMovieSystem::SerializeParamType(CAnimParamType& animParamType, XmlNodeRef& xmlNode, bool bLoading, const uint version)
+void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const XmlNodeRef& xmlNode, const uint version)
 {
     static const char* kByNameAttrName = "paramIdIsName";
-    static const char* kParamUserValue = "paramUserValue";
-    static const char* virtualPropertyName = "virtualPropertyName";
 
-    if (bLoading)
+    animParamType.m_type = eAnimParamType_Invalid;
+
+    if (version <= 6)
     {
-        animParamType.m_type = eAnimParamType_Invalid;
+        static const char* kParamId = "paramId";
 
-        if (version <= 6)
+        if (xmlNode->haveAttr(kByNameAttrName))
         {
-            static const char* kParamId = "paramId";
-
-            if (xmlNode->haveAttr(kByNameAttrName))
+            XmlString name;
+            if (xmlNode->getAttr(kParamId, name))
             {
-                XmlString name;
-                if (xmlNode->getAttr(kParamId, name))
-                {
-                    animParamType.m_type = eAnimParamType_ByString;
-                    animParamType.m_name = name.c_str();
-                }
-            }
-            else
-            {
-                int type;
-                xmlNode->getAttr(kParamId, type);
-                animParamType.m_type = (EAnimParamType)type;
+                animParamType.m_type = eAnimParamType_ByString;
+                animParamType.m_name = name.c_str();
             }
         }
         else
         {
-            static const char* kParamType = "paramType";
-
-            XmlString paramTypeString;
-            if (xmlNode->getAttr(kParamType, paramTypeString))
-            {
-                if (paramTypeString == "ByString")
-                {
-                    animParamType.m_type = eAnimParamType_ByString;
-
-                    XmlString userValue;
-                    xmlNode->getAttr(kParamUserValue, userValue);
-                    animParamType.m_name = userValue;
-                }
-                else if (paramTypeString == "User")
-                {
-                    animParamType.m_type = eAnimParamType_User;
-
-                    int type;
-                    xmlNode->getAttr(kParamUserValue, type);
-                    animParamType.m_type = (EAnimParamType)type;
-                }
-                else
-                {
-                    XmlString virtualPropertyValue;
-                    if (xmlNode->getAttr(virtualPropertyName, virtualPropertyValue))
-                    {
-                        animParamType.m_name = virtualPropertyValue;
-                    }
-
-                    assert(g_animParamStringToEnumMap.find(paramTypeString.c_str()) != g_animParamStringToEnumMap.end());
-                    animParamType.m_type = stl::find_in_map(g_animParamStringToEnumMap, paramTypeString.c_str(), eAnimParamType_Invalid);
-                }
-            }
+            int type;
+            xmlNode->getAttr(kParamId, type);
+            animParamType.m_type = (EAnimParamType)type;
         }
     }
     else
     {
         static const char* kParamType = "paramType";
-        const char* pTypeString = "Invalid";
 
-        if (animParamType.m_type == eAnimParamType_ByString)
+        XmlString paramTypeString;
+        if (xmlNode->getAttr(kParamType, paramTypeString))
         {
-            pTypeString = "ByString";
-            xmlNode->setAttr(kParamUserValue, animParamType.m_name.c_str());
-        }
-        else if (animParamType.m_type >= eAnimParamType_User)
-        {
-            pTypeString = "User";
-            xmlNode->setAttr(kParamUserValue, (int)animParamType.m_type);
-        }
-        else
-        {
-            if (!animParamType.m_name.empty())
+            if (paramTypeString == "ByString")
             {
-                // we have a named parameter that is NOT an eAnimParamType_ByString (handled above). This is used for VirtualProperty names for Component Entities.
-                xmlNode->setAttr(virtualPropertyName, animParamType.m_name.c_str());
-            }
+                animParamType.m_type = eAnimParamType_ByString;
 
-            assert(g_animParamEnumToStringMap.find(animParamType.m_type) != g_animParamEnumToStringMap.end());
-            pTypeString = g_animParamEnumToStringMap[animParamType.m_type];
+                XmlString userValue;
+                xmlNode->getAttr(CAnimParamTypeXmlNames::kParamUserValue, userValue);
+                animParamType.m_name = userValue;
+            }
+            else if (paramTypeString == "User")
+            {
+                animParamType.m_type = eAnimParamType_User;
+
+                int type;
+                xmlNode->getAttr(CAnimParamTypeXmlNames::kParamUserValue, type);
+                animParamType.m_type = (EAnimParamType)type;
+            }
+            else
+            {
+                XmlString virtualPropertyValue;
+                if (xmlNode->getAttr(CAnimParamTypeXmlNames::kVirtualPropertyName, virtualPropertyValue))
+                {
+                    animParamType.m_name = virtualPropertyValue;
+                }
+
+                assert(g_animParamStringToEnumMap.find(paramTypeString.c_str()) != g_animParamStringToEnumMap.end());
+                animParamType.m_type = stl::find_in_map(g_animParamStringToEnumMap, paramTypeString.c_str(), eAnimParamType_Invalid);
+            }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMovieSystem::SaveParamTypeToXml(const CAnimParamType& animParamType, XmlNodeRef& xmlNode)
+{
+    static const char* kParamType = "paramType";
+    const char* pTypeString = "Invalid";
+
+    if (animParamType.m_type == eAnimParamType_ByString)
+    {
+        pTypeString = "ByString";
+        xmlNode->setAttr(CAnimParamTypeXmlNames::kParamUserValue, animParamType.m_name.c_str());
+    }
+    else if (animParamType.m_type >= eAnimParamType_User)
+    {
+        pTypeString = "User";
+        xmlNode->setAttr(CAnimParamTypeXmlNames::kParamUserValue, (int)animParamType.m_type);
+    }
+    else
+    {
+        if (!animParamType.m_name.empty())
+        {
+            // we have a named parameter that is NOT an eAnimParamType_ByString (handled above). This is used for VirtualProperty names for Component Entities.
+            xmlNode->setAttr(CAnimParamTypeXmlNames::kVirtualPropertyName, animParamType.m_name.c_str());
         }
 
-        xmlNode->setAttr(kParamType, pTypeString);
+        assert(g_animParamEnumToStringMap.find(animParamType.m_type) != g_animParamEnumToStringMap.end());
+        pTypeString = g_animParamEnumToStringMap[animParamType.m_type];
+    }
+
+    xmlNode->setAttr(kParamType, pTypeString);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMovieSystem::SerializeParamType(CAnimParamType& animParamType, XmlNodeRef& xmlNode, bool bLoading, const uint version)
+{
+
+    if (bLoading)
+    {
+        LoadParamTypeFromXml(animParamType, xmlNode, version);
+    }
+    else
+    {
+        SaveParamTypeToXml(animParamType, xmlNode);
     }
 }
 
@@ -1870,7 +1919,7 @@ ILightAnimWrapper* CMovieSystem::CreateLightAnimWrapper(const char* name) const
 
 //////////////////////////////////////////////////////////////////////////
 CLightAnimWrapper::LightAnimWrapperCache CLightAnimWrapper::ms_lightAnimWrapperCache;
-_smart_ptr<IAnimSequence> CLightAnimWrapper::ms_pLightAnimSet = 0;
+AZStd::intrusive_ptr<IAnimSequence> CLightAnimWrapper::ms_pLightAnimSet;
 
 //////////////////////////////////////////////////////////////////////////
 CLightAnimWrapper::CLightAnimWrapper(const char* name)
@@ -1932,7 +1981,7 @@ void CLightAnimWrapper::ReconstructCache()
 //////////////////////////////////////////////////////////////////////////
 IAnimSequence* CLightAnimWrapper::GetLightAnimSet()
 {
-    return ms_pLightAnimSet;
+    return ms_pLightAnimSet.get();
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -11,22 +11,27 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_ISTATOBJ_H
-#define CRYINCLUDE_CRYCOMMON_ISTATOBJ_H
 #pragma once
-
 
 #include "smartptr.h"           // TYPEDEF_AUTOPTR
 #include "IMaterial.h"
 
 // forward declarations
 //////////////////////////////////////////////////////////////////////
-struct      ShadowMapFrustum;
+struct ShadowMapFrustum;
+struct SRenderingPassInfo;
+struct SRendItemSorter;
+struct IShader;
+struct SPhysGeomArray;
+struct CStatObj;
+
 class CRenderObject;
-struct      IShader;
 class CDLight;
 class IReadStream;
-struct      SRenderingPassInfo;
+class CRenderObject;
+class CLodValue;
+
+
 TYPEDEF_AUTOPTR(IReadStream);
 
 //! Interface to non animated object
@@ -203,7 +208,6 @@ struct IStreamable
     virtual void GetStreamableName(string& sName) = 0;
     virtual uint32 GetLastDrawMainFrameId() = 0;
     virtual bool IsUnloadable() const = 0;
-    // </interfuscator:shuffle>
 
     SInstancePriorityInfo m_arrUpdateStreamingPrioriryRoundInfo[2];
     float fCurImportance;
@@ -211,6 +215,9 @@ struct IStreamable
     uint32 m_nSelectedFrameId : 31;
     uint32 m_nStatsInUse : 1;
 };
+
+struct SMeshBoneMapping_uint8;
+struct SSpine;
 
 // Summary:
 //     Interface to hold static object data
@@ -220,11 +227,11 @@ struct IStatObj
     //! Loading flags
     enum ELoadingFlags
     {
-        ELoadingFlagsPreviewMode        = BIT(0),
+        ELoadingFlagsPreviewMode = BIT(0),
         ELoadingFlagsForceBreakable = BIT(1),
-        ELoadingFlagsIgnoreLoDs         = BIT(2),
-        ELoadingFlagsTessellate         = BIT(3), // if e_StatObjTessellation enabled
-        ELoadingFlagsJustGeometry   = BIT(4), // for streaming, to avoid parsing all chunks
+        ELoadingFlagsIgnoreLoDs = BIT(2),
+        ELoadingFlagsTessellate = BIT(3), // if e_StatObjTessellation enabled
+        ELoadingFlagsJustGeometry = BIT(4), // for streaming, to avoid parsing all chunks
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -323,7 +330,10 @@ struct IStatObj
 
     // Description:
     //     Retrieve flags set on the static object.
-    virtual int  GetFlags() = 0;
+    virtual int GetFlags() const = 0;
+
+    // Sets the default object indicator
+    virtual void SetDefaultObject(bool state) = 0;
 
     // Description:
     //     Retrieves the internal flag m_nVehicleOnlyPhysics.
@@ -521,11 +531,20 @@ struct IStatObj
     virtual int FindNearesLoadedLOD(int nLodIn, bool bSearchUp = false) = 0;
     virtual int FindHighestLOD(int nBias) = 0;
 
+    virtual bool LoadCGF(const char* filename, bool bLod, unsigned long nLoadingFlags, const void* pData, const int nDataSize) = 0;
+    virtual void DisableStreaming() = 0;
+    virtual void TryMergeSubObjects(bool bFromStreaming) = 0;
+    virtual bool IsUnloadable() const = 0;
+    virtual void SetCanUnload(bool value) = 0;
+
+    virtual string& GetFileName() = 0;
+    virtual const string& GetFileName() const = 0;
+
     // Summary:
     //     Returns the filename of the object
     // Return Value:
     //     A null terminated string which contain the filename of the object.
-    virtual const char* GetFilePath() = 0;
+    virtual const char* GetFilePath() const = 0;
 
     // Summary:
     //     Set the filename of the object
@@ -596,7 +615,7 @@ struct IStatObj
     //     Returns a pointer to the object
     // Return Value:
     //     A pointer to the current object, which is simply done like this "return this;"
-    virtual struct IStatObj* GetIStatObj() {return this; }
+    virtual struct IStatObj* GetIStatObj() { return this; }
 
     // Summary:
     //     Invalidates geometry inside IStatObj, will mark hosted IIndexedMesh as invalid.
@@ -687,27 +706,16 @@ struct IStatObj
     //    returns 0 if failed (due to objects having no vertex maps most likely)
     virtual int SetDeformationMorphTarget(IStatObj* pDeformed) = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Summary:
-    //      chages the weights of the deformation morphing according to point, radius, and strength
-    //      (radius==0 updates all weights of all vertices)
-    //    if the object is a compound object, updates the weights of its subobjects that have deformation morphs; clones the object if necessary
-    //    otherwise, updates the weights passed as a pWeights param
+    // chages the weights of the deformation morphing according to point, radius, and strength
+    // (radius==0 updates all weights of all vertices)
+    //  if the object is a compound object, updates the weights of its subobjects that have deformation morphs; clones the object if necessary
+    //   otherwise, updates the weights passed as a pWeights param
     virtual IStatObj* DeformMorph(const Vec3& pt, float r, float strength, IRenderMesh* pWeights = 0) = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Summary:
-    //      hides all non-physicalized geometry, clones the object if necessary
+    // hides all non-physicalized geometry, clones the object if necessary
     virtual IStatObj* HideFoliage() = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Summary:
-    //    return amount of texture memory used for vegetation sprites
-    //  virtual int GetSpritesTexMemoryUsage() = 0;
-
-    //////////////////////////////////////////////////////////////////////////
-    // Summary:
-    //    serializes the StatObj's mesh into a stream
+    // serializes the StatObj's mesh into a stream
     virtual int Serialize(TSerialize ser) = 0;
 
     // Get object properties as loaded from CGF.
@@ -727,11 +735,7 @@ struct IStatObj
     // Lineseg must be in object local space. Returns the hit position and the surface type id of the point hit.
     virtual bool LineSegIntersection(const Lineseg& lineSeg, Vec3& hitPos, int& surfaceTypeId) = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-    // Summary:
-    //   Debug Draw this static object.
-    // Arguments:
-    //   nFlags - bit0 no culling, bit1 - not draw lines.
+    // Debug Draw this static object.
     virtual void DebugDraw(const struct SGeometryDebugDrawInfo& info, float fExtrdueScale = 0.01f) = 0;
 
     // Fill statistics about the level.
@@ -750,11 +754,69 @@ struct IStatObj
 
     // Returns the distance for the first LOD switch. Used for brushes and vegetation.
     virtual float GetLodDistance() const = 0;
-    // </interfuscator:shuffle>
 
-protected:
-    virtual ~IStatObj() {}; // should be never called, use Release() instead
+    // Returns true if the mesh has been stripped
+    virtual bool IsMeshStrippedCGF() const = 0;
+
+    virtual void LoadLowLODs(bool bUseStreaming, unsigned long nLoadingFlags) = 0;
+
+    // Indicates if lods have been loaded
+    virtual bool AreLodsLoaded() const = 0;
+
+    // Indicates if a garbage check should be done
+    virtual bool CheckGarbage() const = 0;
+
+    // Sets state of check garbage flags
+    virtual void SetCheckGarbage(bool val) = 0;
+
+    // Returns the number of child references
+    virtual int CountChildReferences() const = 0;
+
+    // Returns the user count
+    virtual int GetUserCount() const = 0;
+
+    // Shutdown
+    virtual void ShutDown() = 0;
+
+    virtual int GetMaxUsableLod() const = 0;
+    virtual int GetMinUsableLod() const = 0;
+
+    virtual SMeshBoneMapping_uint8* GetBoneMapping() const = 0;
+
+    virtual int GetSpineCount() const = 0;
+    virtual SSpine* GetSpines() const = 0;
+
+    virtual IStatObj* GetLodLevel0() = 0;
+    virtual void SetLodLevel0(IStatObj* lod) = 0;
+    virtual _smart_ptr<CStatObj>* GetLods() = 0;
+    virtual int GetLoadedLodsNum() = 0;
+
+    virtual bool UpdateStreamableComponents(float fImportance, const Matrix34A& objMatrix, bool bFullUpdate, int nNewLod) = 0;
+
+    virtual void RenderInternal(CRenderObject* pRenderObject, uint64 nSubObjectHideMask, const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void RenderObjectInternal(CRenderObject* pRenderObject, int nLod, uint8 uLodDissolveRef, bool dissolveOut, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void RenderSubObject(CRenderObject* pRenderObject, int nLod, int nSubObjId, const Matrix34A& renderTM, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void RenderSubObjectInternal(CRenderObject* pRenderObject, int nLod, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+    virtual void RenderRenderMesh(CRenderObject* pObj, struct SInstancingInfo* pInstInfo, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
+
+    virtual SPhysGeomArray& GetArrPhysGeomInfo() = 0;
+    virtual bool IsLodsAreLoadedFromSeparateFile() = 0;
+
+    virtual void StartStreaming(bool bFinishNow, IReadStream_AutoPtr* ppStream) = 0;
+    virtual void UpdateStreamingPrioriryInternal(const Matrix34A& objMatrix, float fDistance, bool bFullUpdate) = 0;
+
+    virtual void SetMerged(bool state) = 0;
+
+    virtual int GetRenderMeshMemoryUsage() const = 0;
+    virtual void SetLodObject(int nLod, IStatObj* pLod) = 0;
+    virtual int GetLoadedTrisCount() const = 0;
+    virtual int GetRenderTrisCount() const = 0;
+    virtual int GetRenderMatIds() const = 0;
+
+    virtual bool IsUnmergable() const = 0;
+    virtual void SetUnmergable(bool state) = 0;
+
+    virtual int GetSubObjectMeshCount() const = 0;
+    virtual void SetSubObjectMeshCount(int count) = 0;
+    virtual void CleanUnusedLods() = 0;
 };
-
-
-#endif // CRYINCLUDE_CRYCOMMON_ISTATOBJ_H

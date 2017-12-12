@@ -351,11 +351,15 @@ bool ConnectionWorker::NegotiateDirect(bool initiate)
         }
     }
 
-    if (strncmp(engineInfo.m_negotiationInfoMap[NegotiationInfo_ProcessId].c_str(), processId, strlen(processId)) == 0)
+    // Skip the process Id validation during negotiation if the identifier is UNITTEST
+    if (engineInfo.m_identifier != "UNITTEST")
     {
-        Q_EMIT ErrorMessage("Attempted to negotiate with self");
-        QTimer::singleShot(0, this, SLOT(DisconnectSockets()));
-        return false;
+        if (strncmp(engineInfo.m_negotiationInfoMap[NegotiationInfo_ProcessId].c_str(), processId, strlen(processId)) == 0)
+        {
+            Q_EMIT ErrorMessage("Attempted to negotiate with self");
+            QTimer::singleShot(0, this, SLOT(DisconnectSockets()));
+            return false;
+        }
     }
 
     if (engineInfo.m_apiVersion != myInfo.m_apiVersion)

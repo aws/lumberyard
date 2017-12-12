@@ -556,8 +556,8 @@ namespace spline
                 aElems[0].ds = FStore(0);
             }
 
-            Spline(int nKeys)
-                : nKeys(aznumeric_caster(nKeys))
+            Spline(int keys)
+                : nKeys(aznumeric_caster(keys))
             {
                 #ifdef _DEBUG
                 if (nKeys)
@@ -567,10 +567,10 @@ namespace spline
                 #endif
             }
 
-            static size_t alloc_size(int nKeys)
+            static size_t alloc_size(int keys)
             {
-                assert(nKeys > 0);
-                return sizeof(Spline) + max(nKeys - 2, 0) * sizeof(Elem) + sizeof(Point);
+                assert(keys > 0);
+                return sizeof(Spline) + max(keys - 2, 0) * sizeof(Elem) + sizeof(Point);
             }
             size_t alloc_size() const
             {

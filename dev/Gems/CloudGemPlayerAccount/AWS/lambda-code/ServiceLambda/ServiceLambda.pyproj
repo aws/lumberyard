@@ -35,13 +35,17 @@
     <Compile Include="CloudCanvas\test\test_settings.py" />
     <Compile Include="CloudCanvas\test\__init__.py" />
     <Compile Include="CloudCanvas\__init__.py" />
+    <Compile Include="dynamodb_pagination.py" />
     <Compile Include="errors.py" />
     <Compile Include="service.py" />
+    <Compile Include="test\test_dynamodb_pagination.py" />
+    <Compile Include="test\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api" />
     <Folder Include="CloudCanvas" />
     <Folder Include="CloudCanvas\test" />
+    <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />

@@ -12,22 +12,59 @@
 
 #include "StdAfx.h"
 #include "SphereShapeComponent.h"
-#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <Cry_GeoOverlap.h>
-#include <Cry_GeoDistance.h>
-
+#include <AzCore/Serialization/EditContext.h>
 
 namespace LmbrCentral
 {
     namespace ClassConverters
     {
+        static bool DeprecateSphereColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         static bool DeprecateSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+    }
+
+    void SphereShapeConfig::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            // Deprecate: SphereColliderConfiguration -> SphereShapeConfig
+            serializeContext->ClassDeprecate(
+                "SphereColliderConfiguration",
+                "{0319AE62-3355-4C98-873D-3139D0427A53}",
+                &ClassConverters::DeprecateSphereColliderConfiguration
+            );
+
+            serializeContext->Class<SphereShapeConfig>()
+                ->Version(1)
+                ->Field("Radius", &SphereShapeConfig::m_radius)
+                ;
+
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<SphereShapeConfig>("Configuration", "Sphere shape configuration parameters")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->DataElement(0, &SphereShapeConfig::m_radius, "Radius", "Radius of sphere")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " m")
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
+                    ;
+            }
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<SphereShapeConfig>()
+                ->Constructor()
+                ->Constructor<float>()
+                ->Property("Radius", BehaviorValueProperty(&SphereShapeConfig::m_radius));
+        }
     }
 
     void SphereShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        SphereShapeConfiguration::Reflect(context);
+        SphereShapeConfig::Reflect(context);
 
         auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
@@ -48,87 +85,83 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
+            behaviorContext->Constant("SphereShapeComponentTypeId", BehaviorConstant(SphereShapeComponentTypeId));
+
             behaviorContext->EBus<SphereShapeComponentRequestsBus>("SphereShapeComponentRequestsBus")
                 ->Event("GetSphereConfiguration", &SphereShapeComponentRequestsBus::Events::GetSphereConfiguration)
                 ->Event("SetRadius", &SphereShapeComponentRequestsBus::Events::SetRadius)
                 ;
-    }
+        }
     }
 
     void SphereShapeComponent::Activate()
     {
-        m_currentTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(m_currentTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-        m_intersectionDataCache.SetCacheStatus(SphereShapeComponent::SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
-        SphereShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
+        SphereShape::Activate(GetEntityId());
     }
 
     void SphereShapeComponent::Deactivate()
     {
-        SphereShapeComponentRequestsBus::Handler::BusDisconnect();
-        ShapeComponentRequestsBus::Handler::BusDisconnect();
-        AZ::TransformNotificationBus::Handler::BusDisconnect();
+        SphereShape::Deactivate();
     }
 
-    void SphereShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    bool SphereShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        m_currentTransform = world;
-        m_intersectionDataCache.SetCacheStatus(SphereShapeComponent::SphereIntersectionDataCache::CacheStatus::Obsolete_TransformChange);
-        EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::TransformChanged);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    void SphereShapeComponent::SetRadius(float newRadius)
-    {
-        m_configuration.SetRadius(newRadius);
-        m_intersectionDataCache.SetCacheStatus(SphereShapeComponent::SphereIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-        EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
-    }
-
-
-    //////////////////////////////////////////////////////////////////////////
-
-    AZ::Aabb SphereShapeComponent::GetEncompassingAabb()
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_configuration);
-        return AZ::Aabb::CreateCenterRadius(m_currentTransform.GetPosition(), m_configuration.GetRadius());
-    }
-
-    bool SphereShapeComponent::IsPointInside(const AZ::Vector3& point)
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_configuration);
-        return Overlap::Point_Sphere(m_intersectionDataCache.GetCenterPosition(), m_intersectionDataCache.GetRadiusSquared(), point);
-    }
-
-    float SphereShapeComponent::DistanceSquaredFromPoint(const AZ::Vector3& point)
-    {
-        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_configuration);
-        const AZ::Vector3 pointToSphereCenter = m_intersectionDataCache.GetCenterPosition() - point;
-        float distance = pointToSphereCenter.GetLength() - m_configuration.GetRadius();
-        return sqr(AZStd::max(distance, 0.f));
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    void SphereShapeComponent::SphereIntersectionDataCache::UpdateIntersectionParams(const AZ::Transform& currentTransform,
-        const SphereShapeConfiguration& configuration)
-    {
-        if (m_cacheStatus > CacheStatus::Current)
+        if (auto config = azrtti_cast<const SphereShapeConfig*>(baseConfig))
         {
-            m_currentCenterPosition = currentTransform.GetPosition();
-
-            if (m_cacheStatus == CacheStatus::Obsolete_ShapeChange)
-            {
-                m_radiusSquared = configuration.GetRadius() * configuration.GetRadius();
-                SetCacheStatus(CacheStatus::Current);
-            }
+            m_configuration = *config;
+            return true;
         }
+        return false;
     }
 
-    //////////////////////////////////////////////////////////////////////////
+    bool SphereShapeComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<SphereShapeConfig*>(outBaseConfig))
+        {
+            *outConfig = m_configuration;
+            return true;
+        }
+        return false;
+    }
+
     namespace ClassConverters
     {
+        static bool DeprecateSphereColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            /*
+            Old:
+            <Class name="SphereColliderConfiguration" field="Configuration" version="1" type="{0319AE62-3355-4C98-873D-3139D0427A53}">
+            <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            </Class>
+
+            New:
+            <Class name="SphereShapeConfig" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
+            <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+            </Class>
+            */
+
+            // Cache the Radius
+            float oldRadius = 0.f;
+            int oldIndex = classElement.FindElement(AZ_CRC("Radius", 0x3b7c6e5a));
+            if (oldIndex != -1)
+            {
+                classElement.GetSubElement(oldIndex).GetData<float>(oldRadius);
+            }
+
+            // Convert to SphereShapeConfig
+            bool result = classElement.Convert<SphereShapeConfig>(context);
+            if (result)
+            {
+                int newIndex = classElement.AddElement<float>(context, "Radius");
+                if (newIndex != -1)
+                {
+                    classElement.GetSubElement(newIndex).SetData<float>(context, oldRadius);
+                }
+                return true;
+            }
+            return false;
+        }
+
         static bool DeprecateSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
         {
             /*
@@ -141,28 +174,28 @@ namespace LmbrCentral
 
             New:
             <Class name="SphereShapeComponent" version="1" type="{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}">
-             <Class name="SphereShapeConfiguration" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
+             <Class name="SphereShapeConfig" field="Configuration" version="1" type="{4AADFD75-48A7-4F31-8F30-FE4505F09E35}">
               <Class name="float" field="Radius" value="1.0000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
              </Class>
             </Class>
             */
 
             // Cache the Configuration
-            SphereShapeConfiguration configuration;
-            int configIndex = classElement.FindElement(AZ_CRC("Configuration"));
+            SphereShapeConfig configuration;
+            int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
             if (configIndex != -1)
             {
-                classElement.GetSubElement(configIndex).GetData<SphereShapeConfiguration>(configuration);
+                classElement.GetSubElement(configIndex).GetData<SphereShapeConfig>(configuration);
             }
 
             // Convert to SphereShapeComponent
-            bool result = classElement.Convert(context, "{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}");
+            bool result = classElement.Convert<SphereShapeComponent>(context);
             if (result)
             {
-                configIndex = classElement.AddElement<SphereShapeConfiguration>(context, "Configuration");
+                configIndex = classElement.AddElement<SphereShapeConfig>(context, "Configuration");
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).SetData<SphereShapeConfiguration>(context, configuration);
+                    classElement.GetSubElement(configIndex).SetData<SphereShapeConfig>(context, configuration);
                 }
                 return true;
             }

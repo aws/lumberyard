@@ -84,6 +84,7 @@ protected:
 
     // Updates the preview image
     void UpdatePreview();
+    void OnShowPreviewChanged();
 
     // Update the static number controls with the values from the sliders
     void UpdateStaticNum();

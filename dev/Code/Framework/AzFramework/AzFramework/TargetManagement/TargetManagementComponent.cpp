@@ -269,8 +269,6 @@ namespace AzFramework
                 m_settings->m_persistentName = "Lumberyard";
             }
         }
-#elif defined AZ_PLATFORM_X360
-        // Redacted
 #endif
 
         // Always set our desired target to be initially offline

@@ -171,7 +171,20 @@ namespace AZ
                     AZStd::shared_ptr<const SceneDataTypes::IBoneData> boneData = azrtti_cast<const SceneDataTypes::IBoneData*>(it->first);
                     AZ_Assert(boneData, "Graph object couldn't be converted to bone data even though it matched the type.");
 
-                    AddBoneDescriptor(skinningInfo, it->second.GetName(), it->second.GetNameLength(), boneData->GetWorldTransform());
+                    // Example fbx file exported from Maya will have default unit in centimeter.
+                    // E.g. A global transformation in meter unit:
+                    // 0.01 0    0    | 0.05
+                    // 0    0.01 0    | 0
+                    // 0    0    0.01 | 0
+                    // while a global transform in centimeter unit:
+                    // 1    0    0    | 5
+                    // 0    1    0    | 0
+                    // 0    0    1    | 0
+                    // We need to remove scale from transform matrix (so the root bone's rotation matrix is identity) to satisfy the
+                    // input requirement of AssetWriter
+                    AZ::Transform transformNoScale = boneData->GetWorldTransform();
+                    transformNoScale.ExtractScale();
+                    AddBoneDescriptor(skinningInfo, it->second.GetName(), it->second.GetNameLength(), transformNoScale);
                     if (!AddBoneEntity(skinningInfo, graph, graph.ConvertToNodeIndex(it.GetHierarchyIterator()), boneNameIdMap,
                         it->second.GetName(), it->second.GetPath(), rootBoneName))
                     {

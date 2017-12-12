@@ -116,7 +116,7 @@ def __zip_directory(context, zip_file, zip_file_path, src_directory_path, dst_di
                     raise HandledError('Could not add {} to zip file: {}'.format(src_file_path, e.message))
 
 
-def copy_directory_content(context, destination_path, source_path, overwrite_existing = False):
+def copy_directory_content(context, destination_path, source_path, overwrite_existing = False, name_substituions = {}, content_substitutions = {}):
     '''Copy the contents of a directory. The source directory may contain an 
     .ignore_when_copying file listing content that should not be copied.
 
@@ -128,6 +128,17 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
 
         overwrite_existing (default = False): indicates if content in the
         destination directory will be overwritten.
+
+        name_substitutions (default = {}): dict used to replace parts 
+        of file and directory names when doing the copy. For each key, 
+        value in the dict all occurences of key will be replaced by value 
+        in the destination file name.
+
+        content_substitutions (default = {}): dict used to replace 
+        content in copied files. The keys are the content to look for in 
+        the file and the value is the content that will replace the key.
+        Note that this processing is done for each and every file, don't
+        use if your copying a directory with lots of files in it.
 
     '''
 
@@ -157,15 +168,39 @@ def copy_directory_content(context, destination_path, source_path, overwrite_exi
                 context.view.creating_directory(dst_directory)
                 os.mkdir(dst_directory)
 
-        for file in files:
-            src_file = os.path.join(root, file)
+        for src_name in files:
+            
+            src_file = os.path.join(root, src_name)
             if should_ignore(src_file):
                 continue
-            dst_file = os.path.join(dst_directory, file)
-            copy_file(context, dst_file, src_file, overwrite_existing)
+
+            dst_name = src_name
+            for key, value in name_substituions.iteritems():
+                dst_name = dst_name.replace(key, value)
+
+            dst_file = os.path.join(dst_directory, dst_name)
+
+            copy_file(context, dst_file, src_file, overwrite_existing, content_substitutions)
 
 
-def copy_file(context, destination_path, source_path, overwrite_existing = False):                
+def copy_file(context, destination_path, source_path, overwrite_existing = False, content_substitutions = {}):                
+    '''Copies a file.
+
+    Arguments:
+
+        context: A Context object.
+
+        destination_path: the destination file path.
+
+        source_path: the source file path.
+
+        overwrite_existing (default = False): set to True to overwrite
+        existing files.
+
+        content_substitutions (default = {}): dict used to replace 
+        content in copied files. The keys are the content to look for in 
+        the file and the value is the content that will replace the key.
+    '''
 
     if not os.path.isfile(source_path):
         raise HandledError('Source is not a file when copying from {} to {}.'.format(source_path, destination_path))
@@ -180,6 +215,17 @@ def copy_file(context, destination_path, source_path, overwrite_existing = False
     else:
         context.view.copying_file(source_path, destination_path)
         shutil.copyfile(source_path, destination_path)
+
+    if content_substitutions:
+
+        with open(destination_path, 'r') as file:
+            content = file.read()
+
+        for key, value in content_substitutions.iteritems():
+            content = content.replace(key, value)
+
+        with open(destination_path, 'w') as file:
+            file.write(content)
 
 
 def create_file(context, destination_path, initial_content, overwrite_existing = False):

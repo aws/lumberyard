@@ -54,6 +54,8 @@ class DllModule
     , public ModuleTestRequestBus::Handler
 {
 public:
+    AZ_RTTI(DllModule, "{99C6BF95-847F-4EEE-BB60-9B26D02FF577}", AZ::Module);
+
     DllModule()
     {
         ModuleTestRequestBus::Handler::BusConnect();
@@ -69,11 +71,6 @@ public:
         AZ_Printf("DLL", "Reflect called");
         ReflectedClass::Reflect(context);
     }*/
-
-    void AddSystemComponents(AZ::Entity* /*systemEntity*/) override
-    {
-        AZ_Printf("DLL", "AddSystemComponents called");
-    }
 
     const char* GetModuleName() override
     {

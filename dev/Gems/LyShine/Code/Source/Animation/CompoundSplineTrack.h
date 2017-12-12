@@ -47,7 +47,7 @@ public:
     virtual EUiAnimCurveType GetCurveType() { return eUiAnimCurveType_BezierFloat; };
     virtual EUiAnimValue GetValueType() { return m_valueType; };
 
-    virtual CUiAnimParamType  GetParameterType() const { return m_nParamType; };
+    virtual const CUiAnimParamType& GetParameterType() const { return m_nParamType; };
     virtual void SetParameterType(CUiAnimParamType type) { m_nParamType = type; }
 
     virtual const UiAnimParamData& GetParamData() const { return m_componentParamData; }

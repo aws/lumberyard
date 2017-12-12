@@ -19,6 +19,9 @@ namespace
     class RenderDllTestEnvironment final
         : public AZ::Test::ITestEnvironment
     {
+    public:
+        AZ_TEST_CLASS_ALLOCATOR(RenderDllTestEnvironment);
+
     protected:
         void SetupEnvironment() override
         {
@@ -39,7 +42,7 @@ namespace
     private:
     };
 }
-AZ_UNIT_TEST_HOOK(new(AZ_OS_MALLOC(sizeof(RenderDllTestEnvironment), alignof(RenderDllTestEnvironment))) RenderDllTestEnvironment);
+AZ_UNIT_TEST_HOOK(new RenderDllTestEnvironment);
 AZ_INTEG_TEST_HOOK();
 
 TEST(CryRenderD3D11SanityTest, Sanity)

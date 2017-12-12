@@ -777,14 +777,14 @@ bool CTextureSplitter::Process()
 
     m_currentEndian = pPlatformInfo->bBigEndian ? eBigEndian : eLittleEndian;
 
-    if (pPlatformInfo->HasName("orbis"))
+    if (pPlatformInfo->HasName("orbis")) // ACCEPTED_USE
     {
-        m_targetType = eTT_Orbis;
+        m_targetType = eTT_Orbis; // ACCEPTED_USE
         m_bTile = true;
     }
-    else if (pPlatformInfo->HasName("durango"))
+    else if (pPlatformInfo->HasName("durango")) // ACCEPTED_USE
     {
-        m_targetType = eTT_Durango;
+        m_targetType = eTT_Durango; // ACCEPTED_USE
         m_bTile = true;
     }
     else
@@ -980,21 +980,21 @@ void CTextureSplitter::ProcessPlatformSpecificConversions(std::vector<STexture>&
     // mark this texture as native for current platform
     switch (m_targetType)
     {
-    case eTT_Orbis:
-        if (imageFlags & CImageExtensionHelper::EIF_OrbisNative)
+    case eTT_Orbis: // ACCEPTED_USE
+        if (imageFlags & CImageExtensionHelper::EIF_OrbisNative) // ACCEPTED_USE
         {
             return;
         }
-        imageFlags |= CImageExtensionHelper::EIF_OrbisNative;
+        imageFlags |= CImageExtensionHelper::EIF_OrbisNative; // ACCEPTED_USE
         bNeedsProcess = true;
         break;
 
-    case eTT_Durango:
-        if (imageFlags & CImageExtensionHelper::EIF_DurangoNative)
+    case eTT_Durango: // ACCEPTED_USE
+        if (imageFlags & CImageExtensionHelper::EIF_DurangoNative) // ACCEPTED_USE
         {
             return;
         }
-        imageFlags |= CImageExtensionHelper::EIF_DurangoNative;
+        imageFlags |= CImageExtensionHelper::EIF_DurangoNative; // ACCEPTED_USE
         bNeedsProcess = true;
         break;
     }

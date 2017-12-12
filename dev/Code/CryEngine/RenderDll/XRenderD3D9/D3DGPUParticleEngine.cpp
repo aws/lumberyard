@@ -1619,7 +1619,19 @@ void CImpl_GPUParticles::RenderEmitter(const RenderPassData& renderPassData, con
     shader->FXSetPSFloat(paramLODAlphaPixelDiscardMotionBlurStrength, &LODAlphaParamsPixelDiscardMotionBlurStrength, 1);
 
     // apply fx state
+
+    // Because of how shader state can be shared between different rendering elements the GPU particles
+    // can get material state for a different render element, like the terrain. When the material constant
+    // buffers are applied with terrain information it can cause rendering artifacts after GPU particles
+    // are rendered, such as a flickering screen. For now disable material updates for the GPU particles
+    // since they don't use materials until more time can be spent to figure out why the terrain material
+    // constants cause such issues.
+    uint64 materialBit = dxRenderer->m_RP.m_nCommitFlags & FC_MATERIAL_PARAMS;
+    dxRenderer->m_RP.m_nCommitFlags &= ~FC_MATERIAL_PARAMS;
+
     m_impl->dxRenderer->FX_Commit(false);
+
+    dxRenderer->m_RP.m_nCommitFlags |= materialBit;
 
     // bind SRVs (textures/structuredBuffers)
     D3DShaderResourceView* pSRV[] = { resources.bufParticleData.GetShaderResourceView(), resources.bufParticleIndices.GetShaderResourceView() };
@@ -2529,9 +2541,9 @@ void CImpl_GPUParticles::SortParticlesBitonic(GPUEmitterResources& emitter, GPUE
         if (j < 2048)
         {
             // start fx pass
-            uint32 nPasses = 0;
+            uint32 passes = 0;
             localShader->FXSetTechnique("Default");
-            localShader->FXBegin(&nPasses, 0);
+            localShader->FXBegin(&passes, 0);
             localShader->FXBeginPass(0);
 
             // bind UAVs (rwStructuredBuffers)
@@ -3151,9 +3163,9 @@ bool CD3DGPUParticleEngine::RemoveEmitter(EmitterTypePtr emitter)
     auto itEmitter = std::find(m_impl->emitters.begin(), m_impl->emitters.end(), emitter);
     if (itEmitter != m_impl->emitters.end())
     {
-        auto emitter = *itEmitter;
+        auto emitterToDelete = *itEmitter;
         m_impl->emitters.erase(itEmitter);
-        delete emitter;
+        delete emitterToDelete;
         return true;
     }
     return false;

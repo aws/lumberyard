@@ -16,7 +16,6 @@
 #pragma once
 #include "../Common/DevBuffer.h"
 
-
 namespace TempDynBuffer
 {
     enum State
@@ -77,10 +76,11 @@ namespace TempDynBuffer
         static const buffer_handle_t invalidHandle = ~0u;
 
     protected:
-        TempDynBufferBase()
+        TempDynBufferBase(IRenderer* renderer)
             : m_handle(invalidHandle)
+            , m_renderer(renderer)
             , m_numElements(0)
-            , m_DevBufMan(&gcpRendD3D->m_DevBufMan)
+            , m_DevBufMan(renderer->GetDeviceBufferManager())
             , m_validator() {}
         ~TempDynBufferBase() { m_validator.Check(Default); }
 
@@ -97,6 +97,7 @@ namespace TempDynBuffer
         void UpdateInternal(const void* pData, size_t elementSize);
 
     protected:
+        IRenderer* m_renderer;
         size_t m_handle;
         size_t m_numElements;
         CGuardedDeviceBufferManager m_DevBufMan;
@@ -173,12 +174,15 @@ namespace TempDynBuffer
         using Base::Unlock;
 
     protected:
-        TempDynVBBase() {}
+        TempDynVBBase(IRenderer* renderer)
+            : TempDynBufferBase<T, BBT_VERTEX_BUFFER, Validator>(renderer),
+            m_renderer(renderer){}
         ~TempDynVBBase() {}
 
         void BindInternal(uint32 streamID, size_t stride);
 
     protected:
+        IRenderer* m_renderer = nullptr;
         using Base::m_handle;
         using Base::m_validator;
     };
@@ -189,7 +193,7 @@ namespace TempDynBuffer
         m_validator.Check(Filled);
         size_t bufferOffset = ~0;
         D3DBuffer* pVB = this->m_DevBufMan.GetD3D(m_handle, &bufferOffset);
-        gcpRendD3D->FX_SetVStream(streamID, pVB, bufferOffset, stride);
+        m_renderer->FX_SetVStream(streamID, pVB, bufferOffset, stride);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -206,7 +210,9 @@ namespace TempDynBuffer
         static void CreateFillAndBind(const T* pData, size_t numElements, uint32 streamID) { CreateFillAndBindInternal(pData, numElements, streamID, sizeof(T)); }
 
     public:
-        TempDynVB() {}
+        TempDynVB(IRenderer* renderer)
+            : TempDynVBBase<T, Validator>(renderer)
+            , m_renderer(renderer){}
 
         using Base::Allocate;
         void Bind(uint32 streamID) { BindInternal(streamID, sizeof(T)); }
@@ -215,6 +221,7 @@ namespace TempDynBuffer
         static void CreateFillAndBindInternal(const void* pData, size_t numElements, uint32 streamID, size_t stride);
 
     protected:
+        IRenderer* m_renderer = nullptr;
         using Base::BindInternal;
 
     protected:
@@ -225,7 +232,7 @@ namespace TempDynBuffer
     template<typename T, class Validator>
     void TempDynVB<T, Validator>::CreateFillAndBindInternal(const void* pData, size_t numElements, uint32 streamID, size_t stride)
     {
-        TempDynVB<T, Validator> vb;
+        TempDynVB<T, Validator> vb(gRenDev);
         vb.AllocateInternal(numElements, stride);
         vb.UpdateInternal(pData, stride);
         vb.BindInternal(streamID, stride);
@@ -241,7 +248,10 @@ namespace TempDynBuffer
         typedef TempDynVBBase<void, Validator> Base;
 
     public:
-        TempDynInstVB() {}
+        TempDynInstVB(IRenderer* renderer)
+            : TempDynVBBase<void, Validator>(renderer),
+            m_renderer(renderer)
+        {}
 
         void Allocate(size_t numElements, size_t elementSize) { AllocateInternal(numElements, elementSize); }
         void Bind(uint32 streamID, uint32 stride) { BindInternal(streamID, stride); }
@@ -251,6 +261,8 @@ namespace TempDynBuffer
         using Base::BindInternal;
 
     protected:
+        IRenderer* m_renderer = nullptr;
+
         TempDynInstVB(const TempDynInstVB&);
         TempDynInstVB& operator=(const TempDynInstVB&);
     };
@@ -262,7 +274,8 @@ namespace TempDynBuffer
         static void CreateFillAndBind(const void* pData, size_t numElements, uint32 streamID, size_t stride) { TempDynVB<void>::CreateFillAndBindInternal(pData, numElements, streamID, stride); }
 
     private:
-        TempDynVBAny();
+        IRenderer* m_renderer = nullptr;
+        TempDynVBAny(IRenderer* renderer);
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -301,7 +314,10 @@ namespace TempDynBuffer
         static void CreateFillAndBind(const IndexDataType* pData, size_t numElements);
 
     public:
-        TempDynIB() {}
+        TempDynIB(IRenderer* renderer)
+            : TempDynBufferBase<IndexDataType, BBT_INDEX_BUFFER, Validator>(renderer),
+            m_renderer(renderer)
+        {}
 
         void Allocate(size_t numElements);
         using Base::IsAllocated;
@@ -314,6 +330,8 @@ namespace TempDynBuffer
         void Bind();
 
     protected:
+        IRenderer* m_renderer = nullptr;
+
         TempDynIB(const TempDynIB&);
         TempDynIB& operator=(const TempDynIB&);
 
@@ -334,13 +352,13 @@ namespace TempDynBuffer
         m_validator.Check(Filled);
         size_t bufferOffset = ~0;
         D3DBuffer* pIB = this->m_DevBufMan.GetD3D(m_handle, &bufferOffset);
-        gcpRendD3D->FX_SetIStream(pIB, bufferOffset, idxType);
+        m_renderer->FX_SetIStream(pIB, bufferOffset, idxType);
     }
 
     template<RenderIndexType idxType, class Validator>
     void TempDynIB<idxType, Validator>::CreateFillAndBind(const IndexDataType* pData, size_t numElements)
     {
-        TempDynIB<idxType, Validator> ib;
+        TempDynIB<idxType, Validator> ib(gcpRendD3D);
         ib.Allocate(numElements);
         ib.Update(pData);
         ib.Bind();

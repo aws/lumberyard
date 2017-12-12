@@ -18,12 +18,13 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Debug/ProfileModuleInit.h>
 #include <AzCore/Memory/AllocationRecords.h>
+#include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/Module/ModuleManager.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/conversions.h>
@@ -32,6 +33,7 @@ namespace AZ
 {
     class SerializeContext;
     class Module;
+    class ModuleManager;
 
     namespace Debug
     {
@@ -71,28 +73,17 @@ namespace AZ
             AZ_TYPE_INFO(ComponentApplication::Descriptor, "{70277A3E-2AF5-4309-9BBF-6161AFBDE792}");
             AZ_CLASS_ALLOCATOR(ComponentApplication::Descriptor, SystemAllocator, 0);
 
-            /**
-             * Describes a dynamic module used by the application.
-             */
-            class DynamicModuleDescriptor
-            {
-            public:
-
-                AZ_TYPE_INFO(DynamicModuleDescriptor, "{D2932FA3-9942-4FD2-A703-2E750F57C003}")
-
-                OSString m_dynamicLibraryPath;          ///< Path to the module.
-
-                static void ReflectSerialize(SerializeContext* context);
-            };
-
             ///////////////////////////////////////////////
             // SerializeContext::IObjectFactory
             void* Create(const char* name) override;
             void  Destroy(void* data) override;
             ///////////////////////////////////////////////
 
-            /// Reflect the descriptor data for serialization.
-            static void     ReflectSerialize(SerializeContext* context, ComponentApplication* app);
+            /// Reflect the descriptor data.
+            static void     Reflect(ReflectContext* context, ComponentApplication* app);
+
+            /// @deprecated
+            AZ_DEPRECATED(static void ReflectSerialize(SerializeContext* context, ComponentApplication* app), "Function deprecated, use ComponentApplication::Descriptor::Reflect() instead");
 
             Descriptor();
 
@@ -116,21 +107,19 @@ namespace AZ
             AZ::u64         m_stackRecordLevels;        ///< If stack recording is enabled, how many stack levels to record. (default: 5)
             bool            m_enableDrilling;           ///< True to enabled drilling support for the application. RegisterDrillers will be called. Ignored in release. (default: true)
 
-            AZStd::vector<DynamicModuleDescriptor, OSStdAllocator> m_modules;   ///< Dynamic modules used by the application.
-                                                                                ///< These will be loaded on startup.
+            ModuleDescriptorList m_modules;             ///< Dynamic modules used by the application.
+                                                        ///< These will be loaded on startup.
 
             ///////////////////////////////////////////////
             /// PLATFORM
             /**
-             * Used only on X360 to indicate is we want to allocate physical memory. The page size is determined by m_pageSize
+             * Used only on X360 to indicate is we want to allocate physical memory. The page size is determined by m_pageSize // ACCEPTED_USE
              * so if m_pageSize >= 64 KB we will use MEM_LARGE_PAGES otherwise small 4 KB pages.
              * default: false
              */
-            bool            m_x360IsPhysicalMemory;
+            bool            m_x360IsPhysicalMemory; // ACCEPTED_USE
             ///////////////////////////////////////////////
         };
-
-        using CreateStaticModulesCallback = void(*)(AZStd::vector<AZ::Module*>&);
 
         /// Application settings.
         /// Unlike the Descriptor, these values must be set in code and cannot be loaded from a file.
@@ -152,32 +141,6 @@ namespace AZ
 
             /// Whether or not to load dynamic modules described by \ref Descriptor::m_modules
             bool m_loadDynamicModules = true;
-        };
-
-        /**
-         * Contains a static or dynamic AZ::Module.
-         */
-        struct ModuleData
-        {
-            ModuleData() = default;
-
-            // no copy allowed, only move
-            ModuleData(const ModuleData&) = delete;
-            ModuleData& operator=(const ModuleData&) = delete;
-            ModuleData(ModuleData&& rhs);
-            ~ModuleData();
-
-            /// Destroy m_module
-            void DestroyModuleClass();
-
-            /// \return a string identifying this module.
-            const char* GetDebugName() const;
-
-            /// Deals with loading and unloading the AZ::Module's DLL.
-            /// This is null when the AZ::Module comes from a static LIB.
-            AZStd::unique_ptr<DynamicModuleHandle> m_dynamicHandle;
-
-            Module* m_module = nullptr;
         };
 
         ComponentApplication();
@@ -220,10 +183,6 @@ namespace AZ
         const char* GetExecutableFolder() override { return m_exeDirectory; }
         /// Returns pointer to the driller manager if it's enabled, otherwise NULL.
         Debug::DrillerManager* GetDrillerManager() override { return m_drillerManager; }
-        /// Requests reload of a dynamic module.
-        void ReloadModule(const char* moduleFullPath) override;
-        /// Enumerates all Modules
-        void EnumerateModules(EnumerateModulesCallback cb) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -250,39 +209,22 @@ namespace AZ
          */
         bool        WriteApplicationDescriptor(const char* fileName);
 
-        // Successful outcome contains a pointer to the loaded module.
-        // Failed outcome contains an error message.
-        using LoadModuleOutcome = AZ::Outcome<ModuleData*, AZStd::string>;
-
-        /// Load and initialize a dynamic module.
-        /// The application owns the new module and will clean it up on shutdown.
-        /// On success, returns the module.
-        /// On failure, returns a string explaining the error.
-        virtual LoadModuleOutcome LoadDynamicModule(const Descriptor::DynamicModuleDescriptor& moduleDescriptor);
-
-		/**
+        /**
          * Application-overridable way to state required system components.
          * These components will be added to the system entity if they were
          * not already provided by the application descriptor.
          * \return the type-ids of required components.
          */
         virtual ComponentTypeList GetRequiredSystemComponents() const;
-		
-        /** 
-        * ResolveModulePath is called whenever LoadDynamicModule wants to resolve a module in order to actually load it.
-        * You can override this if you need to load modules from a different path or hijack module loading in some other way.
-        * their paths with relative folder paths or for example turning them into absolute paths.  If you do, ensure that
-        * you use platform-specific conventions to do so, as this is called by multiple platforms.
-        * The default implentation prepents the path to the executable to the module path, but you can override this behavior
-        * (Call the base class if you want this behavior to persist in overrides)
-        */
-        virtual void ResolveModulePath(AZ::OSString& modulePath);
 
-        /**  
-        * IsModuleLoaded
-        * Returns true if the given module is already loaded (performs module path resolving just like LoadDynamicModule does)
-        */
-        bool IsModuleLoaded(const Descriptor::DynamicModuleDescriptor& moduleDescriptor);
+        /**
+         * ResolveModulePath is called whenever LoadDynamicModule wants to resolve a module in order to actually load it.
+         * You can override this if you need to load modules from a different path or hijack module loading in some other way.
+         * If you do, ensure that you use platform-specific conventions to do so, as this is called by multiple platforms.
+         * The default implantation prepends the path to the executable to the module path, but you can override this behavior
+         * (Call the base class if you want this behavior to persist in overrides)
+         */
+        void ResolveModulePath(AZ::OSString& modulePath) override;
 
     protected:
         virtual void CreateSerializeContext();
@@ -317,26 +259,17 @@ namespace AZ
         virtual void AddSystemComponents(AZ::Entity* systemEntity);
 
         /**
-         * Called when a new serialize context is created and need to reflect all data structures.
-         * If you have any custom tweaks for the serialize context before it's filled with data
-         * use this function.
-         * You should NOT call this function directly it's called from CreateSerializeContext.
+         * @deprecated
          */
-        virtual void ReflectSerialize();
+        virtual void ReflectSerialize() {}
 
-        /// Initialize all static AZ::Modules.
-        virtual void InitStaticModules();
+        /*
+         * Reflect classes from this framework to the appropriate context.
+         * Subclasses of AZ::Component should not be listed here, they are reflected through the ComponentDescriptorBus.
+         */
+        virtual void Reflect(ReflectContext* context);
 
-        /// Initialize all dynamic AZ::Modules.
-        virtual void InitDynamicModules();
-
-        /// Initialize an AZ::Module class (regardless of whether it was static or dynamic).
-        virtual void InitModule(AZ::Module& module);
-
-        /// Notify modules of shutdown and unload any DLLs.
-        virtual void ShutdownAllModules();
-
-        /// Adds system components requested by modules and the application.
+        /// Adds system components requested by modules and the application to the system entity.
         void AddRequiredSystemComponents(AZ::Entity* systemEntity);
 
         /// Calculates the directory the application executable comes from.
@@ -344,8 +277,6 @@ namespace AZ
 
         /// Adjusts an input descriptor path to the app's root path.
         AZ::OSString GetFullPathForDescriptor(const char* descriptorPath);
-
-        void OnEntityLoaded(void* classPtr, const AZ::Uuid& classId, const AZ::SerializeContext* sc, AZ::Entity** systemEntity);
 
         template<typename Iterator>
         static void NormalizePath(Iterator begin, Iterator end, bool doLowercase = true)
@@ -361,6 +292,7 @@ namespace AZ
         float                                       m_deltaTime;
         SerializeContext*                           m_serializeContext;
         BehaviorContext*                            m_behaviorContext;
+        AZStd::unique_ptr<ModuleManager>            m_moduleManager;
         Descriptor                                  m_descriptor;
         bool                                        m_isStarted;
         bool                                        m_isSystemAllocatorOwner;
@@ -372,7 +304,6 @@ namespace AZ
         Debug::DrillerManager*                      m_drillerManager;
 
         StartupParameters                           m_startupParameters;
-        AZStd::vector<AZStd::unique_ptr<ModuleData>> m_modules;
 
 private:
         AZ::Debug::ProfileModuleInitializer m_moduleProfilerInit;

@@ -25,6 +25,7 @@ def build(bld):
         platforms               = ['all'],
         configurations          = ['all'],
         pch                     = 'StdAfx.cpp',
+        defines                 = ['ENGINE_EXPORTS'],
         use                     = ['AzFramework',
                                    'GridMate'],
         uselib                  = ['LZ4',
@@ -37,6 +38,7 @@ def build(bld):
         includes                = [ bld.Path('Code/SDKs'),
                                     bld.Path('Code/Tools/GemRegistry/include') ],
         libpath                 = [ bld.Path('Code/SDKs') ],
+        features                = ['link_running_program'],
 
         # Platform Specific
         win_defines             = ['EXCLUDE_CINEMIZER_SDK', 'KDAB_MAC_PORT'],
@@ -52,18 +54,19 @@ def build(bld):
         linux_lib               = [ 'tomcrypt', 'tommath', 'm' ],
 
        
+       
 
        
        
        
 
         android_use             = [ 'SDL2', 'SDL2Ext' ],
-        android_file_list       = 'platformos_pc.waf_files',
+        android_file_list       = [ 'platformos_pc.waf_files', 'autodetect_android.waf_files' ],
         android_includes        = [bld.Path('/Code/CryEngine/CrySystem/JobManager'),
                                    bld.Path('/Code/CryEngine/CrySystem/XML/Expat'),
                                    bld.Path('/Code/CryEngine/RenderDll/XRenderD3D9') ],
 
-        ios_file_list           = 'platformos_pc.waf_files',
+        ios_file_list           = [ 'platformos_pc.waf_files', 'autodetect_ios.waf_files' ],
 
         appletv_file_list       = 'platformos_pc.waf_files',
 

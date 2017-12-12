@@ -14,6 +14,8 @@
 // Description : CryMovie animation node for shadow settings
 
 #include "StdAfx.h"
+#include <AzCore/Serialization/SerializeContext.h>
+
 #include "ShadowsSetupNode.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -33,8 +35,14 @@ namespace ShadowSetupNode
 };
 
 //-----------------------------------------------------------------------------
+CShadowsSetupNode::CShadowsSetupNode()
+    : CShadowsSetupNode(0)
+{
+}
+
+//-----------------------------------------------------------------------------
 CShadowsSetupNode::CShadowsSetupNode(const int id)
-    : CAnimNode(id)
+    : CAnimNode(id, eAnimNodeType_ShadowSetup)
 {
     CShadowsSetupNode::Initialize();
 }
@@ -103,4 +111,11 @@ bool CShadowsSetupNode::GetParamInfoFromType(const CAnimParamType& paramId, SPar
         }
     }
     return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CShadowsSetupNode::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CShadowsSetupNode, CAnimNode>()
+        ->Version(1);
 }

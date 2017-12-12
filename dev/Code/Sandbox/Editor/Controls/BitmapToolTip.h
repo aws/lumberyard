@@ -76,7 +76,6 @@ private:
     QLabel m_staticBitmap;
     QLabel m_staticText;
     QString m_filename;
-    QPixmap m_previewBitmap;
     bool        m_bShowHistogram;
     EShowMode m_eShowMode;
     bool    m_bShowFullsize;

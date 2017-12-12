@@ -41,15 +41,15 @@ namespace LmbrCentral
     /**
      * Handler for static mesh assets (cgf).
      */
-    class StaticMeshAssetHandler
+    class MeshAssetHandler
         : public MeshAssetHandlerBase
         , public AZ::AssetTypeInfoBus::Handler
     {
     public:
 
-        AZ_CLASS_ALLOCATOR(StaticMeshAssetHandler, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(MeshAssetHandler, AZ::SystemAllocator, 0);
 
-        ~StaticMeshAssetHandler() override;
+        ~MeshAssetHandler() override;
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // AZ::Data::AssetHandler

@@ -613,8 +613,8 @@ void CTiledShading::PrepareLightList(TArray<SRenderLight>& envProbes, TArray<SRe
                     lightCullInfo.volumeParams1 = Vec4(u1.x, u1.y, u1.z, areaLightMat.GetColumn1().GetLength() * 0.5f);
                     lightCullInfo.volumeParams2 = Vec4(u2.x, u2.y, u2.z, areaLightMat.GetColumn2().GetLength() * 0.5f);
 
-                    float volumeSize = renderLight.m_fRadius + max(renderLight.m_fAreaWidth, renderLight.m_fAreaHeight);
-                    lightCullInfo.depthBounds = Vec2(posVS.z - volumeSize, posVS.z + volumeSize) * invCameraFar;
+                    float volumeExtent = renderLight.m_fRadius + max(renderLight.m_fAreaWidth, renderLight.m_fAreaHeight);
+                    lightCullInfo.depthBounds = Vec2(posVS.z - volumeExtent, posVS.z + volumeExtent) * invCameraFar;
 
                     float areaFov = renderLight.m_fLightFrustumAngle * 2.0f;
                     if (renderLight.m_Flags & DLF_CASTSHADOW_MAPS)
@@ -845,7 +845,7 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
     rd->FX_PushRenderTarget(0, CTexture::s_ptexSceneSpecularAccMap, NULL);
 
     uint64 nPrevRTFlags = rd->m_RP.m_FlagsShader_RT;
-    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_DEBUG0]);
+    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5] | g_HWSR_MaskBit[HWSR_DEBUG0] | g_HWSR_MaskBit[HWSR_APPLY_SSDO]);
 
     if (CRenderer::CV_r_DeferredShadingTiled > 1)   // Tiled deferred
     {
@@ -872,6 +872,16 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
     }
 
+    if (CRenderer::CV_r_ApplyToonShading > 0)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_TOON_SHADING];
+    }
+	
+    if (CRenderer::CV_r_ssdo)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
+    }
+	
 #if defined(FEATURE_SVO_GI)
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_CUBEMAP0];
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_DECAL_TEXGEN_2D];

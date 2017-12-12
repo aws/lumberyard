@@ -98,6 +98,11 @@ void PropertiesWidget::SelectedEntityPointersChanged()
     m_propertiesContainer->SelectedEntityPointersChanged();
 }
 
+void PropertiesWidget::SetSelectedEntityDisplayNameWidget(QLabel * selectedEntityDisplayNameWidget)
+{
+    m_propertiesContainer->SetSelectedEntityDisplayNameWidget(selectedEntityDisplayNameWidget);
+}
+
 void PropertiesWidget::Refresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel, const AZ::Uuid* componentType)
 {
     m_propertiesContainer->Refresh(refreshLevel, componentType);

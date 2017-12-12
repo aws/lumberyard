@@ -4,8 +4,7 @@
 
 #include <IEditor.h>
 
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/ICloudCanvasEditor.h>
 
 #include <aws/core/auth/AWSCredentialsProvider.h>
 
@@ -48,7 +47,7 @@ ImportableResourcesWidget::ImportableResourcesWidget(QString resource_group, QSh
     //Keep the list window open so the user can import other resources after the current process finishes
     disconnect(GetPrimaryButton(), &QPushButton::clicked, this, &QDialog::accept);
     connect(GetPrimaryButton(), &QPushButton::clicked, this, &ImportableResourcesWidget::OnPrimaryButtonClick);
-    resize(GetWidth(m_listTable), GetHeight(m_listTable));
+    setMinimumSize(GetWidth(m_listTable) * 1.5, GetHeight(m_listTable));
 }
 
 void ImportableResourcesWidget::CreateRegionRow()
@@ -57,15 +56,11 @@ void ImportableResourcesWidget::CreateRegionRow()
     QHBoxLayout* regionLayout = new QHBoxLayout;
     QLabel* selectLabel = new QLabel("Select resources ");
     selectLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    QLabel* regionLabel = new QLabel("Region:");
-    regionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    //Set the loading information for the importable resource window
     CreateLoadingLabel();
 
-    regionLayout->addWidget(selectLabel, 0, Qt::AlignLeft);
-    regionLayout->addWidget(m_loadingProcess, 1);
-    regionLayout->addWidget(regionLabel, 0, Qt::AlignRight);
-    m_gridLayout.addLayout(regionLayout, m_currentRowNum, 0);
+    regionLayout->addWidget(selectLabel, 1, Qt::AlignLeft);
+    regionLayout->addWidget(m_loadingProcess, 1, Qt::AlignRight);
+    m_gridLayout.addLayout(regionLayout, m_currentRowNum, 0, Qt::AlignLeft);
 
     //Add the region combo box    
     m_regionBox = new QComboBox;
@@ -74,7 +69,14 @@ void ImportableResourcesWidget::CreateRegionRow()
         "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "eu-central-1", "eu-west-1", "sa-east-1"});
     m_regionBox->setCurrentIndex(0);
     m_regionBox->setEditable(true);
-    m_gridLayout.addWidget(m_regionBox, m_currentRowNum, 1, Qt::AlignRight);
+
+    QLabel* regionLabel = new QLabel("Region:");
+    regionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    QHBoxLayout* regionLayout1 = new QHBoxLayout;
+    regionLayout1->addWidget(regionLabel, 0, Qt::AlignLeft);
+    regionLayout1->addWidget(m_regionBox, 0, Qt::AlignRight);
+    m_gridLayout.addLayout(regionLayout1, m_currentRowNum, 1, Qt::AlignRight);
 
     ++m_currentRowNum;
 }
@@ -110,7 +112,7 @@ void ImportableResourcesWidget::CreateLoadingLabel()
 {
     m_loadingProcess = new QLabel;
     m_loadingProcess->setObjectName("LoadingLabel");
-    m_loadingProcess->show();
+    m_loadingProcess->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     connect(m_importerModel.data(), &IAWSImporterModel::ListFinished, this, &ImportableResourcesWidget::OnListFinished);
 }
@@ -201,9 +203,11 @@ void ImportableResourcesWidget::OnTableContextMenuRequested(QPoint pos)
     auto viewResource = menu->addAction("View resource in AWS console");
     QString resourceType = m_importerModel->item(row, IAWSImporterModel::TypeColumn)->text();
     QString physicalResourceId = m_importerModel->item(row, IAWSImporterModel::ResourceColumn)->text();
+    QString resourceArn = m_importerModel->item(row, IAWSImporterModel::ArnColumn)->text();
+    QString region = resourceType == "AWS::SNS::S3" ? "" : resourceArn.split(":")[3];
     if (resourceType == "AWS::SNS::Topic")
         physicalResourceId = m_importerModel->item(row, IAWSImporterModel::ArnColumn)->text();
-    connect(viewResource, &QAction::triggered, this, [this, physicalResourceId, resourceType]() {ViewConsoleResource(resourceType, physicalResourceId); });
+    connect(viewResource, &QAction::triggered, this, [this, physicalResourceId, resourceType, region]() {ViewConsoleResource(resourceType, physicalResourceId, region); });
 
     if (menu && !menu->isEmpty())
     {
@@ -224,8 +228,7 @@ void ImportableResourcesWidget::OnMenuConfigureClicked(int row)
         m_importerModel->item(m_selectedRowList[count], IAWSImporterModel::SelectedStateColumn)->setText("unselected");
     m_selectedRowList.clear();
 
-    QString originalName = m_importerModel->item(row, IAWSImporterModel::ResourceColumn)->text();
-    m_importerModel->item(row, IAWSImporterModel::NameColumn)->setText(originalName);
+    m_importerModel->item(row, IAWSImporterModel::NameColumn)->setText("");
     m_importerModel->item(row, IAWSImporterModel::SelectedStateColumn)->setText("selected");
     m_selectedRowList.append(row);
     CreateConfigurationWindow();
@@ -241,7 +244,7 @@ void ImportableResourcesWidget::OnMenuDeleteClicked(int row)
         m_dialog->close();
 }
 
-void ImportableResourcesWidget::ViewConsoleResource(const QString& resourceType, const QString& resourceName)
+void ImportableResourcesWidget::ViewConsoleResource(const QString& resourceType, const QString& resourceName, const QString& region)
 {
     QString destString = "https://console.aws.amazon.com/";
     if (resourceType == "AWS::S3::Bucket")
@@ -251,31 +254,27 @@ void ImportableResourcesWidget::ViewConsoleResource(const QString& resourceType,
     }
     else if (resourceType == "AWS::DynamoDB::Table")
     {
-        destString += "dynamodb/#";
+        destString += "dynamodb/home?region=" + region + "#";
         destString += "tables:selected=" + resourceName;
     }
     else if (resourceType == "AWS::Lambda::Function")
     {
-        destString += "lambda/#";
+        destString += "lambda/home?region=" + region + "#";
         destString += "/functions/" + resourceName;
     }
     else if (resourceType == "AWS::SNS::Topic")
     {
-        destString += "sns/#";
+        destString += "sns/home?region=" + region + "#";
         destString += "/topics/" + resourceName;
     }
     else if (resourceType == "AWS::SQS::Queue")
     {
-        destString += "sqs/";
+        destString += "sqs/home?region=" + region + "#";
     }
 
-    LmbrAWS::IClientManager* clientManager = gEnv->pLmbrAWS->GetClientManager();
     auto profileName = m_view->GetDefaultProfile();
-    if (clientManager)
-    {
-        clientManager->GetEditorClientSettings().credentialProvider = Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD);
-        clientManager->ApplyEditorConfiguration();
-    }
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, SetCredentials, Aws::MakeShared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>("AWSManager", profileName.toStdString().c_str(), Aws::Auth::REFRESH_THRESHOLD));
+    EBUS_EVENT(CloudCanvas::CloudCanvasEditorRequestBus, ApplyConfiguration);
     GetIEditor()->LaunchAWSConsole(destString);
 }
 
@@ -316,8 +315,7 @@ void ImportableResourcesWidget::OnPrimaryButtonClick()
         {
             m_selectedRowList.append(row);
             //If the resource is chosen, set its name empty and its state selected
-            QString originalName = m_importerModel->item(row, IAWSImporterModel::ResourceColumn)->text();
-            m_importerModel->item(row, IAWSImporterModel::NameColumn)->setText(originalName);
+            m_importerModel->item(row, IAWSImporterModel::NameColumn)->setText("");
             m_importerModel->item(row, IAWSImporterModel::SelectedStateColumn)->setText("selected");
         }
         else
@@ -363,8 +361,10 @@ void ImportableResourcesWidget::CreateConfigurationWindow()
     m_dialog->AddSpanningWidgetRow(m_selectionTable);
 
     //Set the first row editable
-    m_selectionTable->setCurrentIndex(m_filterConfigurationProxyModel->index(0, IAWSImporterModel::NameColumn));
-    m_selectionTable->edit(m_filterConfigurationProxyModel->index(0, IAWSImporterModel::NameColumn));
+    QModelIndex firstItemIndex = m_filterConfigurationProxyModel->index(0, IAWSImporterModel::NameColumn);
+    m_selectionTable->setCurrentIndex(firstItemIndex);
+    m_selectionTable->edit(firstItemIndex);
+    CheckResourceNameGiven(firstItemIndex, firstItemIndex);
     
     connect(m_selectionTable->selectionModel(), &QItemSelectionModel::currentChanged, this, &ImportableResourcesWidget::CheckResourceNameGiven);
     connect(m_selectionTable, &QTableView::customContextMenuRequested, this, &ImportableResourcesWidget::OnTableContextMenuRequested);

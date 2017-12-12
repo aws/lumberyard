@@ -205,8 +205,13 @@ namespace AzFramework
             AZ_Error("AssetCatalog", typeToRegister != AZ::Data::s_invalidAssetType,
                 "Invalid asset type provided for registration of asset \"%s\".", m_pathBuffer.c_str());
 
+            // note, we are intentionally allowing missing files, since this is an explicit ask to add.
             AZ::u64 fileSize = 0;
-            AZ::IO::FileIOBase::GetInstance()->Size(m_pathBuffer.c_str(), fileSize); // note, we are intentionally allowing missing files, since this is an explicit ask to add.
+            auto* fileIo = AZ::IO::FileIOBase::GetInstance();
+            if (fileIo->Exists(m_pathBuffer.c_str()))
+            {
+                fileIo->Size(m_pathBuffer.c_str(), fileSize);
+            }
 
             AZ::Data::AssetInfo newInfo;
             newInfo.m_relativePath = m_pathBuffer;
@@ -312,7 +317,7 @@ namespace AzFramework
                     // this call will fail on purpose if bytes.size() != size successfully actually read from disk.
                     if (!AZ::IO::FileIOBase::GetInstance()->Read(handle, bytes.data(), bytes.size(), true))
                     {
-                        AZ_Error("AssetCatalog", "File %s failed read - read was truncated!", catalogRegistryFile);
+                        AZ_Error("AssetCatalog", false, "File %s failed read - read was truncated!", catalogRegistryFile);
                         bytes.set_capacity(0);
                     }
                     AZ::IO::FileIOBase::GetInstance()->Close(handle);
@@ -333,7 +338,7 @@ namespace AzFramework
         }
         else
         {
-            AZ_ErrorOnce("AssetCatalog", "Unable to load the asset catalog from %s!", catalogRegistryFile);
+            AZ_ErrorOnce("AssetCatalog", false, "Unable to load the asset catalog from %s!", catalogRegistryFile);
         }
 
         StartMonitoringAssets();

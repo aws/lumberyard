@@ -11,8 +11,7 @@
 */
 #include <StdAfx.h>
 #include <Configuration/FlowNode_ApplyConfiguration.h>
-#include <LmbrAWS/ILmbrAWS.h>
-#include <LmbrAWS/IAWSClientManager.h>
+#include <CloudCanvas/CloudCanvasIdentityBus.h>
 
 namespace LmbrAWS
 {
@@ -41,7 +40,10 @@ namespace LmbrAWS
     {
         if (event == eFE_Activate && IsPortActive(pActInfo, EIP_Apply))
         {
-            if (gEnv->pLmbrAWS->GetClientManager()->ApplyConfiguration())
+            bool appliedConfiguration{ false };
+            EBUS_EVENT_RESULT(appliedConfiguration, CloudGemFramework::CloudCanvasPlayerIdentityBus, ApplyConfiguration);
+
+            if (appliedConfiguration)
             {
                 ActivateOutput(pActInfo, EOP_Success, true);
             }

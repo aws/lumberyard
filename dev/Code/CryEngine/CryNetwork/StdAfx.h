@@ -26,11 +26,6 @@
 #include <memory>
 #include <vector>
 
-#include <CryModuleDefs.h>
-#ifndef eCryModule
-    #define eCryModule eCryM_Network
-#endif
-
 #include <platform.h>
 
 #include <INetwork.h>

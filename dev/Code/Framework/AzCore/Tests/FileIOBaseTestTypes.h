@@ -30,12 +30,12 @@ class TestFileIOBase : public AZ::IO::FileIOBase
     const AZ::IO::HandleType LocalHandleStartValue = 1000000; //start the local file io handles at 1 million
 public:
 
-    TestFileIOBase::TestFileIOBase()
+    TestFileIOBase()
     {
         m_nextHandle = LocalHandleStartValue;
     }
 
-    TestFileIOBase::~TestFileIOBase()
+    ~TestFileIOBase()
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
         while (!m_openFiles.empty())

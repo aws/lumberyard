@@ -22,9 +22,7 @@
 #include <AzCore/std/string/utf8/unchecked.h>
 //////////////////////////////////////////////////////////////////////////
 
-//#if defined(AZ_PLATFORM_PS3) on windows as of VS2008 it sometimes allocate memory, we don't want that!
 # define AZSTD_USE_OLD_RW_STL
-//#endif
 
 #if !defined(AZSTD_USE_OLD_RW_STL)
 #   include <locale>

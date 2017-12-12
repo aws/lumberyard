@@ -26,13 +26,13 @@ def build(bld):
 
     bld.DefineGem(
         includes        = [bld.Path('Code/CryEngine/CryAction'),
-                           bld.Path('Code/CryEngine/LmbrAWS/Configuration'),
                            bld.Path('Code/SDKs/AWSNativeSDK/include'),
         ],
         platforms = ['all'],
 
         file_list = file_list,
-        use = ['CloudGemFrameworkStaticLibrary'],
         uselib = ['AWS_CPP_SDK_COGNITO_IDP','AWS_CPP_SDK_CORE'],
-        shared_settings = ['awsgem.json']
+        shared_settings = ['awsgem.json'],
+
+       
     )

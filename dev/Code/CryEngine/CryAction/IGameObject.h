@@ -407,9 +407,9 @@ public:
         auto begin = std::begin(s_RMIInfo.m_rmiReps);
         auto end = begin + s_RMIInfo.m_numMessages;
         auto iter = std::lower_bound(begin, end, repId,
-                [](const IRMIRep* rep, uint32 repId)
+                [](const IRMIRep* rmiRep, uint32 rmiRepId)
                 {
-                    return rep->GetUniqueId() < repId;
+                    return rmiRep->GetUniqueId() < rmiRepId;
                 }
                 );
 

@@ -13,6 +13,7 @@
 
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
@@ -22,23 +23,62 @@
 
 namespace Gems
 {
+    /// Describes how other Gems (and the final executable) will link against this Gem (valid only for Type::GameModule).
+    enum class LinkType
+    {
+        /// Do not link against this Gem, it is loaded as a Dynamic Library at runtime.
+        Dynamic,
+        /// Link against this Gem, it is also loaded as a Dynamic Library at runtime.
+        DynamicStatic,
+        /// Gem has no code, there is nothing to link against.
+        NoCode,
+    };
+
+    /**
+     * Defines a module produced by a Gem.
+     */
+    struct ModuleDefinition
+    {
+        enum class Type
+        {
+            GameModule,
+            EditorModule,
+            StaticLib,
+            Builder,
+        };
+
+        /// The type of module this represents
+        Type m_type;
+        /// The name of the module (for dll naming)
+        AZStd::string m_name;
+        /// If this module is type GameModule, how is it linked?
+        LinkType m_linkType = LinkType::NoCode;
+        /// The complete name of the file produced (for all Types but StaticLib)
+        AZStd::string m_fileName;
+        /// If the module extends another module, this points to that
+        AZStd::weak_ptr<const ModuleDefinition> m_parent;
+        /// All of the modules that extend this module
+        AZStd::vector<AZStd::weak_ptr<const ModuleDefinition>> m_children;
+
+        // Construction and Destruction is trivial
+        ModuleDefinition() = default;
+        ~ModuleDefinition() = default;
+
+        // Disallow copying and moving
+        ModuleDefinition(const ModuleDefinition&) = delete;
+        ModuleDefinition& operator=(const ModuleDefinition&) = delete;
+        ModuleDefinition(ModuleDefinition&&) = delete;
+        ModuleDefinition& operator=(ModuleDefinition&& rhs) = delete;
+    };
+    using ModuleDefinitionConstPtr = AZStd::shared_ptr<const ModuleDefinition>;
+    using ModuleDefinitionVector = AZStd::vector<ModuleDefinitionConstPtr>;
+
     /**
      * Describes an instance of a Gem.
      */
     class IGemDescription
     {
     public:
-        /// Describes how other Gems (and the final executable) will link against this Gem.
-        enum class LinkType
-        {
-            /// Do not link against this Gem, it is loaded as a Dynamic Library at runtime.
-            Dynamic,
-            /// Link against this Gem, it is also loaded as a Dynamic Library at runtime.
-            DynamicStatic,
-            /// Gem has no code, there is nothing to link against.
-            NoCode,
-        };
-
         /// The ID of the Gem
         virtual const AZ::Uuid& GetID() const = 0;
         /// The name of the Gem
@@ -57,18 +97,11 @@ namespace Gems
         virtual const AZStd::string& GetIconPath() const = 0;
         /// Tags to associated with the Gem
         virtual const AZStd::vector<AZStd::string>& GetTags() const = 0;
-        /// How to link against this Gem
-        virtual LinkType GetLinkType() const = 0;
-        /// Whether this Gem compiles to a dll
-        bool HasDll() const
-        {
-            return GetLinkType() == LinkType::Dynamic
-                   || GetLinkType() == LinkType::DynamicStatic;
-        }
-        /// The name of the compiled dll
-        virtual const AZStd::string& GetDllFileName() const = 0;
-        /// The name of the editor dll file. Returns same as GetDllFileName() if there isn't an editor specific module.
-        virtual const AZStd::string& GetEditorDllFileName() const = 0;
+        /// Get the list of modules produced by the Gem
+        virtual const ModuleDefinitionVector& GetModules() const = 0;
+        /// Get all modules to be loaded for a given function
+        /// This method traverses children to find the most derived module of each type per tree
+        virtual const ModuleDefinitionVector& GetModulesOfType(ModuleDefinition::Type type) const = 0;
         /// The name of the engine module class to initialize
         virtual const AZStd::string& GetEngineModuleClass() const = 0;
         /// Get the Gem's other gems dependencies
@@ -270,7 +303,7 @@ namespace Gems
         * \returns                 IGemDescriptionConstPtr if a gem.json file could be parsed out of the gemFolderPath,
         *                          AZ::Failure with error message if any errors occurred.
         */
-        virtual AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath) = 0;
+        virtual AZ::Outcome<IGemDescriptionConstPtr, AZStd::string> ParseToGemDescriptionPtr(const AZStd::string& gemFolderRelPath, const char* absoluteFilePath) = 0;
 
         /**
          * Loads Gems for the specified project.

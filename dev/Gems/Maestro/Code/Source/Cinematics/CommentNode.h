@@ -24,12 +24,13 @@ class CCommentNode
     : public CAnimNode
 {
 public:
-    CCommentNode(const int id);
-    static void Initialize();
+    AZ_CLASS_ALLOCATOR(CCommentNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CCommentNode, "{9FCBF56F-B7B3-4519-B3D2-9B7E5F7E6210}", CAnimNode);
 
-    //-----------------------------------------------------------------------------
-    //!
-    virtual EAnimNodeType GetType() const { return eAnimNodeType_Comment; }
+    CCommentNode(const int id);
+    CCommentNode();
+
+    static void Initialize();
 
     //-----------------------------------------------------------------------------
     //! Overrides from CAnimNode
@@ -47,6 +48,8 @@ public:
     //! Overrides from IAnimNode
     virtual unsigned int GetParamCount() const;
     virtual CAnimParamType GetParamType(unsigned int nIndex) const;
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;

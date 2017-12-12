@@ -20,6 +20,42 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    InputChannel::Snapshot::Snapshot(const InputChannel& inputChannel)
+        : m_channelId(inputChannel.GetInputChannelId())
+        , m_deviceId(inputChannel.GetInputDevice().GetInputDeviceId())
+        , m_state(inputChannel.GetState())
+        , m_value(inputChannel.GetValue())
+        , m_delta(inputChannel.GetDelta())
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    InputChannel::Snapshot::Snapshot(const InputChannelId& channelId,
+                                     const InputDeviceId& deviceId,
+                                     State state)
+        : m_channelId(channelId)
+        , m_deviceId(deviceId)
+        , m_state(state)
+        , m_value((state == State::Began || state == State::Updated) ? 1.0f : 0.0f)
+        , m_delta((state == State::Began) ? 1.0f : ((state == State::Ended) ? -1.0f : 0.0f))
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    InputChannel::Snapshot::Snapshot(const InputChannelId& channelId,
+                                     const InputDeviceId& deviceId,
+                                     State state,
+                                     float value,
+                                     float delta)
+        : m_channelId(channelId)
+        , m_deviceId(deviceId)
+        , m_state(state)
+        , m_value(value)
+        , m_delta(delta)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannel::InputChannel(const InputChannelId& inputChannelId, const InputDevice& inputDevice)
         : m_inputChannelId(inputChannelId)
         , m_inputDevice(inputDevice)

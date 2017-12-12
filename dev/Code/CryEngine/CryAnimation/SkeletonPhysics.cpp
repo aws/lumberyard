@@ -2809,17 +2809,21 @@ void CSkeletonPhysics::Physics_SynchronizeToEntityArticulated(float timeDelta)
             Physics_SynchronizeToEntity(*m_pCharPhysics, KinematicMovement);
         }
 
-        pe_params_articulated_body pab;
-        pab.pivot.zero();
-        pab.posHostPivot = KinematicMovement.t + poseData.GetJointAbsolute(getBonePhysChildIndex(0)).t;//*m_fScale;
-        pab.qHostPivot = KinematicMovement.q;
-        pab.bRecalcJoints = m_bPhysicsAwake;
-        m_velPivot = (pab.posHostPivot - m_prevPosPivot) / max(0.001f, m_pInstance->m_fOriginalDeltaTime);
-        m_velPivot *= (float)isneg(m_velPivot.len2() - sqr(30.0f));
-        m_prevPosPivot = pab.posHostPivot;
-        m_pCharPhysics->SetParams(&pab);
+        if (m_bHasPhysics) 
+        {
+            pe_params_articulated_body pab;
+            pab.pivot.zero();
+
+            pab.posHostPivot = KinematicMovement.t + poseData.GetJointAbsolute(getBonePhysChildIndex(0)).t;//*m_fScale;
+            pab.qHostPivot = KinematicMovement.q;
+            pab.bRecalcJoints = m_bPhysicsAwake;
+            m_velPivot = (pab.posHostPivot - m_prevPosPivot) / max(0.001f, m_pInstance->m_fOriginalDeltaTime);
+            m_velPivot *= (float)isneg(m_velPivot.len2() - sqr(30.0f));
+            m_prevPosPivot = pab.posHostPivot;
+            m_pCharPhysics->SetParams(&pab);
+        }
     }
-    else if (m_bPhysicsSynchronizeFromEntity && m_pPhysBuffer && m_pSkeletonAnim->m_IsAnimPlaying)
+    else if (m_bPhysicsSynchronizeFromEntity && m_pPhysBuffer && m_pSkeletonAnim->m_IsAnimPlaying && m_bPhysicsAwake)
     {
         int physicsLod = 0;
         const Skeleton::CPoseData& poseData = GetPoseData();
@@ -2842,6 +2846,7 @@ void CSkeletonPhysics::Physics_SynchronizeToEntityArticulated(float timeDelta)
                 continue;
             }
 
+            physicsParamsJoint.op[0] = parentIndex;
             physicsParamsJoint.op[1] = i;
             physicsParamsJoint.qtarget = m_pPhysBuffer[i].angles;
             m_pCharPhysics->SetParams(&physicsParamsJoint);

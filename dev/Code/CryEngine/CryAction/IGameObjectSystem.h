@@ -114,13 +114,13 @@ struct IGameObjectSystem
 //   Structure used to define a game object event
 struct SGameObjectEvent
 {
-    SGameObjectEvent(uint32 event, uint16 flags, IGameObjectSystem::ExtensionID target = IGameObjectSystem::InvalidExtensionID, void* param = 0)
+    SGameObjectEvent(uint32 _event, uint16 _flags, IGameObjectSystem::ExtensionID _target = IGameObjectSystem::InvalidExtensionID, void* _param = 0)
     {
-        this->event = event;
-        this->target = target;
-        this->flags = flags;
+        this->event = _event;
+        this->target = _target;
+        this->flags = _flags;
         this->ptr = 0;
-        this->param = param;
+        this->param = _param;
     }
     uint32 event;
     IGameObjectSystem::ExtensionID target;

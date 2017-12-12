@@ -1,9 +1,4 @@
 {
-    "EnabledResourceGroups": [
-        "ProjectDefinedGroup", 
-        "CloudGemMessageOfTheDay", 
-        "CloudGemPlayerAccount", 
-        "CloudGemDynamicContent", 
-        "CloudGemLeaderboard"
-    ]
+    "DisabledResourceGroups": [],
+    "FrameworkVersion": "1.1.1"
 }

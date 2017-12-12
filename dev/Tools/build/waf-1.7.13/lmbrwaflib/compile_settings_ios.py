@@ -26,7 +26,7 @@ def load_ios_common_settings(conf):
     environment['DEFINES'] += [ 'APPLE', 'IOS', 'MOBILE', 'APPLE_BUNDLE' ]
     
     # Set Minimum ios version and the path to the current sdk
-    conf.options.min_iphoneos_version = "8.3"
+    conf.options.min_iphoneos_version = "9.0"
     sdk_path = subprocess.check_output(["xcrun", "--sdk", "iphoneos", "--show-sdk-path"]).strip()
     environment['CFLAGS'] += [ '-miphoneos-version-min=' + conf.options.min_iphoneos_version, '-isysroot' + sdk_path, '-Wno-shorten-64-to-32' ]
     environment['CXXFLAGS'] += [ '-miphoneos-version-min=' + conf.options.min_iphoneos_version, '-isysroot' + sdk_path, '-Wno-shorten-64-to-32' ]
@@ -52,7 +52,7 @@ def load_ios_common_settings(conf):
     environment['FRAMEWORKPATH_ST'] = '-F%s'
     
     # Default frameworks to always link
-    environment['FRAMEWORK'] = [ 'Foundation', 'UIKit', 'QuartzCore', 'GameController' ]
+    environment['FRAMEWORK'] = [ 'Foundation', 'UIKit', 'QuartzCore', 'GameController', 'CoreMotion' ]
 
     # Setup compiler and linker settings for mac bundles
     environment['CFLAGS_MACBUNDLE'] = environment['CXXFLAGS_MACBUNDLE'] = '-fpic'

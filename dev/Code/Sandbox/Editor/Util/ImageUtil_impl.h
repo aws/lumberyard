@@ -35,11 +35,9 @@ public:
 
     virtual bool SaveJPEG(const QString& strFileName, CImageEx& image) override;
 
-    virtual bool SaveBitmap(const QString& szFileName, CImageEx& image, bool inverseY = true) override;
+    virtual bool SaveBitmap(const QString& szFileName, CImageEx& image) override;
 
     virtual bool LoadBmp(const QString& file, CImageEx& image) override;
-
-    virtual bool LoadBmp(const QString& fileName, CImageEx& image, const RECT& rc) override;
 
     virtual bool SavePGM(const QString& fileName, const CImageEx& image) override;
 

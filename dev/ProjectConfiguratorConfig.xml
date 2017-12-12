@@ -20,9 +20,6 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardApplicationDescriptors" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 			</Class>
 			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
-				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardHelloWorld" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
-			</Class>
-			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardGems" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 			</Class>
 			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
@@ -34,9 +31,6 @@
 			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardTemplates" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 			</Class>
-      <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
-        <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardCloudCanvas" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
-      </Class>
       <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
         <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardEngines" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
       </Class>

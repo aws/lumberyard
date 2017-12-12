@@ -303,7 +303,22 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+            
+            serializeContext->Class<AnimationEvent>()
+                ->Version(1)
+                ->Field("name", &AnimationEvent::m_eventName)
+                ->Field("time", &AnimationEvent::m_time)
+                ->Field("endTime", &AnimationEvent::m_endTime)
+                ->Field("animName", &AnimationEvent::m_animName)
+                ->Field("parameter", &AnimationEvent::m_parameter)
+                ->Field("boneName1", &AnimationEvent::m_boneName1)
+                ->Field("boneName2", &AnimationEvent::m_boneName2)
+                ->Field("offset", &AnimationEvent::m_offset)
+                ->Field("direction", &AnimationEvent::m_direction)
+                ;
+
         }
+
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
@@ -327,12 +342,14 @@ namespace LmbrCentral
             //////////////////////////////////////////////////////////////////////////
             
             behaviorContext->EBus<CharacterAnimationRequestBus>("CharacterAnimationRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("SetBlendParameter", &CharacterAnimationRequestBus::Events::SetBlendParameter)
                 ->Event("GetBlendParameter", &CharacterAnimationRequestBus::Events::GetBlendParameter)
                 ->Event("SetAnimationDrivenMotion", &CharacterAnimationRequestBus::Events::SetAnimationDrivenMotion)
                 ;
 
             behaviorContext->Class<AnimationEvent>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Property("name", BehaviorValueGetter(&AnimationEvent::m_eventName), nullptr)
                 ->Property("time", BehaviorValueGetter(&AnimationEvent::m_time), nullptr)
                 ->Property("endTime", BehaviorValueGetter(&AnimationEvent::m_endTime), nullptr)
@@ -345,9 +362,11 @@ namespace LmbrCentral
                 ;
 
             behaviorContext->EBus<CharacterAnimationNotificationBus>("CharacterAnimationNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Handler<CharacterAnimationNotificationBusHandler>();
 
             behaviorContext->EBus<AimIKComponentRequestBus>("AimIKComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("EnableAimIK", &AimIKComponentRequestBus::Events::EnableAimIK)
                 ->Event("SetAimIKTarget", &AimIKComponentRequestBus::Events::SetAimIKTarget)
                 ->Event("SetAimIKLayer", &AimIKComponentRequestBus::Events::SetAimIKLayer)
@@ -365,7 +384,6 @@ namespace LmbrCentral
 
     CharacterAnimationManagerComponent::CharacterAnimationManagerComponent()
     {
-        AZ::TickBus::Handler::m_tickOrder = AZ::TICK_ANIMATION;
     }
 
     void CharacterAnimationManagerComponent::Activate()
@@ -399,6 +417,8 @@ namespace LmbrCentral
             characterInstance->SetOwnerId(entityId);
 
             result.first->second.Activate();
+
+            CharacterAnimationNotificationBus::Event(entityId, &CharacterAnimationNotifications::OnCharacterInstanceRegistered, characterInstance);
         }
     }
 
@@ -407,6 +427,8 @@ namespace LmbrCentral
         const auto& entry = m_characterInstanceMap.find(entityId);
         if (entry != m_characterInstanceMap.end())
         {
+            CharacterAnimationNotificationBus::Event(entityId, &CharacterAnimationNotifications::OnCharacterInstanceUnregistered);
+
             m_characterInstanceMap.erase(entry);
         }
     }
@@ -425,6 +447,11 @@ namespace LmbrCentral
                 ++characterIter;
             }
         }
+    }
+
+    int CharacterAnimationManagerComponent::GetTickOrder()
+    {
+        return AZ::TICK_ANIMATION;
     }
 
     //////////////////////////////////////////////////////////////////////////

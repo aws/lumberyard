@@ -41,6 +41,8 @@ public:
     void RenameNode(CTrackViewAnimNode* pAnimNode, const char* newName) const;
 
     CTrackViewSequence* GetSequenceByName(QString name) const override;
+    CTrackViewSequence* GetLegacySequenceByName(QString name) const override;
+    CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const override;
     CTrackViewSequence* GetSequenceByIndex(unsigned int index) const;
     CTrackViewSequence* GetSequenceByAnimSequence(IAnimSequence* pAnimSequence) const;
 
@@ -53,10 +55,15 @@ public:
     //  ITrackViewSequenceManager Overrides
     // Callback from SequenceObject
     IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true) override;
-    void OnDeleteSequenceObject(QString name) override;
+    void OnDeleteSequenceObject(const AZ::EntityId& entityId) override;
+    void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) override;
+    void OnSequenceLoaded(const AZ::EntityId& entityId) override;
     //~ ITrackViewSequenceManager Overrides
 
 private:
+    void AddTrackViewSequence(CTrackViewSequence* sequenceToAdd);
+    void RemoveSequenceInternal(CTrackViewSequence* sequence);
+
     void SortSequences();
     void ResumeAllSequences();
 

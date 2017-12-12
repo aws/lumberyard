@@ -58,7 +58,7 @@ private:
     bool shortcutFilter(QObject* obj, QShortcutEvent* ev);
     void setNewFocus(QObject* obj);
 
-    QWidget* FindScopeRoot(QWidget* w);
+    QWidget* FindParentScopeRoot(QWidget* w);
     bool IsAContainerForB(QWidget* a, QWidget* b);
     QList<QAction*> FindCandidateActions(QWidget* scopeRoot, const QKeySequence& sequence, QSet<QWidget*>& previouslyVisited, bool checkVisibility = true);
     bool FindCandidateActionAndFire(QWidget* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QWidget*>& previouslyVisited);

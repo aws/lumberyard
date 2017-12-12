@@ -123,8 +123,8 @@ bool CLookAtKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
             ILookAtKey lookAtKey;
             keyHandle.GetKey(&lookAtKey);
 
-            mv_name = lookAtKey.szSelection;
-            mv_lookPose = lookAtKey.lookPose;
+            mv_name = lookAtKey.szSelection.c_str();
+            mv_lookPose = lookAtKey.lookPose.c_str();
             mv_smoothTime = lookAtKey.smoothTime;
 
             bAssigned = true;
@@ -158,14 +158,14 @@ void CLookAtKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
             {
                 QString sName;
                 sName = mv_name;
-                cry_strcpy(lookAtKey.szSelection, sName.toLatin1().data());
+                lookAtKey.szSelection = sName.toLatin1().data();
             }
 
             if (pVar == mv_lookPose.GetVar())
             {
                 QString sLookPose;
                 sLookPose = mv_lookPose;
-                strcpy(lookAtKey.lookPose, sLookPose.toLatin1().data());
+                lookAtKey.lookPose = sLookPose.toLatin1().data();
             }
 
             SyncValue(mv_smoothTime, lookAtKey.smoothTime, false, pVar);

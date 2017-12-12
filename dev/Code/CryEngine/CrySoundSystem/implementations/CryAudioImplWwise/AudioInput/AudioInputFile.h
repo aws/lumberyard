@@ -84,7 +84,7 @@ namespace Audio
          */
         void UnloadFile();
 
-        void ReadInput(const SAudioStreamData& data) override;
+        void ReadInput(const AudioStreamData& data) override;
         void WriteOutput(AkAudioBuffer* akBuffer) override;
         bool IsOk() const override;
 

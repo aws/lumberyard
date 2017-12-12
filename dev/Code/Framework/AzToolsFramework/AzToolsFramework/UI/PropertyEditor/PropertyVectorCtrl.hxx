@@ -180,9 +180,15 @@ namespace AzToolsFramework
 
         /**
         * Sets the step value that all spinboxes being managed by this control can have
-        * @param Setp value
+        * @param Step value
         */
         void setStep(double value);
+
+        /**
+        * Sets the number of decimals to to lock the spinboxes being managed by this control to
+        * @param Decimals value
+        */
+        void setDecimals(int value);
 
         void OnValueChangedInElement(double newValue, int elementIndex);
 
@@ -194,6 +200,7 @@ namespace AzToolsFramework
 
 Q_SIGNALS:
         void valueChanged(double);
+        void valueAtIndexChanged(int elementIndex, double newValue);
 
     public Q_SLOTS:
         QWidget* GetFirstInTabOrder();

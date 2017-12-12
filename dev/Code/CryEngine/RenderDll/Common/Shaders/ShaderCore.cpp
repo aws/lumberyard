@@ -1056,21 +1056,6 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_HDR_MODE] = gb->m_Mask;
             }
             else
-            if (gb->m_ParamName == "%_RT_MSAA_QUALITY")
-            {
-                g_HWSR_MaskBit[HWSR_MSAA_QUALITY] = gb->m_Mask;
-            }
-            else
-            if (gb->m_ParamName == "%_RT_MSAA_QUALITY1")
-            {
-                g_HWSR_MaskBit[HWSR_MSAA_QUALITY1] = gb->m_Mask;
-            }
-            else
-            if (gb->m_ParamName == "%_RT_MSAA_SAMPLEFREQ_PASS")
-            {
-                g_HWSR_MaskBit[HWSR_MSAA_SAMPLEFREQ_PASS] = gb->m_Mask;
-            }
-            else
             if (gb->m_ParamName == "%_RT_NEAREST")
             {
                 g_HWSR_MaskBit[HWSR_NEAREST] = gb->m_Mask;
@@ -1141,6 +1126,11 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_NO_TESSELLATION] = gb->m_Mask;
             }
             else
+            if (gb->m_ParamName == "%_RT_APPLY_TOON_SHADING")
+            {
+                g_HWSR_MaskBit[HWSR_APPLY_TOON_SHADING] = gb->m_Mask;
+            }
+            else
             if (gb->m_ParamName == "%_RT_VERTEX_VELOCITY")
             {
                 g_HWSR_MaskBit[HWSR_VERTEX_VELOCITY] = gb->m_Mask;
@@ -1151,14 +1141,19 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_OBJ_IDENTITY] = gb->m_Mask;
             }
             else
-            if (gb->m_ParamName == "%_RT_SKELETON_SSD")
+            if (gb->m_ParamName == "%_RT_SKINNING_DUAL_QUAT")
             {
-                g_HWSR_MaskBit[HWSR_SKELETON_SSD] = gb->m_Mask;
+                g_HWSR_MaskBit[HWSR_SKINNING_DUAL_QUAT] = gb->m_Mask;
             }
             else
-            if (gb->m_ParamName == "%_RT_SKELETON_SSD_LINEAR")
+            if (gb->m_ParamName == "%_RT_SKINNING_DQ_LINEAR")
             {
-                g_HWSR_MaskBit[HWSR_SKELETON_SSD_LINEAR] = gb->m_Mask;
+                g_HWSR_MaskBit[HWSR_SKINNING_DQ_LINEAR] = gb->m_Mask;
+            }
+            else
+            if (gb->m_ParamName == "%_RT_SKINNING_MATRIX")
+            {
+                g_HWSR_MaskBit[HWSR_SKINNING_MATRIX] = gb->m_Mask;
             }
             else
             if (gb->m_ParamName == "%_RT_DISSOLVE")
@@ -1194,16 +1189,6 @@ void CShaderMan::mfInitGlobal (void)
             if (gb->m_ParamName == "%_RT_SPRITE")
             {
                 g_HWSR_MaskBit[HWSR_SPRITE] = gb->m_Mask;
-            }
-            else
-            if (gb->m_ParamName == "%_RT_AMBIENT_OCCLUSION")
-            {
-                g_HWSR_MaskBit[HWSR_AMBIENT_OCCLUSION] = gb->m_Mask;
-            }
-            else
-            if (gb->m_ParamName == "%_RT_GSM_COMBINED")
-            {
-                g_HWSR_MaskBit[HWSR_GSM_COMBINED] = gb->m_Mask;
             }
             else
             if (gb->m_ParamName == "%_RT_DEBUG0")
@@ -1254,6 +1239,11 @@ void CShaderMan::mfInitGlobal (void)
             if (gb->m_ParamName == "%_RT_SAMPLE5")
             {
                 g_HWSR_MaskBit[HWSR_SAMPLE5] = gb->m_Mask;
+            }
+            else
+            if (gb->m_ParamName == "%_RT_APPLY_SSDO")
+            {
+                g_HWSR_MaskBit[HWSR_APPLY_SSDO] = gb->m_Mask;
             }
             else
             if (gb->m_ParamName == "%_RT_GLOBAL_ILLUMINATION")
@@ -1371,6 +1361,21 @@ void CShaderMan::mfInitGlobal (void)
             else if (gb->m_ParamName == "%_RT_ADDITIVE_BLENDING")
             {
                 g_HWSR_MaskBit[HWSR_ADDITIVE_BLENDING] = gb->m_Mask;
+            }
+            else
+            if (gb->m_ParamName == "%_RT_SRGB0")
+            {
+                g_HWSR_MaskBit[HWSR_SRGB0] = gb->m_Mask;
+            }
+            else
+            if (gb->m_ParamName == "%_RT_SRGB1")
+            {
+                g_HWSR_MaskBit[HWSR_SRGB1] = gb->m_Mask;
+            }
+            else
+            if (gb->m_ParamName == "%_RT_SRGB2")
+            {
+                g_HWSR_MaskBit[HWSR_SRGB2] = gb->m_Mask;
             }
             else
             {
@@ -2671,12 +2676,6 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
             float su = pMod->m_Tiling[0];
             float sv = pMod->m_Tiling[1];
 
-            pMod->m_TexMatrix = pMod->m_TexMatrix *
-                Matrix44(su, 0, 0, 0,
-                    0, sv, 0, 0,
-                    0, 0, 1, 0,
-                    du, dv, 0, 1);
-
             if (pMod->m_Rot[0])
             {
                 pMod->m_TexMatrix = pMod->m_TexMatrix * Matrix33::CreateRotationX(Word2Degr(pMod->m_Rot[0]) * PI / 180.0f);
@@ -2690,16 +2689,11 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
                 pMod->m_TexMatrix = pMod->m_TexMatrix * Matrix33::CreateRotationZ(Word2Degr(pMod->m_Rot[2]) * PI / 180.0f);
             }
 
-            if (pMod->m_Rot[0] ||
-                pMod->m_Rot[1] ||
-                pMod->m_Rot[2])
-            {
-                pMod->m_TexMatrix = pMod->m_TexMatrix *
-                    Matrix44(su, 0, 0, 0,
-                        0, sv, 0, 0,
-                        0, 0, 1, 0,
-                        -du, -dv, 0, 1);
-            }
+            pMod->m_TexMatrix = pMod->m_TexMatrix *
+                Matrix44(su, 0, 0, 0,
+                    0, sv, 0, 0,
+                    0, 0, 1, 0,
+                    -du, -dv, 0, 1);
         }
     }
 
@@ -2715,7 +2709,16 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
                 memset(&Pl, 0, sizeof(Pl));
                 float* fPl = (float*)&Pl;
                 fPl[i] = 1.0f;
-                PlTr = TransformPlane2_NoTrans(Matrix44A(rd->m_RP.m_pCurObject->m_II.m_Matrix).GetTransposed(), Pl);
+                if (rd->m_RP.m_pCurObject)
+                {
+                    PlTr = TransformPlane2_NoTrans(Matrix44A(rd->m_RP.m_pCurObject->m_II.m_Matrix).GetTransposed(), Pl);
+                }
+                else
+                {
+                    // LY-60094 - TexGenType of "World" will give incorrect results
+                    AZ_Warning("Rendering", false, "Warning: Material has TexGenType of 'World', but the requested object is unavailable while generating the TexGen Matrix.  Results may be incorrect.");
+                    PlTr = TransformPlane2_NoTrans(Matrix44A(rd->m_RP.m_pIdendityRenderObject->m_II.m_Matrix).GetTransposed(), Pl);
+                }
                 pMod->m_TexGenMatrix(i, 0) = PlTr.n.x;
                 pMod->m_TexGenMatrix(i, 1) = PlTr.n.y;
                 pMod->m_TexGenMatrix(i, 2) = PlTr.n.z;
@@ -3161,7 +3164,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         szProfile = "ps_5_0";
         break;
     case eHWSC_Geometry:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
         {
             szProfile = "gs_5_0";
         }
@@ -3171,7 +3174,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Domain:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
         {
             szProfile = "ds_5_0";
         }
@@ -3181,7 +3184,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Hull:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
         {
             szProfile = "hs_5_0";
         }
@@ -3191,7 +3194,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Compute:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3)
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3) // ACCEPTED_USE
         {
             szProfile = "cs_5_0";
         }

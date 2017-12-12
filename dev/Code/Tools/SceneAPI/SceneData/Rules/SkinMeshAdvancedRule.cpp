@@ -87,7 +87,7 @@ namespace AZ
                             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
                         ->DataElement(Edit::UIHandlers::Default, &SkinMeshAdvancedRule::m_use32bitVertices, "32-bit Vertex Precision",
                             "Activating will use 32-bits of precision for the position of each vertex, increasing accuracy when the skin is located far from its pivot.\n\n"
-                            "Note that Sony Playstation platforms only supports 16-bit precision. For more details please see documentation.")
+                        )
                         ->DataElement("NodeListSelection", &SkinMeshAdvancedRule::m_vertexColorStreamName, "Vertex Color Stream",
                             "Select a vertex color stream to enable Vertex Coloring or 'Disable' to turn Vertex Coloring off.\n\n"
                             "Vertex Coloring works in conjunction with materials. If a material was previously generated,\n"

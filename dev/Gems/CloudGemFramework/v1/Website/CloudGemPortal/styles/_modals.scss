@@ -10,6 +10,9 @@ body .modal-header {
         margin-bottom: 0;
         padding-bottom: 0;
     }
+    button > span {
+        font-size: 24px;
+    }
 }
 .modal-body {
     padding: 20px 15px;

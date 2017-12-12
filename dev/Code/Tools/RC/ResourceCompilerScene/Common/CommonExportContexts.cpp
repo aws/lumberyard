@@ -18,50 +18,32 @@ namespace AZ
 {
     namespace RC
     {
-        GroupExportContext::GroupExportContext(SceneAPI::Events::ExportEventContext& parent,
-            const SceneAPI::DataTypes::IGroup& group, Phase phase)
+        ContainerExportContext::ContainerExportContext(SceneAPI::Events::ExportEventContext& parent,
+            const SceneAPI::DataTypes::IGroup& group, CContentCGF& container, Phase phase)
             : m_scene(parent.GetScene())
             , m_outputDirectory(parent.GetOutputDirectory())
             , m_group(group)
-            , m_phase(phase)
-        {
-        }
-
-        GroupExportContext::GroupExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-            const SceneAPI::DataTypes::IGroup& group, Phase phase)
-            : m_scene(scene)
-            , m_outputDirectory(outputDirectory)
-            , m_group(group)
-            , m_phase(phase)
-        {
-        }
-
-        GroupExportContext::GroupExportContext(const GroupExportContext& copyContext, Phase phase)
-            : m_scene(copyContext.m_scene)
-            , m_outputDirectory(copyContext.m_outputDirectory)
-            , m_group(copyContext.m_group)
-            , m_phase(phase)
-        {
-        }
-
-
-        ContainerExportContext::ContainerExportContext(SceneAPI::Events::ExportEventContext& parent,
-            const SceneAPI::DataTypes::IGroup& group, CContentCGF& container, Phase phase)
-            : GroupExportContext(parent, group, phase)
             , m_container(container)
+            , m_phase(phase)
         {
         }
 
         ContainerExportContext::ContainerExportContext(const SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
             const SceneAPI::DataTypes::IGroup& group, CContentCGF& container, Phase phase)
-            : GroupExportContext(scene, outputDirectory, group, phase)
+            : m_scene(scene)
+            , m_outputDirectory(outputDirectory)
+            , m_group(group)
             , m_container(container)
+            , m_phase(phase)
         {
         }
 
         ContainerExportContext::ContainerExportContext(const ContainerExportContext& copyContext, Phase phase)
-            : GroupExportContext(copyContext, phase)
+            : m_scene(copyContext.m_scene)
+            , m_outputDirectory(copyContext.m_outputDirectory)
+            , m_group(copyContext.m_group)
             , m_container(copyContext.m_container)
+            , m_phase(phase)
         {
         }
 

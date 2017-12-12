@@ -13,6 +13,8 @@
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include <AzFramework/Input/Utils/ProcessRawInputEventQueues.h>
 
+#include <AzCore/std/smart_ptr/make_shared.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
@@ -94,8 +96,8 @@ namespace AzFramework
     // Modifier Keys
     const InputChannelId InputDeviceKeyboard::Key::ModifierAltL("keyboard_key_modifier_alt_l");
     const InputChannelId InputDeviceKeyboard::Key::ModifierAltR("keyboard_key_modifier_alt_r");
-    const InputChannelId InputDeviceKeyboard::Key::ModifierControlL("keyboard_key_modifier_control_l");
-    const InputChannelId InputDeviceKeyboard::Key::ModifierControlR("keyboard_key_modifier_control_r");
+    const InputChannelId InputDeviceKeyboard::Key::ModifierCtrlL("keyboard_key_modifier_ctrl_l");
+    const InputChannelId InputDeviceKeyboard::Key::ModifierCtrlR("keyboard_key_modifier_ctrl_r");
     const InputChannelId InputDeviceKeyboard::Key::ModifierShiftL("keyboard_key_modifier_shift_l");
     const InputChannelId InputDeviceKeyboard::Key::ModifierShiftR("keyboard_key_modifier_shift_r");
     const InputChannelId InputDeviceKeyboard::Key::ModifierSuperL("keyboard_key_modifier_super_l");
@@ -232,8 +234,8 @@ namespace AzFramework
         // Modifier Keys
         ModifierAltL,
         ModifierAltR,
-        ModifierControlL,
-        ModifierControlR,
+        ModifierCtrlL,
+        ModifierCtrlR,
         ModifierShiftL,
         ModifierShiftR,
         ModifierSuperL,
@@ -293,27 +295,43 @@ namespace AzFramework
     }};
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceKeyboard::Implementation::CustomCreateFunctionType InputDeviceKeyboard::Implementation::CustomCreateFunctionPointer = nullptr;
+    ModifierKeyMask GetCorrespondingModifierKeyMask(const InputChannelId& channelId)
+    {
+        if (channelId == InputDeviceKeyboard::Key::ModifierAltL) { return ModifierKeyMask::AltL; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierAltR) { return ModifierKeyMask::AltR; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierCtrlL) { return ModifierKeyMask::CtrlL; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierCtrlR) { return ModifierKeyMask::CtrlR; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierShiftL) { return ModifierKeyMask::ShiftL; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierShiftR) { return ModifierKeyMask::ShiftR; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierSuperL) { return ModifierKeyMask::SuperL; }
+        if (channelId == InputDeviceKeyboard::Key::ModifierSuperR) { return ModifierKeyMask::SuperR; }
+        return ModifierKeyMask::None;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboard::InputDeviceKeyboard()
         : InputDevice(Id)
+        , m_modifierKeyStates(AZStd::make_shared<ModifierKeyStates>())
         , m_allChannelsById()
         , m_keyChannelsById()
-        , m_pimpl(nullptr)
+        , m_pimpl()
+        , m_implementationRequestHandler(*this)
     {
         // Create all key input channels
         for (const InputChannelId& channelId : Key::All)
         {
-            InputChannelDigital* channel = aznew InputChannelDigital(channelId, *this);
+            const ModifierKeyMask modifierKeyMask = GetCorrespondingModifierKeyMask(channelId);
+            InputChannelDigitalWithSharedModifierKeyStates* channel =
+                aznew InputChannelDigitalWithSharedModifierKeyStates(channelId,
+                                                                     *this,
+                                                                     m_modifierKeyStates,
+                                                                     modifierKeyMask);
             m_allChannelsById[channelId] = channel;
             m_keyChannelsById[channelId] = channel;
         }
 
         // Create the platform specific implementation
-        m_pimpl = Implementation::CustomCreateFunctionPointer ?
-                  Implementation::CustomCreateFunctionPointer(*this) :
-                  Implementation::Create(*this);
+        m_pimpl.reset(Implementation::Create(*this));
 
         // Connect to the text entry request bus
         InputTextEntryRequestBus::Handler::BusConnect(GetInputDeviceId());
@@ -326,7 +344,7 @@ namespace AzFramework
         InputTextEntryRequestBus::Handler::BusDisconnect(GetInputDeviceId());
 
         // Destroy the platform specific implementation
-        delete m_pimpl;
+        m_pimpl.reset();
 
         // Destroy all key input channels
         for (const auto& channelById : m_keyChannelsById)
@@ -354,29 +372,35 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceKeyboard::HasTextEntryStarted() const
+    {
+        return m_pimpl ? m_pimpl->HasTextEntryStarted() : false;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboard::TextEntryStart(const VirtualKeyboardOptions& options)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->TextEntryStart(options);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboard::TextEntryStop()
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->TextEntryStop();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceKeyboard::TickInputDevice()
     {
         if (m_pimpl)
         {
             m_pimpl->TickInputDevice();
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboard::TextEntryStarted(float activeTextFieldNormalizedBottomY)
-    {
-        if (m_pimpl)
-        {
-            m_pimpl->TextEntryStarted(activeTextFieldNormalizedBottomY);
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboard::TextEntryStopped()
-    {
-        if (m_pimpl)
-        {
-            m_pimpl->TextEntryStopped();
         }
     }
 

@@ -31,7 +31,13 @@
 #define RAPIDJSON_FREE(_ptr) if (_ptr) { AZ::AllocatorInstance<AZ::SystemAllocator>::Get().DeAllocate(_ptr, 0, 0); }
 #define RAPIDJSON_CLASS_ALLOCATOR(_class) AZ_CLASS_ALLOCATOR(_class, AZ::SystemAllocator, 0)
 
+// Set custom namespace for AzCore's rapidjson to avoid various collisions.
+#define RAPIDJSON_NAMESPACE rapidjson_ly
+
 // Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
 #include <rapidjson/rapidjson.h>
+
+// Allow our existing code to continue use "rapidjson::"
+#define rapidjson RAPIDJSON_NAMESPACE
 
 #endif // AZCORE_RAPIDJSON

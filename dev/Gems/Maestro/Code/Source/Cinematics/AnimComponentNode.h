@@ -30,10 +30,12 @@ class CAnimComponentNode
     : public CAnimNode
 {
 public:
-    CAnimComponentNode(const int id);
-    ~CAnimComponentNode() {};
+    AZ_CLASS_ALLOCATOR(CAnimComponentNode, AZ::SystemAllocator, 0);
+    AZ_RTTI(CAnimComponentNode, "{722F3D0D-7AEB-46B7-BF13-D5C7A828E9BD}", CAnimNode);
 
-    EAnimNodeType GetType() const override;
+    CAnimComponentNode(const int id);
+    CAnimComponentNode();
+    ~CAnimComponentNode();
 
     void SetEntityId(const int id) override {};     // legacy CryEntityId, not used here
 
@@ -74,19 +76,16 @@ public:
     Vec3 GetPos() override;
     Quat GetRotate() override;
     Vec3 GetScale() override;
+
+    ICharacterInstance* GetCharacterInstance() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     // Override CreateTrack to handle trackMultipliers for Component Tracks
     IAnimTrack* CreateTrack(const CAnimParamType& paramType) override;
+    bool RemoveTrack(IAnimTrack* pTrack) override;
 
     void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
-
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(this, sizeof(*this));
-        CAnimNode::GetMemoryUsage(pSizer);
-    }
 
     // search our Entity which contains the associated component for any component properties that are animated outside of behaviors
     void AppendNonBehaviorAnimatableProperties(IAnimNode::AnimParamInfos& animatableParams) const override;
@@ -103,6 +102,8 @@ public:
     {
         m_skipComponentAnimationUpdates = skipAnimationUpdates;
     }
+
+    static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
     // functions involved in the process to parse and store component behavior context animated properties
@@ -164,6 +165,8 @@ private:
     
     void AddPropertyToParamInfoMap(const CAnimParamType& paramType);
 
+    int m_refCount;     // intrusive_ptr ref counter
+
     AZ::Uuid                                m_componentTypeId;
     AZ::ComponentId                         m_componentId;
 
@@ -178,7 +181,7 @@ private:
     static IAnimNode::AnimParamInfos s_emptyAnimatableProperties;
 
     // helper class responsible for animating Character Tracks (aka 'Animation' tracks in the TrackView UI)
-    CCharacterTrackAnimator   m_characterTrackAnimator;
+    CCharacterTrackAnimator*   m_characterTrackAnimator = nullptr;
 
     bool m_skipComponentAnimationUpdates;
 };

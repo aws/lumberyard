@@ -258,9 +258,16 @@ uint32 SShaderItem::PostLoad()
             nPreprocessFlags |= FB_EYE_OVERLAY;
         }
 
-        if (CRenderer::CV_r_Refraction && (pSH->m_Flags & EF_REFRACTIVE))
+        if (pSH->m_Flags & EF_REFRACTIVE)
         {
-            nPreprocessFlags |= FB_TRANSPARENT;
+            if (CRenderer::CV_r_Refraction)
+            {
+                nPreprocessFlags |= FB_TRANSPARENT;
+            }
+            else
+            {
+                AZ_Warning("Shader Load", false, "Shader %s use refraction but it's not enabled for this configuration. Check the value of the CVAR r_Refraction.", pSH->m_NameShader.c_str());
+            }
         }
     }
 

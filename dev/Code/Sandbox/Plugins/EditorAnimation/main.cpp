@@ -20,7 +20,9 @@
 #include "IResourceSelectorHost.h"
 #include "AnimationCompressionManager.h"
 #include "CharacterTool/CharacterToolForm.h"
-#include "../Editor/QtViewPaneManager.h"
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/ViewPaneOptions.h>
+#include "../Editor/LyViewPaneNames.h"
 
 // just for CGFContent:
 #include <VertexFormats.h>
@@ -69,10 +71,11 @@ public:
 
     void Init()
     {
-        QtViewOptions options;
+        AzToolsFramework::ViewPaneOptions options;
         options.canHaveMultipleInstances = true;
         options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
-        m_paneRegistered = RegisterQtViewPane<CharacterTool::CharacterToolForm>(GetIEditor(), LyViewPane::Geppetto, LyViewPane::CategoryTools, options);
+        AzToolsFramework::RegisterViewPane<CharacterTool::CharacterToolForm>(LyViewPane::LegacyGeppetto, LyViewPane::CategoryAnimation, options);
+        m_paneRegistered = true;
         RegisterModuleResourceSelectors(GetIEditor()->GetResourceSelectorHost());
         g_pCharacterToolSystem = new CharacterTool::System();
         g_pCharacterToolSystem->Initialize();
@@ -101,7 +104,7 @@ public:
         UnregisterCommands();
         if (m_paneRegistered)
         {
-            UnregisterQtViewPane<CharacterTool::CharacterToolForm>();
+            AzToolsFramework::UnregisterViewPane(LyViewPane::LegacyGeppetto);
         }
         delete this;
     }
@@ -158,12 +161,15 @@ PLUGIN_API IPlugin* CreatePluginInstance(PLUGIN_INIT_PARAM* pInitParam)
         return nullptr;
     }
 
+    CEditorAnimationPlugin* pPlugin = nullptr;
+
+#ifdef ENABLE_LEGACY_ANIMATION
     ModuleInitISystem(GetIEditor()->GetSystem(), "EditorAnimation");
 
-    CEditorAnimationPlugin* pPlugin = new CEditorAnimationPlugin(GetIEditor());
+    pPlugin = new CEditorAnimationPlugin(GetIEditor());
 
     pPlugin->Init();
-
+#endif //ENABLE_LEGACY_ANIMATION
     return pPlugin;
 }
 

@@ -53,7 +53,7 @@ class UnitTest_CloudGemFramework_ResourceManagerCode_ComponentCodeGen(unittest.T
 
         swagger["paths"]["/test/path"] = {
             "get": {
-                "operationId": "test path",
+                "operationId": "test_path",
                 "description": "just a test",
                 "responses": {
                     "200": {

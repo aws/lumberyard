@@ -17,7 +17,7 @@ export class DeleteUserAction implements UserManagementAction {
 
         var params = {
             UserPoolId: this.context.userPoolId,
-            Username: username /* required */
+            Username: username.trim() /* required */
         };
 
         this.context.cognitoIdentityService.adminDeleteUser(params, function (err, data) {

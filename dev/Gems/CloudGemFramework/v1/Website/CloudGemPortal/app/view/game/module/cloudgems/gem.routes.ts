@@ -5,7 +5,7 @@ import { GemIndexComponent } from './component/gem-index.component'
 
 @NgModule({
     imports: [
-        RouterModule.forChild([           
+        RouterModule.forChild([            
         ])
     ],
     exports: [

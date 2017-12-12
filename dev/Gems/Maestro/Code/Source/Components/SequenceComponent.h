@@ -13,9 +13,9 @@
 #include <IMovieSystem.h>
 
 #include <AzCore/Component/Component.h>
-#include <LmbrCentral/Cinematics/SequenceComponentBus.h>
+#include <Maestro/Bus/SequenceComponentBus.h>
 
-namespace LmbrCentral
+namespace Maestro
 {
 
     namespace AnimSerialize
@@ -34,18 +34,15 @@ namespace LmbrCentral
 
     class SequenceComponent
         : public AZ::Component
-        , public LmbrCentral::SequenceComponentRequestBus::Handler
+        , public Maestro::SequenceComponentRequestBus::Handler
     {
         friend class EditorSequenceComponent;
 
     public:
         AZ_COMPONENT(SequenceComponent, "{027CE988-CF48-4589-A73A-73CD8D02F783}");
 
-        using AnimatablePropertyAddress = LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress;
-        using AnimatedValue = LmbrCentral::SequenceComponentRequests::AnimatedValue;
-
         SequenceComponent();
-
+        
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Init() override;
@@ -73,7 +70,7 @@ namespace LmbrCentral
         */
         void GetAnimatedPropertyValue(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress) override;
 
-        AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const LmbrCentral::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
+        AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
 
         /////////////////////////////////////////
         // Behaviors
@@ -105,6 +102,9 @@ namespace LmbrCentral
 
         // Cached MovieSystem sequence pointer
         mutable IAnimSequence*  m_sequence;
+
+        // Reflects the entire CryMovie library
+        static void ReflectCinematicsLib(AZ::SerializeContext* context);
     };
 
-} // namespace LmbrCentral
+} // namespace Maestro

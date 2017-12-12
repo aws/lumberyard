@@ -1,0 +1,132 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+########################################################################################
+# We need to build a /dev relative path, otherwise we will get a gem/code relative path
+########################################################################################
+    import os
+    driver_node = bld.path.find_or_declare('Gems/ScriptCanvas/Code/Include/ScriptCanvas/')
+    gem_node = bld.path.find_or_declare('Gems/ScriptCanvas/Code/Include/ScriptCanvas/')
+    script_canvas_dir = driver_node.path_from(gem_node)
+########################################################################################
+
+    USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework']
+    USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
+
+    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER', 'AZCORE_ENABLE_MEMORY_TRACKING']
+
+    CODEGEN_FILE_LIST = [    
+            'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
+            'Include/ScriptCanvas/Libraries/Core/Start.h',
+            'Include/ScriptCanvas/Libraries/Logic/Gate.h',
+            'Include/ScriptCanvas/Libraries/Logic/Indexer.h',
+            'Include/ScriptCanvas/Libraries/Logic/IsNull.h',
+            'Include/ScriptCanvas/Libraries/Logic/Multiplexer.h',
+            'Include/ScriptCanvas/Libraries/Logic/Once.h',
+            'Include/ScriptCanvas/Libraries/Logic/Sequencer.h',
+            'Include/ScriptCanvas/Libraries/Math/Random.h',
+            'Include/ScriptCanvas/Libraries/Time/Countdown.h',
+            'Include/ScriptCanvas/Libraries/Time/Duration.h',
+            'Include/ScriptCanvas/Libraries/Time/Timer.h',
+        ]
+
+    # ScriptCanvas core execution engine is built as a static library.
+    bld.CryEngineStaticLibrary(
+
+        target          = 'ScriptCanvas',
+
+        platforms       = ['all'],
+        configurations  = ['all'],
+        file_list       = ['scriptcanvasgem_common.waf_files'],
+        defines         = COMMON_DEFINES,
+        export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
+
+        includes        = ['Include', 'Include/ScriptCanvas'],
+        use             = ['AzCore', 'AzFramework'],
+        features        = ['az_code_gen'],
+        win_features    = ['crcfix'],
+        vs_filter       = 'Gems',
+        disable_pch     = True,
+
+        export_includes = ['.', 'Include'], # the gem's includes
+
+        az_code_gen = [
+            {
+                'files'   : CODEGEN_FILE_LIST,
+                'scripts' : [os.path.join(script_canvas_dir, 'Include/ScriptCanvas/CodeGen/Drivers/ScriptCanvasNode.py')],
+            }
+        ],
+    )
+
+    bld.DefineGem(
+
+         includes           = [ '.' , '..', 
+                                'Include',
+                                'Include/ScriptCanvas'
+                                ],
+        export_includes     = [ '.', 'Include/ScriptCanvas', 'Editor/Include' ],
+
+        defines             = COMMON_DEFINES,
+        export_defines      = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
+
+        platforms           = ['all'],
+        configurations      = ['all'],
+
+        use                 = ['ScriptCanvas'],
+
+        pch                 = 'Source/precompiled.cpp',
+        win_features        = ['crcfix'],
+
+        file_list           = ['scriptcanvasgem_game.waf_files', 'scriptcanvasgem_corebuilder.waf_files' ],
+        test_all_file_list  = ['scriptcanvasgem_tests.waf_files'],
+
+
+        ########################################
+        # Editor Gem configuration
+        editor = dict(
+            defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
+            export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
+
+            features        = ['qt5','az_code_gen'],
+            platforms       = ['win', 'darwin'],
+            configurations  = ['debug', 'profile'],
+
+            autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+
+            file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_builder.waf_files', 'scriptcanvasgem_corebuilder.waf_files'],
+            includes        = [ 'Include',
+                                'Include/ScriptCanvas',
+                                'Editor/Include',
+                                'Source',
+                                bld.Path('Code/CryEngine/CryCommon'),
+                                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                                bld.Path('Code/Sandbox/Editor'),
+                                bld.Path('Code/Sandbox/Editor/Include'),
+                                ],
+
+            export_includes = [ 'Editor/Include' ],
+
+            pch                 = 'Editor/precompiled.cpp',
+
+            # Platform Specific
+            use             = list(USE) + ['ScriptCanvas','CryCommon','AssetBuilderSDK'],
+            win_features    = ['crcfix'],
+            darwin_cxxflags = ['-Wno-error', '-Wno-unused-local-typedef'],
+            darwin_uselib   =['AWS_CPP_SDK_ALL'],
+
+
+        )
+        ########################################
+    )
+

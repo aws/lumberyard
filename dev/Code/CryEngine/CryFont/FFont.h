@@ -131,8 +131,8 @@ private:
 
     struct TextScaleInfoInternal
     {
-        TextScaleInfoInternal(const Vec2& scale, float rcpCellWidth)
-            : scale(scale), rcpCellWidth(rcpCellWidth) { }
+        TextScaleInfoInternal(const Vec2& _scale, float _rcpCellWidth)
+            : scale(_scale), rcpCellWidth(_rcpCellWidth) { }
 
         Vec2 scale;
         float rcpCellWidth;

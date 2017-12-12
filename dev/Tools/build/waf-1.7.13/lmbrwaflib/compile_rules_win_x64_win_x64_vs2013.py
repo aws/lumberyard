@@ -33,9 +33,9 @@ def load_win_x64_win_x64_vs2013_common_settings(conf):
 
     # Attempt to detect the C++ compiler for VS 2013 ( msvs version 12.0 )
     try:
-        conf.auto_detect_msvc_compiler('msvc 12.0', 'x64')
+        conf.auto_detect_msvc_compiler('msvc 12.0', 'x64', '')
     except:
-        Logs.warn('Unable to detect find the C++ compiler for Visual Studio 2013, removing build target')
+        Logs.warn('Unable to find Visual Studio 2013 C++ compiler, removing build target')
         conf.mark_supported_platform_for_removal(PLATFORM)
         return
 
@@ -58,12 +58,12 @@ def load_win_x64_win_x64_vs2013_common_settings(conf):
         v['CFLAGS'] += ['/bigobj']
         v['CXXFLAGS'] += ['/bigobj']
 
-    azcg_dir = conf.srcnode.make_node('Tools/AzCodeGenerator/bin/vc120').abspath()
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc120')
     if not os.path.exists(azcg_dir):
         conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have VS2013 AzCodeGenerator binaries available')
     v['CODE_GENERATOR_PATH'] = [azcg_dir]
 
-    crcfix_dir = conf.srcnode.make_node('Tools/crcfix/bin/vc120').abspath()
+    crcfix_dir = conf.Path('Tools/crcfix/bin/vc120')
     if not os.path.exists(crcfix_dir):
         Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2013 crcfix binaries available')
     v['CRCFIX_PATH'] = [crcfix_dir]
@@ -75,13 +75,12 @@ def load_debug_win_x64_win_x64_vs2013_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'debug' configuration
     """
-    v = conf.env
+    conf.load_debug_msvc_settings()
+    conf.load_debug_windows_settings()  
     conf.load_win_x64_win_x64_vs2013_common_settings()
     
     # Load additional shared settings
     conf.load_debug_cryengine_settings()
-    conf.load_debug_msvc_settings()
-    conf.load_debug_windows_settings()  
 
 
 @conf
@@ -90,13 +89,12 @@ def load_profile_win_x64_win_x64_vs2013_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'profile' configuration
     """
-    v = conf.env
+    conf.load_profile_msvc_settings()
+    conf.load_profile_windows_settings()
     conf.load_win_x64_win_x64_vs2013_common_settings()
     
     # Load additional shared settings
     conf.load_profile_cryengine_settings()
-    conf.load_profile_msvc_settings()
-    conf.load_profile_windows_settings()
 
 
 @conf
@@ -105,12 +103,12 @@ def load_performance_win_x64_win_x64_vs2013_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'performance' configuration
     """
+    conf.load_performance_msvc_settings()
+    conf.load_performance_windows_settings()
     conf.load_win_x64_win_x64_vs2013_common_settings()
     
     # Load additional shared settings
     conf.load_performance_cryengine_settings()
-    conf.load_performance_msvc_settings()
-    conf.load_performance_windows_settings()
     
 
 @conf
@@ -119,10 +117,10 @@ def load_release_win_x64_win_x64_vs2013_settings(conf):
     Setup all compiler and linker settings shared over all win_x64_win_x64_v140 configurations for
     the 'release' configuration
     """
+    conf.load_release_msvc_settings()
+    conf.load_release_windows_settings()
     conf.load_win_x64_win_x64_vs2013_common_settings()
     
     # Load additional shared settings
     conf.load_release_cryengine_settings()
-    conf.load_release_msvc_settings()
-    conf.load_release_windows_settings()
 

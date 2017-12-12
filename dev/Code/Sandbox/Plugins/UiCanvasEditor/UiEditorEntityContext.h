@@ -87,6 +87,7 @@ public: // member functions
                                 AZ::Entity* commonParent, AZ::Entity* insertBefore) override;
     void DeleteElements(AzToolsFramework::EntityIdList elements) override;
     bool HasPendingRequests() override;
+    void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) override;
     // ~UiEditorEntityContextRequestBus
 
     // AzFramework::SliceInstantiationResultBus

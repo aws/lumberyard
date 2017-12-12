@@ -36,7 +36,6 @@ export interface UserManagementAction {
     handle(success: Function, error: Function, subject: BehaviorSubject<any>, ...args: any[]): void
 }
 
-@Injectable()
 export class UserManagement {
 
     private _actions = [];
@@ -45,8 +44,9 @@ export class UserManagement {
     constructor(private context: AwsContext, router: Router) {
         this._error = new BehaviorSubject<any>(<any>{});
         this._error.subscribe(err => {            
-            if (err.code == "CredentialsError" )
-                this.context.authentication.logout();
+            if (err.code == "CredentialsError") {               
+                this.context.authentication.refreshSessionOrLogout();
+            }
         })
 
         this._actions[EnumUserManagementAction.REGISTERING] = new RegisteringAction(this.context)

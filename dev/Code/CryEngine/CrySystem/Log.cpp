@@ -1056,11 +1056,6 @@ void CLog::LogStringToFile(const char* szString, ELogType logType, bool bAdd, Me
         if (m_logFileHandle == AZ::IO::InvalidHandle)
         {
             OpenLogFile(m_szFilename, "w+t");
-            if (m_logFileHandle != AZ::IO::InvalidHandle)
-            {
-                // when we first open the log file we do need to seek to the end.
-                AZ::IO::FileIOBase::GetDirectInstance()->Seek(m_logFileHandle, 0, AZ::IO::SeekType::SeekFromEnd);
-            }
         }
 
         if (m_logFileHandle != AZ::IO::InvalidHandle)
@@ -1170,7 +1165,7 @@ void CLog::CreateBackupFile() const
     {
         return;
     }
-#if defined(WIN32) || defined(LINUX) || defined(APPLE) || defined(DURANGO)
+#if defined(WIN32) || defined(LINUX) || defined(APPLE) || defined(DURANGO) // ACCEPTED_USE
     // simple:
     //      string bakpath = PathUtil::ReplaceExtension(m_szFilename,"bak");
     //      CopyFile(m_szFilename,bakpath.c_str(),false);
@@ -1248,7 +1243,7 @@ void CLog::CreateBackupFile() const
     cry_strcpy(m_sBackupFilename, bakdest.c_str());
     fileSystem->Copy(m_szFilename, bakdest);
 
-#endif // defined(PS3) || defined(WIN32) || defined(XENON) || defined(LINUX) || defined(APPLE) || defined(DURANGO)
+#endif // defined(WIN32) || defined(XENON) || defined(LINUX) || defined(APPLE) || defined(DURANGO) // ACCCEPTED_USE
 }
 
 //set the file used to log to disk

@@ -1,0 +1,19 @@
+{
+    "none": {
+        "Source": [
+            "Source/precompiled.cpp",
+            "Source/precompiled.h"
+        ],
+        "Include": [
+            "Include/ScriptCanvasDeveloper/ScriptCanvasDeveloperGem.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/ScriptCanvasDeveloper/ScriptCanvasDeveloperComponent.h"
+        ],
+        "Source": [
+            "Source/ScriptCanvasDeveloperComponent.cpp"
+        ]
+    }
+}

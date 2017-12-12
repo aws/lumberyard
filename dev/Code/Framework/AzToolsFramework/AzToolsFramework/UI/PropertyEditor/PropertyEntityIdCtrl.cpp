@@ -40,6 +40,7 @@ namespace AzToolsFramework
         QHBoxLayout* pLayout = new QHBoxLayout(this);
 
         pLayout->setContentsMargins(0, 0, 0, 0);
+        pLayout->setSpacing(0);
 
         m_entityIdLabel = aznew EntityIdQLabel(this);
         m_entityIdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
@@ -50,19 +51,20 @@ namespace AzToolsFramework
         m_entityIdLabel->setFocusPolicy(Qt::StrongFocus);
 
         m_pickButton = aznew QPushButton(this);
-        m_pickButton->setFlat(true);
+        m_pickButton->setCheckable(true);
+        m_pickButton->setChecked(false);
         m_pickButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_pickButton->setFixedSize(QSize(16, 16));
-        m_pickButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
-        m_pickButton->setIcon(QIcon(":/PropertyEditor/Resources/point_hand"));
+        m_pickButton->setFixedSize(QSize(18, 18));
+        m_pickButton->setContentsMargins(0, 0, 0, 0);
+        m_pickButton->setIcon(QIcon(":/PropertyEditor/Resources/EntityPicker"));
         m_pickButton->setToolTip("Pick an object in the viewport");
         m_pickButton->setMouseTracking(true);
 
         m_clearButton = aznew QPushButton(this);
         m_clearButton->setFlat(true);
         m_clearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_clearButton->setFixedSize(QSize(16, 16));
-        m_clearButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
+        m_clearButton->setFixedSize(QSize(18, 18));
+        m_clearButton->setStyleSheet("border: none; padding: 0ex;");
         m_clearButton->setIcon(QIcon(":/PropertyEditor/Resources/cross-small"));
         m_clearButton->setToolTip("Clear entity reference");
         m_clearButton->setMouseTracking(true);
@@ -79,19 +81,19 @@ namespace AzToolsFramework
         setAcceptDrops(true);
 
         connect(m_entityIdLabel, &EntityIdQLabel::RequestPickObject, this, [this]()
-        {
+            {
             InitObjectPickMode();
-        });
+            });
 
         connect(m_pickButton, &QPushButton::clicked, this, [this]()
-        {
+            {
             InitObjectPickMode();
-        });
+            });
 
         connect(m_clearButton, &QPushButton::clicked, this, [this]()
-        {
-            SetCurrentEntityId(AZ::EntityId(), true);
-        });
+            {
+                SetCurrentEntityId(AZ::EntityId(), true, "");
+            });
     }
 
     void PropertyEntityIdCtrl::InitObjectPickMode()
@@ -110,13 +112,13 @@ namespace AzToolsFramework
         {
             EditorPickModeRequests::Bus::Handler::BusDisconnect();
         }
-    }
+        }
 
     void PropertyEntityIdCtrl::OnPickModeSelect(AZ::EntityId id)
     {
         if (id.IsValid())
         {
-            SetCurrentEntityId(id, true);
+            SetCurrentEntityId(id, true, "");
         }
     }
 
@@ -163,7 +165,7 @@ namespace AzToolsFramework
             return;
         }
 
-        SetCurrentEntityId(droppedEntityId, true);
+        SetCurrentEntityId(droppedEntityId, true, "");
 
         event->acceptProposedAction();
     }
@@ -243,9 +245,9 @@ namespace AzToolsFramework
         // There's only one QT widget on this property.
     }
 
-    void PropertyEntityIdCtrl::SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange)
+    void PropertyEntityIdCtrl::SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride)
     {
-        m_entityIdLabel->SetEntityId(newEntityId);
+        m_entityIdLabel->SetEntityId(newEntityId, nameOverride);
 
         if (!m_requiredServices.empty() || !m_incompatibleServices.empty())
         {
@@ -273,7 +275,7 @@ namespace AzToolsFramework
                             unmatchedServices.erase(unmatchedServices.begin() + serviceIdx);
                         }
                     }
-
+                    
                     for (const auto& service : providedServices)
                     {
                         if (AZStd::find(m_incompatibleServices.begin(), m_incompatibleServices.end(), service) != m_incompatibleServices.end())
@@ -343,9 +345,9 @@ namespace AzToolsFramework
     {
         PropertyEntityIdCtrl* newCtrl = aznew PropertyEntityIdCtrl(pParent);
         connect(newCtrl, &PropertyEntityIdCtrl::OnEntityIdChanged, this, [newCtrl](AZ::EntityId)
-        {
-            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-        });
+            {
+                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+            });
         return newCtrl;
     }
 
@@ -400,12 +402,16 @@ namespace AzToolsFramework
             if ((node->GetClassMetadata()) && (node->GetClassMetadata()->m_azRtti))
             {
                 AZ::IRttiHelper* rtti = node->GetClassMetadata()->m_azRtti;
-                if (rtti->IsTypeOf<Components::EditorComponentBase>())
+                if (rtti->IsTypeOf<AZ::Component>())
                 {
-                    entityId = rtti->Cast<AZ::Component>(node->GetInstance(index))->GetEntityId();
-                    if (entityId.IsValid())
+                    AZ::Entity* entity = rtti->Cast<AZ::Component>(node->GetInstance(index))->GetEntity();
+                    if (entity)
                     {
-                        break;
+                        entityId = entity->GetId();
+                        if (entityId.IsValid())
+                        {
+                            break;
+                        }
                     }
                 }
             }
@@ -416,12 +422,12 @@ namespace AzToolsFramework
         // Tell the GUI which entity context it should accept
         AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
         if (entityId.IsValid())
-        {
+        {            
             EBUS_EVENT_ID_RESULT(contextId, entityId, AzFramework::EntityIdContextQueryBus, GetOwningContextId);
         }
         GUI->SetAcceptedEntityContext(contextId);
 
-        GUI->SetCurrentEntityId(instance, false);
+        GUI->SetCurrentEntityId(instance, false, "");
         return false;
     }
 

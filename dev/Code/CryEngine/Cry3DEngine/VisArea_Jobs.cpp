@@ -239,6 +239,7 @@ void CVisArea::UpdateGeometryBBox()
     {
         PodArray<IRenderNode*> lstObjects;
         m_pObjectsTree->GetObjectsByType(lstObjects, eERType_Brush, NULL);
+        m_pObjectsTree->GetObjectsByType(lstObjects, eERType_StaticMeshRenderComponent, NULL);
 
         for (int i = 0; i < lstObjects.Count(); i++)
         {
@@ -499,7 +500,10 @@ bool CVisAreaManager::SetEntityArea(IRenderNode* pEnt, const AABB& objBox, const
         }
     }
 
-    if (pVisArea && pEnt->GetRenderNodeType() == eERType_Brush) // update bbox of exit portal //            if((*pVisArea)->m_lstConnections.Count()==1)
+    if (pVisArea && 
+        (pEnt->GetRenderNodeType() == eERType_Brush ||
+         pEnt->GetRenderNodeType() == eERType_StaticMeshRenderComponent)
+       ) // update bbox of exit portal
     {
         if (pVisArea->IsPortal())
         {

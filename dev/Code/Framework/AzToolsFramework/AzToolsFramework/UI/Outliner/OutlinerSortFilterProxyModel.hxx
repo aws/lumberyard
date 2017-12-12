@@ -31,32 +31,18 @@ namespace AzToolsFramework
         Q_OBJECT
 
     public:
-        AZ_CLASS_ALLOCATOR(OutlinerSortFilterProxyModel, AZ::SystemAllocator, 0)
+        AZ_CLASS_ALLOCATOR(OutlinerSortFilterProxyModel, AZ::SystemAllocator, 0);
 
         OutlinerSortFilterProxyModel(QObject* pParent = nullptr);
 
         void UpdateFilter();
 
-        //////////////////////////////////////////////////////////////
-        // A series of punch-through translators to allow the model
-        // to exchange information with the view.
-        //////////////////////////////////////////////////////////////
-    public Q_SLOTS:
-        void OnItemExpanded(const QModelIndex& index);
-        void OnItemCollapsed(const QModelIndex& index);
-        void OnExpandItem(const QModelIndex& index);
-
-    Q_SIGNALS:
-        void ItemExpanded(const QModelIndex& index);
-        void ItemCollapsed(const QModelIndex& index);
-        void ExpandItem(const QModelIndex& index);
-
-    protected:
         // Qt overrides
         bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
         bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
         void sort(int column, Qt::SortOrder order) override;
 
+    private:
         QString m_filterName;
     };
 }

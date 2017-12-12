@@ -143,7 +143,7 @@ bool CSelectKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
 
             if (sequenceType == eSequenceType_Legacy)
             {
-                mv_camera = selectKey.szSelection;
+                mv_camera = selectKey.szSelection.c_str();
             }
             else if (sequenceType == eSequenceType_SequenceComponent)
             {
@@ -182,13 +182,13 @@ void CSelectKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
             {
                 if (m_isLegacyCamera)
                 {
-                    cry_strcpy(selectKey.szSelection, ((QString)mv_camera).toLatin1().data());
+                    selectKey.szSelection = ((QString)mv_camera).toLatin1().data();
                 }
                 else
                 {
                     QString entityIdString = mv_camera;
                     selectKey.cameraAzEntityId = AZ::EntityId(entityIdString.toULongLong());
-                    cry_strcpy(selectKey.szSelection, mv_camera.GetVar()->GetDisplayValue().toLatin1().data());
+                    selectKey.szSelection =  mv_camera.GetVar()->GetDisplayValue().toLatin1().data();
                 }
             }
 
@@ -202,9 +202,9 @@ void CSelectKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
                 selectKey.fBlendTime = mv_BlendTime;
             }
 
-            if (strlen(selectKey.szSelection) > 0)
+            if (!selectKey.szSelection.empty())
             {
-                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(selectKey.szSelection);
+                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindSequence(selectKey.szSelection.c_str());
                 if (pSequence)
                 {
                     selectKey.fDuration = pSequence->GetTimeRange().Length();

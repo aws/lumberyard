@@ -15,22 +15,22 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <AzCore/RTTI/RTTI.h>
 
-namespace AZ
+namespace EMotionFX
 {
-    namespace SceneAPI
+    namespace Pipeline
     {
-        namespace DataTypes
+        namespace Rule
         {
-            class IEFXMotionScaleRule
-                : public IRule
+            class IMotionScaleRule
+                : public AZ::SceneAPI::DataTypes::IRule
             {
             public:
-                AZ_RTTI(IEFXMotionScaleRule, "{EFBCC10B-5406-4BD6-B259-BCCD2A24893D}", IRule);
+                AZ_RTTI(IMotionScaleRule, "{EFBCC10B-5406-4BD6-B259-BCCD2A24893D}", AZ::SceneAPI::DataTypes::IRule);
 
-                virtual ~IEFXMotionScaleRule() override = default;
+                virtual ~IMotionScaleRule() override = default;
 
                 virtual float GetScaleFactor() const = 0;
             };
-        }  // DataTypes
-    }  // SceneAPI
-}  // AZ
+        }  // Rule
+    }  // Pipeline
+}  // EMotionFX
